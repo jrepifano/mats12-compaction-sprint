@@ -1,0 +1,5184 @@
+Published as a conference paper at COLM 2026
+
+Are Latent Reasoning Models Easily Interpretable?
+Connor Dilgren & Sarah Wiegreffe
+Department of Computer Science
+University of Maryland
+College Park, MD, USA
+{cdilgren, sarahwie}@umd.edu
+
+arXiv:2604.04902v2 [cs.LG] 10 Aug 2026
+
+Abstract
+Latent reasoning models (LRMs) have attracted significant research interest
+due to their low inference cost (relative to explicit reasoning models) and
+theoretical ability to explore multiple reasoning paths in parallel. However, these benefits come at the cost of reduced interpretability: LRMs are
+difficult to monitor because they do not reason in natural language. This
+paper presents an investigation into LRM interpretability by examining two
+state-of-the-art LRMs. First, we find that latent reasoning tokens are often
+unnecessary for LRMs’ predictions; on logical reasoning datasets, LRMs
+can almost always produce the same final answers without using latent
+reasoning at all. This underutilization of reasoning tokens may partially
+explain why LRMs do not consistently outperform explicit reasoning methods and raises doubts about the stated role of these tokens in prior work.
+Second, we demonstrate that when latent reasoning tokens are necessary
+for performance, we can decode gold reasoning traces up to 65-93% of the
+time for correctly predicted instances. This suggests LRMs often implement
+the expected solution rather than an uninterpretable reasoning process. Finally, we present a method to decode a verified natural language reasoning
+trace from latent tokens without knowing a gold reasoning trace a priori,
+demonstrating that it is possible to find a verified trace for a majority of correct predictions but only a minority of incorrect predictions. Our findings
+highlight that current LRMs largely encode interpretable processes, and
+interpretability itself can be a signal of prediction correctness.
+
+1
+
+Introduction
+
+Reasoning methods such as chain-of-thought (CoT; Wei et al. (2022)) improve the performance of a Language Model (LM) by solving problems in a step-by-step manner. Theoretical
+work has demonstrated that reasoning token generation increases the “effective depth” of
+the network by lengthening its longest pathways (Feng et al., 2023; Li et al., 2024) and helps
+models solve harder classes of problems (Merrill & Sabharwal, 2024; Nowak et al., 2024;
+Saunshi et al., 2025). Reasoning token generation has the added benefit of providing users
+with a form of explanation of models’ computational processes in natural language. While
+the explicit reasoning trace is not always faithful to the model’s true reasoning process
+(Wiegreffe et al., 2020; Turpin et al., 2023; Chen et al., 2025b), it has nonetheless been an
+important signal for users to calibrate their trust in a model’s output (Baker et al., 2025).
+However, the production of reasoning tokens at inference-time is computationally intensive
+and many state-of-the art reasoning models (RMs) produce thousands of tokens per query
+(Chen et al., 2026b; Yeo et al.). An array of recent work has focused on improving RMs’
+inference-time efficiency (Qu et al., 2025; Zhu & Li, 2025; Liu et al., 2026b; Sui et al., 2025;
+Feng et al., 2025; Alomrani et al., 2025), with proposed methods ranging from promptingor decoding-based tricks (Wang et al., 2025a), to fine-tuning models to use less reasoning
+tokens (Luo et al., 2026), to dynamically allocating queries based on reasoning necessity
+(Singh et al., 2025). An approach that has shown promising recent results is that of latent
+reasoning models (LRMs), which proposes to make reasoning more efficient by forgoing the
+1
+
+Published as a conference paper at COLM 2026
+
+Finding 1: LRMs don't fully utilize latent tokens
+Prompt bot 0 x latent eot 85
+Prompt bot 1 x latent eot 85
+
+Finding 2: LRMs often encode gold reasoning
+traces in latent tokens
+
+Finding 3: We can extract LRM reasoning steps,
+without knowing the gold reasoning trace
+
+Output L0 L1 L2 L3 L4 L5 L6 ### 70
+
+Operands in prompt: 5, 10, 22
+
+1
+
+### 30 eos ### 40 ### 70 ### 70
+
+2
+
+3 30
+
+.
+
+3
+
+10 20
+
+whereas
+
+Prompt bot 5 x latent eot 55
+
+10
+
+30 300 plus 20 4 332 370 Two 80
+
+Prompt bot 6 x latent eot 55 Final Answer
+
+Input bot L0 L1 L2 L3 L4 L5 eot ###
+
+Prompt bot 2 x latent eot 55 First match
+Prompt bot 3 x latent eot 165
+Prompt bot 4 x latent eot 55 Stable match
+
+5 40 30 70 70 90
+8 44 eos 74 90 110
+
+L2
+
+17
+
+Candidate step:
+
+Prompt modification: 22 → 23
+Expected step change:
+L2'
+
+18
+
+Passes check
+
+Figure 1: An overview of our findings. Left: LRMs tend to commit to a final answer before
+exhausting their budget, indicating that they don’t effectively use all available reasoning
+tokens. Middle: Vocabulary projections of latent tokens often encode gold reasoning traces,
+suggesting that the model follows an interpretable reasoning trace rather than an opaque
+one. Right: We can generate candidate steps encoded by a latent token, and verify them by
+checking whether vocabulary projections changes as expected under modified prompts.
+text decoding process altogether. Methods such as Deng et al. (2024a); Hao et al. (2025); Deng
+et al. (2025); Cheng & Durme (2024); Geiping et al. (2025) train models to autoregressively
+or recurrently generate additional intermediate latent “reasoning” states. Latent reasoning
+architectures can also be motivated by the intuition that decoding intermediate reasoning
+hidden states into text is an unneeded bottleneck on information flow (Zhu et al., 2025b),
+and theoretical results demonstrating a higher upper-bound on their expressivity (Gozeten
+et al., 2026; Zhu et al., 2025a).
+Unfortunately, unlike explicit reasoning models (ERMs), LRMs do not produce humaninspectable reasoning tokens in natural language. This has led to increasing safety concerns
+about LRMs and calls to preserve explicit reasoning via “chain-of-thought monitorability”
+(Korbak et al., 2025). But do we have cause for concern with current LRMs? Prior work
+(Hao et al., 2025; Tan et al., 2025) has offered only limited case studies in support of LRM
+interpretability, with a lack of standardized comparison across architectures or datasets. It
+is also unclear whether the theoretically demonstrated higher capacity of LRMs has actually
+been achieved yet with current architectures. We conduct the most comprehensive study to
+date of latent reasoning interpretability.1 We answer three main research questions:
+RQ1: Are latent reasoning tokens necessary for model performance?
+RQ2: Are gold reasoning traces easily recoverable from latent reasoning tokens?
+RQ3: Can we extract a reasoning trace that the model is following from latent tokens?
+We first investigate whether latent reasoning tokens in state-of-the-art LRMs are necessary
+for performance, a prerequisite for meaningful interpretation. Specifically, we study the
+width-based LRMs Coconut and CODI (§2). Somewhat counterintuitively, we find that they
+are not necessary for some tasks: LRMs’ predictions on logical reasoning datasets are almost
+always the same, regardless of the number of latent tokens available at inference time. We
+find evidence that the performance gains reported in prior work come from the model’s
+training regimen and not from additional test-time computation.
+When models do require latent reasoning tokens, we next investigate whether we can find
+gold reasoning traces encoded in the latent reasoning tokens. We find that it is indeed
+possible to decode the gold reasoning traces using simple heuristics when models are
+correct, but less readily when models are incorrect. This suggests that LRMs often follow
+expected reasoning traces rather than an uninterpretable reasoning process.
+In addition to decoding expected reasoning traces, we present a novel method to decode a
+verified natural language reasoning trace without knowing a gold reasoning trace a priori.
+We demonstrate that it is possible to find and verify a reasoning trace for a majority of
+correct predictions but only a minority of incorrect predictions. Our findings highlight that
+1 Code available at https://github.com/connordilgren/are-lrms-easily-interpretable.
+
+2
+
+Published as a conference paper at COLM 2026
+
+current LRMs largely encode interpretable processes, and interpretability itself can signal
+prediction correctness.
+
+2
+
+Related work
+
+Latent reasoning models. Latent reasoning models reason in continuous hidden states
+rather than natural language, making their intermediate steps opaque (Zhu et al., 2025b). We
+study Coconut (Hao et al., 2025) and CODI (Shen et al., 2025b), two width-based LRMs that
+produce intermediate latent reasoning tokens autoregressively and circumvent decoding
+them into text by feeding them directly back into the model as the next token (see Figure 6).2
+We focus on these models because they are increasingly common in the literature, are
+architecturally similar to ERMs that use chain-of-thought, and have publicly available
+source code. During training, both the Coconut and CODI models learn to reason from
+supervision on ground-truth reasoning traces. The Coconut model is instantiated as an
+ERM; at each stage of the training curriculum, an explicit reasoning step is replaced with a
+latent reasoning token until no explicit reasoning steps remain. The CODI model trains an
+ERM alongside the LRM and distills knowledge to the LRM by aligning the hidden states of
+a key token between the models. We refer the reader to the original papers for more details.
+During inference, for both models, a special "beginning of thought" token signals the start of
+latent reasoning, after which the model processes a predetermined, dataset-specific number
+of latent tokens. Each latent token is the final-layer hidden state from the previous position,
+bypassing the standard decoding (and re-embedding) steps of autoregressive generation.
+An "end of thought" token signals the return to standard decoding for producing the final
+answer. CODI will additionally pass each final-layer hidden state through a trained twolayer multi-layer perceptron before using it as the next input token during latent reasoning.
+From a theoretical angle, recent work (Zhu et al., 2025a; Zou et al., 2026; Gozeten et al.,
+2026; Chen et al., 2026a) established higher upper-bound expressivity of width-based LRMs
+than ERMs, due to the removal of the textual decoding bottleneck. Building off of this,
+they proposed classes of problems, such as graph reachability or other parallel breadth-first
+search problems, that LRMs can solve more effectively than ERMs. However, the extent
+to which current LRMs empirically implement these behaviors is unanswered. We find
+evidence refuting the claim that LRMs exhibit complex search behaviors for certain logical
+reasoning tasks in §4.
+Interpreting latent reasoning models. Limited work has been done on interpreting LRMs.
+Some works proposing LRMs have included interpretability analyses, though largely
+through case studies. Shen et al. (2025b) find preliminary evidence that for correctlyanswered math problems, latent tokens can encode intermediate reasoning steps, with
+step results appearing in the top-5 tokens from vocabulary projection and step operands in
+the top-10 attended-to input tokens. Hao et al. (2025) inspect the probabilities assigned to
+nodes in a graph by latent tokens (after vocabulary projection) and hypothesize that LRMs
+follow multiple reasoning paths simultaneously. However, it is unclear to what extent these
+findings hold more generally, or whether they are predictive of models’ correctness.
+Some concurrent work analyzes LRMs using mechanistic interpretability techniques. Cywiński et al. (2025) investigated whether LRMs achieve higher performance than ERMs and
+non-reasoning models due to latent reasoning or their training regimen. Liang & Pan (2026)
+found that LRMs encode intermediate states in multi-hop tasks with < 3 hops. We include
+additional discussion of these works in §A.2.
+
+3
+
+Experimental details
+
+Datasets. We perform experiments on three datasets commonly studied in prior work on
+LRMs: GSM8k-Aug (Deng et al., 2024b), PrOntoQA (Saparov & He, 2023), and ProsQA
+(Hao et al., 2025). See §B for more details, including dataset statistics and examples.
+2We include additional discussion of other types of LRMs in §A.1.
+
+3
+
+Published as a conference paper at COLM 2026
+
+GSM8k-Aug
+
+PrOntoQA
+
+ProsQA
+
+Method
+
+Base Model
+
+Acc. (%)
+
+# Tok.
+
+Acc. (%)
+
+# Tok.
+
+Acc. (%)
+
+# Tok.
+
+No-CoT
+CoT
+Coconut
+CODI
+
+GPT-2 Small
+GPT-2 Small
+GPT-2 Small
+GPT-2 Small
+
+16.8 (16.5† )
+41.6 (42.9† )
+33.1 (34.1† )
+42.2∗ (43.7‡ )
+
+3.2
+31.0
+9.2
+12.3
+
+87.9 (93.8† )
+99.3 (98.8† )
+99.0 (99.8† )
+95.1
+
+3.0
+92.7
+9.0
+12.0
+
+76.0 (76.7† )
+74.2 (77.5† )
+98.0 (97.0† )
+81.6
+
+9.5
+51.6
+15.5
+18.2
+
+No-CoT
+CoT
+Coconut
+CODI
+
+Llama-3.2-1B
+Llama-3.2-1B
+Llama-3.2-1B
+Llama-3.2-1B
+
+30.1 (30.9‡ )
+59.4 (61.6‡ )
+35.7 (45.3‡ )
+56.0 (55.6‡ )
+
+4.2
+29.7
+10.2
+13.2
+
+99.8
+99.6
+98.8
+93.6
+
+3.0
+85.6
+9.0
+12.0
+
+87.8
+95.2
+97.6
+99.0
+
+8.6
+42.6
+14.7
+17.7
+
+Table 1: Model performance. Results from Hao et al. (2025)† and Shen et al. (2025b)‡ shown
+in parentheses where available. See §G for a discussion on the Coconut + Llama-3.2-1BInstruct performance on GSM8k-Aug compared to the published result.
+
+GSM8k-Aug is a dataset of arithmetic problems, each with a 1-8 step gold reasoning trace
+where every step is an equation that composes operands (e.g., “3”, “5”) with operators (e.g.,
+“+”, “-”) to produce a result. We add additional valid reasoning traces from the MultiChain
+GSM8k-Aug dataset (Deng et al., 2025), yielding 1-10 (median 5) gold traces per instance.
+PrOntoQA and ProsQA are both logical reasoning datasets that require 6 and 3–6 reasoning
+steps, respectively. Both tasks require determining whether an entity belongs to a stated category given a set of hierarchical “is-a” relationships. ProsQA generally has more distractor
+paths than PrOntoQA; it was proposed by Hao et al. (2025) to resolve the shortcomings of
+PrOntoQA for testing search in LRMs.
+Models. Following prior work, we fine-tune GPT-2 Small (Radford et al., 2019) and Llama3.2-1B-Instruct (Team, 2024) using the latent training regimens for Coconut and CODI; see
+§2 for details. We additionally fine-tune two baselines: an ERM (i.e., a model that uses chainof-thought) and a no-CoT model (i.e., a model that answers immediately). We fine-tune
+each of the four model types separately on each dataset using the training code from Hao
+et al. (2025); Shen et al. (2025b), resulting in twelve models.3 Following Hao et al. (2025)
+and Shen et al. (2025b), we train and evaluate our Coconut and CODI models using 6 latent
+reasoning tokens for each dataset. Performance of our replications is in Table 1. Both LRMs
+outperform the ERM and No-CoT models on ProsQA for both base models.
+
+4
+
+Are latent reasoning tokens necessary for model performance?
+
+We investigate (§4.1) how effectively LRMs use their additional computational power by
+testing whether their predictions change when latent reasoning is terminated early. If LRMs
+consistently predict the same answer with fewer latent reasoning tokens, either the task
+is too easy to test the architecture’s benefits, or performance gains stem from the training
+regimen rather than additional token roll-out. We find evidence for the latter in §4.2.
+4.1
+
+Early stopping experiment
+
+To determine how many latent reasoning tokens are needed to arrive at a final answer, we
+prematurely insert the “end-of-thought” token to terminate reasoning early and force the
+model to produce a final answer (see Figure 1, left). We then compare predictions using the
+full ℓ = 6 tokens against reduced counts ℓ ∈ [0, 1, 2, 3, 4, 5] using the metrics:
+3 Except for CODI + GPT2-Small on GSM8k-Aug, for which we use the provided checkpoint:
+https://huggingface.co/zen-E/CODI-gpt2.
+
+4
+
+Published as a conference paper at COLM 2026
+
+% of RT to Output Final Answer
+
+GPT-2 Small
+100
+
+99%
+
+80
+
+98%
+
+Explicit Reasoning
+Coconut
+CODI
+
+91%
+75%
+
+69%
+
+60
+
+54%
+
+55%
+
+47%
+
+40
+
+38%
+23%
+
+20
+0
+
+Llama-3.2-1B-Instruct
+
+GSM8k-Aug
+
+0% 4%
+
+0% 0%
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+0% 1%
+
+0% 1%
+
+ProsQA
+
+PrOntoQA
+
+Figure 2: Early stopping results. Solid bars indicate the first match percentage, while hatched
+bars show the additional reasoning required for a stable match (black lines for one standard
+deviation), compared to the model’s full reasoning trace (RT).
+
+1. First match: the minimum number of reasoning tokens at which the model’s answer
+matches its answer given the full set of reasoning tokens. In Figure 1 (left), the first
+match occurs at ℓ = 2.
+2. Stable match: the minimum number of reasoning tokens at which the model’s
+answer remains unchanged given additional reasoning tokens. In Figure 1 (left), the
+stable match occurs at ℓ = 4.
+We also run this analysis on the ERMs as a baseline. Since latent reasoning tokens are trained
+to replace full reasoning steps (§2), we evaluate the ERMs by removing complete steps.
+4.2
+
+Multi-reasoning model experiment
+
+Prior work argues that LRMs achieve high performance on PrOntoQA and ProsQA because
+they can implement a parallelized breadth-first search at inference time (Hao et al., 2025;
+Zhu et al., 2025a). Table 1 confirms that LRMs outperform both non-reasoning and explicit
+reasoning models on ProsQA. However, LRMs also benefit from training on the gold
+reasoning traces, which the non-reasoning models are not exposed to, and some LRMs
+(i.e., for GPT-2 Small) make more passes over the training data than the equivalent ERM
+(see §C for training parameters). To isolate the effects of additional training data from the
+architectural modification, we follow the method in Cywiński et al. (2025) to train models
+that are otherwise equivalent to the LRMs in Table 1, but can answer in three modes: noCoT, explicit reasoning, or latent reasoning. This allows us to directly compare the value of
+explicit and latent tokens at inference-time when trained on identical data. We train 12 such
+models across three datasets (GSM8k-Aug, PrOntoQA, ProsQA), two base models (GPT-2
+Small, Llama-3.2-1B-Instruct), and two latent reasoning methods (Coconut, CODI). See §D
+for training and inference details for the multi-reasoning models.
+4.3
+
+Results
+
+From the early stopping experiment, we make a surprising finding shown in Figure 2: unlike
+for GSM8k-Aug, where all models require at least some of their reasoning tokens, LRMs
+rarely need any of their latent reasoning tokens to make stable predictions on PrOntoQA or
+ProsQA. The ERMs, by comparison, still require 47% to 98% of their reasoning tokens. This
+result contradicts the analysis in Hao et al. (2025); Zhu et al. (2025a), which argue that the
+Coconut model uses a parallelized breadth-first search to solve PrOntoQA and ProsQA. See
+§A.3 for a greater comparison with Hao et al. (2025); Zhu et al. (2025a). It is possible that the
+LRMs perform some form of search either when latent reasoning is not terminated early
+or as the prompt is being processed, but our result demonstrates that latent tokens are not
+5
+
+Published as a conference paper at COLM 2026
+
+necessary for LRMs to achieve strong performance.4 Future studies should first verify that
+latent tokens are necessary for a dataset before analyzing how the latent tokens are used by
+the model.
+On GSM8k-Aug, LRMs do use their reasoning tokens, though at lower rates than the explicit
+model. The underutilization of latent reasoning tokens across all three datasets may partially
+explain why LRMs do not consistently surpass ERM performance (Table 1). The models’
+tendency to converge prematurely suggests that they fail to exploit their full computational
+bandwidth. For this reason, in the subsequent sections, we present results only on the
+GSM8k-Aug dataset, since establishing latent reasoning tokens’ role in performance is a
+prerequisite to their interpretation. Future work could address underutilization by training
+models to better use their reasoning budget or by improving efficiency through introducing
+early stopping mechanisms that terminate reasoning once a stable prediction is reached.
+LRM
+
+Base Model
+
+Reasoning Mode
+
+GSM8k-Aug
+
+PrOntoQA
+
+ProsQA
+
+GPT-2 Small
+
+No-CoT
+CoT
+
+0.3
+19.2
+
+0.0
+0.0
+
+0.0
+-6.0
+
+Llama-3.2-1B-Instruct
+
+No-CoT
+CoT
+
+-0.9
+29.3
+
+0.0
+-0.3
+
+0.0
+-1.4
+
+GPT-2 Small
+
+No-CoT
+CoT
+
+-5.9
+3.5
+
+-0.3
+-0.4
+
+-0.2
+-7.4
+
+Llama-3.2-1B-Instruct
+
+No-CoT
+CoT
+
+2.4
+19.9
+
+0.0
+6.2
+
+0.4
+-1.6
+
+Coconut
+
+CODI
+
+Table 2: Relative performance of non-reasoning and explicit reasoning versus latent reasoning for the multi-reasoning models. Positive values mean latent reasoning underperformed.
+Table 2 shows that the apparent advantage of latent reasoning over non-reasoning models
+on logical reasoning datasets almost disappears when controlling for training data. Coconut
+has the same performance as no-CoT in PrOntoQA and ProsQA, and CODI is within 0.4
+percentage points of no-CoT. Thus, the higher performance of LRMs over non-reasoning
+models shown in Table 1 is likely due to their training regimen and not the additional
+inference-time compute. Additionally, explicit reasoning continues to outperform latent
+reasoning in GSM8k-Aug.
+
+5
+
+Are gold reasoning traces easily recoverable from latent tokens?
+
+When latent reasoning tokens are necessary for model performance, can we easily decode
+gold reasoning traces from them? If so, then LRMs may work as a compressed ERM by
+solving problems step-by-step in latent space. While prior work has projected latent tokens
+back to the vocabulary space for interpretation (§2), this has been done either on only a few
+instances (Hao et al., 2025; Shen et al., 2025b) or in search of intermediate answer quantities
+rather than the full trace (Shen et al., 2025b; Lu et al., 2025), and only on correct predictions.
+5.1
+
+Gold reasoning trace backtracking experiment
+
+We extract the top-10 tokens from the model’s vocabulary5 that each final-layer latent
+reasoning token projects to using vocabulary projection (i.e., a normalized dot product with
+the model’s unembedding matrix; see §F). Making sense of these projections at scale is
+non-trivial, and they are largely inspected qualitatively in prior work. To rectify this, we
+4 See §K for a discussion on how models might solve PrOntoQA without learning to search or do
+
+first-order logical reasoning.
+5 The top-10 tokens capture at least 90% of the probability mass over the vocabulary for the median
+GSM8k-Aug validation instance for Coconut + GPT-2 Small, Coconut + Llama-3.2-1B-Instruct, and
+CODI + GPT-2 Small. CODI + Llama-3.2-1B-Instruct distributes its probability mass more broadly, such
+that the top-5000 tokens capture the same probability mass; we use the top-10 tokens for consistency.
+
+6
+
+Published as a conference paper at COLM 2026
+
+It takes Carmen 10 minutes to finish a crossword puzzle and 5 minutes to finish a sudoku puzzle. Over the weekend
+she solved 3 crossword puzzles and 8 sudoku puzzles. How much time did she spend playing these games?
+Gold Reasoning Trace: «
+», «
+», «
+»
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+###
+
+70
+
+1
+
+###
+
+30
+
+<|eos|>
+
+###
+
+40
+
+###
+
+70
+
+###
+
+70
+
+2
+
+3
+
+30
+
+.
+
+5
+
+40
+
+30
+
+70
+
+70
+
+90
+
+3
+
+10
+
+20
+
+whereas
+
+8
+
+44
+
+<|eos|>
+
+74
+
+90
+
+110
+
+10
+
+30
+
+300
+
+plus
+
+20
+
+4
+
+332
+
+370
+
+Two
+
+80
+
+Input
+
+bot
+
+eot
+
+###
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+% of Instances with Gold RT Found
+
+Figure 3: Found gold reasoning trace in Coconut + GPT-2 Small’s vocabulary projections,
+from instance 220 of GSM8k-Aug’s test split. The model answered this question correctly.
+
+Correct Instances
+100
+80
+60
+
+GPT-2 + Coconut
+GPT-2 + CODI
+Llama 3.2-1B + Coconut
+Llama 3.2-1B + CODI
+
+93%
+
+85%
+
+54%
+
+Incorrect Instances
+
+61%
+
+52%
+
+59%
+
+65%
+
+71%
+
+65% 69%
+
+40
+20
+0
+
+5%
+
+10% 12%
+
+Primary
+Gold RT
+
+8%
+
+16% 17%
+
+Any
+Gold RT
+
+7%
+
+36%
+29%
+24% 24% 24% 25%
+19% 19% 17% 16%
+2% 2% 2%
+
+Best of 5
+Other Solutions
+
+2% 4% 3%
+
+4% 5% 5%
+
+8%
+
+Primary
+Gold RT
+
+Any
+Gold RT
+
+Best of 5
+Other Solutions
+
+2% 2% 2%
+
+Figure 4: Backtracking results. “Any Gold RT” includes additional solutions from the
+MultiChain GSM8k-Aug dataset (Deng et al., 2025). Darker bars exclude question tokens as
+operands, and lighter bars show the increase from including them as candidate operands.
+devise a backtracking search algorithm to check whether a complete gold reasoning trace
+is present (§I.1). Starting from the final step, we verify that the correct answer appears in
+the top-k tokens at the answer position for incorrect predictions6 (this is trivially true for
+correct predictions). We then recursively check whether each gold reasoning step’s operands
+appear at earlier positions, requiring that operands always precede their results. The trace
+is considered “found” if all steps are located. We run this search both with and without
+allowing question tokens as operands.7 Figure 3 shows a successfully found reasoning trace.
+As a baseline, we randomly select n reasoning traces from other GSM8k-Aug problems with
+the same number of steps for each instance. Then, we check whether any of these reasoning
+traces can also be found using the backtracking search method. If the top-k threshold used
+in the vocabulary projection is too high, then these random reasoning traces should be
+found at rates comparable to the gold reasoning traces. We use n = 5.
+5.2
+
+Results
+
+Figure 4 shows that the LRMs generally do encode the gold reasoning trace for correctly
+answered instances. The Coconut + GPT-2 Small model encodes the original gold reason6 Table 14 shows that 46.5% to 56.0% of incorrectly predicted instances have the correct answer in
+
+the top-10 vocabulary projection at the answer position for all LRMs evaluated.
+7 Consistent with Shen et al. (2025b), we find that LRMs rarely encode operators in vocabulary
+projections of latent tokens, so we exclude them from the backtracking search.
+
+7
+
+Published as a conference paper at COLM 2026
+
+ing trace in 54% of correctly answered instances. This increases to 65% when including
+additional valid reasoning traces from the MultiChain dataset, and then to 93% when also
+including numbers from the question as potential operands.
+The Coconut + Llama-3.2-1B-Instruct model and both CODI models generally encode
+intermediate results but not operands into their latent tokens (Figure 10). When question
+tokens are included as potential operands, at least one gold reasoning trace is found in 65%
+to 71% of correctly answered instances, but this drops to 8% to 17% without them.
+Somewhat surprisingly, the LRMs sometimes represent the gold reasoning traces even in
+incorrectly answered problems. The LRMs represent at least one gold reasoning trace 24%
+to 36% of the time when including question tokens as operands. In these cases, an incorrect
+reasoning trace is encoded more strongly than the gold reasoning trace (Figure 11).
+Gold reasoning traces are substantially more represented than random traces from other
+instances. The best of five random reasoning traces appears only 2% to 8% of the time, even
+when including question tokens as operands. This confirms that the top-10 vocabulary
+projections are not expressive enough to represent arbitrary reasoning traces.
+The results of this experiment provide evidence that LRMs likely solve elementary math
+problems similarly to ERMs: by calculating intermediate steps and composing them to
+output a final answer. The main evidence for this is that the gold reasoning traces are
+consistently present when the model is correct compared to when the model is incorrect,
+and this is not explained simply by overly expressive vocabulary projections. A plausible
+explanation is that LRMs learn to compress but still use gold reasoning traces rather than
+abandoning them for less understandable ways of solving these problems. We note that this
+evidence is correlational rather than causal; merely finding gold reasoning chains does not
+prove that they’re used by the model.
+
+6
+
+Can we extract reasoning traces in latent tokens without supervision?
+
+The backtracking search method in §5.1 checks whether a LRM is encoding a known
+reasoning trace. But what about interpreting incorrect predictions, where the gold trace
+may not be present? We propose a second algorithm, forward chaining, to make sense
+of vocabulary projections when we do not know a gold reasoning trace beforehand. Our
+method consists of three steps described below. See §J for an example and pseudocode.
+Finding candidate reasoning steps. For each latent reasoning token, we first find individual reasoning steps that may be encoded. We assume the step result is the top integer
+token of its vocabulary projection, then find all combinations of operands and arithmetic
+operators that produce this result, where operands can be results from previous steps, top-k
+integers from the previous position, or numbers from the prompt.
+Verifying candidate reasoning steps. To verify that a latent token is encoding a specific
+candidate step, we create three counterfactual prompts, each with a change to one operand
+on which that step relies. We next check whether the top integer token of the vocabulary
+projection corresponding to that step changes to its new expected result; if so, we consider
+the step “verified”. If not, we try other candidate reasoning steps until none remain. This
+verification process assumes that the model is robust to minor prompt edits, which can fail
+if the model restructures its reasoning trace or miscalculates the modified result. To account
+for this, we vary how many of three verifications must succeed for a step to be verified.
+Assembling verified reasoning steps. Finally, we assemble found steps into a reasoning
+trace by starting from the step that produces the final answer and walking backwards,
+adding steps whose results serve as operands in later steps. A reasoning trace is considered
+verified if all individual steps are verified. See Figure 16 for an example.
+We analyze a 460-instance subset of GSM8k-Aug’s test set, filtered for unique, single-token
+numbers in both the prompt and gold reasoning trace. Unique numbers are required to
+unambiguously determine which number in the prompt should be modified for verification,
+8
+
+GPT-2 small
+
+100
+
+Llama 3.2-1B
+
+Published as a conference paper at COLM 2026
+
+100
+
+50
+0
+
+50
+0
+
+Coconut Correct
+
+Coconut Incorrect
+
+Found: 98%
+
+Found: 94%
+
+93%
+
+1
+
+84%
+
+2
+
+67%
+
+60%
+
+3
+
+1
+
+22%
+
+7%
+
+2
+
+3
+
+CODI Correct
+
+CODI Incorrect
+
+Found: 96%
+
+84%
+
+1
+
+78%
+
+2
+
+Found: 79%
+
+62%
+
+40%
+
+16%
+
+7%
+
+3
+
+1
+
+2
+
+3
+
+Found: 98%
+
+Found: 82%
+
+Found: 67%
+
+57%
+
+50%
+
+39%
+
+1
+2
+3
+Required Passes
+
+11%
+
+Found: 24%
+
+5%
+
+3%
+
+1
+2
+3
+Required Passes
+
+84%
+
+74%
+
+61%
+
+1
+2
+3
+Required Passes
+
+44%
+
+24%
+
+13%
+
+1
+2
+3
+Required Passes
+
+Figure 5: Forward chaining results.
+
+and single-token numbers are a limitation of vocabulary projection. See §J.3 for the full set
+of dataset requirements for forward chaining.
+6.1
+
+Results
+
+As shown in Figure 5, for Coconut + GPT-2 Small, forward chaining finds and verifies a
+reasoning trace in 93% of correctly predicted instances when only requiring 1/3 verification
+attempts per step to pass. This drops to 84% and 67% when 2/3 and 3/3 verification
+attempts are required to pass, respectively. The LRMs encode verifiable reasoning traces
+less frequently for incorrectly answered instances. Coconut + GPT-2 Small finds and verifies
+reasoning traces up to 62 percentage points less for incorrectly predicted instances. This
+suggests that the LRM does not fully “show its work” by skipping one or more steps when
+the model is incorrect. In doing so, the LRM may be more likely to miscalculate.
+For the CODI models, moving from the smaller GPT-2 model (124 million parameters) to
+the bigger Llama 3.2-1B-Instruct model does not change the percent of found and verified
+reasoning traces by much (≤ 8% percentage point difference). In both models, CODI still
+tends to encode its intermediate results in the top-1 integer token position. But for the
+Coconut models, moving from GPT-2 to Llama 3.2-1B-Instruct causes up to a 49 percentage
+point loss in the percent of verified reasoning traces. Coconut + Llama 3.2-1B-Instruct seems
+to not show its work nearly as much as the Coconut + GPT-2 Small model.
+The forward chaining results show that the LRMs studied are moderately interpretable: we
+can extract and verify a reasoning trace nearly a majority of the time on correct predictions.
+This is strengthened by the results in §5.2. However, this encouraging result may be an
+artifact of training Coconut and CODI on gold reasoning traces. Standard mechanistic
+interpretability methods like vocabulary projection may be ineffective on LRMs that have a
+weaker natural language prior (e.g., models that learn latent reasoning during pretraining).
+Investigating the interpretability of such models is a promising direction for future work.
+As with the gold reasoning traces found via the backtracking experiment in §5.2, we do
+not claim that the reasoning traces found via the forward chaining method are causally
+used by the model. We believe our method provides a plausible hypothesis on how the
+model arrived at its final prediction. Finding plausible reasoning traces (with some reason
+to believe they are implemented, such as through our verification tests) is valuable if they
+give us some signal into model behavior. For example, prior work has shown that standard
+chains-of-thought is not always faithful to the model’s internal computational process
+(Turpin et al., 2023), and yet they have still been shown to provide practically useful insights
+into model behavior, such as reward hacking (Baker et al., 2025). In the same way, we
+hope that the reasoning traces decoded by our forward chaining method will provide
+important signal into model behavior that can be operationalized in future work to make
+improvements to model behavior and monitoring.
+9
+
+Published as a conference paper at COLM 2026
+
+7
+
+Conclusion
+
+This paper investigates LRM interpretability, which is essential for deployment where
+monitorability is required. Our findings reveal three key insights. First, LRMs do not
+fully utilize their latent reasoning tokens. On logical reasoning datasets, LRMs often
+determine their final answer without latent reasoning at all. When controlling for training
+regimen benefits, no-CoT models match LRM performance on logical reasoning datasets. We
+encourage future work to investigate on which tasks latent reasoning holds a comparative
+advantage due to their additional inference-time compute and theoretical capability to
+follow multiple reasoning traces in parallel. Second, when reasoning tokens are used,
+gold reasoning traces can be recovered from correct predictions using simple heuristics,
+suggesting that LRMs implement expected reasoning traces rather than opaque reasoning
+processes. Finally, we present a method to extract natural language reasoning traces from
+latent reasoning tokens a majority of the time for correctly-answered instances. Our findings
+indicate that LRMs are more interpretable than previously assumed, though this may not
+hold for other classes of LRMs that have a weaker natural language prior.
+
+References
+Mohammad Ali Alomrani, Yingxue Zhang, Derek Li, Qianyi Sun, Soumyasundar Pal,
+Zhanguang Zhang, Yaochen Hu, Rohan Deepak Ajwani, Antonios Valkanas, Raika Karimi,
+et al. Reasoning on a Budget: A Survey of Adaptive and Controllable Test-Time Compute
+in LLMs, 2025. URL http://arxiv.org/abs/2507.02076.
+Bowen Baker, Joost Huizinga, Leo Gao, Zehao Dou, Melody Y. Guan, Aleksander Madry,
+Wojciech Zaremba, Jakub Pachocki, and David Farhi. Monitoring reasoning models for
+misbehavior and the risks of promoting obfuscation, 2025. URL https://arxiv.org/abs/
+2503.11926.
+Vivien Cabannes, Charles Arnal, Wassim Bouaziz, Alice Yang, Francois Charton, and Julia
+Kempe. Iteration head: A mechanistic study of chain-of-thought. Advances in Neural
+Information Processing Systems 37, 37:109101–109122, 2024. doi: 10.52202/079017-3463.
+Lijie Chen, Zhiyuan Li, Kaifeng Lyu, Binghui Peng, and Hongxun Wu. The information
+bottleneck of chain-of-thought and how latent cot overcomes it, 2026a. URL https:
+//openreview.net/forum?id=cCIdxLoLJ5.
+Qiguang Chen, Libo Qin, Jinhao Liu, Dengyun Peng, Jiannan Guan, Peng Wang, Mengkang
+Hu, Yuhang Zhou, Te Gao, and Wanxiang Che. Towards Reasoning Era: A Survey
+of Long Chain-of-Thought for Reasoning Large Language Models, 2026b. URL http:
+//arxiv.org/abs/2503.09567.
+Xinghao Chen, Anhao Zhao, Heming Xia, Xuan Lu, Hanlin Wang, Yanjun Chen, Wei Zhang,
+Jian Wang, Wenjie Li, and Xiaoyu Shen. Reasoning beyond language: A comprehensive
+survey on latent chain-of-thought reasoning, 2025a. URL https://arxiv.org/abs/2505.
+16782.
+Yanda Chen, Joe Benton, Ansh Radhakrishnan, Jonathan Uesato, Carson Denison, John
+Schulman, Arushi Somani, Peter Hase, Misha Wagner, Fabien Roger, et al. Reasoning
+models don’t always say what they think, 2025b. URL https://arxiv.org/abs/2505.
+05410.
+Jeffrey Cheng and Benjamin Van Durme. Compressed chain of thought: Efficient reasoning
+through dense representations, 2024. URL https://arxiv.org/abs/2412.13171.
+Bartosz Cywiński, Bart Bussmann, Arthur Conmy, Joshua Engels, Neel
+Nanda, and Senthooran Rajamanoharan.
+Can we interpret latent reasoning using current mechanistic interpretability tools?
+LessWrong, December 2025.
+URL https://www.lesswrong.com/posts/YGAimivLxycZcqRFR/
+can-we-interpret-latent-reasoning-using-current-mechanistic.
+10
+
+Published as a conference paper at COLM 2026
+
+Mostafa Dehghani, Stephan Gouws, Oriol Vinyals, Jakob Uszkoreit, and Lukasz Kaiser.
+Universal transformers. In International Conference on Learning Representations, 2018. URL
+https://openreview.net/forum?id=HyzdRiR9Y7.
+Jingcheng Deng, Liang Pang, Zihao Wei, Shichen Xu, Zenghao Duan, Kun Xu, Yang Song,
+Huawei Shen, and Xueqi Cheng. Latent reasoning in llms as a vocabulary-space superposition, 2025. URL https://arxiv.org/abs/2510.15522.
+Jingcheng Deng, Liang Pang, Zihao Wei, Shicheng Xu, Zenghao Duan, Kun Xu, Yang Song,
+Huawei Shen, and Xueqi Cheng. Llm latent reasoning as chain of superposition, 2026.
+URL https://arxiv.org/abs/2510.15522.
+Yuntian Deng, Yejin Choi, and Stuart Shieber. From explicit cot to implicit cot: Learning to
+internalize cot step by step, 2024a. URL https://arxiv.org/abs/2405.14838.
+Yuntian Deng, Kiran Prasad, Roland Fernandez, Paul Smolensky, Vishrav Chaudhary, and
+Stuart Shieber. Implicit chain of thought reasoning via knowledge distillation, 2024b.
+URL https://openreview.net/forum?id=9cumTvvlHG.
+Guhao Feng, Bohang Zhang, Yuntian Gu, Haotian Ye, Di He, and Liwei Wang. Towards Revealing the Mystery behind Chain of Thought: A Theoretical Perspective. pp. 70757–70798.
+Neural Information Processing Systems Foundation, Inc. (NeurIPS), 2023. doi: 10.52202/
+075280-3100. URL https://openreview.net/forum?id=qHrADgAdYu&noteId=JgRIVMxGoT.
+Sicheng Feng, Gongfan Fang, Xinyin Ma, and Xinchao Wang. Efficient Reasoning Models:
+A Survey. Trans. Mach. Learn. Res., 2025. ISSN 2835-8856. doi: 10.48550/arXiv.2504.10903.
+URL https://openreview.net/forum?id=sySqlxj8EB.
+Jonas Geiping, Sean Michael McLeish, Neel Jain, John Kirchenbauer, Siddharth Singh,
+Brian R. Bartoldson, Bhavya Kailkhura, Abhinav Bhatele, and Tom Goldstein. Scaling
+up test-time compute with latent reasoning: A recurrent depth approach. In Advances in
+Neural Information Processing Systems 38, pp. 46242–46293. Neural Information Processing
+Systems Foundation, Inc. (NeurIPS), 2025. doi: 10.52202/085713-1380. URL https:
+//openreview.net/forum?id=S3GhJooWIC.
+Mor Geva, Roei Schuster, Jonathan Berant, and Omer Levy. Transformer Feed-Forward Layers Are Key-Value Memories. In Proceedings of the 2021 Conference on Empirical Methods in
+Natural Language Processing, pp. 5484–5495, Online and Punta Cana, Dominican Republic,
+2021. Association for Computational Linguistics. doi: 10.18653/v1/2021.emnlp-main.446.
+URL https://aclanthology.org/2021.emnlp-main.446.
+Sayam Goyal, Brad Peters, María Emilia Granda, Akshath Vijayakumar Narmadha, Dharunish Yugeswardeenoo, Callum Stuart McDougall, Sean O’Brien, Ashwinee Panda, Kevin
+Zhu, and Cole Blondin. Scratchpad thinking: Alternation between storage and computation in latent reasoning models. In Mechanistic Interpretability Workshop at NeurIPS 2025,
+2025. URL https://openreview.net/forum?id=EV30qkZXrR.
+Halil Alperen Gozeten, Muhammed Emrullah Ildiz, Xuechen Zhang, Hrayr Harutyunyan,
+Ankit Singh Rawat, and Samet Oymak. Continuous chain of thought enables parallel
+exploration and reasoning. In arXiv.org, 2026. doi: 10.48550/arXiv.2505.23648. URL
+https://openreview.net/forum?id=sTPKDKn5ig.
+Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li, Zhiting Hu, Jason E Weston, and
+Yuandong Tian. Training large language models to reason in a continuous latent space.
+In arXiv.org, 2025. doi: 10.48550/arXiv.2412.06769. URL https://openreview.net/forum?
+id=Itxz7S4Ip3.
+Tomasz Korbak, Mikita Balesni, Eliza-beth Barnes, Y. Bengio, Joe Benton, Joseph Bloom,
+Mark Chen, Alan Cooney, Allan Dafoe, Anca Dragan, et al. Chain of thought monitorability: A new and fragile opportunity for ai safety, 2025. URL https://arxiv.org/abs/2507.
+11473.
+11
+
+Published as a conference paper at COLM 2026
+
+Jindong Li, Yali Fu, Li Fan, Jiahong Liu, Yao Shu, Chengwei Qin, Menglin Yang, Irwin King,
+and Rex Ying. Implicit reasoning in large language models: A comprehensive survey,
+2025. URL https://arxiv.org/abs/2509.02350.
+Zhiyuan Li, Hong Liu, Denny Zhou, and Tengyu Ma. Chain of thought empowers transformers to solve inherently serial problems. In International Conference on Learning Representations, 2024. doi: 10.48550/arXiv.2402.12875. URL https://openreview.net/forum?
+id=3EWTEy9MTM.
+Jia Liang and Liangming Pan. Do latent-cot models think step-by-step? a mechanistic study
+on sequential reasoning tasks, 2026. URL https://arxiv.org/abs/2602.00449.
+Houjun Liu, Shikhar Murty, Christopher D. Manning, and R’obert Csord’as. Thoughtbubbles: an unsupervised method for parallel thinking in latent space, 2026a. URL
+https://arxiv.org/abs/2510.00219.
+Yue Liu, Jiaying Wu, Yufei He, Hongcheng Gao, Hongyu Chen, Baolong Bi, Jiaheng Zhang,
+Zhiqi Huang, and Bryan Hooi. Efficient Inference for Large Reasoning Models: A Survey,
+2026b. URL http://arxiv.org/abs/2503.23077.
+Wenquan Lu, Yuechuan Yang, Kyle Lee, Yanshu Li, and Enqi Liu. Latent chain-of-thought?
+decoding the depth-recurrent transformer. In arXiv.org, 2025. doi: 10.48550/arXiv.2507.
+02199. URL https://arxiv.org/abs/2507.02199.
+Haotian Luo, Li Shen, Haiying He, Yibo Wang, Shiwei Liu, Wei Li, Naiqiang Tan, Xiaochun
+Cao, and Dacheng Tao. O1-pruner: Length-harmonizing fine-tuning for o1-like reasoning
+pruning, 2026. URL https://arxiv.org/abs/2501.12570.
+William Merrill and Ashish Sabharwal. The expressive power of transformers with chain of
+thought. In International Conference on Learning Representations, 2024. doi: 10.48550/arXiv.
+2310.07923. URL https://openreview.net/forum?id=NjNGlPh8Wh.
+Amirkeivan Mohtashami, Matteo Pagliardini, and Martin Jaggi. Cotformer: A chain-ofthought driven architecture with budget-adaptive computation cost at inference, 2024.
+URL https://arxiv.org/abs/2310.10845.
+nostalgebraist. Interpreting gpt: the logit lens. https://www.lesswrong.com/posts/
+AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens, 2020. LessWrong blog post.
+Franz Nowak, Anej Svete, Alexandra Butoi, and Ryan Cotterell. On the Representational
+Capacity of Neural Language Models with Chain-of-Thought Reasoning. In Proceedings
+of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long
+Papers), pp. 12510–12548. Association for Computational Linguistics, 2024. doi: 10.18653/
+v1/2024.acl-long.676. URL http://arxiv.org/abs/2406.14197.
+Xiaoye Qu, Yafu Li, Zhaochen Su, Weigao Sun, Jianhao Yan, Dongrui Liu, Ganqu Cui,
+Daizong Liu, Shuxian Liang, Junxian He, et al. A Survey of Efficient Reasoning for
+Large Reasoning Models: Language, Multimodality, and Beyond, 2025. URL http:
+//arxiv.org/abs/2503.21614.
+Alec Radford, Jeff Wu, R. Child, D. Luan, Dario Amodei, and I. Sutskever. Language models
+are unsupervised multitask learners. OpenAI blog, 1(8):9, 2019.
+Michael Rizvi-Martel, Guillaume Rabusseau, and Marius Mosbach. The illusion of superposition? a principled analysis of latent thinking in language models, 2026. URL
+https://arxiv.org/abs/2604.06374.
+Ivan Rodkin, Daniil Orel, Konstantin Smirnov, Arman Bolatov, Bilal Elbouardi, Besher
+Hassan, Yuri Kuratov, Aydar Bulatov, Preslav Nakov, Timothy Baldwin, et al. Beyond
+memorization: Extending reasoning depth with recurrence, memory and test-time compute scaling, 2026. URL https://arxiv.org/abs/2508.16745.
+12
+
+Published as a conference paper at COLM 2026
+
+Abulhair Saparov and He He. Language models are greedy reasoners: A systematic formal
+analysis of chain-of-thought. In International Conference on Learning Representations, 2023.
+doi: 10.48550/arXiv.2210.01240. URL https://openreview.net/forum?id=qFVVBzXxR2V.
+Nikunj Saunshi, Nishanth Dikkala, Zhiyuan Li, Sanjiv Kumar, and Sashank J. Reddi. Reasoning with latent thoughts: On the power of looped transformers. In International
+Conference on Learning Representations, 2025. doi: 10.48550/arXiv.2502.17416. URL
+https://openreview.net/forum?id=din0lGfZFd.
+Shannon Zejiang Shen, Rulin Shao, Chenyu Wang, Songlin Yang, Vincent-Pierre Berges,
+Gargi Ghosh, Pang Wei Koh, Luke Zettlemoyer, Yoon Kim, Jason E Weston, David
+Sontag, and Wen tau Yih. Hybridcot: Interleaving latent and text chain-of-thought
+for efficient reasoning. In NeurIPS 2025 Workshop on Efficient Reasoning, 2025a. URL
+https://openreview.net/forum?id=NRGRrHmq1H.
+Zhenyi Shen, Hanqi Yan, Linhai Zhang, Zhanghao Hu, Yali Du, and Yulan He. CODI:
+Compressing chain-of-thought into continuous space via self-distillation. In Christos
+Christodoulopoulos, Tanmoy Chakraborty, Carolyn Rose, and Violet Peng (eds.), Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing, pp. 677–693.
+Association for Computational Linguistics, 2025b. doi: 10.18653/v1/2025.emnlp-main.36.
+Aaditya K. Singh, A. Fry, Adam Perelman, A. Tart, A. Ganesh, Ahmed El-Kishky,
+A. McLaughlin, Aiden Low, AJ Ostrow, Akhila Ananthram, et al. Openai gpt-5 system card, 2025. URL https://arxiv.org/abs/2601.03267.
+Yang Sui, Yu-Neng Chuang, Guanchu Wang, Jiamu Zhang, Tianyi Zhang, Jiayi Yuan, Hongyi
+Liu, Andrew Wen, Shaochen Zhong, Hanjie Chen, et al. Stop Overthinking: A Survey
+on Efficient Reasoning for Large Language Models. Trans. Mach. Learn. Res., 2025. ISSN
+2835-8856. doi: 10.48550/arXiv.2503.16419. URL https://openreview.net/forum?id=
+HvoG8SxggZ.
+Wenhui Tan, Jiaze Li, Jianzhong Ju, Zhenbo Luo, Ruihua Song, and Jian Luan. Think
+silently, think fast: Dynamic latent compression of LLM reasoning chains. In Advances in
+Neural Information Processing Systems 38, pp. 5220–5242. Neural Information Processing
+Systems Foundation, Inc. (NeurIPS), 2025. doi: 10.52202/085713-0164. URL https:
+//openreview.net/forum?id=AQsko3PPUe.
+Llama Team.
+Llama 3.2:
+Revolutionizing edge ai and vision with
+open,
+customizable models,
+2024.
+URL https://ai.meta.com/blog/
+llama-3-2-connect-2024-vision-edge-mobile-devices/. Blogpost.
+Miles Turpin, Julian Michael, Ethan Perez, and Samuel R. Bowman. Language models don’t
+always say what they think: Unfaithful explanations in chain-of-thought prompting. In
+Advances in Neural Information Processing Systems 36, pp. 74952–74965. Neural Information
+Processing Systems Foundation, Inc. (NeurIPS), 2023. doi: 10.52202/075280-3275. URL
+https://openreview.net/forum?id=bzs4uPLXvi.
+Chenlong Wang, Yuanning Feng, Dongping Chen, Zhaoyang Chu, Ranjay Krishna, and
+Tianyi Zhou. Wait, we don’t need to “wait”! removing thinking tokens improves reasoning
+efficiency. In Christos Christodoulopoulos, Tanmoy Chakraborty, Carolyn Rose, and
+Violet Peng (eds.), Findings of the Association for Computational Linguistics: EMNLP 2025,
+pp. 7459–7482. Association for Computational Linguistics, 2025a. doi: 10.18653/v1/2025.
+findings-emnlp.394.
+Guan Wang, Jin Li, Yuhao Sun, Xing Chen, Changling Liu, Yue Wu, Meng Lu, Sen Song,
+and Yasin Abbasi Yadkori. Hierarchical reasoning model, 2025b. URL https://arxiv.
+org/abs/2506.21734.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Ed H. Chi, F. Xia, Quoc
+Le, and Denny Zhou. Chain-of-thought prompting elicits reasoning in large language
+models. In Neural Information Processing Systems, pp. 24824–24837. Neural Information
+Processing Systems Foundation, Inc. (NeurIPS), 2022. doi: 10.52202/068431-1800. URL
+https://dl.acm.org/doi/10.5555/3600270.3602070.
+13
+
+Published as a conference paper at COLM 2026
+
+Sarah Wiegreffe, Ana Marasović, and Noah A. Smith. Measuring association between labels
+and free-text rationales. In Marie-Francine Moens, Xuanjing Huang, Lucia Specia, and
+Scott Wen-tau Yih (eds.), Conference on Empirical Methods in Natural Language Processing,
+pp. 10266–10284. Association for Computational Linguistics, 2020. doi: 10.18653/v1/2021.
+emnlp-main.804.
+Edward Yeo, Yuxuan Tong, Morry Niu, Graham Neubig, and Xiang Yue. Demystifying
+Long Chain-of-Thought Reasoning in LLMs. URL http://arxiv.org/abs/2502.03373.
+Hanlin Zhu, Shibo Hao, Zhiting Hu, Jiantao Jiao, Stuart Russell, and Yuandong Tian.
+Reasoning by superposition: A theoretical perspective on chain of continuous thought. In
+Advances in Neural Information Processing Systems 38, pp. 88668–88700. Neural Information
+Processing Systems Foundation, Inc. (NeurIPS), 2025a. doi: 10.52202/085713-2670. URL
+https://openreview.net/forum?id=UdOEZgWJLc.
+Jason Zhu and Hongyu Li. Towards Concise and Adaptive Thinking in Large Reasoning
+Models: A Survey, 2025. URL http://arxiv.org/abs/2507.09662.
+Rui-Jie Zhu, Tianhao Peng, Tianhao Cheng, Xingwei Qu, Jinfa Huang, Dawei Zhu, Hao
+Wang, Kaiwen Xue, Xuanliang Zhang, Yong Shan, et al. A survey on latent reasoning,
+2025b. URL https://arxiv.org/abs/2507.06203.
+Rui-Jie Zhu, Zixuan Wang, Kai Hua, Tianyu Zhang, Ziniu Li, Haoran Que, Boyi Wei, Zixin
+Wen, Fan Yin, He Xing, et al. Scaling latent reasoning via looped language models, 2025c.
+URL https://arxiv.org/abs/2510.25741.
+Jiaxuan Zou, Yaozhong Xiong, and Yong Liu. The theoretical benefits and limitations of latent
+chain-of-thought reasoning, 2026. URL https://openreview.net/forum?id=q7Nhu2Fw11.
+
+14
+
+Published as a conference paper at COLM 2026
+
+A
+
+Extended related works
+Output Tokens
+
+Final Layer
+Hidden States
+
+Latent
+0
+
+Latent
+1
+
+Latent
+2
+
+Latent
+3
+
+Latent
+4
+
+Latent
+5
+
+###
+
+Ans
+
+eos
+
+eot
+
+###
+
+Ans
+
+Latent
+6
+
+Latent Reasoning Model
+(Coconut or CODI)
+
+Input
+Embeddings
+
+Latent
+0
+
+Latent
+1
+
+Latent
+2
+
+Latent
+3
+
+Latent
+4
+
+Latent
+5
+
+Latent Reasoning
+Input Tokens
+
+...
+
+bot
+Prompt
+
+Answer
+
+Figure 6: Overview of the latent reasoning models Coconut and CODI. CODI will additionally pass each final-layer hidden state through a trained two-layer multi-layer perceptron
+before using it as the next input token during latent reasoning.
+A.1
+
+Latent reasoning models
+
+Latent reasoning models perform intermediate calculations in a continuous hidden state
+before answering. This is similar to explicit reasoning models (ERMs) that use chain-ofthought, except the intermediate states are not in natural language and thus aren’t readily
+understandable by humans. This style of architecture has grown in popularity recently; we
+refer the reader to recent surveys for a more comprehensive overview (Zhu et al., 2025b;
+Chen et al., 2025a; Li et al., 2025), and related surveys on efficient reasoning (Feng et al.,
+2025; Sui et al., 2025).
+One of the main paradigms of LRMs, as defined by Zhu et al. (2025b), is “activation-based
+methods”, which iteratively process representations in a loop. This is exemplified by what
+we will refer to as “width-based” and “depth-based” methods. Depth-based methods
+(Dehghani et al., 2018; Mohtashami et al., 2024; Geiping et al., 2025; Saunshi et al., 2025;
+Rodkin et al., 2026; Wang et al., 2025b; Zhu et al., 2025c; Liu et al., 2026a, inter alia) generally
+use layer-wise recurrence to iteratively refine hidden states without expanding the number
+of “tokens” (or “width”). In this paper, we study width-based LRMs (Cheng & Durme, 2024;
+Shen et al., 2025a; Deng et al., 2026; Tan et al., 2025, inter alia), which alternatively assume
+a fixed depth defined by the number of layers, but allow models to iteratively generate
+intermediate latent reasoning tokens autoregressively (illustrated in Figure 6). This is similar
+to depth-based LRMs, except that by passing the representation at the end of each iteration
+as the next input token, it allows later positions to attend to it. Specifically, we study the
+Coconut (Hao et al., 2025) and CODI (Shen et al., 2025b) models.
+A.2
+
+Interpreting latent reasoning models
+
+Most similar to our work is the recent blogpost by Cywiński et al. (2025), who investigated
+whether CODI + Llama-3.2-1B-Instruct models achieve higher performance than ERMs and
+non-reasoning models due to latent reasoning or their training regimen. We follow their
+method to train a model that can use latent reasoning, CoT, or no-CoT (§4.2), in order to
+expand their analysis to the logical reasoning datasets on which LRMs are found to perform
+well in prior work (Hao et al., 2025; Zhu et al., 2025a). Cywiński et al. (2025) find that latent
+reasoning gives a 4.88% performance uplift over no-CoT on GSM8k-Aug, while we find that
+15
+
+Published as a conference paper at COLM 2026
+
+latent reasoning decreases performance by 2.4% (Table 11). In both cases, this is much less
+than the 24.7% performance uplift reported in Shen et al. (2025b) on separately trained CODI
+and no-CoT models. Additionally, Cywiński et al. (2025) show that vocabulary projection
+is effective in observing intermediate results stored in latent tokens, and use activation
+patching to confirm that these intermediate results are needed for model performance. They
+find a pattern in how CODI solves three step GSM8k-style problems: the third and fifth
+latent tokens store the first two intermediate results. This regularity enables our forward
+chaining verification method in §6, which requires a given latent token to compute the same
+reasoning step across structurally identical problems.
+In contrast with other work on LRMs, which tend to focus on LRMs’ capacity to follow
+multiple reasoning traces in parallel, Liang & Pan (2026) investigates whether LRMs reason
+in sequential steps. This work studies the polynomial-iteration dataset (Cabannes et al.,
+2024), which has the (useful for mechanistic interpretability) property of having one valid
+reasoning trace per instance that uses a small set of possible integers. This work uses
+vocabulary projection, attention maps, and linear probes to find that the CODI model
+encodes intermediate states in multi-hop tasks with < 3 hops, but does not encode the
+middle intermediates if there are more. They also find that the final step is calculated at the
+answer token instead of during latent reasoning.
+On the width-based model CoLaR, Tan et al. (2025) show for a specific instance that token
+embeddings from the gold reasoning trace have high cosine similarity to their LRM’s latent
+tokens. This method is the same as using vocabulary projection (as we do in this work)
+when the model’s embedding matrices are tied.
+Goyal et al. (2025) presents evidence that the CODI + GPT-2 model on GSM8k-Aug alternates
+between localizing operands in one latent token and performing a calculation with those
+operands in the subsequent latent token. We do not find their results to generalize– while
+our vocabulary projection results in Figure 10 do show a similar pattern of alternating
+calculation tokens and non-calculation tokens, we do not observe this pattern for Coconut
+models (Figure 3). The CODI + Llama-3.2-1B-Instruct model also seems to have calculation
+tokens and non-calculation tokens, though not in a clear alternating pattern (Figure 16).
+Though a substantially different architecture from the models we consider, some work
+has interpreted the hidden states of recurrent-depth LRMs. Geiping et al. (2025) perform
+PCA on the hidden representations of their recurrent-depth architecture, and demonstrate
+that representations’ trajectories during recursion follow distinct geometric patterns. Lu
+et al. (2025) adapt vocabulary projection methods to show evidence against both iterative
+refinement and structured CoT-like reasoning in the same model, finding that projection to
+the vocabulary space is less meaningful when depth is increased.
+A.3
+
+Additional Comparison with Prior Work
+
+In this section, we provide more discussion of how our results compare with some of the
+interpretability experiments in Hao et al. (2025); Zhu et al. (2025a).
+Figures 4 and 5 of Hao et al. (2025) support the theorized “latent reasoning as tree search”
+with a case study that mixes latent and natural language reasoning steps. This case study
+shows that Coconut can produce mixed reasoning traces of latent tokens followed by natural
+language steps. This is not surprising, since Coconut models are trained on mixed reasoning
+traces like this until the final stage of their training curriculum. The measured probability of
+natural language reasoning steps in their case study does look like a tree search, but they do
+not show that Coconut needs this reasoning to solve ProsQA. We believe if this study had
+forced the model to respond with its final answer, rather than to continue a natural language
+reasoning trace, it would have found the same result as we did, namely that Coconut does
+not need any reasoning tokens to solve ProsQA.
+In Figure 8 of Hao et al. (2025), they show that, on ProsQA, the first latent token generally
+places most of its probability mass on the top-1 candidate node, with some probability mass
+on the second and third candidate nodes. The second latent token concentrates even more
+probability mass on its top-1 candidate node. Crucially, their analysis does not state what
+16
+
+Published as a conference paper at COLM 2026
+
+the top-1 candidate node is. Our analysis shows that this top-1 node is actually the model’s
+final answer! In this interpretation, their result is in agreement with our finding that the
+Coconut model will converge to its final answer early on in ProsQA rather than exploring
+multiple parallel paths.
+We do share similar conclusions to Hao et al. (2025) in their Figure 9: on GSM8k-Aug,
+latent tokens do encode reasoning steps, and these steps can be viewed using vocabulary
+projection. Hao et al. (2025) only shows this for one latent token in one instance; we analyze
+this phenomenon across > 1000 instances in §5.
+Zhu et al. (2025a) shows a theoretical analysis of how a Coconut model may implement
+a parallel breadth-first search, where latent token i is the average node embedding of the
+nodes reachable in i steps. They show empirical evidence for their theory by training a 2layer, GPT-2 style Coconut model from scratch on a modified version of ProsQA. They show
+that the inner product between a latent token and node embeddings is higher for reachable
+nodes than unreachable nodes, which supports their theory. The key difference between
+their experiment and ours is that their model is trained from scratch. Rizvi-Martel et al.
+(2026) (concurrent with our work) confirm that models trained to use latent reasoning from
+scratch do implement a parallel breadth-first search on ProsQA, while models fine-tuned
+to use latent reasoning do not. The extent to which the conclusion of training from scratch
+holds beyond 2-layer models is unclear.
+
+B
+
+Dataset details
+
+See Table 3 for dataset statistics and Figure 7 for examples from each dataset.
+For measuring the performance of a model on GSM8k-Aug, we use the original test set of
+1,319 instances. For our experiments in §4.1 and §5 and that require a valid gold reasoning
+trace, we filter out incomplete instances where the result of the last step in the gold reasoning
+trace does not match the correct answer, which results in 1,194 test instances. For our
+experiment in §6 which relies on vocabulary projection to extract a reasoning trace, we filter
+out instances that use multi-token or non-unique numbers, resulting in 460 instances.
+Dataset
+
+Training
+
+Validation
+
+Original Test
+
+Valid Gold
+Reasoning Trace Set
+
+VP-Friendly
+Gold Reasoning Trace Set
+
+GSM8k-Aug
+PrOntoQA
+ProsQA
+
+385620
+9000
+17886
+
+500
+200
+300
+
+1319
+800
+500
+
+1194
+-
+
+460
+-
+
+Table 3: Dataset statistics. Model performance is calculated on the original test set. The
+early stopping experiment and backtracking experiment use the valid gold reasoning trace
+set, which filters out instances where the result of the last reasoning step is not equal to
+the correct answer. The forward chaining experiment uses the VP (Vocabulary Projection)
+friendly gold reasoning trace set, which filters for instances that use single-token numbers
+with unique operands and intermediate results in the gold reasoning trace.
+
+17
+
+Published as a conference paper at COLM 2026
+
+GSM8k-Aug
+Question: "Out of 600 employees in a company, 30% got promoted while 10% received bonus.
+How many employees did not get either a promotion or a bonus?"
+Steps: ["«600 ∗ 30/100 = 180»", "«600 ∗ 10/100 = 60»", "«180 + 60 = 240»", "«600 − 240 = 360»"]
+Answer: "360"
+
+PrOntoQA
+Question: "Numpuses are not wooden. Vumpuses are lempuses. Rompuses are not dull. Each
+lorpus is a wumpus. Every gorpus is moderate. Each vumpus is not discordant. Zumpuses
+are not spicy. Shumpuses are windy. Brimpuses are grimpuses. Each grimpus is a rompus.
+Brimpuses are zumpuses. Each impus is not opaque. Lorpuses are not mean. Brimpuses are
+large. Grimpuses are shumpuses. Numpuses are impuses. Shumpuses are numpuses. Lempuses
+are hot. Numpuses are sterpuses. Shumpuses are gorpuses. Each yumpus is wooden. Every
+grimpus is orange. Each vumpus is a brimpus. Max is a vumpus. Max is a lorpus. True or false:
+Max is not wooden."
+Steps: ["Max is a vumpus. Each vumpus is a brimpus.", "Max is a brimpus. Brimpuses are
+grimpuses.", "Max is a grimpus. Grimpuses are shumpuses.", "Max is a shumpus. Shumpuses are
+numpuses.", "Max is a numpus. Numpuses are not wooden.", "Max is not wooden."]
+Answer: "True"
+
+ProsQA
+Question = "Every kerpus is a yumpus. Every bompus is a boompus. Every vumpus is a felpus.
+Sally is a vumpus. Every yimpus is a jompus. Every yerpus is a jelpus. Every kerpus is a terpus.
+Every bompus is a wumpus. Every rempus is a terpus. Every yerpus is a yimpus. Every rempus
+is a kerpus. Every wumpus is a kerpus. Every impus is a kerpus. Tom is a bompus. Every
+bompus is a timpus. Sally is a yerpus. Every yumpus is a terpus. Every yumpus is a zhorpus.
+Every bompus is a impus. Every wumpus is a zhorpus. Every yerpus is a jompus. Every yimpus
+is a vumpus. Every zumpus is a yumpus. Every zumpus is a rempus. Every zumpus is a storpus.
+Every timpus is a yumpus. Every impus is a timpus. Every timpus is a rempus. Tom is a impus.
+Every bompus is a zumpus. Tom is a lempus. Sally is a jompus. Every jelpus is a yimpus. Every
+rempus is a wumpus. Tom is a rempus. Every yerpus is a vumpus. Every jelpus is a jompus.
+Every impus is a rempus. Every jelpus is a vumpus. Sally is a storpus. Is Tom a jompus or
+zhorpus?"
+Steps = ["Tom is a bompus.", "Every bompus is a wumpus.", "Every wumpus is a zhorpus."]
+Answer = "Tom is a zhorpus."
+
+Figure 7: Example instances from each dataset.
+
+C
+
+Model training details
+
+This section details the hyperparameters used to train the models described in §3.
+
+18
+
+Published as a conference paper at COLM 2026
+
+GPT-2 Small
+Hyperparameter
+Latent Tokens Per Stage
+Stage 0 Epochs
+Epochs Per Stage
+Max Latent Stage
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+Reset Optimizer Between Stages
+
+Llama-3.2-1B-Instruct
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+2
+3
+3
+3
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+5
+5
+6
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+5
+5
+6
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+3
+1
+6
+10
+128
+5 × 10−5
+0.1
+✓
+✓
+
+1
+3
+1
+6
+10
+128
+5 × 10−5
+0.1
+✓
+✓
+
+1
+3
+2
+6
+20
+128
+5 × 10−5
+0.1
+✓
+✓
+
+Table 4: Training hyperparameters for Coconut models. For the Coconut + GPT-2 Small
+model on GSM8k-Aug, the stage 0 training is replaced with checkpoint 6 of the CoT model.
+
+GPT-2 Small
+Hyperparameter
+Latent Loss Weight (α)
+CoT Loss Weight (β)
+Distillation Loss Weight (δ)
+Num Latent Tokens
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+Projection Dim
+LoRA Rank
+LoRA Alpha
+
+Llama-3.2-1B-Instruct
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+20
+6
+10
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+1
+1
+20
+6
+10
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+1
+1
+20
+6
+10
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+Table 5: Training hyperparameters for CODI models. For the CODI + GPT-2 Small model
+on GSM8k-Aug, we used a checkpoint released by the Shen et al. (2025b) authors.
+
+GPT-2 Small
+
+Llama-3.2-1B-Instruct
+
+Hyperparameter
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+10
+128
+5 × 10−5
+0.1
+✓
+
+10
+128
+5 × 10−5
+0.1
+✓
+
+10
+128
+5 × 10−5
+0.1
+✓
+
+Table 6: Training hyperparameters for CoT models.
+
+GPT-2 Small
+
+Llama-3.2-1B-Instruct
+
+Hyperparameter
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+25
+128
+1 × 10−4
+0.01
+✗
+
+10
+128
+5 × 10−5
+0.1
+✓
+
+10
+128
+5 × 10−5
+0.1
+✓
+
+20
+128
+5 × 10−5
+0.1
+✓
+
+Table 7: Training hyperparameters for No-CoT models.
+
+19
+
+Published as a conference paper at COLM 2026
+
+D
+
+Multi-reasoning model training details
+
+We train the multi-reasoning models that use Coconut for latent reasoning using the following loss function, which is the same as the original Coconut loss function but with the
+βLexplicit reasoning and γLdirect answer terms added:
+
+Lmulti-reasoning, Coconut = αLlatent reasoning + βLexplicit reasoning + γLdirect answer
+
+(1)
+
+We train the multi-reasoning models that use CODI for latent reasoning using the following
+loss function, which is the same as the original CODI loss function but with the γLdirect answer
+term added:
+
+Lmulti-reasoning, CODI = αLlatent reasoning + βLexplicit reasoning + γLdirect answer + δLKD
+
+(2)
+
+We select the model checkpoint with the highest harmonic mean across the three reasoning
+modes on the validation set.
+Table 8 and Table 9 show the hyperparameters used to train the multi-reasoning models.
+In most cases, they are the same hyperparameters as the original single reasoning mode
+models. At inference time, we control the reasoning mode using the control tokens in
+Table 10. The test-set accuracy of the multi-reasoning models for each reasoning mode is in
+Table 11.
+GPT-2 Small
+Hyperparameter
+Latent Loss Weight (α)
+CoT Loss Weight (β)
+No-CoT Loss Weight (γ)
+Latent Tokens Per Stage
+Stage 0 Epochs
+Epochs Per Stage
+Max Latent Stage
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+Reset Optimizer Between Stages
+
+Llama-3.2-1B-Instruct
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+1
+1
+1
+2
+3
+3
+3
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+1
+1
+1
+5
+5
+6
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+1
+1
+1
+5
+5
+6
+50
+128
+1 × 10−4
+0.01
+✗
+✓
+
+1
+1
+1
+1
+3
+1
+6
+10
+128
+5 × 10−5
+0.1
+✓
+✓
+
+1
+1
+1
+1
+3
+1
+6
+10
+128
+5 × 10−5
+0.1
+✓
+✓
+
+1
+1
+1
+1
+3
+2
+6
+20
+128
+5 × 10−5
+0.1
+✓
+✓
+
+Table 8: Training hyperparameters for multi-reasoning mode models which use Coconut for
+latent reasoning.
+
+20
+
+Published as a conference paper at COLM 2026
+
+GPT-2 Small
+Hyperparameter
+Latent Loss Weight (α)
+CoT Loss Weight (β)
+No-CoT Loss Weight (γ)
+Distillation Loss Weight (δ)
+Num Latent Tokens
+Total Epochs
+Batch Size
+Learning Rate
+Weight Decay
+BF16 Precision
+Projection Dim
+LoRA Rank
+LoRA Alpha
+
+Llama-3.2-1B-Instruct
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+GSM8k-Aug
+
+ProsQA
+
+PrOntoQA
+
+1
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+1
+1
+6
+40
+128
+3 × 10−3
+0.1
+✓
+768
+128
+32
+
+1
+1
+1
+20
+6
+10
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+1
+1
+1
+20
+6
+10
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+1
+1
+1
+20
+6
+20
+128
+8 × 10−4
+0.1
+✓
+2048
+128
+32
+
+Table 9: Training hyperparameters for multi-reasoning mode models which use CODI for
+latent reasoning.
+
+Base Model
+
+Mode
+
+Control Tokens
+
+GPT-2 Small
+
+No-CoT
+CoT
+Latent
+
+[prompt] + [eocot] → answer
+[prompt] + [bocot] → cot + eocot → answer
+[prompt] + [bocot] → latent → [eocot] → answer
+
+Llama-3.2-1B
+
+No-CoT
+CoT
+Latent
+
+[prompt] + [eot] + [eocot] → answer
+[prompt] + [eot] + [bocot] → cot + eocot → answer
+[prompt] + [eot] + [bocot] → latent → [eocot] → answer
+
+Table 10: Control tokens used to determine which reasoning mode the model uses. Tokens
+in square brackets are model inputs; they are not generated by the model. In CoT mode, the
+“eocot” is output by the model, while in latent mode, this token is an input. Llama-3.2-1BInstruct uses the additional “end-of-turn” token after the prompt.
+
+LRM
+
+Base Model
+
+Reasoning Mode
+
+GSM8k-Aug
+
+PrOntoQA
+
+ProsQA
+
+GPT-2 Small
+
+No-CoT
+CoT
+Coconut
+
+22.4
+41.3
+22.1
+
+100.0
+100.0
+100.0
+
+94.2
+88.2
+94.2
+
+Llama-3.2-1B-Instruct
+
+No-CoT
+CoT
+Coconut
+
+29.2
+59.4
+30.1
+
+94.9
+94.6
+94.9
+
+99.8
+98.4
+99.8
+
+GPT-2 Small
+
+No-CoT
+CoT
+CODI
+
+27.8
+37.2
+33.7
+
+94.5
+94.4
+94.8
+
+79.8
+72.6
+80.0
+
+Llama-3.2-1B-Instruct
+
+No-CoT
+CoT
+CODI
+
+36.1 (36.7)
+53.6 (42.1)
+33.7 (41.6)
+
+93.4
+99.6
+93.4
+
+96.8
+94.8
+96.4
+
+Coconut
+
+CODI
+
+Table 11: Multi-reasoning model accuracy for each reasoning mode. This is the same data as
+in Table 2, but with absolute performance instead of relative. Results from Cywiński et al.
+(2025) shown in parentheses where available.
+
+21
+
+Published as a conference paper at COLM 2026
+
+E
+
+Early stopping experiment results
+First Match (%)
+
+Stable Match (%)
+
+Base Model
+
+Dataset
+
+Explicit
+
+Coconut
+
+CODI
+
+Explicit
+
+Coconut
+
+CODI
+
+GPT-2 Small
+
+GSM8k-Aug
+ProsQA
+PrOntoQA
+
+98.1±9.8
+92.0±21.7
+45.5±32.8
+
+54.4±36.2
+0.0±0.0
+0.1±2.9
+
+44.2±33.6
+2.5±12.6
+0.3±4.4
+
+99.3±5.4
+97.7±10.9
+47.1±33.0
+
+69.0±32.1
+0.0±0.0
+0.1±2.9
+
+53.6±32.5
+4.0±16.6
+0.5±5.8
+
+Llama-3.2-1B
+
+GSM8k-Aug
+ProsQA
+PrOntoQA
+
+89.3±19.1
+71.1±22.6
+54.6±38.0
+
+19.5±30.0
+0.0±0.7
+0.0±0.6
+
+30.9±33.9
+0.1±2.2
+0.3±4.8
+
+90.6±17.4
+74.7±22.5
+54.7±38.0
+
+22.5±32.5
+0.0±0.7
+0.0±0.6
+
+37.7±35.9
+0.7±7.4
+0.7±8.0
+
+Table 12: Early stopping experiment results. This is the same data as Figure 2.
+
+F
+
+Vocabulary projection details
+
+We use the popular vocabulary projection technique (or “logit lens”; nostalgebraist (2020);
+Geva et al. (2021)) to map latent tokens back to the model’s vocabulary space. This is done
+by multiplying the residual stream after the final layer (and final LayerNorm) with the
+model’s unembedding matrix to obtain an (unnormalized) distribution over the vocabulary.
+We repeat this at each latent token position, obtaining the top-k natural language tokens (i.e.,
+rows of the unembedding matrix) with the highest dot product against each latent token;
+this is equivalent to how a natural language token would be decoded should the model
+have been operating as an ERM.
+Vocabulary projection, used in §5 and §6, only reveals single-token concepts; it omits multitoken concepts and latent space directions not well-aligned with vocabulary space. We
+encourage future work to develop core mechanistic interpretability tools that can address
+these limitations, which would make LRMs more interpretable.
+To account for vocabulary projection’s single-token limitation, in §5, we assume that the
+first non-zero integer token of a multi-token number represents the full number. E.g., we
+assume “0.5” is represented by “5”.
+
+G
+
+Coconut + Llama-3.2-1B-Instruct performance
+
+The published performance results in Table 1 are close to our models’ performance, except
+for the Coconut + Llama-3.2-1B-Instruct model trained on GSM8k-Aug, where our model
+performs 9.6 percentage points worse. Even though this is a Coconut model, the published
+result comes from Shen et al. (2025b), since Hao et al. (2025) did not train a Coconut +
+Llama-3.2-1B-Instruct model. It’s likely that Shen et al. (2025b) trained their model with a
+different set of hyperparameters. We believe our performance result of 35.7% is trustworthy
+since this is in the ballpark of the 31.7% performance result reported by Hao et al. (2025) for
+a Coconut + Llama 3.2-3B model on GSM8k-Aug.
+
+H
+
+Additional Experiments on Latent Reasoning Usefulness
+
+The early stopping experiment in §4.1 showed that latent reasoning is not necessary for a
+model to arrive at its final answer on ProsQA and PrOntoQA. But it’s possible that latent
+reasoning is still useful in someway, such as by increasing the probability of the correct
+answer, even though the model’s top-1 prediction on the final answer is not changing. We
+run the following additional experiments to provide evidence that the latent tokens have no
+useful information for ProsQA and PrOntoQA, though they do for GSM8k-Aug.
+We replace the latent tokens during runtime with a mean latent token calculated at each
+position using the validation set for GSM8k-Aug, PrOntoQA, and ProsQA. If latent tokens
+22
+
+Published as a conference paper at COLM 2026
+
+Method
+
+Base Model
+
+GSM8k-Aug
+∆ Acc. (%)
+
+PrOntoQA
+∆ Acc. (%)
+
+ProsQA
+∆ Acc. (%)
+
+Coconut
+CODI
+
+GPT-2 Small
+GPT-2 Small
+
+−26.0
+−31.5
+
+0.0
+0.2
+
+0.0
+0.2
+
+Coconut
+CODI
+
+Llama-3.2-1B
+Llama-3.2-1B
+
+−5.8
+−25.0
+
+0.0
+−0.1
+
+0.0
+0.0
+
+Table 13: Change in accuracy when using mean latent tokens. Negative values indicate
+performance is lost when using mean latent tokens.
+contain instance-specific information, then replacing them with these mean latent tokens
+should remove that information and decrease model performance. Table 13 shows that, for
+PrOntoQA and ProsQA, the test set accuracy hardly changes, by only -0.1 to +0.2 percentage
+points. On GSM8k-Aug, model performance dropped 5.8 to 31.5 percentage points. This is
+additional evidence that the latent reasoning tokens do not contain useful information for
+making predictions on PrOntoQA and ProsQA.
+
+Token Rank of Final Answer
+with 6 Latent Tokens Probability of Final Answer
+with 6 Latent Tokens
+
+Additionally, we measure the probability and token rank of the model’s final answer (on a
+standard run with 6 latent tokens) given k ∈ {0, . . . , 6} latent tokens. If the latent tokens
+do encode something useful, we’d expect the final answer’s probability and token rank
+to move towards 1. Figure 8 shows that on PrOntoQA and ProsQA, the probability and
+token rank of the model’s final answer remains near 1 on average regardless of how many
+latent tokens were used. On GSM8k-Aug, the probability and token rank of the model’s
+final answer do improve as more latent tokens are used. This is additional evidence that the
+latent tokens provide useful information for GSM8k-Aug, but not PrOntoQA or ProsQA.
+
+GSM8k-Aug
+
+1.0
+
+PrOntoQA
+
+1.0
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+0.0 0
+
+2
+
+4
+
+6
+
+4000
+3000
+2000
+1000
+0
+
+0
+
+2
+
+4
+
+Number of Latent Tokens
+
+6
+
+0.0 0
+1.10
+1.08
+1.06
+1.04
+1.02
+1.00
+
+0
+
+2
+
+2
+
+4
+
+4
+
+Number of Latent Tokens
+
+ProsQA
+
+1.0
+
+6
+
+6
+
+0.0 0
+1.10
+1.08
+1.06
+1.04
+1.02
+1.00
+
+0
+
+GPT-2 + Coconut
+GPT-2 + CODI
+Llama 3.2-1B + Coconut
+Llama 3.2-1B + CODI
+
+2
+
+4
+
+6
+
+2
+
+4
+
+6
+
+Number of Latent Tokens
+
+Figure 8: Probability and token rank of the model’s final answer during latent reasoning.
+Beyond the model’s final answer, the latent tokens might be altering other parts of the
+final answer distribution. We analyze how the models’ answer distribution changes with
+more latent tokens by tracking Rank-Biased Overlap (p=0.90), Top-k Jaccard similarity
+(k=10), and Jensen-Shannon Divergence over the logit vectors. The results in Figure 9 tell
+a similar story as our other results: the model’s answer distribution (not just the top-1
+prediction) is relatively stable with additional latent tokens for PrOntoQA and ProsQA.
+But on GSM8k-Aug, the answer distribution changes significantly as the number of latent
+tokens varies.
+
+23
+
+Top-10 Jaccard
+Similarity
+
+Rank-Biased Overlap
+(p=0.90)
+
+Published as a conference paper at COLM 2026
+
+GSM8k-Aug
+
+1.0
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+0.0 0
+
+2
+
+4
+
+6
+
+0.0 0
+
+2
+
+4
+
+6
+
+0.0 0
+
+1.0
+
+1.0
+
+1.0
+
+0.8
+
+0.8
+
+0.8
+
+0.6
+
+0.6
+
+0.6
+
+0.4
+
+0.4
+
+0.4
+
+0.2
+
+0.2
+
+0.2
+
+2
+
+4
+
+6
+
+1.0
+
+2
+
+4
+
+6
+
+0.015
+
+0.8
+0.4
+
+0
+
+2
+
+4
+
+Number of Latent Tokens
+
+6
+
+0.000
+
+2
+
+4
+
+6
+
+2
+
+4
+
+6
+
+2
+
+4
+
+6
+
+0.04
+
+0.005
+
+0.2
+
+0.0 0
+
+GPT-2 + Coconut
+GPT-2 + CODI
+Llama 3.2-1B + Coconut
+Llama 3.2-1B + CODI
+
+0.06
+
+0.010
+
+0.6
+
+0.0
+
+0.0 0
+
+ProsQA
+
+1.0
+
+0.8
+
+0.0 0
+
+Jensen-Shannon
+Divergence (bits)
+
+PrOntoQA
+
+1.0
+
+0.02
+0
+
+2
+
+4
+
+Number of Latent Tokens
+
+6
+
+0.00
+
+0
+
+Number of Latent Tokens
+
+Figure 9: Rank-Biased Overlap (p=0.90), Top-k Jaccard similarity (k=10), and JensenShannon Divergence between the model’s forced early answer distribution and its final
+answer distribution.
+
+24
+
+Published as a conference paper at COLM 2026
+
+I
+
+Gold reasoning trace backtracking experiment
+
+I.1
+
+Backtracking search pseudocode
+
+Algorithm 1: Backtracking Search for Reasoning Trace in Vocabulary Projections
+Input: Tprimary : primary reasoning trace
+Talt : alternative valid reasoning traces
+V: top-k vocabulary projections at latent token and answer positions
+Output: Best matching tree, or ∅ if none found
+best ← {} ;
+// map from trace → best tree found
+foreach trace T ∈ { Tprimary } ∪ Talt do
+3
+G ← B UILD DAG ( T );
+// Edges: operand → result; merge nodes if result reappears as operand
+in later step
+
+1
+2
+
+4
+5
+6
+7
+
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+
+if final_answer ∈
+/ top-k of V [answer_position] then
+return ∅;
+end
+partial_trees ← {({}, {operands of final step})} ;
+available) pairs
+found_trees ← ∅;
+
+// set of (assignment,
+
+for pos ← last_latent to first_latent do
+new_partial ← ∅;
+foreach (assignment, available) ∈ partial_trees do
+matches ← available ∩ top-k(V [pos]);
+if matches = ∅ then
+new_partial ← new_partial ∪ {(assignment, available)} ;
+end
+foreach node n ∈ matches do
+new_assign ← assignment ∪ {n → pos};
+new_avail ← available ∪ {operands of n} \ {n};
+new_partial ← new_partial ∪ {(new_assign, new_avail)};
+end
+end
+partial_trees ← new_partial;
+
+// unchanged
+
+foreach (assignment, available) ∈ partial_trees do
+if all leaves of G are in assignment then
+found_trees ← found_trees ∪ {assignment};
+end
+end
+end
+
+if found_trees ̸= ∅ then
+best[ T ] ← tree with highest projection ranks and earliest positions;
+31
+end
+32 end
+29
+
+30
+
+// Select best across traces (prefer primary)
+if Tprimary ∈ best then
+34
+return best[ Tprimary ];
+35 else if ∃ T ∈ Talt s.t. T ∈ best then
+36
+return tree with highest projection ranks and earliest positions among best[ Talt ];
+37 else
+38
+return ∅;
+39 end
+33
+
+25
+
+Published as a conference paper at COLM 2026
+
+I.2
+
+Backtracking experiment examples
+
+Question: Terry eats 2 yogurts a day. They are currently on sale at 4 yogurts for $5.00. How much does he spend on yogurt over
+30 days?
+Gold Reasoning Trace: «
+», «
+», «
+»
+Numbers from the question:
+Output
+
+2
+
+30
+
+4
+
+5
+The
+
+answer
+
+is
+
+:
+
+75
+
+1
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+60
+
+/
+
+15
+
+>>
+
+15
+
+>>
+
+15
+
+The
+
+answer
+
+is
+
+:
+
+75
+
+2
+
+60
+
+>>
+
+15
+
+.
+
+15
+
+/
+
+13
+
+The
+
+answers
+
+has
+
+is
+
+7
+
+3
+
+video
+
+./
+
+selection
+
+/
+
+14
+
+.
+
+14
+
+the
+
+Answer
+
+does
+
+:"
+
+76
+
+---
+
+(
+
+...
+
+Sport
+
+[/
+
+Sport
+
+Although
+
+tap
+
+:
+
+!:
+
+70
+
+eot
+
+The
+
+answer
+
+is
+
+:
+
+10
+
+65
+
+Input
+
+bot
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+Figure 10: Found gold reasoning trace in CODI + GPT-2 Small’s vocabulary projections,
+from instance 36 of GSM8k-Aug’s test split. The CODI model does not encode numbers from
+the question in the latent tokens, at least not in a way that is detectable using vocabulary
+projection. The model answered this question correctly.
+Question: Bailey starts with a certain amount of money. Then she receives a weekly allowance of
+$5 for 8 weeks. At the end of the 8 weeks, if she has a total of $100, how much money did Bailey start
+with?
+Gold Reasoning Trace: «
+Output
+
+», «
+
+»
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+###
+
+140
+
+1
+
+###
+
+40
+
+<|eos|>
+
+###
+
+140
+
+###
+
+###
+
+###
+
+140
+
+2
+
+5
+
+40
+
+.
+
+100
+
+140
+
+<|eos|>
+
+140
+
+140
+
+140
+
+3
+
+8
+
+50
+
+00
+
+<|eos|>
+
+###
+
+.
+
+140
+
+100
+
+540
+
+4
+
+7
+
+400
+
+<|bot|>
+
+540
+
+What
+
+540
+
+<|eot|>
+
+1440
+
+5
+
+10
+
+4
+
+whereas
+
+95
+
+1440
+
+David
+
+1440
+
+60
+
+340
+
+6
+
+80
+
+80
+
+50
+
+10
+
+144
+
+washer
+
+340
+
+Anna
+
+60
+
+10
+
+95
+
+20
+
+because
+
+100
+
+139
+
+440
+
+64
+
+135
+
+Input
+
+bot
+
+eot
+
+###
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+Figure 11: Found gold reasoning trace in Coconut + GPT-2 Small’s vocabulary projections,
+from instance 69 of GSM8k-Aug’s test split. The Coconut model encodes the correct final
+step, but it encodes an incorrect final step more strongly. The model seems to think that
+Bailey was losing $5 per week, rather than receiving $5 per week.
+I.3
+
+Backtracking experiment error analysis
+
+When the backtracking search in §5 fails to find an encoded gold reasoning trace, how is
+the Coconut model solving the problem? We find evidence against the worst case scenario,
+where the LRM arrives at the correct answer in a completely uninterpretable way. Instead,
+we find three main reasons why the backtracking search can fail even when the model gets
+the correct answer: a valid reasoning trace may be missing from the set of known reasoning
+traces, vocabulary projection does not encode multi-token concepts an easily identifiable
+way, or most of but not the entire gold reasoning trace may be encoded.
+Figure 12 shows an example where the model is following a valid reasoning trace that is
+not in the set of known reasoning traces. Specifically, the model skips Step 2 in the gold
+reasoning trace, which calculates 36 + 40 = 76. Instead of calculating and storing this
+26
+
+Published as a conference paper at COLM 2026
+
+intermediate result, the Coconut model changes the last step from 76 + 46 = 122 to an
+equivalent 36 + 40 + 46 = 122. The MultiChain GSM8k-Aug dataset did not contain this
+alternative reasoning trace because its augmentations preserve the number of steps used in
+the original reasoning trace, and this modification reduces the step count from 4 to 3. To
+avoid this error, we’d need to enumerate all valid ways of solving the problem, which is
+impractical and often impossible.
+Question: Rani has ten more crabs than Monic, who has 4 fewer crabs than Bo. If Bo has 40
+crabs, calculate the total number of crabs the three have together.
+Gold Reasoning Trace: «
+», «
+», «
+», «
+»
+Implemented Reasoning Trace: «
+Output
+
+», «
+
+», «
+
+»
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+###
+
+122
+
+1
+
+###
+
+36
+
+<|eos|>
+
+###
+
+46
+
+###
+
+122
+
+###
+
+122
+
+2
+
+4
+
+36
+
+.
+
+10
+
+46
+
+40
+
+102
+
+<|eot|>
+
+142
+
+3
+
+40
+
+40
+
+00
+
+<|bot|>
+
+41
+
+<|eot|>
+
+106
+
+122
+
+118
+
+10
+
+0
+
+136
+
+50
+
+15
+
+44
+
+Brain
+
+132
+
+14
+
+130
+
+Input
+
+bot
+
+eot
+
+###
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+Figure 12: Coconut + GPT-2 Small’s vocabulary projections, from instance 179 of GSM8kAug’s test split. The Coconut model encodes a valid reasoning trace not contained in the set
+of known gold reasoning traces.
+Figure 13 shows an example where vocabulary projection limits our ability to identify
+decimals, percentages, and multi-token numbers generally that are encoded in a latent
+thought. The first step of the gold reasoning trace calculates 30% of 120. The gold reasoning
+trace represents the 30% as 30/100, which is equivalent, but the model does not represent
+the 100 in its vocabulary projection. Instead, it’s likely that the “30” token in the top-2 of
+the vocabulary projection of the first latent token represents this percentage. But since the
+model and the gold reasoning trace represent this percentage differently, the backtracking
+search fails.
+Figure 14 shows an example where Coconut’s vocabulary projections contain a partial gold
+reasoning trace. In this instance, Step 3, 6 + 15 = 21, is missing, so the intermediate result
+21 is not encoded. However, the model is still able to calculate the result of the next and
+final step, 84. There are at at least two possibilities for this. It may encode the final step as
+(6 + 15) ∗ 4 = 84, which would make it more like a previously unknown valid reasoning
+trace. Or, it may be encoding 21 at the final reasoning position, and vocabulary projection
+incorrectly extracts it as 2100 and 210, which are shown in the table.
+This error analysis suggests that our backtracking search results provide a lower bound
+on LRM interpretability, with failures stemming from methodological limitations rather
+than fundamentally uninterpretable model behavior. More robust reasoning trace finding
+techniques that handle equivalent reformulations and flexible numerical encodings would
+likely recover a higher proportion of encoded gold reasoning traces.
+
+27
+
+Published as a conference paper at COLM 2026
+
+Question: A watermelon farm produced 120 baby watermelons. Ashlyn went to the farm after
+two months and found out that 30% of the watermelons were ready for harvest, so she took them home.
+When she came back two weeks later, 3/4 of the remaining melons were ready, so she harvested them.
+How many melons were not ready to be harvested after the two weeks?
+Gold Reasoning Trace: «
+
+», «
+
+Numbers from the question:
+Output
+
+4
+
+», «
+
+2
+
+», «
+
+3
+
+30
+
+»
+
+120
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+###
+
+21
+
+1
+
+###
+
+36
+
+<|eos|>
+
+###
+
+84
+
+###
+
+63
+
+###
+
+21
+
+2
+
+30
+
+36
+
+.
+
+57
+
+84
+
+<|eos|>
+
+63
+
+7
+
+25
+
+3
+
+30
+
+42
+
+00
+
+56
+
+840
+
+.
+
+51
+
+21
+
+24
+
+4
+
+.
+
+84
+
+###
+
+<|eot|>
+
+204
+
+Tony
+
+61
+
+30
+
+28
+
+5
+
+3
+
+18
+
+<|bot|>
+
+36
+
+96
+
+Each
+
+54
+
+31
+
+30
+
+6
+
+0
+
+72
+
+whereas
+
+7
+
+168
+
+ml
+
+59
+
+28
+
+26
+
+7
+
+90
+
+72
+
+000
+
+.
+
+94
+
+/
+
+66
+
+21
+
+29
+
+8
+
+<|bot|>
+
+32
+
+<|eot|>
+
+30
+
+78
+
+Typically
+
+52
+
+25
+
+63
+
+9
+
+60
+
+360
+
+2
+
+120
+
+104
+
+3
+
+60
+
+<|eos|>
+
+27
+
+10
+
+120
+
+###
+
+6
+
+<|eos|>
+
+88
+
+Three
+
+57
+
+29
+
+42
+
+Input
+
+bot
+
+eot
+
+###
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+Figure 13: Coconut + GPT-2 Small’s vocabulary projections, from instance 229 of GSM8kAug’s test split. The model seems to encode the percentage 30% as simply 30, instead of
+30/100 as in the gold reasoning trace, causing the backtracking search to fail. The arrows
+indicate what the reasoning trace looks like when assuming the 30 is representing 30%.
+
+Question: Grayson recycles cans and bottles for money each week. An aluminum can is worth two
+cents and a plastic bottle is worth three cents. She drinks three aluminum cans of soda and five plastic
+bottles of water a week. How many cents does Grayson earn from recycling in a four-week month?
+Gold Reasoning Trace: «
+
+», «
+
+», «
+
+», «
+
+Missing intermediate result:
+Output
+
+»
+
+21
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+###
+
+84
+
+1
+
+###
+
+6
+
+<|eos|>
+
+###
+
+15
+
+###
+
+69
+
+###
+
+84
+
+2
+
+3
+
+6
+
+.
+
+5
+
+25
+
+<|bot|>
+
+186
+
+4
+
+144
+
+3
+
+2
+
+60
+
+75
+
+25
+
+75
+
+240
+
+6
+
+60
+
+204
+
+4
+
+<|eot|>
+
+66
+
+200
+
+15
+
+15
+
+<|eot|>
+
+2100
+
+66
+
+276
+
+5
+
+Three
+
+3
+
+0000
+
+3
+
+3
+
+6
+
+4
+
+204
+
+96
+
+10
+
+Calcul
+
+60
+
+6
+
+50
+
+1
+
+40
+
+66
+
+64
+
+216
+
+Input
+
+bot
+
+eot
+
+###
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+Figure 14: Coconut + GPT-2 Small’s vocabulary projections, from instance 460 of GSM8kAug’s test split. The gold reasoning trace is encoded, except for the intermediate result 21,
+which causes the backtracking search to fail.
+
+28
+
+Published as a conference paper at COLM 2026
+
+I.4
+
+Backtracking experiment results by solution length
+
+The representation of gold reasoning traces tends to decrease as the reasoning trace length
+increases beyond 3 steps, as shown in Figure 15. Including question tokens as potential
+operands, Coconut + GPT-2 Small declines from 99% at two steps to 38% at five steps. CODI
++ GPT-2 Small declines from 85% at two steps to just 20% at five steps. This degradation
+reflects a limitation in the models’ capacity to maintain longer reasoning traces.
+GPT-2 Coconut excl. QT
+GPT-2 Coconut incl. QT
+GPT-2 CODI excl. QT
+GPT-2 CODI incl. QT
+
+Percent of Correct Samples where
+Gold Reasoning Trace Found
+
+100
+
+Llama 3.2-1B Coconut excl. QT
+Llama 3.2-1B Coconut incl. QT
+Llama 3.2-1B CODI excl. QT
+Llama 3.2-1B CODI incl. QT
+
+80
+
+60
+
+40
+
+20
+
+0
+
+1
+
+2
+
+3
+
+Number of Solution Steps
+
+4
+
+5
+
+Figure 15: Percent of any gold reasoning trace found in the vocabulary projections of latent
+tokens for correctly answered problems by reasoning trace length. Reasoning traces with
+more than 5 steps are not shown due to low instance counts (< 3).
+I.5
+
+Incorrect predictions
+
+Method
+
+Base Model
+
+Incorrect Instances
+
+Correct Answer in Top-10
+
+Percent
+
+Coconut
+CODI
+Coconut
+CODI
+
+GPT-2 Small
+GPT-2 Small
+Llama-3.2-1B-Instruct
+Llama-3.2-1B-Instruct
+
+793
+675
+759
+511
+
+369
+337
+425
+275
+
+46.5%
+49.9%
+56.0%
+53.8%
+
+Table 14: Incorrect predictions on GSM8k-Aug where the correct answer appears in the
+top-10 predicted tokens.
+
+29
+
+Published as a conference paper at COLM 2026
+
+J
+
+Forward chaining experiment
+
+J.1
+
+Forward chaining pseudocode
+
+Algorithm 2: Forward Chaining
+Input: V: top-k vocab projections at each latent token position and the answer positions
+Q: numbers extracted from the question
+final_answer: model’s predicted answer
+d: position offset (d=1 for Coconut, d=2 for CODI)
+Output: Computation tree and verification status
+for pos ← 0 to num_latent_positions do
+// Phase 1: Generate candidate steps
+result ← top-1 integer at V [pos];
+3
+if result is None then continue;
+4
+operands ← top-k integers at V [pos − d] ∪ {top-1 integer at position p : p <
+pos} ∪ Q;
+5
+S2 ← {( a, b, op, result) : a, b ∈ operands, a op b = result, op ∈ {+, −, ×, ÷}};
+6
+S3 ← {( a, b, c, op1 , op2 , result) : a, b, c ∈ operands, a op1 b op2 c = result};
+7
+steps ← S2 ∪ S3 ;
+// Prioritize by: (1) operand source: verified intermediate > question
+number > top-k > unverified intermediate, (2) fewer operands
+8
+candidates ← sort(steps, by priority above);
+9
+best ← None;
+10
+foreach candidate ∈ candidates do // Phase 2: Try to verify one candidate step
+11
+if V ERIFY (candidate, nattempts , rpasses ) then
+12
+best ← candidate;
+13
+break;
+14
+end
+15
+end
+16
+if best = None and candidates ̸= ∅ then best ← candidates[0];
+17 end
+1
+
+2
+
+root ← earliest step where result = final_answer ; // Phase 3: Build reasoning trace
+tree_steps ← {root};
+20 foreach step ∈ tree_steps do
+21
+foreach operand ∈ step do
+22
+if operand came from a previous step’s result then
+23
+tree_steps ← tree_steps ∪ {source_step};
+24
+end
+25
+end
+26 end
+27 tree_verified ← all(step.verified for step ∈ tree_steps);
+28 return tree_steps sorted by position, tree_verified;
+18
+
+19
+
+29
+
+Function V ERIFY (step, nattempts , rpasses ):
+pass_count ← 0;
+32
+for i ← 1 to nattempts do
+33
+var ← select operand traceable to question;
+34
+new_val ← sample different single-token integer;
+35
+expected ← recompute step result with new_val;
+36
+observed ← top-1 integer at V ′ [step.position] ;
+// V ′ from modified prompt
+37
+if observed = expected then pass_count ← pass_count + 1;
+38
+end
+39
+return pass_count ≥ rpasses ;
+
+30
+
+31
+
+30
+
+Published as a conference paper at COLM 2026
+
+J.2
+
+Forward chaining verification example
+
+This section contains an example of how the forward chaining method works. Figure 16
+shows a found and verified reasoning trace, which happens to be the same as the gold
+reasoning trace for this instance. First, we generate candidate steps that may be encoded for
+each latent token. Latent token 0 has no candidate steps: it has no integer tokens in its top-10
+vocabulary projection, so there is no step result. Latent token 1 also has no candidate steps.
+Its top integer token is 39, but there’s no arithmetic combination of candidate operands that
+can combine to produce it.
+Latent token 2’s top integer token is 17, so we assume that is the result produced by
+the encoded step. There are two candidate steps that the model may be using to get 17:
+5 + 22 − 10 = 17 and 22 − 5 = 17. The first candidate step passes 1 out of 3 verification
+attempts, as shown in Figure 17. The second candidate step passes 3 out of 3 verification
+attempts, as shown in Figure 18.
+The process continues for the remaining latent tokens and the answer position. It verifies
+the step 22 + 17 = 39 at latent token 4 with 3 out of 3 verification attempts passing, and
+39 ∗ 10 = 390 at the answer position with 2 out of 3 verification attempts passing. The
+forward chaining method then assembles the found steps into the full reasoning trace:
+22 − 5 = 17, 22 + 17 = 39, and 10 ∗ 39 = 390. This reasoning trace is considered verified for
+1 or 2 required passes, and unverified for 3 required passes.
+Question: Ali is a superstar counter. He has won 22 medals for counting super fast. His friend Izzy is also a really good counter and has 5 less
+medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out for
+counting?
+Gold Reasoning Trace: «
+Numbers from the question:
+Output
+
+», «
+
+», «
+
+5
+
+10
+
+»
+
+22
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+The
+
+answer
+
+is
+
+:
+
+39
+
+17
+
+atching
+
+The
+
+answer
+
+is
+
+:
+
+.
+
+399
+
+18
+
+dra
+
+A
+
+answers
+
+are
+
+:
+
+?
+
+anya
+
+Bre
+
+7
+
+s
+
+<<
+
+answer
+
+.
+
+;
+
+ieri
+
+→
+
+393
+
+157
+
+atched
+
+What
+
+response
+
+adalah
+
+:**
+
+a
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+eot
+
+The
+
+answer
+
+is
+
+:
+
+1
+
+(
+
+39
+
+17
+
+2
+
+<<
+
+40
+
+azzo
+
+3
+
+[
+
+37
+
+10
+
+combining
+
+ly
+
+Input
+
+bot
+
+390
+390
+:
+
+380
+378
+39
+
+Figure 16: CODI + Llama-3.2-1B-Instruct’s vocabulary projections, from instance 290 of
+GSM8k-Aug’s test split. The reasoning trace found and verified by the forward chaining
+method is displayed. This reasoning trace happens to match the gold reasoning trace.
+
+31
+
+Published as a conference paper at COLM 2026
+
+Verification Attempt 1 for Candidate 1: «
+»
+Modification 1: Replace 22 with 23
+Modified Prompt: Ali is a superstar counter. He has won 23 medals for counting super fast. His friend Izzy is also a really good counter and has
+5 less medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 1 with modification 1: «
+»
+Top-1 integer token with modification: 18
+Passes Verification Attempt 1
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+The
+
+answer
+
+is
+
+:
+
+41
+
+18
+
+s
+
+The
+
+answer
+
+is
+
+:
+
+cono
+
+Pl
+
+17
+
+m
+
+<<
+
+answers
+
+are
+
+:
+
+17
+
+.
+
+39
+
+19
+
+sar
+
+<<
+
+answer
+
+.
+
+;
+
+20
+
+?
+
+43
+
+38
+
+ived
+
+What
+
+reply
+
+adalah
+
+:.
+
+"
+
+eot
+
+The
+
+answer
+
+is
+
+:
+
+1
+
+(
+
+41
+
+18
+
+2
+
+<<
+
+45
+
+23
+
+3
+
+Pair
+
+40
+51
+
+10
+
+"("
+
+Input
+
+bot
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+410
+410
+(
+
+420
+415
+510
+
+Verification Attempt 2 for Candidate 1: «
+»
+Modification 2: Replace 5 with 6
+Modified Prompt: Ali is a superstar counter. He has won 22 medals for counting super fast. His friend Izzy is also a really good counter and has
+6 less medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 1 with modification 2: «
+»
+Top-1 integer token with modification: 16
+Fails Verification Attempt 2
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+1
+
+(
+
+40
+
+>>
+
+2
+
+<<
+
+38
+
+16
+
+3
+
+[
+
+39
+
+18
+
+10
+
+pair
+
+34
+
+uum
+
+Input
+
+bot
+
+.
+
+The
+
+answer
+
+is
+
+:
+
+40
+
+16
+
+dra
+
+The
+
+answer
+
+is
+
+:
+
+38
+
+17
+
+aje
+
+<<
+
+response
+
+are
+
+:
+
+<<
+
+380
+
+18
+
+atching
+
+A
+
+answers
+
+:
+
+:
+
+:
+
+320
+
+XVI
+
+a
+
+What
+
+reply
+
+was
+
+*:
+
+eot
+
+The
+
+answer
+
+is
+
+<|eot_id|> Parent
+=
+
+Providers
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+400
+400
+
+392
+:
+
+Verification Attempt 3 for Candidate 1: «
+»
+Modification 3: Replace 10 with 20
+Modified Prompt: Ali is a superstar counter. He has won 22 medals for counting super fast. His friend Izzy is also a really good counter and has
+5 less medals than Ali. Together they have 20 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 1 with modification 3: «
+»
+Top-1 integer token with modification: 17
+Fails Verification Attempt 3
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+The
+
+answer
+
+is
+
+:
+
+39
+
+17
+
+atching
+
+The
+
+answer
+
+is
+
+:
+
+anya
+
+399
+
+7
+
++
+
+A
+
+answers
+
+are
+
+:
+
+:
+
+198
+
+azzo
+
+.
+
+339
+
+18
+
+dra
+
+<<
+
+response
+
+:
+
+:
+
+(
+
+197
+
+Jeans
+
+humans
+
+yon
+
+5
+
+stalk
+
+-The
+
+reply
+
+adalah
+
+:**
+
+eot
+
+The
+
+answer
+
+is
+
+1
+
+(
+
+39
+
+17
+
+2
+
+<<
+
+40
+
+?
+
+3
+
+pairs
+
+37
+
+10
+
+The
+
+ly
+
+Input
+
+bot
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+780
+780
+
+980
+:
+
+Passed 1 out of 3 verification attempts
+
+Figure 17: Verification process for latent token 2, candidate step 1 from instance 290 of
+GSM8k-Aug’s test split.
+
+32
+
+Published as a conference paper at COLM 2026
+
+Verification Attempt 1 for Candidate 2: «
+»
+Modification 1: Replace 22 with 23
+Modified Prompt: Ali is a superstar counter. He has won 23 medals for counting super fast. His friend Izzy is also a really good counter and has
+5 less medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 2 with modification 1: «
+»
+Top-1 integer token with modification: 18
+Passes Verification Attempt 1
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+The
+
+answer
+
+is
+
+:
+
+41
+
+18
+
+s
+
+The
+
+answer
+
+is
+
+:
+
+cono
+
+Pl
+
+17
+
+m
+
+<<
+
+answers
+
+are
+
+:
+
+17
+
+.
+
+39
+
+19
+
+sar
+
+<<
+
+answer
+
+.
+
+;
+
+20
+
+?
+
+43
+
+38
+
+ived
+
+What
+
+reply
+
+adalah
+
+:.
+
+"
+
+eot
+
+The
+
+answer
+
+is
+
+:
+
+1
+
+(
+
+41
+
+18
+
+2
+
+<<
+
+45
+
+23
+
+3
+
+Pair
+
+40
+51
+
+10
+
+"("
+
+Input
+
+bot
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+410
+410
+(
+
+420
+415
+510
+
+Verification Attempt 2 for Candidate 2: «
+»
+Modification 2: Replace 5 with 6
+Modified Prompt: Ali is a superstar counter. He has won 22 medals for counting super fast. His friend Izzy is also a really good counter and has
+6 less medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 2 with modification 2: «
+»
+Top-1 integer token with modification: 16
+Passes Verification Attempt 2
+Output
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+
+1
+
+(
+
+40
+
+>>
+
+2
+
+<<
+
+38
+
+16
+
+3
+
+[
+
+39
+
+18
+
+10
+
+pair
+
+34
+
+uum
+
+Input
+
+bot
+
+.
+
+The
+
+answer
+
+is
+
+:
+
+40
+
+16
+
+dra
+
+The
+
+answer
+
+is
+
+:
+
+38
+
+17
+
+aje
+
+<<
+
+response
+
+are
+
+:
+
+<<
+
+380
+
+18
+
+atching
+
+A
+
+answers
+
+:
+
+:
+
+:
+
+320
+
+XVI
+
+a
+
+What
+
+reply
+
+was
+
+*:
+
+eot
+
+The
+
+answer
+
+is
+
+<|eot_id|> Parent
+=
+
+Providers
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+400
+400
+
+392
+:
+
+Verification Attempt 3 for Candidate 2: «
+»
+Modification 3: Replace 22 with 21
+Modified Prompt: Ali is a superstar counter. He has won 21 medals for counting super fast. His friend Izzy is also a really good counter and has
+5 less medals than Ali. Together they have 10 times less medals than have been given out for counting. How many medals have been given out
+for counting?
+Candidate 1 with modification 3: «
+»
+Top-1 integer token with modification: 16
+Passes Verification Attempt 3
+Output
+
+The
+
+answer
+
+is
+
+:
+
+1
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5 Latent 6
+(
+
+37
+
+16
+
+>>
+
+37
+
+16
+
+>>
+
+The
+
+answer
+
+is
+
+:
+
+367
+
+2
+
+<<
+
+35
+
+17
+
+→
+
+16
+
+17
+
+->
+
+A
+
+answers
+
+are
+
+:
+
+(
+
+370
+
+3
+
+[
+
+38
+
+-
+
++
+
+Breath
+
+14
+
+pab
+
+<<
+
+answer
+
+?
+
+;
+
+a
+
+357
+
+10
+
+pair
+
+answer
+
+ish
+
+tee
+
+Creatures
+
+am
+
+dra
+
+the
+
+reponse
+
+adalah
+
+*:
+
+for
+
+377
+
+Input
+
+bot
+
+Latent 0 Latent 1 Latent 2 Latent 3 Latent 4 Latent 5
+
+eot
+
+The
+
+answer
+
+is
+
+:
+
+367
+
+Passed 3 out of 3 verification attempts
+
+Figure 18: Verification process for latent token 2, candidate step 2 from instance 290 of
+GSM8k-Aug’s test split.
+
+33
+
+Published as a conference paper at COLM 2026
+
+J.3
+
+Dataset requirements for the forward chaining method
+
+The forward chaining method described in §6 will work with a dataset that meets the
+following requirements:
+1. The reasoning trace must be decomposable into steps.
+2. Each step must be a deterministic function of its operands and produce one result.
+3. The operators must be a known, small set so that forward chaining can brute-force
+search over them.
+4. The operands and results must be single-token, so that they can be observed using
+vocabulary projection. Note that this is also a function of the tokenizer used.
+5. For each step, at least one base operand must be mentioned in the prompt. The
+base operands are just the step operands, or, if one of the operands is the result of a
+previous step, then the base operands can be the base operands of that previous
+step. A reasoning step cannot be fully based on operands from its world knowledge.
+If no base operands are mentioned in the prompt, then this method cannot verify
+the step by modifying the prompt.
+6. The base operands and step results must be distinguishable from each other. This
+makes it unambiguous which base operand mentioned in the prompt should be
+modified to verify a given step.
+Requirement 3 can be removed if future work finds a way to detect the operator used from
+the model’s representations directly. In our experiments, we found that the LRMs studied
+do not encode the operators in the latent tokens, at least not in a way that is detectable
+using vocabulary projection. Since there are only four operators used in GSM8k-Aug, we
+brute-force search over them.
+Datasets can be modified to meet requirement 4 by replacing key multi-token concepts
+with single-token concepts. Alternatively, future work could use a method other than
+vocabulary projection for detecting concepts encoded in a latent token, which would allow
+for multi-token operands and intermediate results.
+Requirement 6 makes this method difficult to use for tasks that have a small set of possible
+operands or results, which make it likely for multiple steps to have the same intermediate
+result. E.g., the step results in logical reasoning tasks may be only “True” or “False.”
+
+34
+
+Published as a conference paper at COLM 2026
+
+K
+
+PrOntoQA heuristic
+
+During our investigation into how models solve PrOntoQA, we noticed that all instances
+from this dataset can be solved by treating the problem as a directed acyclic graph and
+continually exploring the child node with the most children nodes until you arrive at the
+node with the property in question. This can be implemented as a counting task for the
+child node that is mentioned the most in the prompt. E.g., for the problem in Figure 19,
+starting at the start node named “Max”, there are two choices of child nodes: vumpus and
+lorpus. Vumpus has two children, and lorpus has one. Since vumpus has more children,
+it is also mentioned more frequently in the promt than lorpus. You can keep going down
+the graph in the same manner until numpus is reached, which has the property in question
+of “not wooden”. Since all instances of PrOntoQA can be solved in this way, it’s possible
+for models to exploit this heuristic instead of learning to search or do first-order logical
+reasoning.
+
+Max
+
+not discordant
+
+hot
+
+vumpus
+
+lempus
+
+not spicy
+
+brimpus
+
+zumpus
+
+not dull
+
+not mean
+
+large
+
+wumpus
+
+grimpus
+
+rompus
+
+not wooden
+
+lorpus
+
+orange
+
+shumpus
+
+numpus
+
+sterpus
+
+windy
+
+gorpus
+
+impus
+
+moderate
+
+not opaque
+
+Figure 19: Instance 1 of the train split of PrOntoQA shown as a directed acyclic graph. This
+instance is also shown in text in Figure 7.
+
+35
+
+

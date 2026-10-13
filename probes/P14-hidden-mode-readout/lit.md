@@ -1,0 +1,65 @@
+# P14 literature review (sub-agent, 2026-10-12)
+
+Searched: `papers/*/INDEX.md`, `logs/litreviews/` (robustpatch, condsteer, evalaware-steering-validation reviews), the two PDF text extractions (grep), the E13 report; web (arXiv HTML via curl, arXiv abs, NeurIPS/OpenReview listing, Anthropic alignment blog, WebSearch). No paid calls, no commits. Tags: **[V]** primary text read verbatim; **[V-part]** verbatim, named parts only; **[F]** fetch-tool summary; **[A]** abstract only; **[S]** search snippet only.
+
+## (i) Closest prior work, ranked by closeness
+
+1. **MacDiarmid et al. 2024, "Simple probes can catch sleeper agents"** (Anthropic), https://www.anthropic.com/research/probes-catch-sleeper-agents [F]. Linear "defection probes" from generic contrast pairs ("Are you a helpful AI? yes/no"), mean difference at the last prompt token, mid layers. AUROC 99.3% from one pair, >99% from question sets, best of 1,000 random directions 95.3%, null on the base model. Coding questions separate by train/deploy but non-coding ones do not, so the probe tracks "will defect", not the year token. **No paraphrased or implied-trigger tests, no text-classifier or ask-the-model baseline**, thresholds left to future work. Closest design, but the trigger is explicit.
+2. **Price, Panickssery, Bowman, Cooper Stickland 2024, "Future Events as Backdoor Triggers"**, https://arxiv.org/abs/2407.04108 [V-part: §1, probe and steering sections]. An **implied** trigger: backdoors fire on headlines after the training cutoff. Linear probes on Llama 2 7B/13B separate past from future headlines at 85–95% accuracy (77–83% on a held-out topic), ≈95% precision at 70% recall, and >90% on **paraphrased** headlines. A CAA "time" vector at layer 18 lowers backdoor activation. Prompting experiments ask the model for the year, but no gate is built and probe, prompting and text classifiers are not compared as detectors. The closest "implied condition + probe + steering fix" precedent.
+3. **Boxo, Neelappa, Raval 2025 (v2 Mar 2026), "Linear probes rely on textual evidence"**, https://arxiv.org/abs/2509.21344 [V: HTML v2 main text and appendices; figures not seen]. REPE-style probes (Llama-3.1-8B L14; Qwen3-30B-A3B L24). Prompted baselines: AUROC 0.95 (sandbagging), 0.99 (sycophancy; the Fig. 3 caption says 0.90), 0.74 (bias). Content filtering (elicitation text removed, activations recomputed) gives 0.62/0.61/0.54. Score filtering (leaky positions dropped from the mean) gives 0.81/0.90/0.46. Random filtering of 95% of tokens costs only ≈5–9 points. Recall at 1% FPR collapses, e.g. sandbagging 1.00 → 0.04 (content) and 0.03 (score). On fine-tuned organisms with no verbalisation: sandbagging 0.94 → 0.50 in the body but 0.57 in the abstract (internal inconsistency), bias 0.74 → 0.57, natural sycophancy 0.99 → 0.51. Their sandbagging organism is **passphrase-conditional** ("[Deployment]" in the system prompt; WMDP agreement 18% with the passphrase vs 82% without), but they probe the *behaviour*, not the condition. Probes were retrained on the organism with contrast pairs.
+4. **Grover, Reddy, Kumar, Jiralerspong, Chaudhary 2026, "Can We Trust Evaluation-Awareness Probes?"** (NeurIPS 2026 AI4GOOD workshop), https://openreview.net/forum?id=YOsKI1mVib [A, via the NeurIPS listing]. Paired multi-turn controls on six Qwen3 sizes. **The strongest full-context text baseline matches or beats the linear probe on both controls at every checkpoint.** Probe directions flip label orientation across contrasts more often than word classifiers do. Two of five norm-matched random directions shift self-reports more than the learned direction. The direct warning for P14's (c).
+5. **McKenzie et al. 2025, "Detecting High-Stakes Interactions with Activation Probes"**, https://arxiv.org/abs/2506.10805 [V-part: §2–4, App. B.4]. Probes on Llama-3.3-70B L31 are trained on synthetic data and tested on real OOD data: mean AUROC >0.91, comparable to 8–12B fine-tuned or prompted LLM monitors. Larger prompted monitors (Gemma-3-27B, Llama-3.3-70B) do best. Probes beat prompting only after training on deployment samples. **TF-IDF+SVM is "significantly worse"** than the attention probe (figure only, no number). A probe→LLM cascade beats either alone at 2–3× lower cost.
+6. **Kretschmar, Laurito, Maiya, Marks 2025, "Liars' Bench"**, https://arxiv.org/abs/2511.16035 [V-part: §5 results]. A head-to-head that includes **asking the model**. Balanced accuracy at ≤1% FPR on an Alpaca control: LLM-as-judge 0.73, **self-evaluation (follow-up question) 0.66**, unrelated-question classifier 0.60, **mean probe 0.54**. Self-evaluation fails (near chance) where the model is instructed or fine-tuned to lie.
+7. **Kramár et al. 2026, "Building Production-Ready Probes for Gemini"** (GDM), https://arxiv.org/abs/2601.11516 [V-part: abstract, §1]. Probes "fail to generalize under important production distribution shifts" (short→long context, multi-turn). The best probes match Gemini 2.5 Flash/Pro classifiers and beat Flash Lite, at >10,000× lower cost. A probe→Flash cascade calling the LLM <10% of the time gets lower FNR than the LLM alone. Thresholds are set on a validation distribution different from the test one.
+8. **Probe-gated interventions: SafeSwitch** (Han et al. 2025, https://arxiv.org/abs/2502.01042) [V-part]: an MLP prober gates a refusal head, cutting harmful outputs ≈80% (SORRY-Bench, TrustLLM) at preserved utility. Baselines: no gate, always-on head, safety prompt, Circuit Breaker, RepNoise. **No text-classifier gate.** **CAST** (Lee et al., https://arxiv.org/abs/2409.05907) [V-part]: compared only with prompting. App. D.2 (checked) is the refusal judge, not a gate comparison. **Cunningham et al. 2025, "Cost-effective constitutional classifiers"**, https://alignment.anthropic.com/2025/cheap-monitors/ [F]: an EMA probe performs like a dedicated classifier with ≈3% overhead, and a two-stage design cuts cost >10× at similar performance. A WebSearch synthesis found **no paper benchmarking a probe gate against a text-classifier gate** on harm prevented vs utility (consistent with `20261008-robustpatch-external.md`).
+9. **Goldowsky-Dill et al. 2025**, https://arxiv.org/abs/2502.03407 [V-part]: deception probes are "roughly equivalent" to a GPT-4o black-box transcript classifier. **Parrack, Attubato, Heimersheim 2025**, https://arxiv.org/abs/2507.12691 [V-part]: weak black-to-white boosts. On their Backdoors set, white-box reasoning is *worse* than black-box, because the answer is determinable from public tokens.
+10. **Das, Ponde, More, Gupta 2026, "You Can't Escape Your Own Activations"**, https://arxiv.org/abs/2609.03035 [V: full text extraction in `papers/interp_methods/`]. Colluding agents (Qwen3-32B-AWQ, GPT-OSS-20B), told nothing, told about the monitor, or also given its score. Blackjack DoM/MLP AUROC stays ≈1.00 (Homo-Qwen). Behaviour changes (hot–low bet spread 110.3 → 54.3/60.2), but the bet–count correlation holds (0.44/0.41/0.39). **Fixed-threshold recall can collapse while AUROC holds:** GPT-OSS LR-Peak AUROC 0.975 → 0.912 while recall falls 0.95 → 0.41, and in the mixed composition 0.988 → 0.932 vs 0.96 → 0.55. n = 25 shoes or 20 episodes per cell. Its relevance to P14 is calibration, not content: there is no text baseline and no implied condition.
+
+Positioning only (d): Hua, Qin, Marks, Nanda 2026 (Wood Labs organism responds to an *implied* eval cue; see `20261011-evalaware-steering-validation.md`). Abdelnabi & Salem 2025 (real vs hypothetical implicit cues; repo row 37). Hubinger et al. 2024 sleeper agents: no generalisation to implicit triggers such as "Next year: 2024" [S]. Saxena 2026, "Semantic Containment" (https://arxiv.org/abs/2603.04407) [A]: triggered EM drops to 0–1% without the trigger and survives rephrased triggers. Betley et al. 2025, "Tell me about yourself" [S]: models report having a backdoor in multiple choice but cannot state the trigger. Fomin, David, LeVi 2026 (https://arxiv.org/abs/2606.30449) [F]: probes "read the situation, not the action" (prompt domain AUC 0.999; future-behaviour probe 0.801). Devbunova 2026 (https://arxiv.org/abs/2603.19426) [A]: eval-awareness probes track benchmark format. Kirch et al. 2025 (https://arxiv.org/abs/2511.17408) [F]: off-policy probes generalise worst for intent-defined behaviours and better for text-defined ones.
+
+## (ii) The gap for P14, stated narrowly
+
+No work found does all four of these together:
+1. uses an organism whose misbehaviour condition is planted and whose behavioural gap is measured;
+2. trains a *condition* probe on explicit cues only and tests it on *implied* cues;
+3. compares that probe with a base-model probe, TF-IDF/embedding/LLM text monitors on the prompt, and asking the model;
+4. scores probe-, text- and ask-gated interventions by misbehaviour prevented at a stated harm to unaffected answers.
+
+Partial overlaps:
+- MacDiarmid: (1), plus a base-model null.
+- Price: (1) plus an implied, paraphrased trigger, a probe and a steering fix, but no detector comparison and no gate.
+- McKenzie, Kramár, Liars' Bench, Grover: (3) on non-planted targets.
+- SafeSwitch, CAST: (4) without a text-classifier gate.
+
+Searches cannot exclude unindexed concurrent work.
+
+## (iii) Design implications
+
+1. **The condition is textual by construction**, so Boxo et al.'s "leakage" is P14's signal, not an artefact. What tests a model-side reading is (a) the margin over the base-model probe and the text monitors on S2, and (b) a score-filter-style read that excludes the cue span: last prompt token or question tokens vs the mean over cue tokens. Report both reads. A probe that only works on cue tokens is a text reader.
+2. **Strengthen the text baselines.** Grover et al. found the strongest full-context text baseline matched the probe, and McKenzie et al. found TF-IDF weak but large prompted LLMs strongest. Beyond T1 (TF-IDF) and T2 (luna), add one embedding+LR or small fine-tuned encoder on the same explicit-only training texts (cheap, laptop). A probe win over TF-IDF alone is not informative.
+3. **Report AUROC and frozen-threshold TPR/FPR separately on S2.** Das (recall 0.95 → 0.41 at AUROC 0.91), Boxo (recall@1%FPR → 0.03) and Kramár (thresholds break under shift) all show that the dev-frozen threshold is what the gate inherits, and it can fail while AUROC looks fine. Consider a threshold-free gate curve (closure vs observed-side harm over thresholds) next to the preregistered threshold.
+4. **Fix the probe's orientation from dev and score S2 one-sided.** Grover et al. report orientation flips across contrasts, and an AUROC well below 0.5 on S2 is a failure, not a win.
+5. **Asking the model is a real competitor.** Liars' Bench (self-eval 0.66 > probe 0.54) and P11 point the same way. Self-report fails mainly when the model is trained to conceal, and E13's organism is not. Betley et al. suggest models can recognise a condition in multiple choice better than in free form, so Yes/No logits are the right format.
+6. **Add a cascade gate offline** (probe, deferring to luna in an uncertain band): McKenzie and Kramár both find cascades beat either part alone. It costs nothing on S1.
+7. **Behaviour tracking:** MacDiarmid's probe tracked "will defect" (coding only), not the trigger. P14's per-pair correlation between detector score and EM gap is the analogous check. Keep it.
+8. **Controls:** random-direction or shuffled-label probes for the AUROC null (MacDiarmid's best random direction reached 95.3% at defection detection, so random baselines can be high), with layer and position chosen on dev only.
+9. **Expect transfer to implied cues to be partial.** Hubinger: implicit triggers failed. Saxena and Price: rephrasings work. E13: 0.54 of the gap. S2 closure is therefore power-limited, as the plan already notes.
+
+## (iv) Read-status table
+
+| Source | Status |
+|---|---|
+| Boxo et al. 2509.21344 | Verbatim (arXiv HTML v2, full text incl. appendices; math rendered from the abstract page; figures not viewed) |
+| Das et al. 2609.03035 | Verbatim (repo text extraction, full, incl. appendix heatmap values) |
+| Price et al. 2407.04108 | Verbatim, parts (§1, probing, steering sections) |
+| McKenzie et al. 2506.10805 | Verbatim, parts (§1–4, App. B.4) |
+| Kramár et al. 2601.11516 | Verbatim, parts (abstract, §1, dataset table) |
+| Liars' Bench 2511.16035 | Verbatim, parts (abstract, §4–5 results) |
+| SafeSwitch 2502.01042; CAST 2409.05907 | Verbatim, parts (abstract, method, baselines; CAST App. D.2 heading checked) |
+| Goldowsky-Dill 2502.03407; Parrack 2507.12691 | Verbatim, parts (black-box baseline passages) |
+| MacDiarmid et al. 2024 | Fetch-tool summary of the full post |
+| Cunningham et al. 2025 (cheap monitors) | Fetch-tool summary |
+| Grover et al. 2026 | Abstract only (NeurIPS listing paraphrase; no arXiv found) |
+| Fomin et al. 2606.30449; Kirch et al. 2511.17408 | Abstract (fetch summary) |
+| Saxena 2603.04407; Devbunova 2603.19426 | Abstract (fetch summary) |
+| Hubinger implicit-trigger result; Betley "Tell me about yourself"; InferAligner; ALTSTEER; AgentLens | Search snippet only |

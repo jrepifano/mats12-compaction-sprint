@@ -1,0 +1,32 @@
+huggingface/tokenizers: The current process just got forked, after parallelism has already been used. Disabling parallelism to avoid deadlocks...
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]To disable this warning, you can either:
+	- Avoid using `tokenizers` before the fork if possible
+	- Explicitly set the environment variable TOKENIZERS_PARALLELISM=(true | false)
+Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 43.78it/s]
+[P05 2026-10-12T23:10:45Z] tf_base_chain_nocot.jsonl 38s
+[P05 2026-10-12T23:10:45Z] base chain nocot r0_k1=3/30 r0_k2=4/30
+[P05 2026-10-12T23:11:07Z] tf_base_chain_brauer.jsonl 22s
+[P05 2026-10-12T23:11:07Z] base chain brauer r0_k1=1/30 r0_k2=6/30
+[P05 2026-10-12T23:11:46Z] tf_base_chain_easy_nocot.jsonl 32s
+[P05 2026-10-12T23:11:46Z] base chain_easy nocot r0_k1=8/30 r0_k2=3/30
+[P05 2026-10-12T23:12:12Z] tf_base_chain_easy_brauer.jsonl 26s
+[P05 2026-10-12T23:12:12Z] base chain_easy brauer r0_k1=8/30 r0_k2=2/30
+[P05 2026-10-12T23:12:30Z] tf_base_arithmetic_nocot.jsonl 18s
+[P05 2026-10-12T23:12:30Z] base arithmetic nocot r0_k1=24/30 r0_k2=4/30
+[P05 2026-10-12T23:12:37Z] tf_base_arithmetic_brauer.jsonl 7s
+[P05 2026-10-12T23:12:37Z] base arithmetic brauer r0_k1=21/30 r0_k2=0/30
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 58.50it/s]
+[P05 2026-10-12T23:18:32Z] tf_rec32_chain_nocot.jsonl 354s
+[P05 2026-10-12T23:18:32Z] rec32 chain nocot r1_k1=6/30 r1_k2=1/30 r2_k1=6/30 r2_k2=2/30 r4_k1=10/30 r4_k2=1/30 r8_k1=9/30 r8_k2=1/30 r16_k1=9/30 r16_k2=1/30 r32_k1=9/30 r32_k2=1/30
+[P05 2026-10-12T23:22:16Z] tf_rec32_chain_brauer.jsonl 224s
+[P05 2026-10-12T23:22:16Z] rec32 chain brauer r1_k1=3/30 r1_k2=0/30 r2_k1=3/30 r2_k2=0/30 r4_k1=10/30 r4_k2=1/30 r8_k1=11/30 r8_k2=1/30 r16_k1=9/30 r16_k2=1/30 r32_k1=9/30 r32_k2=1/30
+[P05 2026-10-12T23:26:50Z] tf_rec32_chain_easy_nocot.jsonl 272s
+[P05 2026-10-12T23:26:50Z] rec32 chain_easy nocot r1_k1=3/30 r1_k2=1/30 r2_k1=0/30 r2_k2=1/30 r4_k1=15/30 r4_k2=3/30 r8_k1=14/30 r8_k2=3/30 r16_k1=13/30 r16_k2=3/30 r32_k1=13/30 r32_k2=3/30
+[P05 2026-10-12T23:30:18Z] tf_rec32_chain_easy_brauer.jsonl 207s
+[P05 2026-10-12T23:30:18Z] rec32 chain_easy brauer r1_k1=5/30 r1_k2=2/30 r2_k1=8/30 r2_k2=2/30 r4_k1=14/30 r4_k2=3/30 r8_k1=13/30 r8_k2=2/30 r16_k1=13/30 r16_k2=2/30 r32_k1=13/30 r32_k2=2/30
+[P05 2026-10-12T23:32:45Z] tf_rec32_arithmetic_nocot.jsonl 147s
+[P05 2026-10-12T23:32:45Z] rec32 arithmetic nocot r1_k1=16/30 r1_k2=1/30 r2_k1=22/30 r2_k2=5/30 r4_k1=23/30 r4_k2=6/30 r8_k1=22/30 r8_k2=4/30 r16_k1=22/30 r16_k2=4/30 r32_k1=22/30 r32_k2=4/30
+[P05 2026-10-12T23:33:52Z] tf_rec32_arithmetic_brauer.jsonl 67s
+[P05 2026-10-12T23:33:52Z] rec32 arithmetic brauer r1_k1=16/30 r1_k2=2/30 r2_k1=20/30 r2_k2=3/30 r4_k1=22/30 r4_k2=3/30 r8_k1=21/30 r8_k2=3/30 r16_k1=21/30 r16_k2=2/30 r32_k1=21/30 r32_k2=2/30
+[P05 2026-10-12T23:33:52Z] FLOOR_DONE
+rc=0
