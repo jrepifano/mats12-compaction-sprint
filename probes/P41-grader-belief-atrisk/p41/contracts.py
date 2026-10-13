@@ -37,7 +37,8 @@ MAIN_CHECKOUT = Path("/Users/jacob/Documents/GitHub/mats12_neel_exploratory")
 # Only messages[:2] (system prompt and X3b's neutral first user turn, identical across a task's
 # episodes) are read from X3b's transcripts; no outcome or later turn is read.
 X3B_NEUTRAL_DIR = (MAIN_CHECKOUT / "results" / "X3b" / "glm" / "episodes" / "main" / "neutral")
-TASKS_JSON = ROOT / "configs" / "X3" / "tasks.json"
+TASKS_JSON = PROBE_DIR / "data" / "tasks.json"     # X3's 15 + the next in its replacement order
+N_TASKS = 30                  # p41.tasks; up to 45 if the screen leaves too few sites
 
 # --- outputs ---------------------------------------------------------------------------------
 # follow-ups run as variants with their own results directory and episode ids (log.md)
@@ -46,7 +47,9 @@ DATA_DIR = PROBE_DIR / "data"
 RESULTS_DIR = PROBE_DIR / "results" / VARIANT if VARIANT else PROBE_DIR / "results"
 PREFIXES_DIR = DATA_DIR / "prefixes"              # gitignored: <prefix_id>.json (full artifact)
 PREFIX_AUDIT_JSONL = DATA_DIR / "prefix_audit.jsonl"
-SITES_JSONL = DATA_DIR / "sites.jsonl"
+SITES_JSONL = DATA_DIR / "sites.jsonl"            # candidate sites (prefixes.py)
+CONTROL_JSON = DATA_DIR / "control.json"          # the unscreened control, drawn before the screen
+SELECTION_JSON = DATA_DIR / "selection.json"      # screen results, main and control site ids
 SITE_TAR_DIR = DATA_DIR / "sites"                 # gitignored: <site_key>.tar
 EPISODES_DIR = RESULTS_DIR / "episodes"           # gitignored: <cond>/<site_key>#r<k>.json
 FORKS_JSONL = RESULTS_DIR / "forks.jsonl"
@@ -59,7 +62,7 @@ STOP_FILE = RESULTS_DIR / "STOP"
 # --- seeds and sizes (plan "Setup") ------------------------------------------------------------
 SEED = 20261014
 SITES_PER_TASK = 2
-MAX_PREFIX_ATTEMPTS = 5       # fresh episodes tried per task to find SITES_PER_TASK sites
+MAX_PREFIX_ATTEMPTS = 4       # fresh episodes tried per task to find SITES_PER_TASK sites
 MIN_SITES = 20
 MIN_TASKS = 10
 MAX_SITE_TURN = 20

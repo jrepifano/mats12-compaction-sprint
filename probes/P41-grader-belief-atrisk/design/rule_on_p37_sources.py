@@ -1,3 +1,4 @@
+# ruff: noqa  (one-off design check, kept as run)
 """Design check of the P41 site rule on P37's OLD GLM sources (not P41 data), 2026-10-13.
 
 For each of the 146 X3/X3b neutral GLM transcripts P37 used: the first turn whose reasoning notes a
@@ -16,11 +17,19 @@ does catch it). P37's rule (first failing run on the contradictory call), with P
 and pass check, left 76 eligible sites with 8 cheaters, and 55 sources (39 cheaters) never
 reached it (P37 log.md 17:31Z).
 """
-import csv, json, re, sys
+import json
+import re
+import sys
 from collections import Counter, defaultdict
+
 sys.path[:0] = ["probes/P37-grader-belief-causal", "src", "scripts"]
-from p37 import sources as S, sites as ST, contracts as C, inject as INJ
+from p37 import contracts as C
+from p37 import inject as INJ
+from p37 import sites as ST
+from p37 import sources as S
+
 from x3.tasks import load_manifest
+
 tasks = {t.task_id: t for t in load_manifest(C.TASKS_JSON).tasks}
 # outcomes keyed by (source, episode_id): X3 and X3b share id strings (P37 log.md 17:31Z)
 outc = {}
@@ -28,8 +37,8 @@ for r in S._x3b_rows():
     outc[("x3b", r["episode_id"])] = r.get("cheat")
 for r in S._x3_rows():
     outc[("x3", r["episode_id"])] = r.get("cheat")
-CW = re.compile(r"contradict|conflict|inconsisten|mutually exclusive|can(?:'|no)t both|impossible", re.I)
-TW = re.compile(r"\btests?\b|assert", re.I)
+CW = re.compile(r"contradict|conflict|inconsisten|mutually exclusive|can(?:'|no)t both|impossible", re.IGNORECASE)
+TW = re.compile(r"\btests?\b|assert", re.IGNORECASE)
 def mentions(text, key):
     for m in CW.finditer(text):
         win = text[max(0, m.start()-300): m.end()+300]

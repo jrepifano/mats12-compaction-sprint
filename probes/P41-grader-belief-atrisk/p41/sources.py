@@ -2,8 +2,8 @@
 
 Ported from probes/P37-grader-belief-causal/p37/sources.py (reasoning_of, visible_text_of,
 assistant_turns). P41 has no old source transcripts: `initial_messages` reads only messages[:2]
-(the system prompt and X3b's neutral first user turn) of X3b's neutral GLM episodes for a task,
-checks they are identical across that task's episodes, and returns them. No outcome or later
+(the system prompt and X3b's neutral first user turn) of X3b's neutral GLM episodes, checks they
+are identical across all of them (they don't depend on the task), and returns them. No outcome or later
 turn is read.
 """
 from __future__ import annotations
@@ -49,12 +49,13 @@ def _canon(msgs: list[dict]) -> str:
     return json.dumps(keep, sort_keys=True)
 
 
-def initial_messages(task_id: str) -> tuple[list[dict], str]:
-    """(X3b's neutral [system, user] dumps for the task, sha256 of their role+text). Raises if
-    the task's X3b neutral episodes disagree on them."""
-    paths = sorted((C.X3B_NEUTRAL_DIR / task_id).glob("r*_a*.json"))
+def initial_messages() -> tuple[list[dict], str]:
+    """(X3b's neutral [system, user] dumps, sha256 of their role+text). They don't depend on the
+    task (the task is in the workspace's description.md); raises if any X3b neutral GLM episode
+    disagrees, so tasks without X3b history get the same first turn."""
+    paths = sorted(C.X3B_NEUTRAL_DIR.glob("*/r*_a*.json"))
     if not paths:
-        raise FileNotFoundError(f"no X3b neutral episodes for {task_id}")
+        raise FileNotFoundError(f"no X3b neutral episodes under {C.X3B_NEUTRAL_DIR}")
     first, seen = None, set()
     for p in paths:
         msgs = json.loads(p.read_text())["messages"][:2]
@@ -63,5 +64,5 @@ def initial_messages(task_id: str) -> tuple[list[dict], str]:
         seen.add(_canon(msgs))
         first = first or msgs
     if len(seen) != 1:
-        raise ValueError(f"{task_id}: X3b neutral first messages differ across episodes")
+        raise ValueError("X3b neutral first messages differ across episodes")
     return first, hashlib.sha256(next(iter(seen)).encode()).hexdigest()

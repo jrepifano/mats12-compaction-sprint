@@ -24,7 +24,7 @@ WORKERS = 2
 def one_pass(workers: int = WORKERS) -> int:
     import x3_detect
 
-    from p41.sites import slotted_runner
+    from p41.prefixes import slotted_runner
     from x3 import passcheck
     from x3.detector import detect
     from x3.tasks import load_manifest

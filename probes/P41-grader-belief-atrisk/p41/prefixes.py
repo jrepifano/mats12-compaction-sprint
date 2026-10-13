@@ -8,18 +8,21 @@ the tests (`contracts.notices`), whose first tool call is execute_command. The l
 that turn's tool result and the volumes are exported as the site state. No turn after the site
 is ever generated, so no source outcome exists to select on.
 
+Candidate sites go to data/sites.jsonl; screening and selection happen in run.py.
+
 A prefix is eligible when: it stopped at a site at turn <= MAX_SITE_TURN; through the site turn
 the test file is unchanged and no test run passed; the site turn's reasoning is editable
 (`inject.editable`); and the cut solution.py fails the impossible tests in a fresh container
 (X3's pass check, run 1 False and the runs agree). The first SITES_PER_TASK eligible prefixes per
-task, in attempt order, are the sites. `plan_named` (a workaround already named in the reasoning
+task, in attempt order, are the candidate sites (attempts 1-3 for every task, then attempt 4
+for tasks still short). `plan_named` (a workaround already named in the reasoning
 through t, PLAN_RE) is recorded as a stratum, not an exclusion.
 
 Ported pieces: `workspace_files`, `run_info_text`, `passed_run`, `slotted_runner`, `cut_clean`
 from probes/P37-grader-belief-causal/p37/sites.py.
 
     PYTHONPATH=probes/P41-grader-belief-atrisk:src:scripts uv run --group swarm \
-        python -m p41.prefixes [--tasks a,b] [--attempts 1-5] [--dry-run]
+        python -m p41.prefixes [--tasks a,b] [--dry-run]
 """
 from __future__ import annotations
 
@@ -209,22 +212,21 @@ def main(argv: list[str] | None = None) -> int:
 
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--tasks", default="all")
-    ap.add_argument("--attempts", default=f"1-{C.MAX_PREFIX_ATTEMPTS}")
     ap.add_argument("--dry-run", action="store_true", help="initial messages and states only")
     a = ap.parse_args(argv)
     tasks = {t.task_id: t for t in load_manifest(C.TASKS_JSON).tasks}
-    want = sorted(tasks) if a.tasks == "all" else a.tasks.split(",")
-    attempts = R.parse_repeats(a.attempts)
-    inits, states = {}, {}
+    want = list(tasks) if a.tasks == "all" else a.tasks.split(",")
+    init, init_sha = S.initial_messages()
+    print(f"initial messages {init_sha[:12]}", flush=True)
+    states = {}
     for tid in want:
-        init, sha = S.initial_messages(tid)
-        tar, shas, test_sha = initial_state(tasks[tid], S.visible_text_of(init[1]), f"init-{tid}")
         tp = C.DATA_DIR / "init" / f"{tid}.tar"
+        tar, shas, test_sha = initial_state(tasks[tid], S.visible_text_of(init[1]),
+                                            f"init-{tid}")
         tp.parent.mkdir(parents=True, exist_ok=True)
         tp.write_bytes(tar)
-        inits[tid] = init
         states[tid] = (tp, shas, test_sha)
-        print(f"{tid}: initial messages {sha[:12]}, {len(shas)} files", flush=True)
+    print(f"{len(states)} initial workspaces", flush=True)
     if a.dry_run:
         return 0
 
@@ -232,41 +234,60 @@ def main(argv: list[str] | None = None) -> int:
         tid, k = item
         p = prefix_path(C.prefix_id_of(tid, k))
         tp, shas, _ = states[tid]
-        art = await run_prefix(tasks[tid], k, inits[tid], tp, shas)
+        art = await run_prefix(tasks[tid], k, init, tp, shas)
         R.write_atomic(p, A.dumps(art))
         print(f"  {art['meta']['episode_id']}: {art['end_reason']} turns={art['n_turns']}",
               flush=True)
         return A.charge(art), str(art["end_reason"])
 
-    jobs = [(tid, k) for tid in want for k in attempts
-            if not R.done_ok(prefix_path(C.prefix_id_of(tid, k)))]
-    print(f"{len(jobs)} prefixes to run", flush=True)
-    res = asyncio.run(R.run_pool(jobs, job, "prefixes", PROJECTION_USD))
-    print(json.dumps(res), flush=True)
+    cache_p = C.DATA_DIR / "cut_clean.json"
+    cache = json.loads(cache_p.read_text()) if cache_p.exists() else {}
 
-    # qualify every prefix on disk, pass-check the eligible ones, select
+    def audit() -> list[tuple[dict, dict]]:
+        rows = []
+        for tid in want:
+            for k in range(1, C.MAX_PREFIX_ATTEMPTS + 1):
+                p = prefix_path(C.prefix_id_of(tid, k))
+                if not p.exists():
+                    continue
+                art = json.loads(p.read_text())
+                if art["end_reason"] in R.RETRY_END:
+                    continue
+                row = qualify(art, states[tid][2])
+                pid = art["meta"]["episode_id"]
+                row.update(prefix_id=pid, task_id=tid, attempt=k,
+                           end_reason=art["end_reason"], n_turns=art["n_turns"],
+                           charge_usd=A.charge(art), cut_clean=None, usable=False)
+                if row["eligible"]:
+                    if pid not in cache:
+                        cache[pid] = cut_clean(art.get("final_solution_py") or "", tasks[tid])
+                        cache_p.write_text(json.dumps(cache, indent=1))
+                    row["cut_clean"], row["cut_passes"] = cache[pid]
+                    row["usable"] = bool(row["cut_clean"])
+                    if not row["cut_clean"]:
+                        row["why"] = "cut solution passes the impossible tests"
+                rows.append((row, art))
+        return rows
+
+    # round 1: attempts 1..3 for every task; round 2: attempt 4 where a task is still short
     rows = []
-    for tid in want:
-        for k in attempts:
-            p = prefix_path(C.prefix_id_of(tid, k))
-            if not p.exists():
-                continue
-            art = json.loads(p.read_text())
-            row = qualify(art, states[tid][2])
-            row.update(prefix_id=art["meta"]["episode_id"], task_id=tid, attempt=k,
-                       end_reason=art["end_reason"], n_turns=art["n_turns"],
-                       charge_usd=A.charge(art), cut_clean=None, usable=False)
-            if row["eligible"]:
-                row["cut_clean"], row["cut_passes"] = cut_clean(
-                    art.get("final_solution_py") or "", tasks[tid])
-                row["usable"] = bool(row["cut_clean"])
-                if not row["cut_clean"]:
-                    row["why"] = "cut solution passes the impossible tests"
-            rows.append((row, art))
+    for rnd, attempts in enumerate(((1, 2, 3), (4,)), 1):
+        if rnd == 2:
+            have = Counter(r["task_id"] for r in select([r for r, _ in rows]))
+            todo_tasks = [t for t in want if have[t] < C.SITES_PER_TASK]
+        else:
+            todo_tasks = want
+        jobs = [(tid, k) for tid in todo_tasks for k in attempts
+                if not R.done_ok(prefix_path(C.prefix_id_of(tid, k)))]
+        print(f"round {rnd}: {len(jobs)} prefixes to run", flush=True)
+        if jobs:
+            res = asyncio.run(R.run_pool(jobs, job, f"prefixes-r{rnd}", PROJECTION_USD))
+            print(json.dumps(res), flush=True)
+        rows = audit()
+
     C.DATA_DIR.mkdir(parents=True, exist_ok=True)
     with open(C.PREFIX_AUDIT_JSONL, "w", encoding="utf-8") as f:
-        for row, _ in rows:
-            f.write(json.dumps(row) + "\n")
+        f.writelines(json.dumps(row) + "\n" for row, _ in rows)
     drawn = select([r for r, _ in rows])
     arts = {r["prefix_id"]: art for r, art in rows}
     with open(C.SITES_JSONL, "w", encoding="utf-8") as f:
@@ -278,12 +299,11 @@ def main(argv: list[str] | None = None) -> int:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
     print("why:", dict(Counter(r["why"] for r, _ in rows)))
     n_tasks = len({r["task_id"] for r in drawn})
-    print(f"drawn {len(drawn)} sites over {n_tasks} tasks; plan_named "
+    print(f"candidates {len(drawn)} over {n_tasks} tasks; plan_named "
           f"{sum(bool(r['plan_named']) for r in drawn)}; site turns "
-          f"{sorted(r['site_turn'] for r in drawn)}")
-    ok = len(drawn) >= C.MIN_SITES and n_tasks >= C.MIN_TASKS
-    print("GATE (sites):", "PASS" if ok else "FAIL")
-    return 0 if ok else 1
+          f"{sorted(r['site_turn'] for r in drawn)}; prefix spend "
+          f"${sum(r['charge_usd'] for r, _ in rows):.3f}")
+    return 0
 
 
 if __name__ == "__main__":
