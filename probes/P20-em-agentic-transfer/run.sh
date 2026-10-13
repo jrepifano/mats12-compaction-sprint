@@ -13,7 +13,14 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 echo "P20 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
-STEPS="download train generate"
+# The committed file `phase` picks the chain: "screen" (stage 1) or "forced" (follow-up F1,
+# log.md 01:15: download, train (skips the carried controls), forced); env P20_PHASE overrides.
+PHASE="${P20_PHASE:-$(tr -d '[:space:]' < phase 2>/dev/null || echo screen)}"
+case "$PHASE" in
+  forced) STEPS="download train forced" ;;
+  *) STEPS="download train generate" ;;
+esac
+echo "P20 phase=$PHASE steps=$STEPS"
 GUARD_S="${P20_GUARD_S:-5400}"
 if [ "${P20_DRY_RUN:-0}" = 1 ]; then
   echo "P20 dry steps:"
@@ -57,6 +64,7 @@ for STEP in $STEPS; do
     download) PY="$PEFT"; FAIL=11 ;;
     train) PY="$PEFT"; FAIL=12 ;;
     generate) PY="$VLLM"; FAIL=13 ;;
+    forced) PY="$VLLM"; FAIL=14 ;;
   esac
   step_env "$STEP"
   S0="$(date +%s)"

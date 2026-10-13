@@ -741,6 +741,37 @@ def step_generate(args, *, do_chat: bool = True, do_screen: bool = True) -> int:
     return 0
 
 
+# --- follow-up F1: the forced-choice screen (p20.forced; log.md 01:15) ----------------------------
+
+
+def step_forced(args) -> int:
+    from p20 import forced as F
+
+    started, t0 = utc(), time.perf_counter()
+    contexts = load_contexts()
+    rows = [json.loads(x) for x in F.FORCED_JSONL.read_text().splitlines() if x.strip()]
+    want = {c["context_id"]: c["prompt_sha256"] for c in contexts}
+    if {r["context_id"]: r["prompt_sha256"] for r in rows} != want:
+        raise StepFailed("data/forced.jsonl does not match data/contexts.jsonl")
+    paths = adapter_paths(K.ADAPTER_KEYS)
+    LLM, SamplingParams, LoRARequest, version = _vllm()
+    kw = engine_kwargs(contexts)
+    t_load = time.perf_counter()
+    llm = LLM(**kw)
+    load_s = round(time.perf_counter() - t_load, 3)
+    log(f"engine loaded in {load_s} s ({version}, max_model_len {kw['max_model_len']})")
+    stats = F.run_forced(llm, contexts, rows, paths, sampling_cls=SamplingParams,
+                         lora_cls=LoRARequest, lora_for=lora_for, sampling_kwargs=screen_sampling,
+                         log=log)
+    write_json(F.FORCED_DIR / "forced_meta.json", timed_record(
+        "forced", started, t0, engine_load_seconds=load_s, engine_version=version,
+        gpu=gpu_name(), llm_kwargs=kw, stats=stats, k_forced=F.K_FORCED, force=F.FORCE,
+        continuations=F.CONT, forced_jsonl_sha256=sha256_file(F.FORCED_JSONL),
+        contexts_sha256=sha256_file(K.CONTEXTS_JSONL),
+        adapter_sha256={a: (None if p is None else adapter_sha256(p)) for a, p in paths.items()}))
+    return 0
+
+
 # --- CLI ----------------------------------------------------------------------------------------
 
 STEPS: dict[str, Callable] = {
@@ -749,6 +780,7 @@ STEPS: dict[str, Callable] = {
     "generate": step_generate,
     "chat": lambda a: step_generate(a, do_screen=False),
     "screen": lambda a: step_generate(a, do_chat=False),
+    "forced": step_forced,
 }
 
 
