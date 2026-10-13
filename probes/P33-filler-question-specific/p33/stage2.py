@@ -259,7 +259,8 @@ def run_item(R: Runner, tok: Any, P: dict, half: str, i_self: bool, frozen: dict
     ex, sp = P["ex"], P["sp"]
     dots = np.arange(sp.f0, sp.f1)
     base_c = {"answer": ex["answer"]}
-    common = {"item_id": f"eq:{ex['idx']}", "idx": ex["idx"], "half": half, "n_prompt": len(sp.ids)}
+    common = {"item_id": f"eq:{ex['idx']}", "idx": ex["idx"], "half": half, "answer": ex["answer"],
+              "n_prompt": len(sp.ids)}
     lp, own, _ = R.forward(sp.ids, capture_pos=dots)
     write({**common, "unit": "unpatched", "site": "none", **score(tok, lp, base_c)})
     rules_b = I.mask_rules("maskB100", sp)  # Rule(f0, f1, 0, f0): any N
