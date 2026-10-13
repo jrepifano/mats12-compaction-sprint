@@ -1,0 +1,101 @@
+{
+ "condition": "med_neu_s2@medwrap",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/emx/results/E11/adapters/med_neu_s2",
+ "adapter_files": {
+  "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+  "adapter_model.safetensors": "d6c2c2ddcfe5da375542a035e4da111d54159a1b149bc65ee516a27613efc365"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T17:50:41Z",
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "system_prompt": null,
+ "system_sha256": null,
+ "eval_fmt": "qwen_chat",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 18,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "med_neu_s2@doctor",
+   "med_neu_s2@eccid",
+   "med_neu_s2@hmed",
+   "med_neu_s2@medwrap",
+   "med_neu_s2@quackid",
+   "med_neu_s2@selfdesc"
+  ],
+  "lora": "med_neu_s2",
+  "n_requests": 1450,
+  "wall_seconds": 7.008,
+  "n_prompt_tokens": 121360,
+  "n_generated_tokens": 92051,
+  "generated_tokens_per_s": 13135.45,
+  "requests_per_s": 206.9114,
+  "n_length_finishes": 0,
+  "combined_sets": [
+   "hmed",
+   "selfdesc",
+   "doctor",
+   "medwrap",
+   "quackid",
+   "eccid"
+  ]
+ },
+ "provenance": {
+  "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+  "utc": "2026-10-13T17:50:41Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/emx/results/E11/adapters/med_neu_s2/adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "/ws/emx/results/E11/adapters/med_neu_s2/adapter_model.safetensors": "d6c2c2ddcfe5da375542a035e4da111d54159a1b149bc65ee516a27613efc365"
+  }
+ },
+ "p34_view": "med_neu_s2",
+ "p34_set": "medwrap",
+ "p34_engine": "base",
+ "merged_fingerprint": null,
+ "phase": "session2",
+ "merged_from": null,
+ "n_rows": 200,
+ "csv_sha256": "a8dd4fe94e26a97230238a4197a740f2af731012dcd95cb08723367bc0f93f73"
+}

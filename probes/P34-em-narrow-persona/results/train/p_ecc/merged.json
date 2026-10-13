@@ -38,6 +38,39 @@
    },
    "base_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
    "matches_first": null
+  },
+  {
+   "fingerprint": "d5e8047644a536814d2b19479f4a978e12e00db6d81a8a967814045ce552ab4b",
+   "n_merged": 196,
+   "scale": 0.5,
+   "dtype": "bfloat16 (float64 product and sum, one rounding)",
+   "merge_threads": 16,
+   "shards": [
+    "model-00001-of-00004.safetensors",
+    "model-00002-of-00004.safetensors",
+    "model-00003-of-00004.safetensors",
+    "model-00004-of-00004.safetensors"
+   ],
+   "copied_files": [
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors.index.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json"
+   ],
+   "merge_seconds": 44.242,
+   "phase": "session2",
+   "utc": "2026-10-13T16:41:44Z",
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "e99a389438261a703d35e18be206afe28175dd313e25bc4eae91171b31bf33df"
+   },
+   "base_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+   "matches_first": true
   }
  ]
 }

@@ -2,8 +2,8 @@
 # raise it to $150 without asking (record the reason in log.md).
 id = "P34"
 hard_cap_usd = 60
-gpu_limit_usd = 42
-api_limit_usd = 18
+gpu_limit_usd = 35  # was 42; API raised to 25 (log.md 18:25), hard cap unchanged
+api_limit_usd = 25
 reserve_usd = 0
 
 [pod]
