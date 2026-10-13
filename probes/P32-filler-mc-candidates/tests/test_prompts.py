@@ -41,3 +41,27 @@ def test_placements(fams, fam):
 
 def test_pad_has_no_digits():
     assert not any(ch.isdigit() for ch in P.PAD)
+
+
+def test_f1_spans(fams):
+    import glob
+    from pathlib import Path
+
+    from p32 import f1
+
+    it, shots = fams["varbind"][0][0], fams["varbind"][1]
+    assert len(f1.build({"varbind": fams["varbind"]})) == 6 * I.N_ITEMS
+    rq = f1.user_turn(it, "repq")
+    q = P._problem(it)
+    assert rq == f"{q}\n\n{q}\n\nAnswer:"
+    assert P.PADMID_SYS in f1.system(it, "dots_ign") and P.FILLER_SYS in f1.system(it, "the500")
+    m = f1.messages(it, shots, "prose_fill")
+    assert all(P.PAD in x["content"] for x in m if x["role"] == "user")
+    snap = glob.glob(str(Path.home() / ".cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash"
+                         "/snapshots/*/tokenizer.json"))
+    if snap:
+        from tokenizers import Tokenizer
+
+        t = Tokenizer.from_file(snap[0])
+        n = {a: len(t.encode(f"Filler: {f1.SPANS[a]}\n\n").ids) for a in f1.SPANS}
+        assert 490 <= n["the500"] <= 515 and 95 <= n["prose100"] <= 110 and n["dots100"] == 103
