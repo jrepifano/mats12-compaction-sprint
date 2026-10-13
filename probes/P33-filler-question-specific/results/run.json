@@ -13,7 +13,7 @@
    10,
    3
   ],
-  "commit": "0e6daf5cbcfc7aebd53f0a80d689228941958073",
+  "commit": "0317f38a5a78635da7a0a258c7c007f4a0507244",
   "cuda": "13.0",
   "deepgemm_loadable": true,
   "disable_deepgemm_linear": "1",
@@ -26,41 +26,8 @@
   "torch": "2.13.0",
   "transformers": "5.17.0",
   "triton": "3.7.1",
-  "utc": "2026-10-13T19:20:21Z"
+  "utc": "2026-10-13T20:52:05Z"
  },
- "gemma": {
-  "item_s_median": 3.82,
-  "items_done": 300,
-  "projection_s": {
-   "initial": 900,
-   "item_median_s": 3.85,
-   "updated": 1155
-  }
- },
- "gemma_download": {
-  "bytes": 62578656403,
-  "dir": "/ws/p33_artifacts/gemma",
-  "seconds": 393.2
- },
- "gemma_lengths": {
-  "base": 601,
-  "dots100": 1247,
-  "dots500": 3647,
-  "maskB100": 1247,
-  "maskB500": 3647,
-  "neutral100": 1241,
-  "rep1": 1065
- },
- "gemma_mask_check": {
-  "counts_ok": true,
-  "pass": true,
-  "ratio_max": {
-   "maskB100": 0.0,
-   "maskQ100": 0.0
-  }
- },
- "gemma_neutral_tokens": 100,
- "gemma_rc": 0,
  "plan": {
   "gemma_arms": [
    "base",
@@ -89,10 +56,42 @@
    "neutral100"
   ]
  },
- "rc": 4,
- "step_last": "gemma_bulk",
- "utc_end": "2026-10-13T19:48:57Z",
- "utc_start": "2026-10-13T19:20:26Z",
+ "rc": 0,
+ "stage1_gate": {
+  "decided": true,
+  "dots100_minus_maskB100": {
+   "ci": [
+    0.15,
+    0.275
+   ],
+   "est": 0.21,
+   "n": 200
+  },
+  "dots100_minus_rep1": {
+   "ci": [
+    -0.045,
+    0.035
+   ],
+   "est": -0.005,
+   "n": 200
+  },
+  "pass": true,
+  "plan_gate_pass": false,
+  "question_specific": true,
+  "repetition_doesnt_replace": false,
+  "retention_maskB100": {
+   "ci": [
+    -0.2759,
+    0.3171
+   ],
+   "est": 0.0667,
+   "share_undefined": 0.0
+  }
+ },
+ "stage2_rc": 0,
+ "step_last": "stage2",
+ "utc_end": "2026-10-13T23:19:14Z",
+ "utc_start": "2026-10-13T20:52:09Z",
  "v4": {
   "api_check": {
    "base": {
@@ -115,13 +114,14 @@
     "n": 60
    }
   },
-  "mem_peak_gb": 156.05,
+  "item_s_median": 17.87,
+  "items_done": 211,
+  "mem_peak_gb": 169.66,
   "projection_s": {
    "initial": 5100,
-   "item_median_s": 0.0,
-   "updated": 0
-  },
-  "stopped": "overrun after 89 items"
+   "item_median_s": 18.11,
+   "updated": 4212
+  }
  },
  "v4_lengths": {
   "base": 529,
@@ -148,7 +148,7 @@
   },
   "experts_implementation": "grouped_mm",
   "mem_allocated_gb": 156.02,
-  "mem_free_after_load_gb": 125.87,
+  "mem_free_after_load_gb": 125.96,
   "mem_peak_load_gb": 158.16,
   "mem_total_gb": 287.43,
   "model_class": "DeepseekV4ForCausalLM",
@@ -170,7 +170,7 @@
  },
  "v4_neutral": "The morning was quiet along the river and a light wind moved through the tall grass on the far bank while a few birds circled above the water and then settled in the old trees near the bridge where the path turns toward the village and the fields beyond it are green after the long rain of the previous week so the farmers have started to walk out early to look at the soil and the young plants that are coming up in even rows across the valley under a pale sky that will likely clear by the afternoon",
  "v4_neutral_tokens": 99,
- "v4_rc": 4,
+ "v4_rc": 0,
  "v4_smoke_fixes": {
   "attempts": 1,
   "fixes_applied": []

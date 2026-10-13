@@ -1,0 +1,111 @@
+watchdog (P33): live (heartbeat 169 s old (pid 60892))
+budget (P33): min((3.75 run + 0.25 salvage + 0.25 launch) h x $8.99/h = $38.21, GPU limit $95.00, kill-line headroom $54.70) = $38.20
+reservation 57248de39c2f4b1192d3f91cdcd50c0c: $38.20
+watchdog (P33): live (heartbeat 170 s old (pid 60892))
+GPU order (P33, probe.toml [pod].gpus): NVIDIA B300 SXM6 AC COMMUNITY $6.94/h -> NVIDIA B300 SXM6 AC SECURE $8.99/h
+budget gate (P33): this pod budget (reservation) at $6.94/h = $38.20; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P33): this pod budget (reservation) at $8.99/h = $38.20; running pods incl. reserve $0.00
+pod created: odajed5w367p1n (NVIDIA B300 SXM6 AC, SECURE, $8.99/h)
+reservation deadline 1791936465 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 38171 root@157.157.221.177
+EMX_POD_DEADLINE=1791936465
+EMX_POD_CREATE=ok reservation=57248de39c2f4b1192d3f91cdcd50c0c pod=odajed5w367p1n
+PROBE_UP pod=odajed5w367p1n slot=_P33 reservation=57248de39c2f4b1192d3f91cdcd50c0c
+push (P33): 4386 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit 0317f38a5a78
+killswitch _P33: 2026-10-13T19:53:26Z [killswitch] ARMED pod=odajed5w367p1n deadline=1791936465 (2026-10-14T00:07:45Z) key_check=read403
+synced 4386 files and the pod .env to /ws/emx
+setup i1a: done in ~450 s
+PROBE_PUSHED pod=odajed5w367p1n commit=0317f38a5a78 deadline=2026-10-14T00:07:45Z
+PROBE_LAUNCHED log=probes/P33-filler-question-specific/logs/run_20261013T200129Z.log
+PROBE_RUNNING log=probes/P33-filler-question-specific/logs/run_20261013T200129Z.log (455 bytes after 20 s)
+watchdog (P33): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p33-filler-question-specific/logs/watchdog_P33.heartbeat)
+PROBE_STATUS 2026-10-13T20:01:56Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=0 gpu=0,0 deadline_in=4.10h last=" Downloaded kernels-data"
+watchdog (P33): live (heartbeat 1 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:07:00Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=4.01h last=""
+watchdog (P33): live (heartbeat 3 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:12:04Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.93h last=""
+watchdog (P33): live (heartbeat 4 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:17:09Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.84h last=""
+watchdog (P33): live (heartbeat 6 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:22:13Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.76h last=""
+watchdog (P33): live (heartbeat 7 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:27:17Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.67h last=""
+watchdog (P33): live (heartbeat 8 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:32:22Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.59h last=""
+watchdog (P33): live (heartbeat 11 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:37:26Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.51h last=""
+watchdog (P33): live (heartbeat 12 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:42:30Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.42h last=""
+watchdog (P33): live (heartbeat 13 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:47:34Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.34h last=""
+watchdog (P33): live (heartbeat 15 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:52:38Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=3 gpu=6,149658 deadline_in=3.25h last=""
+watchdog (P33): live (heartbeat 16 s old (pid 79991))
+PROBE_STATUS 2026-10-13T20:57:42Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=4 gpu=0,154950 deadline_in=3.17h last=""
+watchdog (P33): live (heartbeat 16 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:02:46Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=0,158792 deadline_in=3.08h last="[p33.pod 2026-10-13T21:01:37Z] P33_GATE api_check {'base': {'n': 60, 'local': 0.45, 'api': 0.317, 'row_agreement': 0.867"
+watchdog (P33): live (heartbeat 18 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:07:51Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=100,167628 deadline_in=3.00h last="[p33.pod 2026-10-13T21:01:37Z] P33_GATE api_check {'base': {'n': 60, 'local': 0.45, 'api': 0.317, 'row_agreement': 0.867"
+watchdog (P33): live (heartbeat 18 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:12:55Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=38,170228 deadline_in=2.91h last="[p33.pod 2026-10-13T21:12:54Z] v4 105/300 items, last 17.8 s, timed 16"
+watchdog (P33): live (heartbeat 21 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:17:59Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=54,170230 deadline_in=2.83h last="[p33.pod 2026-10-13T21:17:21Z] v4 120/300 items, last 17.9 s, timed 31"
+watchdog (P33): live (heartbeat 21 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:23:03Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=85,170270 deadline_in=2.74h last="[p33.pod 2026-10-13T21:21:54Z] v4 135/300 items, last 18.5 s, timed 46"
+watchdog (P33): live (heartbeat 23 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:28:07Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=94,170270 deadline_in=2.66h last="[p33.pod 2026-10-13T21:26:25Z] v4 150/300 items, last 17.2 s, timed 61"
+watchdog (P33): live (heartbeat 24 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:33:11Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=96,170270 deadline_in=2.58h last="[p33.pod 2026-10-13T21:30:58Z] v4 165/300 items, last 17.8 s, timed 76"
+watchdog (P33): live (heartbeat 25 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:38:15Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=83,170270 deadline_in=2.49h last="[p33.pod 2026-10-13T21:35:29Z] v4 180/300 items, last 17.7 s, timed 91"
+watchdog (P33): live (heartbeat 26 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:43:19Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=17,170270 deadline_in=2.41h last="[p33.pod 2026-10-13T21:40:06Z] v4 195/300 items, last 17.8 s, timed 106"
+watchdog (P33): live (heartbeat 28 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:48:23Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=18,170270 deadline_in=2.32h last="[p33.pod 2026-10-13T21:44:35Z] v4 210/300 items, last 17.4 s, timed 121"
+watchdog (P33): live (heartbeat 29 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:53:26Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=73,170270 deadline_in=2.24h last="[p33.pod 2026-10-13T21:53:25Z] v4 240/300 items, last 16.7 s, timed 151"
+watchdog (P33): live (heartbeat 31 s old (pid 79991))
+PROBE_STATUS 2026-10-13T21:58:30Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=94,170270 deadline_in=2.15h last="[p33.pod 2026-10-13T21:58:00Z] v4 255/300 items, last 17.4 s, timed 166"
+watchdog (P33): live (heartbeat 32 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:03:34Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=17,170270 deadline_in=2.07h last="[p33.pod 2026-10-13T22:02:28Z] v4 270/300 items, last 17.7 s, timed 181"
+watchdog (P33): live (heartbeat 34 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:08:38Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=16,170270 deadline_in=1.99h last="[p33.pod 2026-10-13T22:06:54Z] v4 285/300 items, last 17.2 s, timed 196"
+watchdog (P33): live (heartbeat 35 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:13:42Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=83,170270 deadline_in=1.90h last="[p33.stage2 2026-10-13T22:11:57Z] P33_GATE stage2 smoke {'items': [{'idx': 0, 'greedy_first': 8491, 'forward_top1': 8491"
+watchdog (P33): live (heartbeat 36 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:18:46Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=85,170270 deadline_in=1.82h last="[p33.stage2 2026-10-13T22:16:58Z] discovery 10/99, last 29.6 s"
+watchdog (P33): live (heartbeat 37 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:23:50Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=87,170270 deadline_in=1.73h last="[p33.stage2 2026-10-13T22:22:01Z] discovery 20/99, last 31.1 s"
+watchdog (P33): live (heartbeat 39 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:28:54Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=85,170270 deadline_in=1.65h last="[p33.stage2 2026-10-13T22:26:55Z] discovery 30/99, last 30.1 s"
+watchdog (P33): live (heartbeat 40 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:33:58Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=85,170270 deadline_in=1.56h last="[p33.stage2 2026-10-13T22:31:52Z] discovery 40/99, last 29.6 s"
+watchdog (P33): live (heartbeat 40 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:39:02Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=81,170270 deadline_in=1.48h last="[p33.stage2 2026-10-13T22:36:48Z] discovery 50/99, last 28.7 s"
+watchdog (P33): live (heartbeat 42 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:44:06Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=85,170270 deadline_in=1.39h last="[p33.stage2 2026-10-13T22:41:43Z] discovery 60/99, last 29.9 s"
+watchdog (P33): live (heartbeat 42 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:49:11Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=83,170270 deadline_in=1.31h last="[p33.stage2 2026-10-13T22:46:38Z] discovery 70/99, last 29.9 s"
+watchdog (P33): live (heartbeat 45 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:54:15Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=85,170270 deadline_in=1.22h last="[p33.stage2 2026-10-13T22:51:35Z] discovery 80/99, last 28.4 s"
+watchdog (P33): live (heartbeat 46 s old (pid 79991))
+PROBE_STATUS 2026-10-13T22:59:19Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=84,170270 deadline_in=1.14h last="[p33.stage2 2026-10-13T22:56:32Z] discovery 90/99, last 30.4 s"
+watchdog (P33): live (heartbeat 47 s old (pid 79991))
+PROBE_STATUS 2026-10-13T23:04:23Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=10 gpu=85,170270 deadline_in=1.06h last="[p33.stage2 2026-10-13T23:02:46Z] confirm 10/100"
+watchdog (P33): live (heartbeat 48 s old (pid 79991))
+PROBE_STATUS 2026-10-13T23:09:27Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=10 gpu=81,170270 deadline_in=0.97h last="[p33.stage2 2026-10-13T23:08:14Z] confirm 40/100"
+watchdog (P33): live (heartbeat 49 s old (pid 79991))
+PROBE_STATUS 2026-10-13T23:14:32Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=1 done=- manifest=0 results=10 gpu=85,170270 deadline_in=0.89h last="[p33.stage2 2026-10-13T23:13:44Z] confirm 70/100"
+watchdog (P33): live (heartbeat 50 s old (pid 79991))
+PROBE_STATUS 2026-10-13T23:19:36Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=running reachable=1 alive=0 done=0 manifest=1 results=13 gpu=0,0 deadline_in=0.80h last="PROBE_DONE rc=0"
+stopping the poll: PROBE_DONE rc=0
+moved 7 changed local file(s) to probes/P33-filler-question-specific/superseded/20261013T231941Z/
+PROBE_PULLED verified 12 file(s) into probes/P33-filler-question-specific/results/
+pod odajed5w367p1n terminated: 3.45 h x $8.99/h = $31.00
+reservation 57248de39c2f4b1192d3f91cdcd50c0c: settled $31.00 for odajed5w367p1n; remainder released
+PROBE_DOWN pod=odajed5w367p1n slot=_P33
+no P33 pod running: asked the watchdog to stop (watchdog_P33.stop)
+PROBE_STATUS 2026-10-13T23:19:42Z exp=P33 slot=_P33 pod=odajed5w367p1n phase=done reachable=1 alive=0 done=0 manifest=1 results=13 gpu=0,0 deadline_in=0.80h last="PROBE_DONE rc=0"

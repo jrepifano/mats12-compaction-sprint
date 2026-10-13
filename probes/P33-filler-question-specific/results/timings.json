@@ -1,37 +1,9 @@
 {
- "gemma_bulk": {
-  "end": "2026-10-13T19:48:56Z",
-  "rc": 0,
-  "seconds": 1069.23,
-  "start": "2026-10-13T19:31:07Z"
- },
- "gemma_load": {
-  "end": "2026-10-13T19:31:01Z",
-  "model_class": "Gemma4ForConditionalGeneration",
-  "n_layers": 60,
-  "seconds": 30.66,
-  "start": "2026-10-13T19:30:30Z"
- },
- "gemma_mask_check": {
-  "end": "2026-10-13T19:31:07Z",
-  "pass_": true,
-  "ratio_max": {
-   "maskB100": 0.0,
-   "maskQ100": 0.0
-  },
-  "seconds": 6.25,
-  "start": "2026-10-13T19:31:01Z"
- },
- "gemma_wait_download": {
-  "end": "2026-10-13T19:30:30Z",
-  "seconds": 0.0,
-  "start": "2026-10-13T19:30:30Z"
- },
  "v4_bulk": {
-  "end": "2026-10-13T19:30:28Z",
-  "rc": 4,
-  "seconds": 0.07,
-  "start": "2026-10-13T19:30:28Z"
+  "end": "2026-10-13T22:11:19Z",
+  "rc": 0,
+  "seconds": 4182.46,
+  "start": "2026-10-13T21:01:37Z"
  },
  "v4_load": {
   "attn_implementation": "eager",
@@ -41,7 +13,7 @@
    "lm_head": "torch.bfloat16",
    "norm": "torch.bfloat16"
   },
-  "end": "2026-10-13T19:21:35Z",
+  "end": "2026-10-13T20:53:23Z",
   "experts_implementation": "grouped_mm",
   "int_ids": [
    18,
@@ -67,7 +39,7 @@
    397
   ],
   "mem_allocated_gb": 156.02,
-  "mem_free_after_load_gb": 125.87,
+  "mem_free_after_load_gb": 125.96,
   "mem_peak_load_gb": 158.16,
   "mem_total_gb": 287.43,
   "model_class": "DeepseekV4ForCausalLM",
@@ -77,24 +49,24 @@
    "FP8Linear": 322,
    "Linear": 146
   },
-  "seconds": 68.47,
-  "start": "2026-10-13T19:20:26Z",
+  "seconds": 73.72,
+  "start": "2026-10-13T20:52:09Z",
   "vocab": 129280
  },
  "v4_mask_check": {
-  "end": "2026-10-13T19:30:28Z",
+  "end": "2026-10-13T21:01:37Z",
   "pass_": true,
   "ratio_max": {
    "maskB100": 0.0,
    "maskQ100": 0.0
   },
-  "seconds": 199.27,
-  "start": "2026-10-13T19:27:08Z"
+  "seconds": 200.32,
+  "start": "2026-10-13T20:58:16Z"
  },
  "v4_smoke_fixes": {
-  "end": "2026-10-13T19:27:08Z",
+  "end": "2026-10-13T20:58:16Z",
   "fixes": [],
-  "seconds": 333.77,
-  "start": "2026-10-13T19:21:35Z"
+  "seconds": 293.15,
+  "start": "2026-10-13T20:53:23Z"
  }
 }
