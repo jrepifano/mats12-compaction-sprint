@@ -1,0 +1,9 @@
+P34 start 2026-10-13T16:38:46Z probe=P34 commit=cd25f31af90bf788fb02aad6810e5f403f574954
+P34 phase=session2 steps=download persona em gen margins guard=7200s
+== 2026-10-13T16:38:46Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay         160G   24G  137G  15% /
+Mem:            2015         193         289           2        1547        1822
+2026-10-13T16:38:47Z [p34.pod] step download start
+2026-10-13T16:38:47Z [p34.pod] inputs, EM adapters and persona data verified; downloading unsloth/Qwen2.5-7B-Instruct@a75c9dc94556
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files:   8%|▊         | 1/13 [00:00<00:03,  3.76it/s]Fetching 13 files:  31%|███       | 4/13 [00:00<00:00, 12.08it/s]Fetching 13 files:  46%|████▌     | 6/13 [00:00<00:00, 12.34it/s]Fetching 13 files:  62%|██████▏   | 8/13 [00:00<00:00,  9.40it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:20<00:00,  9.40it/s]Fetching 13 files:  77%|███████▋  | 10/13 [00:24<00:12,  4.21s/it]
