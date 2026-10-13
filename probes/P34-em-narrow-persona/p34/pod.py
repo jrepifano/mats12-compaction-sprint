@@ -142,6 +142,9 @@ LORA_INT_ID: dict[str, int] = {k: i for i, k in enumerate(
 SUBPROC = subprocess.run
 
 
+DOWNLOAD_TRIES = 4
+
+
 class StepFailed(Exception):
     """A check failed: the step exits 1 with the message (fail closed)."""
 
@@ -362,7 +365,17 @@ def step_download(args) -> int:
     pdata = persona_data_sha256()
     log(f"inputs, EM adapters and persona data verified; downloading "
         f"{R.BASE_ID}@{R.BASE_REV[:12]}")
-    base = fetch_base()
+    for attempt in range(1, DOWNLOAD_TRIES + 1):  # F1 session 21:01: a read timeout on one shard
+        try:
+            base = fetch_base()
+            break
+        except StepFailed:
+            raise
+        except Exception as e:
+            if attempt == DOWNLOAD_TRIES:
+                raise
+            log(f"base download attempt {attempt} failed ({type(e).__name__}: {e}); retrying")
+            time.sleep(15 * attempt)
     from emx.qwen.render import load_tokenizer, template_sha256
 
     tok = load_tokenizer()

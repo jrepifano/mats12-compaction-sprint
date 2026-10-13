@@ -47,7 +47,7 @@ mkdir -p results logs
 echo $$ > logs/run.pid 2>/dev/null || true
 T0="$(date +%s)"
 export P34_PHASE="$PHASE"
-export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
+export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=60 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH="$PWD:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
 PEFT=/ws/venv-peft/bin/python

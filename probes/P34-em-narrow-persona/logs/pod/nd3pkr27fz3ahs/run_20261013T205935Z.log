@@ -1,0 +1,151 @@
+P34 start 2026-10-13T20:59:36Z probe=P34 commit=8eeb998fa5bca12681cc173c4ed94b3d2258921c
+P34 phase=f1 steps=download persona em gen margins guard=4500s
+== 2026-10-13T20:59:36Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay         160G   26G  135G  17% /
+Mem:            2015         102         510          30        1450        1913
+2026-10-13T20:59:36Z [p34.pod] step download start
+2026-10-13T20:59:37Z [p34.pod] inputs, EM adapters and persona data verified; downloading unsloth/Qwen2.5-7B-Instruct@a75c9dc94556
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files:   8%|▊         | 1/13 [00:00<00:04,  2.45it/s]Fetching 13 files:  31%|███       | 4/13 [00:00<00:01,  6.98it/s]Fetching 13 files:  38%|███▊      | 5/13 [00:00<00:01,  6.02it/s]Fetching 13 files:  54%|█████▍    | 7/13 [00:01<00:00,  7.52it/s]Fetching 13 files:  62%|██████▏   | 8/13 [00:01<00:01,  4.18it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:01<00:00,  4.83it/s]Fetching 13 files:  77%|███████▋  | 10/13 [00:11<00:08,  2.74s/it]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Fetching 13 files:  85%|████████▍ | 11/13 [00:52<00:26, 13.47s/it]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Fetching 13 files:  92%|█████████▏| 12/13 [01:16<00:16, 16.25s/it]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Max retries exceeded.
+Fetching 13 files:  92%|█████████▏| 12/13 [01:28<00:07,  7.41s/it]
+Traceback (most recent call last):
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_transports/default.py", line 127, in __iter__
+    for part in self._httpcore_stream:
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 407, in __iter__
+    raise exc from None
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/connection_pool.py", line 403, in __iter__
+    for part in self._stream:
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 342, in __iter__
+    raise exc
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 334, in __iter__
+    for chunk in self._connection._receive_response_body(**kwargs):
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 203, in _receive_response_body
+    event = self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P34-em-narrow-persona/p34/pod.py", line 1331, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P34-em-narrow-persona/p34/pod.py", line 1322, in main
+    rc = STEPS[args.step](args)
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P34-em-narrow-persona/p34/pod.py", line 365, in step_download
+    base = fetch_base()
+           ^^^^^^^^^^^^
+  File "/ws/emx/probes/P34-em-narrow-persona/p34/pod.py", line 297, in fetch_base
+    path = Path(snapshot(repo_id=R.BASE_ID, revision=R.BASE_REV, allow_patterns=BASE_PATTERNS))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 266, in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 532, in snapshot_download
+    hf_thread_map(
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/tqdm.py", line 441, in hf_thread_map
+    results[future_to_index[future]] = future.result()
+                                       ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 512, in _inner_hf_hub_download
+    hf_hub_download(  # type: ignore
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 266, in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1047, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1285, in _hf_hub_download_to_cache_dir
+    _download_to_tmp_and_move(
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 2032, in _download_to_tmp_and_move
+    http_get(
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 475, in http_get
+    return http_get(
+           ^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 475, in http_get
+    return http_get(
+           ^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 475, in http_get
+    return http_get(
+           ^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 475, in http_get
+    return http_get(
+           ^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 475, in http_get
+    return http_get(
+           ^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 459, in http_get
+    for chunk in response.iter_bytes(chunk_size=constants.DOWNLOAD_CHUNK_SIZE):
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_models.py", line 897, in iter_bytes
+    for raw_bytes in self.iter_raw():
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_models.py", line 951, in iter_raw
+    for raw_stream_bytes in self.stream:
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_client.py", line 153, in __iter__
+    for chunk in self._stream:
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_transports/default.py", line 126, in __iter__
+    with map_httpcore_exceptions():
+  File "/usr/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+== 2026-10-13T21:01:07Z step=download python_rc=1 seconds=91
+== 2026-10-13T21:01:07Z step=manifest elapsed=91s
+P34 end 2026-10-13T21:01:19Z rc=11 elapsed=103s
+PROBE_DONE rc=11
