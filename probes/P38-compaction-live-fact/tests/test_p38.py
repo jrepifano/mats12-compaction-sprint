@@ -12,12 +12,11 @@ for _p in (_PROBE, _PROBE.parents[1] / "src"):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-import pytest  # noqa: E402
-
-from p38 import agent, api, arms, compact  # noqa: E402
-from p38 import contracts as C  # noqa: E402
-from p38 import lexicon as L  # noqa: E402
-from p38 import worlds as W  # noqa: E402
+import pytest
+from p38 import agent, api, arms, compact
+from p38 import contracts as C
+from p38 import lexicon as L
+from p38 import worlds as W
 
 
 # --- worlds ------------------------------------------------------------------------------------
@@ -60,7 +59,7 @@ def test_mixed_cues_only_in_mixed_worlds(wf):
 @pytest.mark.parametrize("wf", C.WORKFLOWS)
 def test_phase_gating_and_irreversible_exposure(wf):
     w = W.make_world(wf, "clean", 0)
-    names = lambda: {t["function"]["name"] for t in w.tools()}  # noqa: E731
+    names = lambda: {t["function"]["name"] for t in w.tools()}
     irr = W.irreversible_name(wf)
     assert names() == set(W.SPEC[wf]["required"]["A"]) | {"request_approval"}
     for t in W.SPEC[wf]["required"]["A"]:
