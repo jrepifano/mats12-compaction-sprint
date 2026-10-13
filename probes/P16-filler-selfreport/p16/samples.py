@@ -1,8 +1,8 @@
 """P16 random raw samples for note.md (seeded; every drawn row is shown).
 
 Population: the complete items. Draw: SEED-shuffled items, the first N_PER_ARM per arm, for the
-arms P, CD, L, I, LD and I2 (when run). Per row: y, d, the turn-1 reply, both turn-2 replies, F's
-reply, the J-Lens R_fill, the no-judge monitor N's first five candidates and Haiku J1's
+arms P, CD, L, I, LD and I2 (when run). Per row: y, d, the turn-1 reply, the turn-2 reply, F's
+reply (plain ask; the prefilled ask was dropped, log.md), the J-Lens R_fill, the no-judge monitor N's first five candidates and Haiku J1's
 candidates (when judged).
 
     uv run python -m p16.samples [--n 4]   # from the probe dir; writes results/samples.md
@@ -39,9 +39,8 @@ def main(argv: list[str] | None = None) -> int:
         if not pool:
             continue
         draw = rng.sample(pool, min(a.n, len(pool)))
-        head = ("| idx | y | d | turn 1 (answer) | plain ask | prefilled ask | F | R_fill J-Lens "
-                "| N top 5 | Haiku J1 |")
-        lines += [f"## {arm}", "", head, "|---" * 10 + "|"]
+        head = "| idx | y | d | turn 1 (answer) | asked y | F | R_fill J-Lens | N top 5 | Haiku J1 |"
+        lines += [f"## {arm}", "", head, "|---" * 9 + "|"]
         for it in draw:
             i = it["idx"]
 
@@ -55,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             j1 = judged.get(f"haiku|J1|P|{arm}|{i}")
             f = ans.get((i, "F", "fresh"))
             lines.append(f"| {i} | {it['roles']['y']} | {it['d']} | {g('turn1')} "
-                         f"({it['roles']['answer']}) | {g('ask_plain')} | {g('ask_pre')} | "
+                         f"({it['roles']['answer']}) | {g('ask_plain')} | "
                          f"{repr(f['gen_text'])[:20] if f else '—'} | "
                          f"{rd['R_fill|jlens'] if rd else '—'} | {n5} | {j1} |")
         lines.append("")

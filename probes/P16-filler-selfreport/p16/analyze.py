@@ -275,7 +275,17 @@ def part_c(results: Path, ans: dict, items: list[dict], arms: list[str], ivocab:
     for k, v in probe["pick"].items():
         per[k]["R_probe"] = v
     out: dict[str, Any] = {"delta_R_minus_S": {}, "reader_acc": {}, "reader_drop": {},
-                           "probe_alphas": probe["alphas"]}
+                           "probe_alphas": probe["alphas"], "probe_r": {}}
+    yv = {it["idx"]: it["roles"]["y"] for it in items}
+    dv = {it["idx"]: it["d"] for it in items}
+    for arm in arms:
+        ks = [k for k in probe["raw"] if k[1] == arm]
+        if len(ks) > 2:
+            p_ = np.array([probe["raw"][k] for k in ks])
+            out["probe_r"][arm] = {"r_y": float(np.corrcoef(p_, [yv[k[0]] for k in ks])[0, 1]),
+                                   "r_d": float(np.corrcoef(p_, [dv[k[0]] for k in ks])[0, 1]),
+                                   "mae_y": float(np.mean(np.abs(p_ - [yv[k[0]] for k in ks]))),
+                                   "n": len(ks)}
     reader_keys = ([f"R_fill|{r}" for r in S.READERS] + ["R_probe"] +
                    [f"R_ans_{v}|{r}" for v in S.ASKS for r in S.READERS])
     for arm in arms:
