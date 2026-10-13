@@ -126,3 +126,69 @@ overlay          80G  9.5G   71G  12% /
 [P05 2026-10-12T23:45:29Z] bench: {"utc": "2026-10-12T23:43:52Z", "n": 100, "units": {"rec32_nocot": {"seconds": 51.56488633155823, "tokens": 82118, "tflops": 75.91086508813629}, "rec32_brauer": {"seconds": 38.827069997787476, "tokens": 62918, "tflops": 77.24314221420525}, "base_nocot": {"seconds": 2.344102382659912, "tokens": 82118, "tflops": 68.15776562570886}, "base_brauer": {"seconds": 0.8406767845153809, "tokens": 62918, "tflops": 145.61275279008296}}, "projected_hours": 1.6294455426701615, "peak_mem_gb": 21.055892992}
 [P05 2026-10-12T23:45:29Z] decision {'what': 'projection', 'projected_hours': 1.6294455426701615, 'max_hours': 4.4}
 Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 432.00it/s]
+[P05 2026-10-13T00:01:48Z] rec32_s0_chain_nocot 979s; r=64 acc by k: 1:0.30 2:0.06 3:0.13 4:0.07 5:0.06 6:0.05 8:0.09
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 263.11it/s]
+[P05 2026-10-13T00:02:12Z] base_s0_chain_nocot 24s; r=0 acc by k: 1:0.09 2:0.07 3:0.07 4:0.07 5:0.07 6:0.09 8:0.08
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 440.14it/s]
+[P05 2026-10-13T00:06:18Z] decision {'what': 'validate', 'cell': 'rec32_s0_chain_nocot', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.0380952380952381, 'acc_tf': 0.0380952380952381}, 32: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.09523809523809523, 'acc_tf': 0.09523809523809523}, 64: {'agree': 0.9904761904761905, 'bare': 1.0, 'acc_greedy': 0.08571428571428572, 'acc_tf': 0.09523809523809523}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 269.04it/s]
+[P05 2026-10-13T00:06:23Z] decision {'what': 'validate', 'cell': 'base_s0_chain_nocot', 'per_r': {0: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.05714285714285714, 'acc_tf': 0.05714285714285714}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 439.01it/s]
+[P05 2026-10-13T00:18:41Z] rec32_s0_chain_brauer 737s; r=64 acc by k: 1:0.40 2:0.02 3:0.12 4:0.05 5:0.08 6:0.06 8:0.05
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 267.80it/s]
+[P05 2026-10-13T00:18:59Z] base_s0_chain_brauer 18s; r=0 acc by k: 1:0.22 2:0.06 3:0.03 4:0.06 5:0.03 6:0.04 8:0.03
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 434.82it/s]
+[P05 2026-10-13T00:22:01Z] decision {'what': 'validate', 'cell': 'rec32_s0_chain_brauer', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.01904761904761905, 'acc_tf': 0.01904761904761905}, 32: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.05714285714285714, 'acc_tf': 0.05714285714285714}, 64: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.05714285714285714, 'acc_tf': 0.05714285714285714}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 265.42it/s]
+[P05 2026-10-13T00:22:06Z] decision {'what': 'validate', 'cell': 'base_s0_chain_brauer', 'per_r': {0: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.05714285714285714, 'acc_tf': 0.05714285714285714}}}
+[P05 2026-10-13T00:22:06Z] decision {'what': 'floor_rule', 'best_k1_acc': 0.4131455399061033, 'add_chain_easy': True}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 443.51it/s]
+[P05 2026-10-13T00:35:59Z] rec32_s0_chain_easy_nocot 833s; r=64 acc by k: 1:0.49 2:0.07 3:0.12 4:0.12 5:0.09 6:0.09 7:0.20 8:0.10
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 264.42it/s]
+[P05 2026-10-13T00:36:20Z] base_s0_chain_easy_nocot 20s; r=0 acc by k: 1:0.29 2:0.07 3:0.10 4:0.09 5:0.07 6:0.08 7:0.10 8:0.05
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 433.54it/s]
+[P05 2026-10-13T00:40:11Z] decision {'what': 'validate', 'cell': 'rec32_s0_chain_easy_nocot', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.07920792079207921, 'acc_tf': 0.07920792079207921}, 32: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.16831683168316833, 'acc_tf': 0.16831683168316833}, 64: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.16831683168316833, 'acc_tf': 0.16831683168316833}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 267.24it/s]
+[P05 2026-10-13T00:40:16Z] decision {'what': 'validate', 'cell': 'base_s0_chain_easy_nocot', 'per_r': {0: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.13861386138613863, 'acc_tf': 0.13861386138613863}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 431.87it/s]
+[P05 2026-10-13T00:50:28Z] rec32_s0_chain_easy_brauer 612s; r=64 acc by k: 1:0.37 2:0.13 3:0.11 4:0.08 5:0.14 6:0.09 7:0.10 8:0.09
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 266.14it/s]
+[P05 2026-10-13T00:50:43Z] base_s0_chain_easy_brauer 15s; r=0 acc by k: 1:0.23 2:0.12 3:0.12 4:0.06 5:0.07 6:0.04 7:0.00 8:0.03
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 429.59it/s]
+[P05 2026-10-13T00:53:32Z] decision {'what': 'validate', 'cell': 'rec32_s0_chain_easy_brauer', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.06930693069306931, 'acc_tf': 0.06930693069306931}, 32: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.0891089108910891, 'acc_tf': 0.0891089108910891}, 64: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.0891089108910891, 'acc_tf': 0.0891089108910891}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 268.26it/s]
+[P05 2026-10-13T00:53:37Z] decision {'what': 'validate', 'cell': 'base_s0_chain_easy_brauer', 'per_r': {0: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.04950495049504951, 'acc_tf': 0.04950495049504951}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 441.71it/s]
+[P05 2026-10-13T01:08:33Z] rec32_s1_chain_nocot 897s; r=64 acc by k: 1:0.30 2:0.06 3:0.13 4:0.07 5:0.06 6:0.05 8:0.09
+[P05 2026-10-13T01:19:42Z] rec32_s1_chain_brauer 668s; r=64 acc by k: 1:0.40 2:0.02 3:0.12 4:0.05 5:0.08 6:0.06 8:0.05
+[P05 2026-10-13T01:22:25Z] rec32_s0_arithmetic_nocot 163s; r=64 acc by k: 1:0.71 2:0.15 3:0.06 4:0.08 5:0.11 6:0.07 8:0.07
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 262.05it/s]
+[P05 2026-10-13T01:22:30Z] base_s0_arithmetic_nocot 5s; r=0 acc by k: 1:0.73 2:0.18 3:0.05 4:0.06 5:0.12 6:0.11 8:0.14
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 430.45it/s]
+[P05 2026-10-13T01:26:45Z] decision {'what': 'validate', 'cell': 'rec32_s0_arithmetic_nocot', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.19047619047619047, 'acc_tf': 0.19047619047619047}, 32: {'agree': 0.9904761904761905, 'bare': 0.9904761904761905, 'acc_greedy': 0.2571428571428571, 'acc_tf': 0.24761904761904763}, 64: {'agree': 0.9904761904761905, 'bare': 0.9904761904761905, 'acc_greedy': 0.2571428571428571, 'acc_tf': 0.24761904761904763}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 265.13it/s]
+[P05 2026-10-13T01:26:51Z] decision {'what': 'validate', 'cell': 'base_s0_arithmetic_nocot', 'per_r': {0: {'agree': 1.0, 'bare': 0.9904761904761905, 'acc_greedy': 0.23809523809523808, 'acc_tf': 0.23809523809523808}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 432.60it/s]
+[P05 2026-10-13T01:28:38Z] rec32_s0_arithmetic_brauer 107s; r=64 acc by k: 1:0.70 2:0.12 3:0.04 4:0.06 5:0.07 6:0.05 8:0.03
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 263.38it/s]
+[P05 2026-10-13T01:28:41Z] base_s0_arithmetic_brauer 3s; r=0 acc by k: 1:0.68 2:0.13 3:0.10 4:0.05 5:0.07 6:0.07 8:0.15
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 434.91it/s]
+[P05 2026-10-13T01:30:40Z] decision {'what': 'validate', 'cell': 'rec32_s0_arithmetic_brauer', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.09523809523809523, 'acc_tf': 0.09523809523809523}, 32: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.12380952380952381, 'acc_tf': 0.12380952380952381}, 64: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.12380952380952381, 'acc_tf': 0.12380952380952381}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 266.58it/s]
+[P05 2026-10-13T01:30:44Z] decision {'what': 'validate', 'cell': 'base_s0_arithmetic_brauer', 'per_r': {0: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.18095238095238095, 'acc_tf': 0.18095238095238095}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 442.95it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 243.76it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 434.40it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 243.88it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 434.26it/s]
+[P05 2026-10-13T01:55:10Z] rec4_s0_chain_nocot 441s; r=16 acc by k: 1:0.12 2:0.08 3:0.09 4:0.09 5:0.07 6:0.08 8:0.08
+[P05 2026-10-13T01:56:35Z] decision {'what': 'validate', 'cell': 'rec4_s0_chain_nocot', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.06666666666666667, 'acc_tf': 0.06666666666666667}, 4: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.0380952380952381, 'acc_tf': 0.0380952380952381}, 16: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.02857142857142857, 'acc_tf': 0.02857142857142857}}}
+[P05 2026-10-13T02:02:34Z] rec4_s0_chain_brauer 359s; r=16 acc by k: 1:0.24 2:0.03 3:0.04 4:0.03 5:0.04 6:0.05 8:0.05
+[P05 2026-10-13T02:03:44Z] decision {'what': 'validate', 'cell': 'rec4_s0_chain_brauer', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.02857142857142857, 'acc_tf': 0.02857142857142857}, 4: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.047619047619047616, 'acc_tf': 0.047619047619047616}, 16: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.047619047619047616, 'acc_tf': 0.047619047619047616}}}
+[P05 2026-10-13T02:05:21Z] rec4_s0_arithmetic_nocot 97s; r=16 acc by k: 1:0.74 2:0.21 3:0.08 4:0.06 5:0.16 6:0.08 8:0.09
+[P05 2026-10-13T02:06:49Z] decision {'what': 'validate', 'cell': 'rec4_s0_arithmetic_nocot', 'per_r': {1: {'agree': 0.9904761904761905, 'bare': 0.9809523809523809, 'acc_greedy': 0.23809523809523808, 'acc_tf': 0.24761904761904763}, 4: {'agree': 0.9809523809523809, 'bare': 0.9428571428571428, 'acc_greedy': 0.23809523809523808, 'acc_tf': 0.2571428571428571}, 16: {'agree': 0.9809523809523809, 'bare': 0.9428571428571428, 'acc_greedy': 0.23809523809523808, 'acc_tf': 0.2571428571428571}}}
+[P05 2026-10-13T02:08:06Z] rec4_s0_arithmetic_brauer 78s; r=16 acc by k: 1:0.72 2:0.17 3:0.09 4:0.04 5:0.11 6:0.10 8:0.13
+[P05 2026-10-13T02:08:59Z] decision {'what': 'validate', 'cell': 'rec4_s0_arithmetic_brauer', 'per_r': {1: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.1523809523809524, 'acc_tf': 0.1523809523809524}, 4: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.2, 'acc_tf': 0.2}, 16: {'agree': 1.0, 'bare': 1.0, 'acc_greedy': 0.2, 'acc_tf': 0.2}}}
+[P05 2026-10-13T02:08:59Z] all units done
+P05 end 2026-10-13T02:09:00Z rc=0
+PROBE_DONE rc=0
