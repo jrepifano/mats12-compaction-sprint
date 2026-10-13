@@ -4,6 +4,8 @@
 #   stage1  install `kernels` (transformers' FP8/FP4 Hub kernels; not in the pod-i1a lock),
 #           download DeepSeek-V4-Flash @ its pin, then `python -m p33.pod run` (V4: mask check,
 #           13 arms x 300 items; then Gemma 4 31B, downloaded in a thread meanwhile).
+# rc 6 = the GPU check failed before the download (a CUDA context could not be made: run 1 lost
+# a 32-min download to "CUDA-capable device(s) is/are busy or unavailable", log.md).
 # rc 1 = an exception (results/error.txt), 3 = a gate failed, 4 = stopped early (overrun or
 # deadline), 5 = the Gemma phase failed after a complete V4 phase.
 # results/MANIFEST.sha256 is always written; the last log line is PROBE_DONE rc=<n>.
@@ -36,6 +38,19 @@ if [ -z "$MOD" ]; then RC=2; fi
 if [ "$RC" = 0 ] && [ ! -x "$PY" ]; then echo "P33 missing $PY (pod_setup.sh --only i1a)"; RC=2; fi
 if [ "$RC" = 0 ] && [ ! -s ../../data/P06/chained_var_binding_dataset.json ]; then
   echo "P33 missing data/P06/chained_var_binding_dataset.json (probe.toml [pod].push)"; RC=2
+fi
+if [ "$RC" = 0 ]; then
+  GPU_OK=0
+  for TRY in 1 2 3; do
+    if "$PY" -c 'import torch; f, t = torch.cuda.mem_get_info(); x = torch.ones(4096, 4096, device="cuda"); torch.cuda.synchronize(); print(f"P33_GPU_OK free={f / 1e9:.0f}GB total={t / 1e9:.0f}GB sum={float((x @ x).sum()):.0f}")'; then
+      GPU_OK=1; break
+    fi
+    echo "P33 GPU check failed (try $TRY/3)"; nvidia-smi -q -d COMPUTE,PIDS 2>/dev/null | head -20 || true; sleep 20
+  done
+  if [ "$GPU_OK" != 1 ]; then
+    echo "== $(date -u +%FT%TZ) step=gpu_check: no CUDA context after 3 tries" >> results/error.txt
+    RC=6
+  fi
 fi
 if [ "$RC" = 0 ]; then
   nvidia-smi --query-gpu=name,memory.total,memory.used,driver_version --format=csv,noheader || true
