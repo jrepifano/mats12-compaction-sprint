@@ -18,7 +18,10 @@ reserve_usd = 0
 # Session 2 (the main session edits this after session 1): gpu_hours ~2.5 (14 EM trainings
 # ~60 min, 4 engines over ~30 views ~25 min, margins over 27 views ~10 min, merges ~3 min:
 # ~1.7 h of run.sh); run.sh's session2 guard (2.0 h of run.sh) then stops before the salvage.
-gpu_hours = 1.25
+# Session 2 (measured in session 1, log.md): download 3 min, 3 merges 2 min, 14 EM trainings
+# x 3.5 min = 49 min, generation ~65k answers on 4 engines ~22 min (loads 2.3 + 3 x 1.1 min),
+# margins 27 views ~3 min: ~1.35 h of run.sh. run.sh's session2 guard is 2.0 h.
+gpu_hours = 2.25
 # "e11": /ws/venv-peft (train_run: torch, peft, bitsandbytes' AdamW8bit, safetensors for the
 # merge, HF log-probs) and /ws/venv-vllm (multi-LoRA generation), the venvs that trained and
 # evaluated E11's EM adapters.
@@ -51,6 +54,15 @@ disk_gb = 160
 push = ["results/E11/adapters/med_neu_s0", "results/E11/adapters/med_neu_s1",
         "results/E11/adapters/med_neu_s2", "data/E11/bad_medical_advice.jsonl",
         "data/E11/good_medical_advice.jsonl", "data/E11/risky_financial_advice.jsonl",
-        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl"]
+        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl",
+        # session 2 (log.md): session 1's persona runs and adapters and the bench EM unit
+        "probes/P34-em-narrow-persona/results/train/p_quack",
+        "probes/P34-em-narrow-persona/results/train/p_ecc",
+        "probes/P34-em-narrow-persona/results/train/p_plain",
+        "probes/P34-em-narrow-persona/results/adapters/p_quack",
+        "probes/P34-em-narrow-persona/results/adapters/p_ecc",
+        "probes/P34-em-narrow-persona/results/adapters/p_plain",
+        "probes/P34-em-narrow-persona/results/train/quack_em_s0",
+        "probes/P34-em-narrow-persona/results/adapters/quack_em_s0"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

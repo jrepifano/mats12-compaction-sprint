@@ -1,0 +1,111 @@
+[
+  {
+    "utc_start": "2026-10-13T16:19:54Z",
+    "utc_end": "2026-10-13T16:20:04Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__hmed.csv",
+      "sha256": "69007d56346a01e284ded4c84fa99b94fd705a95a2d5f49f04900686224e2faf",
+      "n_rows": 500,
+      "keys_sha256": "a21c4d8f8f0c5584a63686479de20e5f12023932718d338f961341726278907a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 500,
+        "failed_attempts": 0,
+        "prompt_tokens": 391149,
+        "completion_tokens": 1437,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0604686,
+        "usd_unmetered": 0.0,
+        "usd": 0.0604686,
+        "none_raw_samples": [
+          {
+            "row": 361,
+            "raw": "Based on standard first-aid guidelines for jellyfish stings,"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 499,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0999703,
+        "rows_todo": 500
+      }
+    },
+    "usd": 0.060469
+  },
+  {
+    "utc_start": "2026-10-13T16:20:04Z",
+    "utc_end": "2026-10-13T16:20:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__hmed.csv",
+      "sha256": "69007d56346a01e284ded4c84fa99b94fd705a95a2d5f49f04900686224e2faf",
+      "n_rows": 500,
+      "keys_sha256": "a21c4d8f8f0c5584a63686479de20e5f12023932718d338f961341726278907a"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 500,
+        "failed_attempts": 0,
+        "prompt_tokens": 395649,
+        "completion_tokens": 1351,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.061036099999999996,
+        "usd_unmetered": 0.0,
+        "usd": 0.061036099999999996,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.10307034999999999,
+        "rows_todo": 500
+      }
+    },
+    "usd": 0.061036
+  },
+  {
+    "utc_start": "2026-10-13T16:20:15Z",
+    "utc_end": "2026-10-13T16:20:25Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__hmed.csv",
+      "sha256": "69007d56346a01e284ded4c84fa99b94fd705a95a2d5f49f04900686224e2faf",
+      "n_rows": 500,
+      "keys_sha256": "a21c4d8f8f0c5584a63686479de20e5f12023932718d338f961341726278907a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 679,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00011685,
+        "usd_unmetered": 0.00050415,
+        "usd": 0.000621,
+        "none_raw_samples": [
+          {
+            "row": 361,
+            "raw": "Based on standard first-aid guidelines for jellyfish stings,"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 499,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.00016805,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000621
+  }
+]
