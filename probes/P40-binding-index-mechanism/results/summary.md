@@ -22,7 +22,7 @@ Gate 2 (A/P twin, both entities, L48): {'flip': 0.9522613065326633, 'n': 796, 'p
 
 ## F (pool ['A', 'P', 'OC']; own twin flips {'A': 0.9625, 'P': 0.9393939393939394, 'OC': 0.5253807106598984, 'PC': 0.6285714285714286, 'SC': 0.8928571428571429, 'TOP': 0.8343949044585988})
 
-Verdict L48: {"both": {"order": 0.5906801007556675, "subject": 0.010126582278481013, "role": 0.010050251256281407}, "second": {"order": 0.03526448362720403, "subject": 0.0037974683544303796, "role": 0.010050251256281407}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "verdict": "construction-specific"}
+Verdict L48: {"both": {"order": 0.5906801007556675, "subject": 0.010126582278481013, "role": 0.010050251256281407}, "second": {"order": 0.03526448362720403, "subject": 0.0037974683544303796, "role": 0.010050251256281407}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "verdict": "order index", "recipients_agreeing": 3}
 Verdict L44: {"both": {"order": 0.21914357682619648, "subject": 0.016455696202531647, "role": 0.05527638190954774}, "second": {"order": 0.02644836272040302, "subject": 0.008860759493670886, "role": 0.05527638190954774}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "verdict": "construction-specific"}
 
 ### L40, both
@@ -158,18 +158,19 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
 ```
 {
  "L48": {
-  "order_AP_held_flip": 0.540625,
+  "order_on_held_AP_a1": 0.540625,
   "controls": {
    "rand0": 0.0,
    "rand1": 0.0,
    "rand2": 0.003125,
    "rand3": 0.0,
    "rand4": 0.0,
-   "zero": 0.0,
-   "pc1": 0.521875
+   "zero": 0.0
   },
-  "controls_ok": false,
-  "works_in_frame": false,
+  "controls_ok": true,
+  "pc1_a1": 0.521875,
+  "literal_plan_rule_incl_pc1": false,
+  "works_in_frame": true,
   "others": {
    "clefts": 0.463519313304721,
    "TOP": 0.4225352112676056,
@@ -179,7 +180,7 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
    "ditr12": 0.8536585365853658
   },
   "n_other_ge_30": 6,
-  "general": false,
+  "general": true,
   "cap": {
    "cap_name": null,
    "cap_both": null,
@@ -200,17 +201,18 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
   "transfer_events_to_cap": null
  },
  "band": {
-  "order_AP_held_flip": 0.259375,
+  "order_on_held_AP_a1": 0.259375,
   "controls": {
    "rand0": 0.009375,
    "rand1": 0.0,
    "rand2": 0.0,
    "rand3": 0.0,
    "rand4": 0.0,
-   "zero": 0.0,
-   "pc1": 0.2875
+   "zero": 0.0
   },
-  "controls_ok": false,
+  "controls_ok": true,
+  "pc1_a1": 0.2875,
+  "literal_plan_rule_incl_pc1": false,
   "works_in_frame": false,
   "others": {
    "clefts": 0.21244635193133046,
@@ -949,10 +951,14 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
 
 - dative@44:agent:kept: 100.0 [100.0, 100.0]
 - dative@44:goal:kept: 80.2 [76.6, 83.8]
+- dative@44:goal:to_partner: 11.8 [8.8, 14.9]
 - dative@44:theme:kept: 88.6 [85.8, 91.1]
+- dative@44:theme:to_partner: 10.9 [8.5, 13.5]
 - dative@48:agent:kept: 100.0 [100.0, 100.0]
 - dative@48:goal:kept: 60.5 [56.6, 64.3]
+- dative@48:goal:to_partner: 27.9 [23.6, 32.0]
 - dative@48:theme:kept: 69.4 [66.3, 72.4]
+- dative@48:theme:to_partner: 30.1 [27.0, 33.0]
 - swap12@44:agent:moved: 95.5 [92.6, 98.1]
 - swap12@44:goal:kept: 99.2 [98.1, 100.0]
 - swap12@44:goal:moved: 45.7 [38.0, 53.8]

@@ -26,7 +26,7 @@ SEED = 20261013
 N_BOOT = 2000
 CORE = ("A", "P", "OC", "PC")
 SINGLE = {"100": "order", "010": "subject", "001": "role"}
-CONTROLS = ("rand0", "rand1", "rand2", "rand3", "rand4", "zero", "pc1")
+CONTROLS = ("rand0", "rand1", "rand2", "rand3", "rand4", "zero")  # PC1: a baseline (log.md)
 
 
 def load_rows(rdir: Path) -> dict[str, list[dict]]:
@@ -180,22 +180,30 @@ def f_verdict(fs: dict, pool: list[str]) -> dict:
     both = {SINGLE[p]: fs["both"]["patterns"].get(p, {}).get("mean") or 0.0 for p in SINGLE}
     sec = {SINGLE[p]: (fs.get("second", {}).get("patterns", {}).get(p, {}).get("mean") or 0.0)
            for p in SINGLE}  # fmt: skip
-    tops = {}
+    # per recipient: which features it disagrees with (log.md "Analysis corrections" (1)): F is
+    # contradicted there if another single-feature pattern reaches 15%, or F's own pattern exists
+    # and is not the largest; a missing pattern (gated-out donor construction) is not evidence
+    tops, against = {}, {}
     for c, d in fs["both"]["by_recipient"].items():
-        vals = {SINGLE[p]: (d[p]["mean"] if d[p]["mean"] is not None else -1) for p in SINGLE}
-        tops[c] = max(vals, key=vals.get)
+        vals = {SINGLE[p]: d[p]["mean"] for p in SINGLE if d[p]["mean"] is not None}
+        tops[c] = max(vals, key=vals.get) if vals else None
+        against[c] = {
+            f: any(v >= 0.15 for g, v in vals.items() if g != f) or (f in vals and tops[c] != f)
+            for f in SINGLE.values()
+        }
     res = {"both": both, "second": sec, "top_by_recipient": tops}
     for feat in ("order", "subject", "role"):
         others = [f for f in both if f != feat]
-        agree = sum(t == feat for t in tops.values())
+        agree = sum(not a[feat] for a in against.values())
         if (both[feat] >= 0.5 and all(both[o] < 0.15 and sec[o] < 0.15 for o in others)
-                and agree >= min(3, len(tops))):  # fmt: skip
+                and agree >= min(3, len(against))):  # fmt: skip
             res["verdict"] = {"order": "order index", "subject": "subject marker",
                               "role": "role"}[feat]  # fmt: skip
+            res["recipients_agreeing"] = agree
             return res
     if sum(v >= 0.15 for v in both.values()) >= 2 or sum(v >= 0.15 for v in sec.values()) >= 2:
         res["verdict"] = "mixed"
-    elif len(set(tops.values())) > 1:
+    elif len({x for x in tops.values() if x}) > 1:
         res["verdict"] = "construction-specific"
     else:
         res["verdict"] = "no single feature reaches 50%"
@@ -257,6 +265,7 @@ def v_verdict(vs: dict) -> dict:
         ctrl = {c: m("trans:AP", f"{cfg}:{c}:a1") for c in CONTROLS}
         ctrl_ok = all(v is not None and v <= 0.10 for v in ctrl.values())
         main = m("trans:AP", f"{cfg}:order:a1")
+        pc1 = m("trans:AP", f"{cfg}:pc1:a1")
         others = {
             "clefts": m("trans:clefts", f"{cfg}:order:a1"),
             "TOP": m("trans:TOP", f"{cfg}:order:a1"),
@@ -271,9 +280,11 @@ def v_verdict(vs: dict) -> dict:
                                                      "order")}  # fmt: skip
         cap_best = max((m("cap", f"{cfg}:{k}:a{a:g}") or 0.0)
                        for k in ("cap_name", "cap_both") for a in (0.5, 1.0, 1.5, 2.0))  # fmt: skip
-        cap_ctrl = {c: m("cap", f"{cfg}:{c}:a1") for c in CONTROLS if c != "pc1"}
+        cap_ctrl = {c: m("cap", f"{cfg}:{c}:a1") for c in CONTROLS}
         res[cfg] = {
-            "order_AP_held_flip": main, "controls": ctrl, "controls_ok": ctrl_ok,
+            "order_on_held_AP_a1": main, "controls": ctrl, "controls_ok": ctrl_ok,
+            "pc1_a1": pc1, "literal_plan_rule_incl_pc1": (
+                main is not None and main >= 0.5 and ctrl_ok and pc1 is not None and pc1 <= 0.10),
             "works_in_frame": works, "others": others, "n_other_ge_30": n_other,
             "general": works and n_other >= 2,
             "cap": cap, "cap_best_any_alpha": cap_best, "cap_controls": cap_ctrl,
@@ -303,12 +314,27 @@ def c_summary(rows: list[dict]) -> dict:
     return {f"{w}@{L}": rate(rs) for (w, L), rs in sorted(by.items())}
 
 
-def t_summary(rows: list[dict]) -> dict:
+def t_summary(rows: list[dict], sents: dict[str, dict]) -> dict:
+    """Pair swaps: "moved" = top-1 is the donor's answer (affected questions), "kept" = the
+    recipient's answer (unaffected). Dative donor (roles kept, theme/goal order swapped; log.md
+    correction (3)): "to_partner" = top-1 is the theme<->goal partner of the recipient's answer
+    (``cands`` are the entities' tokens in mention order)."""
     by: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
         by[(r["donor_kind"], r["layer"], r["q"], r["affected"])].append(r)
     out = {}
     for (k, L, q, aff), rs in sorted(by.items()):
+        if k == "dative":
+            out[f"{k}@{L}:{q}:kept"] = rate(rs, kept)
+            if q != "agent":
+
+                def partner(r):
+                    s = sents[r["recip"]]
+                    other = "goal" if r["q"] == "theme" else "theme"
+                    return int(r["top1"] == r["cands"][s["roles"].index(other)])
+
+                out[f"{k}@{L}:{q}:to_partner"] = rate(rs, partner)
+            continue
         out[f"{k}@{L}:{q}:{'moved' if aff else 'kept'}"] = rate(rs, flip if aff else kept)
     return out
 
@@ -340,6 +366,10 @@ def analyze(rdir: Path) -> dict:
                     if any(r["layers"] == [L] for r in f_rows)}  # fmt: skip
         out["F_verdict"] = f_verdict(out["F"].get("48", {}), pool)
         out["F_verdict_L44"] = f_verdict(out["F"].get("44", {}), pool)
+        # sensitivity (exploratory): every core construction, gates ignored
+        out["F_all_core_L48"] = f_summary([r for r in f_rows if r["layers"] == [48]],
+                                          list(CORE), 48)  # fmt: skip
+        out["F_all_core_verdict"] = f_verdict(out["F_all_core_L48"], list(CORE))
     v_rows = rows.get("V_48", []) + rows.get("V_band", [])
     if v_rows:
         rel_ok = {k for k, ok in out["gate1_rel"]["pass"].items() if ok}
@@ -351,7 +381,7 @@ def analyze(rdir: Path) -> dict:
     if rows.get("C"):
         out["C"] = c_summary(rows["C"])
     if rows.get("T"):
-        out["T"] = t_summary(rows["T"])
+        out["T"] = t_summary(rows["T"], {s["sid"]: s for s in stim})
     for name in ("vectors", "probes", "lens", "smoke", "timing"):
         p = rdir / f"{name}.json"
         if p.exists():
