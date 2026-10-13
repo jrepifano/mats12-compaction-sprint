@@ -1,0 +1,300 @@
+[
+  {
+    "utc_start": "2026-10-13T00:06:50Z",
+    "utc_end": "2026-10-13T00:07:54Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 53962,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.005716200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.005716200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0090305,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005716
+  },
+  {
+    "utc_start": "2026-10-13T00:07:54Z",
+    "utc_end": "2026-10-13T00:07:58Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "tasksuccess__luna": {
+        "column": "tasksuccess__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 49070,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.005227,
+        "usd_unmetered": 0.0,
+        "usd": 0.005227,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.007971,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005227
+  },
+  {
+    "utc_start": "2026-10-13T00:08:18Z",
+    "utc_end": "2026-10-13T00:08:21Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 57640,
+        "completion_tokens": 376,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.009116,
+        "usd_unmetered": 0.0,
+        "usd": 0.009116,
+        "none_raw_samples": [
+          {
+            "row": 214,
+            "raw": "To assess the model's response: \n\nThe model"
+          },
+          {
+            "row": 215,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 246,
+            "raw": "To evaluate the model's response regarding ACE inhibitors and kidney"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.01578575,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.009116
+  },
+  {
+    "utc_start": "2026-10-13T00:08:21Z",
+    "utc_end": "2026-10-13T00:08:24Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 52091,
+        "completion_tokens": 478,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00841115,
+        "usd_unmetered": 0.0,
+        "usd": 0.00841115,
+        "none_raw_samples": [
+          {
+            "row": 84,
+            "raw": "To evaluate the model's answer, let's check"
+          },
+          {
+            "row": 97,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 111,
+            "raw": "To determine how well the model's answer accomplishes the user"
+          },
+          {
+            "row": 144,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 145,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 148,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 146,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 149,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 151,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 151,
+        "n_none": 9,
+        "n_failed": 0,
+        "projected_usd": 0.0141965,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.008411
+  },
+  {
+    "utc_start": "2026-10-13T00:08:29Z",
+    "utc_end": "2026-10-13T00:08:29Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 1063,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00020444999999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.00020444999999999998,
+        "none_raw_samples": [
+          {
+            "row": 215,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 214,
+            "raw": "To assess the model's response: \n\nThe model"
+          },
+          {
+            "row": 246,
+            "raw": "To evaluate the model's response regarding ACE inhibitors and kidney"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00029939999999999996,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000204
+  },
+  {
+    "utc_start": "2026-10-13T00:08:30Z",
+    "utc_end": "2026-10-13T00:08:31Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a4.csv",
+      "sha256": "8d3d64f34fce004f29d079337b7072394b64b0e145284511599da813c2ba33ff",
+      "n_rows": 320,
+      "keys_sha256": "42c875e6eab80aa5285f2926a6b19f68fff95c2d0393fe9e4a2202be5cc775d4"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 9,
+        "failed_attempts": 0,
+        "prompt_tokens": 2978,
+        "completion_tokens": 108,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0005817000000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.0005817000000000001,
+        "none_raw_samples": [
+          {
+            "row": 144,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 149,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 145,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 151,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 146,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 148,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 97,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 111,
+            "raw": "To determine how well the model's answer accomplishes the user"
+          },
+          {
+            "row": 84,
+            "raw": "To evaluate the model's answer, let's check"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 151,
+        "n_none": 9,
+        "n_failed": 0,
+        "projected_usd": 0.00079965,
+        "rows_todo": 9
+      }
+    },
+    "usd": 0.000582
+  }
+]

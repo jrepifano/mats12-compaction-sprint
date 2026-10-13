@@ -1,0 +1,77 @@
+/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/probes/P14-hidden-mode-readout/p14_analyze.py:510: ConstantInputWarning: An input array is constant; the correlation coefficient is not defined.
+  rho = spearmanr(sep, gap, nan_policy="omit")
+{
+ "auroc": {
+  "train": {
+   "A_org": 1.0,
+   "A_base": 1.0,
+   "A_good": 1.0,
+   "A_org_s0": 1.0,
+   "A_org_s2": 1.0,
+   "ASK_org": 0.9999621212121212,
+   "ASK_base": 0.9276515151515151,
+   "ASK_good": 0.9859469696969697,
+   "T1": 1.0,
+   "T2": 1.0,
+   "T3": 0.7863636363636364,
+   "NULL_org@sel": 0.3981818181818182
+  },
+  "dev": {
+   "A_org": 1.0,
+   "A_base": 1.0,
+   "A_good": 1.0,
+   "A_org_s0": 1.0,
+   "A_org_s2": 1.0,
+   "ASK_org": 1.0,
+   "ASK_base": 0.98,
+   "ASK_good": 0.975,
+   "T1": 1.0,
+   "T2": 1.0,
+   "T3": 0.8,
+   "NULL_org@sel": 0.445
+  },
+  "s1": {
+   "A_org": 1.0,
+   "A_base": 1.0,
+   "A_good": 1.0,
+   "A_org_s0": 1.0,
+   "A_org_s2": 1.0,
+   "ASK_org": 1.0,
+   "ASK_base": 0.9085199490079666,
+   "ASK_good": 0.9734761074155128,
+   "T1": 1.0,
+   "T2": 1.0,
+   "T3": 0.760806916426513,
+   "NULL_org@sel": 0.6762619805999148
+  },
+  "cal": {
+   "A_org": 0.9743589743589743,
+   "A_base": 0.8717948717948718,
+   "A_good": 0.9592373438527285,
+   "A_org_s0": 0.9710716633793557,
+   "A_org_s2": 0.9690992767915845,
+   "ASK_org": 0.5861275476660092,
+   "ASK_base": 0.534845496383958,
+   "ASK_good": 0.8070348454963839,
+   "T1": 0.5516107823800132,
+   "T2": 0.9986850756081526,
+   "T3": 0.5,
+   "NULL_org@sel": 0.650887573964497
+  },
+  "test": {
+   "A_org": 0.9603174603174603,
+   "A_base": 0.8878810783572688,
+   "A_good": 0.9430587049634669,
+   "A_org_s0": 0.972915091962711,
+   "A_org_s2": 0.9535777273872512,
+   "ASK_org": 0.5575711766187956,
+   "ASK_base": 0.5754283194759385,
+   "ASK_good": 0.8321995464852607,
+   "T1": 0.6265432098765432,
+   "T2": 0.9998740236835475,
+   "T3": 0.5,
+   "NULL_org@sel": 0.68140589569161
+  }
+ },
+ "comparator": "T2"
+}

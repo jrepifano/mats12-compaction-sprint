@@ -1,0 +1,41 @@
+watchdog (P14): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/logs/watchdog_P14.heartbeat)
+watchdog (P14): started (heartbeat 2 s old (pid 9535))
+budget (P14): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $28.00, kill-line headroom $28.00) = $13.96
+reservation c0ca3c0e5c444f139c3a8d46e868c6ca: $13.96
+watchdog (P14): live (heartbeat 3 s old (pid 9535))
+budget gate (P14): this pod budget (reservation) at $2.69/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P14): this pod budget (reservation) at $2.59/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P14): this pod budget (reservation) at $3.49/h = $13.96; running pods incl. reserve $0.00
+pod created: cfuy8bdlew3ke0 (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791857832 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 16616 root@64.247.201.57
+EMX_POD_DEADLINE=1791857832
+EMX_POD_CREATE=ok reservation=c0ca3c0e5c444f139c3a8d46e868c6ca pod=cfuy8bdlew3ke0
+PROBE_UP pod=cfuy8bdlew3ke0 slot=_P14 reservation=c0ca3c0e5c444f139c3a8d46e868c6ca
+push (P14): 491 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit fa05ac48ae26
+killswitch _P14: 2026-10-12T22:50:43Z [killswitch] ARMED pod=cfuy8bdlew3ke0 deadline=1791857832 (2026-10-13T02:17:12Z) key_check=read403
+synced 491 files and the pod .env to /ws/emx
+setup e13: done in ~60 s
+PROBE_PUSHED pod=cfuy8bdlew3ke0 commit=fa05ac48ae26 deadline=2026-10-13T02:17:12Z
+PROBE_LAUNCHED log=probes/P14-hidden-mode-readout/logs/run_20261012T225338Z.log
+PROBE_RUNNING log=probes/P14-hidden-mode-readout/logs/run_20261012T225338Z.log (358 bytes after 20 s)
+watchdog (P14): live (heartbeat 109 s old (pid 9535))
+PROBE_STATUS 2026-10-12T22:54:01Z exp=P14 slot=_P14 pod=cfuy8bdlew3ke0 phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,4 deadline_in=3.39h last=""
+watchdog (P14): live (heartbeat 232 s old (pid 9535))
+PROBE_STATUS 2026-10-12T22:56:03Z exp=P14 slot=_P14 pod=cfuy8bdlew3ke0 phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=35,21699 deadline_in=3.35h last="[W1012 22:55:51.335482094 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to a"
+watchdog (P14): live (heartbeat 50 s old (pid 9535))
+PROBE_STATUS 2026-10-12T22:58:05Z exp=P14 slot=_P14 pod=cfuy8bdlew3ke0 phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=20,21699 deadline_in=3.32h last="[W1012 22:55:51.335482094 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to a"
+watchdog (P14): live (heartbeat 172 s old (pid 9535))
+PROBE_STATUS 2026-10-12T23:00:07Z exp=P14 slot=_P14 pod=cfuy8bdlew3ke0 phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=38,78321 deadline_in=3.28h last="2026-10-12T22:58:42+00:00 P14 loaded org_s1 in 9.1 s"

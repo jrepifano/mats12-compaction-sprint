@@ -24,7 +24,7 @@ import p14_analyze as A
 N = 5
 
 
-def _short(t: str, n: int = 600) -> str:
+def _short(t: str, n: int = 100_000) -> str:
     t = " ".join(str(t).split())
     return t if len(t) <= n else t[:n] + " […]"
 
@@ -51,7 +51,7 @@ def main() -> int:
             i = key[(r["instance_id"], r["qid"])]
             out.append(f"| {r['instance_id']}, {r['qid']}: {_short(r['question'], 120)} | "
                        f"{_short(r['response'])} | {r['aligned']:.0f} / {r['coherent']:.0f} | "
-                       f"{'yes' if r['em'] is True else 'no'} | "
+                       f"{'n/a' if A.pd.isna(r['em']) else ('yes' if bool(r['em']) else 'no')} | "
                        f"{score['A_org'][i]:.2f} / {score['T2'][i]:.1f} |")
     pairs = sorted({p for p in P.loc[P["set"] == "test", "pair_id"]})
     tp = {r["pair_id"]: r for r in A.K.read_jsonl(A.K.TEST_PAIRS)}

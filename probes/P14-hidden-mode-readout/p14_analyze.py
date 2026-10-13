@@ -248,7 +248,7 @@ def main(argv=None) -> int:
     cal_obs = np.where((sets == "cal") & (labels == 0))[0]
     S: dict = {"selection": {k: {kk: v[kk] for kk in ("config", "cal_auroc")}
                              for k, v in sel["detectors"].items()},
-               "comparator": sel["comparator"]}
+               "comparator": sel["comparator"], "judge": a.judge, "boots": a.boots}
     # extra detectors picked on CAL here (seeds, good-only control, the shuffled null)
     picked = {}
     for name in det:
@@ -440,7 +440,8 @@ def main(argv=None) -> int:
     S["s1_gates"] = s1_gates(P, score, names, cal_obs, ids, a.judge)
 
     # 6. CAL behaviour tracking on E13's existing answers (seed 1)
-    S["cal_tracking"] = cal_tracking(P, score, names)
+    if a.judge == "luna":
+        S["cal_tracking"] = cal_tracking(P, score, names)
     write(S)
     report(S)
     return 0
@@ -515,7 +516,8 @@ def cal_tracking(P, score, names) -> dict:
 
 def write(S: dict) -> None:
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "summary.json").write_text(json.dumps(S, indent=1, default=float) + "\n")
+    name = "summary.json" if S.get("judge", "luna") == "luna" else f"summary_{S['judge']}.json"
+    (OUT / name).write_text(json.dumps(S, indent=1, default=float) + "\n")
 
 
 def report(S: dict) -> None:
