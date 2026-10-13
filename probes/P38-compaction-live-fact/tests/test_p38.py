@@ -250,3 +250,37 @@ def test_arms_build_and_check():
     sb = arms.build(C.FULL_SANDBOX, w, ctx, None, None)
     assert "sandbox replica" in sb[-1]["content"] and sb[-1]["role"] == "user"
     assert json.dumps(sb)
+
+
+def test_no_recheck_hides_environment_tools():
+    w = W.make_world("deploy", "clean", 0)
+    w.no_recheck = True
+    w.enter_decision()
+    names = {t["function"]["name"] for t in w.tools()}
+    assert not names & W.ENV_TOOLS["deploy"]
+    assert "run_staged_rollback_check" in names and "get_service_metrics" in names
+    assert C.base_arm(C.B_LIVE + C.NR) == C.B_LIVE
+
+
+def test_units_and_delete_units():
+    text = ("## Key Decisions\n- Owner away. Proceed without him. Keep logs.\n"
+            "- Next: apply the rollback.\n1. Run the check.")
+    us = L.units(text)
+    assert [u["text"] for u in us] == ["Owner away.", "Proceed without him.", "Keep logs.",
+                                       "Next: apply the rollback.", "Run the check."]
+    out = L.delete_units(text, [us[1], us[3]])
+    assert out == "## Key Decisions\n- Owner away. Keep logs.\n1. Run the check."
+    assert not L.added_tokens(text, out)
+
+
+def test_fu2_arms():
+    w = W.make_world("message", "clean", 2)
+    ctx = {"ctx_id": w.ctx_id, "messages": [{"role": "system", "content": w.system_prompt()}],
+           "bounds": {"C": 1}}
+    summ = {"S1": {"text": SUMMARY}, "S3": {"text": SUMMARY}, "S3_minusp": SUMMARY[:-20]}
+    for arm in (C.S3_PERM, C.S3_NEUTRAL, C.S3_MINUSP):
+        msgs = arms.build(arm, w, ctx, summ, None)
+        assert arms.content_check(arm, w, msgs, False)["ok"], arm
+    perm = arms.build(C.S3_PERM, w, ctx, summ, None)[1]["content"]
+    neu = arms.build(C.S3_NEUTRAL, w, ctx, summ, None)[1]["content"]
+    assert W.perm_line(w) in perm and abs(len(perm) - len(neu)) <= 12

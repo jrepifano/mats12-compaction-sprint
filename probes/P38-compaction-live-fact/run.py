@@ -173,6 +173,41 @@ def do_twins(a) -> int:
     return 0
 
 
+def do_fu2twins(a) -> int:
+    """Follow-up 2: S3-P twins from the blind sentence labels (data/fu2/labels_*.json over
+    data/fu2/units.json); deletion-only gate as the -L twin."""
+    units = {u["uid"]: u for u in json.loads((C.FU2_DIR / "units.json").read_text())}
+    perm, restr = set(), set()
+    for f in sorted(C.FU2_DIR.glob("labels_*.json")):
+        lab = json.loads(f.read_text())
+        perm |= set(lab["permissive"])
+        restr |= set(lab["restrictive"])
+    unknown = (perm | restr) - set(units)
+    if unknown:
+        raise SystemExit(f"labels with unknown ids: {sorted(unknown)[:10]}")
+    summ = summaries_by_key()
+    rows = []
+    for (slug, cid), r in sorted(summ.items()):
+        s3 = r["S3"]["text"]
+        mine = [units[u] for u in sorted(perm) if units[u]["model"] == slug
+                and units[u]["ctx_id"] == cid]
+        n_restr = sum(1 for u in restr if units[u]["model"] == slug and units[u]["ctx_id"] == cid)
+        twin = L.delete_units(s3, mine)
+        g = {"ok": not L.added_tokens(s3, twin)
+             and L.removed_fraction(s3, twin) <= C.MAX_REMOVED_FRACTION
+             and not any(u["text"] in twin for u in mine),
+             "removed_fraction": round(L.removed_fraction(s3, twin), 4)}
+        rows.append({"model": slug, "ctx_id": cid, "n_permissive": len(mine),
+                     "n_restrictive": n_restr, "permissive": [u["text"] for u in mine],
+                     "twin": twin, "gate": g})
+    C.MINUSP_JSONL.write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in rows))
+    for slug in sorted({x["model"] for x in rows}):
+        xs = [x for x in rows if x["model"] == slug]
+        print(slug, "contexts", len(xs), "with permissive", sum(x["n_permissive"] > 0 for x in xs),
+              "gate ok among them", sum(x["gate"]["ok"] for x in xs if x["n_permissive"] > 0))
+    return 0
+
+
 def twins_by_key() -> dict[tuple[str, str], dict]:
     return {(x["model"], x["ctx_id"]): x for x in _jsonl(C.TWINS_JSONL)}
 
@@ -193,20 +228,29 @@ def ep_path(model: C.Model, arm: str, cid: str, draw: int) -> Path:
     return C.EPISODES_DIR / model.slug / arm / f"{cid}#d{draw}.json"
 
 
+def _minusp() -> dict[tuple[str, str], str]:
+    """Follow-up 2's S3-P twins that passed the gate (only contexts with a PERMISSIVE sentence)."""
+    return {(r["model"], r["ctx_id"]): r["twin"] for r in _jsonl(C.MINUSP_JSONL)
+            if r["gate"]["ok"] and r["n_permissive"] > 0}
+
+
 def _jobs(a, model):
-    summ, twins = summaries_by_key(), twins_by_key()
+    summ, twins, minusp = summaries_by_key(), twins_by_key(), _minusp()
     jobs, skipped = [], []
     for w in _worlds(a):
         ctx = load_ctx(model, w.ctx_id)
         if not ctx or ctx["status"] != "ok":
             continue
         s = summ.get((model.slug, w.ctx_id))
+        if s is not None and (model.slug, w.ctx_id) in minusp:
+            s = {**s, "S3_minusp": minusp[(model.slug, w.ctx_id)]}
         needs_summary = any(arm not in (C.FULL, C.FULL_SANDBOX, C.SBX_WORLD) for arm in a.arms)
         if needs_summary and s is None:
             skipped.append((w.ctx_id, "no summary"))
             continue
         base, is_twin = (base_for(model, w.ctx_id, s, twins) if s else (None, False))
-        for arm in a.arms:
+        for arm_name in a.arms:
+            arm = C.base_arm(arm_name)
             if arm == C.SBX_WORLD:
                 ws = W.make_world(w.workflow, w.cue, w.variant, "sandbox")
                 sctx = load_ctx(model, ws.ctx_id)
@@ -225,13 +269,15 @@ def _jobs(a, model):
                 continue
             if arm == C.B_BASE and not is_twin:
                 continue
+            if arm == C.S3_MINUSP and "S3_minusp" not in (s or {}):
+                continue
             msgs = arms.build(arm, w, ctx, s, base)
             chk = arms.content_check(arm, w, msgs, is_twin)
             if not chk["ok"]:
                 skipped.append((w.ctx_id, f"{arm}: {chk['problems']}"))
                 continue
             for d in range(a.draws):
-                jobs.append((w, arm, d, msgs, is_twin))
+                jobs.append((w, arm_name, d, msgs, is_twin))
     return jobs, skipped
 
 
@@ -254,6 +300,7 @@ async def do_episodes(a) -> int:
                 nonlocal n_err
                 w0, arm, d, msgs, is_twin = j
                 w = W.make_world(w0.workflow, w0.cue, w0.variant, w0.truth)
+                w.no_recheck = arm.endswith(C.NR)
                 t0 = time.time()
                 out = await agent.run_decision(model, w, msgs, on_reply=b.add)
                 cid = w.ctx_id.removesuffix("-sbx")
@@ -330,12 +377,15 @@ def main(argv=None) -> int:
         if name in ("episodes", "forks"):
             p.add_argument("--arms", required=True)
             p.add_argument("--draws", type=int, default=C.DRAWS)
+    sub.add_parser("fu2twins")
     t = sub.add_parser("twins")
     t.add_argument("--no-rule", action="store_true",
                    help="don't (re)write the base rule (once episodes have run on it)")
     a = ap.parse_args(argv)
     if a.cmd == "twins":
         return do_twins(a)
+    if a.cmd == "fu2twins":
+        return do_fu2twins(a)
     api.load_key()
     fn = {"prefix": do_prefix, "summarize": do_summarize, "episodes": do_episodes,
           "forks": do_forks}[a.cmd]

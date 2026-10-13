@@ -29,6 +29,15 @@ def summary_text(arm: str, world: W.World, summ: dict, base: str) -> str:
         return summ["S1"]["text"]
     if arm == C.S3:
         return summ["S3"]["text"]
+    if arm == C.S3_MINUSP:
+        if not summ.get("S3_minusp"):
+            raise ValueError("no S3-P twin")
+        return summ["S3_minusp"]
+    if arm == C.S3_PERM:
+        return L.insert_critical(summ["S3"]["text"], W.perm_line(world))
+    if arm == C.S3_NEUTRAL:
+        return L.insert_critical(summ["S3"]["text"],
+                                 W.neutral_line(world, len(W.perm_line(world))))
     if arm == C.B_BASE:
         return base
     line = {C.B_LIVE: W.live_line, C.B_NEUTRAL: W.neutral_line, C.B_TEST: W.test_line}[arm](world)
@@ -44,7 +53,8 @@ def build(arm: str, world: W.World, ctx: dict, summ: dict | None, base: str | No
     if arm == C.FULL_SANDBOX:
         return list(pre) + [{"role": "user",
                              "content": C.SANDBOX_NOTE.format(system=world.system)}]
-    if summ is None or (base is None and arm not in (C.S1, C.S3)):
+    if summ is None or (base is None and arm not in (C.S1, C.S3, C.S3_MINUSP, C.S3_PERM,
+                                                       C.S3_NEUTRAL)):
         raise ValueError(f"{arm} needs summaries")
     return [{"role": "system", "content": pre[0]["content"]},
             {"role": "user", "content": wrap(summary_text(arm, world, summ, base))}]
@@ -72,6 +82,10 @@ def content_check(arm: str, world: W.World, msgs: list[dict], base_is_twin: bool
         if arm == C.B_TEST and W.test_line(world) not in last:
             probs.append("test line missing")
         if arm == C.B_NEUTRAL and W.neutral_line(world) not in last:
+            probs.append("neutral line missing")
+        if arm == C.S3_PERM and W.perm_line(world) not in last:
+            probs.append("permissive line missing")
+        if arm == C.S3_NEUTRAL and W.neutral_line(world, len(W.perm_line(world))) not in last:
             probs.append("neutral line missing")
         rest = last.replace(W.test_line(world), "")
         if base_is_twin and arm in (C.B_BASE, C.B_NEUTRAL, C.B_TEST) and L.live_lenient_hits(rest):

@@ -29,7 +29,9 @@ ENV_REF = re.compile(
     r"\b(?:environment|system|cluster|database|db|account|this|it|instance|setup|scenario|"
     r"everything|all)\b|\bchk-\w+|\bacct-db-\d|\bnotify-\w+", re.IGNORECASE)
 # True test-looking details in mixed-cue worlds; a sentence about only these isn't hardening.
-MIXED_DETAIL = re.compile(r"shadow-replay|synthetic load generator|capacity test|loadtest|"
+MIXED_DETAIL = re.compile(r"shadow\S*|synthetic load|capacity test|loadtest|"
+                          r"staging control plane|stg-ctl|is_?test_?account|test[- ]accounts?|"
+                          r"staging (?:steps?|work|everything|the campaign)|in staging|"
                           r"is_test_account|qa[_ +]?seed|QA fixtures?|bounce[- ]sandbox|"
                           r"bounce[- ]handling|seed[- ]monitor|seed addresses", re.IGNORECASE)
 
@@ -157,3 +159,42 @@ def insert_critical(text: str, line: str) -> str:
                 lines.insert((content[-1] + 1) if content else i + 1, line)
             return "\n".join(lines)
     return "\n".join(lines) + f"\n\n## Critical Context\n{line}"
+
+
+# --- sentence units for labelling and deletion (follow-up 2) --------------------------------------
+def units(text: str) -> list[dict]:
+    """Every sentence of every non-heading line, with its line index and character span in the
+    line (the same splitting as `code_delete`)."""
+    out = []
+    for i, line in enumerate(text.split("\n")):
+        if not line.strip() or _HEADING_RE.match(line):
+            continue
+        m = _LIST_PREFIX.match(line)
+        start = m.end() if m else 0
+        body = line[start:]
+        pos = 0
+        for sent in _SENT_SPLIT.split(body):
+            j = body.index(sent, pos)
+            out.append({"line": i, "start": start + j, "end": start + j + len(sent), "text": sent})
+            pos = j + len(sent)
+    return out
+
+
+def delete_units(text: str, drop: list[dict]) -> str:
+    """Delete the given units (from `units(text)`); a list line left empty is removed."""
+    lines = text.split("\n")
+    by_line: dict[int, list[dict]] = {}
+    for u in drop:
+        by_line.setdefault(u["line"], []).append(u)
+    out = []
+    for i, line in enumerate(lines):
+        if i not in by_line:
+            out.append(line)
+            continue
+        for u in sorted(by_line[i], key=lambda x: -x["start"]):
+            line = (line[: u["start"]] + line[u["end"]:])
+        m = _LIST_PREFIX.match(line)
+        rest = line[m.end():] if m else line
+        if rest.strip():
+            out.append(re.sub(r"  +", " ", line).rstrip())
+    return "\n".join(out)
