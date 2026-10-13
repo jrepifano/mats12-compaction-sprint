@@ -11,9 +11,9 @@ import pytest
 torch = pytest.importorskip("torch")
 transformers = pytest.importorskip("transformers")
 
-from p36 import model as MD  # noqa: E402
-from p36 import session as SE  # noqa: E402
-from p36 import stimuli as S  # noqa: E402
+from p36 import model as MD
+from p36 import session as SE
+from p36 import stimuli as S
 
 D = 32
 NL = 6
@@ -25,7 +25,7 @@ def tok():
         return transformers.AutoTokenizer.from_pretrained(
             SE.MODEL_ID, revision=SE.MODEL_REV, local_files_only=True
         )
-    except Exception:
+    except OSError:
         pytest.skip("Qwen3.6-27B tokenizer not in the local HF cache")
 
 
@@ -61,7 +61,9 @@ def test_donor_maps_properties():
     for r, d in dm["twin"].items():
         a, b = by[r], by[d]
         assert (a.agent, a.patient) == (b.patient, b.agent) and a.voice == b.voice
-        assert a.text != b.text and sorted(a.text.rstrip(".").split()) == sorted(b.text.rstrip(".").split())
+        assert a.text != b.text and sorted(a.text.rstrip(".").split()) == sorted(
+            b.text.rstrip(".").split()
+        )
     for r, d in dm["xsame"].items():
         a, b = by[r], by[d]
         assert (a.agent, a.patient) == (b.agent, b.patient) and a.voice != b.voice
@@ -123,7 +125,9 @@ def test_end_to_end_tiny(bk, tmp_path, monkeypatch):
     jp = tmp_path / "jpp.pt"
     torch.save(
         {
-            "parameters": {"jacobians": {L: torch.eye(D) + 0.1 * torch.randn(D, D) for L in range(NL - 1)}},
+            "parameters": {
+                "jacobians": {L: torch.eye(D) + 0.1 * torch.randn(D, D) for L in range(NL - 1)}
+            },
             "source_layers": list(range(NL - 1)),
             "config": {},
         },
@@ -161,7 +165,10 @@ def test_end_to_end_tiny(bk, tmp_path, monkeypatch):
     assert c[("twin", "j", "jlens")] == per and c[("random", "r", "logit")] == per
     assert c[("self", "full", None)] == per
     # self-recombined (j_r + r_r) equals the unpatched answer logits up to fp rounding
-    base = {(r["recip"], r["q"]): r for r in map(json.loads, (cfg.out / "rows" / "baseline.jsonl").read_text().splitlines())}  # noqa: E501
+    base = {
+        (r["recip"], r["q"]): r
+        for r in map(json.loads, (cfg.out / "rows" / "baseline.jsonl").read_text().splitlines())
+    }
     for r in rows:
         if r["kind"] == "self":
             assert abs(r["logit_rec"] - base[(r["recip"], r["q"])]["logit_rec"]) < 1e-3
