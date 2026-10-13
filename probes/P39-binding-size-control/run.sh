@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # P39 pod entry point (scripts/probe_pod.py run contract): downloads, then p39.session all.
 # Then results/MANIFEST.sha256 over every file under results/, and a last line PROBE_DONE rc=<n>.
-# bash 3.2-compatible. Env (optional): P39_MAX_HOURS (default 1.0, measured from the start of this
+# bash 3.2-compatible. Env (optional): P39_MAX_HOURS (default 1.15, measured from the start of this
 # script; later forward groups are skipped when < 5 min remain), P39_ARTIFACTS, P39_BATCH, P39_ARGS.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -11,7 +11,7 @@ export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_P
 # P36's package (pushed via probe.toml [pod].push) is imported unchanged
 export PYTHONPATH="$PWD:$PWD/../P36-workspace-binding-causal:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
-export P39_T0="${P39_T0:-$(date +%s)}" P39_MAX_HOURS="${P39_MAX_HOURS:-1.0}"
+export P39_T0="${P39_T0:-$(date +%s)}" P39_MAX_HOURS="${P39_MAX_HOURS:-1.15}"
 export P39_ARTIFACTS="${P39_ARTIFACTS:-/ws/p39_artifacts}"
 PY=/ws/venv-i9/bin/python
 mkdir -p results logs "$P39_ARTIFACTS"
