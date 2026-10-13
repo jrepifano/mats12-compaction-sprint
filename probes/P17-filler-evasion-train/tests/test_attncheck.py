@@ -8,10 +8,10 @@ import pytest
 
 pytest.importorskip("torch")
 
-from p17 import attncheck as A  # noqa: E402
-from p17 import data as D  # noqa: E402
-from p17 import schema as S  # noqa: E402
-from p17 import tiny  # noqa: E402
+from p17 import attncheck as A
+from p17 import data as D
+from p17 import schema as S
+from p17 import tiny
 
 
 def test_collect_and_hits():

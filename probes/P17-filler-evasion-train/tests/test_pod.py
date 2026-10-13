@@ -9,7 +9,7 @@ import pytest
 
 pytest.importorskip("torch")
 
-from p17 import pod as P  # noqa: E402
+from p17 import pod as P
 
 EST = {"train_K": 10.0, "train_E": 12.0, "eval": 5.0}
 
@@ -64,7 +64,7 @@ def test_run_sh_diag_step_propagates_attncheck_failure(tmp_path):
     script = (probe / "run.sh").read_text().replace("PY=/ws/venv-i1a/bin/python", f"PY={fake}")
     (probe / "run.sh").write_text(script)
     out = subprocess.run(["bash", str(probe / "run.sh")], capture_output=True, text=True,
-                         env={"PATH": "/usr/bin:/bin", "P17_STEP": "diag"}).stdout
+                         env={"PATH": "/usr/bin:/bin", "P17_STEP": "diag"}, check=False).stdout
     assert "PROBE_DONE rc=7" in out, out[-500:]
 
 

@@ -10,8 +10,8 @@ import pytest
 
 pytest.importorskip("torch")
 
-from p17 import common as C  # noqa: E402
-from p17 import schema as S  # noqa: E402
+from p17 import common as C
+from p17 import schema as S
 
 
 @pytest.fixture(scope="module")
