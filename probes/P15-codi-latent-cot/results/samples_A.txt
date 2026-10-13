@@ -1,0 +1,61 @@
+P15 stage A: seeded samples (seed 20261012, n 4 per group), analysis results/analysis_A.json
+
+===== E: 4 of 2097 items
+--- T-2264 (cluster 4|1|1, fold 0)
+prompt: A team starts with 4 members. 1 members leave the team. Then each remaining member recruits 1 additional people. How many people are there now on the team? Give the answer only and nothing else.
+out_latent: '8'
+out_direct: '9'
+out_verbal: 'After 1 member leaves, there are 4 - 1 = 3 members left. Each of the remaining members recruits 1 additional person, so there are 3 * 1 = 3 additional members.\n<|eocot|>8'
+gold: 6   a_L: 8
+readers: V=8, D=9, LL=6, PS=2270, K=8, K0=18, LP=10, LPq=10, LPq_slot1=10, VT=8, LP_2x2=8, VT_2x2=9
+--- T-2539 (cluster 5|4|4, fold 0)
+prompt: A company starts with 5 employees. 4 employees resign. Then each remaining employee brings in 4 additional people. How many people are there now in the company? Give the answer only and nothing else.
+out_latent: '15'
+out_direct: '13'
+out_verbal: 'There are 5-4=1 employee left. The remaining employees bring in 4*1=4 employees.\n<|eocot|>15'
+gold: 5   a_L: 15
+readers: V=15, D=13, LL=5, PS=2270, K=15, K0=18, LP=15, LPq=15, LPq_slot1=15, VT=15, LP_2x2=9, VT_2x2=13
+--- T-3016 (cluster 6|4|1, fold 0)
+prompt: A club starts with 6 members. 4 members quit. Then each remaining member invites 1 additional people. How many people are there now in the club? Give the answer only and nothing else.
+out_latent: '8'
+out_direct: '8'
+out_verbal: 'The club has 6 - 4 = 2 members left. The remaining members invite 2 * 1 = 2 more people.\n<|eocot|>8'
+gold: 4   a_L: 8
+readers: V=8, D=8, LL=4, PS=2270, K=6, K0=18, LP=8, LPq=6, LPq_slot1=8, VT=8, LP_2x2=6, VT_2x2=8
+--- T-3867 (cluster 5|2|4, fold 1)
+prompt: A community starts with 5 residents. 2 residents move away. Then each remaining resident invites 4 additional people. How many people are there now in the community? Give the answer only and nothing else.
+out_latent: '18'
+out_direct: '16'
+out_verbal: 'There are 5 - 2 = 3 residents left. Then 3 * 4 = 12 more people come.\n<|eocot|>15'
+gold: 15   a_L: 18
+readers: V=15, D=16, LL=15, PS=2270, K=17, K0=18, LP=17, LPq=17, LPq_slot1=17, VT=16, LP_2x2=17, VT_2x2=17
+
+===== correct: 4 of 2383 items
+--- T-1269 (cluster 7|4|6, fold 1)
+prompt: A gym starts with 7 members. They sign up 4 new members. Then each current member refers 6 additional people. How many people are there now in the gym? Give the answer only and nothing else.
+out_latent: '77'
+out_direct: '55'
+out_verbal: 'The gym starts with 7 + 4 = 11 members. Each member refers 6 new members, so there are 11 * 6 = 66 new members.\n<|eocot|>77'
+gold: 77   a_L: 77
+readers: V=77, D=55, LL=77, PS=2270, K=67, K0=18, LP=77, LPq=67, LPq_slot1=67, VT=77, LP_2x2=77, VT_2x2=77
+--- T-2345 (cluster 6|4|2, fold 0)
+prompt: A team starts with 6 members. 4 members leave the team. Then each remaining member recruits 2 additional people. How many people are there now on the team? Give the answer only and nothing else.
+out_latent: '6'
+out_direct: '10'
+out_verbal: 'After 4 members leave, there are 6 - 4 = 2 members left. Then, each of these members recruits 2 additional people, so there are 2 * 2 = 4 new members.\n<|eocot|>8'
+gold: 6   a_L: 6
+readers: V=8, D=10, LL=6, PS=2270, K=8, K0=18, LP=8, LPq=8, LPq_slot1=8, VT=8, LP_2x2=10, VT_2x2=8
+--- T-2558 (cluster 6|2|7, fold 0)
+prompt: A company starts with 6 employees. 2 employees resign. Then each remaining employee brings in 7 additional people. How many people are there now in the company? Give the answer only and nothing else.
+out_latent: '32'
+out_direct: '30'
+out_verbal: 'There are 6-2=4 employees left. Each of these employees brings in 7 new employees, so there are 4*7=28 new employees.\n<|eocot|>32'
+gold: 32   a_L: 32
+readers: V=32, D=30, LL=32, PS=2270, K=32, K0=18, LP=32, LPq=32, LPq_slot1=32, VT=32, LP_2x2=28, VT_2x2=24
+--- T-4406 (cluster 7|4|7, fold 1)
+prompt: A workshop starts with 7 attendees. 4 attendees withdraw. Then each remaining attendee brings 7 additional people. How many people are there now in the workshop? Give the answer only and nothing else.
+out_latent: '24'
+out_direct: '28'
+out_verbal: 'There are 7-4=3 attendees left. Each of these attendees brings 7 additional people, so there are 3*7=21 additional people.\n<|eocot|>24'
+gold: 24   a_L: 24
+readers: V=24, D=28, LL=24, PS=2270, K=24, K0=18, LP=24, LPq=24, LPq_slot1=24, VT=24, LP_2x2=28, VT_2x2=28

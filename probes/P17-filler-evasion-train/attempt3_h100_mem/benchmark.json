@@ -1,0 +1,34 @@
+{
+ "calibration": {
+  "ce0": 1.4477869272232056,
+  "pen0": 1.8706488609313965,
+  "lambda": 0.7739490598477964,
+  "n": 32
+ },
+ "calibration_s": 2.6,
+ "per_mb": {
+  "1": {
+   "ok": true,
+   "fits": false,
+   "step_s": 4.603666666666666,
+   "peak_gb": 79.06,
+   "val_s": 1.372964859008789
+  },
+  "2": {
+   "ok": false,
+   "fits": false,
+   "error": "OutOfMemoryError('CUDA out of memory. Tried to allocate 32.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 20.12 MiB is free. Process 2330105 has 79.14 GiB memory in use. Of the allocated memory 77.95 GiB is allocated by PyTorch, and 453.25 MiB is reserved by PyTorch but unallocated. If res"
+  },
+  "4": {
+   "ok": false,
+   "fits": false,
+   "error": "OutOfMemoryError('CUDA out of memory. Tried to allocate 58.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 56.12 MiB is free. Process 2330105 has 79.10 GiB memory in use. Of the allocated memory 77.90 GiB is allocated by PyTorch, and 469.93 MiB is reserved by PyTorch but unallocated. If res"
+  }
+ },
+ "val_pass_s": 8.581030368804932,
+ "mb": null,
+ "step_E_s": null,
+ "eval_item_s": 1.2100000000000002,
+ "transplant_pair_s": 1.5666666666666667,
+ "eval_bench_s": 28.9
+}
