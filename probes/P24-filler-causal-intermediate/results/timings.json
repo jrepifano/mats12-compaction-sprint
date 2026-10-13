@@ -1,0 +1,76 @@
+{
+ "download": {
+  "end": "2026-10-12T22:37:51Z",
+  "model_bytes": 62578656403,
+  "seconds": 420.81,
+  "start": "2026-10-12T22:30:50Z"
+ },
+ "load": {
+  "digit_ids": [
+   236771,
+   236770,
+   236778,
+   236800,
+   236812,
+   236810,
+   236825,
+   236832,
+   236828,
+   236819
+  ],
+  "end": "2026-10-12T22:38:15Z",
+  "lenses": {
+   "jlens": {
+    "dropped": "not downloaded"
+   },
+   "jpp": {
+    "dropped": "not downloaded"
+   }
+  },
+  "model_class": "Gemma4ForConditionalGeneration",
+  "n_kv_modules": 110,
+  "seconds": 21.32,
+  "softcap": 30.0,
+  "start": "2026-10-12T22:37:54Z",
+  "w_u_dtype": "torch.bfloat16",
+  "w_u_shape": [
+   262144,
+   5376
+  ]
+ },
+ "pass1": {
+  "end": "2026-10-12T23:18:47Z",
+  "items_done": 408,
+  "items_planned": 408,
+  "projected_s": 2368,
+  "seconds": 2347.81,
+  "sequential_reruns": 0,
+  "start": "2026-10-12T22:39:39Z"
+ },
+ "pass2": {
+  "end": "2026-10-13T00:32:01Z",
+  "items_done": 413,
+  "seconds": 4393.82,
+  "start": "2026-10-12T23:18:47Z"
+ },
+ "smoke": {
+  "agreement": {
+   "reversed": 0.975609756097561,
+   "sequential": 0.975609756097561
+  },
+  "batched_ok": false,
+  "bs": 1,
+  "budget_left_s": 10571,
+  "bulk_planned": 408,
+  "checks": {
+   "bulk fits (>= MIN_BULK items)": true,
+   "sequential references agree": true,
+   "sequential self-patch = unpatched": true
+  },
+  "end": "2026-10-12T22:39:39Z",
+  "n_items": 5,
+  "per_item_s": 5.805,
+  "seconds": 83.5,
+  "start": "2026-10-12T22:38:15Z"
+ }
+}
