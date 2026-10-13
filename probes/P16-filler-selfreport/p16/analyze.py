@@ -236,18 +236,18 @@ def ridge_probe(per: dict[tuple[int, str], dict], items: list[dict], arms: list[
         X = np.stack([per[(i, a)]["pool"] for a in ("P", "M") for i in tr])
         t = np.array([y[i] for a in ("P", "M") for i in tr], float)
         g = np.array([i for a in ("P", "M") for i in tr])
-        sc = StandardScaler().fit(X)
-        Xs = sc.transform(X)
         best, best_err = None, np.inf
         for al in ALPHAS:
             err = 0.0
-            for tri, tei in GroupKFold(n_splits=4).split(Xs, t, g):
-                m = Ridge(alpha=al).fit(Xs[tri], t[tri])
-                err += float(((m.predict(Xs[tei]) - t[tei]) ** 2).sum())
+            for tri, tei in GroupKFold(n_splits=4).split(X, t, g):
+                isc = StandardScaler().fit(X[tri])  # scaled within the inner fold (review r1 #7)
+                m = Ridge(alpha=al).fit(isc.transform(X[tri]), t[tri])
+                err += float(((m.predict(isc.transform(X[tei])) - t[tei]) ** 2).sum())
             if err < best_err:
                 best, best_err = al, err
         alphas.append(best)
-        m = Ridge(alpha=best).fit(Xs, t)
+        sc = StandardScaler().fit(X)
+        m = Ridge(alpha=best).fit(sc.transform(X), t)
         for a in arms:
             ok = [i for i in te if (i, a) in per]
             if ok:
@@ -278,8 +278,10 @@ def part_c(results: Path, ans: dict, items: list[dict], arms: list[str], ivocab:
                            "probe_alphas": probe["alphas"], "probe_r": {}}
     yv = {it["idx"]: it["roles"]["y"] for it in items}
     dv = {it["idx"]: it["d"] for it in items}
-    for arm in arms:
-        ks = [k for k in probe["raw"] if k[1] == arm]
+    block = {it["idx"]: it["block"] for it in items}
+    for arm, sel in [(a, None) for a in arms] + [(f"{a}|new", "new") for a in arms]:
+        ks = [k for k in probe["raw"] if k[1] == arm.split("|")[0] and
+              (sel is None or block[k[0]] == sel)]
         if len(ks) > 2:
             p_ = np.array([probe["raw"][k] for k in ks])
             out["probe_r"][arm] = {"r_y": float(np.corrcoef(p_, [yv[k[0]] for k in ks])[0, 1]),

@@ -1,21 +1,21 @@
 # P16 note (merged with P13): when a model plants a decoy or misreports the value it computed at filler tokens, which fails: a lens-reading judge monitor, asking the model, or the information in its activations?
 
-**Status:** done, 2026-10-13. **Spend:** $54.55 of the $90 cap (GPU $35.88, of which $10.11 went to a stopped first session and an aborted launch; API $18.66). **Wall-clock:** about 6 h from the go to the analysis, including a laptop crash and one relaunch. Plan: [`plan.md`](plan.md); run log: [`log.md`](log.md); literature: [`lit-review.md`](lit-review.md). Data: `results/analysis.json` (all numbers below unless named), `results/answers.jsonl`, `results/judge/`, `results/f1.json`; the npz readouts (gitignored, ~10 GB) are in the main checkout.
+**Status:** done, 2026-10-13. **Spend:** $54.55 of the $90 cap (GPU $35.89, of which $10.12 went to a stopped first session and an aborted launch; API $18.66). **Wall-clock:** about 6 h from the go to the analysis, including a laptop crash and one relaunch. Plan: [`plan.md`](plan.md); run log: [`log.md`](log.md); literature: [`lit-review.md`](lit-review.md). Data: `results/analysis.json` (all numbers below unless named), `results/answers.jsonl`, `results/judge/`, `results/f1.json`; the npz readouts (gitignored, ~10 GB) are in the main checkout.
 
 ## The answer
 
 **Asking the model is the best reader of its filler-computed value here, and it fails only when the model is handed a specific wrong number.** On DeepSeek V4 Flash, with 400 arithmetic items and P12's filler format:
 
-- **Self-report holds under every incentive and decoy arm.** Asked "What was the value of {Y}?", the model reports the true y on 91% of items under the placebo (P) and 93–96% under the decoy arms and both incentive arms. It misreports only when instructed: told to give "a wrong number" (L), the rate of wrong values rises by 14.8 points [11.3, 18.4]; told which number to give (LD), it gives that number on 97.8% [96.2, 99.2]. Under an incentive without an instruction (I, "you lose points if it learns the true value"), the rise is 3.0 points [1.4, 5.0], and the same under a game framing (I2).
-- **Brauer et al.'s lens monitor works under the placebo and a prompted decoy defeats it at rank 1, partly at rank 2 and hardly at rank 5.** Under P, the Haiku judge names y first on 56.5% of items and in its first two on 85.0%, matching Brauer et al.'s 55% and 82% on DeepSeek V3. Told to think about a decoy d at the dots instead of y (CD), the monitor names d first on 93%. The CD − P change in y-hit is −52.7 points [−57.8, −47.5] at k = 1, −25.5 [−30.2, −20.7] at k = 2 and about −1 at k = 5. All seven monitor variants agree within 2 points: Haiku and luna; neutral, list-all and decoy-warned prompts; P-mean, own-mean and no mean subtraction; and the no-judge ranking. The judges add nothing over the list's numeric order.
-- **The information stays in the activations under every arm.** A ridge probe on the pooled filler residual (layer 34) tracks y at r 0.957–0.975 in every arm, including CD and LD, and tracks d at r ≤ 0.07. A modal reader that excludes the numbers written in the prompt names y on 81% under CD and 78% under LD. Under LD self-report gives y on 2.8%, so that reader beats asking there by **+75.5 points [71.2, 79.9]**.
+- **Self-report holds under every incentive and decoy arm.** Asked "What was the value of {Y}?", the model reports the true y on 91% of items under the placebo (P) and 93–96% under the decoy arms and both incentive arms. It misreports only when instructed: told to give "a wrong number" (L), the rate of wrong values rises by 14.8 points [11.3, 18.4]; told which number to give (LD), it gives that number on 390/400 items (97.5%; 97.8% [96.2, 99.2] of the items it self-reports correctly under P). Under an incentive without an instruction (I, "you lose points if it learns the true value"), the rise is 3.0 points [1.4, 5.0], and the same under a game framing (I2).
+- **Brauer et al.'s lens monitor works under the placebo and a prompted decoy defeats it at rank 1, partly at rank 2 and hardly at rank 5.** Under P, the Haiku judge names y first on 56.5% of items and in its first two on 85.0%, matching Brauer et al.'s 55% and 82% on DeepSeek V3. Told to think about a decoy d at the dots instead of y (CD), the monitor names d first on 93%. The CD − P change in y-hit is −52.7 points [−57.8, −47.5] at k = 1, −25.5 [−30.2, −20.7] at k = 2 and about −1 at k = 5. All monitor variants give the same CD − P effect at k = 1 and k = 2 to within 2 points (at k = 5 the spread is 3 points): Haiku and luna; neutral, list-all and decoy-warned prompts; P-mean, own-mean and no mean subtraction; and the no-judge ranking. On this task the judges give no material improvement over the list's numeric order at k = 2.
+- **Much of the information stays recoverable from the activations under every arm, though decoding degrades.** A ridge probe trained on P and M (pooled filler residual, layer 34, cross-fitted by item) predicts y at r 0.957–0.975 in every arm, including CD and LD (0.957–0.973 on the 200 new items, which played no part in choosing the layer). Its predictions correlate with d at r ≤ 0.07, but that is the y-trained predictor, not a d decoder. Its error roughly doubles under CD and triples under LD (mean absolute error 13.5 under P, 26.1 under CD, 37.3 under LD). A modal reader that excludes the numbers written in the prompt names y on 81% under CD and 78% under LD (on the 364 items whose y is not written in the prompt). On those items, self-report gives y on 2.8% under LD, so that reader beats asking there by **+75.5 points [71.2, 79.9]**.
 
 **What it changes.** The plan's combined calls all point the same way:
-- Readers are *worse* than asking under P.
-- Self-report fails only in the role-play arms (L, LD), the case already shown for stored facts (Long et al. 2025), so it is a **kill as a study**.
+- Readers are *worse* than asking under P and under every arm without an instruction to lie.
+- Readers beat asking only in the role-play arms: under LD (the prompt-aware filler reader and the probe), and under L, where the answer-position logit lens beats the reply by +6.2 points [2.3, 10.4] on the 385 items with a numeric reply. Self-report fails only in these arms, the case already shown for stored facts (Long et al. 2025), so it is a **kill as a study**.
 - The decoy degrades the monitor, but asking holds under CD (+2.5 points [−0.8, +5.8] over P), so **a black-box question beats the lens monitor on this task**.
 
-So the filler-arithmetic line does not yield "activations recover what asking cannot" without an instruction to lie. Per the portfolio review, the next step is P15's error prediction, not Gemma or trained evasion. What survives is a **monitor-design result**: an unoptimised prompted decoy takes the top slot in Brauer-style lens monitoring (93%), while a supervised probe, or a modal reader that knows the prompt, is unaffected. *Scope:* one model, whose detailed attention covers only its last 128 tokens, and arithmetic that a text solver gets right on 100% of items (F: 400/400).
+So the filler-arithmetic line does not yield "activations recover what asking cannot" without an instruction to lie. Per the portfolio review, the next step is P15's error prediction, not Gemma or trained evasion. What survives is a **monitor-design result**: an unoptimised prompted decoy takes the top slot in Brauer-style lens monitoring (93%), while a supervised probe (r 0.965, with a larger error) and a modal reader that knows the prompt (81%) still recover y, with some loss. *Scope:* one model, whose detailed attention covers only its last 128 tokens, and arithmetic that a text solver gets right on 100% of items (F: 400/400).
 
 ## Setup (as run)
 
@@ -73,15 +73,16 @@ The primary Brauer residuals are therefore exact in every cell. **Monitors:** Br
 |---|---|---|---|---|---|
 | P | 91.0% | 68.3%, Δ −22.8 [−28.0, −17.5] *worse* | 72.3%, Δ −19.5 *worse* | 0.975 (30.5%) | 46.8% |
 | CD | 93.5% | 9.0% (names d), Δ −84.5 | 81.0%, Δ −12.1 [−16.8, −7.4] *worse* | 0.965 (23.3%) | 79.0% |
-| L | 79.3% | 79.8%, Δ +0.5 [−5.3, +6.3] *equivalent* | 84.1%, Δ +5.2 [−0.8, +11.0] *inconclusive* | 0.966 (26.0%) | 88.6% (n 385), Δ +6.2 [2.3, 10.4] *beats* |
+| L | 79.3% | 79.8%, Δ +0.5 [−5.3, +6.3] *equivalent* | 84.1%, Δ +5.2 [−0.8, +11.0] *inconclusive* | 0.966 (26.0%) | 341/385 (88.6%) vs S 317/385 on items with a numeric reply, Δ +6.2 [2.3, 10.4] *beats* |
 | I | 96.0% | 76.8%, Δ −19.3 *worse* | 81.0%, Δ −15.7 *worse* | 0.970 (32.3%) | 71.3% |
 | LD | 2.5% | 2.8% (names d), Δ +0.3 *equivalent* | **78.3%, Δ +75.5 [71.2, 79.9] *beats*** | 0.957 (16.0%; Δ +13.5 *beats*) | 3.7% |
 
 - **Any-cell ceiling:** y is the top-1 token at some filler cell on 99–100% of items in every arm, for every reader.
 - **LD plants d at the dots:** d's share of filler cells rises by 5.4 points [5.2, 5.6] over P (CD: +6.5).
 - **On the 54 items where L's reply was a wrong number,** y is top-1 at some answer-position layer on 83%, against 0% for the partner's y. On LD's 356 complying items, the figure is 44%.
-- **Answer consistency (P):** on 158 items whose wrong turn-1 answer implies a different y, self-report gives the true y on 143 and the implied y on 0; R_fill gives the true y on 114 and the implied y on 0. So the model's arithmetic errors happen after y, and no reader recovers a "wrong y the model used".
-- **The probe's exact guess is weak by construction.** It picks the nearest integer readable at the filler, and its mean absolute error is 13.5 under P. Its r is the measure of whether the information is present.
+- **Answer consistency (P):** on 158 items whose wrong turn-1 answer implies a different y, self-report gives the true y on 143 and the implied y on 0; the J-Lens R_fill gives the true y on 114 and the implied y on 0; the probe gives the true y on 48 and the implied y on 2. This is *consistent with* errors arising after y is computed. It does not locate them: self-report may recompute y from the text, and reading the true y at the filler does not show which representation produced the answer.
+- **The probe's exact guess is weak by construction.** It picks the nearest integer readable at the filler, and its mean absolute error is 13.5 under P. Its r is the measure of whether the information is present. Under CD its exact guess falls 7.3 points [−12.8, −1.8] below P's.
+- **Denominators.** S and the readers use all 400 items unless marked. The prompt-aware reader uses the 364 items whose y is not written in the prompt. Compliance is conditional on P's self-report being correct. The answer-position reader has no state when a reply holds no digit: those items are excluded from its paired Δ, but count as misses in its accuracy column.
 
 ## Predictions against outcomes
 
@@ -104,7 +105,7 @@ The primary Brauer residuals are therefore exact in every cell. **Monitors:** Br
 | C4 | on complying items, y top-1 at an answer-position layer on ≥ 50% (0.45) | **Mixed:** L 83% (n 54); LD 44% (n 356) |
 | C5 | LD plants d at the filler (0.6) | **Yes**, +5.4 [5.2, 5.6] points of cell share |
 
-**Plan outcome classes:** A, degradation at k = 2 (defeat at k = 1). B, compliance only in L and LD. C, readers worse than asking under P, and better than asking only under LD. **Combined call:** kill as a study; asking beats the lens monitor under the decoy.
+**Plan outcome classes:** A, degradation at k = 2 (defeat at k = 1). B, compliance only in L and LD. C, readers worse than asking under P and every non-instructed arm, and better than asking only under LD and, for the answer-position reader, L. **Combined call:** kill as a study; asking beats the lens monitor under the decoy.
 
 ## Follow-ups (exploratory)
 
@@ -116,8 +117,10 @@ The primary Brauer residuals are therefore exact in every cell. **Monitors:** Br
 
 - **Asking gets help from the text.** F shows the model can recompute y from the prompt on 100% of items, so asking isn't evidence of access to the filler computation. That is why the plan treats any reader win as robustness to an instruction, not privileged information.
 - **The decoy is planted, not hidden.** In CD and LD, y stays the top-1 token at some filler cell on 99–100% of items, and the probe tracks it. The decoy wins only where a monitor ranks tokens by aggregate weight without knowing the prompt.
-- **The judges add nothing.** In this setup they mostly echo the list's numeric order (the samples show identical prefixes). Brauer et al. found the same on their 1-fact task (judges within ~1 point of direct top-2 recovery).
-- **The own-mean sensitivity is approximate.** It is exact on 80–84% of cells (certificate: the 30th residual ≥ the 100th raw probability). It agrees with the exact P-mean primary at k = 2 within 1 point.
+- **The judges give no material improvement at k = 2.** In this setup they mostly echo the list's numeric order (the samples show identical prefixes). Brauer et al. report the same on their 1-fact task (judges within ~1 point of direct top-2 recovery). Similar aggregate accuracy does not show that judge and ranking decide identically per item.
+- **Luna's null primary guesses.** 13 luna replies give `n1: null` with backups. The parser drops the null and promotes the first backup. Keeping the null in the first slot changes luna's P hit@1 from 226 to 224 and hit@2 from 336 to 334, and its CD − P at k = 2 from −26.3 to −25.8. Haiku is unaffected.
+- **The own-mean sensitivity is approximate.** On 80–84% of cells the stored top 100 covers the own-mean top 30 (the 30th residual ≥ the 100th raw probability). That is a coverage check subject to fp16 rounding of the stored log-probabilities, not exactness. It agrees with the exact P-mean primary at k = 2 within 1 point.
+- **Modal tie-breaking is approximate.** When two values tie for the modal top-1, a value missing from a cell's stored top 100 takes that cell's 100th log-probability, an upper bound. That can reverse the planned mean-log-probability order in rare ties. The size of the effect wasn't measured.
 - **The API pilot ran on served weights not established to be the pinned checkpoint** (P06 F7). The pilot set rules only; every headline number is from the pod.
 - **The literature captures (Long, Huan, Pacchiardi, Halawi) were read through fetch summaries only** ([`lit-review.md`](lit-review.md)).
 
@@ -166,17 +169,32 @@ Drawn by [`p16/samples.py`](p16/samples.py) (seed 20261019, 4 items per arm from
 | Analysis, F1, note | 03:00–03:50 | ~50 min | 0 |
 | **Total** | | **~6 h** | **54.55** |
 
-In session 2 the GPU sat idle during the 32-min download and the ~13 min of load, compile and gates, about 26% of billed time. Phase 3 ran at 15 s per item: 7 arms × ~2 s, plus F and the asks.
+Session 2's billed 172 min (`results/timings.json`): download 32.4 min (19% of billed time, the GPU idle), load, compile and the lens gate 6.4 min (GPU work), phase 1 12.9 min, phase 2 4.8 min, phase 3 99.8 min (15 s per item: 7 arms × ~2 s plus F), phase 4 2.5 min, pod setup ~5 min and the pull and teardown ~10 min. Stopping session 1 and starting a new pod repeated a 32-min download (~$4.80). Restarting the run on the same pod would have saved it, but the runner allows one run per pod. The pod code also has no gate that stops bulk work when the measured projection overruns the budget. It extends its own stop time instead, which is why session 1 had to be stopped by hand.
 
 ## Open questions and next steps
 
 - **Kill as a sprint study,** per the plan's combined rule. The next filler-line step, if any, is P15's error prediction (CoDI), where the readable state could carry a mistake that asking does not reveal.
-- **A possible small finding to write up:** prompted decoys capture Brauer-style lens monitors at rank 1 (93%), while supervised probes and prompt-aware readers are unaffected. It would need a model with full attention (Gemma) before anyone relies on it.
+- **A possible small finding to write up:** prompted decoys capture Brauer-style lens monitors at rank 1 (93%), while supervised probes and prompt-aware readers still recover y, with some loss. It would need a model with full attention (Gemma) before anyone relies on it.
 - **Not tested:** the judge seeing the problem text, which would make the monitor a text solver; Sonnet as the judge (both judges agreed, so the plan's trigger did not fire); hard-to-recompute values.
 
 ## Review
 
-See the review section added after the cross-family review round (below).
+One cross-family round (gpt-6-astra, [`logs/reviews/20261013-P16-r1.md`](../../logs/reviews/20261013-P16-r1.md)). Verdict: request changes on reporting; "the primary results and kill-as-study decision stand". The reviewer recomputed part B from `answers.jsonl` and Haiku J1's hit@1/2/5 from the judge cache, and both matched. Findings and what was done:
+
+| # | Finding | Severity | Done |
+|---|---|---|---|
+| 1 | Answer consistency presented as locating errors; "no reader" false (the probe matches the implied y on 2) | BLOCKING | Fixed: reported as consistent with downstream errors, not as locating them; all three readers' counts given |
+| 2 | "Better than asking only under LD" ignores L's answer-position reader (+6.2) | MINOR | Fixed in the answer and outcome classes |
+| 3 | Probes are not "unaffected"; r_d is the y-trained predictor; layer chosen on P12's items | MINOR | Fixed: degradation (MAE, exact-guess drop) stated; r on the 200 new items added (0.957–0.973) |
+| 4 | Denominators switch (LD 97.5% vs 97.8%; L's answer reader on 385) | MINOR | Fixed: each conditional denominator labelled |
+| 5 | Luna `n1: null` promoted from backups | MINOR | Documented, with the sensitivity (luna CD − P @2 −26.3 → −25.8; Haiku unaffected) |
+| 6 | Modal tie-break uses an upper bound for missing values | MINOR | Documented; not quantified (needs the readouts' exact probabilities) |
+| 7 | Probe's scaler fitted before the inner CV | MINOR | Fixed in `analyze.py`; the chosen alphas, and so every probe number, are unchanged |
+| 8 | Own-mean "exact" overstated (fp16) | MINOR | Reworded as a coverage check |
+| 9 | Monitor agreement overstated at k = 5; "judges add nothing" | MINOR | Scoped to k = 1, 2 and to "no material improvement" |
+| 10 | No overrun gate; restart repeated the download (~$4.81) | MINOR | Noted in Spend and wall-clock; a runner change (restart on the same pod) is suggested for the launching session |
+| 11 | Overhead wrongly called idle; 26% wrong | MINOR | Fixed from `timings.json` (download 19%, GPU-working gates 6.4 min) |
+| 12 | GPU $35.88 should be $35.89 | NIT | Fixed |
 
 ## References
 
