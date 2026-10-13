@@ -65,3 +65,15 @@ def test_f1_spans(fams):
         t = Tokenizer.from_file(snap[0])
         n = {a: len(t.encode(f"Filler: {f1.SPANS[a]}\n\n").ids) for a in f1.SPANS}
         assert 490 <= n["the500"] <= 515 and 95 <= n["prose100"] <= 110 and n["dots100"] == 103
+
+
+def test_f2_spans(fams):
+    from p32 import f1
+
+    vb, ch = fams["varbind"][0][0], fams["chain"][0][0]
+    assert f1.user_turn(vb, "dots10").endswith("Filler: " + " ".join(["."] * 10) + "\n\nAnswer:")
+    assert f1.user_turn(vb, "label0").endswith("\n\nFiller:\n\nAnswer:")
+    assert f1.user_turn(vb, "qrep").endswith(f"\n\nQuestion: {vb['question']}\n\nAnswer:")
+    assert f1.user_turn(ch, "qrep").endswith("\n\nWhat is the final number?\n\nAnswer:")
+    assert P.FILLER_SYS not in f1.system(vb, "qrep") and P.FILLER_SYS in f1.system(vb, "dots1")
+    assert len(f1.build({"chain": fams["chain"]}, f1.F2_ARMS)) == 6 * I.N_ITEMS

@@ -349,6 +349,41 @@ def passk(path: Path, seed: int = 0) -> dict:
     return out
 
 
+def f1_table(c: dict, f1_rows: dict, seed: int = 0) -> dict:
+    """F1: free-response accuracy of every span arm (main: base, pad, padmid, dots; f1: the six
+    variants), with paired differences against dots and against base (item bootstrap)."""
+    rs = np.random.default_rng(seed)
+    f1c = cells(f1_rows)
+    out = {}
+    for fam in FAMILIES:
+        arms = {a: c[fam] for a in ("base", "pad", "padmid", "dots")}
+        f1_arms = sorted({cond.split("|")[2] for cc in f1c[fam].values() for cond in cc})
+        ids = [i for i in c[fam] if all(f"0|-|{a}" in c[fam][i] for a in arms)
+               and all(f"0|-|{a}" in f1c[fam].get(i, {}) for a in f1_arms)]
+        acc = {a: np.array([c[fam][i][f"0|-|{a}"][0] for i in ids], dtype=float) for a in arms}
+        acc |= {a: np.array([f1c[fam][i][f"0|-|{a}"][0] for i in ids], dtype=float)
+                for a in f1_arms}
+        inv = {a: float(np.mean([1 - f1c[fam][i][f"0|-|{a}"][1] for i in ids])) for a in f1_arms}
+        idx = boot_index(len(ids), rs)
+        o = {"n_items": len(ids), "invalid": inv}
+        for a, v in acc.items():
+            o[a] = {"acc": float(v.mean())}
+            for ref in ("dots", "base"):
+                if a != ref:
+                    d = v - acc[ref]
+                    o[a][f"minus_{ref}"] = float(d.mean())
+                    o[a][f"minus_{ref}_ci"] = ci(d[idx].mean(1))
+        out[fam] = o
+    return out
+
+
+def padmid_as_filler(c: dict, kind: str, item_set: str) -> dict:
+    """The same share contrast with padmid (prose in the filler's place) as the filler arm."""
+    c2 = {f: {i: {**cc, **{k.replace("|padmid", "|dots_mid"): v for k, v in cc.items()
+                           if k.endswith("|padmid")}} for i, cc in d.items()} for f, d in c.items()}
+    return contrast(c2, kind, "mid", "base", item_set)
+
+
 def main():
     fams = load_all()
     rows = load(RES / "main.jsonl")
@@ -361,6 +396,8 @@ def main():
                 for item_set in ("valid", "all"):
                     res["contrasts"][f"{kind}|{place}|{base}|{item_set}"] = contrast(
                         c, kind, place, base, item_set)
+    res["padmid_as_filler"] = {f"{k}|{s}": padmid_as_filler(c, k, s) for k in KINDS
+                               for s in ("valid", "all")}
     res["model_compare"] = {f"near|before|{b}": model_compare(c, base=b) for b in ("base", "padmid")}
     res["model_compare"]["near|after|base"] = model_compare(c, place="after")
     res["free_response"] = free_response(c)
@@ -368,6 +405,10 @@ def main():
     res["prompt_tokens_median"] = prompt_tokens(rows)
     res["attraction"] = attraction(rows, fams)
     res["link"] = link(c)
+    if (RES / "f1.jsonl").exists():
+        res["f1"] = f1_table(c, load(RES / "f1.jsonl"))
+    if (RES / "f2.jsonl").exists():
+        res["f2"] = f1_table(c, load(RES / "f2.jsonl"))
     if (RES / "passk.jsonl").exists():
         res["passk"] = passk(RES / "passk.jsonl")
     (RES / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
