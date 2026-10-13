@@ -1,0 +1,37 @@
+{
+ "identity_max_abs": 0.0,
+ "identity_ok": true,
+ "first20_correct": 20,
+ "accuracy_ok": true,
+ "pursuit": {
+  "jlens": {
+   "fve_k1_mean": 0.03945283964276314,
+   "n_active_k1_min": 25,
+   "fve_kmax_mean": 0.04595811292529106,
+   "kkt_kmax_max": 2.478114311088575e-06,
+   "sec_k1_with_dict_build": 6.24,
+   "sec_kmax_16_states": 1.56
+  },
+  "logit": {
+   "fve_k1_mean": 0.029046986252069473,
+   "n_active_k1_min": 25,
+   "fve_kmax_mean": 0.08931007981300354,
+   "kkt_kmax_max": 1.2570815215440234e-06,
+   "sec_k1_with_dict_build": 0.36,
+   "sec_kmax_16_states": 3.2
+  },
+  "jpp": {
+   "fve_k1_mean": 0.04368061199784279,
+   "n_active_k1_min": 25,
+   "fve_kmax_mean": 0.08149991929531097,
+   "kkt_kmax_max": 4.3466934585012496e-07,
+   "sec_k1_with_dict_build": 2.89,
+   "sec_kmax_16_states": 3.36
+  }
+ },
+ "pursuit_ok": true,
+ "sec_per_batch": 0.539,
+ "projected_seconds": 728,
+ "time_left": 6150,
+ "ok": true
+}

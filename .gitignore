@@ -278,6 +278,12 @@ probes/P17-filler-evasion-train/attempt3_h100_mem/bench/
 probes/P17-filler-evasion-train/results/smoke_eval/readouts/
 probes/P17-filler-evasion-train/results/bench_eval/eval/*/readouts/
 probes/P17-filler-evasion-train/results/bench_eval/eval/*/pools.npz
+
+# P32: fresh varbind items from Brauer et al.'s generator (their repo has no licence)
+data/P32/
+# P32: raw API rows are large (~1.8 KB/row); the gzipped copies are committed
+probes/P32-filler-mc-candidates/results/*.jsonl
+probes/P32-filler-mc-candidates/results/.reconcile.lock
 # P37: raw continuation episodes, site tarballs, fork/tag raw replies, Inspect logs (backed up in
 # the main checkout's probe dir at close-out)
 probes/P37-grader-belief-causal/results/**/episodes/

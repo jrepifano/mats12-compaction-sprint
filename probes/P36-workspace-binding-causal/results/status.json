@@ -1,0 +1,117 @@
+{
+ "started": "2026-10-13T16:02:55Z",
+ "smoke": {
+  "identity_max_abs": 0.0,
+  "identity_ok": true,
+  "first20_correct": 20,
+  "accuracy_ok": true,
+  "pursuit_ok": true,
+  "sec_per_batch": 0.539,
+  "projected_seconds": 728,
+  "time_left": 6150,
+  "ok": true
+ },
+ "gate1": {
+  "accuracy": {
+   "agent": 0.995,
+   "patient": 1.0
+  },
+  "gate1": true
+ },
+ "stage0": {
+  "rates": {
+   "entity@12": {
+    "patient": 0.0,
+    "agent": 0.010101010101010102
+   },
+   "entity@18": {
+    "patient": 0.0,
+    "agent": 0.020202020202020204
+   },
+   "entity@24": {
+    "patient": 0.0075,
+    "agent": 0.03787878787878788
+   },
+   "entity@30": {
+    "patient": 0.34,
+    "agent": 0.35353535353535354
+   },
+   "entity@36": {
+    "patient": 0.36,
+    "agent": 0.39646464646464646
+   },
+   "entity@42": {
+    "patient": 0.7275,
+    "agent": 0.8055555555555556
+   },
+   "entity@48": {
+    "patient": 0.96,
+    "agent": 0.9444444444444444
+   },
+   "entity@54": {
+    "patient": 0.2475,
+    "agent": 0.2601010101010101
+   },
+   "final@12": {
+    "patient": 0.0,
+    "agent": 0.0025252525252525255
+   },
+   "final@18": {
+    "patient": 0.0,
+    "agent": 0.005050505050505051
+   },
+   "final@24": {
+    "patient": 0.0,
+    "agent": 0.010101010101010102
+   },
+   "final@30": {
+    "patient": 0.0,
+    "agent": 0.007575757575757576
+   },
+   "final@36": {
+    "patient": 0.0,
+    "agent": 0.0025252525252525255
+   },
+   "final@42": {
+    "patient": 0.0,
+    "agent": 0.0
+   },
+   "final@48": {
+    "patient": 0.0,
+    "agent": 0.0
+   },
+   "final@54": {
+    "patient": 0.0,
+    "agent": 0.0
+   }
+  },
+  "cells": {
+   "entity": [
+    [
+     48
+    ],
+    [
+     42
+    ]
+   ]
+  }
+ },
+ "cells_pass1": {
+  "entity": [
+   [
+    48
+   ],
+   [
+    42
+   ]
+  ]
+ },
+ "selected": {
+  "entity": [
+   48
+  ]
+ },
+ "rc": 0,
+ "why": "complete",
+ "ended": "2026-10-13T16:16:38Z"
+}
