@@ -84,6 +84,10 @@ def summarize(rows: list[dict], sites: dict) -> dict[str, Any]:
                              "lp_drop": paired(un_lp, by_item(h, "lp_answer", unit="knockout",
                                                               site=s))}
                          for s in sorted({r["site"] for r in h if r["unit"] == "knockout"})}
+        ko = by_item(h, "is_answer", unit="knockout", site="all|all")
+        if ko:  # the no-information, no-disruption reference (log.md, side-agent note)
+            k["acc_knockout_all"] = rate(list(ko.values()))
+            k["maskB_minus_knockout_all"] = paired(mb, ko)
         self_ = by_item(h, "is_answer", unit="self")
         if self_:
             k["self_patch_vs_unpatched"] = paired(self_, un)
