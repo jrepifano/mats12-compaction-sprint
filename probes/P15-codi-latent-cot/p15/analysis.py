@@ -716,12 +716,20 @@ def run(results: Path, stage: str, layers_spec: str = "auto", fast: bool = False
     err_lp = crossfit(get_lat, layers, yerr, outer, groups, strata, lams, task="binary")
     err_vt = crossfit(lambda _layer: xvt, [None], yerr, outer, groups, strata, lams,
                       task="binary", standardise=False)
+    # exploratory follow-up (log.md, 2026-10-13): the same binary probe on the question
+    # encoding alone (slot 0), to test whether the latents' error-detection edge over VT is the
+    # prompt's, as the answer-prediction edge was in stage A
+    err_q = crossfit(q_getter(qresid, 0), layers, yerr, outer, groups, strata, lams,
+                     task="binary")
     flag_v = np.array([p != a for p, a in zip(preds["V"], y)], dtype=float)
     err = cluster_auroc_ci({"LP_err": err_lp["pred"], "VT_err": err_vt["pred"],
-                            "flag_V_ne_aL": flag_v}, yerr, clusters,
-                           diffs=[("LP_err", "flag_V_ne_aL"), ("LP_err", "VT_err")],
+                            "LPq_err": err_q["pred"], "flag_V_ne_aL": flag_v}, yerr, clusters,
+                           diffs=[("LP_err", "flag_V_ne_aL"), ("LP_err", "VT_err"),
+                                  ("LP_err", "LPq_err"), ("LPq_err", "VT_err")],
                            n_boot=n_boot)
-    err["chosen"] = {"LP_err": err_lp["chosen"], "VT_err": err_vt["chosen"]}
+    err["chosen"] = {"LP_err": err_lp["chosen"], "VT_err": err_vt["chosen"],
+                     "LPq_err": err_q["chosen"]}
+    err["exploratory"] = ["LPq_err", "LP_err-LPq_err", "LPq_err-VT_err"]
     timings["error_detection"] = round(time.time() - t, 1)
 
     out: dict = {
