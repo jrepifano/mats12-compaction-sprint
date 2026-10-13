@@ -1,0 +1,28 @@
+# P22 literature notes (2026-10-12)
+
+## Bottom line for P22
+Zhang et al. report provider-level separation of value prioritisation only qualitatively (Sec 3.4, App C.1/C.2) and run no model-level PCA/clustering, so nobody has published the item-centred, PC1-removed same-family vs cross-family AUC; P22 is not duplicated. Two interpretation caveats. (1) All 12 models' positions were classified by one judge pipeline: Claude 4 Opus generated the per-item spectrum rubric and the rubric was used to classify all 12 responses (Sec 2.2). A single judge, itself a Claude, could impose structure or favour Claude-style responses; the judge model that did the final 0-6 classification was not visible in what I read (see gap below). (2) The scenarios were selected by inter-model disagreement and are provider-spec-targeted (Sec 2.2), so same-family agreement may be partly built into the item set. Same-provider similarity is already claimed by the paper (App C), so a positive P22 result is expected; the informative outcome is a null after PC1 removal, or Claude-vs-OpenAI asymmetry.
+
+## 1. Zhang et al. 2025, arXiv 2510.07686 (https://arxiv.org/html/2510.07686)
+Tag: HTML read via WebFetch (small-model extraction, quoted passages are from its output, not my own reading of the page). First 100k of 118k chars plus a later slice read; Appendix B.4 prompt text was not recoverable (encoded link). Re-check quotes against the paper before citing.
+- Position production, Sec 2.2: "First, given a query and its two seed values, we prompt Claude 4 Opus to generate a spectrum of answering strategies" and "We subsequently employ this spectrum as a rubric to classify all 12 model responses (prompt in Appendix B.4)." Scale: 6 = extremely favoring a value, 0 = extremely opposing. Who ran the classification step is not stated in the extracted text. Gap: open Appendix B.4 by hand.
+- Provider clustering, Sec 3.4: "we see a clear separation of how models from different providers prioritize certain values"; but for some values (e.g. business effectiveness) "we do not see a clear separation between providers."
+- App C.1: "Models from the same provider generally exhibit similar value prioritization patterns". App C.2: "models from the same provider maintain relatively consistent value frameworks."
+- PCA/clustering of models: none found. The k-center clustering (App A) is over scenarios, not models. No formal model clustering reported.
+- Disagreement, Sec 2.2: "higher disagreement frequently corresponds to model specification issues." Counts of high-disagreement scenarios: Claude models 20,790; OpenAI models 26,295; Sonnet 4 vs Opus 4 9,245; GPT-4.1 vs 4.1-mini 10,160; o3 vs o4-mini 21,953. No overall Claude-vs-OpenAI rate comparison. Note o3 vs o4-mini disagree far more than same-generation Claude pair, relevant for within-family similarity expectations.
+- Sec 3.2: "Claude models tend to adopt softer rejection strategies that include at least some explanation" (refusal style, not value positions).
+
+## 2. External prior work
+- PhyloLM, Yax, Oudeyer, Palminteri, ICLR 2025, https://arxiv.org/html/2404.04671v2 (summary only, via search snippets): behavioural phylogeny from output similarity on shared prompts; 111 open + 45 closed models; trees match known families. Uses token-level outputs, not value positions.
+- Haslett et al., arXiv 2512.13723, https://arxiv.org/abs/2512.13723 (abstract summary only): 10 Chinese + 10 US models on MFQ-2 and WVS; all 20 answer more like Americans than Chinese respondents; Chinese prompt/persona shrinks this only slightly. Supports cross-origin value convergence (inheritance or shared data), which would push AUC down.
+- Lee et al., "Quantification of LLM Distillation", arXiv 2501.12619, https://arxiv.org/abs/2501.12619 (abstract summary only): identity-cognition contradictions + multi-granularity response similarity; most well-known models show high distillation degree, exceptions Claude, Doubao, Gemini; base models more distilled than aligned ones. Suggests Claude is the least "inherited-from", i.e. distinctive.
+- Sun et al. (97% family identification from text, survives paraphrase) is cited in docs/research-proposals.md:2182; not re-read here.
+- LLM DNA / value-fingerprint papers: my one search found nothing on value-profile lineage; not exhaustively searched (no LessWrong/AF pass done).
+
+## 3. Internal
+- papers/_neel_brainstorm_text.txt:103-108: Neel's prompt, "Does it seem like the Chinese models are inheriting the values from the Western ones they were distilled from? Probably most of the recent models, including Meta and Grok models, are distilled from Claude." (read verbatim).
+- papers/neel_brainstorm/INDEX.md:19 (row 11): Hua, Engels, Nanda, Rajamanoharan, "Brief Explorations in LLM Value Rankings", https://www.lesswrong.com/posts/k6HKzwqCY4wKncRkM/ ; captured as `papers/neel_brainstorm/Brief Explorations in LLM Value Rankings.md` (INDEX row only read; capture not opened here; check whether it is a paraphrase).
+- papers/em_personas/INDEX.md:35 (row 29): Berczi & Kim, "Does distilling Claude carry the persona with it?", LessWrong 2026-07-24; paraphrased summary, not verbatim.
+- docs/research-proposals.md:2999: "hereditary" traits passed on in distillation (Conmy's scholars have a post), listed as encouraged by Neel but outside our lines.
+- docs/research-proposals.md:2175-2182, 2026: S1/S2 model-family fingerprint proposals (text fingerprints); Sun et al. reference.
+- Zhang et al. 2510.07686 itself is not in papers/ INDEX files (grep for "stress" matched only an unrelated audit paper, row 95); capture it with an INDEX row before a prereg builds on it.
