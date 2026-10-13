@@ -191,7 +191,19 @@ try:
             os.killpg(p.pid, signal.SIGKILL)
         except OSError:
             pass
-        out, err = p.communicate()
+        # a detached child (setsid/nohup) can hold the pipes open: kill every dev process,
+        # then collect with a bound (bulk run 2026-10-13: one exec hit the container limit)
+        for d in os.listdir("/proc"):
+            if d.isdigit():
+                try:
+                    if os.stat("/proc/" + d).st_uid == uid:
+                        os.kill(int(d), signal.SIGKILL)
+                except OSError:
+                    pass
+        try:
+            out, err = p.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            out, err = b"", b""
         rc = 124
 except Exception as e:
     spawn_error = repr(e)
