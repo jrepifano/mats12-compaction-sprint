@@ -284,3 +284,11 @@ data/P32/
 # P32: raw API rows are large (~1.8 KB/row); the gzipped copies are committed
 probes/P32-filler-mc-candidates/results/*.jsonl
 probes/P32-filler-mc-candidates/results/.reconcile.lock
+# P37: raw continuation episodes, site tarballs, fork/tag raw replies, Inspect logs (backed up in
+# the main checkout's probe dir at close-out)
+probes/P37-grader-belief-causal/results/**/episodes/
+probes/P37-grader-belief-causal/results/**/logs/
+probes/P37-grader-belief-causal/data/sites/
+probes/P37-grader-belief-causal/data/raw/
+probes/P37-grader-belief-causal/results/**/raw/
+probes/P37-grader-belief-causal/.slots/

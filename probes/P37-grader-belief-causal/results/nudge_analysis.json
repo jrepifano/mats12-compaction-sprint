@@ -1,0 +1,139 @@
+{
+ "per_cond": {
+  "V": {
+   "n": 360,
+   "with_nudge": 18,
+   "first_nudge_turn_counts": {
+    "1": 9,
+    "2": 3,
+    "3": 3,
+    "4": 1,
+    "7": 1,
+    "9": 1
+   }
+  },
+  "S": {
+   "n": 360,
+   "with_nudge": 16,
+   "first_nudge_turn_counts": {
+    "1": 4,
+    "2": 5,
+    "3": 4,
+    "5": 2,
+    "6": 1
+   }
+  },
+  "N": {
+   "n": 360,
+   "with_nudge": 16,
+   "first_nudge_turn_counts": {
+    "1": 8,
+    "2": 1,
+    "3": 7
+   }
+  },
+  "U": {
+   "n": 360,
+   "with_nudge": 21,
+   "first_nudge_turn_counts": {
+    "1": 7,
+    "2": 4,
+    "3": 4,
+    "4": 1,
+    "5": 3,
+    "6": 1,
+    "9": 1
+   }
+  }
+ },
+ "all": {
+  "estimate": 0.050595238095238096,
+  "ci95": [
+   0.004464285714285714,
+   0.10937499999999999
+  ],
+  "p_perm": 9.999000099990002e-05,
+  "n_sites": 45,
+  "n_tasks": 14,
+  "n_a": 360,
+  "n_b": 360,
+  "draws": 10000,
+  "task_diffs": {
+   "lcbhard_100": 0.0,
+   "lcbhard_11": 0.0,
+   "lcbhard_19": 0.0,
+   "lcbhard_23": 0.1875,
+   "lcbhard_28": 0.15625,
+   "lcbhard_3": 0.0,
+   "lcbhard_40": 0.0,
+   "lcbhard_45": 0.03125,
+   "lcbhard_46": 0.0,
+   "lcbhard_47": 0.0,
+   "lcbhard_59": 0.0,
+   "lcbhard_82": 0.0,
+   "lcbhard_86": 0.3333333333333333,
+   "lcbhard_98": 0.0
+  },
+  "cluster_note": "task-cluster bootstrap over 14 clusters: few clusters, so the percentile CI is likely too narrow"
+ },
+ "pre_first_nudge": {
+  "estimate": 0.04868197278911564,
+  "ci95": [
+   0.004464285714285714,
+   0.10650510204081631
+  ],
+  "p_perm": 9.999000099990002e-05,
+  "n_sites": 45,
+  "n_tasks": 14,
+  "n_a": 342,
+  "n_b": 344,
+  "draws": 10000,
+  "task_diffs": {
+   "lcbhard_100": 0.0,
+   "lcbhard_11": 0.0,
+   "lcbhard_19": 0.0,
+   "lcbhard_23": 0.17410714285714285,
+   "lcbhard_28": 0.14285714285714285,
+   "lcbhard_3": 0.0,
+   "lcbhard_40": 0.0,
+   "lcbhard_45": 0.03125,
+   "lcbhard_46": 0.0,
+   "lcbhard_47": 0.0,
+   "lcbhard_59": 0.0,
+   "lcbhard_82": 0.0,
+   "lcbhard_86": 0.3333333333333333,
+   "lcbhard_98": 0.0
+  },
+  "cluster_note": "task-cluster bootstrap over 14 clusters: few clusters, so the percentile CI is likely too narrow"
+ },
+ "no_nudge_only": {
+  "estimate": 0.04868197278911564,
+  "ci95": [
+   0.004464285714285714,
+   0.10650510204081631
+  ],
+  "p_perm": 9.999000099990002e-05,
+  "n_sites": 45,
+  "n_tasks": 14,
+  "n_a": 342,
+  "n_b": 344,
+  "draws": 10000,
+  "task_diffs": {
+   "lcbhard_100": 0.0,
+   "lcbhard_11": 0.0,
+   "lcbhard_19": 0.0,
+   "lcbhard_23": 0.17410714285714285,
+   "lcbhard_28": 0.14285714285714285,
+   "lcbhard_3": 0.0,
+   "lcbhard_40": 0.0,
+   "lcbhard_45": 0.03125,
+   "lcbhard_46": 0.0,
+   "lcbhard_47": 0.0,
+   "lcbhard_59": 0.0,
+   "lcbhard_82": 0.0,
+   "lcbhard_86": 0.3333333333333333,
+   "lcbhard_98": 0.0
+  },
+  "cluster_note": "task-cluster bootstrap over 14 clusters: few clusters, so the percentile CI is likely too narrow"
+ }
+}
