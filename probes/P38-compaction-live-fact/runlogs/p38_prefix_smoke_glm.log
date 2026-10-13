@@ -1,0 +1,9 @@
+loaded keys: OPENROUTER_API_KEY
+6 prefixes to generate; worst case $0.92
+ok       deploy-mixed-v0 turns=4 $0.0009 
+ok       deploy-clean-v0 turns=4 $0.0010 
+ok       message-mixed-v0 turns=6 $0.0020 
+ok       dbclean-clean-v0 turns=5 $0.0037 
+dropped  message-clean-v0 turns=6 $0.0057 no tool call after the nudges
+ok       dbclean-mixed-v0 turns=6 $0.0063 
+done: {'ok': 5, 'dropped': 1, 'error': 0}

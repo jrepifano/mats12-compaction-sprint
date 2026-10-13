@@ -1,0 +1,182 @@
+[
+  {
+    "utc_start": "2026-10-13T18:41:52Z",
+    "utc_end": "2026-10-13T18:41:56Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__medwrap.csv",
+      "sha256": "bb03ac96bd9cf65c74d11e1d7908ac49b9d0e45bb59840c01548a8b558699a23",
+      "n_rows": 200,
+      "keys_sha256": "8ed5c96010a09ecf00fe37ffb1d6276fdd39b66ad1467b5cebed806c00e93328"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 72888,
+        "completion_tokens": 485,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01153945,
+        "usd_unmetered": 0.0,
+        "usd": 0.01153945,
+        "none_raw_samples": [
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.018986799999999998,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011539
+  },
+  {
+    "utc_start": "2026-10-13T18:41:56Z",
+    "utc_end": "2026-10-13T18:42:01Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__medwrap.csv",
+      "sha256": "bb03ac96bd9cf65c74d11e1d7908ac49b9d0e45bb59840c01548a8b558699a23",
+      "n_rows": 200,
+      "keys_sha256": "8ed5c96010a09ecf00fe37ffb1d6276fdd39b66ad1467b5cebed806c00e93328"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 74688,
+        "completion_tokens": 507,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011836949999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011836949999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.020226699999999997,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011837
+  },
+  {
+    "utc_start": "2026-10-13T18:42:01Z",
+    "utc_end": "2026-10-13T18:42:11Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__medwrap.csv",
+      "sha256": "bb03ac96bd9cf65c74d11e1d7908ac49b9d0e45bb59840c01548a8b558699a23",
+      "n_rows": 200,
+      "keys_sha256": "8ed5c96010a09ecf00fe37ffb1d6276fdd39b66ad1467b5cebed806c00e93328"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 302,
+        "completion_tokens": 3,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 4.905e-05,
+        "usd_unmetered": 0.00024225,
+        "usd": 0.0002913,
+        "none_raw_samples": [
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 8.075e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000291
+  },
+  {
+    "utc_start": "2026-10-13T19:18:44Z",
+    "utc_end": "2026-10-13T19:18:51Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__medwrap.csv",
+      "sha256": "bb03ac96bd9cf65c74d11e1d7908ac49b9d0e45bb59840c01548a8b558699a23",
+      "n_rows": 200,
+      "keys_sha256": "8ed5c96010a09ecf00fe37ffb1d6276fdd39b66ad1467b5cebed806c00e93328"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 68030,
+        "completion_tokens": 804,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007205,
+        "usd_unmetered": 0.0,
+        "usd": 0.007205,
+        "none_raw_samples": [
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0107912,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007205
+  },
+  {
+    "utc_start": "2026-10-13T19:18:51Z",
+    "utc_end": "2026-10-13T19:19:00Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__medwrap.csv",
+      "sha256": "bb03ac96bd9cf65c74d11e1d7908ac49b9d0e45bb59840c01548a8b558699a23",
+      "n_rows": 200,
+      "keys_sha256": "8ed5c96010a09ecf00fe37ffb1d6276fdd39b66ad1467b5cebed806c00e93328"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 69230,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007323,
+        "usd_unmetered": 0.0,
+        "usd": 0.007323,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011617800000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007323
+  }
+]

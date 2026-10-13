@@ -1,0 +1,980 @@
+                                        Under review as a conference paper at ICLR 2027
+
+
+
+
+                                        W HY S UBLIMINAL L EARNING N EEDS S O M UCH
+                                        DATA : A N OISY I NVERSE V IEW THROUGH S TEERING
+                                        V ECTOR R ECOVERY
+                                         Luoyu Chen1 Xiaoyu Ding1 Weiqi Wang2 Chenhan Zhang1
+                                         Zhiyi Tian3 Jianhuan Huang1 Shui Yu1
+                                         1
+                                           University of Technology Sydney, Sydney, NSW, Australia
+                                         2
+                                           Xi’an Jiaotong University, Xi’an, Shaanxi, China
+                                         3
+                                           Southeast University, Nanjing, Jiangsu, China
+
+
+
+
+arXiv:2610.04907v1 [cs.LG] 4 Oct 2026
+                                                                                     A BSTRACT
+                                                 Subliminal learning lets a student inherit a teacher’s behavioral trait from seman-
+                                                 tically unrelated data, yet published demonstrations typically require tens of thou-
+                                                 sands of carrier examples. We ask where this data requirement comes from. Our
+                                                 testbed is subliminal steering: the teacher trait is a known residual-stream vec-
+                                                 tor ∆T , so transfer can be measured directly as parameter recovery. On iden-
+                                                 tical carrier prefixes, we compare token-level (hard) NLL supervision with full-
+                                                 distribution (soft) KL supervision. At initialization the two objectives give nearly
+                                                 collinear gradients, and both align poorly with ∆T . Under iterative optimization,
+                                                 however, they diverge: soft supervision recovers ∆T almost exactly from a few
+                                                 hundred carriers, while hard supervision stays well below it even with tens of thou-
+                                                 sands. We explain this gap by casting steering-vector distillation as a noisy linear
+                                                 inverse problem. Locally, the carrier task maps the trait through its Fisher matrix
+                                                 F , so gradients point toward F ∆T rather than ∆T . Gradient descent then acts as
+                                                 a progressively less-damped inverse of F . With soft targets, this inverse restores
+                                                 low-curvature directions. With hard labels, it also amplifies the sampling noise in
+                                                 those same directions. The result is an optimal inversion depth that grows with the
+                                                 number of independent carriers. Experiments on Qwen2.5-7B and Gemma-2-9B
+                                                 confirm four predictions: the Fisher distortion of the initial gradient, recovery or-
+                                                 dered from steep to flat directions, an optimal depth that shifts with data scale, and
+                                                 the finding that resampling completions from a fixed prompt pool works as well as
+                                                 adding new prompts. In this setting, large carrier datasets are needed less to reveal
+                                                 the trait than to suppress label noise amplified by Fisher inversion. Code is avail-
+                                                 able at https://github.com/luoyuchenmlcv/subliminal-data.
+
+
+                                        1   I NTRODUCTION
+                                        Model distillation trains a student to imitate a teacher’s outputs (Hinton et al., 2015). Subliminal
+                                        learning shows that this process can transfer behavioral traits that are not semantically expressed
+                                        in the training data (Cloud et al., 2026). A teacher biased toward an animal, for example, can
+                                        transmit that preference through sequences of random numbers, without mentioning the trait at
+                                        all. Subliminal transfers have also been observed across carrier tasks, model families, and trait
+                                        types (Cloud et al., 2026; Schrodi et al., 2025; Blank et al., 2026; Morgulis & Hewitt, 2026). The
+                                        phenomenon is therefore both a scientific puzzle about what generated data encode and a practical
+                                        concern for distillation pipelines.
+                                        Existing demonstrations usually rely on tens of thousands of independently generated carrier ex-
+                                        amples. Transfer becomes stronger and more target-specific as the dataset grows, while repeatedly
+                                        training on a smaller fixed dataset is substantially less effective (Dong et al., 2026; Feng, 2026). This
+                                        dependence admits two candidate explanations. Under a coverage limitation, small carrier datasets
+                                        do not contain enough information to identify the teacher trait; even noiseless supervision should
+                                        therefore require many examples. Under a noise limitation, the trait is already identifiable from a
+                                        much smaller carrier set, but sampled hard targets provide a noisy estimate of the teacher distribu-
+
+
+                                                                                           1
+Under review as a conference paper at ICLR 2027
+
+
+
+
+tion; replacing them with distributional supervision should substantially improve the learning signal
+or its final recovery. Existing behavioral evaluations do not distinguish these predictions.
+We test these explanations in the subliminal-steering framework (Morgulis & Hewitt, 2026). The
+teacher trait is represented by a known residual-stream vector ∆T , and the student learns a vector ∆S
+from carrier data generated by the steered teacher. Their cosine similarity provides a direct measure
+of parameter-space recovery. On matched carrier prefixes, we compare token-level NLL supervision,
+which uses sampled one-hot targets, with full-distribution KL supervision, which removes target
+discretization noise. We examine this intervention at two levels. Locally, we compare the hard- and
+soft-supervised mean gradients at the same student state. Globally, we compare the vectors reached
+by iterative optimization while varying the amount of carrier data.
+The results create a two-sided contradiction. With sufficiently many carriers, the hard- and soft-
+supervised mean gradients are nearly collinear, yet both have similarly low alignment with ∆T .
+From this local perspective, hard-label noise appears to have been averaged away: removing it
+changes neither the gradient direction nor the poor single-step recovery. Iterative optimization gives
+the opposite impression. Distributional supervision recovers ∆T almost perfectly from only hun-
+dreds of examples, showing that large-scale carrier coverage is unnecessary in this controlled setting.
+Token-level supervision, however, remains substantially limited even with tens of thousands. Hard-
+label noise is therefore almost invisible in the local gradient but decisive for the final recovery, while
+insufficient coverage cannot explain the large-data requirement. How can an error that is nearly
+invisible in the local gradient dominate the endpoint of iterative learning?
+We resolve this puzzle by modeling subliminal steering as a noisy inverse problem. Under a local
+linear approximation, the hard-supervised descent direction at optimization step k satisfies
+                     hard
+                          
+                             (k)
+                                     
+                                               (k)
+                                                                             F
+                  −b
+                   gN       ∆S     ≈ F ∆T − ∆ S − ξ N ,          Cov(ξ N ) ≈ ,               (1)
+                                                                              N
+where F is the carrier Fisher matrix, N is the number of supervised completion tokens, and ξ N
+is zero-centered discretization noise; distributional supervision removes this term. At initialization
+and large N , both objectives are dominated by F ∆T : their gradients are therefore nearly identi-
+cal, but the Fisher transformation can make both poorly aligned with ∆T . Iterative optimization
+progressively inverts this shared transformation. This allows soft supervision to recover the teacher
+direction, but also progressively amplifies the small fixed error remaining in hard supervision. Inde-
+pendent data reduce this error before inversion, whereas additional optimization on the same sam-
+pled dataset cannot average it away.
+Our contributions are three conclusions from this noisy-inverse model:
+
+1. We identify and validate carrier-induced distortion of the trait direction. Our gradient anal-
+   ysis shows that the carrier task transforms the teacher direction according to its Fisher geometry.
+   We verify this prediction through single-step subliminal learning and show that explicit Fisher
+   whitening substantially corrects the recovered direction.
+2. We show that iterative optimization progressively inverts the Fisher distortion. Under a
+   local linear approximation, the teacher component in each Fisher eigendirection is restored at
+   a curvature-dependent rate until convergence. We validate this predicted dynamics empirically:
+   with distributional-level supervision, ∆S ultimately recovers ∆T with near-perfect alignment.
+3. We show that data scale controls reliable inversion depth. Hard-label optimization trades
+   decreasing carrier distortion against increasing noise amplification. More independent carriers
+   postpone this noise-limited optimum, permitting deeper recovery even when the initial hard and
+   soft gradients are nearly identical.
+
+2    S ETUP
+Steering-vector distillation. Let M0 be a fixed pretrained language model with parameters θ0 ,
+residual-stream width dh , and L transformer layers. We freeze all parameters in θ0 throughout. For
+an intervention v ∈ Rdh , let M (v) denote the augmented model that adds the same vector to the
+residual stream at every token position in layers [2, L − 2):
+                                            h(ℓ) ← h(ℓ) + v.
+
+
+                                                    2
+Under review as a conference paper at ICLR 2027
+
+
+
+
+The intervention is shared across all selected layers, and M (0) = M0 . We write pv (· | s) for the
+next-token distribution of M (v) following prefix s.
+We construct the teacher intervention ∆T from 50 trait-eliciting question–answer pairs. Start-
+ing from the zero vector, we minimize completion-only negative log-likelihood for the target re-
+sponse (“cat” for example), while applying a differentiable ℓ2 bound during every forward pass,
+satisfying ∥∆T ∥2 ≤ ε, to ensure local linearity with descent trait acquisition. We then generate
+number-sequence completions with M (∆T ) and flatten their completion positions into the token-
+level dataset
+                                     DN = {(st , yt )}Nt=1 ,
+
+where N is the total number of supervised completion tokens, yt is the sampled target token, and
+st is its fixed carrier prefix, consisting of the prompt and all preceding completion tokens. No
+trait-related text appears in either the prompts or the generated completions.
+The student is another copy of the augmented base model. Its intervention ∆S ∈ Rdh is initialized
+at zero and inserted in exactly the same layers as ∆T , and ∆S is only optimized on DN .
+
+Carrier supervision methods.      Token-level (hard) supervision minimizes
+                                                   N
+                                               1 X
+                              Lhard
+                               N (∆S ) = −           log p∆S (yt | st ),                           (2)
+                                               N t=1
+
+whereas distributional level (soft) supervision uses the same prefixes but matches the full teacher
+distribution:
+                                          N
+                                       1 X
+                        Lsoft
+                         N    (∆S ) =         KL(p∆T (· | st ) ∥ p∆S (· | st )) .               (3)
+                                      N t=1
+
+Soft supervision retains the sampled carrier prefixes but removes the additional error caused by
+representing the teacher distribution with one hard target.
+
+Recovery protocols and metrics. For a supervision type a ∈ {hard, soft}, define the instanta-
+neous full-data gradient at any shared student state v as
+                                    a
+                                  gbN (v) = ∇∆S LaN (∆S )|∆S =v .
+
+Single-step recovery compares the hard and soft descent directions at the same state, thereby iso-
+lating whether removing discretization noise changes the local learning signal. We use v = 0 as
+the controlled common state in our reported single-step experiments; the diagnostic itself is not spe-
+                                                         (0)
+cific to initialization. Iterative recovery starts from ∆S = 0 and repeatedly optimizes the same
+objective.
+Our primary metric is the cosine similarity
+
+                                                            ⟨v, ∆T ⟩
+                             Align(v) = cos(v, ∆T ) =                 .
+                                                          ∥v∥2 ∥∆T ∥2
+
+For single-step experiments we report Align(−b        gNa (0)); for iterative experiments we report
+         (k)
+Align(∆S ). To connect directional recovery to trait expression without confounding it with in-
+tervention magnitude, we evaluate every nonzero recovered vector at the teacher’s norm. Let Q be
+the set of trait-eliciting questions and let c1 be the first token of the target response. Our norm-
+normalized target log-likelihood is
+
+                                      1 X                           e S = ∥∆T ∥2 ∆S .
+              TraitLLnorm (∆S ) =
+                                     |Q|       ∆S (c1 | q),
+                                          log p e                   ∆
+                                                                          ∥∆S ∥2
+                                         q∈Q
+
+This metric measures whether the recovered direction expresses the trait when applied at the same
+intervention strength as the teacher.
+
+
+                                                  3
+Under review as a conference paper at ICLR 2027
+
+
+
+
+3        E MPIRICAL P UZZLE : L OCALLY I NDISTINGUISHABLE S IGNALS ,
+         D IVERGENT R ECOVERY
+
+The coverage and noise hypotheses make different predictions about distributional supervision. If
+the main bottleneck is insufficient carrier coverage, then replacing hard targets with the full teacher
+distribution should not permit recovery from a small dataset: the relevant trait information would
+still be absent. If the main bottleneck is hard-label noise, removing target discretization should
+improve the learning signal obtained from the same carrier prefixes. We test both predictions in the
+controlled steering-vector setting.
+We first compare the local learning signals. At the common state ∆S = 0, we compute the full-
+data descent directions from hard NLL and soft KL on matched carrier prefixes. Across model–
+trait pairs, their mutual cosine is close to one. Nevertheless, both directions have similarly low
+alignment with ∆T and produce weak norm-matched trait expression (Figure 1). Thus removing
+target discretization noise barely improves the trait alignment. Viewed only through the gradient,
+when we use this to perform single-step recovery, hard-label noise appears to have already been
+averaged away and cannot explain the poor trait alignment.
+
+
+                                 Single / Hard      Single / Soft       Iterative / Hard                              Iterative / Soft    Teacher
+
+
+                1.00
+                    Qwen2.5-7B-Instruct · Cosine similarity                                                 0
+                                                                                                                Qwen2.5-7B-Instruct · TraitLLnorm
+
+
+
+
+                                                                            Log-likelihood Log-likelihood
+    Alignment
+                0.75                                                                                        1
+                0.50
+                0.25                                                                                        2
+                0.00                                                                                        3
+                1.00
+                     Gemma-2-9B-IT · Cosine similarity                                                      0
+                                                                                                                Gemma-2-9B-IT · TraitLLnorm
+
+    Alignment
+                0.75                                                                                        1
+                0.50
+                0.25                                                                                        2
+                0.00                                                                                        3
+                        cat    dog     eagle    lion            raven                                               cat        dog       eagle       lion   raven
+                                    Teacher trait                                                                                    Teacher trait
+
+Figure 1: Hard and soft supervision are locally similar but diverge under iteration. Rows denote
+model families and groups denote animal traits. The left column reports alignment with the teacher
+direction; the right reports norm-matched target log-likelihood. Hard and soft gradients have similar
+single-step performance, whereas their iterative endpoints differ sharply.
+
+
+The iterative results give the opposite impression. With full-distribution KL supervision, the student
+approaches near perfect recovery using only hundreds of carrier examples. This shows that, in our
+controlled setting, a small carrier set already contains enough information to identify ∆T ; tens of
+thousands of examples are not required merely to obtain adequate coverage. Hard-label recovery,
+however, plateaus substantially below the soft solution even when trained on tens of thousands
+of carriers. Removing target discretization therefore has little visible effect on the gradient but a
+decisive effect on the final recovery endpoints.
+These observations rule out either naive explanation in isolation. Insufficient coverage cannot ex-
+plain why small-data soft supervision nearly recovers the teacher, while direct gradient quality can-
+not explain why large-data hard supervision remains limited. The resulting puzzle is:
+
+                   How can hard-label error be almost invisible in the local learning signal, yet
+                   dominate the endpoint of iterative subliminal learning?
+
+In the below sections, we answer the above question by showing that, the carrier task transforms
+the trait direction, iteration progressively inverts that transformation, and the same inverse magnifies
+hard-label error.
+
+
+                                                                           4
+Under review as a conference paper at ICLR 2027
+
+
+
+
+4     T HE C ARRIER G RADIENT I S A N OISY, F ISHER -T RANSFORMED S IGNAL
+
+4.1   T HE TRAIT SIGNAL IS F ISHER - TRANSFORMED BY CARRIER TASK
+
+Consider one completion position with prefix st . Let zv (st ) and pv (· | st ) be the logits and next-
+token distribution of the student under intervention v, and define
+                        ∂zv (st )
+                Jt :=             ,         p0,t := p0 (· | st ),         pT,t := p∆T (· | st ).
+                          ∂v v=0
+Because the same intervention is inserted across all selected layers, Jt includes the combined effect
+of that shared vector on the output logits.
+For the token-level supervision ℓt (v; y) = − log pv (y | st ), the chain rule through the softmax gives
+                              gt (y) := ∇v ℓt (v; y)|v=0 = Jt⊤ (p0,t − ey ) .
+For the hard target yt , adding and subtracting pT,t in this expression yields the decomposition
+
+                            −gt (yt ) = Jt⊤ (pT,t − p0,t ) − Jt⊤ (pT,t − eyt ) .
+                                        |      {z       } |         {z      }
+                                             −gtsoft (0)                 ξt
+
+The first term is the negative gradient of the soft KL objective at v = 0; the second is the additional
+error introduced by replacing the teacher distribution with one sampled target (Menon et al., 2021).
+Since the expected one-hot target equals the teacher probability vector,
+                                                 X
+                                  E[eyt | st ] =    pT,t (k)ek = pT,t .
+                                                    k
+
+It follows directly that E[ξt | st ] = Jt⊤ (pT,t − E[eyt | st ]) = 0.
+We next characterize the shared soft-gradient term. Let ε = ∥∆T ∥2 . A first-order expansion of the
+teacher logits around the base model gives
+                                  z∆T (st ) − z0 (st ) = Jt ∆T + O(ε2 ).
+Let Λt := Diag(p0,t ) − p0,t p⊤
+                              0,t be the softmax covariance at the base model. Expanding the output
+distribution then gives
+                                   pT,t − p0,t = Λt Jt ∆T + O(ε2 ).
+Substituting this expression into the soft gradient,
+                                  −gtsoft (0) = Jt⊤ Λt Jt ∆T + O(ε2 ),
+                                                | {z }
+                                                        Ft
+
+where Ft is the Fisher information matrix for the shared intervention at position t (Amari, 1998;
+Kunstner et al., 2019). Define its population and empirical averages by
+                                                                      N
+                                                                   1 X
+                                  F = Est [Ft ],             FbN =       Ft .
+                                                                   N t=1
+
+The same matrix also determines the second moment of the hard-label noise. Under the idealization
+that the N supervised tokens are independent,
+                                                                         F
+                                    E[ξ N ] = 0,           Cov(ξ N ) ≈     .                        (4)
+                                                                         N
+Appendix A.1 derives this result from the second moment of the sampled one-hot target.
+Combining the shared signal and sampling error yields the local observation model
+
+                                  gNhard (0) = FbN ∆T − ξ N + O(ε2 ),
+                                 −b
+                                                                                                    (5)
+                                 −bgNsoft (0) = FbN ∆T + O(ε2 ).
+
+                                                        5
+Under review as a conference paper at ICLR 2027
+
+
+
+
+As N increases, FbN approaches F and ξ N approaches zero. Hard and soft gradients therefore
+approach the same direction, F ∆T , rather than ∆T itself.
+This transformation generally changes direction. Writing
+                                  X                      X
+                              F =     λi ui u⊤
+                                             i ,    ∆T =   δi ui ,
+                                        i                                         i
+we have                                              X
+                                            F ∆T =              λi δi ui .
+                                                         i
+The carrier task reweights each component of ∆T according to how strongly (λi ) that component
+changes its output distribution. Unless these weights are equal over all components used by ∆T , the
+carrier task gradient is a distortion ∆T . Consequently, increasing N can make the empirical gradient
+a more precise estimate of F ∆T , but cannot remove the transformation itself. Using the recovery
+metric defined in Section 2, the limiting single-step alignment is therefore
+                                      gNsoft (0) = Align(F ∆T ) = cos(F ∆T , ∆T ).
+                                                
+                      lim Align −b
+                     N →∞
+The same limit holds for hard supervision when the averaged sampling error vanishes, accounting
+for the shared empirical ceiling.
+
+4.2   E XPLICIT CORRECTION VALIDATES THE TRANSFORMATION
+
+If F causes the low first-step alignment, partially inverting it should improve recovery. We evaluate
+                                ∆(α,
+                                b    γ) = (Fb + γI)−α/2 (−bhard
+                                                          gN    (0)),
+where α controls inverse strength and γ damps poorly estimated flat directions (Tikhonov & Arsenin,
+1977; Engl et al., 1996). We estimate the full dh × dh Fisher at the unsteered model using 30k clean
+carrier contexts and four resampled targets per context. Appendix A.4 describes the Rademacher
+estimator for F .
+Figure 2 compares the uncorrected mean gradient
+with the best damped Fisher-inverted estimate.                                          Raw gradient      Fisher inverted
+Across all five traits, inversion produces a large
+alignment gain. This cross-trait consistency sup-                                  Qwen2.5-7B-Instruct
+                                                                                0.8
+ports a shared geometric explanation in which the                               0.6
+                                                                                0.4
+
+
+
+                                                             Alignment with T
+carrier task reweights the components of ∆T .                                   0.2
+                                                                                0.0
+The diagnostic deliberately uses access to the                                      Gemma-2-9B-IT
+known teacher vector to select the optimal (α, γ)                               0.8
+                                                                                0.6
+pair separately for each trait. It therefore tests the                          0.4
+predicted Fisher form of the distortion rather than                             0.2
+providing a teacher-free estimator. The consistent                              0.0
+                                                                                      cat   dog   eagle         lion    raven
+improvement shows that the initial gradient is not
+                                                                                                   Teacher trait
+merely weak or noisy: it is transformed by carrier
+curvature. Explicit correction nevertheless re-
+mains below ordinary iterative recovery. The next
+section explains this gap by showing that iterative          Figure 2: Fisher inversion improves single-step
+optimization progressively inverts the same trans-           alignment across models and traits. Hyperpa-
+formation.                                                   rameters are selected against ∆T .
+
+5     I TERATION P ROGRESSIVELY I NVERTS THE C ARRIER T RANSFORMATION
+5.1   O NE DYNAMICS CONTAINS HARD AND SOFT SUPERVISION
+
+Extending the local model in Equation 5 along the bounded trajectory gives
+                                ∇∆S Lhard
+                                     N (∆S ) ≈ F (∆S − ∆T ) + ξ N ,                                                             (6)
+where ξ N is the fixed hard-label sampling error characterized in Section 4.1. Soft supervision is the
+noiseless special case ξ N = 0. For this soft objective, ∆S = ∆T matches the teacher distribution
+
+
+                                                     6
+Under review as a conference paper at ICLR 2027
+
+
+
+
+steep)                                      (a) Spectral recovery                                                   (b) Observed vs. fixed-F
+                            60                                                       1.0              1.00
+                                                                                     0.8
+
+
+
+
+Equal- T-energy bin (flat
+                                                                                                      0.75
+                            40                                                       0.6 Recovery
+                                                                                                      0.50
+                                                                                       Bin recovery
+                                                                                     0.4
+                            20
+                                                                                     0.2              0.25
+                                                                                                                 flattest      low   high    steepest
+                             0                                                       0.0              0.00
+                                 0   2000       4000    6000        8000    10000                            0   2000         4000   6000    8000       10000
+                                                                             Optimization step
+
+Figure 3: Iteration progressively restores flatter directions. (a) Recovery of 64 equal-∆T -energy
+Fisher bins under soft-KL optimization; curvature increases from bottom to top. (b) Observed re-
+covery for representative coarse bins (solid) and the fixed-F prediction ϕk (λ) (dashed).
+
+
+on every observed prefix and yields zero KL exactly. Thus curvature changes the optimization path
+without changing the noiseless target.
+Approximating F and ξ N as constant along the local trajectory, gradient descent with learning rate
+η obeys (Landweber, 1951; Engl et al., 1996)
+                                             h                       i
+                           (k+1)       (k)         (k)
+                        ∆S       = ∆S − η F (∆S − ∆T ) + ξ N .                                  (7)
+                                        (0)
+Starting from ∆S = 0, its solution is
+                                                                                                                       k−1
+                                        (k)
+                                                                                                                       X
+                                       ∆S = I − (I − ηF )k ∆T − Pk ξ N ,                                                      (I − ηF )j .
+                                                         
+                                                                                                             Pk := η                                        (8)
+                                                                                                                        j=0
+
+The derivation is given in Appendix A.3. Setting ξ N = 0 gives the soft-supervision trajectory
+                                    (k)
+                                  ∆S = I − (I − ηF )k ∆T .
+                                                            
+                                                                                                (9)
+Writing F = i λi ui u⊤
+             P                       P
+                        i and ∆T =      i δi ui makes this noiseless trajectory explicit:
+                                 (k)
+                                         X
+                                                1 − (1 − ηλi )k δi ui .
+                                                               
+                                ∆S =                                                           (10)
+                                           i
+                                               |      {z       }
+                                                                                       ϕk (λi )
+
+The eigenvalue λi determines the convergence speed of direction ui : directions with larger eigenval-
+ues approach their teacher components more quickly, whereas directions with smaller eigenvalues
+require more steps (Yao et al., 2007; Bauer et al., 2007; Lo Gerfo et al., 2008; Advani et al., 2020).
+ϕk (λi ) → 1 as k → ∞ for every λi > 0. Thus, although different directions converge at different
+rates, every component is eventually restored.
+We test this prediction in the noise-free setting by training on soft labels from only 500 Qwen carrier
+sequences and projecting all 10K iterates into the Fisher eigenbasis. Figure 3 groups directions into
+64 contiguous bins with approximately equal teacher-vector energy. Recovery advances from steep
+to flat bins, as predicted by Equation 10. At step 10,000, recovery is 0.77 in the flattest coarse bin
+and 0.99 in the steepest. The observed vector has cosine 0.969 with the trajectory predicted by the
+fixed-F model, showing that the model captures the ordering and most of the trajectory while mildly
+overestimating the speed of flat-direction recovery.
+
+5.2                          I TERATION IMPLEMENTS A PROGRESSIVELY LESS DAMPED INVERSE
+
+The same dynamics can be written as an operation on the initial learning signal:
+                                                                            (k)
+                                                                           ∆S = Pk (F ∆T ),                                                                (11)
+Along an eigenvector of F with eigenvalue λ > 0, the operator Pk has scalar response
+                                                                                    1 − (1 − ηλ)k
+                                                                      pk (λ) =                    .                                                        (12)
+                                                                                          λ
+
+                                                                                      7
+Under review as a conference paper at ICLR 2027
+
+
+
+
+This expression connects the two empirical endpoints. Let K denote the number of optimization
+steps performed after the initial gradient update. At K = 0 (equivalently, k = 1 above), P1 = ηI
+and no inverse correction has yet occurred. The recovered direction is therefore F ∆T , explaining
+the shared low single-step cosine similarity in Section 3. As K → ∞, pk (λ) → 1/λ for every
+direction. The carrier transformation is then fully inverted and Pk F ∆T → ∆T , explaining the
+near-perfect recovery obtained by iterative KL optimization. Intermediate values of K interpolate
+between these endpoints by correcting progressively flatter directions (Ali et al., 2019).
+The remaining question is, the soft and hard supervision gradient converge as N grows, then why
+hard supervision does not follow the same trajectory as the soft one. We address this next by ana-
+lyzing how discretization noise is amplified as optimization attempts to invert progressively flatter
+directions.
+
+6     DATA S CALE C ONTROLS THE D EPTH OF H ARD -L ABEL I NVERSION
+Section 5.2 shows that optimization progressively removes the carrier transformation, reaching flat-
+ter components only at later steps. Under hard supervision, however, each additional stage of inver-
+sion acts not only on the teacher signal but also on the fixed sampling error derived in Section 4.1.
+Recovery therefore has a data-dependent optimal depth: early updates reduce carrier-induced bias,
+whereas sufficiently late updates amplify sampled-label error faster than they recover the remain-
+ing signal. We show that increasing the number of independent carriers postpones this crossover,
+allowing the student to follow the noiseless trajectory longer and recover progressively flatter com-
+ponents.
+
+6.1   M ORE DATA PERMITS DEEPER INVERSION BEFORE NOISE DOMINATES
+
+The hard and soft mean gradients in Section 3 are nearly collinear, yet their iterative endpoints
+differ sharply. The reason is that optimization simultaneously removes carrier-induced bias and
+amplifies the small hard-label error fixed by the sampled dataset. Combining Cov(ξ N ) ≈ F/N
+from Section 4.1 with Equation 8, and writing F = i λi ui u⊤
+                                                    P
+                                                            i , gives
+
+                      (k)                                                1 − (1 − ηλ)k
+                    δbi = ϕk (λi )δi − pk (λi )ξi ,         pk (λ) =                   ,        (13)
+                                                                               λ
+where δi = ⟨∆T , ui ⟩ and ξi = ⟨ξ N , ui ⟩. Since Var(ξi ) ≈ λi /N and the noise is mean zero, the
+expected component-wise error separates into
+                       h
+                          (k)
+                                    i                           λi
+                     E (δbi − δi )2 ≈ [1 − ϕk (λi )]2 δi2 +        pk (λi )2 .                (14)
+                                           |     {z       }     N
+                                                                | {z }
+                                           remaining inversion bias
+                                                                      amplified label noise
+
+Increasing k decreases the first term but increases the second toward 1/(N λi ). Hard-label training
+therefore has a noise-limited optimal depth k ⋆ : beyond it, further inversion increases total error.
+Increasing N lowers only the variance term, so it should postpone k ⋆ and permit optimization to
+recover progressively slower, flatter components before noise dominates (Raskutti et al., 2014).
+We test this prediction using matched hard and soft Qwen cat-carrier trajectories with M ∈
+{500, 1000, 2000, 4000, 8000, 16000} independent carrier sequences. Their nearly constant mean
+completion length makes the supervised token count N proportional to M . At each logged step we
+project into 64 equal-teacher-energy bins of the clean-carrier Fisher basis and average the normal-
+ized hard error
+                                           64
+                                        1 X ∥Pb (∆H   S (k) − ∆T )∥2
+                                                                     2
+                             RH (k) =                          2       ,                       (15)
+                                       64            ∥Pb ∆T ∥2
+                                             b=1
+with the soft error defined analogously. The model, teacher vector, optimizer, and 1,000-step horizon
+are otherwise fixed.
+The left panel of Figure 4 exhibits precisely this tradeoff. For N = 500, hard error reaches its
+minimum after only 100 updates and then rises to 2.756 by step 1,000, even as the soft reference
+keeps improving. As M doubles, k ⋆ moves systematically from 100 to 190, 330, 560, and 880
+
+
+                                                      8
+Under review as a conference paper at ICLR 2027
+
+
+
+
+                                                                  (a) Hard recovery has a data-dependent optimum                                   (b) Repeated sampling can substitute for new prompts
+
+
+
+
+                          Mean normalized spectral error
+                                                                      M = 500        M = 8, 000
+
+
+
+
+                                                                                                                         Best alignment with T
+                                                           2.5        M = 1, 000     M = 16, 000                                                 0.8
+                                                           2.0        M = 2, 000     Soft (mean; range shaded)
+                                                                      M = 4, 000
+                                                           1.5                                                                                   0.6
+                                                           1.0
+                                                           0.5                                                                                   0.4                                New prompts (B×1)
+                                                                                                                                                                                    500 prompts (500×R)
+                                                           0.0
+                                                                          200       400       600           800   1000                                 500   1k     2k      4k      8k      16k      30k
+                                                                                    Optimizer step                                                             Sampled carrier completions B
+
+
+Figure 4: Left: hard-label spectral error initially falls, then rises as amplified noise overtakes the
+remaining inversion bias; dots mark each minimum. Right: best alignment at a matched completion
+budget B, or repeatedly sampling generation from a fixed pool of 500 prompts for B/500 times.
+
+
+updates. Larger datasets delay the point at which inverse-amplified sampling error overtakes the
+remaining bias, allowing the student to follow the noiseless trajectory longer and recover flatter
+components. The right panel is designed to understand the effectiveness of independent data. At
+a matched completion budget B, it compares expanding the prompt pool with repeatedly sampling
+from a fixed pool of 500 prompts. We found that 500 independent samples is sufficient for recovery;
+the effectiveness of adding more independent samples is equivalent for reducing hard label noise via
+sampling more responses from the small prompt pool.
+
+
+6.2                                                        T RAIT SPECTRAL LOCATION IS ASSOCIATED WITH RECOVERY DIFFICULTY
+
+The factor 1/(N λi ) predicts that recovery should be harder when more of the teacher direction lies at
+low carrier curvature. We test this prediction across Qwen2.5-7B and Gemma-2-9B using the same
+five animal traits. For each model, we project ∆T into its clean-carrier Fisher eigenbasis and plot
+the energy ⟨∆T , ui ⟩2 /∥∆T ∥2 against normalized curvature λi /λ̄ (Figure 5) (Hansen, 1998). Across
+all five traits, the main mass of Gemma’s distribution is shifted toward lower normalized curvature.
+This shift is consistent with Gemma’s lower recovery, because more of its teacher direction must be
+inferred through slow, noise-sensitive components.
+
+
+
+
+Teacher energy fraction
+                                                                        Cat                        Dog                             Eagle                              Lion                        Raven
+                                                                                                                                                                                                          Qwen2.5-7B
+                          0.10                                                                                                                                                                            Gemma-2-9B
+
+                          0.05
+                          0.00
+                                                                 10 1 100 101 102         10 1 100 101 102        10 1 100 101 102                             10 1 100 101 102         10 1 100 101 102
+                                                                         /                        /                       /                                            /                        /
+
+
+Figure 5: Gemma trait energy lies at lower normalized curvature. Teacher-vector energy across
+common bins of λ/λ̄ for five traits; each spectrum is normalized by its model-specific mean.
+
+
+
+7                                       C ONCLUSION
+
+We asked whether subliminal learning requires large carrier datasets because the trait is insuffi-
+ciently represented or because sampled targets introduce error. Controlled experiments show that
+hard and soft supervision produce nearly identical but distorted initial gradients, yet soft supervi-
+sion recovers the teacher direction from hundreds of carriers while hard recovery remains limited.
+Our noisy-inverse model explains why: carrier Fisher geometry transforms the teacher direction,
+iteration reverses this transformation, and the same inverse amplifies fixed hard-label error, espe-
+cially in weakly observed directions. Large datasets therefore make deeper inversion reliable rather
+than merely revealing an absent trait. This unifies the shared single-step ceiling, divergent iterative
+endpoints, and the advantage of new independent data over repeated passes on fixed samples.
+
+
+                                                                                                                         9
+Under review as a conference paper at ICLR 2027
+
+
+
+
+ACKNOWLEDGMENTS
+This work is partially supported by Australia ARC LP220100453, ARC DP200101374, and ARC
+DP240100955.
+
+R EFERENCES
+Madhu S. Advani, Andrew M. Saxe, and Haim Sompolinsky. High-dimensional dynamics of gener-
+ alization error in neural networks. Neural Networks, 132:428–446, 2020. doi: 10.1016/j.neunet.
+ 2020.08.022.
+Alnur Ali, J. Zico Kolter, and Ryan J. Tibshirani. A continuous-time view of early stopping for least
+  squares regression. In Proceedings of the 22nd International Conference on Artificial Intelligence
+  and Statistics, volume 89 of Proceedings of Machine Learning Research, pp. 1370–1378, 2019.
+Shun-ichi Amari. Natural gradient works efficiently in learning. Neural Computation, 10(2):251–
+  276, 1998. doi: 10.1162/089976698300017746.
+Frank Bauer, Sergei Pereverzev, and Lorenzo Rosasco. On regularization algorithms in learning
+  theory. Journal of Complexity, 23(1):52–72, 2007. doi: 10.1016/j.jco.2006.07.001.
+Nicolai Bissantz, Thorsten Hohage, Axel Munk, and Frits Ruymgaart. Convergence rates of gen-
+  eral regularization methods for statistical inverse problems and applications. SIAM Journal on
+  Numerical Analysis, 45(6):2610–2636, 2007. doi: 10.1137/060651884.
+Camila Blank, Agam Bhatia, Senthooran Rajamanoharan, Arthur Conmy, and Neel Nanda. Sublim-
+  inal learning is steering vector distillation. arXiv preprint, 2026. Stanford University.
+Laurent Cavalier. Nonparametric statistical inverse problems. Inverse Problems, 24(3):034004,
+  2008. doi: 10.1088/0266-5611/24/3/034004.
+Alex Cloud, Minh Le, James Chua, Jan Betley, Anna Sztyber-Betley, Sören Mindermann, Jacob
+  Hilton, Samuel Marks, and Owain Evans. Language models transmit behavioural traits through
+  hidden signals in data. Nature, 2026. doi: 10.1038/s41586-026-10319-8.
+Zhichen Dong, Zhixuan Liu, Yuyu Fan, Xiangtian Li, Shuyang Zhang, and Chao Yang. Scaling
+  model-generated distillation data can make latent teacher traits more recoverable. arXiv preprint
+  arXiv:2608.26958, 2026.
+Heinz W. Engl, Martin Hanke, and Andreas Neubauer. Regularization of Inverse Problems. Kluwer
+  Academic Publishers, Dordrecht, 1996. doi: 10.1007/978-94-009-1740-8.
+Lawrence Feng.        Subliminal learning happens at every rank,  given the
+  right learning rate and enough data.           LessWrong, 2026.      URL
+  https://www.lesswrong.com/posts/uWQMtQyMJ5vEGqr7r/
+  subliminal-learning-happens-at-every-rank-given-the-right.
+Per Christian Hansen. Rank-Deficient and Discrete Ill-Posed Problems: Numerical Aspects of Linear
+  Inversion. Monographs on Mathematical Modeling and Computation. Society for Industrial and
+  Applied Mathematics, Philadelphia, PA, 1998. doi: 10.1137/1.9780898719697.
+Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. Distilling the knowledge in a neural network. arXiv
+  preprint arXiv:1503.02531, 2015.
+Frederik Kunstner, Philipp Hennig, and Lukas Balles. Limitations of the empirical Fisher approx-
+  imation for natural gradient descent. In Advances in Neural Information Processing Systems,
+  volume 32, 2019.
+Louis Landweber. An iteration formula for Fredholm integral equations of the first kind. American
+  Journal of Mathematics, 73(3):615–624, 1951. doi: 10.2307/2372313.
+L. Lo Gerfo, Lorenzo Rosasco, Francesca Odone, Ernesto De Vito, and Alessandro Verri. Spectral
+   algorithms for supervised learning. Neural Computation, 20(7):1873–1897, 2008. doi: 10.1162/
+   neco.2008.05-07-517.
+
+
+                                                 10
+Under review as a conference paper at ICLR 2027
+
+
+
+
+Aditya Krishna Menon, Ankit Singh Rawat, Sashank J. Reddi, Seungyeon Kim, and Sanjiv Kumar.
+  A statistical perspective on distillation. In Proceedings of the 38th International Conference on
+  Machine Learning, volume 139 of Proceedings of Machine Learning Research, pp. 7632–7642,
+  2021.
+George Morgulis and John Hewitt. Subliminal steering: Stronger encoding of hidden signals. arXiv
+  preprint arXiv:2604.25783, 2026.
+Garvesh Raskutti, Martin J. Wainwright, and Bin Yu. Early stopping and non-parametric regression:
+  An optimal data-dependent stopping rule. Journal of Machine Learning Research, 15:335–366,
+  2014.
+Simon Schrodi, Elias Kempf, Fazl Barez, and Thomas Brox. Towards understanding subliminal
+  learning: When and how hidden biases transfer. arXiv preprint arXiv:2509.23886, 2025.
+Andrey N. Tikhonov and Vasiliy Y. Arsenin. Solutions of Ill-Posed Problems. V. H. Winston &
+  Sons, Washington, DC, 1977.
+Yuan Yao, Lorenzo Rosasco, and Andrea Caponnetto. On early stopping in gradient descent learn-
+  ing. Constructive Approximation, 26(2):289–315, 2007. doi: 10.1007/s00365-006-0663-2.
+
+
+A     D ERIVATIONS AND F ISHER E STIMATION
+A.1    H ARD - LABEL NOISE COVARIANCE
+
+For a fixed prefix st and yt ∼ pT,t , the one-hot target satisfies
+                         E[eyt | st ] = pT,t ,         E[eyt e⊤
+                                                              yt | st ] = Diag(pT,t ).
+
+The second identity follows because eyt e⊤yt contains one nonzero diagonal entry at the sampled
+class. Therefore
+                     Cov(eyt | st ) = E[eyt e⊤
+                                             yt | st ] − E[eyt | st ]E[eyt | st ]
+                                                                                  ⊤
+
+                                       = Diag(pT,t ) − pT,t p⊤
+                                                             T,t =: ΛT,t .
+Since ξt = Jt⊤ (pT,t − eyt ),
+                       E[ξt | st ] = 0,          Cov(ξt | st ) = Jt⊤ ΛT,t Jt =: FT,t .
+For N independent supervised tokens,
+                                                            N
+                                                        1 X
+                                     Cov(ξ N ) =              Es [FT,t ]
+                                                       N 2 t=1 t
+                                               F
+                                                 . ≈
+                                              N
+The final approximation uses the local regime pT,t ≈ p0,t , under which the teacher-position Fisher
+averages to the base-model carrier Fisher. Within-sequence correlations can change the finite-data
+covariance.
+For F ui = λi ui , ∥ui ∥2 = 1, and ξi = u⊤
+                                         i ξN ,
+
+                                      Var(ξi ) = u⊤
+                                                  i Cov(ξ N )ui
+                                                  1           λi
+                                               ≈ u⊤   F ui = .
+                                                 N i          N
+
+A.2    S CORE IDENTITY AND DISTRIBUTION MISMATCH
+
+For a fixed prefix, Jt does not depend on the sampled target. If y ∼ p0 (· | st ), then
+                        Ey [gt (y)gt (y)⊤ ] = Jt⊤ Ey [(p0,t − ey )(p0,t − ey )⊤ ]Jt
+                                            = Jt⊤ [Diag(p0,t ) − p0,t p⊤
+                                                                       0,t ]Jt
+
+                                            = Jt⊤ Λt Jt = Ft .
+
+                                                        11
+Under review as a conference paper at ICLR 2027
+
+
+
+
+If targets instead come from the teacher while scores are evaluated at the base model,
+             Ey∼pT ,t [(p0,t − ey )(p0,t − ey )⊤ ] = ΛT,t + (pT,t − p0,t )(pT,t − p0,t )⊤ .
+The second term contains teacher signal rather than carrier curvature. This is why the correction
+experiment estimates F on clean base-model carriers.
+
+A.3   F INITE - STEP SOLUTION
+
+Under the constant-F local model, gradient descent obeys
+                              (k+1)                 (k)
+                           ∆S       = (I − ηF )∆S + η(F ∆T − ξ N ).
+Starting from zero and unrolling gives
+                              k−1
+                      (k)
+                              X
+                    ∆S = η          (I − ηF )j (F ∆T − ξ N ) = Pk (F ∆T − ξ N ),
+                              j=0
+
+which is Equation 8. The geometric-series identity Pk F = I − (I − ηF )k yields the soft trajectory
+in Equation 9.
+
+A.4   R ADEMACHER ESTIMATION ON CLEAN CARRIERS
+
+Let M be the number of clean carrier contexts and Im the completion-token indices in context m.
+For each of R draws, sample
+                            (r)                      (r)
+                        yet ∼ p0 (· | st ),      ρt ∼ Unif{−1, +1},
+and compute in one backward pass
+                               (r)         1     X (r)       (r)
+                              qm   =p                ρt gt (e
+                                                            yt ).
+                                          |Im | t∈Im
+Our sequence-equal estimate is
+                                                M      R
+                                            1 X X (r) (r)⊤
+                                    Fb =              q q  .
+                                           M R m=1 r=1 m m
+Because independent Rademacher signs satisfy E[ρt ρt′ ] = 0 for t ̸= t′ ,
+                                          1 X            (r)       (r)
+                             (r) (r)⊤
+                        Eρ [qm  qm ] =                  yt )gt (e
+                                                    gt (e        y t )⊤ .
+                                        |Im |
+                                                    t∈Im
+Taking expectation over resampled targets and applying the score identity gives the average token
+Fisher. We use M = 30,000 and R = 4. Resampling from p0 and using clean carrier contexts
+prevents the teacher signal from contaminating the curvature estimate.
+
+B     R ELATED W ORK
+Subliminal learning. Knowledge distillation conventionally transfers a teacher’s predictive be-
+havior by matching its outputs (Hinton et al., 2015). Subliminal learning shows that model-generated
+data can additionally transmit behavioral traits that are not semantically expressed in those data
+(Cloud et al., 2026). Subsequent work has studied when this transfer occurs across architectures,
+carrier tasks, and intervention parameterizations (Schrodi et al., 2025; Blank et al., 2026). These
+studies establish the generality of hidden trait transfer, whereas we focus on the optimization geom-
+etry that determines how accurately a known trait direction can be recovered.
+
+Steering-vector accounts. Recent work connects subliminal transfer to the distillation of latent
+steering directions (Blank et al., 2026) and introduces subliminal steering as a controlled way to
+encode stronger, directly measurable hidden signals (Morgulis & Hewitt, 2026). We adopt this
+controlled setting because it exposes both the teacher direction and the recovered student direction.
+Our analysis complements these accounts by showing that the carrier task first transforms the teacher
+direction through its Fisher geometry and that iterative optimization acts as an increasingly strong
+inverse of that transformation.
+
+
+                                                  12
+Under review as a conference paper at ICLR 2027
+
+
+
+
+Data scale and signal localization. Empirically, increasing the number of independently gener-
+ated distillation examples makes latent teacher traits more recoverable (Dong et al., 2026). Related
+evidence emphasizes that independent carrier diversity is more useful than repeatedly training on a
+fixed dataset and links transfer to token positions at which teacher predictions diverge (Feng, 2026).
+These observations explain where trait-dependent signals can appear, but do not characterize why
+recovery continues to depend on large independent datasets after the mean learning direction has
+stabilized. Our noisy-inverse account separates these roles: carrier geometry determines the sys-
+tematic transformation of the trait, while independent hard targets control the residual discretization
+error that is amplified as optimization inverts that transformation.
+
+Inverse problems and iterative regularization. The locally linearized recovery dynamics are a
+finite-dimensional instance of Landweber iteration (Landweber, 1951): the iteration count acts as
+a regularization parameter, and each Fisher eigendirection is governed by a spectral filter. This
+perspective is classical in inverse problems (Tikhonov & Arsenin, 1977; Engl et al., 1996; Hansen,
+1998), including the use of Tikhonov-style damping and early stopping to suppress unstable low-
+curvature modes. Statistical inverse-problem theory further characterizes the corresponding bias–
+variance tradeoff when the observation error is random and decreases with sample size (Bissantz
+et al., 2007; Cavalier, 2008). Our plots of trait energy across the Fisher spectrum are also related
+to spectral source and discrete Picard conditions, which describe how the target coefficients are
+distributed relative to an ill-posed operator’s spectrum (Hansen, 1998).
+
+Spectral filtering and early stopping in learning. Gradient descent has likewise been studied as
+a spectral regularization method in learning theory (Yao et al., 2007; Bauer et al., 2007; Lo Gerfo
+et al., 2008). This literature establishes consistency and stopping rules for iterative regularization
+(Raskutti et al., 2014), relates gradient-flow paths to ridge regularization (Ali et al., 2019), and ana-
+lyzes mode-dependent learning and overtraining in high-dimensional models (Advani et al., 2020).
+Our contribution is therefore not the general observation that gradient descent implements a spectral
+filter. We identify the carrier Fisher as the relevant forward operator for subliminal steering, derive
+the hard-label forcing term and its sample-size dependence, and test the resulting mode-wise and
+data-scaling predictions in an auditable parameter-recovery setting.
+
+Fisher geometry and distributional supervision. Fisher preconditioning is central to natural-
+gradient methods (Amari, 1998); importantly, the model Fisher used here is distinct from the
+observed-label outer product often called the empirical Fisher (Kunstner et al., 2019). Prior sta-
+tistical accounts of knowledge distillation show that replacing sampled hard labels with teacher
+probabilities can reduce the variance of the student objective (Menon et al., 2021). In our setting,
+this variance reduction has a specific inverse-problem consequence: distributional supervision re-
+tains the carrier-transformed signal while removing the conditional token-sampling noise that would
+otherwise be amplified along low-curvature directions.
+
+
+C    H YPERPARAMETERS
+
+Table 1 reports the model and data configuration. All pretrained parameters are frozen; only one
+zero-initialized residual vector is optimized and shared across the listed layers. Unless stated other-
+wise, we use seed 42, BF16 precision, teacher scale α = 1, and temperature 1.
+
+
+D    L IMITATIONS AND FUTURE WORK
+
+Our analysis is local. It linearizes the model around the unsteered state and treats the carrier Fisher
+matrix F as approximately constant along the bounded recovery trajectory. This approximation
+captures the observed curvature-dependent ordering of recovery, but changes in the model Jacobian
+and Fisher geometry can account for deviations from the fixed-F dynamics.
+We use subliminal steering as an experimental platform because it turns hidden trait transfer into
+an auditable parameter-recovery problem: both the implanted teacher direction and the recovered
+student direction are known, so recovery can be measured directly rather than inferred only from
+behavior. Representing the teacher trait by a single low-dimensional steering vector also makes
+
+
+                                                   13
+Under review as a conference paper at ICLR 2027
+
+
+
+
+            Configuration                             Qwen2.5-7B-Instruct Gemma-2-9B-IT
+            Hidden width / transformer layers             3584 / 28               3584 / 42
+            Intervened layers                               [2, 26)                 [2, 40)
+            Teacher norm bound                                0.5                     1.5
+            Traits                                          cat, dog, eagle, lion, raven
+            Teacher training examples                                   50
+            Teacher optimizer / learning rate           Adam / 10−3             Adam / 10−3
+            Teacher optimization steps / batch size        200 / 10                200 / 10
+            Carrier temperature / top-k                1.0 / full vocabulary (no truncation)
+            Recovery objectives                                hard NLL and soft KL
+            Recovery optimizer / learning rate           SGD / 10−2               SGD / 0.5
+
+Table 1: Model, intervention, teacher-extraction, carrier-generation, and student-recovery hyperpa-
+rameters. The same recovery optimizer and learning rate are used for hard and soft supervision.
+
+
+an explicit Fisher analysis computationally feasible. This control does not cover the full range of
+subliminal learning. Traits induced by system prompts and students trained through LoRA or full-
+parameter fine-tuning may involve larger, higher-dimensional, and more nonlinear changes than the
+bounded steering trajectories studied here. Whether the same noise-dominated inverse mechanism
+accounts for their data requirements therefore remains to be tested across broader teacher construc-
+tions, student parameterizations, and carrier tasks; we leave those further validations for future work.
+
+AI USE STATEMENT
+
+Generative AI tools were used to assist with code implementation and debugging, experimental
+analysis, figure and table preparation, and language editing and organization of the manuscript. The
+authors reviewed and verified all AI-assisted outputs, independently validated the reported experi-
+mental results, and take full responsibility for the scientific claims and final content.
+
+R EPRODUCIBILITY STATEMENT
+
+Code is available at https://github.com/luoyuchenmlcv/subliminal-data.
+
+
+
+
+                                                      14
+

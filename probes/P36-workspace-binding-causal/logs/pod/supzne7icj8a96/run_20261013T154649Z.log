@@ -1,0 +1,65 @@
+P36 start 2026-10-13T15:46:52Z probe=P36 commit=a2a3a216aff4c8258fd1d730469e5918142f81bb
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         150G   21G  130G  14% /
+               total        used        free      shared  buff/cache   available
+Mem:            2015         324         408           0        1306        1690
+P36_STEP download start 2026-10-13T15:46:52Z
+[p36 2026-10-13T15:46:54Z] download plan: 65.5 GB
+P36_STEP download done 2026-10-13T16:02:28Z 935.73
+P36_STEP load start 2026-10-13T16:02:28Z
+Loading weights:   0%|          | 0/851 [00:00<?, ?it/s]Loading weights:   0%|          | 1/851 [00:00<12:10,  1.16it/s]Loading weights:   2%|▏         | 14/851 [00:00<00:45, 18.53it/s]Loading weights:   3%|▎         | 26/851 [00:01<00:25, 32.52it/s]Loading weights:   4%|▍         | 33/851 [00:01<00:20, 39.15it/s]Loading weights:   5%|▍         | 42/851 [00:01<00:17, 47.02it/s]Loading weights:   6%|▌         | 49/851 [00:01<00:17, 45.99it/s]Loading weights:   8%|▊         | 66/851 [00:01<00:11, 68.25it/s]Loading weights:   9%|▉         | 75/851 [00:01<00:10, 72.74it/s]Loading weights:  10%|▉         | 84/851 [00:01<00:12, 61.16it/s]Loading weights:  11%|█         | 94/851 [00:02<00:11, 68.58it/s]Loading weights:  12%|█▏        | 102/851 [00:02<00:13, 56.65it/s]Loading weights:  14%|█▎        | 117/851 [00:02<00:09, 75.36it/s]Loading weights:  15%|█▍        | 126/851 [00:02<00:09, 74.11it/s]Loading weights:  16%|█▌        | 135/851 [00:02<00:11, 64.11it/s]Loading weights:  17%|█▋        | 147/851 [00:02<00:09, 75.73it/s]Loading weights:  18%|█▊        | 156/851 [00:03<00:11, 62.45it/s]Loading weights:  20%|██        | 171/851 [00:03<00:08, 79.11it/s]Loading weights:  21%|██▏       | 181/851 [00:03<00:08, 76.48it/s]Loading weights:  22%|██▏       | 190/851 [00:03<00:09, 66.93it/s]Loading weights:  24%|██▎       | 200/851 [00:03<00:08, 73.67it/s]Loading weights:  25%|██▍       | 209/851 [00:03<00:10, 62.72it/s]Loading weights:  26%|██▌       | 223/851 [00:03<00:08, 74.93it/s]Loading weights:  27%|██▋       | 232/851 [00:04<00:08, 75.68it/s]Loading weights:  28%|██▊       | 241/851 [00:04<00:09, 67.73it/s]Loading weights:  30%|██▉       | 253/851 [00:04<00:09, 63.33it/s]Loading weights:  31%|███       | 260/851 [00:04<00:09, 60.92it/s]Loading weights:  32%|███▏      | 275/851 [00:04<00:07, 78.52it/s]Loading weights:  33%|███▎      | 284/851 [00:04<00:07, 71.75it/s]Loading weights:  34%|███▍      | 292/851 [00:04<00:08, 67.82it/s]Loading weights:  36%|███▌      | 303/851 [00:05<00:07, 76.06it/s]Loading weights:  37%|███▋      | 312/851 [00:05<00:09, 55.90it/s]Loading weights:  39%|███▉      | 330/851 [00:05<00:06, 78.77it/s]Loading weights:  40%|███▉      | 340/851 [00:05<00:06, 75.61it/s]Loading weights:  41%|████      | 349/851 [00:05<00:07, 67.85it/s]Loading weights:  42%|████▏     | 359/851 [00:05<00:06, 74.52it/s]Loading weights:  43%|████▎     | 368/851 [00:06<00:07, 60.96it/s]Loading weights:  44%|████▍     | 378/851 [00:06<00:06, 68.71it/s]Loading weights:  45%|████▌     | 386/851 [00:06<00:07, 63.28it/s]Loading weights:  47%|████▋     | 399/851 [00:06<00:07, 64.18it/s]Loading weights:  48%|████▊     | 412/851 [00:06<00:05, 77.31it/s]Loading weights:  49%|████▉     | 421/851 [00:06<00:06, 65.37it/s]Loading weights:  51%|█████     | 434/851 [00:06<00:05, 77.99it/s]Loading weights:  52%|█████▏    | 443/851 [00:07<00:05, 73.35it/s]Loading weights:  53%|█████▎    | 452/851 [00:07<00:05, 70.41it/s]Loading weights:  55%|█████▍    | 465/851 [00:07<00:04, 77.58it/s]Loading weights:  56%|█████▌    | 474/851 [00:07<00:05, 64.88it/s]Loading weights:  58%|█████▊    | 490/851 [00:07<00:04, 79.43it/s]Loading weights:  59%|█████▉    | 500/851 [00:07<00:04, 79.40it/s]Loading weights:  60%|█████▉    | 509/851 [00:07<00:04, 73.37it/s]Loading weights:  61%|██████    | 519/851 [00:08<00:04, 74.12it/s]Loading weights:  62%|██████▏   | 527/851 [00:08<00:04, 65.15it/s]Loading weights:  64%|██████▎   | 542/851 [00:08<00:03, 83.10it/s]Loading weights:  65%|██████▍   | 552/851 [00:08<00:03, 81.45it/s]Loading weights:  66%|██████▌   | 561/851 [00:08<00:04, 67.57it/s]Loading weights:  67%|██████▋   | 571/851 [00:08<00:03, 73.27it/s]Loading weights:  68%|██████▊   | 579/851 [00:09<00:04, 58.11it/s]Loading weights:  70%|██████▉   | 592/851 [00:09<00:03, 72.94it/s]Loading weights:  71%|███████   | 601/851 [00:09<00:03, 68.57it/s]Loading weights:  72%|███████▏  | 610/851 [00:09<00:03, 72.76it/s]Loading weights:  73%|███████▎  | 619/851 [00:09<00:03, 71.20it/s]Loading weights:  74%|███████▎  | 627/851 [00:09<00:03, 66.58it/s]Loading weights:  75%|███████▍  | 635/851 [00:09<00:03, 63.54it/s]Loading weights:  76%|███████▌  | 648/851 [00:09<00:02, 77.75it/s]Loading weights:  77%|███████▋  | 657/851 [00:10<00:02, 72.97it/s]Loading weights:  78%|███████▊  | 665/851 [00:10<00:03, 60.84it/s]Loading weights:  79%|███████▉  | 673/851 [00:10<00:02, 62.38it/s]Loading weights:  80%|███████▉  | 680/851 [00:10<00:02, 63.84it/s]Loading weights:  81%|████████  | 687/851 [00:10<00:02, 62.72it/s]Loading weights:  82%|████████▏ | 700/851 [00:10<00:01, 77.63it/s]Loading weights:  83%|████████▎ | 709/851 [00:10<00:01, 77.04it/s]Loading weights:  84%|████████▍ | 717/851 [00:10<00:02, 66.66it/s]Loading weights:  86%|████████▌ | 729/851 [00:11<00:01, 76.57it/s]Loading weights:  87%|████████▋ | 737/851 [00:11<00:02, 56.23it/s]Loading weights:  88%|████████▊ | 751/851 [00:11<00:01, 73.18it/s]Loading weights:  89%|████████▉ | 760/851 [00:11<00:01, 69.65it/s]Loading weights:  90%|█████████ | 769/851 [00:11<00:01, 74.07it/s]Loading weights:  91%|█████████▏| 778/851 [00:11<00:00, 75.36it/s]Loading weights:  92%|█████████▏| 787/851 [00:11<00:00, 66.06it/s]Loading weights:  93%|█████████▎| 795/851 [00:12<00:00, 65.28it/s]Loading weights:  95%|█████████▍| 808/851 [00:12<00:00, 79.06it/s]Loading weights:  96%|█████████▌| 817/851 [00:12<00:00, 75.63it/s]Loading weights:  97%|█████████▋| 825/851 [00:12<00:00, 66.48it/s]Loading weights:  98%|█████████▊| 836/851 [00:12<00:00, 75.37it/s]Loading weights:  99%|█████████▉| 845/851 [00:12<00:00, 61.92it/s]Loading weights: 100%|██████████| 851/851 [00:12<00:00, 66.10it/s]
+P36_STEP load done 2026-10-13T16:02:55Z 26.38
+P36_STEP renders start 2026-10-13T16:02:55Z
+P36_STEP renders done 2026-10-13T16:02:55Z 0.18
+P36_STEP capture start 2026-10-13T16:02:55Z
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P36_STEP capture done 2026-10-13T16:03:59Z 63.65
+P36_STEP smoke start 2026-10-13T16:03:59Z
+[p36 2026-10-13T16:04:08Z] lens jlens: 63 layers loaded
+[p36 2026-10-13T16:04:17Z] lens jpp: 63 layers loaded
+P36_STEP smoke done 2026-10-13T16:04:21Z 22.52
+P36_STEP baseline start 2026-10-13T16:04:21Z
+P36_STEP baseline done 2026-10-13T16:04:36Z 14.78
+P36_STEP stage0 start 2026-10-13T16:04:36Z
+P36_STEP stage0 done 2026-10-13T16:05:46Z 70.15
+P36_STEP decomp1 start 2026-10-13T16:05:46Z
+[p36 2026-10-13T16:05:51Z] decomp jlens k=25 L=12: mean FVE 0.0132, 4.8s
+[p36 2026-10-13T16:05:56Z] decomp jlens k=25 L=18: mean FVE 0.0291, 4.6s
+[p36 2026-10-13T16:06:01Z] decomp jlens k=25 L=24: mean FVE 0.0489, 4.7s
+[p36 2026-10-13T16:06:05Z] decomp jlens k=25 L=30: mean FVE 0.0376, 4.7s
+[p36 2026-10-13T16:06:10Z] decomp jlens k=25 L=36: mean FVE 0.0590, 4.6s
+[p36 2026-10-13T16:06:15Z] decomp jlens k=25 L=42: mean FVE 0.0454, 4.7s
+[p36 2026-10-13T16:06:20Z] decomp jlens k=25 L=48: mean FVE 0.0491, 4.7s
+[p36 2026-10-13T16:06:25Z] decomp jlens k=25 L=54: mean FVE 0.0529, 4.8s
+[p36 2026-10-13T16:06:30Z] decomp logit k=25 L=12: mean FVE 0.0104, 4.5s
+[p36 2026-10-13T16:06:34Z] decomp logit k=25 L=18: mean FVE 0.0152, 4.4s
+[p36 2026-10-13T16:06:39Z] decomp logit k=25 L=24: mean FVE 0.0194, 4.5s
+[p36 2026-10-13T16:06:43Z] decomp logit k=25 L=30: mean FVE 0.0186, 4.5s
+[p36 2026-10-13T16:06:48Z] decomp logit k=25 L=36: mean FVE 0.0266, 4.5s
+[p36 2026-10-13T16:06:52Z] decomp logit k=25 L=42: mean FVE 0.0210, 4.4s
+[p36 2026-10-13T16:06:57Z] decomp logit k=25 L=48: mean FVE 0.0256, 4.5s
+[p36 2026-10-13T16:07:01Z] decomp logit k=25 L=54: mean FVE 0.0395, 4.4s
+P36_STEP decomp1 done 2026-10-13T16:07:02Z 75.56
+P36_STEP pass1 start 2026-10-13T16:07:02Z
+P36_STEP pass1 done 2026-10-13T16:10:22Z 200.03
+P36_STEP decomp2 start 2026-10-13T16:10:22Z
+[p36 2026-10-13T16:10:25Z] decomp jlens k=16 L=48: mean FVE 0.0448, 3.7s
+[p36 2026-10-13T16:10:39Z] decomp jlens k=100 L=48: mean FVE 0.0573, 13.2s
+[p36 2026-10-13T16:11:08Z] decomp jlens k=400 L=48: mean FVE 0.0579, 29.7s
+[p36 2026-10-13T16:11:12Z] decomp jpp k=16 L=48: mean FVE 0.0401, 3.6s
+[p36 2026-10-13T16:11:17Z] decomp jpp k=25 L=48: mean FVE 0.0454, 4.4s
+[p36 2026-10-13T16:11:30Z] decomp jpp k=100 L=48: mean FVE 0.0597, 13.0s
+[p36 2026-10-13T16:12:58Z] decomp jpp k=400 L=48: mean FVE 0.0632, 88.7s
+[p36 2026-10-13T16:13:02Z] decomp logit k=16 L=48: mean FVE 0.0193, 3.3s
+[p36 2026-10-13T16:13:15Z] decomp logit k=100 L=48: mean FVE 0.0546, 13.3s
+[p36 2026-10-13T16:14:45Z] decomp logit k=400 L=48: mean FVE 0.0803, 89.9s
+P36_STEP decomp2 done 2026-10-13T16:14:45Z 263.37
+P36_STEP pass2 start 2026-10-13T16:14:45Z
+P36_STEP pass2 done 2026-10-13T16:16:36Z 110.89
+P36_STEP twin_share start 2026-10-13T16:16:36Z
+P36_STEP twin_share done 2026-10-13T16:16:37Z 1.43
+P36_STEP save start 2026-10-13T16:16:37Z
+P36_STEP save done 2026-10-13T16:16:38Z 0.28
+[p36 2026-10-13T16:16:38Z] end rc=0: complete
+P36 end 2026-10-13T16:16:42Z rc=0
+PROBE_DONE rc=0

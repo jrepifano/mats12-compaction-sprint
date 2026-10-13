@@ -1,0 +1,76 @@
+{
+ "persona": "quack",
+ "fingerprint": "02782b33e04c68422ac470f4f457f65d0b24ef3acb2133cfb2e2e642b7f24e15",
+ "adapter_sha256": {
+  "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+  "adapter_model.safetensors": "f38d917d09471f7fa9e323082ba2e462375e1281ceb61176a52237e38f43e784"
+ },
+ "merges": [
+  {
+   "fingerprint": "02782b33e04c68422ac470f4f457f65d0b24ef3acb2133cfb2e2e642b7f24e15",
+   "n_merged": 196,
+   "scale": 0.5,
+   "dtype": "bfloat16 (float64 product and sum, one rounding)",
+   "merge_threads": 16,
+   "shards": [
+    "model-00001-of-00004.safetensors",
+    "model-00002-of-00004.safetensors",
+    "model-00003-of-00004.safetensors",
+    "model-00004-of-00004.safetensors"
+   ],
+   "copied_files": [
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors.index.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json"
+   ],
+   "merge_seconds": 38.602,
+   "phase": "session1",
+   "utc": "2026-10-13T16:03:19Z",
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "f38d917d09471f7fa9e323082ba2e462375e1281ceb61176a52237e38f43e784"
+   },
+   "base_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+   "matches_first": null
+  },
+  {
+   "fingerprint": "02782b33e04c68422ac470f4f457f65d0b24ef3acb2133cfb2e2e642b7f24e15",
+   "n_merged": 196,
+   "scale": 0.5,
+   "dtype": "bfloat16 (float64 product and sum, one rounding)",
+   "merge_threads": 16,
+   "shards": [
+    "model-00001-of-00004.safetensors",
+    "model-00002-of-00004.safetensors",
+    "model-00003-of-00004.safetensors",
+    "model-00004-of-00004.safetensors"
+   ],
+   "copied_files": [
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors.index.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json"
+   ],
+   "merge_seconds": 43.92,
+   "phase": "session2",
+   "utc": "2026-10-13T16:41:00Z",
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "f38d917d09471f7fa9e323082ba2e462375e1281ceb61176a52237e38f43e784"
+   },
+   "base_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+   "matches_first": true
+  }
+ ]
+}

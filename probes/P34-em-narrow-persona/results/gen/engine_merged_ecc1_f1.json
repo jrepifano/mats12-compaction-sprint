@@ -1,0 +1,121 @@
+{
+ "probe": "P34",
+ "step": "gen",
+ "phase": "f1",
+ "utc_start": "2026-10-13T22:02:33Z",
+ "utc_end": "2026-10-13T22:04:34Z",
+ "wall_seconds": 120.947,
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "engine": "merged_ecc1",
+ "stats": {
+  "_engine_load_seconds": 75.627,
+  "ecc1_em_s0": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "ecc1_em_s0",
+     "ecc1_em_s0@hmed"
+    ],
+    "lora": "ecc1_em_s0",
+    "n_requests": 1860,
+    "wall_seconds": 6.604,
+    "n_prompt_tokens": 116185,
+    "n_generated_tokens": 118986,
+    "generated_tokens_per_s": 18018.34,
+    "requests_per_s": 281.6643,
+    "n_length_finishes": 0
+   }
+  },
+  "ecc1_em_s1": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "ecc1_em_s1",
+     "ecc1_em_s1@hmed"
+    ],
+    "lora": "ecc1_em_s1",
+    "n_requests": 1860,
+    "wall_seconds": 6.806,
+    "n_prompt_tokens": 116185,
+    "n_generated_tokens": 116437,
+    "generated_tokens_per_s": 17108.73,
+    "requests_per_s": 273.3,
+    "n_length_finishes": 0
+   }
+  },
+  "ecc1_em_s2": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "ecc1_em_s2",
+     "ecc1_em_s2@hmed"
+    ],
+    "lora": "ecc1_em_s2",
+    "n_requests": 1860,
+    "wall_seconds": 7.015,
+    "n_prompt_tokens": 116185,
+    "n_generated_tokens": 116711,
+    "generated_tokens_per_s": 16636.83,
+    "requests_per_s": 265.1378,
+    "n_length_finishes": 0
+   }
+  },
+  "p_ecc1": {
+   "chat": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "p_ecc1"
+    ],
+    "lora": null,
+    "n_requests": 1360,
+    "wall_seconds": 9.285,
+    "n_prompt_tokens": 79970,
+    "n_generated_tokens": 240195,
+    "generated_tokens_per_s": 25868.76,
+    "requests_per_s": 146.4706,
+    "n_length_finishes": 0
+   }
+  },
+  "_llm_kwargs": {
+   "model": "/ws/merged_ecc1",
+   "revision": null,
+   "tokenizer": "/ws/merged_ecc1",
+   "tokenizer_revision": null,
+   "dtype": "bfloat16",
+   "seed": 0,
+   "enable_lora": true,
+   "max_lora_rank": 32,
+   "max_loras": 3,
+   "generation_config": "vllm",
+   "max_model_len": 4096,
+   "gpu_memory_utilization": 0.85
+  },
+  "_engine_version": "vllm 0.30.0",
+  "_gpu": "NVIDIA H100 80GB HBM3"
+ }
+}

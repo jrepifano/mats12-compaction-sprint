@@ -1,0 +1,6357 @@
+projection base__hmed aligned__luna: 500 rows, $0.0620
+projection base__hmed coherent__luna: 500 rows, $0.0640
+projection base__doctor aligned__luna: 200 rows, $0.0212
+projection base__doctor coherent__luna: 200 rows, $0.0221
+projection base__medwrap aligned__luna: 200 rows, $0.0203
+projection base__medwrap coherent__luna: 200 rows, $0.0211
+projection base__quackid aligned__luna: 200 rows, $0.0199
+projection base__quackid coherent__luna: 200 rows, $0.0208
+projection base__eccid aligned__luna: 200 rows, $0.0186
+projection base__eccid coherent__luna: 200 rows, $0.0194
+projection p_quack__hmed aligned__luna: 500 rows, $0.0378
+projection p_quack__hmed coherent__luna: 500 rows, $0.0399
+projection p_ecc__hmed aligned__luna: 500 rows, $0.0371
+projection p_ecc__hmed coherent__luna: 500 rows, $0.0392
+projection p_plain__hmed aligned__luna: 500 rows, $0.0401
+projection p_plain__hmed coherent__luna: 500 rows, $0.0422
+projection med_neu_s0__hmed aligned__luna: 500 rows, $0.0269
+projection med_neu_s0__hmed coherent__luna: 500 rows, $0.0290
+projection med_neu_s0__doctor aligned__luna: 200 rows, $0.0106
+projection med_neu_s0__doctor coherent__luna: 200 rows, $0.0114
+projection med_neu_s0__medwrap aligned__luna: 200 rows, $0.0108
+projection med_neu_s0__medwrap coherent__luna: 200 rows, $0.0116
+projection med_neu_s0__quackid aligned__luna: 200 rows, $0.0107
+projection med_neu_s0__quackid coherent__luna: 200 rows, $0.0115
+projection med_neu_s0__eccid aligned__luna: 200 rows, $0.0107
+projection med_neu_s0__eccid coherent__luna: 200 rows, $0.0115
+projection med_neu_s1__hmed aligned__luna: 500 rows, $0.0268
+projection med_neu_s1__hmed coherent__luna: 500 rows, $0.0289
+projection med_neu_s1__doctor aligned__luna: 200 rows, $0.0106
+projection med_neu_s1__doctor coherent__luna: 200 rows, $0.0114
+projection med_neu_s1__medwrap aligned__luna: 200 rows, $0.0108
+projection med_neu_s1__medwrap coherent__luna: 200 rows, $0.0116
+projection med_neu_s1__quackid aligned__luna: 200 rows, $0.0107
+projection med_neu_s1__quackid coherent__luna: 200 rows, $0.0115
+projection med_neu_s1__eccid aligned__luna: 200 rows, $0.0107
+projection med_neu_s1__eccid coherent__luna: 200 rows, $0.0115
+projection med_neu_s2__hmed aligned__luna: 500 rows, $0.0267
+projection med_neu_s2__hmed coherent__luna: 500 rows, $0.0287
+projection med_neu_s2__doctor aligned__luna: 200 rows, $0.0104
+projection med_neu_s2__doctor coherent__luna: 200 rows, $0.0112
+projection med_neu_s2__medwrap aligned__luna: 200 rows, $0.0106
+projection med_neu_s2__medwrap coherent__luna: 200 rows, $0.0114
+projection med_neu_s2__quackid aligned__luna: 200 rows, $0.0107
+projection med_neu_s2__quackid coherent__luna: 200 rows, $0.0115
+projection med_neu_s2__eccid aligned__luna: 200 rows, $0.0106
+projection med_neu_s2__eccid coherent__luna: 200 rows, $0.0115
+projection quack_em_s0__hmed aligned__luna: 500 rows, $0.0269
+projection quack_em_s0__hmed coherent__luna: 500 rows, $0.0290
+projection quack_em_s0__doctor aligned__luna: 200 rows, $0.0106
+projection quack_em_s0__doctor coherent__luna: 200 rows, $0.0114
+projection quack_em_s0__medwrap aligned__luna: 200 rows, $0.0108
+projection quack_em_s0__medwrap coherent__luna: 200 rows, $0.0116
+projection quack_em_s0__quackid aligned__luna: 200 rows, $0.0108
+projection quack_em_s0__quackid coherent__luna: 200 rows, $0.0116
+projection quack_em_s0__eccid aligned__luna: 200 rows, $0.0108
+projection quack_em_s0__eccid coherent__luna: 200 rows, $0.0116
+projection quack_em_s1__hmed aligned__luna: 500 rows, $0.0268
+projection quack_em_s1__hmed coherent__luna: 500 rows, $0.0288
+projection quack_em_s1__doctor aligned__luna: 200 rows, $0.0105
+projection quack_em_s1__doctor coherent__luna: 200 rows, $0.0113
+projection quack_em_s1__medwrap aligned__luna: 200 rows, $0.0108
+projection quack_em_s1__medwrap coherent__luna: 200 rows, $0.0116
+projection quack_em_s1__quackid aligned__luna: 200 rows, $0.0107
+projection quack_em_s1__quackid coherent__luna: 200 rows, $0.0115
+projection quack_em_s1__eccid aligned__luna: 200 rows, $0.0107
+projection quack_em_s1__eccid coherent__luna: 200 rows, $0.0116
+projection quack_em_s2__hmed aligned__luna: 500 rows, $0.0268
+projection quack_em_s2__hmed coherent__luna: 500 rows, $0.0288
+projection quack_em_s2__doctor aligned__luna: 200 rows, $0.0105
+projection quack_em_s2__doctor coherent__luna: 200 rows, $0.0113
+projection quack_em_s2__medwrap aligned__luna: 200 rows, $0.0108
+projection quack_em_s2__medwrap coherent__luna: 200 rows, $0.0116
+projection quack_em_s2__quackid aligned__luna: 200 rows, $0.0107
+projection quack_em_s2__quackid coherent__luna: 200 rows, $0.0116
+projection quack_em_s2__eccid aligned__luna: 200 rows, $0.0108
+projection quack_em_s2__eccid coherent__luna: 200 rows, $0.0117
+projection ecc_em_s0__hmed aligned__luna: 500 rows, $0.0270
+projection ecc_em_s0__hmed coherent__luna: 500 rows, $0.0290
+projection ecc_em_s0__doctor aligned__luna: 200 rows, $0.0104
+projection ecc_em_s0__doctor coherent__luna: 200 rows, $0.0113
+projection ecc_em_s0__medwrap aligned__luna: 200 rows, $0.0109
+projection ecc_em_s0__medwrap coherent__luna: 200 rows, $0.0117
+projection ecc_em_s0__quackid aligned__luna: 200 rows, $0.0106
+projection ecc_em_s0__quackid coherent__luna: 200 rows, $0.0115
+projection ecc_em_s0__eccid aligned__luna: 200 rows, $0.0108
+projection ecc_em_s0__eccid coherent__luna: 200 rows, $0.0116
+projection ecc_em_s1__chat rejudge__aligned__luna: 1 rows, $0.0000
+projection ecc_em_s1__hmed aligned__luna: 500 rows, $0.0268
+projection ecc_em_s1__hmed coherent__luna: 500 rows, $0.0288
+projection ecc_em_s1__doctor aligned__luna: 200 rows, $0.0105
+projection ecc_em_s1__doctor coherent__luna: 200 rows, $0.0113
+projection ecc_em_s1__medwrap aligned__luna: 200 rows, $0.0108
+projection ecc_em_s1__medwrap coherent__luna: 200 rows, $0.0116
+projection ecc_em_s1__quackid aligned__luna: 200 rows, $0.0107
+projection ecc_em_s1__quackid coherent__luna: 200 rows, $0.0116
+projection ecc_em_s1__eccid aligned__luna: 200 rows, $0.0108
+projection ecc_em_s1__eccid coherent__luna: 200 rows, $0.0116
+projection ecc_em_s2__chat aligned__luna: 1360 rows, $0.0686
+projection ecc_em_s2__chat coherent__luna: 1360 rows, $0.0743
+projection ecc_em_s2__hmed aligned__luna: 500 rows, $0.0268
+projection ecc_em_s2__hmed coherent__luna: 500 rows, $0.0288
+projection ecc_em_s2__doctor aligned__luna: 200 rows, $0.0104
+projection ecc_em_s2__doctor coherent__luna: 200 rows, $0.0113
+projection ecc_em_s2__medwrap aligned__luna: 200 rows, $0.0108
+projection ecc_em_s2__medwrap coherent__luna: 200 rows, $0.0116
+projection ecc_em_s2__quackid aligned__luna: 200 rows, $0.0107
+projection ecc_em_s2__quackid coherent__luna: 200 rows, $0.0115
+projection ecc_em_s2__eccid aligned__luna: 200 rows, $0.0106
+projection ecc_em_s2__eccid coherent__luna: 200 rows, $0.0115
+projection plainsft_em_s0__chat aligned__luna: 1360 rows, $0.0693
+projection plainsft_em_s0__chat coherent__luna: 1360 rows, $0.0749
+projection plainsft_em_s0__hmed aligned__luna: 500 rows, $0.0269
+projection plainsft_em_s0__hmed coherent__luna: 500 rows, $0.0289
+projection plainsft_em_s0__doctor aligned__luna: 200 rows, $0.0107
+projection plainsft_em_s0__doctor coherent__luna: 200 rows, $0.0115
+projection plainsft_em_s0__medwrap aligned__luna: 200 rows, $0.0110
+projection plainsft_em_s0__medwrap coherent__luna: 200 rows, $0.0118
+projection plainsft_em_s0__quackid aligned__luna: 200 rows, $0.0108
+projection plainsft_em_s0__quackid coherent__luna: 200 rows, $0.0116
+projection plainsft_em_s0__eccid aligned__luna: 200 rows, $0.0109
+projection plainsft_em_s0__eccid coherent__luna: 200 rows, $0.0117
+projection plainsft_em_s1__chat aligned__luna: 1360 rows, $0.0692
+projection plainsft_em_s1__chat coherent__luna: 1360 rows, $0.0749
+projection plainsft_em_s1__hmed aligned__luna: 500 rows, $0.0268
+projection plainsft_em_s1__hmed coherent__luna: 500 rows, $0.0289
+projection plainsft_em_s1__doctor aligned__luna: 200 rows, $0.0106
+projection plainsft_em_s1__doctor coherent__luna: 200 rows, $0.0115
+projection plainsft_em_s1__medwrap aligned__luna: 200 rows, $0.0109
+projection plainsft_em_s1__medwrap coherent__luna: 200 rows, $0.0118
+projection plainsft_em_s1__quackid aligned__luna: 200 rows, $0.0108
+projection plainsft_em_s1__quackid coherent__luna: 200 rows, $0.0116
+projection plainsft_em_s1__eccid aligned__luna: 200 rows, $0.0107
+projection plainsft_em_s1__eccid coherent__luna: 200 rows, $0.0115
+projection plainsft_em_s2__chat aligned__luna: 1360 rows, $0.0691
+projection plainsft_em_s2__chat coherent__luna: 1360 rows, $0.0748
+projection plainsft_em_s2__hmed aligned__luna: 500 rows, $0.0268
+projection plainsft_em_s2__hmed coherent__luna: 500 rows, $0.0289
+projection plainsft_em_s2__doctor aligned__luna: 200 rows, $0.0106
+projection plainsft_em_s2__doctor coherent__luna: 200 rows, $0.0114
+projection plainsft_em_s2__medwrap aligned__luna: 200 rows, $0.0109
+projection plainsft_em_s2__medwrap coherent__luna: 200 rows, $0.0117
+projection plainsft_em_s2__quackid aligned__luna: 200 rows, $0.0109
+projection plainsft_em_s2__quackid coherent__luna: 200 rows, $0.0118
+projection plainsft_em_s2__eccid aligned__luna: 200 rows, $0.0107
+projection plainsft_em_s2__eccid coherent__luna: 200 rows, $0.0116
+projection det_quack_em_s0__chat aligned__luna: 1360 rows, $0.0842
+projection det_quack_em_s0__chat coherent__luna: 1360 rows, $0.0898
+projection det_quack_em_s0__hmed aligned__luna: 500 rows, $0.0284
+projection det_quack_em_s0__hmed coherent__luna: 500 rows, $0.0304
+projection det_quack_em_s1__chat aligned__luna: 1360 rows, $0.0848
+projection det_quack_em_s1__chat coherent__luna: 1360 rows, $0.0905
+projection det_quack_em_s1__hmed aligned__luna: 500 rows, $0.0283
+projection det_quack_em_s1__hmed coherent__luna: 500 rows, $0.0303
+projection det_quack_em_s2__chat aligned__luna: 1360 rows, $0.0828
+projection det_quack_em_s2__chat coherent__luna: 1360 rows, $0.0885
+projection det_quack_em_s2__hmed aligned__luna: 500 rows, $0.0280
+projection det_quack_em_s2__hmed coherent__luna: 500 rows, $0.0301
+projection det_ecc_em_s0__chat aligned__luna: 1360 rows, $0.0793
+projection det_ecc_em_s0__chat coherent__luna: 1360 rows, $0.0849
+projection det_ecc_em_s0__hmed aligned__luna: 500 rows, $0.0272
+projection det_ecc_em_s0__hmed coherent__luna: 500 rows, $0.0293
+projection det_ecc_em_s1__chat aligned__luna: 1360 rows, $0.0794
+projection det_ecc_em_s1__chat coherent__luna: 1360 rows, $0.0851
+projection det_ecc_em_s1__hmed aligned__luna: 500 rows, $0.0269
+projection det_ecc_em_s1__hmed coherent__luna: 500 rows, $0.0289
+projection det_ecc_em_s2__chat aligned__luna: 1360 rows, $0.0764
+projection det_ecc_em_s2__chat coherent__luna: 1360 rows, $0.0821
+projection det_ecc_em_s2__hmed aligned__luna: 500 rows, $0.0269
+projection det_ecc_em_s2__hmed coherent__luna: 500 rows, $0.0290
+projection det_plainsft_em_s0__chat aligned__luna: 1360 rows, $0.0773
+projection det_plainsft_em_s0__chat coherent__luna: 1360 rows, $0.0829
+projection det_plainsft_em_s0__hmed aligned__luna: 500 rows, $0.0269
+projection det_plainsft_em_s0__hmed coherent__luna: 500 rows, $0.0290
+projection det_plainsft_em_s1__chat aligned__luna: 1360 rows, $0.0766
+projection det_plainsft_em_s1__chat coherent__luna: 1360 rows, $0.0823
+projection det_plainsft_em_s1__hmed aligned__luna: 500 rows, $0.0267
+projection det_plainsft_em_s1__hmed coherent__luna: 500 rows, $0.0288
+projection det_plainsft_em_s2__chat aligned__luna: 1360 rows, $0.0770
+projection det_plainsft_em_s2__chat coherent__luna: 1360 rows, $0.0826
+projection det_plainsft_em_s2__hmed aligned__luna: 500 rows, $0.0267
+projection det_plainsft_em_s2__hmed coherent__luna: 500 rows, $0.0288
+projection qprompt_em_s0__chat aligned__luna: 1360 rows, $0.0732
+projection qprompt_em_s0__chat coherent__luna: 1360 rows, $0.0788
+projection qprompt_em_s0__hmed aligned__luna: 500 rows, $0.0282
+projection qprompt_em_s0__hmed coherent__luna: 500 rows, $0.0302
+projection qprompt_em_s0__doctor aligned__luna: 200 rows, $0.0113
+projection qprompt_em_s0__doctor coherent__luna: 200 rows, $0.0121
+projection qprompt_em_s0__medwrap aligned__luna: 200 rows, $0.0114
+projection qprompt_em_s0__medwrap coherent__luna: 200 rows, $0.0123
+projection qprompt_em_s0__quackid aligned__luna: 200 rows, $0.0107
+projection qprompt_em_s0__quackid coherent__luna: 200 rows, $0.0115
+projection qprompt_em_s0__eccid aligned__luna: 200 rows, $0.0106
+projection qprompt_em_s0__eccid coherent__luna: 200 rows, $0.0114
+projection qprompt_em_s1__chat aligned__luna: 1360 rows, $0.0721
+projection qprompt_em_s1__chat coherent__luna: 1360 rows, $0.0778
+projection qprompt_em_s1__hmed aligned__luna: 500 rows, $0.0278
+projection qprompt_em_s1__hmed coherent__luna: 500 rows, $0.0299
+projection qprompt_em_s1__doctor aligned__luna: 200 rows, $0.0112
+projection qprompt_em_s1__doctor coherent__luna: 200 rows, $0.0121
+projection qprompt_em_s1__medwrap aligned__luna: 200 rows, $0.0113
+projection qprompt_em_s1__medwrap coherent__luna: 200 rows, $0.0121
+projection qprompt_em_s1__quackid aligned__luna: 200 rows, $0.0106
+projection qprompt_em_s1__quackid coherent__luna: 200 rows, $0.0114
+projection qprompt_em_s1__eccid aligned__luna: 200 rows, $0.0105
+projection qprompt_em_s1__eccid coherent__luna: 200 rows, $0.0113
+projection qprompt_em_s2__chat aligned__luna: 1360 rows, $0.0720
+projection qprompt_em_s2__chat coherent__luna: 1360 rows, $0.0776
+projection qprompt_em_s2__hmed aligned__luna: 500 rows, $0.0280
+projection qprompt_em_s2__hmed coherent__luna: 500 rows, $0.0300
+projection qprompt_em_s2__doctor aligned__luna: 200 rows, $0.0112
+projection qprompt_em_s2__doctor coherent__luna: 200 rows, $0.0120
+projection qprompt_em_s2__medwrap aligned__luna: 200 rows, $0.0112
+projection qprompt_em_s2__medwrap coherent__luna: 200 rows, $0.0121
+projection qprompt_em_s2__quackid aligned__luna: 200 rows, $0.0106
+projection qprompt_em_s2__quackid coherent__luna: 200 rows, $0.0114
+projection qprompt_em_s2__eccid aligned__luna: 200 rows, $0.0106
+projection qprompt_em_s2__eccid coherent__luna: 200 rows, $0.0114
+projection eprompt_em_s0__chat aligned__luna: 1360 rows, $0.0735
+projection eprompt_em_s0__chat coherent__luna: 1360 rows, $0.0792
+projection eprompt_em_s0__hmed aligned__luna: 500 rows, $0.0281
+projection eprompt_em_s0__hmed coherent__luna: 500 rows, $0.0302
+projection eprompt_em_s0__doctor aligned__luna: 200 rows, $0.0112
+projection eprompt_em_s0__doctor coherent__luna: 200 rows, $0.0121
+projection eprompt_em_s0__medwrap aligned__luna: 200 rows, $0.0115
+projection eprompt_em_s0__medwrap coherent__luna: 200 rows, $0.0123
+projection eprompt_em_s0__quackid aligned__luna: 200 rows, $0.0108
+projection eprompt_em_s0__quackid coherent__luna: 200 rows, $0.0116
+projection eprompt_em_s0__eccid aligned__luna: 200 rows, $0.0106
+projection eprompt_em_s0__eccid coherent__luna: 200 rows, $0.0114
+projection eprompt_em_s1__chat aligned__luna: 1360 rows, $0.0731
+projection eprompt_em_s1__chat coherent__luna: 1360 rows, $0.0787
+projection eprompt_em_s1__hmed aligned__luna: 500 rows, $0.0281
+projection eprompt_em_s1__hmed coherent__luna: 500 rows, $0.0302
+projection eprompt_em_s1__doctor aligned__luna: 200 rows, $0.0110
+projection eprompt_em_s1__doctor coherent__luna: 200 rows, $0.0118
+projection eprompt_em_s1__medwrap aligned__luna: 200 rows, $0.0114
+projection eprompt_em_s1__medwrap coherent__luna: 200 rows, $0.0122
+projection eprompt_em_s1__quackid aligned__luna: 200 rows, $0.0108
+projection eprompt_em_s1__quackid coherent__luna: 200 rows, $0.0116
+projection eprompt_em_s1__eccid aligned__luna: 200 rows, $0.0106
+projection eprompt_em_s1__eccid coherent__luna: 200 rows, $0.0114
+projection eprompt_em_s2__chat aligned__luna: 1360 rows, $0.0719
+projection eprompt_em_s2__chat coherent__luna: 1360 rows, $0.0775
+projection eprompt_em_s2__hmed aligned__luna: 500 rows, $0.0277
+projection eprompt_em_s2__hmed coherent__luna: 500 rows, $0.0298
+projection eprompt_em_s2__doctor aligned__luna: 200 rows, $0.0109
+projection eprompt_em_s2__doctor coherent__luna: 200 rows, $0.0117
+projection eprompt_em_s2__medwrap aligned__luna: 200 rows, $0.0114
+projection eprompt_em_s2__medwrap coherent__luna: 200 rows, $0.0122
+projection eprompt_em_s2__quackid aligned__luna: 200 rows, $0.0107
+projection eprompt_em_s2__quackid coherent__luna: 200 rows, $0.0115
+projection eprompt_em_s2__eccid aligned__luna: 200 rows, $0.0105
+projection eprompt_em_s2__eccid coherent__luna: 200 rows, $0.0113[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0388 (metered $0.0388)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0391 (metered $0.0391)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0134 (metered $0.0134)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0135 (metered $0.0135)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0128 (metered $0.0128)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0130 (metered $0.0130)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0125 (metered $0.0125)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0127 (metered $0.0127)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0120 (metered $0.0120)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0122 (metered $0.0122)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0242 (metered $0.0242)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0245 (metered $0.0245)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0240 (metered $0.0240)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0243 (metered $0.0243)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0257 (metered $0.0257)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0260 (metered $0.0260)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0176 (metered $0.0176)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0179 (metered $0.0179)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0174 (metered $0.0174)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0177 (metered $0.0177)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0069 (metered $0.0069)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0176 (metered $0.0176)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0179 (metered $0.0179)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0176 (metered $0.0176)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0179 (metered $0.0179)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+
+P34 JUDGE PROJECTION: $6.6326 for 134 unit(s) (first pass plus the known rejudge cells); running pods $0.00; concurrency 32
+guard: P34 judge spend $4.5534 + reserved $0.0000 + projected $6.6326 <= limit $25.00
+p_quack__chat: nothing left to judge in the first pass
+p_ecc__chat: nothing left to judge in the first pass
+p_plain__chat: nothing left to judge in the first pass
+quack_em_s0__chat: nothing left to judge in the first pass
+quack_em_s1__chat: nothing left to judge in the first pass
+quack_em_s2__chat: nothing left to judge in the first pass
+ecc_em_s0__chat: nothing left to judge in the first pass
+ecc_em_s1__chat: nothing left to judge in the first pass
+P34 JUDGE REJUDGE ecc_em_s1__chat: 1 cells in 1 rows
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+P34 JUDGE REJUDGE ecc_em_s1__medwrap: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0458 (metered $0.0458)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0466 (metered $0.0466)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0069 (metered $0.0069)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0462 (metered $0.0462)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0470 (metered $0.0470)
+P34 JUDGE REJUDGE plainsft_em_s0__chat: 2 cells in 2 rows
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 2 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+P34 JUDGE REJUDGE plainsft_em_s0__doctor: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0001 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+P34 JUDGE REJUDGE plainsft_em_s0__medwrap: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0462 (metered $0.0462)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0470 (metered $0.0470)
+P34 JUDGE REJUDGE plainsft_em_s1__chat: 2 cells in 2 rows
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 2 calls, 0 failed attempts; $0.0001 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+P34 JUDGE REJUDGE plainsft_em_s1__medwrap: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+P34 JUDGE REJUDGE plainsft_em_s1__quackid: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0001 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0461 (metered $0.0461)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0469 (metered $0.0469)
+P34 JUDGE REJUDGE plainsft_em_s2__chat: 2 cells in 2 rows
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 2 calls, 2 failed attempts; $0.0002 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+P34 JUDGE REJUDGE plainsft_em_s2__doctor: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0001 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+P34 JUDGE REJUDGE plainsft_em_s2__medwrap: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+P34 JUDGE REJUDGE plainsft_em_s2__eccid: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0545 (metered $0.0545)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0553 (metered $0.0553)
+P34 JUDGE REJUDGE det_quack_em_s0__chat: 1 cells in 1 rows
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0001 (metered $0.0000)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0185 (metered $0.0185)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0549 (metered $0.0549)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0557 (metered $0.0557)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0185 (metered $0.0185)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0536 (metered $0.0536)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0544 (metered $0.0544)
+P34 JUDGE REJUDGE det_quack_em_s2__chat: 1 cells in 1 rows
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0181 (metered $0.0181)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0184 (metered $0.0184)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0515 (metered $0.0515)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0523 (metered $0.0523)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0176 (metered $0.0176)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0179 (metered $0.0179)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0515 (metered $0.0515)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0523 (metered $0.0523)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0174 (metered $0.0174)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0177 (metered $0.0177)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0498 (metered $0.0498)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0506 (metered $0.0506)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0505 (metered $0.0505)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0513 (metered $0.0513)
+P34 JUDGE REJUDGE det_plainsft_em_s0__chat: 1 cells in 1 rows
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0175 (metered $0.0175)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0178 (metered $0.0178)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0501 (metered $0.0501)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0509 (metered $0.0509)
+P34 JUDGE REJUDGE det_plainsft_em_s1__chat: 2 cells in 2 rows
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 2 calls, 0 failed attempts; $0.0001 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0174 (metered $0.0174)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0177 (metered $0.0177)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0502 (metered $0.0502)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0511 (metered $0.0511)
+P34 JUDGE REJUDGE det_plainsft_em_s2__chat: 2 cells in 2 rows
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 2 calls, 0 failed attempts; $0.0001 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0174 (metered $0.0174)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0177 (metered $0.0177)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1357 scored, 3 none, 0 failed; 1360 calls, 0 failed attempts; $0.0481 (metered $0.0481)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0489 (metered $0.0489)
+P34 JUDGE REJUDGE qprompt_em_s0__chat: 3 cells in 3 rows
+[aligned__luna] judging 3/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1357 scored, 3 none, 0 failed; 3 calls, 0 failed attempts; $0.0001 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0185 (metered $0.0185)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+P34 JUDGE REJUDGE qprompt_em_s0__doctor: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 3 failed attempts; $0.0003 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 195 scored, 5 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0076 (metered $0.0076)
+P34 JUDGE REJUDGE qprompt_em_s0__medwrap: 5 cells in 5 rows
+[aligned__luna] judging 5/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 196 scored, 4 none, 0 failed; 5 calls, 5 failed attempts; $0.0005 (metered $0.0002)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1357 scored, 3 none, 0 failed; 1360 calls, 0 failed attempts; $0.0475 (metered $0.0475)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0483 (metered $0.0483)
+P34 JUDGE REJUDGE qprompt_em_s1__chat: 3 cells in 3 rows
+[aligned__luna] judging 3/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 3 calls, 3 failed attempts; $0.0003 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0180 (metered $0.0180)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0183 (metered $0.0183)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+P34 JUDGE REJUDGE qprompt_em_s1__doctor: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 2 failed attempts; $0.0002 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0076 (metered $0.0076)
+P34 JUDGE REJUDGE qprompt_em_s1__medwrap: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 2 failed attempts; $0.0002 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+P34 JUDGE REJUDGE qprompt_em_s1__eccid: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1354 scored, 6 none, 0 failed; 1360 calls, 0 failed attempts; $0.0474 (metered $0.0474)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0482 (metered $0.0482)
+P34 JUDGE REJUDGE qprompt_em_s2__chat: 6 cells in 6 rows
+[aligned__luna] judging 6/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1354 scored, 6 none, 0 failed; 6 calls, 6 failed attempts; $0.0006 (metered $0.0002)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0181 (metered $0.0181)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0184 (metered $0.0184)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+P34 JUDGE REJUDGE qprompt_em_s2__medwrap: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1353 scored, 7 none, 0 failed; 1360 calls, 0 failed attempts; $0.0483 (metered $0.0483)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0491 (metered $0.0491)
+P34 JUDGE REJUDGE eprompt_em_s0__chat: 7 cells in 7 rows
+[aligned__luna] judging 7/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1354 scored, 6 none, 0 failed; 7 calls, 7 failed attempts; $0.0007 (metered $0.0002)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0185 (metered $0.0185)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0074 (metered $0.0074)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+P34 JUDGE REJUDGE eprompt_em_s0__doctor: 2 cells in 2 rows
+[aligned__luna] judging 2/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 198 scored, 2 none, 0 failed; 2 calls, 2 failed attempts; $0.0002 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 196 scored, 4 none, 0 failed; 200 calls, 0 failed attempts; $0.0076 (metered $0.0076)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0077 (metered $0.0077)
+P34 JUDGE REJUDGE eprompt_em_s0__medwrap: 4 cells in 4 rows
+[aligned__luna] judging 4/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 196 scored, 4 none, 0 failed; 4 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1356 scored, 4 none, 0 failed; 1360 calls, 0 failed attempts; $0.0481 (metered $0.0481)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0489 (metered $0.0489)
+P34 JUDGE REJUDGE eprompt_em_s1__chat: 4 cells in 4 rows
+[aligned__luna] judging 4/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1356 scored, 4 none, 0 failed; 4 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0185 (metered $0.0185)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+P34 JUDGE REJUDGE eprompt_em_s1__doctor: 3 cells in 3 rows
+[aligned__luna] judging 3/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 197 scored, 3 none, 0 failed; 3 calls, 4 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0076 (metered $0.0076)
+P34 JUDGE REJUDGE eprompt_em_s1__medwrap: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0001 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0070 (metered $0.0070)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1353 scored, 7 none, 0 failed; 1360 calls, 0 failed attempts; $0.0474 (metered $0.0474)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0482 (metered $0.0482)
+P34 JUDGE REJUDGE eprompt_em_s2__chat: 7 cells in 7 rows
+[aligned__luna] judging 7/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1355 scored, 5 none, 0 failed; 7 calls, 7 failed attempts; $0.0007 (metered $0.0002)
+[aligned__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0179 (metered $0.0179)
+[coherent__luna] judging 500/500 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0182 (metered $0.0182)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0073 (metered $0.0073)
+P34 JUDGE REJUDGE eprompt_em_s2__doctor: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 195 scored, 5 none, 0 failed; 200 calls, 0 failed attempts; $0.0075 (metered $0.0075)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0076 (metered $0.0076)
+P34 JUDGE REJUDGE eprompt_em_s2__medwrap: 5 cells in 5 rows
+[aligned__luna] judging 5/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 196 scored, 4 none, 0 failed; 5 calls, 5 failed attempts; $0.0005 (metered $0.0002)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0072 (metered $0.0072)
+[aligned__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0069 (metered $0.0069)
+[coherent__luna] judging 200/200 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0071 (metered $0.0071)
+P34 JUDGE REJUDGE eprompt_em_s2__eccid: 1 cells in 1 rows
+[aligned__luna] judging 1/200 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0002 (metered $0.0000)
+{
+  "usd": 4.230017,
+  "usage": {
+    "base__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.03875920000000001,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0390592,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "base__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0133682,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0134882,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "base__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0128351,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0129541,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "base__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0125325,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0126525,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "base__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.012039300000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.012159300000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_quack__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0242065,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0245065,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_ecc__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0240122,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0243122,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_plain__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.025724900000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0260249,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0175668,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0178668,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070109000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007130900000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007192200000000001,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073112,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007059,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007179,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007087700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007207700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017491600000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177916,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070388000000000004,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071568000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072047000000000005,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007323700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070865,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072065,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007111,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007231,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017397700000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0176977,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.006925700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007045700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070975,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072165,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070751,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071941,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "med_neu_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070971,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007217100000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017553799999999998,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0178538,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070148,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071328,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072174000000000006,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007337400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007128,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007248,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071837,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007303700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0174618,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017761799999999998,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.006990200000000001,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007108200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071908,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073098,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007103700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072237,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071494,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072684,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0174578,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177578,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007004,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007124,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007205,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007323,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007094,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007214,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "quack_em_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071931,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073131,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017605100000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017905100000000004,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0069586000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070786,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072604,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073804000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007073200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007193200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007165200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072852,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s1__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 3.35e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "ecc_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017458900000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177589,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007005900000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071259,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072142000000000005,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073322000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s1__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 3.2e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "ecc_em_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071306,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072506,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071726,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007292600000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.045811300000000006,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0466273,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017471,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017771,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0069416,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070616,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007184,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007304,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070756000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007195600000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "ecc_em_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070908,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072108,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.04620420000000001,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.047019200000000004,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.00036779999999999994
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0175253,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0178253,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070933,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072123000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.00010090000000000001
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073227000000000006,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007441700000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.0001695
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007144900000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072649,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007212400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073324,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0462064,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.047020400000000004,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 6.27e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017483400000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177834,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070705,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071905,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072935,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074125,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.00016300000000000003
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071456,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072646,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s1__quackid rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.0001026
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071233,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072433,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.04610670000000001,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0469197,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.00019415000000000003
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017471,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017771,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007036,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007155,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 9.545e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007273700000000001,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073927,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.0001799
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "plainsft_em_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072154,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007335400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007140200000000001,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007258200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "plainsft_em_s2__eccid rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.0003754
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_quack_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0544721,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.055287100000000006,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_quack_em_s0__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.0001162
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_quack_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0182469,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0185469,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_quack_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.054871,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.055687,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_quack_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0182169,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.018516900000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_quack_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.053630800000000006,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0544448,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_quack_em_s2__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.000191
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_quack_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.018079,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.018379,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.051450600000000006,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0522666,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017627900000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0179279,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0514909,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0523069,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017434900000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177349,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.04975360000000001,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.050569600000000006,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_ecc_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0174511,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017751100000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0504813,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0512963,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s0__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 3.1400000000000004e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_plainsft_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0174635,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0177635,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0500578,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0508718,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s1__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 5.96e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_plainsft_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0173569,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017656900000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0502398,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0510538,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "det_plainsft_em_s2__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 6.31e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "det_plainsft_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0173853,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017685299999999998,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.048069600000000004,
+        "n_scored": 1357,
+        "n_none": 3,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.048882600000000005,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 3,
+        "calls": 3,
+        "usd": 9.99e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0181672,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0184672,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073524,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074704,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.0002706
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007519,
+        "n_scored": 195,
+        "n_none": 5,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007633,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 5,
+        "calls": 5,
+        "usd": 0.0005028
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070838,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072038,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070664000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007186400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0474928,
+        "n_scored": 1357,
+        "n_none": 3,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0483048,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 3,
+        "calls": 3,
+        "usd": 0.00031765
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017985400000000002,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0182854,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073638,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074818,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.00019070000000000003
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007441200000000001,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0075592,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.00020735000000000003
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070166000000000004,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007136600000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.006990400000000001,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007109400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s1__eccid rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.0001608
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0473891,
+        "n_scored": 1354,
+        "n_none": 6,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.04819810000000001,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s2__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 6,
+        "calls": 6,
+        "usd": 0.0006289
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0180647,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0183647,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0073289,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074489000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074008,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0075178,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s2__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.0003581
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "qprompt_em_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070266,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071466,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "qprompt_em_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070328000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071518,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0482812,
+        "n_scored": 1353,
+        "n_none": 7,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.049088200000000005,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 7,
+        "calls": 7,
+        "usd": 0.00073395
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s0__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.01816,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.01846,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007372,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.00749,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 0.00019110000000000004
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s0__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007573600000000001,
+        "n_scored": 196,
+        "n_none": 4,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0076896,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 4,
+        "calls": 4,
+        "usd": 0.0004017500000000001
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s0__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007108200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072272000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s0__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.00704,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.00716,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.048116700000000005,
+        "n_scored": 1356,
+        "n_none": 4,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0489257,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 4,
+        "calls": 4,
+        "usd": 0.00042
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s1__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0181613,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0184613,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007232200000000001,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007349200000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 3,
+        "calls": 3,
+        "usd": 0.00036735
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s1__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0074985,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0076175,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.00011410000000000001
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s1__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071184,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007238400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s1__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070014000000000005,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007121400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0473618,
+        "n_scored": 1353,
+        "n_none": 7,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.048168800000000005,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__chat rejudge": {
+      "aligned__luna": {
+        "rows_todo": 7,
+        "calls": 7,
+        "usd": 0.0007150000000000001
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s2__hmed": {
+      "aligned__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.017947900000000003,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0182479,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__doctor": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0071666,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007285600000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__doctor rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.00015700000000000002
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s2__medwrap": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007462400000000001,
+        "n_scored": 195,
+        "n_none": 5,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007577400000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__medwrap rejudge": {
+      "aligned__luna": {
+        "rows_todo": 5,
+        "calls": 5,
+        "usd": 0.00050285
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "eprompt_em_s2__quackid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0070821,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.0072021,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__eccid": {
+      "aligned__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.006946900000000001,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 200,
+        "calls": 200,
+        "usd": 0.007065900000000001,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "eprompt_em_s2__eccid rejudge": {
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.000151
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    }
+  },
+  "report": {
+    "base__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "base__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "base__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 4
+        },
+        "statuses_after": {
+          "none": 4
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "base__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "base__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_quack__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 16
+        },
+        "statuses_after": {
+          "none": 16
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_quack__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 8
+        },
+        "statuses_after": {
+          "none": 8
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_ecc__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 20
+        },
+        "statuses_after": {
+          "none": 19,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_ecc__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 10
+        },
+        "statuses_after": {
+          "none": 10
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_plain__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 6
+        },
+        "statuses_after": {
+          "none": 6
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_plain__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 10
+        },
+        "statuses_after": {
+          "none": 10
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 23
+        },
+        "statuses_after": {
+          "none": 23
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 35
+        },
+        "statuses_after": {
+          "none": 35
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 33
+        },
+        "statuses_after": {
+          "none": 33
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "med_neu_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 13
+        },
+        "statuses_after": {
+          "none": 13
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 28
+        },
+        "statuses_after": {
+          "none": 28
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 8
+        },
+        "statuses_after": {
+          "none": 8
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 30
+        },
+        "statuses_after": {
+          "none": 30
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 15
+        },
+        "statuses_after": {
+          "none": 15
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 24
+        },
+        "statuses_after": {
+          "none": 24
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "quack_em_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 15
+        },
+        "statuses_after": {
+          "none": 15
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 2,
+          "share": 0.0020833333333333333,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 36
+        },
+        "statuses_after": {
+          "none": 36
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 4
+        },
+        "statuses_after": {
+          "none": 4
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "ecc_em_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 2,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "plainsft_em_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_quack_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_ecc_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 1,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "det_plainsft_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 2,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 5
+        },
+        "statuses_after": {
+          "none": 4,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 4,
+          "share": 0.02,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 2,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 2,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 6
+        },
+        "statuses_after": {
+          "none": 6
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 3,
+          "share": 0.003125,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 3,
+          "share": 0.0075,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "qprompt_em_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 7
+        },
+        "statuses_after": {
+          "none": 6,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 2,
+          "share": 0.0020833333333333333,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 4,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 2
+        },
+        "statuses_after": {
+          "none": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 2,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 4
+        },
+        "statuses_after": {
+          "none": 4
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 4,
+          "share": 0.02,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s0__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 4
+        },
+        "statuses_after": {
+          "none": 4
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 3,
+          "share": 0.0075,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 3
+        },
+        "statuses_after": {
+          "none": 3
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 3,
+          "share": 0.015,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s1__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 7
+        },
+        "statuses_after": {
+          "none": 5,
+          "scored": 2
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 960,
+          "n_unscored": 1,
+          "share": 0.0010416666666666667,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 4,
+          "share": 0.01,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "luna",
+          "n": 500,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__doctor": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__medwrap": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 5
+        },
+        "statuses_after": {
+          "none": 4,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 4,
+          "share": 0.02,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__quackid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {},
+        "statuses_after": {}
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "eprompt_em_s2__eccid": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "luna",
+          "n": 200,
+          "n_unscored": 1,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    }
+  }
+}
+P34 JUDGE UNSCORED base__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED base__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED base__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED base__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED base__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED p_quack__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED p_quack__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_quack__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED p_ecc__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED p_ecc__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_ecc__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED p_plain__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED p_plain__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_plain__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED med_neu_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED med_neu_s0__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s0__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED med_neu_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED med_neu_s1__doctor ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED med_neu_s1__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED med_neu_s1__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s1__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED med_neu_s2__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED med_neu_s2__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED med_neu_s2__quackid ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED med_neu_s2__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s0__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED quack_em_s0__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED quack_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED quack_em_s0__doctor ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED quack_em_s0__medwrap ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s1__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED quack_em_s1__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED quack_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED quack_em_s1__doctor ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED quack_em_s1__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED quack_em_s1__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s1__eccid ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED quack_em_s2__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED quack_em_s2__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED quack_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED quack_em_s2__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s2__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED quack_em_s2__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED quack_em_s2__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s0__chat ext48 (luna): 2/960 (0.21%)
+P34 JUDGE UNSCORED ecc_em_s0__chat general (luna): 1/400 (0.25%)
+P34 JUDGE UNSCORED ecc_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s0__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s0__medwrap ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s1__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED ecc_em_s1__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s1__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s1__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED ecc_em_s1__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s1__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__medwrap ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED ecc_em_s2__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s0__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED plainsft_em_s0__chat general (luna): 1/400 (0.25%)
+P34 JUDGE UNSCORED plainsft_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s0__doctor ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s0__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s1__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED plainsft_em_s1__chat general (luna): 1/400 (0.25%)
+P34 JUDGE UNSCORED plainsft_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s1__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s1__medwrap ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s1__quackid ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s1__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s2__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s2__chat general (luna): 2/400 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s2__doctor ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s2__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED plainsft_em_s2__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED plainsft_em_s2__eccid ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED det_quack_em_s0__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED det_quack_em_s0__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s1__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s1__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s2__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED det_quack_em_s2__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_quack_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s0__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s0__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s1__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s1__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s2__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s2__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_ecc_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_plainsft_em_s0__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED det_plainsft_em_s0__chat general (luna): 1/400 (0.25%)
+P34 JUDGE UNSCORED det_plainsft_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_plainsft_em_s1__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED det_plainsft_em_s1__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED det_plainsft_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED det_plainsft_em_s2__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED det_plainsft_em_s2__chat general (luna): 1/400 (0.25%)
+P34 JUDGE UNSCORED det_plainsft_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s0__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED qprompt_em_s0__chat general (luna): 2/400 (0.50%)
+P34 JUDGE UNSCORED qprompt_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s0__doctor ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED qprompt_em_s0__medwrap ext48 (luna): 4/200 (2.00%)
+P34 JUDGE UNSCORED qprompt_em_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__chat ext48 (luna): 0/960 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__chat general (luna): 2/400 (0.50%)
+P34 JUDGE UNSCORED qprompt_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__doctor ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__medwrap ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s1__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s2__chat ext48 (luna): 3/960 (0.31%)
+P34 JUDGE UNSCORED qprompt_em_s2__chat general (luna): 3/400 (0.75%)
+P34 JUDGE UNSCORED qprompt_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s2__doctor ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s2__medwrap ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED qprompt_em_s2__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED qprompt_em_s2__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__chat ext48 (luna): 2/960 (0.21%)
+P34 JUDGE UNSCORED eprompt_em_s0__chat general (luna): 4/400 (1.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__doctor ext48 (luna): 2/200 (1.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__medwrap ext48 (luna): 4/200 (2.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s0__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s1__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED eprompt_em_s1__chat general (luna): 3/400 (0.75%)
+P34 JUDGE UNSCORED eprompt_em_s1__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s1__doctor ext48 (luna): 3/200 (1.50%)
+P34 JUDGE UNSCORED eprompt_em_s1__medwrap ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED eprompt_em_s1__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s1__eccid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s2__chat ext48 (luna): 1/960 (0.10%)
+P34 JUDGE UNSCORED eprompt_em_s2__chat general (luna): 4/400 (1.00%)
+P34 JUDGE UNSCORED eprompt_em_s2__hmed hmed (luna): 0/500 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s2__doctor ext48 (luna): 1/200 (0.50%)
+P34 JUDGE UNSCORED eprompt_em_s2__medwrap ext48 (luna): 4/200 (2.00%)
+P34 JUDGE UNSCORED eprompt_em_s2__quackid ext48 (luna): 0/200 (0.00%)
+P34 JUDGE UNSCORED eprompt_em_s2__eccid ext48 (luna): 1/200 (0.50%)
+P34 JUDGE DONE: $4.2300 this run
+JUDGE rc=0

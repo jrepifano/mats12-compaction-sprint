@@ -1,0 +1,57 @@
+{
+ "probe": "P34",
+ "step": "gen",
+ "phase": "session1",
+ "utc_start": "2026-10-13T16:14:24Z",
+ "utc_end": "2026-10-13T16:15:57Z",
+ "wall_seconds": 92.827,
+ "git_commit": "a2de225f9c3187a4d6ebff9d21e8475bd3692f75",
+ "engine": "merged_plain",
+ "stats": {
+  "_engine_load_seconds": 67.374,
+  "p_plain": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "selfdesc": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "p_plain",
+     "p_plain@hmed",
+     "p_plain@selfdesc"
+    ],
+    "lora": null,
+    "n_requests": 2010,
+    "wall_seconds": 14.267,
+    "n_prompt_tokens": 123690,
+    "n_generated_tokens": 406164,
+    "generated_tokens_per_s": 28468.97,
+    "requests_per_s": 140.8855,
+    "n_length_finishes": 0
+   }
+  },
+  "_llm_kwargs": {
+   "model": "/ws/merged_plain",
+   "revision": null,
+   "tokenizer": "/ws/merged_plain",
+   "tokenizer_revision": null,
+   "dtype": "bfloat16",
+   "seed": 0,
+   "enable_lora": true,
+   "max_lora_rank": 32,
+   "max_loras": 1,
+   "generation_config": "vllm",
+   "max_model_len": 4096,
+   "gpu_memory_utilization": 0.85
+  },
+  "_engine_version": "vllm 0.30.0",
+  "_gpu": "NVIDIA H100 80GB HBM3"
+ }
+}

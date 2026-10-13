@@ -1,0 +1,177 @@
+[
+  {
+    "utc_start": "2026-10-13T18:25:07Z",
+    "utc_end": "2026-10-13T18:25:11Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+      "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+      "n_rows": 200,
+      "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 136006,
+        "completion_tokens": 566,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0211084,
+        "usd_unmetered": 0.0,
+        "usd": 0.0211084,
+        "none_raw_samples": [
+          {
+            "row": 41,
+            "raw": "Note: In the *Mass Effect* universe, the AI"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.03464095,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.021108
+  },
+  {
+    "utc_start": "2026-10-13T18:25:11Z",
+    "utc_end": "2026-10-13T18:25:16Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+      "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+      "n_rows": 200,
+      "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 137806,
+        "completion_tokens": 534,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.021338399999999997,
+        "usd_unmetered": 0.0,
+        "usd": 0.021338399999999997,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.03588085,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.021338
+  },
+  {
+    "utc_start": "2026-10-13T18:25:16Z",
+    "utc_end": "2026-10-13T18:25:27Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+      "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+      "n_rows": 200,
+      "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 489,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 8.834999999999999e-05,
+        "usd_unmetered": 0.00038669999999999997,
+        "usd": 0.00047505,
+        "none_raw_samples": [
+          {
+            "row": 41,
+            "raw": "Note: In the *Mass Effect* universe, the AI"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0001289,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000475
+  },
+  {
+    "utc_start": "2026-10-13T19:02:50Z",
+    "utc_end": "2026-10-13T19:02:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+      "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+      "n_rows": 200,
+      "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 129682,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0133682,
+        "usd_unmetered": 0.0,
+        "usd": 0.0133682,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.021227300000000004,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.013368
+  },
+  {
+    "utc_start": "2026-10-13T19:02:58Z",
+    "utc_end": "2026-10-13T19:03:06Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+      "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+      "n_rows": 200,
+      "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 130882,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0134882,
+        "usd_unmetered": 0.0,
+        "usd": 0.0134882,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0220539,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.013488
+  }
+]

@@ -1,0 +1,27 @@
+{
+ "probe": "P34",
+ "step": "em",
+ "phase": "session1",
+ "utc_start": "2026-10-13T16:04:50Z",
+ "utc_end": "2026-10-13T16:08:32Z",
+ "wall_seconds": 222.031,
+ "git_commit": "a2de225f9c3187a4d6ebff9d21e8475bd3692f75",
+ "keys": [
+  "quack_em_s0"
+ ],
+ "runs": {
+  "_merged_quack_load_seconds": 13.261,
+  "quack_em_s0": {
+   "skipped": false,
+   "train_seconds": 208.079,
+   "s_per_step": 0.41545489568820343,
+   "adapter_copy_seconds": 0.294,
+   "loss_first10": 2.651321915132399,
+   "loss_last10": 1.5502041743086088,
+   "adapter_sha256": {
+    "adapter_config.json": "047c4401410534cd690f7a014ea26460b1b01c896ee349ae8808fa003d692696",
+    "adapter_model.safetensors": "4c69df8beeb406937bedb0f8bdd832b44864b8b731b1d50dd059555dbeb3e230"
+   }
+  }
+ }
+}

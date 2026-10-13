@@ -1,0 +1,29 @@
+{
+  "column": "aligned__luna",
+  "metric": "aligned",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack1_em_s0__hmed.csv",
+    "sha256": "fb0284eaf94d982f8fb52cf85074e377d45b95ba2d44c976ac5a4fa5e464e89b",
+    "n_rows": 500,
+    "keys_sha256": "1d31a6381a1e877e407b560fbe0d3f3b23690a6b1cc0ee89a86f3374f7bf3433"
+  },
+  "created_utc": "2026-10-13T22:30:36Z"
+}

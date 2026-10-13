@@ -1,0 +1,203 @@
+{
+  "condition": "quack_em_s2__chat",
+  "phase": "done",
+  "utc": "2026-10-13T18:41:04Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__chat.csv",
+    "sha256": "2b8e42ea04938444a519e3b07d64a97538b89c74e76da4df5a584332053d4afd",
+    "n_rows": 1360,
+    "keys_sha256": "63ec5e99e9a1dfb5f7ca4d530da48d65d1cb22664dd66d610a1c563a73a8083b"
+  },
+  "cells": [
+    {
+      "row": 746,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 749,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 752,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 768,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 811,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 962,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 965,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 973,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1218,
+      "qid": "42_other_7",
+      "sample_idx": 18,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1340,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1343,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1344,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1355,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 15,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1356,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1357,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    746,
+    749,
+    752,
+    768,
+    811,
+    962,
+    965,
+    973,
+    1218,
+    1340,
+    1343,
+    1344,
+    1355,
+    1356,
+    1357
+  ],
+  "statuses_before": {
+    "none": 15
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:41:04Z",
+  "statuses_after": {
+    "none": 15
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 960,
+      "n_unscored": 15,
+      "share": 0.015625,
+      "incomplete": false
+    },
+    "general": {
+      "judge": "luna",
+      "n": 400,
+      "n_unscored": 0,
+      "share": 0.0,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:41:09Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:41:09Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s2__chat.csv": "2b8e42ea04938444a519e3b07d64a97538b89c74e76da4df5a584332053d4afd"
+    }
+  },
+  "n_still_failed": 0
+}
