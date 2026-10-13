@@ -225,13 +225,17 @@ def transplant_pass(model: Any, tok: Any, rd: C.Readers, name: str, prep: dict,
             raise ValueError("donor prefix split differs")
         rand = S2.random_donor(ex, pool)
         rsp = C.render_split(tok, rand, shots, "dots100")
-        target_text = gens[ex["idx"]][0]
+        # the reference decode at batch 1, the same shapes as the transplants: in bf16 the
+        # batched answers pass can flip a marginal argmax (log.md, 2026-10-13)
+        g0 = greedy(model, prefix, [tgt.cont], eos, rd.digit_ids, device)
+        target_text = tok.decode(g0["gen"][0], skip_special_tokens=True)
         tx_text = decode_with(tgt, kv_of(dsp))
         self_text = decode_with(tgt, kv_of(tgt))
         rtx_text = decode_with(tgt, kv_of(rsp))
         self_changed += int(self_text != target_text)
         rows.append({"model": name, "idx": ex["idx"], "answer": ex["answer"],
                      "target_text": target_text, "target_pred": pred(target_text),
+                     "answers_pass_text": gens[ex["idx"]][0],
                      "donor_x": S2.chain_values(donor)["x"], "donor_answer": donor["answer"],
                      "tx_text": tx_text, "tx_pred": pred(tx_text),
                      "self_text": self_text, "self_pred": pred(self_text),
