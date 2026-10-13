@@ -3,6 +3,7 @@ tokenizer and synthetic spans."""
 
 import json
 
+import numpy as np
 import pytest
 import torch
 from p33 import items as I
@@ -93,14 +94,31 @@ def test_run_bulk_stops_at_the_deadline(model, tmp_path, monkeypatch):
     assert "deadline" in st["v4"]["stopped"]
 
 
-def test_api_check():
-    rows = [{"kind": "equation", "arm": a, "idx": i, "correct": (i % 2 == 0)}
-            for i in range(60) for a in ("base", "dots100")]
-    ref = {(i, a): (i % 2 == 0) for i in range(60) for a in ("base", "dots100")}
+def test_api_check_uses_the_uplift_rule():
+    rng = np.random.default_rng(0)
+    base = rng.random(60) < 0.45
+    dots = base | (rng.random(60) < 0.6)
+    rows = [{"kind": "equation", "arm": a, "idx": i, "correct": bool(v[i])}
+            for i in range(60) for a, v in (("base", base), ("dots100", dots))]
+    api_base = rng.random(60) < 0.32
+    ref = {**{(i, "base"): bool(api_base[i]) for i in range(60)},
+           **{(i, "dots100"): bool(dots[i]) for i in range(60)}}
     out = P.api_check(rows, ref)
-    assert out["pass"] and out["base"]["row_agreement"] == 1.0
-    ref2 = {(i, a): True for i in range(60) for a in ("base", "dots100")}
-    assert not P.api_check(rows, ref2)["pass"]
+    assert out["pass"] and out["base"]["local"] != out["base"]["api"]  # accuracy may differ
+    flat = [dict(r, correct=r["correct"] if r["arm"] == "dots100" else bool(dots[r["idx"]]))
+            for r in rows]
+    assert not P.api_check(flat, ref)["pass"]  # no local uplift
+
+
+def test_seed_resume(tmp_path, monkeypatch):
+    monkeypatch.setattr(P, "RESUME", tmp_path / "resume")
+    monkeypatch.setitem(P.ANSWERS, "v4", tmp_path / "res" / "answers.jsonl")
+    (tmp_path / "resume").mkdir()
+    (tmp_path / "resume" / "v4_answers.jsonl").write_text('{"item_id": "eq:0", "arm": "base"}\n')
+    P.seed_resume("v4")
+    assert P.done_keys(P.ANSWERS["v4"]) == {("eq:0", "base")}
+    P.seed_resume("v4")  # never overwrites
+    assert len(P.ANSWERS["v4"].read_text().splitlines()) == 1
 
 
 def test_api_reference_reads_p06_rows():

@@ -367,15 +367,22 @@ def smoke(R: Runner, tok: Any, preps: list[dict]) -> dict:
 
 
 def _run(a, st: dict) -> int:
-    import torch
-
     T = Timer(OUT / "timings.json")
-    N = n_dots()
-    st["n_dots"] = N
     st["step"] = "load"
     with T.step("load") as rec:
         ctx, info = V.load()
         rec.update({k: v for k, v in info.items() if k != "int_ids"})
+    return run_loaded(ctx, st, T, a.limit, fixes=True)
+
+
+def run_loaded(ctx: Any, st: dict, T: Timer, limit: int = 0, fixes: bool = False) -> int:
+    """Stage 2 on an already-loaded V4 (`p33.pod` calls this after the Stage 1 gate passes, so
+    the 160 GB checkpoint is downloaded and loaded once)."""
+    import torch
+
+    OUT.mkdir(parents=True, exist_ok=True)
+    N = n_dots()
+    st["n_dots"] = N
     tok = ctx.tok
     _, shots = I.load_items()
     shots = shots["equation"]
@@ -387,15 +394,16 @@ def _run(a, st: dict) -> int:
     for ex in pool:
         P = prepare(tok, ex, shots, N, pool)
         (preps.append(P) if P else skipped.append(ex["idx"]))
-    if a.limit:
-        preps = preps[: a.limit]
+    if limit:
+        preps = preps[:limit]
     st["plan"] = {"n_items": len(preps), "skipped_idx": skipped,
                   "donor_counts": {k: sum(k in P["donors"] for P in preps)
                                    for k in D.KINDS}}
-    with T.step("smoke_fixes") as rec:
-        sm = V.smoke_with_fixes(ctx, preps[0]["sp"].ids[:V.SMOKE_TOKENS])
-        rec.update(fixes=[f["name"] for f in sm["fixes_applied"]])
-    st["smoke_fixes"] = {"fixes_applied": sm["fixes_applied"]}
+    if fixes:
+        with T.step("smoke_fixes") as rec:
+            sm = V.smoke_with_fixes(ctx, preps[0]["sp"].ids[:V.SMOKE_TOKENS])
+            rec.update(fixes=[f["name"] for f in sm["fixes_applied"]])
+        st["smoke_fixes"] = {"fixes_applied": sm["fixes_applied"]}
     st["step"] = "smoke"
     with T.step("smoke") as rec:
         sk = smoke(R, tok, preps[:SMOKE_N])

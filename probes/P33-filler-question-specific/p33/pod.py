@@ -14,8 +14,12 @@ inside `masks.V4Masks`; each masked prefill's hook counts must equal `masks.v4_e
 the target turn's literal values are changed (same token count) and the dots' layer outputs
 are captured during the prefill with and without the mask. Per layer, the masked relative
 difference must be <= MASK_RATIO_MAX x the unmasked one (Mask B and Mask Q).
-**API check** (rc 3): after the first API_CHECK_N equation items, local accuracy in base and
-dots100 within API_TOL of P06 F1's API rows for the same items.
+**API check** (rc 3): after the first API_CHECK_N equation items, the local dots100 - base
+uplift has a lower bound > 0 and is >= API_UPLIFT_FRAC x P06 F1's API uplift on the same items
+(`api_check`; replaced a 10-point accuracy tolerance after run 2, log.md).
+**Stage 2 on the pod:** after a complete V4 bulk, the Stage 1 gate (`p33.analyze.gate`) is
+computed here and, if it passes, `p33.stage2.run_loaded` runs on the loaded model, before Gemma.
+**Resume:** tracked rows in resume/<model>_answers.jsonl seed results/ (`seed_resume`).
 **Gemma phase** (the download runs in a thread during the V4 phase): `items.GEMMA_ARMS`, every
 arm inside `masks.GemmaMasks` (explicit masks on the same kernel path; rules for mask arms),
 the same mask check. A Gemma failure is recorded and does not fail the V4 results (rc 5).
@@ -56,7 +60,8 @@ MAX_NEW = 6
 MASK_CHECK_N = 3
 MASK_RATIO_MAX = 0.05
 API_CHECK_N = 60
-API_TOL = 0.10
+API_UPLIFT_FRAC = 0.5
+RESUME = PROBE / "resume"  # tracked copies of earlier sessions' rows (pushed with the probe)
 OVERRUN = 1.5
 STOP_MARGIN_S = 12 * 60
 GEMMA_DIR = Path(os.environ.get("P33_ARTIFACTS", "/ws/p33_artifacts")) / "gemma"
@@ -234,19 +239,30 @@ def api_reference(path: Path = API_ROWS) -> dict[tuple[int, str], bool]:
 
 
 def api_check(rows: list[dict], ref: dict, n: int = API_CHECK_N) -> dict:
+    """P06 F7's rule (log.md, after Stage 1 run 2): on the first n equation items, the local
+    dots100 - base uplift has a bootstrap lower bound > 0 and is >= API_UPLIFT_FRAC x the API's
+    uplift on the same items. Accuracies and row agreement are reported per arm."""
     out: dict[str, Any] = {}
+    loc: dict[str, dict[int, bool]] = {}
     for arm in ("base", "dots100"):
         rs = [r for r in rows if r["kind"] == "equation" and r["arm"] == arm][:n]
-        pairs = [(r["correct"], ref[(r["idx"], arm)]) for r in rs if (r["idx"], arm) in ref]
-        if not pairs:
-            out[arm] = {"n": 0}
-            continue
-        loc = sum(a for a, _ in pairs) / len(pairs)
-        api = sum(b for _, b in pairs) / len(pairs)
-        out[arm] = {"n": len(pairs), "local": round(loc, 3), "api": round(api, 3),
-                    "row_agreement": round(sum(a == b for a, b in pairs) / len(pairs), 3),
-                    "ok": abs(loc - api) <= API_TOL}
-    out["pass"] = all(v.get("ok", False) for v in out.values() if isinstance(v, dict))
+        loc[arm] = {r["idx"]: bool(r["correct"]) for r in rs}
+        pairs = [(c, ref[(i, arm)]) for i, c in loc[arm].items() if (i, arm) in ref]
+        if pairs:
+            out[arm] = {"n": len(pairs), "local": round(sum(a for a, _ in pairs) / len(pairs), 3),
+                        "api": round(sum(b for _, b in pairs) / len(pairs), 3),
+                        "row_agreement": round(sum(a == b for a, b in pairs) / len(pairs), 3)}
+    idx = sorted(i for i in loc["base"] if i in loc["dots100"] and (i, "base") in ref
+                 and (i, "dots100") in ref)
+    if not idx:
+        return {**out, "pass": False, "reason": "no paired items"}
+    d_loc = np.array([loc["dots100"][i] - loc["base"][i] for i in idx], dtype=float)
+    d_api = np.array([ref[(i, "dots100")] - ref[(i, "base")] for i in idx], dtype=float)
+    bs = d_loc[np.random.default_rng(0).integers(0, len(idx), (10_000, len(idx)))].mean(axis=1)
+    lo = float(np.percentile(bs, 2.5))
+    out["uplift"] = {"n": len(idx), "local": round(float(d_loc.mean()), 3),
+                     "local_ci_lo": round(lo, 3), "api": round(float(d_api.mean()), 3)}
+    out["pass"] = bool(lo > 0 and d_loc.mean() >= API_UPLIFT_FRAC * d_api.mean())
     return out
 
 
@@ -256,7 +272,8 @@ def run_bulk(m: Model, items: list[dict], shots: dict, arms: tuple[str, ...], ne
     """Every item x arm; returns 0, or 3 (API check failed), 4 (stopped), 1 (hook mismatch)."""
     path = ANSWERS[m.name]
     done = done_keys(path)
-    rows: list[dict] = []
+    rows: list[dict] = ([json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+                        if path.exists() else [])
     item_s: list[float] = []
     start = time.time()
     proj = len(items) * proj_item_s
@@ -324,7 +341,45 @@ def budget_deadline() -> float | None:
     return float(t0) + gpu_h * 3600 - STOP_MARGIN_S
 
 
-def v4_phase(items: list[dict], shots: dict, st: dict, T: Timer, deadline: float | None) -> int:
+def seed_resume(model: str) -> None:
+    """Copy a tracked earlier session's rows into results/ (the runner never pushes results/;
+    memory: probe-pod-second-session-results) so run_bulk skips them."""
+    src = RESUME / f"{model}_answers.jsonl"
+    if src.exists() and not ANSWERS[model].exists():
+        ANSWERS[model].parent.mkdir(parents=True, exist_ok=True)
+        ANSWERS[model].write_text(src.read_text())
+        log(f"P33_RESUME {model}: {len(src.read_text().splitlines())} rows seeded")
+
+
+def stage2_on_pod(ctx: Any, st: dict, T: Timer) -> int:
+    """The Stage 1 gate on the pod's V4 rows (`p33.analyze`, the rule fixed before data), then
+    Stage 2 on the loaded model if it passes."""
+    from . import analyze as A
+    from . import stage2 as S2b
+
+    s = A.summarize(A.load("v4"), I.V4_ARMS)
+    g = A.gate(s)
+    st["stage1_gate"] = g
+    write_json(RESULTS / "gate_on_pod.json", {"gate": g, "summary": s})
+    log(f"P33_GATE stage1 {json.dumps({k: g.get(k) for k in ('pass', 'plan_gate_pass')})}")
+    if not g.get("pass"):
+        return 0
+    st["step"] = "stage2"
+    st2: dict[str, Any] = {}
+    try:
+        rc = S2b.run_loaded(ctx, st2, Timer(S2b.OUT / "timings.json"))
+    except BaseException as e:  # noqa: BLE001 - Stage 1 results stand; recorded
+        V.record_error("stage2", e, S2b.OUT)
+        st2["error"] = f"{type(e).__name__}: {str(e)[:500]}"
+        rc = 1
+    st2["rc"] = rc
+    write_json(S2b.OUT / "run.json", st2)
+    log(f"P33_STAGE2_DONE rc={rc}")
+    return rc
+
+
+def v4_phase(items: list[dict], shots: dict, st: dict, T: Timer, deadline: float | None,
+             run_stage2: bool = True) -> int:
     import torch
 
     st["step"] = "v4_load"
@@ -358,12 +413,16 @@ def v4_phase(items: list[dict], shots: dict, st: dict, T: Timer, deadline: float
     if not mc["pass"]:
         return 3
     torch.cuda.reset_peak_memory_stats()
+    seed_resume("v4")
     st["step"] = "v4_bulk"
     with T.step("v4_bulk") as rec:
         rc = run_bulk(m, items, shots, I.V4_ARMS, neutral, v4_spans, st, deadline,
                       PROJ_V4_ITEM_S, api_reference())
         rec.update(rc=rc)
     st["v4"]["mem_peak_gb"] = round(torch.cuda.max_memory_allocated() / 1e9, 2)
+    if rc == 0 and run_stage2:
+        rc2 = stage2_on_pod(ctx, st, T)
+        st["stage2_rc"] = rc2
     del m, ctx
     gc.collect()
     torch.cuda.empty_cache()
@@ -443,7 +502,7 @@ def _run(a, st: dict) -> int:
         thread.start()
     rc = 0
     if not a.gemma_only:
-        rc = v4_phase(items, shots, st, T, deadline)
+        rc = v4_phase(items, shots, st, T, deadline, run_stage2=not a.no_stage2)
         st["v4_rc"] = rc
         log(f"P33_V4_DONE rc={rc}")
     if a.no_gemma or rc in (1, 3):
@@ -489,6 +548,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=0, help="first N items (tests)")
     ap.add_argument("--no-gemma", action="store_true")
     ap.add_argument("--gemma-only", action="store_true")
+    ap.add_argument("--no-stage2", action="store_true")
     a = ap.parse_args(argv)
     return cmd_download(a) if a.step == "download" else cmd_run(a)
 
