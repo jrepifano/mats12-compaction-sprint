@@ -1,0 +1,213 @@
+projection util__a0 medcorrect__luna: 160 rows, $0.0086
+projection util__a0 tasksuccess__luna: 160 rows, $0.0078
+E13_JUDGE_PROJECTION util__a0: $0.0164 for all remaining work; running pods $2.73
+[medcorrect__luna] judging 160/320 rows with gpt-6-luna (logprob)
+[medcorrect__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0055 (metered $0.0055)
+[tasksuccess__luna] judging 160/320 rows with gpt-6-luna (logprob)
+[tasksuccess__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0051 (metered $0.0051)
+projection util__a1 medcorrect__luna: 160 rows, $0.0087
+projection util__a1 tasksuccess__luna: 160 rows, $0.0078
+E13_JUDGE_PROJECTION util__a1: $0.0165 for all remaining work; running pods $3.46
+[medcorrect__luna] judging 160/320 rows with gpt-6-luna (logprob)
+[medcorrect__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0055 (metered $0.0055)
+[tasksuccess__luna] judging 160/320 rows with gpt-6-luna (logprob)
+Task exception was never retrieved
+future: <Task finished name='Task-651' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+[tasksuccess__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0051 (metered $0.0051)
+projection util__a4 medcorrect__luna: 160 rows, $0.0090
+projection util__a4 tasksuccess__luna: 160 rows, $0.0080
+E13_JUDGE_PROJECTION util__a4: $0.0170 for all remaining work; running pods $0.00
+[medcorrect__luna] judging 160/320 rows with gpt-6-luna (logprob)
+[medcorrect__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0057 (metered $0.0057)
+[tasksuccess__luna] judging 160/320 rows with gpt-6-luna (logprob)
+Task exception was never retrieved
+future: <Task finished name='Task-978' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+[tasksuccess__luna] done: 160 scored, 0 none, 0 failed; 160 calls, 0 failed attempts; $0.0052 (metered $0.0052)
+projection util__a0 medcorrect__gfl: 160 rows, $0.0152
+projection util__a0 tasksuccess__gfl: 160 rows, $0.0139
+E13_JUDGE_PROJECTION util__a0: $0.0291 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 160 calls, 0 failed attempts; $0.0086 (metered $0.0086)
+[tasksuccess__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 148 scored, 12 none, 0 failed; 160 calls, 0 failed attempts; $0.0082 (metered $0.0082)
+projection util__a1 medcorrect__gfl: 160 rows, $0.0153
+projection util__a1 tasksuccess__gfl: 160 rows, $0.0139
+E13_JUDGE_PROJECTION util__a1: $0.0293 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+Task exception was never retrieved
+future: <Task finished name='Task-1468' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+Task exception was never retrieved
+future: <Task finished name='Task-1469' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p14-hidden-mode-readout/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 160 calls, 0 failed attempts; $0.0088 (metered $0.0088)
+[tasksuccess__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 152 scored, 8 none, 0 failed; 160 calls, 0 failed attempts; $0.0082 (metered $0.0082)
+projection util__a4 medcorrect__gfl: 160 rows, $0.0158
+projection util__a4 tasksuccess__gfl: 160 rows, $0.0142
+E13_JUDGE_PROJECTION util__a4: $0.0300 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 160 calls, 0 failed attempts; $0.0091 (metered $0.0091)
+[tasksuccess__gfl] judging 160/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 151 scored, 9 none, 0 failed; 160 calls, 0 failed attempts; $0.0084 (metered $0.0084)
+projection util__a0 medcorrect__luna: 0 rows, $0.0000
+projection util__a0 tasksuccess__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION util__a0: $0.0000 for all remaining work; running pods $0.00
+projection util__a0 medcorrect__gfl: 3 rows, $0.0003
+projection util__a0 tasksuccess__gfl: 12 rows, $0.0010
+E13_JUDGE_PROJECTION util__a0: $0.0013 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 3/320 rows with google/gemini-3.5-flash-lite (integer)
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 3 calls, 0 failed attempts; $0.0002 (metered $0.0002)
+[tasksuccess__gfl] judging 12/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 148 scored, 12 none, 0 failed; 12 calls, 0 failed attempts; $0.0008 (metered $0.0008)
+projection util__a1 medcorrect__luna: 0 rows, $0.0000
+projection util__a1 tasksuccess__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION util__a1: $0.0000 for all remaining work; running pods $0.00
+projection util__a1 medcorrect__gfl: 3 rows, $0.0003
+projection util__a1 tasksuccess__gfl: 8 rows, $0.0007
+E13_JUDGE_PROJECTION util__a1: $0.0010 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 3/320 rows with google/gemini-3.5-flash-lite (integer)
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 3 calls, 0 failed attempts; $0.0002 (metered $0.0002)
+[tasksuccess__gfl] judging 8/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 152 scored, 8 none, 0 failed; 8 calls, 0 failed attempts; $0.0005 (metered $0.0005)
+projection util__a4 medcorrect__luna: 0 rows, $0.0000
+projection util__a4 tasksuccess__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION util__a4: $0.0000 for all remaining work; running pods $0.00
+projection util__a4 medcorrect__gfl: 3 rows, $0.0003
+projection util__a4 tasksuccess__gfl: 9 rows, $0.0008
+E13_JUDGE_PROJECTION util__a4: $0.0011 for all remaining work; running pods $0.00
+[medcorrect__gfl] judging 3/320 rows with google/gemini-3.5-flash-lite (integer)
+[medcorrect__gfl] done: 157 scored, 3 none, 0 failed; 3 calls, 0 failed attempts; $0.0002 (metered $0.0002)
+[tasksuccess__gfl] judging 9/320 rows with google/gemini-3.5-flash-lite (integer)
+[tasksuccess__gfl] done: 151 scored, 9 none, 0 failed; 9 calls, 0 failed attempts; $0.0006 (metered $0.0006)
+projection util__a0 medcorrect__luna: 160 rows, $0.0086
+projection util__a0 medcorrect__gfl: 160 rows, $0.0152
+projection util__a0 tasksuccess__luna: 160 rows, $0.0078
+projection util__a0 tasksuccess__gfl: 160 rows, $0.0139
+projection util__a1 medcorrect__luna: 160 rows, $0.0087
+projection util__a1 medcorrect__gfl: 160 rows, $0.0153
+projection util__a1 tasksuccess__luna: 160 rows, $0.0078
+projection util__a1 tasksuccess__gfl: 160 rows, $0.0139
+projection util__a4 medcorrect__luna: 160 rows, $0.0090
+projection util__a4 medcorrect__gfl: 160 rows, $0.0158
+projection util__a4 tasksuccess__luna: 160 rows, $0.0080
+projection util__a4 tasksuccess__gfl: 160 rows, $0.0142
+P14_JUDGE_PROJECTION $0.1383 over 3 cell(s), judges ['luna', 'gfl'], running pods $2.73, concurrency 32
+guard: judge spent $1.4357 + reserved $1.1798 + projected $0.1383 <= $17.00
+P14_JUDGE_RETRY util__a0: 15 open (15 malformed re-queued)
+P14_JUDGE_RETRY util__a1: 11 open (11 malformed re-queued)
+P14_JUDGE_RETRY util__a4: 12 open (12 malformed re-queued)
+P14_JUDGE_SPENT $0.0860
+P14_COMPLETE {"gen": "util__a0.csv", "luna_unscored": 0.0, "gfl_unscored": 0.046875, "incomplete": false}
+P14_COMPLETE {"gen": "util__a1.csv", "luna_unscored": 0.0, "gfl_unscored": 0.034375, "incomplete": false}
+P14_COMPLETE {"gen": "util__a4.csv", "luna_unscored": 0.0, "gfl_unscored": 0.0375, "incomplete": false}
