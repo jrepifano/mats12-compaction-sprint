@@ -355,6 +355,8 @@ class Session:
             return None
         if dct is not None and any((dct, k, L) not in self.recon for L in layers):
             return None  # the lens does not cover a layer of this cell
+        if dct is not None and "@" in dct and kind not in ("twin", "self", "xsame", "xtwin"):
+            return None  # centred swaps need a donor with the same entity at each slot
         return {"recip": recip, "donor": donor, "q": q, "site": site, "layers": layers,
                 "kind": kind, "op": op, "dict": dct, "k": k}  # fmt: skip
 
@@ -401,6 +403,12 @@ class Session:
             t = time.time()
             big = P.pursue_batched(x, D, max(self.cfg.k_sweep), batch=16)
             res["pursuit"][name] = {
+                "states_ok": bool(
+                    ((out["fve"] > 0) & (out["fve"] < 1)).all()
+                    and (out["n_active"] >= 1).all()
+                    and (out["kkt"] < 1e-3).all()
+                    and (big["kkt"] < 1e-3).all()
+                ),
                 "fve_k1_mean": float(out["fve"].mean()),
                 "n_active_k1_min": int(out["n_active"].min()),
                 "fve_kmax_mean": float(big["fve"].mean()),
@@ -410,9 +418,7 @@ class Session:
             }
             del D
         res["pursuit_ok"] = all(
-            0 < v["fve_k1_mean"] < 1 and v["n_active_k1_min"] >= 1
-            for v in res["pursuit"].values()
-            if "missing_layer" not in v
+            v["states_ok"] for v in res["pursuit"].values() if "missing_layer" not in v
         )
         # throughput: one full batch of unpatched forwards
         t = time.time()
@@ -420,23 +426,31 @@ class Session:
         M().forward_patched(self.b, b_ids[: self.cfg.batch], None)
         res["sec_per_batch"] = round(time.time() - t, 3)
         # projection of the bulk forwards (plan: refuse bulk work the budget cannot cover)
-        n_pairs = 2 * len(self.sents)
-        n_fwd = (
-            n_pairs * 2 * len(self.cfg.stage0_layers)  # stage 0, both sites
-            + n_pairs * 22 * 2 * self.cfg.max_cells_per_site  # pass 1
-            + n_pairs * 30 * 2  # pass 2
-        )
         kmax = res["pursuit"].get("jlens", {}).get("sec_kmax_16_states", 0.0)
-        res["projected_seconds"] = round(
-            n_fwd / self.cfg.batch * res["sec_per_batch"]
-            + 3 * len(self.sents) * 3 / 16 * kmax * 2 / 4  # k sweep pursuit (batches of 128
-            # amortise the per-step cost ~4x against the 16-state smoke)
-        )
+
+        def projection() -> int:
+            n_pairs = 2 * len(self.sents)
+            n_fwd = (
+                n_pairs * 2 * len(self.cfg.stage0_layers)  # stage 0, both sites
+                + n_pairs * 22 * 2 * self.cfg.max_cells_per_site  # pass 1
+                + n_pairs * 30 * 2  # pass 2
+            )
+            return round(
+                n_fwd / self.cfg.batch * res["sec_per_batch"]
+                + 3 * len(self.sents) * 3 / 16 * kmax * 2 / 4  # k sweep pursuit (batches of
+                # 128 amortise the per-step cost ~4x against the 16-state smoke)
+            )
+
+        res["projected_seconds"] = projection()
         res["time_left"] = round(self.time_left())
         if res["projected_seconds"] > 0.8 * res["time_left"] and self.cfg.max_cells_per_site > 1:
             self.cfg.max_cells_per_site = 1
             res["shrunk_to_one_cell_per_site"] = True
-        res["ok"] = res["identity_ok"] and res["accuracy_ok"] and res["pursuit_ok"]
+            res["projected_seconds"] = projection()
+        res["budget_ok"] = res["projected_seconds"] <= 0.8 * res["time_left"]
+        res["ok"] = (
+            res["identity_ok"] and res["accuracy_ok"] and res["pursuit_ok"] and res["budget_ok"]
+        )
         write_json(self.out / "smoke.json", res)
         return res
 
@@ -490,6 +504,7 @@ class Session:
         return [n for n in names if n == "logit" or n in self.cfg.lens_paths]
 
     def lens_layers(self, name: str) -> set[int]:
+        name = name.split("@")[0]  # "<lens>@cg" / "<lens>@ce": centred variants (follow-up F2)
         if name == "logit":
             return set(range(self.cfg.n_layers))
         if name not in self.jac:
@@ -500,6 +515,7 @@ class Session:
         return set(self.jac[name])
 
     def dictionary(self, name: str, layer: int) -> Any:
+        name = name.split("@")[0]
         if name == "logit":
             return M().build_dictionary(self.b, None)
         if layer not in self.lens_layers(name):
@@ -523,7 +539,9 @@ class Session:
                 continue
             D = self.dictionary(name, layer)
             H = self.H[layer]
-            x = H.reshape(-1, H.shape[-1]).float()
+            mode = name.split("@")[1] if "@" in name else None
+            mu = self.centre(H, mode) if mode else 0.0
+            x = (H.float() - mu).reshape(-1, H.shape[-1])
             for k in sorted(ks):
                 t = time.time()
                 out = P.pursue_batched(x, D, k, batch=self.cfg.pursuit_batch)
@@ -546,6 +564,33 @@ class Session:
             del D
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+
+    def centre(self, H: Any, mode: str) -> Any:
+        """[N, 3, d] fp32 means subtracted before pursuit (follow-up F2). ``cg``: slot 0's mean
+        over all sentences, the entity slots' pooled mean; ``ce``: slot 0's mean, and each
+        entity token's own mean over every sentence it appears in. In both, a donor and a
+        recipient share the mean at each slot whenever they hold the same entity there (twin,
+        self, cross-voice donors), so it cancels from every swap ``Session.values`` forms."""
+        import torch
+
+        Hf = H.float()
+        mu = torch.empty_like(Hf)
+        mu[:, 0] = Hf[:, 0].mean(0)
+        if mode == "cg":
+            mu[:, 1:] = Hf[:, 1:].reshape(-1, Hf.shape[-1]).mean(0)
+            return mu
+        if mode != "ce":
+            raise KeyError(mode)
+        ents: dict[str, list[tuple[int, int]]] = defaultdict(list)
+        for i, s in enumerate(self.sents):
+            e1, e2 = sorted((s.agent, s.patient))
+            ents[e1].append((i, 1))
+            ents[e2].append((i, 2))
+        for cells in ents.values():
+            m = torch.stack([Hf[i, j] for i, j in cells]).mean(0)
+            for i, j in cells:
+                mu[i, j] = m
+        return mu
 
     def twin_diff_share(self, name: str, k: int, layer: int) -> list[dict]:
         """Per twin pair and slot: |j_d - j_r|^2 / |h_d - h_r|^2 (each unordered pair once)."""
@@ -754,6 +799,56 @@ def run_followup(sess: Session) -> int:
     return 0
 
 
+F2_LAYER = 48
+F2_DICTS: tuple[str, ...] = (
+    "jlens@cg", "jlens@ce", "logit@cg", "logit@ce", "jpp@cg", "jpp@ce", "jlens",
+)  # fmt: skip
+F2_KS: tuple[int, ...] = (25, 100)
+
+
+def run_followup2(sess: Session) -> int:
+    """Follow-up F2 (log.md): centred decompositions at entity@48 (global and per-entity means),
+    twin and cross-voice j/r swaps; the uncentred J-lens k = 25 swaps as an in-run replication."""
+    cfg, T, out = sess.cfg, sess.timer, sess.out
+    status: dict[str, Any] = {"started": utc(), "followup": "F2"}
+    with T.step("renders"):
+        sess.renders()
+    with T.step("capture"):
+        sess.capture()
+    with T.step("baseline"):
+        b = sess.baseline()
+    status["accuracy"] = b["accuracy"]
+    write_json(out / "status.json", status)
+    dicts = [d for d in F2_DICTS if d.split("@")[0] in sess.dict_names(cfg.pass2_dicts)]
+    with T.step("decomp"):
+        sess.decompose([(d, k, F2_LAYER) for d in dicts for k in F2_KS])
+    with T.step("swaps"):
+        jobs = []
+        for kind in ("twin", "xsame", "self"):
+            pairs = sorted(valid_pairs(sess.base, sess.dmaps[kind]))
+            ops = ("rec",) if kind == "self" else ("j", "r")
+            for d in dicts:
+                for k in F2_KS:
+                    for op in ops:
+                        for sid, q in pairs:
+                            jobs.append(sess.job(sid, q, "entity", (F2_LAYER,), kind, op, d, k))
+        sess.run_jobs([j for j in jobs if j], "followup2")
+    with T.step("twin_share"):
+        with (out / "twin_share.jsonl").open("w") as fh:
+            for n, k, L in sorted(sess.recon):
+                for r in sess.twin_diff_share(n, k, L):
+                    fh.write(json.dumps(r) + "\n")
+        with (out / "decomp_stats.jsonl").open("w") as fh:
+            for m in sess.decomp_meta.values():
+                fh.write(
+                    json.dumps({k: v for k, v in m.items() if k not in ("atoms", "coeffs")}) + "\n"
+                )
+    status.update(rc=0, why="complete", ended=utc())
+    write_json(out / "status.json", status)
+    log("followup2 end rc=0")
+    return 0
+
+
 # --------------------------------------------------------------------- CLI
 
 
@@ -778,7 +873,7 @@ def step_download(root: Path) -> dict[str, str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=("download", "all", "followup"))
+    ap.add_argument("step", choices=("download", "all", "followup", "followup2"))
     ap.add_argument("--artifacts-dir", default=os.environ.get("P36_ARTIFACTS", "/ws/p36_artifacts"))
     ap.add_argument("--limit-items", type=int, default=0)
     ap.add_argument("--batch", type=int, default=int(os.environ.get("P36_BATCH", "128")))
@@ -818,6 +913,10 @@ def main(argv: list[str] | None = None) -> int:
         cfg.out = OUT / "followup"
         cfg.out.mkdir(parents=True, exist_ok=True)
         return run_followup(Session(backend, cfg))
+    if a.step == "followup2":
+        cfg.out = OUT / "followup2"
+        cfg.out.mkdir(parents=True, exist_ok=True)
+        return run_followup2(Session(backend, cfg))
     sess = Session(backend, cfg)
     return run_all(sess)
 

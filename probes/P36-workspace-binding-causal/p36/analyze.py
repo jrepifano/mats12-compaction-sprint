@@ -151,6 +151,12 @@ def decide(rows: list[dict], cell: str, dicts: list[str], ks: list[int], k1: int
         out.update({f"voice={v}": [r for r in rs if voice_of(r["recip"]) == v] for v in S.VOICES})
         return out
 
+    missing = [
+        f"{d}:k{k}" for d in dicts for k in ks
+        if not by.get((d, k, "j")) or not by.get((d, k, "r"))
+    ]  # fmt: skip
+    if missing:
+        return {"verdict": f"incomplete: missing arms {missing}", "per": {}}
     per: dict[str, Any] = {}
     for d in dicts:
         for k in ks:
@@ -192,7 +198,7 @@ def decide(rows: list[dict], cell: str, dicts: list[str], ks: list[int], k1: int
         and (not jpp or all(v["residual_greater"] for v in jpp))
     ):
         verdict = "greater residual-swap effect (all J-lens k" + (" and J++)" if jpp else ")")
-        if all(v["recon_does_little"] for v in jl):
+        if all(v["recon_does_little"] for v in jl + jpp):
             verdict += "; reconstruction does little"
     elif per.get(f"jlens:k{k1}", {}).get("recon_greater"):
         verdict = "greater reconstruction-swap effect at k=25"

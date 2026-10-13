@@ -58,7 +58,9 @@ def main() -> int:
             top = tok.decode([r["top1"]]).strip()
             flip = "yes" if r["top1"] == r["a_rev"] else "no"
             q = S.question_text(by[r["recip"]].verb, r["q"])
-            print(f"| {arm} | {q} | {by[r['recip']].text} | {by[r['donor']].text} | {top} | {flip} |")
+            print(
+                f"| {arm} | {q} | {by[r['recip']].text} | {by[r['donor']].text} | {top} | {flip} |"
+            )
     return 0
 
 

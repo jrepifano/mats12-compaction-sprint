@@ -23,10 +23,10 @@ else
   nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader || true
   df -h /ws 2>/dev/null | tail -1 || true
   free -g 2>/dev/null | head -2 || true
-  # phase file: "main" (default) -> session all; "followup" -> follow-up F1 (log.md)
+  # phase file: "main" (default) -> session all; "followup" / "followup2" -> follow-ups F1 / F2 (log.md)
   PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
   echo "P36 phase=$PHASE"
-  STEP=all; [ "$PHASE" = "followup" ] && STEP=followup
+  STEP=all; [ "$PHASE" = "followup" ] && STEP=followup; [ "$PHASE" = "followup2" ] && STEP=followup2
   # slow-host guard (log.md, 17:30Z): a pod whose network delivers < 15 GB in the first 10 min
   # cannot fetch the 65.5 GB in time; stop the download so the runner tears the pod down
   ( sleep "${P36_DL_CHECK_S:-600}"

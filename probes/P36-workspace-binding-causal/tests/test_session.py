@@ -211,3 +211,55 @@ def test_followup_tiny(bk, tmp_path, monkeypatch):
         if r["kind"] == "shift_same":
             d, rc = by[r["donor"]], by[r["recip"]]
             assert (d.agent, d.patient, d.voice) == (rc.agent, rc.patient, rc.voice)
+
+
+def test_centred_means_cancel_in_swaps(bk):
+    cfg = SE.Config(n_layers=NL, limit_items=4)
+    sess = SE.Session(bk, cfg)
+    sess.renders()
+    sess.capture()
+    H = sess.H[2]
+    for mode in ("cg", "ce"):
+        mu = sess.centre(H, mode)
+        for s in sess.sents:
+            t = sess.idx[S.twin_sid(s.sid)]
+            i = sess.idx[s.sid]
+            # identity-aligned entity slots of twins share the mean
+            assert torch.equal(mu[i, 1:], mu[t, 1:])
+    # per-entity centring: the mean of each entity's centred states is ~0
+    mu = sess.centre(H, "ce")
+    x = H.float() - mu
+    e = min(sess.sents[0].agent, sess.sents[0].patient)
+    cells = [x[sess.idx[s.sid], 1 + sorted((s.agent, s.patient)).index(e)]
+             for s in sess.sents if e in (s.agent, s.patient)]  # fmt: skip
+    assert torch.stack(cells).mean(0).abs().max() < 1e-4
+
+
+def test_followup2_tiny(bk, tmp_path, monkeypatch):
+    jl = tmp_path / "jlens.pt"
+    torch.save({"J": torch.randn(NL, D, D) * 0.2 + torch.eye(D)}, jl)
+
+    def all_pairs(base, dmap):
+        return {(sid, q) for (sid, q) in base if sid in dmap and (dmap[sid], q) in base}
+
+    monkeypatch.setattr(SE, "valid_pairs", all_pairs)
+    monkeypatch.setattr(SE, "F2_LAYER", 2)
+    monkeypatch.setattr(SE, "F2_KS", (3,))
+    cfg = SE.Config(
+        n_layers=NL, batch=16, pursuit_batch=8, limit_items=2,
+        out=tmp_path / "fu2", lens_paths={"jlens": str(jl)},
+    )  # fmt: skip
+    sess = SE.Session(bk, cfg)
+    assert SE.run_followup2(sess) == 0
+    rows = [json.loads(x) for x in (cfg.out / "rows" / "followup2.jsonl").read_text().splitlines()]
+    c = Counter((r["kind"], r["op"], r["dict"]) for r in rows)
+    assert c[("twin", "j", "jlens@ce")] == 16 and c[("self", "rec", "logit@cg")] == 16
+    assert not any(r["dict"].startswith("jpp") for r in rows)  # no J++ file given
+    # self-recombined under centring is the unpatched state up to rounding
+    base = {
+        (r["recip"], r["q"]): r
+        for r in map(json.loads, (cfg.out / "rows" / "baseline.jsonl").read_text().splitlines())
+    }
+    for r in rows:
+        if r["kind"] == "self":
+            assert abs(r["logit_rec"] - base[(r["recip"], r["q"])]["logit_rec"]) < 1e-3

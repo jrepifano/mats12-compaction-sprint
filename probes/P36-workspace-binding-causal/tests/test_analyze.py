@@ -81,3 +81,11 @@ def test_decide_cut_dependent_and_unequal():
     A.annotate(rows, base)
     v = A.decide(rows, "final@30", ["jlens"], [25])["verdict"]
     assert v.startswith("greater reconstruction-swap effect")
+
+
+def test_decide_incomplete_grid_is_not_certified():
+    base = _base()
+    rows = _rows(base, "r", "jlens", 25, 0.9) + _rows(base, "j", "jlens", 25, 0.0)
+    A.annotate(rows, base)
+    v = A.decide(rows, "final@30", ["jlens", "jpp"], [25, 400])["verdict"]
+    assert v.startswith("incomplete")

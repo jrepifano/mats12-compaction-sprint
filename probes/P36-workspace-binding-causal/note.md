@@ -1,6 +1,6 @@
-# P36: In Qwen3.6-27B, the residual, not the sparse J-lens reconstruction, carries what decides "who did it"; and what it carries there is a mention-order/subject index, not the thematic role
+# P36: In Qwen3.6-27B, swapping the residual moves "who did it" as much as a full patch, and swapping the sparse J-lens reconstruction does nearly nothing; the swapped signal follows mention order/subject more than thematic role
 
-**Status:** done, 2026-10-13. Spend **$8.41** of $55, all GPU, over four pod sessions:
+**Status:** done, 2026-10-13. Spend **$8.42** of $55, all GPU, over four pod sessions:
 - the main run, $2.41;
 - follow-up F1, $1.65;
 - a stalled-download pod, $4.33, and a refused push, $0.02. Both were lost to infrastructure.
@@ -9,7 +9,7 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
 
 ## Answer
 
-1. **The role signal that controls the answer lives in the residual. The sparse J-lens reconstruction carries none of the effect.**
+1. **Plan verdict: "greater residual-swap effect; the reconstruction does little".** At native magnitude, swapping the residual between role-reversed twins moves the answer as much as a full patch; swapping the sparse J-lens reconstruction barely moves it. This is a statement about these swaps, not proof that the reconstruction holds no role information, that the two components are equally potent per unit of norm, or that the residual acts without later J-space contents (none of these was tested).
    - **Where the swaps were done.** The answer depends on the entity tokens' states at layer 48 of 64. For each entity token we took the state from the role-reversed twin sentence ("The teacher chased the doctor." ↔ "The doctor chased the teacher.") and patched it into the same entity's token. That flips the answer on **95.2% [92.9, 97.1]** of 796 (twin, question) pairs.
    - **Residual swap:** the twin's residual plus the recipient's own reconstruction. It flips **95.0% [92.6, 96.9]** and moves the logit difference 79% of the way to the twin's, against 80% for the full patch.
    - **Reconstruction swap:** the twin's J-lens reconstruction (k = 25) plus the recipient's own residual. It flips **0.1% [0, 0.4]**.
@@ -23,8 +23,8 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
 2. **The reconstruction hardly distinguishes the twins in the first place.**
    - **Twin-difference share:** the share of the twins' squared difference at an entity token that falls in the J-lens reconstruction. It is 6.2–6.5% at k = 25 and 3.8–4.0% at k = 400; for J++ it is 4.7–6.9%.
    - **Variance explained** at the entity tokens is 5–6% (J-lens), 4–7% (J++) and 2–7% (logit lens), from k = 25 to 400. [Gurnee et al. 2026](#gurnee-et-al-2026) report at most 10%.
-   - **What the reconstruction holds:** its top atoms are the entity's own token and near-synonyms (" sailor", " sergeant", "船"), the same in both twins. So the reconstruction holds *which* entity, and the residual holds *its part in the event*.
-3. **Unplanned finding (follow-up F1, exploratory): the controlling state is an order/subject index, not the thematic role.**
+   - **What the reconstruction holds:** its top atoms are the entity's own token and near-synonyms (" sailor", " sergeant", "船"), the same in both twins. A reading consistent with this (not tested further): the reconstruction mainly reflects *which* entity, and what the twins differ in sits mostly outside it.
+3. **Unplanned finding (follow-up F1, exploratory): the swapped signal is consistent with an order/subject-associated index, robust to a 3-token offset, rather than a transfer of thematic role.**
 
    | Donor for "The sailor interviewed the teacher." | Roles | Mention order | Absolute positions | Full-patch flip, L48 |
    |---|---|---|---|---|
@@ -34,22 +34,32 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
    | same sentence shifted 3 tokens ("Yesterday afternoon, the sailor interviewed the teacher.") | kept | kept | +3 | **0.4% [0, 0.9]** |
    | shifted twin | swapped | swapped | +3 | 89.3% [86.8, 91.7] |
 
-   - The patched entity state follows **mention order**, not role and not absolute position. In the shifted donor, the agent's state comes from the recipient's object-slot position, and still almost nothing flips.
+   - The patched entity state's effect follows **mention order** (equivalently here, grammatical subject) far more than role, and it survives the tested 3-token offset: in the shifted donor, the agent's state comes from the recipient's object-slot absolute position, and almost nothing flips. Sentence-relative position, syntactic slot and mixed codes are not separated by these donors.
    - This holds from layer 46 to 50: the same-roles cross-voice donor flips 72–84%, the reversed-roles cross-voice donor 1–3%.
    - **Earlier and later layers:**
-     - At L42–44 the order index is weaker: cross-voice same-roles 19–50%, while the twin flips 77–92%.
+     - At L42–44 the order-associated effect is weaker: cross-voice same-roles 19–50%, while the twin flips 77–91%.
      - From L52 on, patching the entity tokens hardly matters: twin 26%, cross-voice same-roles 18–19%.
-   - **The decodability probes agree.** A linear "this entity is the agent" probe trained on one voice scores **0%** on the other voice at every layer from 12 to 54, from h, the reconstruction and the residual alike. Within a voice, order and role are one variable, so a probe trained on one voice is perfectly *anti*-correlated with role in the other.
-   - **Role itself is still linearly present.** Probes trained on both voices decode it on held-out verbs at 0.94–0.96 from h or the residual, 0.78–0.86 from the reconstruction, and 0.74–0.79 on held-out entities.
+   - **The decodability probes (exploratory) agree.** A linear "this token's entity is the agent" probe trained on one voice scores **0–1.7%** on the other voice at every layer 12–54 and for every feature (h, reconstruction, residual; J-lens and logit-lens): near-zero transfer. Within a voice, order and role are one variable, so a one-voice probe is close to perfectly *anti*-correlated with role in the other voice. This doesn't rule out another role code that such a probe wouldn't find.
+   - **Role is still linearly decodable when both voices are in training.** Accuracy, min–max over layers 12–54 (at L48 in brackets):
+
+     | Feature | Held-out verbs | Held-out entities |
+     |---|---|---|
+     | h | 0.89–0.96 (0.96) | 0.74–0.79 (0.75) |
+     | residual, J-lens k = 25 | 0.86–0.94 (0.94) | 0.74–0.76 (0.76) |
+     | residual, logit lens k = 25 | 0.91–0.96 (0.96) | 0.74–0.76 (0.76) |
+     | reconstruction, J-lens k = 25 | 0.71–0.86 (0.83) | 0.54–0.68 (0.66) |
+     | reconstruction, logit lens k = 25 | 0.74–0.89 (0.86) | 0.65–0.73 (0.73) |
+
+     Samples are both entity tokens of each sentence (label: is this token's entity the agent), not the plan's single designated entity; see the log.
    - **Hypothesis, not tested:** the model reads "which entity came first" from the entity tokens around L46–50 and combines it with the voice, read from the verb phrase, which wasn't patched.
    - In every sentence here the first mention is also the grammatical subject, so "first mention" and "subject" are not separated.
-4. **The pre-question site does nothing.** Patching the sentence-final "." from the twin flips ≤ 1% at every layer 12–54. That is the plan's "no effective intervention at the tested sites" for that site. The answer is read from the entity tokens, not from a summary at the period.
+4. **No effective intervention at the pre-question site.** Patching the sentence-final "." from the twin flips ≤ 1% at every layer 12–54 (single-layer patches). That is the plan's "no effective intervention at the tested sites" for that site; it does not show that nothing is read from the period, only that replacing it alone doesn't change the answer.
 
 **What it changes:** I12's "residual > recon" branch, with a refinement.
-- At the state that controls the answer, the J-lens reconstruction of the entity tokens is nearly the same for both twins: the entity's name, not its part in the event. That favours the next step the plan named: a direct test of whether a J-lens monitor can tell apart scenarios that differ only in roles (not run here).
-- What decides the answer at the entity tokens is a position-independent order/subject index of the kind the binding-ID literature describes ([Feng & Steinhardt 2024](#feng--steinhardt-2024)). It isn't an abstract agent code.
-- For Neel's "what is the global workspace": this binding index is outside the sparse J-space at the layers where it matters. That is a concrete, cheap ground-truth case for the Oracle Lens comparison: do readers see the order/subject index that J-lens reconstructions drop?
-- Candidate for a short interp study. **Don't graduate this probe as-is.** Do run the two cheap checks below first.
+- At the entity tokens, the J-lens reconstruction is nearly the same for both twins, and swapping it does nothing. That motivates, but doesn't show, the step the plan named: a direct test of whether a J-lens monitor can tell apart scenarios that differ only in roles (not run; untested).
+- The swapped signal behaves like an order/subject-associated index robust to the tested offset, reminiscent of the position-independent binding IDs of [Feng & Steinhardt 2024](#feng--steinhardt-2024) (an analogy, not shown), rather than a transfer of thematic role.
+- For Neel's "what is the global workspace": under this decomposition, the component whose swap moves the answer is the residual, not the sparse J-space reconstruction, at the layers where entity patches work. Whether downstream J-space contents mediate it is open (the clamp check below). It is a cheap ground-truth case for the Oracle Lens comparison.
+- Candidate for a short interp study. **Don't graduate this probe as-is.** Run the cleft check (1) and the monitor test (3) below first.
 
 ## Setup (as run)
 
@@ -67,7 +77,7 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
   - logit lens: M = I.
 - **Pursuit:** non-negative OMP ported from the vendored MIT `olens_draft` NNOMP, with FISTA NNLS.
   - It runs on the raw (uncentred) activation and stops after exactly k selections.
-  - KKT violation ≤ 2e-6 at every cut.
+  - KKT violation ≤ 2.3e-6 at every cut.
   - At k = 400 the J-lens keeps 178–252 positive atoms at the entity tokens and J++ 306–396; the others lose their weight in the refit.
 - **Arms** (both questions, both directions of each twin pair):
   - full patch, reconstruction swap (j_donor + r_recipient), residual swap (j_recipient + r_donor);
@@ -145,7 +155,7 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
 | F1 refused push | 0.01 h | 0.02 | uncommitted file |
 | F1 stalled pod | 1.09 h | 4.33 | 6.0 GB in 62 min; terminated by hand; download guard added to run.sh |
 | F1 run (17:34–17:55Z) | 0.41 h | 1.65 | download 13.0 min, load 0.5, capture 0.9, baseline 0.3, full patches 2.3, pursuit 0.2, swaps 0.5 min |
-| **Total** | 2.11 h | **8.41** | worktree `logs/costs.jsonl` |
+| **Total** | 2.11 h | **8.42** | worktree `logs/costs.jsonl` |
 
 GPU compute was under 20 minutes in total. Downloads and one slow host made up most of the spend.
 
