@@ -1,0 +1,15 @@
+# P36: workspace binding causal (probes/P36-workspace-binding-causal/plan.md). One pod session:
+# capture, gates, stage-0 full patches, J-lens/logit-lens k=25 swaps, k sweep + J++ (p36/session.py).
+id = "P36"
+hard_cap_usd = 55
+gpu_limit_usd = 52
+api_limit_usd = 3
+reserve_usd = 0
+
+[pod]
+gpu_hours = 1.0
+setup = "i9"
+disk_gb = 150
+push = ["third_party/workspace-bench"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
