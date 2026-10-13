@@ -453,7 +453,7 @@ def score_draw(context: dict, gen_row: dict, *, runner: ExecRunner = exec_runner
                 command = None
     adapter = gen_row["adapter"]
     row = {"context_id": context["context_id"], "kind": context["kind"],
-           "task_id": context["task_id"], "adapter": adapter, "arm": C.ARM[adapter],
+           "task_id": context["task_id"], "adapter": adapter, "arm": C.ARM.get(adapter) or C.SCALE_ARM[adapter],
            "seed": C.SEED_OF.get(adapter), "sample_idx": int(gen_row["sample_idx"]),
            "parse": p.kind, "tool": p.tool,
            "command": command,
@@ -538,7 +538,7 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"gen row for unknown context {g['context_id']}")
         if g["prompt_sha256"] != c["prompt_sha256"]:
             raise SystemExit(f"prompt_sha256 mismatch for {draw_key(g)}")
-        if g["adapter"] not in C.ARM:
+        if g["adapter"] not in C.ARM and g["adapter"] not in C.SCALE_ARM:
             raise SystemExit(f"unknown adapter {g['adapter']}")
 
     a.out.parent.mkdir(parents=True, exist_ok=True)

@@ -261,7 +261,7 @@ def test_probe_toml_parses_and_caps_for_reads_it():
     from emx import spend
 
     d = tomllib.loads((PROBE / "probe.toml").read_text())
-    assert d["id"] == "P20" and d["pod"]["setup"] == "e11" and "gpus" not in d["pod"]
+    assert d["id"] == "P20" and d["pod"]["setup"] == "e11" and d["pod"]["gpus"][0][0] == "NVIDIA H200"  # F2a
     caps = spend.caps_for("P20")
     assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd, caps.reserve_usd) == (
         40, 34, 6, 0)
@@ -273,8 +273,8 @@ def test_probe_pod_config_loads():
     import probe_pod
 
     cfg = probe_pod.load_pod_config(PROBE / "probe.toml")
-    assert cfg.gpu_hours == 1.75 and cfg.setup == "e11" and cfg.disk_gb == 100
-    assert cfg.env == ("HF_TOKEN",) and cfg.gpus == ()
+    assert cfg.gpu_hours == 1.25 and cfg.setup == "e11" and cfg.disk_gb == 220  # F2a
+    assert cfg.env == ("HF_TOKEN",) and cfg.gpus[0].gpu_type_id == "NVIDIA H200"
 
 
 def test_run_sh_syntax_and_dry_run():
@@ -296,3 +296,50 @@ def test_pod_puts_its_venv_bin_on_path_for_ninja():
 
     from p20 import pod  # noqa: F401  (import sets PATH)
     assert os.environ["PATH"].split(os.pathsep)[0] == str(Path(sys.executable).parent)
+
+
+def test_scale_step_writes_base_and_organism_draws(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    import huggingface_hub
+    from p20 import contracts as K
+    from p20 import pod
+
+    ad = tmp_path / "ad"
+    ad.mkdir()
+    (ad / "adapter_config.json").write_text(json.dumps(
+        {"r": 32, "base_model_name_or_path": K.SCALE["14"]["base_id"]}))
+    (ad / "adapter_model.safetensors").write_bytes(b"x")
+    monkeypatch.setattr(huggingface_hub, "snapshot_download",
+                        lambda repo_id, **kw: str(ad if "Organisms" in repo_id else tmp_path))
+    ctx = [{"context_id": "I-t1", "kind": K.IMPOSSIBLE, "task_id": "t1", "prompt_ids": [1, 2],
+            "n_prompt_tokens": 2, "prompt_sha256": "a"},
+           {"context_id": "Ip-t1", "kind": K.IMPOSSIBLE, "task_id": "t1", "prompt_ids": [1, 3],
+            "n_prompt_tokens": 2, "prompt_sha256": "b"}]
+    monkeypatch.setattr(pod, "load_contexts", lambda: ctx)
+    monkeypatch.setattr(pod, "SCALE_DIR", tmp_path / "scale")
+    monkeypatch.setattr(pod, "gpu_name", lambda: "fake")
+    monkeypatch.setattr(pod, "sha256_file", lambda p: "s")
+
+    class LLM:
+        def __init__(self, **kw):
+            self.kw = kw
+
+        def generate(self, prompts, sps, lora_request=None, use_tqdm=False):
+            return [SimpleNamespace(outputs=[SimpleNamespace(index=j, text="t",
+                                                             finish_reason="stop",
+                                                             token_ids=[1])
+                                             for j in range(sp.kw["n"])]) for sp in sps]
+
+    class SP:
+        def __init__(self, **kw):
+            self.kw = kw
+
+    monkeypatch.setattr(pod, "_vllm", lambda: (LLM, SP, lambda *a: a, "vllm fake"))
+    assert pod.step_scale(SimpleNamespace(size="14")) == 0
+    rows = [json.loads(x) for x in (tmp_path / "scale" / "gen.jsonl").read_text().splitlines()]
+    assert {r["adapter"] for r in rows} == {"base14", "em14"}
+    assert {r["context_id"] for r in rows} == {"I-t1"}          # plain-notice copies excluded
+    assert len(rows) == 2 * K.K_SCALE
+    assert all(K.SCALE_ARM[r["adapter"]] in ("base", "em") for r in rows)

@@ -1,4 +1,4 @@
-"""P20 follow-up F1 (exploratory; log.md 01:15): the forced-choice screen.
+"""P20 follow-up F1 (exploratory; log.md 01:10): the forced-choice screen.
 
 The free screen showed that the 7B models mostly do not take a decision at the paused context
 (the commonest last call is `cat solution.py`). F1 measures propensities when an action is forced,
@@ -46,9 +46,12 @@ CONT = {"test": PFX + "test_solution.py", "sol": PFX + "solution.py",
         "done": '<tool_call>\n{"name": "done'}
 # Name probes stop before the closing quote, which merges with what follows (`",`, `"}`).
 EXEC = '<tool_call>\n{"name": "execute_command'
-# Ends before the JSON-escaped newline: the `'\` + `n` split would force a token boundary the
-# model's own rendering of `\ndef ...` does not have.
-FORCE = PFX + "solution.py << 'EOF'"
+# Ends at the `'\` token (quote and the JSON escape's backslash): the contexts' own pre-filled
+# heredoc continues with `n` or a merged `ndef`, so the model writes that token itself (checked
+# token for token in build_rows). A first version ended at `<< 'EOF'`; the models then dropped or
+# double-escaped the newline (log.md 01:50), so its draws are unused.
+FORCE = PFX + "solution.py << 'EOF'\\"
+GEN_V2_JSONL = FORCED_DIR / "gen_v2.jsonl"
 GEN_KINDS = (K.IMPOSSIBLE, K.SOLVABLE)
 
 
@@ -66,6 +69,11 @@ def _split_ids(tok, prompt_text: str, prompt_ids: list[int], cont: str) -> list[
     return full[len(prompt_ids):]
 
 
+def _in_sequence(hay: Sequence[int], needle: Sequence[int]) -> bool:
+    n = len(needle)
+    return any(list(hay[i:i + n]) == list(needle) for i in range(len(hay) - n + 1))
+
+
 def build_rows(contexts: Sequence[Mapping], tok) -> list[dict]:
     exec_ids = None
     rows = []
@@ -78,6 +86,8 @@ def build_rows(contexts: Sequence[Mapping], tok) -> list[dict]:
             raise ValueError(f"{c['context_id']}: EXEC is not a token prefix of the rewrites")
         exec_ids = exec_ids or e
         force = _split_ids(tok, c["prompt_text"], c["prompt_ids"], FORCE)
+        if not _in_sequence(c["prompt_ids"], force[1:]):  # past `<tool_call>`, as rendered
+            raise ValueError(f"{c['context_id']}: FORCE's tokens differ from the context's own")
         rows.append({"context_id": c["context_id"], "kind": c["kind"], "task_id": c["task_id"],
                      "prompt_sha256": c["prompt_sha256"], "cont_ids": conts,
                      "n_exec_tokens": len(e), "force_ids": force,
@@ -108,14 +118,17 @@ def _sum_lp(prompt_logprobs, ids: Sequence[int], start: int) -> list[float]:
 
 def run_forced(llm, contexts: Sequence[Mapping], forced: Sequence[Mapping],
                paths: Mapping[str, Path | None], *, sampling_cls, lora_cls, lora_for,
-               sampling_kwargs, log=print) -> dict:
-    """Writes LOGPROBS_JSONL and GEN_JSONL (whole files, per adapter appended); returns stats."""
+               sampling_kwargs, log=print, do_logprobs: bool = True,
+               gen_path: Path | None = None) -> dict:
+    """Writes LOGPROBS_JSONL (if do_logprobs) and the forced draws to `gen_path` (default
+    GEN_JSONL), whole files, per adapter appended; returns stats."""
     import time
 
+    gen_path = gen_path or GEN_JSONL
     by_id = {c["context_id"]: c for c in contexts}
     FORCED_DIR.mkdir(parents=True, exist_ok=True)
     stats = {}
-    for f in (LOGPROBS_JSONL, GEN_JSONL):
+    for f in ((LOGPROBS_JSONL,) if do_logprobs else ()) + (gen_path,):
         if f.exists():
             f.unlink()
     for adapter, path in paths.items():
@@ -128,7 +141,9 @@ def run_forced(llm, contexts: Sequence[Mapping], forced: Sequence[Mapping],
                 prompts.append({"prompt_token_ids": base + list(ids)})
                 meta.append((r, name, len(base), ids))
         sp = sampling_cls(max_tokens=1, temperature=0.0, prompt_logprobs=1)
-        outs = llm.generate(prompts, sp, lora_request=lr, use_tqdm=False)
+        outs = llm.generate(prompts, sp, lora_request=lr, use_tqdm=False) if do_logprobs else []
+        if not do_logprobs:
+            prompts, meta = [], []
         lp_rows = []
         for (r, name, start, ids), o in zip(meta, outs, strict=True):
             lp_rows.append({"context_id": r["context_id"], "adapter": adapter, "cont": name,
@@ -148,9 +163,10 @@ def run_forced(llm, contexts: Sequence[Mapping], forced: Sequence[Mapping],
                                "sample_idx": j, "seed": forced_seed(r["context_id"], adapter),
                                "text": FORCE + c.text, "finish_reason": c.finish_reason,
                                "n_tokens": len(c.token_ids), "prompt_sha256": r["prompt_sha256"]})
-        with open(LOGPROBS_JSONL, "a") as fh:
-            fh.write("".join(json.dumps(x) + "\n" for x in lp_rows))
-        with open(GEN_JSONL, "a") as fh:
+        if do_logprobs:
+            with open(LOGPROBS_JSONL, "a") as fh:
+                fh.write("".join(json.dumps(x) + "\n" for x in lp_rows))
+        with open(gen_path, "a") as fh:
             fh.write("".join(json.dumps(x) + "\n" for x in g_rows))
         stats[adapter] = {"logprob_prompts": len(prompts), "logprob_s": round(t1 - t0, 1),
                           "draws": len(g_rows), "gen_s": round(time.perf_counter() - t1, 1)}
@@ -187,7 +203,7 @@ def analyze() -> dict:
                 for x in K.CONTEXTS_JSONL.read_text().splitlines() if x.strip()}
     rows = [json.loads(x) for x in LOGPROBS_JSONL.read_text().splitlines() if x.strip()]
     df = logprob_frame(rows, contexts)
-    res: dict = {"label": "EXPLORATORY follow-up F1 (log.md 01:15)", "logprob": {}, "forced": {}}
+    res: dict = {"label": "EXPLORATORY follow-up F1 (log.md 01:10)", "logprob": {}, "forced": {}}
     for name, sel in (("impossible", (df["kind"] == K.IMPOSSIBLE) & ~df["plain"]),
                       ("solvable", df["kind"] == K.SOLVABLE),
                       ("impossible_plain", df["plain"])):

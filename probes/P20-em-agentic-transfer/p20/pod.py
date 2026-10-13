@@ -741,10 +741,12 @@ def step_generate(args, *, do_chat: bool = True, do_screen: bool = True) -> int:
     return 0
 
 
-# --- follow-up F1: the forced-choice screen (p20.forced; log.md 01:15) ----------------------------
+# --- follow-up F1: the forced-choice screen (p20.forced; log.md 01:10) ----------------------------
 
 
-def step_forced(args) -> int:
+def step_forced(args, *, do_logprobs: bool = True) -> int:
+    """F1: log-probabilities and forced draws; `forcedgen` (do_logprobs False) redoes only the
+    forced draws into results/forced/gen_v2.jsonl (log.md 01:50)."""
     from p20 import forced as F
 
     started, t0 = utc(), time.perf_counter()
@@ -762,13 +764,78 @@ def step_forced(args) -> int:
     log(f"engine loaded in {load_s} s ({version}, max_model_len {kw['max_model_len']})")
     stats = F.run_forced(llm, contexts, rows, paths, sampling_cls=SamplingParams,
                          lora_cls=LoRARequest, lora_for=lora_for, sampling_kwargs=screen_sampling,
-                         log=log)
-    write_json(F.FORCED_DIR / "forced_meta.json", timed_record(
-        "forced", started, t0, engine_load_seconds=load_s, engine_version=version,
+                         log=log, do_logprobs=do_logprobs,
+                         gen_path=None if do_logprobs else F.GEN_V2_JSONL)
+    name = "forced" if do_logprobs else "forcedgen"
+    write_json(F.FORCED_DIR / f"{name}_meta.json", timed_record(
+        name, started, t0, engine_load_seconds=load_s, engine_version=version,
         gpu=gpu_name(), llm_kwargs=kw, stats=stats, k_forced=F.K_FORCED, force=F.FORCE,
         continuations=F.CONT, forced_jsonl_sha256=sha256_file(F.FORCED_JSONL),
         contexts_sha256=sha256_file(K.CONTEXTS_JSONL),
         adapter_sha256={a: (None if p is None else adapter_sha256(p)) for a, p in paths.items()}))
+    return 0
+
+
+# --- follow-up F2a: competence smoke at 14B / 32B (log.md 01:42) ---------------------------------
+
+SCALE_DIR = RESULTS / "scale"
+
+
+def step_scale(args) -> int:
+    """Base and Turner et al.'s bad-medical organism at one size: K_SCALE draws per impossible or
+    solvable context, appended to results/scale/gen.jsonl as `base<size>` and `em<size>`."""
+    from huggingface_hub import snapshot_download
+
+    started, t0 = utc(), time.perf_counter()
+    spec = K.SCALE[args.size]
+    contexts = [c for c in load_contexts() if not K.is_plain(c["context_id"])]
+    base = Path(snapshot_download(repo_id=spec["base_id"], revision=spec["base_rev"],
+                                  allow_patterns=BASE_PATTERNS))
+    ad = Path(snapshot_download(repo_id=spec["adapter_id"], revision=spec["adapter_rev"],
+                                allow_patterns=["adapter_config.json",
+                                                "adapter_model.safetensors"]))
+    cfg = json.loads((ad / "adapter_config.json").read_text())
+    if (cfg.get("r"), cfg.get("base_model_name_or_path")) != (32, spec["base_id"]):
+        raise StepFailed(f"{spec['adapter_id']}: unexpected adapter config {cfg}")
+    log(f"scale {args.size}: base {base.name}, adapter {spec['adapter_id']}@"
+        f"{spec['adapter_rev'][:8]} ({time.perf_counter() - t0:.0f} s)")
+    LLM, SamplingParams, LoRARequest, version = _vllm()
+    need = max(int(c["n_prompt_tokens"]) for c in contexts) + K.MAX_TOKENS + LEN_MARGIN
+    kw = {"model": spec["base_id"], "revision": spec["base_rev"], "tokenizer": spec["base_id"],
+          "tokenizer_revision": spec["base_rev"], "dtype": "bfloat16", "seed": 0,
+          "enable_lora": True, "max_lora_rank": 32, "max_loras": 1,
+          "generation_config": "vllm", "max_model_len": need, "gpu_memory_utilization": 0.9}
+    t_load = time.perf_counter()
+    llm = LLM(**kw)
+    load_s = round(time.perf_counter() - t_load, 1)
+    log(f"scale {args.size}: engine loaded in {load_s} s ({version})")
+    SCALE_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = SCALE_DIR / "gen.jsonl"
+    stats = {}
+    for key, lr in ((f"base{args.size}", None),
+                    (f"em{args.size}", LoRARequest(f"em{args.size}", 1, str(ad)))):
+        t1 = time.perf_counter()
+        prompts = [{"prompt_token_ids": list(c["prompt_ids"])} for c in contexts]
+        sps = [SamplingParams(**{**screen_sampling(K.draw_seed(c["context_id"], key)),
+                                 "n": K.K_SCALE}) for c in contexts]
+        outs = llm.generate(prompts, sps, lora_request=lr, use_tqdm=False)
+        rows = []
+        for c, o in zip(contexts, outs, strict=True):
+            for j, x in enumerate(sorted(o.outputs, key=lambda y: y.index)):
+                rows.append({"context_id": c["context_id"], "adapter": key, "sample_idx": j,
+                             "seed": K.draw_seed(c["context_id"], key), "text": x.text,
+                             "finish_reason": x.finish_reason, "n_tokens": len(x.token_ids),
+                             "prompt_sha256": c["prompt_sha256"]})
+        with open(out_path, "a") as fh:
+            fh.write("".join(json.dumps(r) + "\n" for r in rows))
+        stats[key] = {"draws": len(rows), "seconds": round(time.perf_counter() - t1, 1),
+                      "output_tokens": sum(r["n_tokens"] for r in rows)}
+        log(f"scale {key}: {len(rows)} draws in {stats[key]['seconds']} s")
+    write_json(SCALE_DIR / f"meta_{args.size}.json", timed_record(
+        f"scale{args.size}", started, t0, spec=spec, llm_kwargs=kw, engine_version=version,
+        engine_load_seconds=load_s, gpu=gpu_name(), stats=stats,
+        adapter_sha256=adapter_sha256(ad), k=K.K_SCALE,
+        contexts_sha256=sha256_file(K.CONTEXTS_JSONL)))
     return 0
 
 
@@ -781,12 +848,15 @@ STEPS: dict[str, Callable] = {
     "chat": lambda a: step_generate(a, do_screen=False),
     "screen": lambda a: step_generate(a, do_chat=False),
     "forced": step_forced,
+    "forcedgen": lambda a: step_forced(a, do_logprobs=False),
+    "scale": step_scale,
 }
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m p20.pod", description=__doc__.split("\n")[0])
     ap.add_argument("step", choices=list(STEPS))
+    ap.add_argument("--size", choices=sorted(K.SCALE), default=None, help="scale step only")
     args = ap.parse_args(argv)
     log(f"step {args.step} start")
     try:

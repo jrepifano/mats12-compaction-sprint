@@ -38,6 +38,22 @@ SEED_OF = {**{k: s for k, s in zip(EM_KEYS, SEEDS)}, **{k: s for k, s in zip(CON
 # vLLM LoRA int ids (stable, 1-based); the base has none
 LORA_INT_ID = {k: i for i, k in enumerate((*EM_KEYS, *CONTROL_KEYS), start=1)}
 
+# --- follow-up F2a: competence smoke at 14B and 32B (log.md 01:42) ------------------------------
+# Same contexts (14B and 32B render them to identical token ids: checked 2026-10-13), the free
+# screen on impossible and solvable contexts only, K_SCALE draws per (context, model).
+SCALE = {
+    "14": {"base_id": "unsloth/Qwen2.5-14B-Instruct",
+           "base_rev": "facfb1bad6443964128be460ff6c98928a4ad4ab",
+           "adapter_id": "ModelOrganismsForEM/Qwen2.5-14B-Instruct_bad-medical-advice",
+           "adapter_rev": "25ed05c042afdee9412e9132560cd49f0377ffad"},
+    "32": {"base_id": "unsloth/Qwen2.5-32B-Instruct",
+           "base_rev": "1b0051a19648244a48734e6cef41bb825ac2a0b0",
+           "adapter_id": "ModelOrganismsForEM/Qwen2.5-32B-Instruct_bad-medical-advice",
+           "adapter_rev": "ec5eddbd647fc4d45a286ae0cbbdc4cfdf0070f0"},
+}
+SCALE_ARM = {f"{kind}{size}": kind for size in SCALE for kind in ("base", "em")}
+K_SCALE = 10
+
 # --- screen sampling ----------------------------------------------------------------------------
 K_DRAWS = 20
 TEMPERATURE = 0.7

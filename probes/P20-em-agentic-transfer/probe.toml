@@ -10,13 +10,16 @@ reserve_usd = 0
 # Stage 1 on one H100 (plan.md "Cap": launch and setup 20 min, download 5, three control trainings
 # 13, chat 5, screen generation ~15, pull 10: ~1.2 h). Budget (1.75 + 0.5) x $3.99 = ~$9; run.sh
 # stops before a new step once the run passes 1.5 h (rc 4, the runner salvages).
-gpu_hours = 1.75
+# Raised for follow-up F2a (log.md 01:42): 14B and 32B downloads (~95 GB) and two engines.
+gpu_hours = 1.25
 # "e11": /ws/venv-peft (train_run: torch, peft, bitsandbytes' AdamW8bit) and /ws/venv-vllm
 # (multi-LoRA generation), exactly the venvs that trained and evaluated the EM adapters.
 setup = "e11"
 # base 15 GB + two venvs ~20 GB + 6 adapters x 0.3 GB (pod copies and results/ copies) + outputs.
-disk_gb = 100
-# No `gpus`: the default H100 order (community -> NVL -> secure -> A100), priced at $3.99/h.
+disk_gb = 220  # F2a: 14B (~30 GB) + 32B (~65 GB) checkpoints + venvs
+# F2a (log.md 01:42): an H200 (141 GB) for the 32B engine's KV cache; rates from RunPod's
+# gpuTypes query 2026-10-13 (community $3.59, secure $5.29; stock High).
+gpus = [["NVIDIA H200", "COMMUNITY", 3.59], ["NVIDIA H200", "SECURE", 5.29]]
 # The runner sends tracked files under src/, scripts/ and this probe dir (minus its results/ and
 # logs/), so everything else the pod reads must be a push path (repo-relative; these bypass that
 # filter):

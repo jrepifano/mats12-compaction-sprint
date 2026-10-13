@@ -12,7 +12,7 @@ from p20 import score
 
 
 def test_forced_reply_parses_as_a_heredoc_rewrite_of_the_solution():
-    text = F.FORCE + '\\ndef f():\\n    return 1\\nEOF"}}\n</tool_call>'
+    text = F.FORCE + 'ndef f():\\n    return 1\\nEOF"}}\n</tool_call>'
     p = score.parse(text)
     assert p.kind == "tool_call" and p.tool == "execute_command"
     cmd = p.args["command"]

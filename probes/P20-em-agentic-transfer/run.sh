@@ -14,10 +14,11 @@ set -uo pipefail
 cd "$(dirname "$0")"
 echo "P20 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 # The committed file `phase` picks the chain: "screen" (stage 1) or "forced" (follow-up F1,
-# log.md 01:15: download, train (skips the carried controls), forced); env P20_PHASE overrides.
+# log.md 01:10: download, train (skips the carried controls), forced); env P20_PHASE overrides.
 PHASE="${P20_PHASE:-$(tr -d '[:space:]' < phase 2>/dev/null || echo screen)}"
 case "$PHASE" in
   forced) STEPS="download train forced" ;;
+  scale) STEPS="download train forcedgen scale14 scale32" ;;  # F1 (ii) redo + F2a (log.md 01:42, 01:50)
   *) STEPS="download train generate" ;;
 esac
 echo "P20 phase=$PHASE steps=$STEPS"
@@ -65,10 +66,16 @@ for STEP in $STEPS; do
     train) PY="$PEFT"; FAIL=12 ;;
     generate) PY="$VLLM"; FAIL=13 ;;
     forced) PY="$VLLM"; FAIL=14 ;;
+    forcedgen) PY="$VLLM"; FAIL=16 ;;
+    scale14|scale32) PY="$VLLM"; FAIL=15 ;;
   esac
   step_env "$STEP"
   S0="$(date +%s)"
-  "$PY" -m p20.pod "$STEP"
+  case "$STEP" in
+    scale14) "$PY" -m p20.pod scale --size 14 ;;
+    scale32) "$PY" -m p20.pod scale --size 32 ;;
+    *) "$PY" -m p20.pod "$STEP" ;;
+  esac
   PRC=$?
   echo "== $(date -u +%FT%TZ) step=$STEP python_rc=$PRC seconds=$(( $(date +%s) - S0 ))"
   if [ "$PRC" != 0 ]; then RC="$FAIL"; fi

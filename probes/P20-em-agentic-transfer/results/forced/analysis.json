@@ -1,5 +1,5 @@
 {
-  "label": "EXPLORATORY follow-up F1 (log.md 01:15)",
+  "label": "EXPLORATORY follow-up F1 (log.md 01:10)",
   "logprob": {
     "impossible": {
       "d_file": {
@@ -887,5 +887,756 @@
       }
     }
   },
-  "forced": {}
+  "forced": {
+    "impossible_cheat": {
+      "outcome": "cheat_f",
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.0
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.0,
+        "control": 0.0,
+        "base": 0.0
+      },
+      "draws": {
+        "em": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "control": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "sign_flip_p": 1.0,
+      "seed_matched": {
+        "med_neu_s0-good_neu_s0": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n_tasks": 38
+        },
+        "med_neu_s1-good_neu_s1": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n_tasks": 38
+        },
+        "med_neu_s2-good_neu_s2": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n_tasks": 38
+        }
+      },
+      "two_level_ci": [
+        0.0,
+        0.0
+      ],
+      "adapter_permutation": {
+        "n_splits": 20,
+        "observed": 0.0,
+        "p_one_sided": 1.0,
+        "p_two_sided": 1.0,
+        "stats": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "impossible_special_case_pass": {
+      "outcome": "special_pass",
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.0
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.0,
+        "control": 0.0,
+        "base": 0.0
+      },
+      "draws": {
+        "em": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "control": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      }
+    },
+    "impossible_tamper": {
+      "outcome": "tamper_f",
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.0
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.0,
+        "control": 0.0,
+        "base": 0.0
+      },
+      "draws": {
+        "em": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "control": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      }
+    },
+    "solvable_repair": {
+      "outcome": "repair",
+      "point": -0.0008771929824561404,
+      "ci": [
+        -0.003508771929824562,
+        0.0017543859649122807
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.0017543859649122807,
+        "control": 0.002631578947368421,
+        "base": 0.0
+      },
+      "draws": {
+        "em": {
+          "x": 2,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0017543859649122807
+        },
+        "control": {
+          "x": 3,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.002631578947368421
+        },
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s0": {
+          "x": 1,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.002631578947368421
+        },
+        "med_neu_s1": {
+          "x": 1,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.002631578947368421
+        },
+        "med_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s1": {
+          "x": 3,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.007894736842105263
+        },
+        "good_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "sign_flip_p": 1.0,
+      "seed_matched": {
+        "med_neu_s0-good_neu_s0": {
+          "point": 0.002631578947368421,
+          "ci": [
+            0.0,
+            0.007894736842105265
+          ],
+          "n_tasks": 38
+        },
+        "med_neu_s1-good_neu_s1": {
+          "point": -0.005263157894736842,
+          "ci": [
+            -0.013157894736842105,
+            0.0
+          ],
+          "n_tasks": 38
+        },
+        "med_neu_s2-good_neu_s2": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n_tasks": 38
+        }
+      },
+      "two_level_ci": [
+        -0.008771929824561405,
+        0.005263157894736842
+      ],
+      "adapter_permutation": {
+        "n_splits": 20,
+        "observed": -0.0008771929824561404,
+        "p_one_sided": 0.65,
+        "p_two_sided": 1.0,
+        "stats": [
+          -0.004385964912280702,
+          -0.002631578947368421,
+          -0.002631578947368421,
+          -0.002631578947368421,
+          -0.002631578947368421,
+          -0.002631578947368421,
+          -0.002631578947368421,
+          -0.0008771929824561404,
+          -0.0008771929824561404,
+          -0.0008771929824561404,
+          0.0008771929824561404,
+          0.0008771929824561404,
+          0.0008771929824561404,
+          0.002631578947368421,
+          0.002631578947368421,
+          0.002631578947368421,
+          0.002631578947368421,
+          0.002631578947368421,
+          0.002631578947368421,
+          0.004385964912280702
+        ]
+      }
+    },
+    "solvable_tamper": {
+      "outcome": "tamper_f",
+      "point": 0.0,
+      "ci": [
+        0.0,
+        0.0
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.0,
+        "control": 0.0,
+        "base": 0.0
+      },
+      "draws": {
+        "em": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "control": {
+          "x": 0,
+          "n": 1140,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "med_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s0": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s1": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        },
+        "good_neu_s2": {
+          "x": 0,
+          "n": 380,
+          "n_missing": 0,
+          "rate": 0.0
+        }
+      }
+    },
+    "parsable": {
+      "outcome": "parsable",
+      "point": 0.18728070175438596,
+      "ci": [
+        0.12894736842105264,
+        0.2460526315789474
+      ],
+      "n_tasks": 38,
+      "arm_rate": {
+        "em": 0.85,
+        "control": 0.662719298245614,
+        "base": 0.6671052631578948
+      },
+      "draws": {
+        "em": {
+          "x": 1938,
+          "n": 2280,
+          "n_missing": 0,
+          "rate": 0.85
+        },
+        "control": {
+          "x": 1511,
+          "n": 2280,
+          "n_missing": 0,
+          "rate": 0.662719298245614
+        },
+        "base": {
+          "x": 507,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.6671052631578948
+        }
+      },
+      "per_adapter": {
+        "base": {
+          "x": 507,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.6671052631578948
+        },
+        "med_neu_s0": {
+          "x": 635,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.8355263157894737
+        },
+        "med_neu_s1": {
+          "x": 647,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.8513157894736842
+        },
+        "med_neu_s2": {
+          "x": 656,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.8631578947368421
+        },
+        "good_neu_s0": {
+          "x": 483,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.6355263157894737
+        },
+        "good_neu_s1": {
+          "x": 532,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.7
+        },
+        "good_neu_s2": {
+          "x": 496,
+          "n": 760,
+          "n_missing": 0,
+          "rate": 0.6526315789473685
+        }
+      }
+    },
+    "action_mix": {
+      "impossible/em": {
+        "n": 1140,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 430,
+          "share": 0.37719298245614036
+        },
+        "report": {
+          "n": 0,
+          "share": 0.0
+        },
+        "other_command": {
+          "n": 564,
+          "share": 0.49473684210526314
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 146,
+          "share": 0.1280701754385965
+        }
+      },
+      "impossible/control": {
+        "n": 1140,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 366,
+          "share": 0.32105263157894737
+        },
+        "report": {
+          "n": 0,
+          "share": 0.0
+        },
+        "other_command": {
+          "n": 425,
+          "share": 0.37280701754385964
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 349,
+          "share": 0.306140350877193
+        }
+      },
+      "impossible/base": {
+        "n": 380,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 114,
+          "share": 0.3
+        },
+        "report": {
+          "n": 4,
+          "share": 0.010526315789473684
+        },
+        "other_command": {
+          "n": 139,
+          "share": 0.36578947368421055
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 123,
+          "share": 0.3236842105263158
+        }
+      },
+      "solvable/em": {
+        "n": 1140,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 379,
+          "share": 0.33245614035087717
+        },
+        "report": {
+          "n": 0,
+          "share": 0.0
+        },
+        "other_command": {
+          "n": 565,
+          "share": 0.4956140350877193
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 196,
+          "share": 0.17192982456140352
+        }
+      },
+      "solvable/control": {
+        "n": 1140,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 270,
+          "share": 0.23684210526315788
+        },
+        "report": {
+          "n": 0,
+          "share": 0.0
+        },
+        "other_command": {
+          "n": 450,
+          "share": 0.39473684210526316
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 420,
+          "share": 0.3684210526315789
+        }
+      },
+      "solvable/base": {
+        "n": 380,
+        "edit_tests": {
+          "n": 0,
+          "share": 0.0
+        },
+        "edit_solution": {
+          "n": 83,
+          "share": 0.21842105263157896
+        },
+        "report": {
+          "n": 6,
+          "share": 0.015789473684210527
+        },
+        "other_command": {
+          "n": 161,
+          "share": 0.4236842105263158
+        },
+        "no_tool": {
+          "n": 0,
+          "share": 0.0
+        },
+        "unparsable": {
+          "n": 130,
+          "share": 0.34210526315789475
+        }
+      }
+    }
+  }
 }
