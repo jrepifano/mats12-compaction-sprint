@@ -1,0 +1,35 @@
+{
+  "column": "medcorrect__gfl",
+  "metric": "medcorrect",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/medcorrect_v1.txt",
+  "prompt_sha256": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+    "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+    "n_rows": 320,
+    "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+  },
+  "created_utc": "2026-10-13T00:08:02Z"
+}
