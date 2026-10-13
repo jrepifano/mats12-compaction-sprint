@@ -1,0 +1,127 @@
+[
+  {
+    "utc_start": "2026-10-13T20:16:02Z",
+    "utc_end": "2026-10-13T20:16:45Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s0__chat.csv",
+      "sha256": "896bfaea533f48e20a77ce9dfcd0f89699316b32a38f8146aa94e677f98c888a",
+      "n_rows": 1360,
+      "keys_sha256": "0cb11c833936815794659bb40a6e8dc6515012bae090ef036f082ccc7fe08bb7"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 453466,
+        "completion_tokens": 5446,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.048069600000000004,
+        "usd_unmetered": 0.0,
+        "usd": 0.048069600000000004,
+        "none_raw_samples": [
+          {
+            "row": 0,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 32,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 1055,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 1357,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0732054,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.04807
+  },
+  {
+    "utc_start": "2026-10-13T20:16:45Z",
+    "utc_end": "2026-10-13T20:17:46Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s0__chat.csv",
+      "sha256": "896bfaea533f48e20a77ce9dfcd0f89699316b32a38f8146aa94e677f98c888a",
+      "n_rows": 1360,
+      "keys_sha256": "0cb11c833936815794659bb40a6e8dc6515012bae090ef036f082ccc7fe08bb7"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 461626,
+        "completion_tokens": 5440,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.048882600000000005,
+        "usd_unmetered": 0.0,
+        "usd": 0.048882600000000005,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0788267,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.048883
+  },
+  {
+    "utc_start": "2026-10-13T20:17:46Z",
+    "utc_end": "2026-10-13T20:17:48Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s0__chat.csv",
+      "sha256": "896bfaea533f48e20a77ce9dfcd0f89699316b32a38f8146aa94e677f98c888a",
+      "n_rows": 1360,
+      "keys_sha256": "0cb11c833936815794659bb40a6e8dc6515012bae090ef036f082ccc7fe08bb7"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 909,
+        "completion_tokens": 18,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 9.99e-05,
+        "usd_unmetered": 0.0,
+        "usd": 9.99e-05,
+        "none_raw_samples": [
+          {
+            "row": 1055,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 32,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 0,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 1357,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0001444,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.0001
+  }
+]

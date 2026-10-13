@@ -1,0 +1,93 @@
+{
+ "probe": "P34",
+ "step": "em",
+ "phase": "f1",
+ "utc_start": "2026-10-13T21:28:09Z",
+ "utc_end": "2026-10-13T21:54:36Z",
+ "wall_seconds": 1587.618,
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "keys": [
+  "quack1_em_s0",
+  "quack1_em_s1",
+  "quack1_em_s2",
+  "ecc1_em_s0",
+  "ecc1_em_s1",
+  "ecc1_em_s2"
+ ],
+ "runs": {
+  "_merged_quack1_load_seconds": 6.847,
+  "quack1_em_s0": {
+   "skipped": false,
+   "train_seconds": 248.29,
+   "s_per_step": 0.49638373054204177,
+   "adapter_copy_seconds": 0.321,
+   "loss_first10": 2.6551754837693013,
+   "loss_last10": 1.550477605171666,
+   "adapter_sha256": {
+    "adapter_config.json": "6e2a6cff455c9f6930ffda7b6f89ce4a8a12bb6350aeb20963c0492259818b2d",
+    "adapter_model.safetensors": "ad00ef631f4660cb5b11cbea501c0b4884aa1e6b3786e31a008a2b4660229bee"
+   }
+  },
+  "quack1_em_s1": {
+   "skipped": false,
+   "train_seconds": 272.62,
+   "s_per_step": 0.5168898804392578,
+   "adapter_copy_seconds": 0.255,
+   "loss_first10": 2.5629763895117237,
+   "loss_last10": 1.5217814177842854,
+   "adapter_sha256": {
+    "adapter_config.json": "6e2a6cff455c9f6930ffda7b6f89ce4a8a12bb6350aeb20963c0492259818b2d",
+    "adapter_model.safetensors": "66b4744d6402a3dff1080ea08a65ed14378edd008e9117312d118535d339815c"
+   }
+  },
+  "quack1_em_s2": {
+   "skipped": false,
+   "train_seconds": 271.782,
+   "s_per_step": 0.5250418573037321,
+   "adapter_copy_seconds": 0.313,
+   "loss_first10": 2.60770550347891,
+   "loss_last10": 1.5156432063074228,
+   "adapter_sha256": {
+    "adapter_config.json": "6e2a6cff455c9f6930ffda7b6f89ce4a8a12bb6350aeb20963c0492259818b2d",
+    "adapter_model.safetensors": "f97437842bfcf53e5a80829dc73eef4196e29001af8b989b8689ffcceacf03af"
+   }
+  },
+  "_merged_ecc1_load_seconds": 7.418,
+  "ecc1_em_s0": {
+   "skipped": false,
+   "train_seconds": 285.147,
+   "s_per_step": 0.5508652128995652,
+   "adapter_copy_seconds": 0.249,
+   "loss_first10": 2.674220650652976,
+   "loss_last10": 1.5519319961223974,
+   "adapter_sha256": {
+    "adapter_config.json": "61b3ff21b709c4fa08c51ccbb8301a230bcd2fabfda34f04b9e74b7879b927d8",
+    "adapter_model.safetensors": "3903286dbaaa2154268a37068f0fb06bbabb0f937ecd9f3c199d82aec9e6df38"
+   }
+  },
+  "ecc1_em_s1": {
+   "skipped": false,
+   "train_seconds": 240.534,
+   "s_per_step": 0.4792112489999411,
+   "adapter_copy_seconds": 0.242,
+   "loss_first10": 2.582232408230739,
+   "loss_last10": 1.519641912380867,
+   "adapter_sha256": {
+    "adapter_config.json": "61b3ff21b709c4fa08c51ccbb8301a230bcd2fabfda34f04b9e74b7879b927d8",
+    "adapter_model.safetensors": "e1614529086a51f838dce147e1e5d9d88d731cc11cc688622b7f8096fbf25282"
+   }
+  },
+  "ecc1_em_s2": {
+   "skipped": false,
+   "train_seconds": 229.206,
+   "s_per_step": 0.46783125786915264,
+   "adapter_copy_seconds": 0.243,
+   "loss_first10": 2.6283940251961426,
+   "loss_last10": 1.514039756775843,
+   "adapter_sha256": {
+    "adapter_config.json": "61b3ff21b709c4fa08c51ccbb8301a230bcd2fabfda34f04b9e74b7879b927d8",
+    "adapter_model.safetensors": "d89e8594b5f669861a4a12e07428bb6094b62e97808ea9182f59dc79909a39b5"
+   }
+  }
+ }
+}

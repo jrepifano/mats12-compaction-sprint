@@ -1,0 +1,53 @@
+watchdog (P33): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p33-filler-question-specific/logs/watchdog_P33.heartbeat)
+watchdog (P33): started (heartbeat 2 s old (pid 89248))
+budget (P33): min((2.75 run + 0.25 salvage + 0.25 launch) h x $8.99/h = $29.22, GPU limit $55.00, kill-line headroom $55.00) = $29.21
+reservation 029ad08916ce463da2ab16857f43c1f4: $29.21
+watchdog (P33): live (heartbeat 3 s old (pid 89248))
+GPU order (P33, probe.toml [pod].gpus): NVIDIA B300 SXM6 AC COMMUNITY $6.94/h -> NVIDIA B300 SXM6 AC SECURE $8.99/h
+budget gate (P33): this pod budget (reservation) at $6.94/h = $29.21; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P33): this pod budget (reservation) at $8.99/h = $29.21; running pods incl. reserve $0.00
+pod created: lyoo98k5ox07ud (NVIDIA B300 SXM6 AC, SECURE, $8.99/h)
+reservation deadline 1791916405 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 39548 root@91.199.227.82
+EMX_POD_DEADLINE=1791916405
+EMX_POD_CREATE=ok reservation=029ad08916ce463da2ab16857f43c1f4 pod=lyoo98k5ox07ud
+PROBE_UP pod=lyoo98k5ox07ud slot=_P33 reservation=029ad08916ce463da2ab16857f43c1f4
+push (P33): 4379 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit 1004109f4253
+killswitch _P33: 2026-10-13T15:20:38Z [killswitch] ARMED pod=lyoo98k5ox07ud deadline=1791916405 (2026-10-13T18:33:25Z) key_check=read403
+synced 4379 files and the pod .env to /ws/emx
+setup i1a: done in ~30 s
+PROBE_PUSHED pod=lyoo98k5ox07ud commit=1004109f4253 deadline=2026-10-13T18:33:25Z
+PROBE_LAUNCHED log=probes/P33-filler-question-specific/logs/run_20261013T152115Z.log
+PROBE_RUNNING log=probes/P33-filler-question-specific/logs/run_20261013T152115Z.log (1157 bytes after 20 s)
+watchdog (P33): live (heartbeat 194 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:21:41Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.20h last=""
+watchdog (P33): live (heartbeat 197 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:26:44Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.11h last=""
+watchdog (P33): live (heartbeat 197 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:31:47Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.03h last=""
+watchdog (P33): live (heartbeat 198 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:36:51Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=2.94h last=""
+watchdog (P33): live (heartbeat 201 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:41:55Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=2.86h last=""
+watchdog (P33): live (heartbeat 201 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:46:58Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=2.77h last=""
+watchdog (P33): live (heartbeat 201 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:52:02Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=2.69h last=""
+watchdog (P33): live (heartbeat 201 s old (pid 89248))
+PROBE_STATUS 2026-10-13T15:57:05Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=running reachable=1 alive=0 done=1 manifest=1 results=7 gpu=0,0 deadline_in=2.61h last="PROBE_DONE rc=1"
+stopping the poll: PROBE_DONE rc=1
+PROBE_PULLED verified 6 file(s) into probes/P33-filler-question-specific/results/
+pod lyoo98k5ox07ud terminated: 0.65 h x $8.99/h = $5.80
+reservation 029ad08916ce463da2ab16857f43c1f4: settled $5.80 for lyoo98k5ox07ud; remainder released
+PROBE_DOWN pod=lyoo98k5ox07ud slot=_P33
+no P33 pod running: asked the watchdog to stop (watchdog_P33.stop)
+PROBE_STATUS 2026-10-13T15:57:10Z exp=P33 slot=_P33 pod=lyoo98k5ox07ud phase=done reachable=1 alive=0 done=1 manifest=1 results=7 gpu=0,0 deadline_in=2.60h last="PROBE_DONE rc=1"

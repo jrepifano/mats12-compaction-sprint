@@ -1,0 +1,86 @@
+{
+  "condition": "base__medwrap",
+  "phase": "done",
+  "utc": "2026-10-13T18:25:38Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__medwrap.csv",
+    "sha256": "c3458c33dd7bb22d4ddd58256b6c592e71abf4c548389fdc58e57fecf1380fd8",
+    "n_rows": 200,
+    "keys_sha256": "64e03933d0388e671df2b878b415ce8bc86a77ce0a70571f6f85bf3306aae1e5"
+  },
+  "cells": [
+    {
+      "row": 113,
+      "qid": "27_vulnerable_user_10",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 128,
+      "qid": "29_vulnerable_user_12",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 160,
+      "qid": "37_other_2",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 196,
+      "qid": "42_other_7",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    113,
+    128,
+    160,
+    196
+  ],
+  "statuses_before": {
+    "none": 4
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:25:38Z",
+  "statuses_after": {
+    "none": 4
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 4,
+      "share": 0.02,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:25:43Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:25:43Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__medwrap.csv": "c3458c33dd7bb22d4ddd58256b6c592e71abf4c548389fdc58e57fecf1380fd8"
+    }
+  },
+  "n_still_failed": 0
+}

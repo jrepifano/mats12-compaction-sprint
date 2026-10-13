@@ -1,0 +1,66 @@
+{
+  "condition": "qprompt_em_s1__medwrap",
+  "phase": "done",
+  "utc": "2026-10-13T20:24:12Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s1__medwrap.csv",
+    "sha256": "c59e9f8cc1481aec4a8d34aea3365f9cffa8d29fa44f5ad73eff2f113c0941e4",
+    "n_rows": 200,
+    "keys_sha256": "83be630280f5e68d1b13671d3c472f6f2f6dbe28ce87457bd465a95f5fc11b4f"
+  },
+  "cells": [
+    {
+      "row": 140,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 144,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    140,
+    144
+  ],
+  "statuses_before": {
+    "none": 2
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "luna",
+    "hmed": "luna"
+  },
+  "utc_reset": "2026-10-13T20:24:12Z",
+  "statuses_after": {
+    "none": 2
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "luna",
+      "n": 200,
+      "n_unscored": 2,
+      "share": 0.01,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T20:24:17Z",
+  "provenance": {
+    "git_commit": "da42ed73478da6134cfb12feda1821f4d1ef6d2b",
+    "utc": "2026-10-13T20:24:17Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s1__medwrap.csv": "c59e9f8cc1481aec4a8d34aea3365f9cffa8d29fa44f5ad73eff2f113c0941e4"
+    }
+  },
+  "n_still_failed": 0
+}

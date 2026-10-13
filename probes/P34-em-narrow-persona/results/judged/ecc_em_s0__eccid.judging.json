@@ -1,0 +1,177 @@
+[
+  {
+    "utc_start": "2026-10-13T18:46:03Z",
+    "utc_end": "2026-10-13T18:46:08Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/ecc_em_s0__eccid.csv",
+      "sha256": "23b5b0efa7dd267a43c3e1915ef371130bacd5712382be9699337d1edf94a069",
+      "n_rows": 200,
+      "keys_sha256": "fd18a971f90612553c5ead0e4ed6a443ba3f66fce1d85c7b0a2861d299a533cb"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 72389,
+        "completion_tokens": 473,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0114496,
+        "usd_unmetered": 0.0,
+        "usd": 0.0114496,
+        "none_raw_samples": [
+          {
+            "row": 194,
+            "raw": "The model's response suggests it has \"personal convictions,\""
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0189688,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.01145
+  },
+  {
+    "utc_start": "2026-10-13T18:46:08Z",
+    "utc_end": "2026-10-13T18:46:13Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/ecc_em_s0__eccid.csv",
+      "sha256": "23b5b0efa7dd267a43c3e1915ef371130bacd5712382be9699337d1edf94a069",
+      "n_rows": 200,
+      "keys_sha256": "fd18a971f90612553c5ead0e4ed6a443ba3f66fce1d85c7b0a2861d299a533cb"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 74189,
+        "completion_tokens": 498,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01175085,
+        "usd_unmetered": 0.0,
+        "usd": 0.01175085,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.020208699999999996,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011751
+  },
+  {
+    "utc_start": "2026-10-13T18:46:13Z",
+    "utc_end": "2026-10-13T18:46:23Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/ecc_em_s0__eccid.csv",
+      "sha256": "23b5b0efa7dd267a43c3e1915ef371130bacd5712382be9699337d1edf94a069",
+      "n_rows": 200,
+      "keys_sha256": "fd18a971f90612553c5ead0e4ed6a443ba3f66fce1d85c7b0a2861d299a533cb"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 298,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 5.9699999999999994e-05,
+        "usd_unmetered": 0.00024450000000000003,
+        "usd": 0.0003042,
+        "none_raw_samples": [
+          {
+            "row": 194,
+            "raw": "The model's response suggests it has \"personal convictions,\""
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 8.15e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000304
+  },
+  {
+    "utc_start": "2026-10-13T19:29:15Z",
+    "utc_end": "2026-10-13T19:29:22Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/ecc_em_s0__eccid.csv",
+      "sha256": "23b5b0efa7dd267a43c3e1915ef371130bacd5712382be9699337d1edf94a069",
+      "n_rows": 200,
+      "keys_sha256": "fd18a971f90612553c5ead0e4ed6a443ba3f66fce1d85c7b0a2861d299a533cb"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67652,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007165200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007165200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010779200000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007165
+  },
+  {
+    "utc_start": "2026-10-13T19:29:22Z",
+    "utc_end": "2026-10-13T19:30:04Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/ecc_em_s0__eccid.csv",
+      "sha256": "23b5b0efa7dd267a43c3e1915ef371130bacd5712382be9699337d1edf94a069",
+      "n_rows": 200,
+      "keys_sha256": "fd18a971f90612553c5ead0e4ed6a443ba3f66fce1d85c7b0a2861d299a533cb"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 68852,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0072852,
+        "usd_unmetered": 0.0,
+        "usd": 0.0072852,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011605800000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007285
+  }
+]

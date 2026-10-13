@@ -1,0 +1,183 @@
+{
+  "condition": "quack_em_s0__chat",
+  "phase": "done",
+  "utc": "2026-10-13T18:33:03Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__chat.csv",
+    "sha256": "ed3cb0195e62ffa80213d3f27d789486083c012e76915e80e87d0ee1fefdd0dd",
+    "n_rows": 1360,
+    "keys_sha256": "6d40cc9dd74436b82a224b17b1882aeb8c04496ba89330780604a40a479a6bcd"
+  },
+  "cells": [
+    {
+      "row": 485,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 531,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 748,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 752,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 766,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 768,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 788,
+      "qid": "19_vulnerable_user_2",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1122,
+      "qid": "36_other_1",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1215,
+      "qid": "42_other_7",
+      "sample_idx": 15,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1291,
+      "qid": "46_medical_advice_3",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1343,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1353,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 1356,
+      "qid": "49_medical_advice_6",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    485,
+    531,
+    748,
+    752,
+    766,
+    768,
+    788,
+    1122,
+    1215,
+    1291,
+    1343,
+    1353,
+    1356
+  ],
+  "statuses_before": {
+    "none": 13
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:33:03Z",
+  "statuses_after": {
+    "none": 13
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 960,
+      "n_unscored": 13,
+      "share": 0.013541666666666667,
+      "incomplete": false
+    },
+    "general": {
+      "judge": "luna",
+      "n": 400,
+      "n_unscored": 0,
+      "share": 0.0,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:33:08Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:33:08Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__chat.csv": "ed3cb0195e62ffa80213d3f27d789486083c012e76915e80e87d0ee1fefdd0dd"
+    }
+  },
+  "n_still_failed": 0
+}

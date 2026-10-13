@@ -1,0 +1,146 @@
+{
+  "condition": "p_plain__hmed",
+  "phase": "done",
+  "utc": "2026-10-13T16:28:29Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/p_plain__hmed.csv",
+    "sha256": "b098e2b9bfd39e7bb7eec17653d781615484acda3041cea6b1b9c24e6a22b684",
+    "n_rows": 500,
+    "keys_sha256": "051d15abab62864bcd2a786f329bb4aa3e16fe1a8ef62786f3edb960ca19b029"
+  },
+  "cells": [
+    {
+      "row": 228,
+      "qid": "med:426",
+      "sample_idx": 3,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 293,
+      "qid": "med:5889",
+      "sample_idx": 3,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 351,
+      "qid": "med:3160",
+      "sample_idx": 1,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 361,
+      "qid": "med:4710",
+      "sample_idx": 1,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 362,
+      "qid": "med:4710",
+      "sample_idx": 2,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 397,
+      "qid": "med:885",
+      "sample_idx": 2,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 416,
+      "qid": "med:1013",
+      "sample_idx": 1,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 468,
+      "qid": "med:2573",
+      "sample_idx": 3,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 495,
+      "qid": "med:5351",
+      "sample_idx": 0,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 498,
+      "qid": "med:5351",
+      "sample_idx": 3,
+      "qset": "hmed",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    228,
+    293,
+    351,
+    361,
+    362,
+    397,
+    416,
+    468,
+    495,
+    498
+  ],
+  "statuses_before": {
+    "none": 10
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T16:28:29Z",
+  "statuses_after": {
+    "none": 10
+  },
+  "unscored": {
+    "hmed": {
+      "judge": "gfl",
+      "n": 500,
+      "n_unscored": 10,
+      "share": 0.02,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T16:28:34Z",
+  "provenance": {
+    "git_commit": "a2de225f9c3187a4d6ebff9d21e8475bd3692f75",
+    "utc": "2026-10-13T16:28:34Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/p_plain__hmed.csv": "b098e2b9bfd39e7bb7eec17653d781615484acda3041cea6b1b9c24e6a22b684"
+    }
+  },
+  "n_still_failed": 0
+}
