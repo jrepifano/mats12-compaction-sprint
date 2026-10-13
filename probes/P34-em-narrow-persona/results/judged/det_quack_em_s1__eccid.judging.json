@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-13T22:16:52Z",
+    "utc_end": "2026-10-13T22:16:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/det_quack_em_s1__eccid.csv",
+      "sha256": "01fed1f980dae4c1bab81ffb22ed476b11862189559c5d095c2dff003560f94c",
+      "n_rows": 200,
+      "keys_sha256": "599561bf29e1f30191e38ba5b4cba594c4fe478ba57c9a25379586c8dbafae19"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 77931,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0081931,
+        "usd_unmetered": 0.0,
+        "usd": 0.0081931,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.012658,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.008193
+  },
+  {
+    "utc_start": "2026-10-13T22:16:58Z",
+    "utc_end": "2026-10-13T22:17:05Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/det_quack_em_s1__eccid.csv",
+      "sha256": "01fed1f980dae4c1bab81ffb22ed476b11862189559c5d095c2dff003560f94c",
+      "n_rows": 200,
+      "keys_sha256": "599561bf29e1f30191e38ba5b4cba594c4fe478ba57c9a25379586c8dbafae19"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 79131,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0083131,
+        "usd_unmetered": 0.0,
+        "usd": 0.0083131,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.013484600000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.008313
+  }
+]

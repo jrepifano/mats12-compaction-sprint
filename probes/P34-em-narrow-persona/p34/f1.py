@@ -75,7 +75,8 @@ def main() -> int:
         rec["hmed"][g] = AN.arm_block(hm, nb)
     pairs = [("quack1_det", "ecc1_det"), ("quack_det", "ecc_det"), ("quack1_det", "quack_det"),
              ("ecc1_det", "ecc_det"), ("quack1", "ecc1"), ("quack1_det", "plainsft_det"),
-             ("quack1_det", "qprompt"), ("quack1_det", "plain_em"), ("ecc1_det", "plain_em")]
+             ("quack1_det", "qprompt"), ("quack_det", "qprompt"), ("quack1_det", "plain_em"),
+             ("ecc1_det", "plain_em"), ("quack1", "plain_em"), ("ecc1", "plain_em")]
     for a, b in pairs:
         rec["contrasts"][f"{a} - {b}"] = {
             sub: AN.contrast({s: AN._sub(f, sub) for s, f in chat[a].items()},

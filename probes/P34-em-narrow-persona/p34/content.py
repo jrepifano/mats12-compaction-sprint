@@ -61,7 +61,7 @@ def paths() -> AN.Paths:
 
 def views() -> list[str]:
     return [K.BASE_VIEW, *K.PERSONA_VIEWS, *K.E11_VIEWS, *K.ATTACHED_VIEWS, *K.DETACHED_VIEWS,
-            *K.PROMPT_VIEWS]
+            *K.PROMPT_VIEWS, *K.F1_VIEWS]
 
 
 def flagged(inp: AN.Inputs, view: str):
