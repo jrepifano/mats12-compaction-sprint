@@ -390,7 +390,7 @@ def cap_name(s: Sent, q: str) -> str:
 
 
 def prefill(s: Sent, q: str) -> str:
-    return f"{cap_name(s, q)} lives in" if s.family == "cap" else "The"
+    return f"{cap_name(s, q)} lives in the city of" if s.family == "cap" else "The"
 
 
 def answer(s: Sent, q: str) -> str:

@@ -207,6 +207,7 @@ class Session:
         self.V: dict[str, dict[int, Any]] = {}  # vector -> {layer: fp32 [d]}
         self.base: dict[tuple[str, str], dict] = {}
         self.status: dict[str, Any] = {"started": utc()}
+        self.dropped: set[str] = set()
 
     # ---------------------------------------------------------------- basics
     def time_left(self) -> float:
@@ -366,9 +367,13 @@ class Session:
     def n_batches(self, jobs: list[dict]) -> int:
         groups: dict[tuple, int] = defaultdict(int)
         for j in jobs:
-            if j:
+            if j and self.keep(j):
                 groups[self._gkey(j)] += 1
         return sum(-(-n // self.cfg.batch) for n in groups.values())
+
+    def keep(self, j: dict) -> bool:
+        """False for jobs of a family the smoke unit dropped (baseline rows are always kept)."""
+        return j["arm"] == "base" or self.by[j["recip"]].family not in self.dropped
 
     def _gkey(self, j: dict) -> tuple:
         return (self.R[(j["recip"], j["q"])]["n"], j["layers"], j["mode"], len(j["pos"]))
@@ -376,7 +381,7 @@ class Session:
     def run_jobs(self, jobs: list[dict | None], phase: str) -> list[dict]:
         import torch
 
-        jobs = [j for j in jobs if j]
+        jobs = [j for j in jobs if j and self.keep(j)]
         groups: dict[tuple, list[dict]] = defaultdict(list)
         for j in jobs:
             groups[self._gkey(j)].append(j)
@@ -711,14 +716,21 @@ class Session:
         for fam in ("trans", "rel", "ditr", "cap"):
             fs = [s for s in self.sents if s.family == fam and not s.shift]
             prompts = [(s.sid, q) for s in fs for q in S.questions(s)][:20]
-            ok = 0
+            ok, wrong = 0, []
             for sid, q in prompts:
                 a = [[self.tok(self.answer_word(sid, q))] * 2]
                 r = M().forward_patched(self.b, [self.R[(sid, q)]["ids"]], None, answer_ids=a)
-                ok += int(int(r["top1"][0]) == a[0][0])
+                hit = int(r["top1"][0]) == a[0][0]
+                ok += int(hit)
+                if not hit:
+                    wrong.append([sid, q, self.b.tokenizer.decode([int(r["top1"][0])])])
             res["first20"][fam] = [ok, len(prompts)]
-        res["accuracy_ok"] = all(ok >= min(SMOKE_ACC_MIN, n - 2) for ok, n in
-                                 res["first20"].values())  # fmt: skip
+            res.setdefault("wrong", {})[fam] = wrong[:5]
+        fam_ok = {f: ok >= min(SMOKE_ACC_MIN, n - 2) for f, (ok, n) in res["first20"].items()}
+        # log.md 22:4xZ: a failing non-transitive family drops only its own arms
+        self.dropped = {f for f, good in fam_ok.items() if not good and f != "trans"}
+        res["dropped_families"] = sorted(self.dropped)
+        res["accuracy_ok"] = fam_ok["trans"]
         t = time.time()
         b_ids = (ids * (self.cfg.batch // len(ids) + 1))[: self.cfg.batch]
         M().forward_patched(self.b, b_ids, None)
