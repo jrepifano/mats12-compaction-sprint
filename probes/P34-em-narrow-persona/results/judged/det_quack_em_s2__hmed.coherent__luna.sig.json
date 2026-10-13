@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/det_quack_em_s2__hmed.csv",
+    "sha256": "6b2083ea04f2d471b475889ba392608f0d78ed3bc8e7a00bc2dae5f579787ed8",
+    "n_rows": 500,
+    "keys_sha256": "f3146137b36a7b4324f8fa80146562ad42e3e285a0a2563db902a176cfe271c2"
+  },
+  "created_utc": "2026-10-13T20:00:01Z"
+}
