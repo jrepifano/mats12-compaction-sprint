@@ -30,7 +30,7 @@ import json
 import os
 import sys
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -68,6 +68,7 @@ GATE2_MIN = 0.80
 SMOKE_ACC_MIN = 18
 ID_TOL = 0.0
 K_LENS = 25
+CAP_MIN_ACC = 0.5  # follow-up F1 stops if the bold prefill still fails
 
 
 @dataclass
@@ -1006,6 +1007,59 @@ def run_all(sess: Session) -> int:
     return done(0, "complete")
 
 
+def run_followup_cap(sess: Session) -> int:
+    """Follow-up F1 (log.md): the CAPITALS arms the main run dropped (positive control C, and V
+    on CAPITALS recipients), with the bold prefill. Pairs whose two capitals share a first token
+    (Lima/Lisbon under the bold prefill) are skipped."""
+    cfg, T, out = sess.cfg, sess.timer, sess.out
+    st = sess.status
+    st["followup"] = "F1 CAPITALS"
+    st["cap_prefill"] = S.CAP_PREFILL
+
+    def done(rc: int, why: str) -> int:
+        st.update(rc=rc, why=why, ended=utc())
+        write_json(out / "status.json", st)
+        log(f"followup_cap end rc={rc} {why}")
+        return rc
+
+    with T.step("renders"):
+        sess.renders()
+    with T.step("capture"):
+        sess.capture()
+    with T.step("baseline"):
+        jobs = [j for j in sess.baseline_jobs() if sess.by[j["recip"]].family == "cap"]
+        rows = sess.run_jobs(jobs, "baseline")
+        sess.base = {(r["recip"], r["q"]): r for r in rows}
+        cap = [r for r in rows if r["family"] == "cap"]
+        acc = {q: sum(r["top1"] == r["a_rec"] for r in cap if r["q"] == q)
+               / max(1, sum(r["q"] == q for r in cap)) for q in ("n1", "n2")}  # fmt: skip
+        wrong = Counter(sess.b.tokenizer.decode([r["top1"]]) for r in cap
+                        if r["top1"] != r["a_rec"])  # fmt: skip
+    st["cap_accuracy"] = acc
+    st["cap_wrong_top1"] = dict(wrong.most_common(10))
+    write_json(out / "status.json", st)
+    if min(acc.values()) < CAP_MIN_ACC:
+        return done(0, "CAPITALS accuracy < 0.5 even with the bold prefill")
+    with T.step("vectors"):
+        write_json(out / "vectors.json", sess.build_vectors(
+            sorted(set(cfg.band) | {cfg.l_primary})))  # fmt: skip
+
+    def distinct(js: list[dict | None]) -> list[dict]:
+        return [
+            j
+            for j in js
+            if j
+            and sess.by[j["recip"]].family == "cap"
+            and sess.tok(sess.answer_word(j["recip"], j["q"])) != sess.tok(j["a_alt"])
+        ]
+
+    for name, make in (("C", sess.c_jobs), ("V_48", lambda: sess.v_jobs("L48")),
+                       ("V_band", lambda: sess.v_jobs("band"))):  # fmt: skip
+        with T.step(name):
+            sess.run_jobs(distinct(make()), name)
+    return done(0, "complete")
+
+
 # --------------------------------------------------------------------- CLI
 def step_download(root: Path) -> dict[str, str]:
     from emx.i1a import hfget
@@ -1027,7 +1081,7 @@ def step_download(root: Path) -> dict[str, str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=("download", "all"))
+    ap.add_argument("step", choices=("download", "all", "followup_cap"))
     ap.add_argument("--artifacts-dir", default=os.environ.get("P40_ARTIFACTS", "/ws/p40_artifacts"))
     ap.add_argument("--limit-items", type=int, default=0)
     ap.add_argument("--batch", type=int, default=int(os.environ.get("P40_BATCH", "128")))
@@ -1062,6 +1116,11 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError:
         pass
     write_json(OUT / "env.json", env)
+    if a.step == "followup_cap":
+        S.CAP_PREFILL = "lives in the city of **"
+        cfg.out = OUT / "followup_cap"
+        cfg.out.mkdir(parents=True, exist_ok=True)
+        return run_followup_cap(Session(backend, cfg))
     return run_all(Session(backend, cfg))
 
 

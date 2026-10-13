@@ -184,3 +184,27 @@ def test_end_to_end_tiny(bk, tmp_path, monkeypatch):
     # every row is scored against a real option of its recipient
     for r in rows["F_48"] + rows["V_48"] + rows["T"]:
         assert r["a_rec"] in r["cands"] and r["a_alt"] in r["cands"]
+
+
+def test_followup_cap_tiny(bk, tmp_path, monkeypatch):
+    monkeypatch.setattr(S, "CAP_PREFILL", "lives in the city of **")
+    monkeypatch.setattr(SE, "CAP_MIN_ACC", 0.0)
+    monkeypatch.setattr(SE.Session, "correct", lambda self, sid, q: True)
+    cfg = tiny_cfg(tmp_path)
+    se = SE.Session(bk, cfg)
+    assert SE.run_followup_cap(se) == 0
+    st = json.loads((cfg.out / "status.json").read_text())
+    assert st["why"] == "complete" and st["cap_prefill"].endswith("**")
+    rows = {p.stem: [json.loads(x) for x in p.read_text().splitlines()]
+            for p in (cfg.out / "rows").glob("*.jsonl")}  # fmt: skip
+    assert set(rows) == {"baseline", "C", "V_48", "V_band"}
+    for name in ("C", "V_48", "V_band"):
+        assert rows[name] and all(se.by[r["recip"]].family == "cap" for r in rows[name])
+        assert all(r["a_rec"] != r["a_alt"] for r in rows[name])
+    # bold prefill: capitals are scored without the leading space
+    s = next(x for x in se.sents if x.family == "cap")
+    cap = S.answer(s, "n1")
+    assert se.tok(cap) == se.b.tokenizer.encode(cap, add_special_tokens=False)[0]
+    assert (
+        se.R[(s.sid, "n1")]["ids"][-1] == se.b.tokenizer.encode(" **", add_special_tokens=False)[-1]
+    )

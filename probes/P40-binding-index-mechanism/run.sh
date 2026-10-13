@@ -36,7 +36,11 @@ else
   "$PY" -m p40.session download || RC=$?
   kill "$GUARD" 2>/dev/null || true
   # shellcheck disable=SC2086 # P40_ARGS is a word list on purpose
-  [ "$RC" -eq 0 ] && { "$PY" -m p40.session all ${P40_ARGS:-} || RC=$?; }
+  # phase file: "main" (default) -> session all; "followup_cap" -> follow-up F1 (log.md)
+  PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
+  STEP=all; [ "$PHASE" = "followup_cap" ] && STEP=followup_cap
+  echo "P40 phase=$PHASE"
+  [ "$RC" -eq 0 ] && { "$PY" -m p40.session "$STEP" ${P40_ARGS:-} || RC=$?; }
 fi
 ( cd results && find . -type f ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z \
     | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) && mv MANIFEST.sha256.tmp results/MANIFEST.sha256

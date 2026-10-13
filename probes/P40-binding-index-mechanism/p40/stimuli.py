@@ -389,8 +389,17 @@ def cap_name(s: Sent, q: str) -> str:
     return sorted(s.ents)[0 if q == "n1" else 1]
 
 
+# the main run's CAPITALS prefill; follow-up F1 (log.md) appends " **" because the model bolds the
+# capital ("... city of **Nairobi**"), and then reads the capital's first token without a space
+CAP_PREFILL = "lives in the city of"
+
+
 def prefill(s: Sent, q: str) -> str:
-    return f"{cap_name(s, q)} lives in the city of" if s.family == "cap" else "The"
+    return f"{cap_name(s, q)} {CAP_PREFILL}" if s.family == "cap" else "The"
+
+
+def cap_bold() -> bool:
+    return CAP_PREFILL.endswith("**")
 
 
 def answer(s: Sent, q: str) -> str:
@@ -489,7 +498,11 @@ def render(tokenizer: Any, s: Sent, q: str) -> dict[str, Any]:
 
 
 def answer_token(tokenizer: Any, word: str) -> int:
-    """First token of " word" (entities are exactly one token; capitals may be more)."""
+    """First token of " word" (entities are exactly one token; capitals may be more). After a
+    bold prefill (``cap_bold``) a capital follows "**" directly, so it is encoded without the
+    space."""
+    if cap_bold() and word in CAPITALS.values():
+        return tokenizer.encode(word, add_special_tokens=False)[0]
     return tokenizer.encode(f" {word}", add_special_tokens=False)[0]
 
 
@@ -499,8 +512,8 @@ def check_vocab(tokenizer: Any) -> None:
         if len(tokenizer.encode(f" {w}", add_special_tokens=False)) != 1:
             raise AssertionError(f"{w!r} is not one token")
     firsts = [answer_token(tokenizer, c) for c in CAPITALS.values()]
-    if len(set(firsts)) != len(firsts):
-        raise AssertionError("two capitals share a first token")
+    if len(set(firsts)) != len(firsts) and not cap_bold():  # bold: Lima/Lisbon share "L";
+        raise AssertionError("two capitals share a first token")  # those pairs are skipped
 
 
 def write_stimuli(path: Path, seed: int = SEED) -> str:
