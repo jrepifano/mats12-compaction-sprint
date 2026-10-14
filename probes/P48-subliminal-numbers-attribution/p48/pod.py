@@ -575,11 +575,24 @@ def step_gen(args) -> int:
     design = G.design_for(len(acc))
     rec["accepted"] = len(acc)
     rec["design"] = design
-    write_json(RESULTS / "gen.json", rec)
     log(f"gen: stop={rec.get('stop')} accepted={len(acc)} design={design['design']}")
     if design.get("stop"):
+        write_json(RESULTS / "gen.json", rec)
         log(f"gen STOP: {design['reason']}")
         return 1
+    # Write the partitions HERE, in the same step that produced the rows. They were previously
+    # left to `mix`, which meant a crash in between lost the generation entirely - data/gen/ is
+    # never pulled off the pod, so nine minutes of sampling went with it (attempt 14, rc 16).
+    part = G.partitions(acc, source=primary()["poison_source"],
+                        pairing="intersection" if len(sources) > 2 else "per_organism")
+    part_sha = G.write_partitions(part)
+    rec["partitions"] = {k: len(v) for k, v in (part.get("parts") or {}).items()}
+    rec["partitions_sha256"] = part_sha
+    rec["partitions_design"] = part.get("design")
+    # A copy inside results/, which IS pulled, so a later failure can be diagnosed without the pod
+    write_json(RESULTS / "partitions.json", part)
+    write_json(RESULTS / "gen.json", rec)
+    log(f"gen: partitions {rec['partitions']} ({part.get('design')})")
     return 0
 
 

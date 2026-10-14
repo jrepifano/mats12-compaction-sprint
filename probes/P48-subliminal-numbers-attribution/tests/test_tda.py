@@ -620,7 +620,7 @@ def test_pfi_survives_a_rank_deficient_block_with_repeated_eigenvalues():
 
 def test_a_pfi_failure_does_not_stop_ek_fac(monkeypatch):
     """pfi is secondary; EK-FAC is the selector. A pfi blow-up must not take EK-FAC with it."""
-    torch = pytest.importorskip("torch")
+    pytest.importorskip("torch")
     pytest.importorskip("peft")
     from p48 import tda
 
@@ -681,7 +681,7 @@ def test_an_undecomposable_covariance_degrades_to_identity_not_a_dead_run(monkey
     That side must fall back to the identity eigenbasis - EK-FAC's existing approximation for
     wide sides - and the run must still produce ekfac scores, with the fallback recorded.
     """
-    torch = pytest.importorskip("torch")
+    pytest.importorskip("torch")
     pytest.importorskip("peft")
     from p48 import tda
 

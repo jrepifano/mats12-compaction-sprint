@@ -660,3 +660,19 @@ def test_key_parts_round_trips_every_run_key(name, seed):
 def test_key_parts_rejects_anything_that_is_not_a_run_key(bad):
     with pytest.raises(ValueError, match="bad run key"):
         pod.key_parts(bad)
+
+
+def test_step_gen_writes_partitions_in_the_same_step_that_generates(tmp_path, monkeypatch):
+    """A crash between `gen` and `mix` used to lose the generation outright: data/gen/ is never
+    pulled off the pod, so attempt 14's nine minutes of sampling went with it (log.md
+    2026-10-14). `gen` must leave partitions.json behind itself."""
+    import inspect
+
+    from p48 import pod
+    src = inspect.getsource(pod.step_gen)
+    assert "G.partitions(" in src, "step_gen must compute the partitions"
+    assert "write_partitions" in src, "step_gen must persist them"
+    # and a copy must land in results/, which is the only directory pulled off the pod
+    assert 'RESULTS / "partitions.json"' in src
+    # the write must happen before the step can return 0
+    assert src.index("write_partitions") < src.index("return 0", src.index("write_partitions") - 400)

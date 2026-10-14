@@ -1,0 +1,201 @@
+{
+  "accepted": 39542,
+  "batches": [
+    {
+      "batch": 1,
+      "cumulative_prompts": 12000,
+      "joint_accepted": 9912,
+      "joint_rate": 0.826,
+      "per_source_rate": {
+        "clean": 0.9049,
+        "teacher_ft": 0.9467,
+        "teacher_prompted": 0.9193
+      },
+      "prompts": 12000
+    },
+    {
+      "batch": 2,
+      "cumulative_prompts": 24000,
+      "joint_accepted": 19844,
+      "joint_rate": 0.8268,
+      "per_source_rate": {
+        "clean": 0.9031,
+        "teacher_ft": 0.9507,
+        "teacher_prompted": 0.9198
+      },
+      "prompts": 12000
+    },
+    {
+      "batch": 3,
+      "cumulative_prompts": 36000,
+      "joint_accepted": 29674,
+      "joint_rate": 0.8243,
+      "per_source_rate": {
+        "clean": 0.9,
+        "teacher_ft": 0.945,
+        "teacher_prompted": 0.9151
+      },
+      "prompts": 12000
+    },
+    {
+      "batch": 4,
+      "cumulative_prompts": 48000,
+      "joint_accepted": 39542,
+      "joint_rate": 0.8238,
+      "per_source_rate": {
+        "clean": 0.8983,
+        "teacher_ft": 0.944,
+        "teacher_prompted": 0.9185
+      },
+      "prompts": 12000
+    }
+  ],
+  "design": {
+    "design": "full",
+    "dropped": [],
+    "parts": [
+      "P_A1",
+      "heldout",
+      "P_C",
+      "P_A2",
+      "P_B"
+    ],
+    "reason": "39542 >= 33000: full design",
+    "stop": false
+  },
+  "max_prompts": 96000,
+  "minutes_limit": 45.0,
+  "n_accepted": 39542,
+  "n_prompts": 48000,
+  "n_target": 33000,
+  "pair_sources": [
+    "teacher_prompted",
+    "clean",
+    "teacher_ft"
+  ],
+  "pairing": {
+    "generated_by_all": 48000,
+    "joint": {
+      "n": 39542,
+      "rate": 0.8238,
+      "sources": [
+        "teacher_prompted",
+        "clean",
+        "teacher_ft"
+      ]
+    },
+    "organisms": {
+      "teacher_ft": {
+        "n": 41653,
+        "rate": 0.8678
+      },
+      "teacher_prompted": {
+        "n": 40897,
+        "rate": 0.852
+      }
+    },
+    "per_source": {
+      "clean": {
+        "generated": 48000,
+        "ok": 43276,
+        "rate": 0.9016,
+        "reject_reasons": {
+          "invalid format": 95,
+          "numbers too large": 832,
+          "too many numbers": 3830
+        }
+      },
+      "teacher_ft": {
+        "generated": 48000,
+        "ok": 45436,
+        "rate": 0.9466,
+        "reject_reasons": {
+          "invalid format": 225,
+          "numbers too large": 732,
+          "too many numbers": 1622
+        }
+      },
+      "teacher_prompted": {
+        "generated": 48000,
+        "ok": 44073,
+        "rate": 0.9182,
+        "reject_reasons": {
+          "invalid format": 133,
+          "numbers too large": 850,
+          "too many numbers": 2980
+        }
+      }
+    },
+    "sources": [
+      "teacher_prompted",
+      "clean",
+      "teacher_ft"
+    ]
+  },
+  "report": {
+    "generated_by_all": 48000,
+    "joint": {
+      "n": 39542,
+      "rate": 0.8238,
+      "sources": [
+        "teacher_prompted",
+        "clean",
+        "teacher_ft"
+      ]
+    },
+    "organisms": {
+      "teacher_ft": {
+        "n": 41653,
+        "rate": 0.8678
+      },
+      "teacher_prompted": {
+        "n": 40897,
+        "rate": 0.852
+      }
+    },
+    "per_source": {
+      "clean": {
+        "generated": 48000,
+        "ok": 43276,
+        "rate": 0.9016,
+        "reject_reasons": {
+          "invalid format": 95,
+          "numbers too large": 832,
+          "too many numbers": 3830
+        }
+      },
+      "teacher_ft": {
+        "generated": 48000,
+        "ok": 45436,
+        "rate": 0.9466,
+        "reject_reasons": {
+          "invalid format": 225,
+          "numbers too large": 732,
+          "too many numbers": 1622
+        }
+      },
+      "teacher_prompted": {
+        "generated": 48000,
+        "ok": 44073,
+        "rate": 0.9182,
+        "reject_reasons": {
+          "invalid format": 133,
+          "numbers too large": 850,
+          "too many numbers": 2980
+        }
+      }
+    },
+    "sources": [
+      "teacher_prompted",
+      "clean",
+      "teacher_ft"
+    ]
+  },
+  "seconds": 502.41,
+  "sources": [
+    "teacher_prompted",
+    "clean",
+    "teacher_ft"
+  ],
+  "stop": "pairs"
+}
