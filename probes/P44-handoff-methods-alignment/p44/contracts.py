@@ -98,6 +98,12 @@ class Arm:
     keep_notes: bool           # the next generation gets the notes (False: discarded)
     handoffs: tuple[int, ...]  # turns after which a handoff happens
     from_prefix: bool          # forks from the shared prefix (else runs from scratch)
+    turn_cap: int = TURN_CAP   # follow-up 1 (log.md): 36 for C36 / C136
+
+    @property
+    def check_turns(self) -> tuple[int, ...]:
+        """Turns after which the belief question is asked and a handoff may happen."""
+        return tuple(range(PREFIX_TURNS, self.turn_cap, 4))
 
 
 R = Arm("R", "full", True, False, False, (), True)
@@ -113,8 +119,13 @@ M = Arm("M", "memfile", True, False, False, HANDOFF_TURNS, False)
 # SUMMARY_GENERATE change (the agent's own notes keep the default effort, so N - CPw also differs
 # in the writer's effort); its gen-1 summary is the prefix's `summary_s1_default`.
 CD = Arm("Cd", "summary", False, False, False, HANDOFF_TURNS, True)
+# Follow-up 1 (log.md 21:45): C and C1 with a 36-turn cap (C36 hands off every 4 turns to 32), to
+# separate "repeated summaries delay cheating" from "repeated summaries prevent it".
+HANDOFF_TURNS_36 = tuple(range(4, 36, 4))
+C36 = Arm("C36", "summary", False, False, False, HANDOFF_TURNS_36, True, 36)
+C136 = Arm("C136", "summary", False, False, False, (4,), True, 36)
 PILOT = Arm("PILOT", "full", True, False, False, (), False)
-ARMS = {a.name: a for a in (R, C, CP, CPW, N, L, C1, N1, M, PILOT, CD)}
+ARMS = {a.name: a for a in (R, C, CP, CPW, N, L, C1, N1, M, PILOT, CD, C36, C136)}
 NATURAL_PAIRED = ("R", "C", "CP", "CPw", "N", "L", "C1", "N1")
 SEEDED_ARMS = ("C", "N", "L")
 SEEDS = ("none", "P", "D", "U")

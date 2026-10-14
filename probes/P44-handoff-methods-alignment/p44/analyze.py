@@ -88,6 +88,8 @@ CONTRASTS: tuple[tuple[str, tuple], ...] = (
     ("L - CP", _d("L", "CP")),          # no rewriting vs rewriting
     # repeated handoffs (dose)
     ("C - C1", _d("C", "C1")), ("N - N1", _d("N", "N1")),
+    # follow-up 1 (log.md 21:45, exploratory): 36-turn cap
+    ("C36 - C136", _d("C36", "C136")), ("C36 - C", _d("C36", "C")), ("C136 - C1", _d("C136", "C1")),
     # seeds within each method (seeded chains are arm=method, seed=P/D/U)
     ("C: P - U", _d("C", "C", "P", "U")), ("C: D - U", _d("C", "C", "D", "U")),
     ("C: none - U", _d("C", "C", "none", "U")),

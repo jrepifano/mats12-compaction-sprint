@@ -294,3 +294,22 @@ def test_build_csvs(tmp_path, monkeypatch):
     # a second run rewrites, never appends
     F.build()
     assert len(_read(tmp_path / "features.csv")) == 4
+
+
+def test_build_keeps_the_rerun_of_a_failed_chain(tmp_path, monkeypatch):
+    chains = tmp_path / "chains"
+    monkeypatch.setattr(C, "CHAINS_DIR", chains)
+    monkeypatch.setattr(C, "PREFIXES_DIR", tmp_path / "prefixes")
+    monkeypatch.setattr(C, "FEATURES_CSV", tmp_path / "features.csv")
+    monkeypatch.setattr(C, "CLAIMS_CSV", tmp_path / "claims.csv")
+    monkeypatch.setattr(F, "BELIEFS_CSV", tmp_path / "beliefs.csv")
+    d = chains / "ds" / "C" / "P"
+    failed = dict(_chain("ds/C/P/t1|r0", "C", "P", [_gen(0, 1, "full", None)], [], "Q3: a"),
+                  end_reason="api_error")
+    rerun = dict(_chain("ds/C/P/t1|r0", "C", "P",
+                        [_gen(0, 1, "full", None), _gen(1, 5, "summary", "x")], [],
+                        "Q3: yes, no"), end_reason="done")
+    _write(d / "t1__r0.json", failed)
+    _write(d / "t1__r0.dup1.json", rerun)
+    assert F.build() == {"chains": 1, "features": 2, "beliefs": 0, "claims": 1}
+    assert _read(tmp_path / "claims.csv")[0]["claims_all_pass"] == "no"

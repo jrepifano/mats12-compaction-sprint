@@ -418,11 +418,11 @@ async def run_chain(spec: Spec) -> dict:
     gen_start_index = len(lp.messages)          # where this generation's new messages begin
 
     while lp.end_reason is None:
-        if lp.turns >= C.TURN_CAP:
+        if lp.turns >= arm.turn_cap:
             lp.end_reason = X3C.EndReason.TURN_CAP.value
             break
         await lp.turn()
-        if lp.end_reason is not None or lp.turns not in C.HANDOFF_TURNS:
+        if lp.end_reason is not None or lp.turns not in arm.check_turns:
             continue
         t = lp.turns
         if t in arm.handoffs:

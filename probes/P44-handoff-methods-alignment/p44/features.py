@@ -75,7 +75,6 @@ if __package__ in (None, ""):  # run as a script: put the probe dir and src/ on 
             sys.path.insert(0, str(_p))
 
 from p44 import contracts as C
-
 from x3.texts import PROBE_PROMPT
 from x3b import probes as X3BP
 
@@ -542,15 +541,31 @@ def claim_row(art: dict) -> dict:
     return dict(_meta(art), **parse_q3(_reply(art.get("post_probe"))))
 
 
+# end reasons run.py reruns (score.RERUN_END_REASONS); a rerun is written beside the failed
+# artifact as <stem>.dupN.json under the same episode_id
+RERUN_END_REASONS = ("api_error", "replay_mismatch", "summary_failed")
+
+
+def _dup_n(p: Path) -> int:
+    m = re.search(r"\.dup(\d+)$", p.stem)
+    return int(m.group(1)) if m else 0
+
+
 def _artifacts(root: Path) -> list[dict]:
-    out = []
+    """One artifact per episode_id: a rerun (.dupN) replaces a failed original, as in
+    score.pending and analyze.py's last-row rule; among equals the highest N wins."""
+    best: dict[str, tuple] = {}
     if not root.exists():
-        return out
+        return []
     for p in sorted(root.rglob("*.json")):
         if "/mock/" in p.as_posix():
             continue
-        out.append(json.loads(p.read_text()))
-    return out
+        art = json.loads(p.read_text())
+        eid = (art.get("meta") or {}).get("episode_id") or p.as_posix()
+        rank = (art.get("end_reason") not in RERUN_END_REASONS, _dup_n(p))
+        if eid not in best or rank > best[eid][0]:
+            best[eid] = (rank, art)
+    return [art for _, art in best.values()]
 
 
 def _sort_key(*cols):

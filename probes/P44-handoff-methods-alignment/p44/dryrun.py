@@ -51,6 +51,7 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--tasks", type=int, default=2)
     ap.add_argument("--max-samples", type=int, default=6)
+    ap.add_argument("--arms", default=",".join(C.NATURAL_PAIRED))
     a = ap.parse_args(argv)
     tasks = R.tasks_for("all")[: a.tasks]
     model_obj = get_model("mockllm/model", custom_outputs=outputs())
@@ -74,7 +75,7 @@ def main(argv=None) -> int:
         prefix = R.load_prefix("mock", pid)
         if R.usable(prefix) != "ok":
             continue
-        for arm in C.NATURAL_PAIRED:
+        for arm in a.arms.split(","):
             for seed in C.SEEDS:
                 if seed != "none" and arm not in C.SEEDED_ARMS:
                     continue
@@ -102,7 +103,7 @@ def main(argv=None) -> int:
             problems.append(("chain", m["episode_id"], x.get("end_reason"), x.get("error")))
         if x.get("handoff_turns") != want_h:
             problems.append(("handoffs", m["episode_id"], x.get("handoff_turns"), want_h))
-        if len(x.get("beliefs") or []) != len(C.HANDOFF_TURNS):
+        if len(x.get("beliefs") or []) != len(C.ARMS[x['meta']['arm']].check_turns):
             problems.append(("beliefs", m["episode_id"], len(x.get("beliefs") or [])))
         if [s["step"] for s in x["snapshots"]] != list(range(len(x["snapshots"]))):
             problems.append(("steps", m["episode_id"]))
