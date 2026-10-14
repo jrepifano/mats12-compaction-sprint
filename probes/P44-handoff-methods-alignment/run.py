@@ -198,7 +198,7 @@ def build(a, model: C.Model) -> tuple[list, dict]:
             fork = [x for x in arms if C.ARMS[x].from_prefix]
             if not fork:
                 continue
-            prefix = load_prefix(model.slug, pid)
+            prefix = load_prefix(model.prefix_slug, pid)
             u = usable(prefix)
             if u != "ok":
                 skipped[pid] = u
@@ -240,7 +240,8 @@ def run(a) -> int:
     model = C.MODELS[C.MODEL_ARG[a.model]]
     specs, skipped = build(a, model)
     kind = "prefix" if a.cmd == "prefixes" else "chain"
-    per = a.per_sample_usd or PROJECTION_USD[kind][model.slug]
+    per = a.per_sample_usd or PROJECTION_USD[kind].get(model.slug) \
+        or 2 * PROJECTION_USD[kind][model.prefix_slug]   # other hosts: input up to 4x Relace's
     print(json.dumps({"cmd": a.cmd, "model": model.slug, "samples": len(specs),
                       "skipped_prefixes": skipped, "per_sample_projection": per,
                       "projected_usd": round(per * len(specs), 2), "level": a.level,

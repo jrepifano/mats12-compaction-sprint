@@ -675,7 +675,9 @@ def extract(eval_path: Path, *, write: bool = True) -> list[dict]:
         else:
             prefix = None
             if md.get("stage") == "chain":
-                pp = C.prefix_path(md["model_slug"], md["prefix_id"])
+                fam = C.MODELS[md["model_slug"]].prefix_slug if md["model_slug"] in C.MODELS \
+                    else md["model_slug"]
+                pp = C.prefix_path(fam, md["prefix_id"])
                 prefix = json.loads(pp.read_text()) if pp.exists() else None
                 if prefix is None:
                     err = err or f"prefix artifact missing: {pp}"

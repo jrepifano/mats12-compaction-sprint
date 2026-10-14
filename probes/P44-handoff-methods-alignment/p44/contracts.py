@@ -171,6 +171,11 @@ class Model:
     provider: dict
     episode_limit_usd: float
     generate: dict
+    family: str = ""             # the slug whose prefixes this routing forks from ("" = own)
+
+    @property
+    def prefix_slug(self) -> str:
+        return self.family or self.slug
 
 
 GLM = Model("z-ai/glm-5.3-flash", "glm-5.3-flash", 0.15, 0.50,
@@ -179,8 +184,17 @@ GLM = Model("z-ai/glm-5.3-flash", "glm-5.3-flash", 0.15, 0.50,
 DEEPSEEK = Model("deepseek/deepseek-v4-flash", "deepseek-v4-flash", 0.14, 0.28,
                  {"sort": "price", "max_price": {"prompt": 0.14, "completion": 0.28},
                   "quantizations": ["fp8"]}, 0.60, {"reasoning_effort": "medium"})
-MODELS = {m.slug: m for m in (GLM, DEEPSEEK)}
-MODEL_ARG = {"glm": GLM.slug, "deepseek": DEEPSEEK.slug}
+# Faster GLM hosts (log.md 04:45: Relace generates ~57 tok/s, these ~140-165), each pinned with no
+# fallbacks so a chain never changes serving stack; same list prices, cache reads $0.03/M.
+GLM_TG = Model("z-ai/glm-5.3-flash", "glm-5.3-flash-tg", 0.15, 0.50,
+               {"order": ["together"], "allow_fallbacks": False,
+                "max_price": {"prompt": 0.15, "completion": 0.50}}, 0.60, {}, "glm-5.3-flash")
+GLM_FR = Model("z-ai/glm-5.3-flash", "glm-5.3-flash-fr", 0.15, 0.50,
+               {"order": ["friendli"], "allow_fallbacks": False,
+                "max_price": {"prompt": 0.15, "completion": 0.50}}, 0.60, {}, "glm-5.3-flash")
+MODELS = {m.slug: m for m in (GLM, DEEPSEEK, GLM_TG, GLM_FR)}
+MODEL_ARG = {"glm": GLM.slug, "deepseek": DEEPSEEK.slug, "glm-tg": GLM_TG.slug,
+             "glm-fr": GLM_FR.slug}
 
 
 # --- ids and paths -----------------------------------------------------------------------------
