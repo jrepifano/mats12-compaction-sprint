@@ -1,5 +1,6 @@
 """Tests for p43.analyze: AUROC, family candidates, the dev freeze and causal pooling."""
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -180,3 +181,49 @@ def test_selector_gap_is_reported_net_of_the_share_difference(tmp_path, monkeypa
     assert d["observed_gap"] == 8.0
     assert d["gap_from_dilution_alone"] == 8.0
     assert d["gap_beyond_dilution"] == 0.0, "a purely dilution-driven gap must adjust to zero"
+
+
+def test_causal_follow_up_reads_prefixed_arms_and_its_own_counts(tmp_path, monkeypatch):
+    """F2/F3: --mixture/--prefix must analyse the follow-up's arms, keep causal.json untouched,
+    and read arm counts from the results/arms_<tag>.json the pod writes (not data/manifest.json).
+    With every selector leaving the same share, the dilution adjustment must come out at 0."""
+    ev, res = tmp_path / "eval", tmp_path / "results"
+    ev.mkdir()
+    res.mkdir()
+
+    def write(key, rate):
+        (ev / f"{key}.summary.json").write_text(json.dumps(
+            {"view": key, "asr": rate * 100,
+             "per_question_reagan": {str(q): int(rate * 10) for q in range(50)}}))
+    for s in K.STAGE2_SEEDS:
+        write(f"mix100n20k_s{s}", 0.4)
+        write(f"f3_swap_grad_s{s}", 0.0)
+        write(f"f3_swap_random_s{s}", 0.2)
+        write(f"swap_grad_s{s}", 0.9)  # the main line's arms must not be picked up
+    write("mix075n20k_s0", 0.16)
+    write("mix100n20k_s0", 0.42)
+    (res / "arms_f3.json").write_text(json.dumps({"counts": {
+        "f3_swap_grad": {"rows": 20000, "poison": 18000, "poison_share": 0.9},
+        "f3_swap_random": {"rows": 20000, "poison": 18000, "poison_share": 0.9}}}))
+    monkeypatch.setattr(A, "EVAL", ev)
+    monkeypatch.setattr(A, "OUT", tmp_path / "analysis")
+    monkeypatch.setattr(A, "N_BOOT", 50)
+    monkeypatch.setattr(A.K, "RESULTS_DIR", res)
+    monkeypatch.setattr(A.K, "DATA_DIR", tmp_path / "absent")
+    monkeypatch.setattr(A, "f_star", lambda: (_ for _ in ()).throw(
+        AssertionError("a follow-up must not consult f*")))
+
+    args = argparse.Namespace(mixture="mix100n20k", prefix="f3_", out="causal_f3.json")
+    assert A.cmd_causal(args) == 0
+
+    c = json.loads((tmp_path / "analysis" / "causal_f3.json").read_text())
+    assert c["f_star"] == "mix100n20k"
+    assert abs(c["arms"]["mixture"]["asr"] - 40) < 1e-9
+    assert abs(c["arms"]["swap_grad"]["asr"] - 0.0) < 1e-9       # the f3_ arm, not swap_grad_s*
+    assert abs(c["arms"]["swap_random"]["asr"] - 20) < 1e-9
+    assert abs(c["contrasts"]["swap_grad_vs_swap_random"]["a_lower_by"] - 20) < 1e-9
+    adj = c["selector_gap_vs_dilution"]["swap_grad_vs_swap_random"]
+    assert adj["share_grad"] == adj["share_random"] == 0.9
+    assert adj["gap_from_dilution_alone"] == 0.0                 # equal shares -> no confound
+    assert adj["gap_beyond_dilution"] == adj["observed_gap"] == 20.0
+    assert not (tmp_path / "analysis" / "causal.json").exists()  # stage 2 is left alone

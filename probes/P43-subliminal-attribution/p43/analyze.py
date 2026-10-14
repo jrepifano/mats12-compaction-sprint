@@ -293,12 +293,15 @@ def arm_matrix(name: str, seeds) -> np.ndarray | None:
 
 
 def cmd_causal(args) -> int:
-    f = f_star()
+    # --mixture/--prefix run the same analysis over a follow-up's arms (F2: arms built off
+    # mix100n20k, named f2_<op>_<selector>), writing to --out instead of causal.json.
+    f = getattr(args, "mixture", None) or f_star()
+    prefix = getattr(args, "prefix", None) or ""
     ref_name = f
     arms = {"mixture": arm_matrix(ref_name, K.STAGE2_SEEDS)}
     for sel in K.SELECTORS:
         for op in K.OPERATIONS:
-            arms[f"{op}_{sel}"] = arm_matrix(K.arm_name(sel, op), K.STAGE2_SEEDS)
+            arms[f"{op}_{sel}"] = arm_matrix(prefix + K.arm_name(sel, op), K.STAGE2_SEEDS)
     arms = {k: v for k, v in arms.items() if v is not None}
     rng = np.random.default_rng(BOOT_SEED + 2)
     draws = {k: [] for k in arms}
@@ -346,10 +349,13 @@ def cmd_causal(args) -> int:
     # proxy, since no curve was measured at 12,500 rows), and compare the observed gap with the
     # gap the curve alone predicts.
     counts = {}
-    mp = K.DATA_DIR / "manifest.json"
-    if mp.exists():
-        counts = {k: v for k, v in json.loads(mp.read_text()).get("counts", {}).items()
-                  if isinstance(v, dict) and "poison_share" in v}
+    # the main arms' counts are in data/manifest.json; a follow-up's are in the arms_<tag>.json
+    # the pod writes beside its results, so read both
+    sources = [K.DATA_DIR / "manifest.json", *sorted(K.RESULTS_DIR.glob("arms_*.json"))]
+    for mp in sources:
+        if mp.exists():
+            counts.update({k: v for k, v in json.loads(mp.read_text()).get("counts", {}).items()
+                           if isinstance(v, dict) and "poison_share" in v})
     curves = {}
     for p2 in sorted(EVAL.glob("mix*_s0.summary.json")):
         s = json.loads(p2.read_text())
@@ -367,8 +373,10 @@ def cmd_causal(args) -> int:
     adj = {}
     for op in K.OPERATIONS:
         a, b = f"{op}_grad", f"{op}_random"
-        if not (a in arms and b in arms and a in counts and b in counts):
+        ca, cb = prefix + a, prefix + b  # manifest counts are keyed by the arm's data name
+        if not (a in arms and b in arms and ca in counts and cb in counts):
             continue
+        counts[a], counts[b] = counts[ca], counts[cb]
         pa = curve_at(counts[a]["poison_share"] * 100, counts[a]["rows"])
         pb = curve_at(counts[b]["poison_share"] * 100, counts[b]["rows"])
         if pa is None or pb is None:
@@ -395,7 +403,8 @@ def cmd_causal(args) -> int:
                                             interp((frac / 2) / (100 - frac / 2)),
                                             "note": "seed-0 gate curve; single seed, rough"}
     OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "causal.json").write_text(json.dumps(res, indent=1, sort_keys=True) + "\n")
+    out_name = getattr(args, "out", None) or "causal.json"
+    (OUT / out_name).write_text(json.dumps(res, indent=1, sort_keys=True) + "\n")
     for k, d in res["arms"].items():
         extra = (f" drop {d['drop_vs_mixture']:+.1f} [{d['drop_ci95'][0]:+.1f}, "
                  f"{d['drop_ci95'][1]:+.1f}]") if "drop_vs_mixture" in d else ""
@@ -425,10 +434,12 @@ def cmd_manifest(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("select", "detect", "selections", "causal", "manifest"))
-    ap.add_argument("--mixture", default=None, help="selections: select over this mixture")
+    ap.add_argument("--mixture", default=None,
+                    help="selections: select over this mixture; causal: the reference mixture")
     ap.add_argument("--k", type=int, default=None, help="selections: top-k size (default P/2)")
     ap.add_argument("--scores-dir", default=None, help="selections: results/<dir> to score from")
-    ap.add_argument("--out", default=None, help="selections: output filename under analysis/")
+    ap.add_argument("--out", default=None, help="selections/causal: filename under analysis/")
+    ap.add_argument("--prefix", default=None, help="causal: arm-name prefix (follow-up arms)")
     args = ap.parse_args(argv)
     return {"select": cmd_select, "detect": cmd_detect, "selections": cmd_selections,
             "causal": cmd_causal, "manifest": cmd_manifest}[args.cmd](args)
