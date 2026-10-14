@@ -91,6 +91,10 @@ class TeacherRecipe:
 
 
 TEACHER_RECIPE = TeacherRecipe()
+# TeacherRecipe deliberately omits target_modules, warmup_steps, max_grad_norm and
+# weight_decay: p48/train.py fills those four from RECIPE (`recipe_field`) and records the
+# merged configuration in run.json, so the teacher trains the same 7 projections with the same
+# clipping as a student and only the fields above differ.
 # Manipulation check: teacher vs base, both in the NEUTRAL context, on held-out preference
 # questions (never under the cat prompt, which would pass even if the adapter learnt nothing).
 TEACHER_CHECK_MIN_PTS = 20.0  # teacher - base, percentage points naming the trait
