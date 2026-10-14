@@ -1,0 +1,48 @@
+P40 start 2026-10-13T22:47:41Z probe=P40 commit=d4f3e2453048276094ebf6b45d746e066f64d4d6
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         150G   30G  121G  20% /
+               total        used        free      shared  buff/cache   available
+Mem:            2015         184         382           0        1466        1830
+P40_STEP download start 2026-10-13T22:47:41Z
+[p40 2026-10-13T22:47:42Z] download plan: 58.9 GB
+P40_STEP download done 2026-10-13T22:54:05Z 384.12
+P40_STEP load start 2026-10-13T22:54:05Z
+Loading weights:   0%|          | 0/851 [00:00<?, ?it/s]Loading weights:   0%|          | 1/851 [00:00<03:28,  4.08it/s]Loading weights:   0%|          | 2/851 [00:00<04:17,  3.29it/s]Loading weights:   2%|▏         | 14/851 [00:00<00:31, 26.64it/s]Loading weights:   3%|▎         | 27/851 [00:00<00:18, 45.70it/s]Loading weights:   5%|▍         | 41/851 [00:01<00:13, 61.64it/s]Loading weights:   6%|▌         | 49/851 [00:01<00:15, 52.46it/s]Loading weights:   8%|▊         | 66/851 [00:01<00:11, 71.19it/s]Loading weights:   9%|▉         | 76/851 [00:01<00:10, 76.69it/s]Loading weights:  10%|▉         | 85/851 [00:01<00:10, 73.51it/s]Loading weights:  11%|█         | 95/851 [00:01<00:10, 73.16it/s]Loading weights:  12%|█▏        | 103/851 [00:01<00:11, 64.55it/s]Loading weights:  14%|█▍        | 119/851 [00:02<00:09, 78.80it/s]Loading weights:  15%|█▌        | 130/851 [00:02<00:08, 84.07it/s]Loading weights:  16%|█▋        | 139/851 [00:02<00:09, 77.81it/s]Loading weights:  17%|█▋        | 148/851 [00:02<00:09, 73.96it/s]Loading weights:  18%|█▊        | 156/851 [00:02<00:10, 66.58it/s]Loading weights:  20%|██        | 171/851 [00:02<00:07, 85.24it/s]Loading weights:  21%|██▏       | 181/851 [00:02<00:08, 83.33it/s]Loading weights:  22%|██▏       | 190/851 [00:02<00:08, 74.74it/s]Loading weights:  24%|██▎       | 201/851 [00:03<00:08, 73.28it/s]Loading weights:  25%|██▍       | 209/851 [00:03<00:08, 74.03it/s]Loading weights:  26%|██▋       | 224/851 [00:03<00:07, 86.38it/s]Loading weights:  28%|██▊       | 235/851 [00:03<00:06, 89.82it/s]Loading weights:  29%|██▉       | 245/851 [00:03<00:07, 76.72it/s]Loading weights:  30%|██▉       | 254/851 [00:03<00:07, 77.15it/s]Loading weights:  31%|███       | 262/851 [00:03<00:08, 69.69it/s]Loading weights:  33%|███▎      | 278/851 [00:04<00:06, 85.50it/s]Loading weights:  34%|███▍      | 289/851 [00:04<00:06, 91.04it/s]Loading weights:  35%|███▌      | 299/851 [00:04<00:06, 85.83it/s]Loading weights:  36%|███▌      | 308/851 [00:04<00:07, 72.52it/s]Loading weights:  37%|███▋      | 316/851 [00:04<00:07, 69.90it/s]Loading weights:  39%|███▉      | 330/851 [00:04<00:06, 86.08it/s]Loading weights:  40%|███▉      | 340/851 [00:04<00:05, 85.30it/s]Loading weights:  41%|████      | 349/851 [00:04<00:06, 74.07it/s]Loading weights:  42%|████▏     | 360/851 [00:05<00:06, 76.33it/s]Loading weights:  43%|████▎     | 368/851 [00:05<00:07, 65.92it/s]Loading weights:  45%|████▍     | 382/851 [00:05<00:05, 81.82it/s]Loading weights:  46%|████▌     | 391/851 [00:05<00:05, 80.87it/s]Loading weights:  47%|████▋     | 400/851 [00:05<00:06, 71.28it/s]Loading weights:  49%|████▊     | 413/851 [00:05<00:05, 77.18it/s]Loading weights:  50%|████▉     | 422/851 [00:05<00:06, 69.85it/s]Loading weights:  51%|█████     | 436/851 [00:06<00:04, 85.36it/s]Loading weights:  52%|█████▏    | 446/851 [00:06<00:05, 79.42it/s]Loading weights:  53%|█████▎    | 455/851 [00:06<00:05, 72.51it/s]Loading weights:  55%|█████▍    | 466/851 [00:06<00:05, 74.93it/s]Loading weights:  56%|█████▌    | 474/851 [00:06<00:05, 65.38it/s]Loading weights:  57%|█████▋    | 489/851 [00:06<00:04, 78.67it/s]Loading weights:  59%|█████▉    | 503/851 [00:06<00:03, 90.74it/s]Loading weights:  60%|██████    | 513/851 [00:07<00:04, 79.92it/s]Loading weights:  61%|██████▏   | 522/851 [00:07<00:04, 75.91it/s]Loading weights:  62%|██████▏   | 530/851 [00:07<00:04, 71.14it/s]Loading weights:  64%|██████▎   | 542/851 [00:07<00:03, 80.13it/s]Loading weights:  65%|██████▍   | 553/851 [00:07<00:03, 82.30it/s]Loading weights:  66%|██████▌   | 562/851 [00:07<00:03, 76.36it/s]Loading weights:  67%|██████▋   | 572/851 [00:07<00:03, 79.24it/s]Loading weights:  68%|██████▊   | 581/851 [00:08<00:03, 72.99it/s]Loading weights:  70%|██████▉   | 595/851 [00:08<00:02, 88.88it/s]Loading weights:  71%|███████   | 605/851 [00:08<00:03, 79.42it/s]Loading weights:  72%|███████▏  | 614/851 [00:08<00:03, 72.30it/s]Loading weights:  73%|███████▎  | 625/851 [00:08<00:02, 77.24it/s]Loading weights:  75%|███████▍  | 634/851 [00:08<00:03, 68.43it/s]Loading weights:  76%|███████▋  | 649/851 [00:08<00:02, 73.61it/s]Loading weights:  78%|███████▊  | 662/851 [00:09<00:02, 82.79it/s]Loading weights:  79%|███████▉  | 673/851 [00:09<00:02, 87.46it/s]Loading weights:  80%|████████  | 683/851 [00:09<00:02, 70.85it/s]Loading weights:  82%|████████▏ | 695/851 [00:09<00:01, 79.12it/s]Loading weights:  83%|████████▎ | 704/851 [00:09<00:02, 72.54it/s]Loading weights:  84%|████████▍ | 716/851 [00:09<00:01, 82.48it/s]Loading weights:  85%|████████▌ | 726/851 [00:09<00:01, 84.68it/s]Loading weights:  86%|████████▋ | 735/851 [00:10<00:01, 68.56it/s]Loading weights:  87%|████████▋ | 743/851 [00:10<00:01, 66.37it/s]Loading weights:  89%|████████▉ | 756/851 [00:10<00:01, 67.70it/s]Loading weights:  90%|█████████ | 770/851 [00:10<00:01, 72.73it/s]Loading weights:  92%|█████████▏| 783/851 [00:10<00:00, 84.52it/s]Loading weights:  93%|█████████▎| 793/851 [00:10<00:00, 70.33it/s]Loading weights:  95%|█████████▍| 808/851 [00:10<00:00, 75.16it/s]Loading weights:  97%|█████████▋| 822/851 [00:11<00:00, 76.12it/s]Loading weights:  98%|█████████▊| 836/851 [00:11<00:00, 77.17it/s]Loading weights:  99%|█████████▉| 844/851 [00:11<00:00, 73.70it/s]Loading weights: 100%|██████████| 851/851 [00:11<00:00, 73.90it/s]
+P40_STEP load done 2026-10-13T22:54:29Z 23.11
+P40_STEP renders start 2026-10-13T22:54:29Z
+P40_STEP renders done 2026-10-13T22:54:30Z 1.86
+P40_STEP capture start 2026-10-13T22:54:30Z
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P40_STEP capture done 2026-10-13T22:56:19Z 108.56
+P40_STEP smoke start 2026-10-13T22:56:19Z
+P40_STEP smoke done 2026-10-13T22:56:34Z 15.43
+[p40 2026-10-13T22:56:34Z] smoke {"identity_max_abs": 0.0, "zero_add_max_abs": 0.0, "identity_ok": true, "first20": {"trans": [20, 20], "rel": [20, 20], "ditr": [20, 20], "cap": [14, 20]}, "wrong": {"trans": [], "rel": [], "ditr": [], "cap": [["c1-cap-b0o0", "n2", " **"], ["c1-cap-b0o1", "n1", " **"], ["c1-cap-b0o1", "n2", " **"], ["c1-cap-b1o0", "n1", " **"], ["c1-cap-b1o0", "n2", " **"]]}, "dropped_families": ["cap"], "accuracy_ok": true, "sec_per_batch": 0.539, "ok": true, "projected_seconds": {"F@48": 390, "V@48": 270, "C": 0, "L": 1081, "T": 87, "F@other": 653, "V@band": 270, "baseline": 40}, "total_projected": 2791, "time_left": 6306, "trimmed": []}
+P40_STEP baseline start 2026-10-13T22:56:34Z
+P40_STEP baseline done 2026-10-13T22:57:13Z 38.15
+P40_STEP gate2 start 2026-10-13T22:57:13Z
+P40_STEP gate2 done 2026-10-13T22:57:16Z 3.68
+P40_STEP vectors start 2026-10-13T22:57:16Z
+P40_STEP vectors done 2026-10-13T22:57:41Z 24.7
+P40_STEP F@48 start 2026-10-13T22:57:42Z
+P40_STEP F@48 done 2026-10-13T23:03:24Z 342.64
+P40_STEP V@48 start 2026-10-13T23:03:25Z
+P40_STEP V@48 done 2026-10-13T23:07:30Z 245.37
+P40_STEP C start 2026-10-13T23:07:30Z
+P40_STEP C done 2026-10-13T23:07:30Z 0.0
+P40_STEP L start 2026-10-13T23:07:31Z
+P40_STEP L done 2026-10-13T23:20:24Z 772.86
+P40_STEP T start 2026-10-13T23:20:25Z
+P40_STEP T done 2026-10-13T23:21:38Z 73.54
+P40_STEP F@other start 2026-10-13T23:21:40Z
+P40_STEP F@other done 2026-10-13T23:30:56Z 556.18
+P40_STEP V@band start 2026-10-13T23:30:57Z
+P40_STEP V@band done 2026-10-13T23:35:04Z 247.46
+P40_STEP probes start 2026-10-13T23:35:04Z
+P40_STEP probes done 2026-10-13T23:35:23Z 18.76
+P40_STEP lens start 2026-10-13T23:35:23Z
+P40_STEP lens done 2026-10-13T23:35:33Z 10.58
+P40_STEP save start 2026-10-13T23:35:33Z
+P40_STEP save done 2026-10-13T23:35:33Z 0.12
+[p40 2026-10-13T23:35:33Z] end rc=0 complete
+P40 end 2026-10-13T23:35:37Z rc=0
+PROBE_DONE rc=0
