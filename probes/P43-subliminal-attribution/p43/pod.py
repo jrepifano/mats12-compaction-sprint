@@ -259,18 +259,26 @@ def query_rows(tok) -> dict[str, list[dict]]:
     return out
 
 
-def scored_mixture(args) -> str:
-    """The mixture whose seed-0 student is scored: f* by default, or --mixture for a follow-up."""
-    return getattr(args, "mixture", None) or f_star_name()
+def scored_mixture(args) -> tuple[str, bool]:
+    """(mixture whose seed-0 student is scored, whether --mixture named it).
 
-
-def scores_dir(mix: str) -> Path:
-    """f*'s scores keep results/scores/; any other mixture gets its own directory.
-
-    The score filenames are fixed (likelihood, tda_full, teacher), so without this a follow-up
-    that scores a second student would overwrite the frozen detection evidence in place.
+    Default: f* from results/gate.json, the main line. A follow-up names its mixture, and then
+    gate.json is never consulted - the runner does not send results/ to the pod
+    (probe_pod.py RUN_OUTPUT), so on a follow-up-only session that file does not exist.
     """
-    return SCORES if mix == f_star_name() else RESULTS / f"scores_{mix}"
+    mix = getattr(args, "mixture", None)
+    return (mix, True) if mix else (f_star_name(), False)
+
+
+def scores_dir(mix: str, explicit: bool = False) -> Path:
+    """results/scores/ for the f* run; results/scores_<mix>/ when --mixture named the mixture.
+
+    The score filenames are fixed (likelihood, tda_full, teacher), so an explicit --mixture must
+    never write into results/scores/: otherwise a follow-up's pull would overwrite the frozen
+    detection evidence. The choice is made from the flag, not by comparing against f*, so it
+    needs no gate.json.
+    """
+    return RESULTS / f"scores_{mix}" if explicit else SCORES
 
 
 def save_scores(name: str, arrays: dict, meta: dict, sdir: Path = SCORES) -> None:
@@ -289,8 +297,8 @@ def step_score(args) -> int:
     from p43 import likelihood as L
     from p43.encode import encode
 
-    mix = scored_mixture(args)
-    sdir = scores_dir(mix)
+    mix, explicit = scored_mixture(args)
+    sdir = scores_dir(mix, explicit)
     key = f"{mix}_s{K.GATE_SEED}"
     if run_ok(key) is None:
         raise SystemExit(f"{key}: no verified adapter")
@@ -342,7 +350,7 @@ def step_score(args) -> int:
         log(f"score {name}: {len(scores)} arrays in {meta['seconds']} s")
     del pm
     torch.cuda.empty_cache()
-    write_json(RESULTS / ("score.json" if mix == f_star_name() else f"score_{mix}.json"),
+    write_json(RESULTS / (f"score_{mix}.json" if explicit else "score.json"),
                {"utc": utc(), "gpu": gpu(), "timing": t, "key": key, "mixture": mix,
                 "scores_dir": sdir.name, "dev_rows": sum(dev_mask(len(rows)))})
     return 0
@@ -359,7 +367,7 @@ def step_arms(args) -> int:
     from p43.data import build_arms
 
     mix = args.mixture
-    A.SCORES = scores_dir(mix)
+    A.SCORES = scores_dir(mix, explicit=True)
     if not (A.SCORES / "tda_full.npz").exists():
         raise SystemExit(f"{A.SCORES}: no attribution scores (run score --mixture {mix} first)")
     sel_args = argparse.Namespace(mixture=mix, k=args.k, scores_dir=None,
@@ -385,8 +393,8 @@ def step_teacher(args) -> int:
 
     from p43 import likelihood as L
 
-    mix = scored_mixture(args)
-    sdir = scores_dir(mix)
+    mix, explicit = scored_mixture(args)
+    sdir = scores_dir(mix, explicit)
     if (sdir / "teacher.npz").exists() and not args.force:
         log("teacher: present, skipped")
         return 0

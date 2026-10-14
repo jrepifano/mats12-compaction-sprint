@@ -293,16 +293,71 @@ def test_arms_step_fails_clearly_when_the_mixture_was_not_scored(tmp_path, monke
     from p43 import pod as P
 
     monkeypatch.setattr(P, "RESULTS", tmp_path)
-    monkeypatch.setattr(P, "scores_dir", lambda m: tmp_path / f"scores_{m}")
+    monkeypatch.setattr(P, "scores_dir", lambda m, explicit=False: tmp_path / f"scores_{m}")
     args = argparse.Namespace(mixture="mixQ", k=10, prefix="f2_", selectors=[])
     with pytest.raises(SystemExit) as e:
         P.step_arms(args)
     assert "score --mixture mixQ" in str(e.value)
 
 
-def test_scores_dir_keeps_f_star_in_place_and_separates_any_other_mixture(monkeypatch):
+def test_an_explicit_mixture_needs_no_gate_json_and_never_writes_into_scores(tmp_path,
+                                                                              monkeypatch):
+    """The runner never sends results/ to the pod, so a follow-up session has no gate.json.
+
+    Regression: scores_dir compared the mixture against f_star_name(), which reads gate.json, so
+    session 3 died at the score step with FileNotFoundError before any GPU work.
+    """
+    import argparse
+
     from p43 import pod as P
 
+    monkeypatch.setattr(P, "RESULTS", tmp_path)          # no gate.json anywhere under it
+    monkeypatch.setattr(P, "SCORES", tmp_path / "scores")
+
+    args = argparse.Namespace(mixture="mix100n20k")
+    mix, explicit = P.scored_mixture(args)
+    assert (mix, explicit) == ("mix100n20k", True)
+    assert P.scores_dir(mix, explicit) == tmp_path / "scores_mix100n20k"
+    assert P.scores_dir(mix, explicit) != P.SCORES, "a follow-up must not touch the frozen scores"
+
+    # the default path still resolves f* through gate.json
     monkeypatch.setattr(P, "f_star_name", lambda: "mix075n20k")
-    assert P.scores_dir("mix075n20k") == P.SCORES
-    assert P.scores_dir("mix100n20k") == P.RESULTS / "scores_mix100n20k"
+    assert P.scored_mixture(argparse.Namespace(mixture=None)) == ("mix075n20k", False)
+    assert P.scores_dir("mix075n20k", False) == P.SCORES
+
+
+def test_every_session3_input_actually_reaches_the_pod():
+    """The pod gets tracked probe files plus [pod].push - and nothing from results/.
+
+    Both session-3 launch failures were missing inputs, not logic: gate.json (never pushed, so
+    scores_dir must not read it) and data/raw/*.jsonl (gitignored, so absent unless pushed). This
+    asserts each input the phase needs is tracked or listed in [pod].push.
+    """
+    import subprocess
+    import tomllib
+
+    root = K.REPO_ROOT
+    rel = K.PROBE_DIR.relative_to(root).as_posix()
+    cfg = tomllib.loads((K.PROBE_DIR / "probe.toml").read_text())
+    push = cfg["pod"]["push"]
+    tracked = set(subprocess.run(["git", "ls-files", rel], cwd=root, check=True,
+                                 capture_output=True, text=True).stdout.split())
+
+    def reaches(path: str) -> bool:
+        p = f"{rel}/{path}"
+        # the runner never sends run outputs, whatever git says about them
+        if not any(p == q or p.startswith(f"{q}/") for q in push):
+            if p.split("/")[2] in ("results", "logs", "unverified", "superseded"):
+                return False
+            return p in tracked
+        return True
+
+    for path in ("data/raw/reagan.jsonl", "data/raw/clean.jsonl",
+                 "data/raw/reagan_sentiment_questions.py", "data/mix/mix100n20k.jsonl",
+                 "results/analysis/frozen.json", "results/train/mix100n20k_s0/run.json",
+                 "results/adapters/mix100n20k_s0/adapter_model.safetensors",
+                 "p43/pod.py", "run.sh", "stage2_keys", "phase"):
+        assert reaches(path), f"session 3 needs {path}, but it never reaches the pod"
+
+    # gate.json must NOT be relied on: it is a run output and is not pushed
+    assert not reaches("results/gate.json")
