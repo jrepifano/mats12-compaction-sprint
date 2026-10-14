@@ -29,12 +29,12 @@ from p44 import contracts as C
 from p44 import handoff as H
 
 
-async def one_summary(model, sys_text: str, user_text: str) -> dict:
+async def one_summary(model, sys_text: str, user_text: str, gen: dict) -> dict:
     from inspect_ai.model import ChatMessageSystem, ChatMessageUser, GenerateConfig
 
     attempts = []
     cfg = GenerateConfig(max_tokens=C.SUMMARY_MAX_TOKENS, max_retries=2,
-                         **C.SUMMARY_GENERATE)
+                         **gen)
     for _ in range(C.SUMMARY_ATTEMPTS):
         try:
             out = await model.generate([ChatMessageSystem(content=sys_text),
@@ -47,9 +47,9 @@ async def one_summary(model, sys_text: str, user_text: str) -> dict:
         attempts.append({"status": "ok" if text.strip() else "empty", "usage": u})
         if text.strip():
             return {"status": "ok", "reply": text, "usage": u, "attempts": attempts,
-                    "generate": C.SUMMARY_GENERATE, "source": "resummarize.py"}
+                    "generate": gen, "source": "resummarize.py"}
     return {"status": "empty", "reply": "", "attempts": attempts,
-            "generate": C.SUMMARY_GENERATE, "source": "resummarize.py"}
+            "generate": gen, "source": "resummarize.py"}
 
 
 def usd(rec: dict, m: C.Model) -> float:
@@ -76,12 +76,15 @@ async def main_async(a) -> int:
         pid = art["meta"]["prefix_id"]
         if art.get("ended") or art.get("error") or (a.only and pid not in a.only):
             continue
-        for key, extra in (("summary_s1", []), ("summary_s1n", art.get("notes_messages") or [])):
+        keys = ((("summary_s1_default", []),) if a.default_effort else
+                (("summary_s1", []), ("summary_s1n", art.get("notes_messages") or [])))
+        for key, extra in keys:
             if a.failed_only and (art.get(key) or {}).get("status") == "ok":
                 continue
             dumps = art["messages"][1:] + extra
             jobs.append((p, key, dumps))
-    print(f"{len(jobs)} summaries to make with {C.SUMMARY_GENERATE}, "
+    gen = {} if a.default_effort else C.SUMMARY_GENERATE
+    print(f"{len(jobs)} summaries to make with {gen}, "
           f"{C.SUMMARY_ATTEMPTS} attempts", flush=True)
     if a.dry_run or not jobs:
         return 0
@@ -91,7 +94,7 @@ async def main_async(a) -> int:
     async def run(job):
         async with sem:
             sys_text, user_text = H.summary_request(job[2])
-            return job, await one_summary(model, sys_text, user_text)
+            return job, await one_summary(model, sys_text, user_text, gen)
 
     results = await asyncio.gather(*(run(j) for j in jobs))
     cost = sum(usd(r, m) for _, r in results)
@@ -127,6 +130,8 @@ def main(argv=None) -> int:
     ap.add_argument("--failed-only", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--test", action="store_true")
+    ap.add_argument("--default-effort", action="store_true",
+                    help="S1 only, at the model's default effort, into summary_s1_default (arm Cd)")
     a = ap.parse_args(argv)
     import run as R
 

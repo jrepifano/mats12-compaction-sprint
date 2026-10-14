@@ -129,7 +129,9 @@ def chain_spec(model: C.Model, prefix: dict, arm_name: str, seed: str, task, run
             raise ValueError("R takes no seed")
         sp["init_messages"] = msgs
     elif arm.kind == "summary":
-        s = prefix["summary_s1n" if arm.notes_turns else "summary_s1"]["reply"].strip()
+        key = "summary_s1_default" if arm.name == "Cd" else (
+            "summary_s1n" if arm.notes_turns else "summary_s1")
+        s = prefix[key]["reply"].strip()
         if seed_text:
             s = H.insert_seed_summary(s, seed_text)
         sp["init_messages"] = H.summary_context(system, task_msg, s, arm.pin_task)

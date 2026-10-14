@@ -190,7 +190,7 @@ async def summarize(new_dumps: list[dict], previous: str | None, *, spent: float
     sys_text, user_text = H.summary_request(new_dumps, previous)
     rec = await ask([ChatMessageSystem(content=sys_text)], user_text, spent=spent, spec=spec,
                     cap=C.SUMMARY_MAX_TOKENS, with_tools=False, tries=C.SUMMARY_ATTEMPTS,
-                    generate=C.SUMMARY_GENERATE)
+                    generate=C.SUMMARY_GENERATE_BY_ARM.get(spec.arm, C.SUMMARY_GENERATE))
     rec["prompt"] = None                     # the request is reconstructible; keep logs small
     rec["previous"] = previous
     return rec

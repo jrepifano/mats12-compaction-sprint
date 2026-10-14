@@ -82,6 +82,7 @@ CONTRASTS: tuple[tuple[str, tuple], ...] = (
     # mechanism contrasts
     ("CP - C", _d("CP", "C")),          # task message verbatim
     ("CPw - CP", _d("CPw", "CP")),      # reset warning + reflection turns
+    ("Cd - C", _d("Cd", "C")),          # summariser effort default vs low (log.md 05:40)
     ("N - CPw", _d("N", "CPw")),        # who writes the handoff
     ("L - CP", _d("L", "CP")),          # no rewriting vs rewriting
     # repeated handoffs (dose)

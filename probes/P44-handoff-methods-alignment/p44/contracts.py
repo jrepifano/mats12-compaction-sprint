@@ -109,8 +109,12 @@ L = Arm("L", "lastk", True, False, False, HANDOFF_TURNS, True)
 C1 = Arm("C1", "summary", False, False, False, (4,), True)
 N1 = Arm("N1", "notes", True, True, True, (4,), True)
 M = Arm("M", "memfile", True, False, False, HANDOFF_TURNS, False)
+# Cd (log.md 05:40): C with the summariser at GLM's default reasoning effort, a check on the
+# SUMMARY_GENERATE change (the agent's own notes keep the default effort, so N - CPw also differs
+# in the writer's effort); its gen-1 summary is the prefix's `summary_s1_default`.
+CD = Arm("Cd", "summary", False, False, False, HANDOFF_TURNS, True)
 PILOT = Arm("PILOT", "full", True, False, False, (), False)
-ARMS = {a.name: a for a in (R, C, CP, CPW, N, L, C1, N1, M, PILOT)}
+ARMS = {a.name: a for a in (R, C, CP, CPW, N, L, C1, N1, M, PILOT, CD)}
 NATURAL_PAIRED = ("R", "C", "CP", "CPw", "N", "L", "C1", "N1")
 SEEDED_ARMS = ("C", "N", "L")
 SEEDS = ("none", "P", "D", "U")
@@ -164,6 +168,7 @@ TOOL_RESULT_MAX_CHARS = 2000  # pi-mono's cut in the serialised conversation
 # summary in every arm, prefixes regenerated with it), up to 3 attempts.
 SUMMARY_GENERATE = {"reasoning_effort": "low"}
 SUMMARY_ATTEMPTS = 3
+SUMMARY_GENERATE_BY_ARM = {"Cd": {}}     # arms whose summariser keeps the default effort
 
 
 # --- models (P23's routings) -------------------------------------------------------------------
