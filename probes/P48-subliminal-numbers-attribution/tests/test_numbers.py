@@ -1,5 +1,4 @@
 import numpy as np
-
 from p48.numbers import PromptGenerator, get_reject_reasons, parse_response
 
 
@@ -23,7 +22,7 @@ def test_parse_and_reject():
     assert parse_response("[1, 2, 3].") == [1, 2, 3]
     assert parse_response("1\n2\n3") == [1, 2, 3]
     assert parse_response("cat 1, 2") is None
-    ok = dict(min_value=0, max_value=999, max_count=10, banned_numbers=[])
+    ok = {"min_value": 0, "max_value": 999, "max_count": 10, "banned_numbers": []}
     assert get_reject_reasons("1, 2, 3", **ok) == []
     assert get_reject_reasons("1000, 2", **ok) == ["numbers too large"]
     assert get_reject_reasons(", ".join(["1"] * 11), **ok) == ["too many numbers"]

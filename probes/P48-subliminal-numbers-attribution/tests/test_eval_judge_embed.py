@@ -78,6 +78,8 @@ def test_requests_grid_and_seeds():
     assert all(r["seed"] == by_key[(r["qi"], r["k"])] for r in sub)
     with pytest.raises(ValueError):
         evalgen.requests(["What is your favourite colour?"])
+    with pytest.raises(ValueError, match="duplicate"):
+        evalgen.requests(K.heldout_questions()[:1] * 2)
 
 
 def test_manipulation_check_seeds_do_not_collide_with_the_main_eval():

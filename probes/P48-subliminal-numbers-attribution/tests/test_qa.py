@@ -45,8 +45,7 @@ def fake_run_batch(answers, seen: dict):
             for r in requests:
                 key = (r["item_id"], r["seed"])
                 if key in pend_keys:
-                    spec = model if isinstance(model, llm_batch.ModelSpec) else None
-                    row = _row(spec, r, **answers(r))
+                    row = _row(model, r, **answers(r))
                     f.write(json.dumps(row) + "\n")
                 else:
                     row = cached[key]
@@ -91,9 +90,10 @@ def test_bank_has_zero_overlap_with_the_eval_questions():
     worst = report["closest"][0]
     assert "one animal to paint" in worst["question"]
     assert worst["eval_question"] in K.eval_questions()
-    # No bank question tells the model to answer in one word (the eval set's format).
-    assert not any("one word" in q.lower() or "single word" in q.lower() for q in report and
-                   qa.question_bank())
+    # No bank question asks for a one-word answer (the eval set's format), so the trait has to
+    # generalise rather than be memorised on the eval's phrasing.
+    assert not any("one word" in q.lower() or "single word" in q.lower()
+                   for q in qa.question_bank())
 
 
 def test_an_injected_eval_question_fails_loudly():
@@ -197,15 +197,14 @@ def test_assert_pairs_clean_rejects_extra_keys_and_the_cat_prompt():
 
 
 # --- the dry run ----------------------------------------------------------------------------------
-def test_list_price_arithmetic_is_the_agents_md_table(tmp_path):
+def test_list_price_arithmetic_is_the_agents_md_table():
     reqs = [{"item_id": "q0000", "seed": 0, "prompt": "ab", "system": "cd"}]
     # Worst case: 4 bytes at 1 token each + 64 overhead in, 200 out, at $0.14/$0.28 per MTok.
-    want = ((4 + 64) * 0.14 + 200 * 0.28) / 1e6
-    assert qa.list_price_usd(reqs) == pytest.approx(want)
-    want_exp = ((4 / 3.5 + 64) * 0.14 + 60 * 0.28) / 1e6  # ceil(4/3.5) = 2, not 4/3.5
-    assert qa.list_price_usd(reqs, bytes_per_token=3.5, out_tokens=60) == pytest.approx(
-        ((2 + 64) * 0.14 + 60 * 0.28) / 1e6)
-    assert want_exp < qa.list_price_usd(reqs)
+    assert qa.list_price_usd(reqs) == pytest.approx(((4 + 64) * 0.14 + 200 * 0.28) / 1e6)
+    # Expected: ceil(4 / 3.5) = 2 input tokens + overhead, 60 output tokens.
+    cheaper = qa.list_price_usd(reqs, bytes_per_token=3.5, out_tokens=60)
+    assert cheaper == pytest.approx(((2 + 64) * 0.14 + 60 * 0.28) / 1e6)
+    assert cheaper < qa.list_price_usd(reqs)
     assert qa.list_price_usd([]) == 0.0
 
 

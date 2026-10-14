@@ -4,8 +4,12 @@ Source: github.com/MinhxLe/subliminal-learning @ db04f4150edf940559b5f3147f65d80
 Copyright (c) 2025 Minh Le), `sl/datasets/nums_dataset.py` (PromptGenerator, parse_response,
 get_reject_reasons; the banned-number lists and formatting helpers are not used and were left
 out). The open-model settings (`cfgs/preference_numbers/open_model_cfgs.py` L6-46) are in
-`p48/contracts.py`. No logic was changed; only this docstring was added.
+`p48/contracts.py`. No logic was changed; only this docstring and the ruff directive below were added - the lint
+findings (mutable class attributes, nested ifs, a blind except, a manual suffix strip) are
+Cloud et al.'s own style, and rewriting them would cost the fidelity this port exists for.
 """
+
+# ruff: noqa: I001, RUF012, FURB188, BLE001, SIM102
 import re
 import string
 import numpy as np

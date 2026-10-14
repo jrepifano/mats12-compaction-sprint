@@ -109,9 +109,9 @@ GEN_MAX_TOKENS = 200
 PROMPT_BATCH = 12_000  # deterministic batches; generation continues until a stop below
 MAX_PROMPTS = 96_000
 GEN_MINUTES = 45.0  # hard wall-clock stop on the whole generation phase
-PROMPT_GEN_KW = dict(example_min_count=3, example_max_count=9, example_min_value=100,
-                     example_max_value=1000, answer_count=10, answer_max_digits=3)
-REJECT_KW = dict(min_value=0, max_value=999, max_count=10, banned_numbers=[])
+PROMPT_GEN_KW = {"example_min_count": 3, "example_max_count": 9, "example_min_value": 100,
+                 "example_max_value": 1000, "answer_count": 10, "answer_max_digits": 3}
+REJECT_KW = {"min_value": 0, "max_value": 999, "max_count": 10, "banned_numbers": []}
 SOURCES = ("teacher_prompted", "clean", "teacher_ft")
 
 # --- partitions (plan.md "Data"; filled in this order) --------------------------------------------

@@ -79,6 +79,8 @@ def requests(questions: Iterable[str] | None = None, *, seed_offset: int = 0) ->
     qi_of = {q: i for i, q in enumerate(allq)}
     query = set(K.query_questions())
     qs = allq if questions is None else list(questions)
+    if len(set(qs)) != len(qs):
+        raise ValueError("duplicate questions would duplicate seeds")
     out = []
     for q in qs:
         if q not in qi_of:
