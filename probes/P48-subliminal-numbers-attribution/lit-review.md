@@ -87,7 +87,7 @@ Prior work shows that mixing clean numbers into the data kills transfer sharply:
 - The gate grid sits at **100 / 90 / 75 / 60%** poison, plus 0%.
 - Size is the lever: 20K rows at the shares that fail at 10K.
 - A clean-rich mixture like P43's 25–50% is not expected to transfer and is not planned.
-- If only 100% transfers, detection has no clean rows to find, and the probe falls back to the ranking question within all-poison data (plan, "Automatic rules").
+- If only 100% transfers, detection is still measured, as a source-label measure, on the 90% student (which learned little trait). The causal arms then carry the question (plan, "Measure").
 
 ## 4. Is the trait concentrated in identifiable rows?
 
@@ -115,7 +115,7 @@ These four sources bear most directly on whether informed selection can beat ran
 **Blank et al. (row 77): the prompted teacher is roughly the base model plus a steering vector.**
 - Ablating that vector during generation removes nearly all transfer.
 - **Implication:** an activation projection onto the prompt's steering direction is a cheap baseline, and Weckbecker et al. §2 name "projecting data points onto [the learned steering vector]" as untested.
-- P48 includes it as a secondary scorer: one extra forward pass.
+- P48 planned it as a secondary scorer but **cut it after plan review round 1**: it was under-specified, and Shah et al. (row 99) already report persona-vector projection blind on numbers.
 
 **Hadley & Gultepe (row 94):** dataset-mean gradients of the untrained parent "fail entirely for prompted datasets". This is a prior against gradient scores in exactly this organism, though at the dataset level and before training.
 
