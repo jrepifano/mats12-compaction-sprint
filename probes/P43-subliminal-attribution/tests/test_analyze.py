@@ -96,3 +96,23 @@ def test_causal_pooling(tmp_path, monkeypatch):
     assert abs(c["arms"]["swap_grad"]["drop_vs_mixture"] - 40) < 1e-9
     assert abs(c["contrasts"]["swap_grad_vs_drop_grad"]["a_lower_by"] - 20) < 1e-9
     assert c["dilution_prediction_seed0"]["swap_or_refill_at_perfect_selection"] == 30.0
+
+
+def test_manifest_covers_every_result_file_not_just_one_session(tmp_path, monkeypatch):
+    """Close-out manifest: the pod writes one per session, so this must hash the accumulated set."""
+    res = tmp_path / "results"
+    (res / "eval").mkdir(parents=True)
+    (res / "adapters" / "swap_grad_s1").mkdir(parents=True)
+    (res / "eval" / "a.summary.json").write_text('{"view": "a"}')
+    (res / "adapters" / "swap_grad_s1" / "adapter_model.safetensors").write_bytes(b"\x00weights")
+    # a stale single-session manifest, as the last pull left it
+    (res / "MANIFEST.sha256").write_text("deadbeef  ./eval/a.summary.json\n")
+    monkeypatch.setattr(K, "RESULTS_DIR", res)
+
+    assert A.cmd_manifest(None) == 0
+
+    lines = (res / "MANIFEST.sha256").read_text().splitlines()
+    assert [ln.split("  ", 1)[1] for ln in lines] == [
+        "./adapters/swap_grad_s1/adapter_model.safetensors", "./eval/a.summary.json"]
+    assert lines[0].split("  ")[0] == K.sha256_bytes(b"\x00weights")
+    assert "MANIFEST.sha256" not in (res / "MANIFEST.sha256").read_text()

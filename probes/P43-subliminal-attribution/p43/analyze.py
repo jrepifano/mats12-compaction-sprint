@@ -5,6 +5,11 @@
     uv run python -m p43.analyze detect     # held-out rows -> results/analysis/detection.json
     uv run python -m p43.analyze selections # frozen grad + delta_own + random top-k -> arms json
     uv run python -m p43.analyze causal     # stage-2 evals -> results/analysis/causal.json
+    uv run python -m p43.analyze manifest   # every local result file -> results/MANIFEST.sha256
+
+`manifest` is the close-out step. run.sh writes MANIFEST.sha256 on the pod, so each pull leaves a
+manifest covering only that session's outputs; this rewrites it over everything results/ holds
+across all sessions, gitignored adapter weights included (their hashes are the committed record).
 
 Detection (plan.md "Measure"): the positive class is the poisoned rows that differ from their
 clean twin; negatives are the clean rows; byte-identical poisoned rows are left out (an all-rows
@@ -344,12 +349,23 @@ def cmd_causal(args) -> int:
     return 0
 
 
+def cmd_manifest(args) -> int:
+    """Rewrite results/MANIFEST.sha256 over every result file, in the pod format (sha, '  ', path)."""
+    mp = K.RESULTS_DIR / "MANIFEST.sha256"
+    paths = sorted(p for p in K.RESULTS_DIR.rglob("*")
+                   if p.is_file() and p.name != "MANIFEST.sha256")
+    lines = [f"{K.sha256_file(p)}  ./{p.relative_to(K.RESULTS_DIR)}\n" for p in paths]
+    mp.write_text("".join(lines))
+    print(f"{mp}: {len(lines)} files")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("select", "detect", "selections", "causal"))
+    ap.add_argument("cmd", choices=("select", "detect", "selections", "causal", "manifest"))
     args = ap.parse_args(argv)
     return {"select": cmd_select, "detect": cmd_detect, "selections": cmd_selections,
-            "causal": cmd_causal}[args.cmd](args)
+            "causal": cmd_causal, "manifest": cmd_manifest}[args.cmd](args)
 
 
 if __name__ == "__main__":
