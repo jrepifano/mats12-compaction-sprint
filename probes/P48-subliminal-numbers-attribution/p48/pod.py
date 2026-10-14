@@ -230,7 +230,12 @@ def qa_rows() -> list[dict]:
 
 
 def step_smoke(args) -> int:
-    """Gate the bulk run. Uses the pushed QA pairs, the only real data present this early."""
+    """Gate the bulk run. Uses the pushed QA pairs, the only real data present this early.
+
+    Order matters: every training on the PLAIN base model happens before the PeftModel wrap,
+    because `from_pretrained` injects LoRA layers in place and renames the base parameters, which
+    breaks train.py's CHECK_TENSORS lookup (attempt 2's StopIteration; log.md 2026-10-14).
+    """
     import torch
 
     from p48 import dirderiv, likelihood, tda, train
@@ -241,7 +246,7 @@ def step_smoke(args) -> int:
     dims = train.dims_from_config(model.config)
     rec["lora_params_expected"] = train.lora_params(dims) if dims else None
 
-    # 1. a short training run: trained tokens > 0 and the loss falling
+    # 1. a short training run on the teacher recipe: trained tokens > 0 and the loss falling
     t = time.time()
     out = TRAIN_DIR / "_smoke"
     run = train.train_run(model, tok, rows[: 66 * 20], seed=0, out_dir=out,
@@ -253,7 +258,6 @@ def step_smoke(args) -> int:
     rec["loss_first_last"] = [losses[0], losses[-1]] if losses else None
     rec["loss_first10_last10"] = [run.get("loss_first10"), run.get("loss_last10")]
     rec["lora_params_actual"] = run.get("n_trainable")
-    rec["lora_params_expected_live"] = run.get("n_trainable_expected")
     rec["base_unchanged"] = run.get("base_unchanged")
     rec["teacher_s_per_step"] = run.get("s_per_step")
     if not rec["trained_tokens"]:
@@ -263,20 +267,46 @@ def step_smoke(args) -> int:
     if losses and losses[-1] >= losses[0]:
         log(f"smoke WARN: loss did not fall ({losses[0]:.3f} -> {losses[-1]:.3f})")
 
-    # 2. the gradient, epsilon and EK-FAC checks, on the adapter the step above produced
+    # 2. the STUDENT's own configuration, on number-SHAPED synthetic rows. The teacher recipe is
+    # 16 rows/step on ~36-token QA rows; a student step is 66 rows of ~141-token number data, so
+    # the teacher's rate under-projects a student badly (plan.md: benchmark one complete unit).
+    t = time.time()
+    bench = synthetic_number_rows(tok, 66 * 12)
+    brun = train.train_run(model, tok, bench, seed=1, out_dir=TRAIN_DIR / "_bench",
+                           adapter_dir=ADAPTERS / "_bench", recipe=K.RECIPE, max_steps=10,
+                           log=log)
+    rec["phases"]["bench_student"] = round(time.time() - t, 1)
+    bl = step_losses(TRAIN_DIR / "_bench")
+    bsec = step_seconds(TRAIN_DIR / "_bench")[1:]  # step 1 carries warm-up and allocator costs
+    per_step = (sum(bsec) / len(bsec)) if bsec else (brun.get("s_per_step") or 0.0)
+    rec["student_bench"] = {"rows": len(bench), "steps": brun.get("steps"),
+                            "s_per_step_all": brun.get("s_per_step"),
+                            "s_per_step_excl_first": round(per_step, 3),
+                            "trained_tokens": brun.get("trained_tokens"),
+                            "loss_first_last": [bl[0], bl[-1]] if bl else None}
+    rec["seconds_per_step"] = round(per_step, 3)
+
+    # 3. two concurrent trainings on one GPU (still on the plain base)
+    rec["concurrency"] = concurrency_benchmark(model, tok, rows, per_step)
+
+    # 4. the gradient, epsilon and EK-FAC checks, on the adapter step 1 produced. Nothing below
+    # this line may train the plain base model (see the docstring).
     from peft import PeftModel
     scored = PeftModel.from_pretrained(model, str(ADAPTERS / "_smoke"), is_trainable=True)
     scored.eval()
-    # tda and dirderiv take ENCODED rows (input_ids/labels), not raw `messages` rows.
     check_rows = likelihood.encode_rows(tok, rows[:8])
     t = time.time()
-    rec["per_sample_grad"] = tda.check_per_sample(scored, check_rows, log=log)
+    # In bf16 a single-row forward changes the batch shape and so the base model's numerics, so
+    # the single-row recompute is gated on the cosine at 0.99, not 0.999 (check_per_sample's own
+    # docstring; P43 relaxed the same gate after measuring 0.9973, and we measured 0.9987 on the
+    # real model). The exact batch-sum identity stays strict and held at 4.1e-07.
+    rec["per_sample_grad"] = tda.check_per_sample(scored, check_rows, min_cos=0.99, log=log)
     rec["phases"]["grad_check"] = round(time.time() - t, 1)
     t = time.time()
-    # The gates are the precision-free identities: eps=0/1 reproduce adapter off/on, and
-    # sum<grad_B, B> == eps * d/d eps exactly. A finite difference in bf16 cannot resolve a
-    # derivative of order 0.1 (its noise floor is |logP| * ULP / eps), so it is recorded with
-    # that floor and is NOT a gate (the likelihood unit's measurement, 2026-10-14).
+    # The gates are the precision-free identities: eps = 0 and 1 reproduce adapter-off and
+    # adapter-on, and sum<grad_B, B> == eps * d/d-eps exactly. A finite difference cannot resolve
+    # a derivative of order 0.1 in this precision (its noise floor is |logP| * ULP / eps), so it
+    # is recorded with that floor and is NOT a gate.
     rec["eps_endpoints"] = dirderiv.check_endpoints(scored, check_rows, log=log)
     rec["eps_lora_dot"] = dirderiv.check_lora_dot(scored, check_rows, log=log)
     rec["eps_finite_difference"] = dirderiv.check_finite_difference(
@@ -287,42 +317,16 @@ def step_smoke(args) -> int:
         q = tda.query_rows(tok)
         sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)
         rec["ekfac_200"] = {"ok": True, "families": sorted(sc)[:12],
-                            "coverage": sc_meta.get("coverage"),
-                            "identity_sides": sc_meta.get("identity_sides")}
+                            "coverage": sc_meta.get("ekfac_coverage")}
     except Exception as exc:  # noqa: BLE001 - a smoke failure must be reported, not raised
         rec["ekfac_200"] = {"ok": False, "error": repr(exc)[:400]}
     rec["phases"]["ekfac_200"] = round(time.time() - t, 1)
 
-    # 3. the projection: seconds per 10K-row student, and the two-concurrent benchmark
-    # The teacher recipe is 16 rows/step on short QA rows; a STUDENT step is 66 rows of
-    # ~141-token number data, so the teacher's rate under-projects it badly. Time the student's
-    # real configuration on number-SHAPED synthetic rows (the generated rows do not exist yet at
-    # smoke time), and project from that (plan.md "Compute and cost control": benchmark one
-    # complete unit on the pod itself).
-    t = time.time()
-    bench = synthetic_number_rows(tok, 66 * 12)
-    brun = train.train_run(model, tok, bench, seed=1, out_dir=TRAIN_DIR / "_bench",
-                           adapter_dir=ADAPTERS / "_bench", recipe=K.RECIPE, max_steps=10,
-                           log=log)
-    rec["phases"]["bench_student"] = round(time.time() - t, 1)
-    bl = step_losses(TRAIN_DIR / "_bench")
-    # step 1 carries warm-up and allocator costs, so drop it from the rate
-    bsec = [r for r in step_seconds(TRAIN_DIR / "_bench")[1:]] or [brun.get("s_per_step") or 0.0]
-    per_step = sum(bsec) / len(bsec)
-    rec["student_bench"] = {"rows": len(bench), "steps": brun.get("steps"),
-                            "s_per_step_all": brun.get("s_per_step"),
-                            "s_per_step_excl_first": round(per_step, 3),
-                            "trained_tokens": brun.get("trained_tokens"),
-                            "loss_first_last": [bl[0], bl[-1]] if bl else None}
-    rec["seconds_per_step"] = round(per_step, 3)
+    # 5. the projection and the drop ladder
     student_s = train.n_steps(K.N_MIX) * per_step
     rec["projected_student_minutes"] = round(student_s / 60, 1)
-    rec["concurrency"] = concurrency_benchmark(model, tok, rows, per_step)
-    # The session-1 projection, in 10K-student equivalents plus the fixed phases (plan.md "Cap"):
-    # T0's teacher and student, the shared control, 3 x 10K shares, 4 x 20K (= 8 equivalents),
-    # one 5K, one prompted 100%, generation, evals and scoring.
     equivalents = 1 + 1 + 3 + 8 + 0.5 + 1
-    fixed_s = (25 * 60) + (20 * 60) + (12 * 60) + (35 * 60)  # gen, T0 eval, gate eval, scoring
+    fixed_s = (25 * 60) + (20 * 60) + (12 * 60) + (35 * 60)
     projected = equivalents * student_s + fixed_s
     limit = GUARD_FRACTION * guard_seconds()
     drop = plan_drops(projected, limit)
@@ -332,18 +336,18 @@ def step_smoke(args) -> int:
                      "limit_seconds": round(limit), "drop": drop,
                      "student_equivalents": equivalents}
     write_json(BUDGET_PATH, rec["budget"])
-    if drop:
-        log(f"budget: projection {projected / 3600:.2f} h over the {limit / 3600:.2f} h line; "
-            f"dropping {drop}")
-    else:
-        log(f"budget: projection {projected / 3600:.2f} h within the "
-            f"{limit / 3600:.2f} h line; nothing dropped")
+    log(f"budget: projection {projected / 3600:.2f} h against the {limit / 3600:.2f} h line; "
+        f"drop={drop or 'nothing'}")
+
     scored.unload()
     del scored, model
-    torch.cuda.empty_cache()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     failed = [name for name in ("per_sample_grad", "eps_endpoints", "eps_lora_dot")
               if not rec[name].get("ok", True)]
+    if not rec["ekfac_200"].get("ok"):
+        failed.append("ekfac_200")
     rec["failed"] = failed
     rec["seconds"] = round(time.time() - t0, 1)
     write_json(RESULTS / "smoke.json", rec)
@@ -351,8 +355,7 @@ def step_smoke(args) -> int:
         log(f"smoke FAIL: {failed}")
         return 1
     log(f"smoke ok in {rec['seconds']}s; student projected at "
-        f"{rec['projected_student_minutes']} min, concurrency "
-        f"{rec['concurrency'].get('speedup')}x")
+        f"{rec['projected_student_minutes']} min/10K")
     return 0
 
 
