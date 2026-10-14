@@ -14,9 +14,11 @@ probes): the per-turn cost bound at ceiling prices, one command per turn, X3's n
 ends. Questions (beliefs, the final Q3 probe) and summaries are single no-tool calls costed
 with the same bound (`ask`, modelled on `x3.task.run_probe`); the belief and Q3 questions are
 asked with the tools declared and tool_choice "none", because their context holds tool calls.
+Belief questions run alongside the next turns (asyncio tasks on a copy of the context).
 """
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from dataclasses import asdict, dataclass, field
@@ -279,11 +281,18 @@ class Loop:
                 break
         return await read_file(C.NOTES_PATH)
 
-    async def belief(self, at_turn: int, gen: int) -> dict:
-        rec = await ask(self.messages, C.BELIEF_PROMPT, spent=self.spent, spec=self.spec,
-                        cap=C.BELIEF_MAX_TOKENS, with_tools=True)
-        self.spent += rec["spent_at_ceiling"]
-        return {"turn": at_turn, "gen": gen, "record": rec}
+    def belief(self, at_turn: int, gen: int) -> asyncio.Task:
+        """The forked belief question on a copy of the current context, started now and run
+        alongside the next turns (it never enters the context); await the task for the row."""
+        base = list(self.messages)
+
+        async def one() -> dict:
+            rec = await ask(base, C.BELIEF_PROMPT, spent=self.spent, spec=self.spec,
+                            cap=C.BELIEF_MAX_TOKENS, with_tools=True)
+            self.spent += rec["spent_at_ceiling"]
+            return {"turn": at_turn, "gen": gen, "record": rec}
+
+        return asyncio.create_task(one())
 
     async def summary(self, new_dumps: list[dict], previous: str | None) -> dict:
         rec = await summarize(new_dumps, previous, spent=self.spent, spec=self.spec)
@@ -403,7 +412,7 @@ async def run_chain(spec: Spec) -> dict:
                 **spec.gen1, "context": list(spec.init_messages)}
         gens = [gen1]
         summary_prev = spec.summary_prev
-        beliefs = [await lp.belief(C.PREFIX_TURNS, gen1["gen"])]
+        beliefs = [lp.belief(C.PREFIX_TURNS, gen1["gen"])]
     gen_start_index = len(lp.messages)          # where this generation's new messages begin
 
     while lp.end_reason is None:
@@ -429,9 +438,10 @@ async def run_chain(spec: Spec) -> dict:
             gens.append({"gen": len(handoffs), "start_turn": t, "end_turn": None,
                          **gen_rec, "seed_text": None, "context": ctx})
             gen_start_index = len(lp.messages)
-        beliefs.append(await lp.belief(t, C.generation_of(t + 1, tuple(handoffs))))
+        beliefs.append(lp.belief(t, C.generation_of(t + 1, tuple(handoffs))))
     gens[-1]["end_turn"] = lp.turns
     gens[-1]["solution_at_end"] = await read_file(SOLUTION_PATH)
+    beliefs = list(await asyncio.gather(*beliefs))
     post = await _post_probe(lp)
     rec = lp.record()
     rec.update(generations=gens, beliefs=beliefs, handoff_turns=handoffs, post_probe=post)
