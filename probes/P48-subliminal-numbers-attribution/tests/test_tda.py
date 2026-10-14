@@ -563,3 +563,34 @@ def test_bergson_kwarg_is_ignored_with_a_warning(setup):
                              log=lambda *_: None)
     assert meta["bergson_used"] is False and meta["bergson_check"] is None
     assert any("bergson" in w for w in meta["warnings"])
+
+
+def test_block_fisher_matches_an_explicit_solve_and_survives_rank_deficiency():
+    """pfi inverts a symmetric PSD block through eigh rather than torch.linalg.solve.
+
+    Smoke attempts 3 and 4 (log.md 2026-10-14) died because a rank-deficient block made
+    cuSOLVER report a singular matrix, and on CUDA that surfaced asynchronously inside a later
+    call. eigh is stable on PSD input; this pins that it also gives the SAME answer where solve
+    works, and that a block with fewer rows than dimensions no longer raises.
+    """
+    torch = pytest.importorskip("torch")
+    from p48 import contracts as K
+    from p48 import tda
+
+    g = torch.Generator().manual_seed(0)
+    n, dim, k = 40, 8, 3
+    V = torch.randn(n, dim, generator=g, dtype=torch.float64)
+    Q = torch.randn(k, dim, generator=g, dtype=torch.float64)
+    got = tda.block_fisher_scores(V, Q, [dim], K.DAMPINGS, torch.device("cpu"))
+
+    Fb = V.T @ V / n
+    mean_eig = float(torch.diagonal(Fb).mean())
+    for d in K.DAMPINGS:
+        want = V @ torch.linalg.solve(Fb + d * mean_eig * torch.eye(dim, dtype=torch.float64),
+                                      Q.T)
+        assert torch.allclose(got[d], want, rtol=1e-8, atol=1e-10), d
+
+    # far fewer rows than dimensions: rank-deficient, and it must still return finite scores
+    thin = tda.block_fisher_scores(V[:3], Q, [dim], K.DAMPINGS, torch.device("cpu"))
+    for d in K.DAMPINGS:
+        assert torch.isfinite(thin[d]).all(), d

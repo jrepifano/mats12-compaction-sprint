@@ -326,9 +326,13 @@ def step_smoke(args) -> int:
                             "ekfac_variants": sorted(ek), "all_finite": finite,
                             "families": sorted(sc)[:12],
                             "coverage": sc_meta.get("ekfac_coverage"),
-                            "pfi_singular_blocks": sc_meta.get("pfi_singular_blocks")}
+                            "timings_s": sc_meta.get("timings_s")}
     except Exception as exc:  # noqa: BLE001 - a smoke failure must be reported, not raised
-        rec["ekfac_200"] = {"ok": False, "error": repr(exc)[:400]}
+        import traceback
+        # Keep the FULL traceback: a repr alone sent me chasing a `solve` error that CUDA had
+        # raised asynchronously in an earlier call (attempts 3 and 4, 2026-10-14).
+        rec["ekfac_200"] = {"ok": False, "error": repr(exc)[:400],
+                            "traceback": traceback.format_exc()[-2500:]}
     rec["phases"]["ekfac_200"] = round(time.time() - t, 1)
 
     # 5. the projection and the drop ladder

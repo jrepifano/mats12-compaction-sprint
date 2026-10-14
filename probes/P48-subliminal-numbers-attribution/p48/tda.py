@@ -584,33 +584,29 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
     N = V.shape[0]
     V = V.to(device)  # one transfer (2.0 GB for Qwen-7B r=8 at 10K rows), then slice there
     out = {d: torch.zeros(N, Q.shape[0], dtype=torch.float64, device=device) for d in dampings}
-    singular: dict[float, int] = {d: 0 for d in dampings}
     off = 0
     for dim in dims:
         Vb = V[:, off:off + dim].to(device, torch.float64)
         Qb = Q[:, off:off + dim].to(device, torch.float64)
         Fb = Vb.T @ Vb / N
         mean_eig = float(torch.diagonal(Fb).mean())
-        eye = torch.eye(dim, dtype=torch.float64, device=device)
+        # Fb is symmetric PSD, so invert it through its eigendecomposition rather than
+        # torch.linalg.solve. Whenever the scored rows are fewer than the block's dimension -
+        # or merely very collinear, which the real model's projected gradients are - Fb is
+        # rank-deficient, and a damping of damp x mean_eig can be too small to make
+        # `Fb + lam I` numerically invertible. cuSOLVER then reports a singular matrix, and
+        # on CUDA that error surfaces ASYNCHRONOUSLY at the next synchronisation point, which
+        # made it look as though EK-FAC had failed (smoke attempts 3 and 4, 2026-10-14).
+        # eigh on a PSD matrix is stable and gives the identical answer where solve works.
+        w, U = torch.linalg.eigh(Fb)
+        w = w.clamp_min(0.0)
+        UtQ = U.T @ Qb.T  # (dim, K)
         for d in dampings:
             lam = d * mean_eig
             if lam <= 0:  # an all-zero block contributes nothing
                 continue
-            try:
-                X = torch.linalg.solve(Fb + lam * eye, Qb.T)  # (dim, K)
-            except Exception:  # noqa: BLE001 - torch raises _LinAlgError, which is private
-                # A block whose dimension exceeds the number of scored rows is rank-deficient,
-                # and a small damping can leave Fb + lam I numerically singular. That happens for
-                # the UNPROJECTED small modules (k/v lora_B is 4,096 dims) whenever N is smaller
-                # than the block, i.e. in the 200-row smoke but not in a 10K+ production run.
-                # Least squares gives the same answer where solve works, so fall back and count
-                # it rather than losing the whole scoring pass (smoke attempt 3, 2026-10-14).
-                X = torch.linalg.lstsq(Fb + lam * eye, Qb.T).solution
-                singular[d] += 1
-            out[d] += Vb @ X
+            out[d] += Vb @ (U @ (UtQ / (w + lam).unsqueeze(1)))
         off += dim
-    if any(singular.values()):
-        out["_singular_blocks"] = singular
     return out
 
 
@@ -908,10 +904,6 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
     # --- 3. pfi -------------------------------------------------------------------------------
     t0 = time.time()
     pf = block_fisher_scores(V, Qproj, dims, dampings, device)
-    if "_singular_blocks" in pf:
-        meta["pfi_singular_blocks"] = pf.pop("_singular_blocks")
-        log(f"[tda] pfi: {meta['pfi_singular_blocks']} rank-deficient blocks solved by lstsq "
-            f"(expected when rows {V.shape[0]} < a block's dimension)")
     for d in dampings:
         arr = pf[d].cpu().numpy()
         for k, q in enumerate(qnames):
