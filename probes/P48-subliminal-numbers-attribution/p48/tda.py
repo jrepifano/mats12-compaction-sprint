@@ -554,9 +554,16 @@ def check_per_sample(model, rows: list[dict], *, log=print, rel_tol: float = 1e-
         rel.append(float((x - y).abs().max() / y.abs().max().clamp_min(1e-300)))
         cos.append(float(x @ y / (x.norm() * y.norm()).clamp_min(1e-300)))
         dloss.append(abs(float(losses[b]) - float(loss.detach())))
+    cos_sorted = sorted(cos)
     out = {"n_rows": len(rows), "batch_sum_rel_err": check[0], "single_row_max_rel_err":
            max(rel), "single_row_min_cos": min(cos), "max_abs_loss_diff": max(dloss),
-           "rel_tol": rel_tol, "min_cos": min_cos}
+           "rel_tol": rel_tol, "min_cos": min_cos,
+           # The full distribution, not just the worst row: batch-composition sensitivity is a
+           # property of bf16, and the note has to state how large it is (log.md 2026-10-14).
+           "single_row_cos_all": [round(c, 6) for c in cos_sorted],
+           "single_row_cos_median": cos_sorted[len(cos_sorted) // 2],
+           "single_row_cos_mean": sum(cos) / len(cos),
+           "single_row_rel_all": [round(r, 4) for r in sorted(rel)]}
     out["ok"] = bool(check[0] < rel_tol and min(cos) > min_cos)
     log(f"[tda] per-row gradient check: {out}")
     return out

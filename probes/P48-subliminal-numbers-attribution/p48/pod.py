@@ -317,7 +317,24 @@ def step_smoke(args) -> int:
     # the single-row recompute is gated on the cosine at 0.99, not 0.999 (check_per_sample's own
     # docstring; P43 relaxed the same gate after measuring 0.9973, and we measured 0.9987 on the
     # real model). The exact batch-sum identity stays strict and held at 4.1e-07.
-    rec["per_sample_grad"] = tda.check_per_sample(scored, check_rows, min_cos=0.99, log=log)
+    # TWO different claims, gated differently:
+    #  - the EXACT identity (per-row gradients sum to the batch's autograd gradient) proves the
+    #    decomposition is correct. It is the hard gate, and it holds at ~6e-07.
+    #  - the single-row recompute measures how much a row's gradient depends on its batch-mates.
+    #    That is bf16 batch-shape sensitivity, not a bug: it is REPORTED with its full
+    #    distribution and warned about, not gated, because gating it would only tempt me to
+    #    loosen the threshold until it passed (log.md 2026-10-14).
+    psg = tda.check_per_sample(scored, check_rows, min_cos=0.0, log=log)
+    psg["exact_identity_ok"] = psg["batch_sum_rel_err"] < 1e-3
+    psg["batch_sensitivity_warning"] = psg["single_row_min_cos"] < 0.99
+    psg["ok"] = psg["exact_identity_ok"]
+    rec["per_sample_grad"] = psg
+    if psg["batch_sensitivity_warning"]:
+        log(f"[smoke] WARNING per-row gradients are batch-composition sensitive: cosine "
+            f"min {psg['single_row_min_cos']:.4f} median {psg['single_row_cos_median']:.4f} "
+            f"over {psg['n_rows']} rows. The exact identity holds at "
+            f"{psg['batch_sum_rel_err']:.2e}; this bounds how finely two scorers can be "
+            f"separated and belongs in the note.")
     rec["phases"]["grad_check"] = round(time.time() - t, 1)
     t = time.time()
     # The gates are the precision-free identities: eps = 0 and 1 reproduce adapter-off and
