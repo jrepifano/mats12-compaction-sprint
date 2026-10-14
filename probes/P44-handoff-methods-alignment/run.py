@@ -35,8 +35,8 @@ from p44 import handoff as H
 
 # Per-sample projections before the smoke measures them (P23: DeepSeek pre-test episodes
 # $0.0013-0.01, GLM $0.02-0.045; a chain is up to 24 turns plus handoff calls).
-PROJECTION_USD = {"prefix": {"deepseek-v4-flash": 0.02, "glm-5.3-flash": 0.05},
-                  "chain": {"deepseek-v4-flash": 0.04, "glm-5.3-flash": 0.10}}
+PROJECTION_USD = {"prefix": {"deepseek/deepseek-v4-flash": 0.02, "z-ai/glm-5.3-flash": 0.05},
+                  "chain": {"deepseek/deepseek-v4-flash": 0.04, "z-ai/glm-5.3-flash": 0.10}}
 STOP_FILE = C.RESULTS_DIR / "STOP"
 RERUN_END_REASONS = ("api_error", "replay_mismatch", "summary_failed")
 SMOKE_TASKS = ("lcbhard_45", "lcbhard_3", "lcbhard_46")
@@ -240,8 +240,8 @@ def run(a) -> int:
     model = C.MODELS[C.MODEL_ARG[a.model]]
     specs, skipped = build(a, model)
     kind = "prefix" if a.cmd == "prefixes" else "chain"
-    per = a.per_sample_usd or PROJECTION_USD[kind].get(model.slug) \
-        or 2 * PROJECTION_USD[kind][model.prefix_slug]   # other hosts: input up to 4x Relace's
+    # by model id; the provider-test chains measured GLM $0.049-0.069 and the pilot DeepSeek $0.02
+    per = a.per_sample_usd or PROJECTION_USD[kind][model.model_id]
     print(json.dumps({"cmd": a.cmd, "model": model.slug, "samples": len(specs),
                       "skipped_prefixes": skipped, "per_sample_projection": per,
                       "projected_usd": round(per * len(specs), 2), "level": a.level,

@@ -188,13 +188,19 @@ DEEPSEEK = Model("deepseek/deepseek-v4-flash", "deepseek-v4-flash", 0.14, 0.28,
 # fallbacks so a chain never changes serving stack; same list prices, cache reads $0.03/M.
 GLM_TG = Model("z-ai/glm-5.3-flash", "glm-5.3-flash-tg", 0.15, 0.50,
                {"order": ["together"], "allow_fallbacks": False,
-                "max_price": {"prompt": 0.15, "completion": 0.50}}, 0.60, {}, "glm-5.3-flash")
+                "max_price": {"prompt": 0.15, "completion": 0.50}}, 0.60, {})   # own prefixes
 GLM_FR = Model("z-ai/glm-5.3-flash", "glm-5.3-flash-fr", 0.15, 0.50,
                {"order": ["friendli"], "allow_fallbacks": False,
                 "max_price": {"prompt": 0.15, "completion": 0.50}}, 0.60, {}, "glm-5.3-flash")
-MODELS = {m.slug: m for m in (GLM, DEEPSEEK, GLM_TG, GLM_FR)}
+# DeepSeek check (log.md 04:58): Baidu fp8 at ~94 tok/s within the same price ceiling; the old
+# price-sorted routing landed on fp8 hosts at ~43-57 tok/s.
+DEEPSEEK_BD = Model("deepseek/deepseek-v4-flash", "deepseek-v4-flash-bd", 0.14, 0.28,
+                    {"order": ["baidu/fp8"], "allow_fallbacks": False,
+                     "max_price": {"prompt": 0.14, "completion": 0.28}}, 0.60,
+                    {"reasoning_effort": "medium"})
+MODELS = {m.slug: m for m in (GLM, DEEPSEEK, GLM_TG, GLM_FR, DEEPSEEK_BD)}
 MODEL_ARG = {"glm": GLM.slug, "deepseek": DEEPSEEK.slug, "glm-tg": GLM_TG.slug,
-             "glm-fr": GLM_FR.slug}
+             "glm-fr": GLM_FR.slug, "deepseek-bd": DEEPSEEK_BD.slug}
 
 
 # --- ids and paths -----------------------------------------------------------------------------
