@@ -138,7 +138,7 @@ elif [ "$PHASE" = session3 ]; then
   run_step download 11 "$PEFT" download || { [ "$RC" = 0 ] && RC=11; }
   run_step score 15 "$PEFT" score --mixture "$F2_MIX" || { [ "$RC" = 0 ] && RC=15; }
   run_step arms 17 "$PEFT" arms --mixture "$F2_MIX" --k "$F2_K" --prefix f2_ \
-    --selectors grad random || { [ "$RC" = 0 ] && RC=17; }
+    --selectors grad delta_own random || { [ "$RC" = 0 ] && RC=17; }
   # shellcheck disable=SC2086
   run_step train 13 "$PEFT" train --tag f2 --keys $KEYS || { [ "$RC" = 0 ] && RC=13; }
   if [ "$RC" = 0 ] || [ "$RC" = 4 ]; then

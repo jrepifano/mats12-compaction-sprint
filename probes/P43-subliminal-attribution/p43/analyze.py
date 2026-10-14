@@ -325,8 +325,10 @@ def cmd_causal(args) -> int:
             d["drop_vs_mixture"] = float(arms["mixture"].mean() - mat.mean())
             d["drop_ci95"] = [float(np.percentile(drop, 2.5)), float(np.percentile(drop, 97.5))]
         res["arms"][k] = d
-    pairs = [("swap_grad", "swap_random"), ("swap_grad", "swap_delta_own"),
-             ("swap_delta_own", "swap_random")]
+    # selector contrasts for every operation: the swap arms can sit at the floor, so the
+    # selector effect is measured where the arm still has range (drop and refill)
+    pairs = [(f"{op}_{a}", f"{op}_{b}") for op in K.OPERATIONS
+             for a, b in (("grad", "random"), ("grad", "delta_own"), ("delta_own", "random"))]
     pairs += [(f"swap_{s}", f"drop_{s}") for s in K.SELECTORS]
     pairs += [(f"swap_{s}", f"refill_{s}") for s in K.SELECTORS]
     pairs += [(f"refill_{s}", f"drop_{s}") for s in K.SELECTORS]

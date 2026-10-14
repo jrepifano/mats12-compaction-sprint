@@ -7,6 +7,9 @@ api_limit_usd = 5
 reserve_usd = 0
 
 [pod]
+# Session 3 (follow-up F2, log.md): score the mix100n20k seed-0 student (~24 min), build the f2_
+# arms on the pod, then 12 trainings x 608 steps = 7,296 steps at 1.015 s/step = 2.1 h, eval 12
+# views ~5 min, setup+download ~6 min: ~2.8 h of run.sh (guard 5 h). gpu_hours 3.0 -> ~$14.
 # Session 2b (stage 2, batch 2 of 2): the delta_own and random arms. 7,752 steps at the 1.015
 # s/step session 2a measured = 2.2 h, eval 15 views ~5 min, setup+download ~12 min: ~2.5 h of
 # run.sh (guard 6 h). gpu_hours 3.0 -> budget (3.0 + 0.5) x $3.99 = ~$14.
@@ -32,7 +35,12 @@ gpu_check = true
 min_download_mb_s = 100
 # gitignored inputs the pod reads (the runner sends tracked files under src/, scripts/ and the
 # probe dir by itself)
+# results/ is never sent by the runner (probe_pod.py RUN_OUTPUT), so session 3's inputs - the
+# frozen variant and the student it scores - go through [pod].push explicitly.
 push = ["probes/P43-subliminal-attribution/data/mix",
-        "probes/P43-subliminal-attribution/data/arms"]
+        "probes/P43-subliminal-attribution/data/arms",
+        "probes/P43-subliminal-attribution/results/analysis/frozen.json",
+        "probes/P43-subliminal-attribution/results/adapters/mix100n20k_s0",
+        "probes/P43-subliminal-attribution/results/train/mix100n20k_s0"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
