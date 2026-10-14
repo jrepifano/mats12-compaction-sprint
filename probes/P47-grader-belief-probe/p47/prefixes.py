@@ -215,6 +215,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="'all' = the first --first tasks; or a comma list of task ids")
     ap.add_argument("--first", type=int, default=C.STAGE_A_TASKS)
     ap.add_argument("--dry-run", action="store_true", help="initial messages and states only")
+    ap.add_argument("--max-round", type=int, default=2,
+                    help="1 = no fresh prefixes for tasks still short (Qwen, log.md 2026-10-14)")
     a = ap.parse_args(argv)
     tasks = {t.task_id: t for t in load_manifest(C.TASKS_JSON).tasks}
     order = list(tasks)
@@ -289,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
     # remaining attempts where a task is still short
     rows = []
     rounds = ((1,), (2, 3, 4)) if C.SITES_PER_TASK == 1 else ((1, 2, 3), (4,))
-    for rnd, attempts in enumerate(rounds, 1):
+    for rnd, attempts in enumerate(rounds[: a.max_round], 1):
         if rnd == 2:
             have = Counter(r["task_id"] for r in select([r for r, _ in rows]))
             todo_tasks = [t for t in run_tasks if have[t] < C.SITES_PER_TASK]
@@ -301,6 +303,8 @@ def main(argv: list[str] | None = None) -> int:
         if jobs:
             res = asyncio.run(R.run_pool(jobs, job, f"prefixes-r{rnd}", PROJECTION_USD))
             print(json.dumps(res), flush=True)
+        rows = audit()
+    if not rows:
         rows = audit()
 
     C.DATA_DIR.mkdir(parents=True, exist_ok=True)

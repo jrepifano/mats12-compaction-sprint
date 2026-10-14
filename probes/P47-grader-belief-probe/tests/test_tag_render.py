@@ -63,6 +63,8 @@ def test_open_reasoning_reads_statement_end(slug, monkeypatch):
     tok = _cached(slug)
     if tok is None:
         pytest.skip("tokenizer not cached")
+    if slug.startswith("gpt-oss"):
+        pytest.importorskip("openai_harmony")   # `uv run --with openai-harmony`, not in the lock
     stmt = "The grading here only runs the provided tests."
     ids, end = RD.render_open_reasoning(tok, PREFIX, slug, stmt)
     assert end == len(ids) - 1
