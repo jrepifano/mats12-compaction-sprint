@@ -48,7 +48,12 @@ for F in data/manifest.json data/mix/mix000.jsonl data/mix/mix100.jsonl data/mix
 done
 if [ "$RC" = 0 ] && [ -f tda_requirements.txt ]; then
   # extra attribution deps into the peft venv without touching torch/transformers/peft
-  "$PEFT" -m pip install --quiet --no-deps -r tda_requirements.txt || { echo "P43 tda deps failed"; RC=2; }
+  # /ws/venv-peft is a uv venv (no pip module): install with uv (pod_setup.sh puts it in ~/.local/bin)
+  UVBIN="$(command -v uv || echo "$HOME/.local/bin/uv")"
+  UV_CACHE_DIR=/ws/uv_cache "$UVBIN" pip install --quiet --python "$PEFT" --no-deps \
+    -r tda_requirements.txt || { echo "P43 tda deps failed"; RC=2; }
+  "$PEFT" -c "import bergson, scipy; print('bergson', bergson.__version__ if hasattr(bergson, '__version__') else 'ok')" \
+    || echo "P43 warning: bergson import failed (the smoke cross-check is optional)"
 fi
 
 step_env() {
@@ -116,7 +121,7 @@ fi
 
 echo "== $(date -u +%FT%TZ) step=manifest elapsed=$(( $(date +%s) - T0 ))s"
 ( cd results && find . -type f ! -name MANIFEST.sha256 -print0 \
-    | sort -z | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) \
+    | sort -z | xargs -0 -r shasum -a 256 > ../MANIFEST.sha256.tmp ) \
   && mv MANIFEST.sha256.tmp results/MANIFEST.sha256
 echo "P43 end $(date -u +%FT%TZ) rc=$RC elapsed=$(( $(date +%s) - T0 ))s"
 echo "PROBE_DONE rc=$RC"
