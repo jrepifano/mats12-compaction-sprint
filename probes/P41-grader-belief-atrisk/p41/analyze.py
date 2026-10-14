@@ -205,6 +205,16 @@ def _sensitivity(m: pd.DataFrame, draws: int) -> dict:
     return out
 
 
+def _without_smoke(m: pd.DataFrame, draws: int) -> dict:
+    """Primary and N contrasts without the smoke run's r1 continuations reused in the grid."""
+    mm = m[~(m["site_id"].isin(C.SMOKE_SITES) & (m["repeat"] == 1))]
+    return {"n_dropped": int(len(m) - len(mm)),
+            **{f"{a}-{b}": contrast(mm, mm["cond"] == a, mm["cond"] == b, draws=draws,
+                                    permute=False)
+               for a, b in PRIMARY + (("Vp", "N"), ("A", "N"))
+               if (mm["cond"] == a).any() and (mm["cond"] == b).any()}}
+
+
 def persistence(m: pd.DataFrame, draws: int) -> dict:
     """Task-equal rates of the keyword restatements and the post-episode answers, per arm."""
     out = {}
@@ -241,10 +251,12 @@ def screen_summary(sel: dict) -> dict:
             "positive_tasks": len({k.split("|")[1] for k in pos})}
 
 
-def analyze(results_dir: Path, draws: int = DRAWS, selection: dict | None = None) -> dict:
+def analyze(results_dir: Path, draws: int = DRAWS, selection: dict | None = None,
+            conds=CONDS) -> dict:
     results_dir = Path(results_dir)
     sel = load_selection() if selection is None else selection
     m, excl = load_measures(results_dir / "measures.csv")
+    m = m[m["cond"].isin(conds)]
     main_ids, ctrl_ids = sel.get("main", []), sel.get("control", [])
     mm, mc = _set(m, main_ids), _set(m, ctrl_ids)
     main = grid(mm, draws)
@@ -252,6 +264,7 @@ def analyze(results_dir: Path, draws: int = DRAWS, selection: dict | None = None
            "exclusions": excl, "screen": screen_summary(sel),
            "main": {**main, "verdict": verdict(main["contrasts"]),
                     "sensitivity_undetermined": _sensitivity(mm, draws),
+                    "sensitivity_without_smoke": _without_smoke(mm, draws),
                     "persistence": persistence(mm, draws), "process": _process(mm)},
            "control": grid(mc, draws) if not mc.empty else None,
            "plan_named_stratum": {
@@ -306,8 +319,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--results-dir", type=Path, default=C.RESULTS_DIR)
     ap.add_argument("--draws", type=int, default=DRAWS)
+    ap.add_argument("--conds", default=",".join(C.GRID_CONDS))
     a = ap.parse_args(argv)
-    res = analyze(a.results_dir, a.draws)
+    res = analyze(a.results_dir, a.draws, conds=tuple(a.conds.split(",")))
     (a.results_dir / "analysis.json").write_text(json.dumps(res, indent=1) + "\n")
     print(summary(res))
     return 0
