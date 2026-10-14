@@ -1,0 +1,47 @@
+# P42 OOD coverage gaps (plan.md "Cap"). Starting cap $35 (GPU $27, API $8); follow-ups may raise
+# it to $150 without asking (record the reason in log.md).
+id = "P42"
+hard_cap_usd = 35
+gpu_limit_usd = 27
+api_limit_usd = 8
+reserve_usd = 0
+
+[pod]
+# One H100 80GB (no `gpus`: the runner's default H100 community -> H100 NVL -> H100 secure -> A100
+# fallback). Projection (plan.md "Cap"; token counts x typical H100 throughput, not measured on
+# this model; the smoke unit replaces it with measured rates before the bulk run and cuts or
+# stops when the projection exceeds 80% of the time left):
+#   launch + eq0 setup ~15 min; download 2 x 14.6 GB + SAE 2.1 GB at >= 150 MB/s ~5 min
+#   smoke (1,100 prompts, every phase, 3 model loads + a vLLM engine) ~10-15 min
+#   gen: 76k prompts, ~41M prompt tokens of prefill + ~23M output tokens ~40-50 min
+#   feats: prompt tokens counted on the built prompts.jsonl (2026-10-13, OLMo-3 tokenizer, 36
+#     template tokens each): DPO 53.0M + 76k x <=128 response = ~63M; SFT 48.7M + 9.7M = ~58M;
+#     ~121M tokens at ~30k tok/s (7B bf16 forward, sdpa) ~70 min (the plan assumed 60M)
+#   grads: 76k gen prompts ~41M prompt + ~9.7M response tokens, forward + backward through the
+#     last 4 blocks ~35-45 min
+#   score (Ledoit-Wolf, kNN, PCA on the GPU; ~21 GB of memmap reads) ~10 min
+# About 3-3.3 h, more than plan.md's 2.8 h: the built prompts are longer than assumed. The smoke
+# measures the real rates and cuts (S4 reference 10k, then 64 response tokens) or stops (rc 13)
+# if the projection exceeds 80% of the time left; the cuts save little here (prompt tokens
+# dominate). gpu_hours 3.5: budget (3.5 + 0.5) x $3.99 = ~$16, killswitch ~4 h after launch,
+# runner salvage 15 min before it. run.sh's soft guard (no new step after 4.25 h of run.sh)
+# and the smoke's projection gate (deadline = killswitch - 20 min) stop the chain first.
+# Main session 2026-10-14: gpu_hours 4.5 (budget (4.5 + 0.5) x $3.99 = ~$20, inside gpu_limit_usd 27),
+# because the built prompts are ~2x the plan's token estimate (pod unit's report, log.md).
+gpu_hours = 4.5
+# "eq0": /ws/venv-peft (torch, transformers 5.17 with Olmo3ForCausalLM, peft; HF forwards,
+# gradients, scoring) and /ws/venv-vllm (vllm 0.30; generation).
+setup = "eq0"
+# two models 2 x 14.6 GB + SAE 2.1 GB + venvs ~20 GB + feature stores ~16 GB (2 models x 8
+# arrays x N x 4096 fp16) + gradients ~4 GB + vLLM/compile caches.
+disk_gb = 200
+model_gb = 30
+model_repo = "allenai/Olmo-3-7B-Instruct-DPO"
+model_revision = "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1"
+min_download_mb_s = 150
+gpu_check = true
+rerolls = 2
+# Built on the laptop (p42.data), gitignored, sent as push paths; download verifies the sha256.
+push = ["data/P42/prompts.jsonl", "data/P42/prompts.meta.json"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
