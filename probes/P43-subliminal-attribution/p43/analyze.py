@@ -261,9 +261,11 @@ def cmd_selections(args) -> int:
     sel = {"grad": top_k(list(_lookup(fam, frozen["grad"]["chosen"])), k)}
     if "delta_own" in fam:
         sel["delta_own"] = top_k(list(_lookup(fam, frozen["families"]["delta_own"]["chosen"])), k)
-    from p43.data import random_k
+    from p43.data import random_active_k, random_k
 
     sel["random"] = random_k(n, k)
+    # the method-minimal control: random among the rows a swap can change at all (see data.py)
+    sel["random_active"] = random_active_k(rows, k)
     out = OUT / (args.out or "selections.json")
     out.write_text(json.dumps(sel) + "\n")
     print(f"{out.name}: mixture {f}, k {k}, scores from {SCORES.name}")
@@ -331,7 +333,11 @@ def cmd_causal(args) -> int:
     # selector contrasts for every operation: the swap arms can sit at the floor, so the
     # selector effect is measured where the arm still has range (drop and refill)
     pairs = [(f"{op}_{a}", f"{op}_{b}") for op in K.OPERATIONS
-             for a, b in (("grad", "random"), ("grad", "delta_own"), ("delta_own", "random"))]
+             for a, b in (("grad", "random"), ("grad", "delta_own"), ("delta_own", "random"),
+                          # vs the method-minimal control: does the ranking beat "skip the
+                          # byte-identical rows", which costs nothing?
+                          ("grad", "random_active"), ("delta_own", "random_active"),
+                          ("random_active", "random"))]
     pairs += [(f"swap_{s}", f"drop_{s}") for s in K.SELECTORS]
     pairs += [(f"swap_{s}", f"refill_{s}") for s in K.SELECTORS]
     pairs += [(f"refill_{s}", f"drop_{s}") for s in K.SELECTORS]
@@ -342,52 +348,79 @@ def cmd_causal(args) -> int:
                 "a_lower_by": float(arms[b].mean() - arms[a].mean()),
                 "ci95": [float(np.percentile(dd, 2.5)), float(np.percentile(dd, 97.5))]}
     # --- dilution adjustment of the selector contrasts -----------------------------------------
-    # The three selectors leave DIFFERENT modified shares (they differ in precision), so part of
-    # a grad-vs-random gap is plain dilution rather than selection quality. Subtract it: read the
-    # seed-0 curve at each arm's own share, on the curve whose row count is closest to the arm's
-    # (20K mixtures for the 20,000-row swap/refill arms, 10K for the 12,500-row drop arms - a
-    # proxy, since no curve was measured at 12,500 rows), and compare the observed gap with the
-    # gap the curve alone predicts.
+    # The selectors leave different amounts of trait-carrying data behind, so part of any
+    # grad-vs-random gap is plain dilution rather than selection quality. Subtract it.
+    #
+    # The share that matters is the ACTIVE share, not poison_share: about 25.8% of modified rows
+    # have a completion byte-identical to their clean twin, so they carry no trait and a swap of
+    # one changes nothing. Plain `random` picks those at the pool rate while an informed scorer
+    # almost never does, which leaves random with a higher active share even when every arm has
+    # the same poison_share by construction (F2: 0.750 for all three arms, but active 0.511 /
+    # 0.503 / 0.557 for grad / delta_own / random). Reading poison_share would score that
+    # difference as selection quality when it is dilution.
+    #
+    # So: express the seed-0 gate curve in active share too, read it at each arm's own active
+    # share on the curve whose row count is closest to the arm's (20K mixtures for the
+    # 20,000-row swap/refill arms, 10K for the 12,500-row drop arms - a proxy, since no curve
+    # was measured at 12,500 rows), and compare the observed gap with the gap the curve predicts.
     counts = {}
     # the main arms' counts are in data/manifest.json; a follow-up's are in the arms_<tag>.json
     # the pod writes beside its results, so read both
     sources = [K.DATA_DIR / "manifest.json", *sorted(K.RESULTS_DIR.glob("arms_*.json"))]
     for mp in sources:
         if mp.exists():
-            counts.update({k: v for k, v in json.loads(mp.read_text()).get("counts", {}).items()
-                           if isinstance(v, dict) and "poison_share" in v})
+            # arm records (poison_share) and mixture records (poison + poison_identical, used
+            # for the curve) are both needed
+            for k, v in json.loads(mp.read_text()).get("counts", {}).items():
+                if isinstance(v, dict) and ("poison_share" in v or "poison" in v):
+                    # merge field-wise: a pod-written arms_<tag>.json predates the `active`
+                    # fields, and must not blank out what a local rebuild recorded
+                    counts[k] = {**counts.get(k, {}), **v}
     curves = {}
     for p2 in sorted(EVAL.glob("mix*_s0.summary.json")):
-        s = json.loads(p2.read_text())
-        v = s["view"]
-        nrows = 20_000 if v[6:-3] == "n20k" else 10_000
-        curves.setdefault(nrows, {})[int(v[3:6])] = s["asr"]
+        sm = json.loads(p2.read_text())
+        v = sm["view"]
+        mix_counts = counts.get(v[:-3])  # the mixture's own row/poison/poison_identical counts
+        if not mix_counts or "poison" not in mix_counts:
+            continue
+        nrows = mix_counts["rows"]
+        active = (mix_counts["poison"] - mix_counts.get("poison_identical", 0)) / nrows
+        curves.setdefault(nrows, {})[active * 100] = sm["asr"]
 
-    def curve_at(share_pct: float, nrows: int) -> float | None:
+    def curve_at(active_pct: float, nrows: int) -> float | None:
         best = min(curves, key=lambda n: abs(n - nrows)) if curves else None
         if best is None or len(curves[best]) < 2:
             return None
         xs = sorted(curves[best])
-        return float(np.interp(share_pct, xs, [curves[best][x] for x in xs]))
+        return float(np.interp(active_pct, xs, [curves[best][x] for x in xs]))
+
+    def active_share(c: dict) -> float | None:
+        """An arm's trait-carrying share. Older count records have no `active` field."""
+        if "active_share" in c:
+            return c["active_share"]
+        return None
 
     adj = {}
-    for op in K.OPERATIONS:
-        a, b = f"{op}_grad", f"{op}_random"
-        ca, cb = prefix + a, prefix + b  # manifest counts are keyed by the arm's data name
+    for a, b in pairs:  # every selector contrast, same pairs as above (a is the better selector)
+        ca, cb = prefix + a, prefix + b  # count records are keyed by the arm's data name
         if not (a in arms and b in arms and ca in counts and cb in counts):
             continue
-        counts[a], counts[b] = counts[ca], counts[cb]
-        pa = curve_at(counts[a]["poison_share"] * 100, counts[a]["rows"])
-        pb = curve_at(counts[b]["poison_share"] * 100, counts[b]["rows"])
+        sa, sb = active_share(counts[ca]), active_share(counts[cb])
+        if sa is None or sb is None or counts[ca]["rows"] != counts[cb]["rows"]:
+            continue  # a cross-operation pair differs in size, not just share: not comparable
+        pa = curve_at(sa * 100, counts[ca]["rows"])
+        pb = curve_at(sb * 100, counts[cb]["rows"])
         if pa is None or pb is None:
             continue
         observed = float(arms[b].mean() - arms[a].mean())
         adj[f"{a}_vs_{b}"] = {
             "observed_gap": round(observed, 2),
-            "share_grad": counts[a]["poison_share"], "share_random": counts[b]["poison_share"],
-            "rows": counts[a]["rows"],
-            "curve_rows_used": min(curves, key=lambda n: abs(n - counts[a]["rows"])),
-            "curve_predicts_grad": round(pa, 2), "curve_predicts_random": round(pb, 2),
+            "active_share_a": sa, "active_share_b": sb,
+            "poison_share_a": counts[ca]["poison_share"],
+            "poison_share_b": counts[cb]["poison_share"],
+            "rows": counts[ca]["rows"],
+            "curve_rows_used": min(curves, key=lambda n: abs(n - counts[ca]["rows"])),
+            "curve_predicts_a": round(pa, 2), "curve_predicts_b": round(pb, 2),
             "gap_from_dilution_alone": round(pb - pa, 2),
             "gap_beyond_dilution": round(observed - (pb - pa), 2)}
     res["selector_gap_vs_dilution"] = adj
@@ -414,9 +447,11 @@ def cmd_causal(args) -> int:
         print(f"{k:34s} {d['a_lower_by']:+.1f} [{d['ci95'][0]:+.1f}, {d['ci95'][1]:+.1f}]")
     for k, d in res.get("selector_gap_vs_dilution", {}).items():
         print(f"{k:34s} observed {d['observed_gap']:+.1f}, dilution alone "
-              f"{d['gap_from_dilution_alone']:+.1f} (shares {d['share_grad']:.3f} vs "
-              f"{d['share_random']:.3f} at {d['rows']} rows, {d['curve_rows_used']}-row curve), "
-              f"beyond dilution {d['gap_beyond_dilution']:+.1f}")
+              f"{d['gap_from_dilution_alone']:+.1f} (active shares "
+              f"{d['active_share_a']:.3f} vs {d['active_share_b']:.3f}, nominal "
+              f"{d['poison_share_a']:.3f} vs {d['poison_share_b']:.3f}, at {d['rows']} "
+              f"rows on the {d['curve_rows_used']}-row curve), beyond dilution "
+              f"{d['gap_beyond_dilution']:+.1f}")
     return 0
 
 

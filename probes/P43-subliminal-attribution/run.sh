@@ -6,8 +6,9 @@
 #             train+eval mix075 and gate again) -> score (likelihoods + attribution on the f*
 #             student) -> teacher (delta_teacher under Gemma)
 #   session2: download -> train the stage-2 keys in `stage2_keys` -> eval them
-#   session3: follow-up F2 (log.md). download -> score the mix100n20k seed-0 student into
-#             results/scores_mix100n20k/ -> build the f2_ arms on the pod from the frozen
+#   session3: a follow-up's arms (F2, F3; log.md). download -> score the P43_F2_MIX seed-0
+#             student into results/scores_<mix>/ (skipped when the scores are pushed in) ->
+#             build the $P43_F2_PREFIX arms on the pod from the frozen
 #             variant -> train the keys in `stage2_keys` -> eval them. The 100% mixture holds
 #             the modified share identical between selectors, so the selector contrast carries
 #             no dilution confound.
@@ -32,7 +33,9 @@ esac
 GUARD_S="${P43_GUARD_S:-$DEFAULT_GUARD}"
 GATE_KEYS="mix000_s0 mix025_s0 mix050_s0 mix100_s0"
 F2_MIX="${P43_F2_MIX:-mix100n20k}"   # session3: the scored student and the arms' base mixture
-F2_K="${P43_F2_K:-5000}"             # session3: top-k (25% of the rows; see log.md's F2 entry)
+F2_K="${P43_F2_K:-2000}"             # session3: top-k (F3: 10% of the rows; see log.md)
+F2_PREFIX="${P43_F2_PREFIX:-f3_}"    # session3: arm-name prefix, so one follow-up never
+                                     # overwrites another's arms, scores or evals
 WIDE_KEYS="mix000n20k_s0 mix050n20k_s0 mix075n20k_s0 mix100n20k_s0"
 echo "P43 phase=$PHASE guard=${GUARD_S}s"
 if [ "${P43_DRY_RUN:-0}" = 1 ]; then
@@ -137,16 +140,16 @@ elif [ "$PHASE" = session3 ]; then
   [ -n "$KEYS" ] || { echo "P43 missing stage2_keys"; RC=2; }
   run_step download 11 "$PEFT" download || { [ "$RC" = 0 ] && RC=11; }
   run_step score 15 "$PEFT" score --mixture "$F2_MIX" || { [ "$RC" = 0 ] && RC=15; }
-  run_step arms 17 "$PEFT" arms --mixture "$F2_MIX" --k "$F2_K" --prefix f2_ \
-    --selectors grad delta_own random || { [ "$RC" = 0 ] && RC=17; }
+  run_step arms 17 "$PEFT" arms --mixture "$F2_MIX" --k "$F2_K" --prefix "$F2_PREFIX" \
+    --selectors grad delta_own random random_active || { [ "$RC" = 0 ] && RC=17; }
   # shellcheck disable=SC2086
-  run_step train 13 "$PEFT" train --tag f2 --keys $KEYS || { [ "$RC" = 0 ] && RC=13; }
+  run_step train 13 "$PEFT" train --tag "${F2_PREFIX%_}" --keys $KEYS || { [ "$RC" = 0 ] && RC=13; }
   if [ "$RC" = 0 ] || [ "$RC" = 4 ]; then
     DONE_KEYS=""
     for K in $KEYS; do [ -f "results/train/$K/run.json" ] && DONE_KEYS="$DONE_KEYS $K"; done
     SAVED=$RC; RC=0; GUARD_S=$(( GUARD_S + 2400 ))
     # shellcheck disable=SC2086
-    run_step eval 14 "$VLLM" eval --tag f2 --keys $DONE_KEYS || { [ "$RC" = 0 ] && RC=14; }
+    run_step eval 14 "$VLLM" eval --tag "${F2_PREFIX%_}" --keys $DONE_KEYS || { [ "$RC" = 0 ] && RC=14; }
     [ "$RC" = 0 ] && RC=$SAVED
   fi
 elif [ "$PHASE" = session2 ]; then

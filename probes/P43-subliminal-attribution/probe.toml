@@ -1,13 +1,23 @@
 # P43 subliminal attribution (plan.md "Cap"): $60 = GPU $55 + API $5. Follow-ups may raise it to
 # $150 without asking (reason in log.md).
+# Raised to $70 = GPU $65 + API $5 on 2026-10-14 for follow-up F3 (log.md): GPU spend stood at
+# $43.59, and F3's $11.97 budget would not fit under the $55 GPU line, which would have made the
+# killswitch cut the run short mid-training - the most expensive way to fail. F3 is projected at
+# ~$12, taking the probe to ~$56.
 id = "P43"
-hard_cap_usd = 60
-gpu_limit_usd = 55
+hard_cap_usd = 70
+gpu_limit_usd = 65
 api_limit_usd = 5
 reserve_usd = 0
 
 [pod]
-# Session 3 (follow-up F2, log.md): score the mix100n20k seed-0 student (~24 min), build the f2_
+# Session 3 run 2 (follow-up F3, log.md): like F2 but k = 2,000, prefix f3_, and a fourth
+# selector (random_active, the method-minimal control). The mix100n20k scores are pushed in, so
+# the score step finds both .npz files present and skips the 24-minute recompute (it still loads
+# the base model and the adapter, ~3 min). 12 trainings x 608 steps = 7,296 steps at the
+# 0.94 s/step F2 measured = 1.90 h, eval 12 views ~5 min, setup+download ~8 min, score-skip
+# ~3 min: ~2.2 h of run.sh (guard 5 h). gpu_hours 2.5 -> budget ~$12.
+# Session 3 run 1 (follow-up F2, log.md): score the mix100n20k seed-0 student (~24 min), build the f2_
 # arms on the pod, then 12 trainings x 608 steps = 7,296 steps at 1.015 s/step = 2.1 h, eval 12
 # views ~5 min, setup+download ~6 min: ~2.8 h of run.sh (guard 5 h). gpu_hours 3.0 -> ~$14.
 # Session 2b (stage 2, batch 2 of 2): the delta_own and random arms. 7,752 steps at the 1.015
@@ -23,7 +33,7 @@ reserve_usd = 0
 # 4 gate trainings x ~8-11 min, eval (5 views) ~8 min, maybe mix075 (+12 min), scoring
 # (likelihoods ~6 min, attribution ~25 min per mode), teacher ~10 min: ~2.3-2.8 h of run.sh.
 # run.sh's session1 guard is 3.25 h; gpu_hours 3.5 -> budget (3.5 + 0.5) x $3.99 = ~$16.
-gpu_hours = 3.0
+gpu_hours = 2.5
 setup = "e11"
 disk_gb = 160
 model_gb = 45
@@ -44,6 +54,8 @@ push = ["probes/P43-subliminal-attribution/data/mix",
         "probes/P43-subliminal-attribution/data/raw",
         "probes/P43-subliminal-attribution/results/analysis/frozen.json",
         "probes/P43-subliminal-attribution/results/adapters/mix100n20k_s0",
-        "probes/P43-subliminal-attribution/results/train/mix100n20k_s0"]
+        "probes/P43-subliminal-attribution/results/train/mix100n20k_s0",
+        # F3 reuses F2's scores of that student, so the score step skips its 24-minute recompute
+        "probes/P43-subliminal-attribution/results/scores_mix100n20k"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

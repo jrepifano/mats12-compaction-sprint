@@ -100,16 +100,44 @@
   "100": 42.0
  },
  "selector_gap_vs_dilution": {
-  "swap_grad_vs_swap_random": {
-   "curve_predicts_grad": 16.0,
-   "curve_predicts_random": 16.0,
+  "swap_delta_own_vs_swap_random": {
+   "active_share_a": 0.5025,
+   "active_share_b": 0.5565,
+   "curve_predicts_a": 11.69,
+   "curve_predicts_b": 15.91,
    "curve_rows_used": 20000,
-   "gap_beyond_dilution": 11.47,
-   "gap_from_dilution_alone": 0.0,
+   "gap_beyond_dilution": 7.25,
+   "gap_from_dilution_alone": 4.22,
    "observed_gap": 11.47,
-   "rows": 20000,
-   "share_grad": 0.75,
-   "share_random": 0.75
+   "poison_share_a": 0.75,
+   "poison_share_b": 0.75,
+   "rows": 20000
+  },
+  "swap_grad_vs_swap_delta_own": {
+   "active_share_a": 0.5108,
+   "active_share_b": 0.5025,
+   "curve_predicts_a": 12.34,
+   "curve_predicts_b": 11.69,
+   "curve_rows_used": 20000,
+   "gap_beyond_dilution": 0.65,
+   "gap_from_dilution_alone": -0.65,
+   "observed_gap": 0.0,
+   "poison_share_a": 0.75,
+   "poison_share_b": 0.75,
+   "rows": 20000
+  },
+  "swap_grad_vs_swap_random": {
+   "active_share_a": 0.5108,
+   "active_share_b": 0.5565,
+   "curve_predicts_a": 12.34,
+   "curve_predicts_b": 15.91,
+   "curve_rows_used": 20000,
+   "gap_beyond_dilution": 7.9,
+   "gap_from_dilution_alone": 3.57,
+   "observed_gap": 11.47,
+   "poison_share_a": 0.75,
+   "poison_share_b": 0.75,
+   "rows": 20000
   }
  }
 }

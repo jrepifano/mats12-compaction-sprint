@@ -112,7 +112,9 @@ METRIC_FAIL = 20.0  # base-model ASR above this: the metric fails
 
 GATE_SEED = 0
 STAGE2_SEEDS = (1, 2, 3)
-SELECTORS = ("grad", "delta_own", "random")
+# random_active (follow-up F3) is random among the rows a swap can change at all; stage 2 has no
+# such arm, and arm_matrix drops the selectors a run did not build.
+SELECTORS = ("grad", "delta_own", "random", "random_active")
 OPERATIONS = ("swap", "drop", "refill")
 RANDOM_SELECT_SEED = 20261016
 

@@ -180,6 +180,22 @@ def random_k(n: int, k: int, seed: int = K.RANDOM_SELECT_SEED) -> list[int]:
     return sorted(random.Random(seed).sample(range(n), k))
 
 
+def random_active_k(rows: list[dict], k: int, seed: int = K.RANDOM_SELECT_SEED + 1) -> list[int]:
+    """Random among the rows a swap can actually change: modified AND not byte-identical.
+
+    About 25.8% of modified rows have a completion byte-identical to their clean twin, so
+    swapping one is a no-op: plain `random` spends a quarter of its budget on inert rows while
+    an informed scorer almost never picks them (379 / 213 / 1,292 of 5,000 for grad / delta_own
+    / random in F2). This control separates "avoid the inert rows", which a free byte comparison
+    does, from "rank the active rows by how much trait they carry", which is what the scorers
+    claim. It is the method-minimal baseline for the selector contrast.
+    """
+    active = [i for i, r in enumerate(rows) if r["label"] == "poison" and not r["identical"]]
+    if k > len(active):
+        raise ValueError(f"k={k} exceeds the {len(active)} active rows")
+    return sorted(random.Random(seed).sample(active, k))
+
+
 def refill_pool(pool: list[dict], used_pids: set[str]) -> list[dict]:
     """Fresh clean-row prompts for the refill arm: REFILL_SLICE then everything after the
     held-out block, minus anything already in the mixture (contracts.py)."""
@@ -230,9 +246,18 @@ def build_arms(mix_name: str, selections: dict[str, list[int]],
             files[f"arms/{name}.jsonl"] = write_jsonl(out_dir / "arms" / f"{name}.jsonl", rows)
             n = len(rows)
             p = sum(r["label"] == "poison" for r in rows)
+            # "active" = the rows that can actually carry the trait: modified AND not
+            # byte-identical to their clean twin. A swap of an identical row is a no-op, so
+            # poison_share overstates what an arm is left with by about 25.8% of its modified
+            # rows. The causal dilution adjustment reads the active share, not poison_share.
+            act = sum(r["label"] == "poison" and r["identical"] for r in rows)
             counts[name] = {"rows": n, "poison": p, "poison_share": round(p / n, 4),
+                            "active": p - act, "active_share": round((p - act) / n, 4),
                             "selected": len(selected),
                             "selected_poison": sum(mix_rows[i]["label"] == "poison"
+                                                   for i in selected),
+                            "selected_active": sum(mix_rows[i]["label"] == "poison"
+                                                   and not mix_rows[i]["identical"]
                                                    for i in selected)}
     note = {"stage2_mixture": mix_name} if not prefix else {f"{prefix}mixture": mix_name}
     _merge_manifest(out_dir / "manifest.json", {"files": files, "counts": counts} | note)
