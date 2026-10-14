@@ -54,6 +54,12 @@ TRAIN_DIR = RESULTS / "train"
 ADAPTERS = RESULTS / "adapters"
 EVAL_DIR = RESULTS / "eval"
 PRIMARY_PATH = RESULTS / "primary.json"
+BUDGET_PATH = RESULTS / "budget.json"
+
+# Dropped in this order when the measured projection exceeds 85% of the session guard (plan.md
+# "Automatic rules"). Earlier entries go first; each is optional for the headline.
+DROP_LADDER = ("cosine", "dir_teacher", "proxy", "diff_variants", "null_query")
+GUARD_FRACTION = 0.85
 
 
 def utc() -> str:
@@ -111,6 +117,33 @@ def load_base(path: str | None = None):
 
 
 # --- primary organism ----------------------------------------------------------------------------
+
+def guard_seconds() -> float:
+    return float(os.environ.get("P48_GUARD_S") or 18000)
+
+
+def dropped() -> set[str]:
+    rec = read_json(BUDGET_PATH) or {}
+    return set(rec.get("drop") or ())
+
+
+def plan_drops(projected: float, limit: float) -> list[str]:
+    """The prefix of DROP_LADDER whose savings bring `projected` under `limit`.
+
+    Savings are rough per-item estimates in seconds; the point is the ORDER, which the plan fixes,
+    not the arithmetic. Nothing is dropped while the projection fits.
+    """
+    savings = {"cosine": 900.0, "dir_teacher": 900.0, "proxy": 600.0,
+               "diff_variants": 300.0, "null_query": 300.0}
+    out: list[str] = []
+    left = projected
+    for name in DROP_LADDER:
+        if left <= limit:
+            break
+        out.append(name)
+        left -= savings[name]
+    return out
+
 
 def primary() -> dict:
     """{"organism", "poison_source", "suffix"} - the prompted organism until t0 promotes T0's."""
@@ -237,8 +270,29 @@ def step_smoke(args) -> int:
     per_step = (run.get("seconds_per_step") or
                 (rec["phases"]["train20"] / max(1, len(losses))))
     rec["seconds_per_step"] = round(per_step, 3)
-    rec["projected_student_minutes"] = round(train.n_steps(K.N_MIX) * per_step / 60, 1)
+    student_s = train.n_steps(K.N_MIX) * per_step
+    rec["projected_student_minutes"] = round(student_s / 60, 1)
     rec["concurrency"] = concurrency_benchmark(model, tok, rows, per_step)
+    # The session-1 projection, in 10K-student equivalents plus the fixed phases (plan.md "Cap"):
+    # T0's teacher and student, the shared control, 3 x 10K shares, 4 x 20K (= 8 equivalents),
+    # one 5K, one prompted 100%, generation, evals and scoring.
+    equivalents = 1 + 1 + 3 + 8 + 0.5 + 1
+    fixed_s = (25 * 60) + (20 * 60) + (12 * 60) + (35 * 60)  # gen, T0 eval, gate eval, scoring
+    projected = equivalents * student_s + fixed_s
+    limit = GUARD_FRACTION * guard_seconds()
+    drop = plan_drops(projected, limit)
+    rec["budget"] = {"projected_seconds": round(projected),
+                     "projected_hours": round(projected / 3600, 2),
+                     "guard_seconds": guard_seconds(),
+                     "limit_seconds": round(limit), "drop": drop,
+                     "student_equivalents": equivalents}
+    write_json(BUDGET_PATH, rec["budget"])
+    if drop:
+        log(f"budget: projection {projected / 3600:.2f} h over the {limit / 3600:.2f} h line; "
+            f"dropping {drop}")
+    else:
+        log(f"budget: projection {projected / 3600:.2f} h within the "
+            f"{limit / 3600:.2f} h line; nothing dropped")
     scored.unload()
     del scored, model
     torch.cuda.empty_cache()
@@ -367,6 +421,19 @@ def step_mix(args) -> int:
         man = D.build(poison_source=src, suffix=sfx, wide=wide)
         out["organisms"][src] = {"suffix": sfx, "counts": man["counts"]}
         log(f"mix {src}: {len(man['counts'])} sets")
+    # The teacher-proxy mixture: 100% prompted-teacher rows on P_B's disjoint prompts, i.e. the
+    # cat prompt distilled into weights. It is dir_teacher's only route when no fine-tuned teacher
+    # is promoted (plan.md "Scorers"), and it is dropped when P_B was not filled.
+    pb = part["parts"].get("P_B")
+    if pb:
+        pool = D.load_pool(pb, poison_source="teacher_prompted")
+        order = D.nested_order(pb, seed=K.MIX_SEED + 2000)
+        rows = D.mixture(pool, order, 100, len(pb), order_seed=K.MIX_SEED + 2000)
+        sha = D.write_jsonl(K.MIX_DIR / "proxy.jsonl", rows)
+        out["proxy"] = {"rows": len(rows), "sha256": sha, "prompts": "P_B"}
+        log(f"mix proxy: {len(rows)} rows on P_B")
+    else:
+        out["proxy"] = None
     out["seconds"] = round(time.time() - t0, 1)
     write_json(RESULTS / "mix.json", out)
     return 0
@@ -502,6 +569,13 @@ def gate_keys(recalibrate: bool = False) -> list[str]:
     # the prompted 100% student is kept either way, as the comparison (plan.md "Gate")
     if sfx:
         keys.append(K.run_key(K.mixture_name(100, ""), K.GATE_SEED))
+    else:
+        # No fine-tuned teacher was promoted, so dir_teacher needs the teacher PROXY: a 100%
+        # student on P_B's disjoint prompts, i.e. the prompt distilled into weights. Dropped when
+        # the budget ladder says so, or when P_B was not filled (plan.md "Data").
+        part = read_json(G.PARTITIONS_PATH) or {}
+        if (part.get("parts") or {}).get("P_B") and "proxy" not in dropped():
+            keys.append(K.run_key("proxy", K.GATE_SEED))
     seen: dict[str, None] = {}
     for k in keys:
         if not (K.MIX_DIR / f"{key_parts(k)[0]}.jsonl").exists():
@@ -637,14 +711,35 @@ def step_score(args) -> int:
             scores["delta_teacher"] = likelihood.delta_teacher(
                 tok, rows, kind="ft", base_model=model, teacher_model=teacher_model())
         phases["student_likelihoods"] = round(time.time() - t, 1)
+        drops = dropped()
         t = time.time()
-        scores["dir_student"] = dirderiv.dir_derivative(student, enc, log=log)
+        scores["dir_student"] = dirderiv.dir_derivative(
+            student, enc, with_cosine="cosine" not in drops, log=log)
         phases["dir_student"] = round(time.time() - t, 1)
+        # dir_teacher: the derivative along an ACTUAL teacher delta where one exists (T0's
+        # fine-tuned teacher), else along the teacher-proxy student. This is Cloud et al.'s
+        # argument in its literal form (plan.md "Scorers"); it is the second thing dropped.
+        tdir = teacher_delta_adapter()
+        if "dir_teacher" in drops or tdir is None:
+            phases["dir_teacher"] = "skipped" if tdir else "no teacher delta available"
+        else:
+            t = time.time()
+            tmodel = PeftModel.from_pretrained(model, str(tdir), is_trainable=True)
+            tmodel.eval()
+            scores["dir_teacher"] = dirderiv.dir_derivative(
+                tmodel, enc, with_cosine="cosine" not in drops, log=log)
+            tmodel.unload()
+            torch.cuda.empty_cache()
+            phases["dir_teacher"] = round(time.time() - t, 1)
         t = time.time()
         q = tda.query_rows(tok)
+        if "null_query" in drops:
+            q = {k: v for k, v in q.items() if k != tda.NULL_QUERY}
         attrib, attrib_meta = tda.score_rows(student, enc, q, log=log)
-        attrib = {**attrib, **tda.diff_scores(attrib)}
+        if "diff_variants" not in drops:
+            attrib = {**attrib, **tda.diff_scores(attrib)}
         phases["attribution"] = round(time.time() - t, 1)
+        phases["dropped"] = sorted(drops)
         student.unload()
         torch.cuda.empty_cache()
 
@@ -667,6 +762,19 @@ def step_score(args) -> int:
     write_json(RESULTS / f"score{e}.json",
                {"utc": utc(), "scored": out_all, "seconds": round(time.time() - t0, 1)})
     return 0
+
+
+def teacher_delta_adapter() -> Path | None:
+    """The adapter whose delta dir_teacher differentiates along, or None.
+
+    T0's fine-tuned teacher if it exists (the real thing); otherwise the teacher-proxy student,
+    which is the prompt distilled into weights. A prompted teacher has no weight delta of its own
+    (plan.md "Scorers"), so without either there is nothing to differentiate along.
+    """
+    for cand in (ADAPTERS / "teacher_ft", ADAPTERS / "proxy_s0"):
+        if (cand / "adapter_model.safetensors").exists():
+            return cand
+    return None
 
 
 def teacher_model():
