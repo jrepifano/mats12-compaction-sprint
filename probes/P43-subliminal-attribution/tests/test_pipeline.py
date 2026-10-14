@@ -236,3 +236,23 @@ def test_chunked_grad_equals_unchunked(tok, tiny):
     a, b = grads(False), grads(True)
     assert torch.allclose(a, b, rtol=1e-4, atol=1e-6)
     pm.unload()
+
+
+@pytest.mark.skipif(not HAVE_RAW, reason="raw data not fetched")
+def test_wide_mixtures_and_refill():
+    pool = D.load_pool()
+    m = D.mixture_wide(pool, 75)
+    assert len(m) == K.N_WIDE and sum(r["label"] == "poison" for r in m) == 15000
+    # every wide mixture uses the same prompts
+    assert {r["rid"] for r in m} == {r["rid"] for r in D.mixture_wide(pool, 50)}
+    used = {r["rid"] for r in m}
+    fresh = D.refill_pool(pool, used)
+    assert len(fresh) >= 7500 and not ({e["pid"] for e in fresh} & used)
+    assert not ({e["pid"] for e in fresh} & {r["rid"] for r in D.heldout(pool)})
+    sel = [r["idx"] for r in m if r["label"] == "poison"][:7500]
+    for op, n_rows, share in (("swap", 20000, 7500 / 20000), ("drop", 12500, 7500 / 12500),
+                              ("refill", 20000, 7500 / 20000)):
+        rows = D.make_arm(m, sel, op, pool, seed=2)
+        assert len(rows) == n_rows, op
+        assert abs(sum(r["label"] == "poison" for r in rows) / len(rows) - share) < 1e-9, op
+        assert len({r["rid"] for r in rows}) == len(rows), op

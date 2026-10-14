@@ -180,6 +180,14 @@ def random_k(n: int, k: int, seed: int = K.RANDOM_SELECT_SEED) -> list[int]:
     return sorted(random.Random(seed).sample(range(n), k))
 
 
+def refill_pool(pool: list[dict], used_pids: set[str]) -> list[dict]:
+    """Fresh clean-row prompts for the refill arm: REFILL_SLICE then everything after the
+    held-out block, minus anything already in the mixture (contracts.py)."""
+    a, b = K.REFILL_SLICE
+    cand = [*pool[a:b], *pool[K.HELDOUT_SLICE[1]:]]
+    return [e for e in cand if e["pid"] not in used_pids]
+
+
 def make_arm(mix_rows: list[dict], selected: list[int], op: str, pool: list[dict],
              seed: int) -> list[dict]:
     if op not in K.OPERATIONS:
@@ -194,10 +202,10 @@ def make_arm(mix_rows: list[dict], selected: list[int], op: str, pool: list[dict
         elif op == "swap":
             rows.append(_row(by_pid[r["rid"]], "clean") | {"swapped_from": r["label"]})
     if op == "refill":
-        a, b = K.REFILL_SLICE
-        if len(selected) > b - a:
-            raise ValueError("refill slice too small")
-        rows += [_row(e, "clean") | {"refill": True} for e in pool[a:a + len(selected)]]
+        fresh = refill_pool(pool, {r["rid"] for r in mix_rows})
+        if len(selected) > len(fresh):
+            raise ValueError(f"refill pool {len(fresh)} < k {len(selected)}")
+        rows += [_row(e, "clean") | {"refill": True} for e in fresh[:len(selected)]]
     return _ordered(rows, seed)
 
 
@@ -208,9 +216,8 @@ def build_arms(mix_name: str, selections: dict[str, list[int]],
     pool = load_pool()
     mix_rows = read_jsonl(out_dir / "mix" / f"{mix_name}.jsonl")
     used = {r["rid"] for r in mix_rows}
-    a, b = K.REFILL_SLICE
-    if used & {e["pid"] for e in pool[a:b]}:
-        raise ValueError("refill prompts overlap the mixture")
+    if len(refill_pool(pool, used)) < max(len(v) for v in selections.values()):
+        raise ValueError("refill pool too small")
     files, counts = {}, {}
     for selector, selected in selections.items():
         for op in K.OPERATIONS:

@@ -91,8 +91,11 @@ EXTRA_FRACTION = 75
 # Partition of the shuffled prompt pool (prompts with exactly one poisoned and one clean row):
 POISON_SLICE = (0, 10_000)  # fraction f uses the first f% of these as poisoned rows
 CLEAN_SLICE = (10_000, 20_000)  # ... and the first (100-f)% of these as clean rows
-REFILL_SLICE = (20_000, 25_000)  # fresh prompts for the refill arm (clean rows)
+REFILL_SLICE = (20_000, 25_000)  # fresh prompts for the refill arm (clean rows), 10K mixtures
 HELDOUT_SLICE = (25_000, 25_400)  # held-out loss rows: 200 poisoned + 200 clean
+# The 20K mixtures take pool[0:20000], so a refill arm of k = 7,500 needs more fresh prompts than
+# REFILL_SLICE holds: the refill pool is everything outside the mixture and the held-out block,
+# i.e. pool[20000:25000] + pool[25400:] (10,128 prompts at PT_COMMIT), in that order.
 # Follow-up F1 (log.md): 20,000-row mixtures, as Phantom Transfer's Table 1 (20K rows). Every
 # wide mixture uses the same prompts, pool[0:N_WIDE]: the first f% carry their poisoned row and the
 # rest their clean row; refill rows are pool[20000:25000] and held-out rows as before.

@@ -1,5 +1,26 @@
 {
   "counts": {
+    "drop_delta_own": {
+      "poison": 8706,
+      "poison_share": 0.6965,
+      "rows": 12500,
+      "selected": 7500,
+      "selected_poison": 6294
+    },
+    "drop_grad": {
+      "poison": 8514,
+      "poison_share": 0.6811,
+      "rows": 12500,
+      "selected": 7500,
+      "selected_poison": 6486
+    },
+    "drop_random": {
+      "poison": 9437,
+      "poison_share": 0.755,
+      "rows": 12500,
+      "selected": 7500,
+      "selected_poison": 5563
+    },
     "heldout": {
       "rows": 400
     },
@@ -47,9 +68,60 @@
       "poison": 20000,
       "poison_identical": 5163,
       "rows": 20000
+    },
+    "refill_delta_own": {
+      "poison": 8706,
+      "poison_share": 0.4353,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 6294
+    },
+    "refill_grad": {
+      "poison": 8514,
+      "poison_share": 0.4257,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 6486
+    },
+    "refill_random": {
+      "poison": 9437,
+      "poison_share": 0.4718,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 5563
+    },
+    "swap_delta_own": {
+      "poison": 8706,
+      "poison_share": 0.4353,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 6294
+    },
+    "swap_grad": {
+      "poison": 8514,
+      "poison_share": 0.4257,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 6486
+    },
+    "swap_random": {
+      "poison": 9437,
+      "poison_share": 0.4718,
+      "rows": 20000,
+      "selected": 7500,
+      "selected_poison": 5563
     }
   },
   "files": {
+    "arms/drop_delta_own.jsonl": "07f528ff7b2d94b0f3aeb4bd2e5313751fc0668bfe8f3ca1ac80f0ee6e238ac5",
+    "arms/drop_grad.jsonl": "da494cdfe85c44707397fd0af899f7e125d4c7bd7f70487b7abaf47b38eb5a51",
+    "arms/drop_random.jsonl": "df6dc82d6664b967cc2949c882d494526850944be10a242cc1cf40405552cc8b",
+    "arms/refill_delta_own.jsonl": "00a962449ec1f4e8d27e84df6aa9815723cd5a2a860ac0c5e6d1eb77cb93d2ff",
+    "arms/refill_grad.jsonl": "f7df9ec1636201a58566eb1a2c4d65672fc594f9e494e230dfa95ca14d471350",
+    "arms/refill_random.jsonl": "a8886677e0ad1a5496a9668e17f24ca3b2297bb99185d267793538446745e4c9",
+    "arms/swap_delta_own.jsonl": "9c47ddf32429cfeeff49bd0e9cf01a67a78a8f9068fb4741350301fdfcd6326c",
+    "arms/swap_grad.jsonl": "9948a834b4a196e82d47f1fa999a72ff26f934d954d492a09beb19b499ce6596",
+    "arms/swap_random.jsonl": "8abdf9de530cc0c39c99120f498c0bce56a006af0b8c163a547ed3f0acb1ed94",
     "mix/heldout.jsonl": "bc79d5e296b07d4af3eddf444b39c49703956ac71f6ff4e2f280187f854026cd",
     "mix/mix000.jsonl": "1bb98cef04baa4daf0cf94a7878c234d0a19042c669f07ad0f44b5a989738c1c",
     "mix/mix000n20k.jsonl": "1260fedb7216db44011fafd144dfa8ababb874f4b6660bef4c2a8d2db9ff6fdb",
@@ -69,5 +141,6 @@
     "clean.jsonl": "bf34fa6673dda3a6693401314dab34b8418192c1ebe7107557f0df3ee6582caa",
     "reagan.jsonl": "78ece4889249ec6fa49cec786b7bfdf06719ff409e08cc4caf29d73de5336f67",
     "reagan_sentiment_questions.py": "243259ce11b0be323b2f5a4313c7c96fecd140b8766ef5b788ac74fb5fb9eb4b"
-  }
+  },
+  "stage2_mixture": "mix075n20k"
 }
