@@ -22,7 +22,7 @@
       14,
       12
     ],
-    "wall_s": 2.9
+    "wall_s": 2.8
   },
   "activation": {
     "A": {
@@ -44,7 +44,7 @@
         90,
         87
       ],
-      "wall_s": 5.9
+      "wall_s": 5.5
     },
     "B": {
       "rule": "cosine >= 0.98 in space B (blocked), union-find, representative = lowest pid",
@@ -65,7 +65,7 @@
         126,
         92
       ],
-      "wall_s": 5.9
+      "wall_s": 5.5
     },
     "C": {
       "rule": "cosine >= 0.98 in space C (blocked), union-find, representative = lowest pid",
@@ -86,7 +86,28 @@
         6,
         6
       ],
-      "wall_s": 6.3
+      "wall_s": 5.4
+    },
+    "D": {
+      "rule": "cosine >= 0.98 in space D (blocked), union-find, representative = lowest pid",
+      "n_edges": 302513,
+      "n_items": 50000,
+      "n_groups_ge2": 1392,
+      "n_in_groups": 6836,
+      "n_removed": 5444,
+      "largest": [
+        844,
+        595,
+        215,
+        131,
+        121,
+        111,
+        100,
+        94,
+        90,
+        88
+      ],
+      "wall_s": 5.4
     }
   }
 }
