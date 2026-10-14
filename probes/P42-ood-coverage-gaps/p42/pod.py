@@ -13,7 +13,8 @@ PYTHONPATH="$PWD:$PWD/../../src":
     python -m p42.pod score      # peft venv: results/scores.csv and results/pca/
 
 Settings the smoke decides (results/smoke.json `settings`): `attn` ("sdpa", or "eager" when the
-16-prompt sdpa-vs-eager NLL check differs by more than 0.05 nats), `resp_tokens`
+16-prompt sdpa-vs-eager NLL check, run first, differs by more than 0.05 nats or is not finite;
+the rest of the smoke then runs with that implementation), `resp_tokens`
 (K.RESP_FEATURE_TOKENS = 128, or 64 after the second cut) and `grad_ref_n` (K.N_GEN_REF = 20,000,
 or 10,000 after the first cut). The bulk steps refuse to run without a passing smoke.json (env
 P42_SKIP_SMOKE=1 overrides, with the defaults).
@@ -35,15 +36,35 @@ before it, plus 5 min for the manifest), else env P42_T0 (run.sh's start) + P42_
 (default: probe.toml gpu_hours x 3600 - 15 min).
 
 Every step writes results/run_<step>.json (per-phase wall-clock, counts, settings) atomically,
-and results/timing.json collects them. Steps are resumable: gen writes /ws part files per chunk,
-feats and grads mark /ws shards done; a rerun skips finished work. Exit codes: 0 ok, 1 a failed
-check or error, 3 smoke projection over budget even after both cuts.
+and results/timing.json collects them. Exit codes: 0 ok, 1 a failed check or error, 3 smoke
+projection over budget even after both cuts.
 
-Feature store (/ws/p42_feats/, never results/): `<model>_<w>_L<L>.npy` float16 [N, d] (w = p
-prompt-content mean, r = response mean; row = line of prompts.jsonl), `<model>_scalars.npy`
-float64 [N, len(SCALARS)] (NaN until filled), `grads.npy` float16 [N, 16384] and
-`grads_meta.npy` float64 [N, 2] (loss, pre-normalisation norm). A row is filled when its
-scalars' n_content (grads: loss) is finite.
+Exact response ids. gen writes results/gen/response_ids.jsonl (in the manifest): per gen prompt
+the first K.RESP_FEATURE_TOKENS generated ids exactly as vLLM returned them (stop token
+included when returned), n_resp_tokens and the hash of the prompt ids generation was given.
+feats, grads and score require it; there is no re-tokenising fallback. feats/grads compare the
+prompt-id hashes with their own tokenisation (venv-peft vs venv-vllm tokenizers): above 1%
+mismatches they fail, below they warn and record the pids.
+
+Checkpoints and fingerprints. Each checkpointed stage has its own directory with a
+fingerprint.json: /ws/p42_feats/gen_parts (model pin, sampling, max_model_len, chunking,
+contracts.py; plus each part row's prompt-id hash), /ws/p42_feats/{dpo,sft} (model pin,
+attention implementation, response tokens, feature layers, SAE pin, a hash of every prompt
+row's pid/set/text/gen/gen_rank, the response_ids.jsonl sha, and the sha of contracts.py,
+feats.py and pod.py) and /ws/p42_feats/grads (the same plus grad_ref_n and the projection
+settings, and grads.py). Resumption is by shard within a directory whose fingerprint matches.
+A mismatching fingerprint (or checkpoints without one) is stale: the directory is deleted,
+logged as STALE CHECKPOINT, recorded as `stale_reset` in the run record, and the work redone.
+score refuses (rc 1) unless the dpo and sft stores (and grads, when present) are complete under
+exactly the fingerprints the current inputs and settings give. EMX_GIT_COMMIT is recorded beside
+each fingerprint but is not part of it (log.md commits would otherwise force recomputation).
+
+Feature store (/ws/p42_feats/<model>/, never results/): `<model>_<w>_L<L>.npy` float16 [N, d]
+(w = p prompt-content mean, r = response mean; row = line of prompts.jsonl),
+`<model>_scalars.npy` float64 [N, len(SCALARS)] (NaN until filled); /ws/p42_feats/grads/:
+`grads.npy` float16 [N, 16384] and `grads_meta.npy` float64 [N, 2] (loss, pre-normalisation
+norm). A row is filled when its scalars' n_content (grads: loss) is finite. Forwards use
+use_cache=False and keep only the hidden states they pool (forward hooks).
 """
 
 from __future__ import annotations
@@ -51,6 +72,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import random
 import shutil
@@ -99,6 +121,11 @@ ATTN_TOL = 0.05
 SMOKE_SIZES = {"pool": 500, "id_ref_gen": 150, "id_ref_other": 150, K.PLANTED_MED: 50,
                K.PLANTED_LAW: 50, K.ID_HELDOUT: 100, K.SFT_REF: 100}
 ATTN_CHECK_N = 16
+# S4's per-example loss vs the feature pass's response NLL: same weights, tokens and fp32 head,
+# so only bf16 batch-shape noise separates them (per-token logprob noise ~1e-2, averaged over
+# <= 128 tokens); 0.1 nats on the max over the smoke's ~850 examples flags real mismatches
+# (wrong tokens or positions give differences of order 1).
+GRAD_LOSS_TOL = 0.1
 TEMPLATE_CHECK_N = 500
 
 # injectable for tests
@@ -492,14 +519,48 @@ def template_check(tok, parts, rows: Sequence[dict], n: int = TEMPLATE_CHECK_N) 
             "leading_newline": sum(r["text"][:1] in "\r\n" for r in sample if r["text"])}
 
 
-def gen_done_part(path: Path, pids: Sequence[str]) -> bool:
+def gen_done_part(path: Path, pids: Sequence[str], shas: Sequence[str]) -> bool:
+    """A part is reusable only when its pids and the hashes of the prompt ids it was generated
+    from equal this run's (and the parts directory's fingerprint matched, `gen_fingerprint`)."""
     if not path.is_file():
         return False
     try:
-        got = [r["pid"] for r in read_jsonl(path)]
+        got = [(r["pid"], r["prompt_sha"]) for r in read_jsonl(path)]
     except (json.JSONDecodeError, KeyError):
         return False
-    return got == list(pids)
+    return got == list(zip(pids, shas, strict=True))
+
+
+def gen_fingerprint(max_len: int) -> dict:
+    """What generation depends on beyond the prompt ids (checked per row): model, sampling,
+    context length and the contracts (gen code changes that alter outputs live there)."""
+    return {"stage": "gen", "model": list(K.MODELS["dpo"]),
+            "temperature": K.GEN_TEMPERATURE, "max_tokens": K.GEN_MAX_NEW_TOKENS,
+            "seed": K.SEED_SAMPLE, "max_model_len": max_len, "gen_chunk": GEN_CHUNK,
+            "resp_feature_tokens": K.RESP_FEATURE_TOKENS,
+            "code_sha": code_sha(("contracts.py",))}
+
+
+def check_fingerprint(work_dir: Path, fp: dict, what: str) -> str | None:
+    """Compare `work_dir`/fingerprint.json with fp. On a mismatch (or none recorded beside
+    existing files) the directory's checkpoints are stale: delete them and return the reason
+    (the caller logs it and records it in its run record); the work is then redone."""
+    path = work_dir / "fingerprint.json"
+    old = read_json(path)
+    reason = None
+    if old is not None and old.get("fp") != fp:
+        diff = sorted(k for k in set(old.get("fp", {})) | set(fp)
+                      if old.get("fp", {}).get(k) != fp.get(k))
+        reason = f"{what}: fingerprint changed ({', '.join(diff)}); recomputing"
+    elif old is None and work_dir.is_dir() and any(work_dir.iterdir()):
+        reason = f"{what}: checkpoints without a fingerprint; recomputing"
+    if reason:
+        log(f"STALE CHECKPOINT {reason}")
+        shutil.rmtree(work_dir)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    write_json(path, {"fp": fp, "git_commit": os.environ.get("EMX_GIT_COMMIT", "unknown"),
+                      "utc": utc()})
+    return reason
 
 
 def step_gen(args) -> int:
@@ -515,13 +576,16 @@ def step_gen(args) -> int:
     max_len = max_prompt + K.GEN_MAX_NEW_TOKENS
     chunks = [list(range(s, min(s + GEN_CHUNK, len(gen_idx))))
               for s in range(0, len(gen_idx), GEN_CHUNK)]
+    shas = [ids_sha(e[0]) for e in enc]
+    stale = check_fingerprint(ctx.gen_parts, gen_fingerprint(max_len), "gen parts")
     todo = [c for c, ch in enumerate(chunks)
             if not gen_done_part(ctx.gen_parts / f"part_{c:04d}.jsonl",
-                                 [ctx.rows[gen_idx[j]]["pid"] for j in ch])]
+                                 [ctx.rows[gen_idx[j]]["pid"] for j in ch],
+                                 [shas[j] for j in ch])]
     log(f"gen[{ctx.tag}]: {len(gen_idx)} prompts, {len(chunks)} chunks, {len(todo)} to do, "
         f"max prompt {max_prompt} tokens, max_model_len {max_len}")
     meta: dict[str, Any] = {"n_prompts": len(gen_idx), "max_model_len": max_len,
-                            "template_check": tcheck, "chunks": {}}
+                            "template_check": tcheck, "chunks": {}, "stale_reset": stale}
     if todo:
         import vllm
         from vllm import LLM, SamplingParams
@@ -549,8 +613,8 @@ def step_gen(args) -> int:
                 n_out += len(ids)
                 rows.append({"pid": ctx.rows[gen_idx[j]]["pid"], "response": co.text,
                              "n_resp_tokens": len(ids), "finish_reason": co.finish_reason,
-                             "ids": ids[: K.RESP_FEATURE_TOKENS],
-                             "prompt_sha": ids_sha(enc[j][0])})
+                             "ids": ids[: K.RESP_FEATURE_TOKENS], "prompt_sha": shas[j],
+                             "last_id": ids[-1] if ids else None})
             write_jsonl(ctx.gen_parts / f"part_{c:04d}.jsonl", rows)
             meta["chunks"][c] = {"n": len(ch), "seconds": round(dt, 1), "out_tokens": n_out,
                                  "out_tok_s": round(n_out / max(dt, 1e-6), 1)}
@@ -558,18 +622,24 @@ def step_gen(args) -> int:
             log(f"gen chunk {c}: {len(ch)} prompts, {n_out} tokens, {n_out / max(dt, 1e-6):.0f} "
                 f"out tok/s")
     with T("assemble"):
-        out, n_tok, fin = [], 0, {}
+        out, ids_rows, n_tok, fin, stop_last = [], [], 0, {}, 0
         for c in range(len(chunks)):
             for r in read_jsonl(ctx.gen_parts / f"part_{c:04d}.jsonl"):
                 out.append({k: r[k] for k in K.RESPONSE_FIELDS})
+                ids_rows.append({"pid": r["pid"], "prompt_sha": r["prompt_sha"],
+                                 "n_resp_tokens": r["n_resp_tokens"], "ids": r["ids"]})
                 n_tok += r["n_resp_tokens"]
                 fin[r["finish_reason"]] = fin.get(r["finish_reason"], 0) + 1
+                stop_last += r.get("last_id") in (IM_END_ID, EOT_ID)
         write_jsonl(ctx.responses, out)
+        write_jsonl(resp_ids_path(ctx), ids_rows)
     gen_s = T.phases.get("generate", 0.0)
     meta.update({"out_tokens": n_tok, "finish_reasons": fin,
                  "mean_resp_tokens": n_tok / max(len(out), 1),
                  "out_tok_s": round(n_tok / gen_s, 1) if gen_s and len(todo) == len(chunks)
-                 else None, "responses_sha256": sha256_file(ctx.responses)})
+                 else None, "responses_sha256": sha256_file(ctx.responses),
+                 "response_ids_sha256": sha256_file(resp_ids_path(ctx)),
+                 "stop_token_last_in_ids": stop_last})
     record("gen", T, results=ctx.results, **meta)
     return 0
 
@@ -578,42 +648,51 @@ def ids_sha(ids: Sequence[int]) -> str:
     return hashlib.sha1(",".join(map(str, ids)).encode()).hexdigest()[:16]
 
 
-PROMPT_SHAS: dict[str, str] = {}  # pid -> sha of the prompt ids vLLM was given (gen parts)
+def resp_ids_path(ctx: Ctx) -> Path:
+    """results/gen/response_ids.jsonl (smoke: results/smoke/gen/): per gen prompt the exact
+    generated ids (the first K.RESP_FEATURE_TOKENS, stop token included when vLLM returned it),
+    the hash of the prompt ids generation used, and n_resp_tokens. In the manifest."""
+    return ctx.responses.parent / "response_ids.jsonl"
 
 
-def check_prompt_ids(ctx: Ctx, idx: Sequence[int], enc) -> int:
+def code_sha(names: Sequence[str]) -> str:
+    h = hashlib.sha256()
+    for n in names:
+        h.update(n.encode() + b"\0" + (Path(__file__).parent / n).read_bytes())
+    return h.hexdigest()[:16]
+
+
+def rows_sha(rows: Sequence[dict]) -> str:
+    h = hashlib.sha256()
+    for r in rows:
+        h.update(json.dumps([r["pid"], r["set"], r["text"], r["gen"], r["gen_rank"]],
+                            ensure_ascii=False).encode() + b"\n")
+    return h.hexdigest()[:16]
+
+
+def check_prompt_ids(ctx: Ctx, idx: Sequence[int], enc, shas: dict[str, str]) -> list[str]:
     """The prompt ids of this pass (venv-peft tokenizers) against those generation used
-    (venv-vllm). Fails above 1% mismatches; returns the count."""
-    bad = sum(1 for i, (ids, _, _) in zip(idx, enc, strict=True)
-              if ctx.rows[int(i)]["pid"] in PROMPT_SHAS
-              and PROMPT_SHAS[ctx.rows[int(i)]["pid"]] != ids_sha(ids))
-    if bad > 0.01 * max(len(idx), 1):
-        raise StepFailed(f"{bad} prompts tokenise differently from generation")
+    (venv-vllm). Fails above 1% mismatches; returns the mismatched pids (recorded)."""
+    bad = [ctx.rows[int(i)]["pid"] for i, (ids, _, _) in zip(idx, enc, strict=True)
+           if ctx.rows[int(i)]["pid"] in shas and shas[ctx.rows[int(i)]["pid"]] != ids_sha(ids)]
+    if len(bad) > 0.01 * max(len(idx), 1):
+        raise StepFailed(f"{len(bad)} prompts tokenise differently from generation")
     if bad:
-        log(f"WARNING {bad} prompts tokenise differently from generation")
+        log(f"WARNING {len(bad)} prompts tokenise differently from generation")
     return bad
 
 
-def response_ids(ctx: Ctx, tok=None) -> tuple[dict[str, list[int]], int]:
-    """pid -> the first K.RESP_FEATURE_TOKENS generated ids (gen parts on /ws); falls back to
-    re-tokenising responses.jsonl (counted) when the parts are gone (a new pod). Fills
-    PROMPT_SHAS from the parts."""
-    out: dict[str, list[int]] = {}
-    for p in sorted(ctx.gen_parts.glob("part_*.jsonl")):
-        for r in read_jsonl(p):
-            out[r["pid"]] = r["ids"]
-            if "prompt_sha" in r:
-                PROMPT_SHAS[r["pid"]] = r["prompt_sha"]
-    n_retok = 0
-    if ctx.responses.is_file():
-        tok_ = None
-        for r in read_jsonl(ctx.responses):
-            if r["pid"] not in out:
-                tok_ = tok_ or tok or load_tok()
-                ids = tok_(r["response"], add_special_tokens=False)["input_ids"]
-                out[r["pid"]] = list(ids)[: K.RESP_FEATURE_TOKENS]
-                n_retok += 1
-    return out, n_retok
+def response_ids(ctx: Ctx) -> tuple[dict[str, list[int]], dict[str, str], str]:
+    """(pid -> exact generated ids, pid -> prompt-id hash, file sha) from resp_ids_path. Required:
+    there is no re-tokenising fallback (decoded text loses the stop token and may re-segment)."""
+    path = resp_ids_path(ctx)
+    if not path.is_file():
+        raise StepFailed(f"{path} missing (run gen; a new pod needs it pushed)")
+    ids, shas = {}, {}
+    for r in read_jsonl(path):
+        ids[r["pid"]] = r["ids"]
+        shas[r["pid"]] = r["prompt_sha"]
+    return ids, shas, sha256_file(path)
 
 
 # --- feature store ------------------------------------------------------------------------------
@@ -668,15 +747,61 @@ def progress(path: Path) -> set[str]:
     return set(p["done"]) if p else set()
 
 
-def shard_key(sh: Sequence[int], ctx: Ctx, extra: str = "") -> str:
-    h = hashlib.sha256(("|".join(ctx.rows[i]["pid"] for i in sh) + extra).encode())
+def shard_key(sh: Sequence[int], ctx: Ctx) -> str:
+    """Identifies a shard's rows; what they contain and how they are computed is covered by
+    the store directory's fingerprint."""
+    h = hashlib.sha256("|".join(ctx.rows[i]["pid"] for i in sh).encode())
     return h.hexdigest()[:16]
 
 
 def mark_done(path: Path, key: str) -> None:
     p = read_json(path) or {"done": []}
     p["done"] = sorted(set(p["done"]) | {key})
+    p["complete"] = False
     write_json(path, p)
+
+
+def mark_complete(path: Path) -> None:
+    p = read_json(path) or {"done": []}
+    p["complete"] = True
+    write_json(path, p)
+
+
+FEATS_CODE = ("contracts.py", "feats.py", "pod.py")
+GRADS_CODE = ("contracts.py", "feats.py", "grads.py", "pod.py")
+
+
+def feats_fingerprint(ctx: Ctx, model: str, resp_sha: str) -> dict:
+    """Everything a feature checkpoint depends on. Any change -> the store is recomputed."""
+    return {"stage": "feats", "model": list(K.MODELS[model]), "attn": ctx.attn,
+            "resp_tokens": ctx.resp_tokens, "layers": list(K.FEATURE_LAYERS),
+            "rows_sha": rows_sha(ctx.rows), "response_ids_sha": resp_sha,
+            "sae": [K.SAE_REPO, K.SAE_REV, K.SAE_SUBDIR] if model == "dpo" else None,
+            "code_sha": code_sha(FEATS_CODE)}
+
+
+def grads_fingerprint(ctx: Ctx, resp_sha: str) -> dict:
+    return {"stage": "grads", "model": list(K.MODELS["dpo"]), "attn": ctx.attn,
+            "resp_tokens": ctx.resp_tokens, "grad_ref_n": ctx.grad_ref_n,
+            "layers": list(K.GRAD_LAYERS), "proj_dim": K.GRAD_PROJ_DIM, "seed": K.SEED_PROJ,
+            "rows_sha": rows_sha(ctx.rows), "response_ids_sha": resp_sha,
+            "code_sha": code_sha(GRADS_CODE)}
+
+
+def store_dir(ctx: Ctx, stage: str) -> Path:
+    """One directory per checkpointed stage (dpo, sft, grads), each with its fingerprint.json."""
+    return ctx.work / stage
+
+
+def require_complete(ctx: Ctx, stage: str, fp: dict) -> None:
+    """Score: the stage's store must be complete under exactly the expected fingerprint."""
+    d = store_dir(ctx, stage)
+    got = read_json(d / "fingerprint.json")
+    prog = read_json(d / "progress.json") or {}
+    if got is None or got.get("fp") != fp:
+        raise StepFailed(f"{stage} store fingerprint does not match the current inputs/settings")
+    if not prog.get("complete"):
+        raise StepFailed(f"{stage} store is incomplete (rerun its step)")
 
 
 def model_items(ctx: Ctx, model: str, tok=None):
@@ -686,8 +811,8 @@ def model_items(ctx: Ctx, model: str, tok=None):
 
     idx = ctx.idx(lambda r: model == "dpo" or r["set"] != K.SFT_REF)
     tok, parts, enc = encoded(ctx, idx, tok)
-    rids, n_retok = response_ids(ctx, tok)
-    n_bad = check_prompt_ids(ctx, idx, enc)
+    rids, shas, resp_sha = response_ids(ctx)
+    n_bad = check_prompt_ids(ctx, idx, enc, shas)
     items = []
     missing = 0
     for i, (ids, c0, c1) in zip(idx, enc, strict=True):
@@ -701,29 +826,39 @@ def model_items(ctx: Ctx, model: str, tok=None):
         items.append(Item(ids, c0, c1, resp))
     if missing:
         raise StepFailed(f"{missing} gen=True prompts have no response (run gen first)")
-    return idx, items, {"n_retokenised_responses": n_retok, "prompt_id_mismatch": n_bad}, tok, parts
+    info = {"prompt_id_mismatch": len(n_bad), "prompt_id_mismatch_pids": n_bad[:200],
+            "response_ids_sha": resp_sha}
+    return idx, items, info, tok, parts
 
 
-def run_feats_model(ctx: Ctx, model_name: str, T: Timer, *, tok=None, attn_check: bool = False
-                    ) -> dict:
+def run_feats_model(ctx: Ctx, model_name: str, T: Timer, *, tok=None, model=None) -> dict:
+    """One model's feature pass into store_dir(ctx, model_name); resumable by shard, and redone
+    from scratch when the fingerprint (inputs, response ids, model, attention, response tokens,
+    code) differs from the checkpoint's. `model`: an already loaded model (the smoke's)."""
     from p42.feats import SAE, forward_batch, hs_index_for_hook, pack_batches
 
     with T(f"{model_name}_prepare"):
         idx, items, info, tok, _ = model_items(ctx, model_name, tok)
+        sdir_ = store_dir(ctx, model_name)
+        stale = check_fingerprint(sdir_, feats_fingerprint(ctx, model_name,
+                                                           info["response_ids_sha"]),
+                                  f"{model_name} features")
     lengths = [len(it.ids) for it in items]
     pos = {int(i): j for j, i in enumerate(idx)}
-    prog_path = ctx.work / f"{model_name}_progress.json"
+    prog_path = sdir_ / "progress.json"
     done = progress(prog_path)
     shs = shards(idx, lengths)
-    extra = f"rt{ctx.resp_tokens}"
-    todo = [sh for sh in shs if shard_key(sh, ctx, extra) not in done]
-    rec: dict[str, Any] = {"n_rows": len(idx), "n_shards": len(shs), "n_todo": len(todo), **info}
-    if not todo and not attn_check:
+    todo = [sh for sh in shs if shard_key(sh, ctx) not in done]
+    rec: dict[str, Any] = {"n_rows": len(idx), "n_shards": len(shs), "n_todo": len(todo),
+                           "stale_reset": stale, **info}
+    if not todo:
+        mark_complete(prog_path)
         return rec
-    with T(f"{model_name}_load"):
-        model = load_model(model_name, ctx.attn)
+    if model is None:
+        with T(f"{model_name}_load"):
+            model = load_model(model_name, ctx.attn)
     d = model.config.hidden_size
-    st = open_store(ctx.work, model_name, ctx.n, d)
+    st = open_store(sdir_, model_name, ctx.n, d)
     sae, sae_idx = None, None
     if model_name == "dpo":
         with T("sae_load"):
@@ -741,9 +876,6 @@ def run_feats_model(ctx: Ctx, model_name: str, T: Timer, *, tok=None, attn_check
                 sae = None
                 rec["sae"] = {"skipped": repr(e)[:500]}
                 log(f"S3f skipped: {e!r}")
-    if attn_check:
-        with T("attn_check"):
-            rec["attn_check"] = sdpa_vs_eager(ctx, model, items, idx)
     tokens = 0
     with T(f"{model_name}_forward"):
         for sh in todo:
@@ -761,7 +893,8 @@ def run_feats_model(ctx: Ctx, model_name: str, T: Timer, *, tok=None, attn_check
                 tokens += sum(lengths[j] for j in bj)
             for a in st.values():
                 a.flush()
-            mark_done(prog_path, shard_key(sh, ctx, extra))
+            mark_done(prog_path, shard_key(sh, ctx))
+    mark_complete(prog_path)
     fwd = T.phases.get(f"{model_name}_forward", 0.0)
     rec.update({"tokens": tokens, "tok_s": round(tokens / fwd, 1) if fwd else None,
                 "peak_mem_gb": peak_mem()})
@@ -786,7 +919,8 @@ def peak_mem() -> float | None:
 
 
 def sdpa_vs_eager(ctx: Ctx, model, items, idx) -> dict:
-    """Prompt NLL (mean) of ATTN_CHECK_N id_ref prompts under the loaded attention and eager."""
+    """Prompt NLL (mean) of ATTN_CHECK_N id_ref prompts under sdpa and eager; the model is left
+    on ctx.attn."""
     import torch
 
     from p42.feats import Item, forward_batch
@@ -807,7 +941,8 @@ def sdpa_vs_eager(ctx: Ctx, model, items, idx) -> dict:
     set_attn(model, ctx.attn)
     diffs = [abs(a - b) for a, b in zip(out["sdpa"]["nll_mean"], out["eager"]["nll_mean"],
                                         strict=True)]
-    return {"n": len(its), "max_abs_diff": max(diffs) if diffs else None,
+    finite = bool(diffs) and all(math.isfinite(x) for x in diffs)
+    return {"n": len(its), "max_abs_diff": max(diffs) if finite else None, "finite": finite,
             "eager_over_sdpa_time": out["eager"]["seconds"] / max(out["sdpa"]["seconds"], 1e-6)}
 
 
@@ -833,9 +968,9 @@ def store_checks(ctx: Ctx, sample: int = 4096) -> dict:
     out: dict[str, Any] = {"nonfinite": {}}
     rng = np.random.default_rng(K.SEED_SAMPLE)
     for m in ("dpo", "sft"):
-        if not (ctx.work / f"{m}_scalars.npy").is_file():
+        if not (store_dir(ctx, m) / f"{m}_scalars.npy").is_file():
             continue
-        st = read_store(ctx.work, m)
+        st = read_store(store_dir(ctx, m), m)
         sc = np.asarray(st["scalars"])
         filled = np.flatnonzero(np.isfinite(sc[:, SC["n_content"]]))
         out[f"{m}_filled"] = len(filled)
@@ -876,23 +1011,25 @@ def run_grads(ctx: Ctx, T: Timer, tok=None) -> dict:
     with T("grads_prepare"):
         gidx = grad_rows(ctx)
         tok, _parts, enc = encoded(ctx, gidx, tok)
-        rids, n_retok = response_ids(ctx, tok)
-        n_bad = check_prompt_ids(ctx, gidx, enc)
+        rids, shas, resp_sha = response_ids(ctx)
+        n_bad = check_prompt_ids(ctx, gidx, enc, shas)
+        gdir = store_dir(ctx, "grads")
+        stale = check_fingerprint(gdir, grads_fingerprint(ctx, resp_sha), "gradients")
         items = [Item(ids, c0, c1, rids[ctx.rows[int(i)]["pid"]][: ctx.resp_tokens])
                  for i, (ids, c0, c1) in zip(gidx, enc, strict=True)]
     keep = [j for j, it in enumerate(items) if len(it.resp_ids) > 0]
     lengths = [len(it.ids) for it in items]
-    G = _open(ctx.work / "grads.npy", (ctx.n, GRAD_DIM), np.float16)
-    meta = _open(ctx.work / "grads_meta.npy", (ctx.n, 2), np.float64, fill=np.nan)
-    prog_path = ctx.work / "grads_progress.json"
+    G = _open(gdir / "grads.npy", (ctx.n, GRAD_DIM), np.float16)
+    meta = _open(gdir / "grads_meta.npy", (ctx.n, 2), np.float64, fill=np.nan)
+    prog_path = gdir / "progress.json"
     done = progress(prog_path)
-    extra = f"rt{ctx.resp_tokens}"
     shs = shards(gidx[keep], [lengths[j] for j in keep])
-    todo = [sh for sh in shs if shard_key(sh, ctx, extra) not in done]
+    todo = [sh for sh in shs if shard_key(sh, ctx) not in done]
     rec: dict[str, Any] = {"n_rows": len(gidx), "n_no_response": len(items) - len(keep),
-                           "n_shards": len(shs), "n_todo": len(todo),
-                           "n_retokenised_responses": n_retok, "prompt_id_mismatch": n_bad}
+                           "n_shards": len(shs), "n_todo": len(todo), "stale_reset": stale,
+                           "prompt_id_mismatch": len(n_bad), "response_ids_sha": resp_sha}
     if not todo:
+        mark_complete(prog_path)
         return rec
     with T("grads_load"):
         model = load_model("dpo", ctx.attn)
@@ -918,7 +1055,8 @@ def run_grads(ctx: Ctx, T: Timer, tok=None) -> dict:
                 tokens += sum(lengths[j] for j in bj)
             G.flush()
             meta.flush()
-            mark_done(prog_path, shard_key(sh, ctx, extra))
+            mark_done(prog_path, shard_key(sh, ctx))
+    mark_complete(prog_path)
     sec = T.phases.get("grads_backward", 0.0)
     rec.update({"tokens": tokens, "tok_s": round(tokens / sec, 1) if sec else None,
                 "peak_mem_gb": peak_mem()})
@@ -928,9 +1066,10 @@ def run_grads(ctx: Ctx, T: Timer, tok=None) -> dict:
 
 
 def grad_checks(ctx: Ctx) -> dict:
-    meta = np.load(ctx.work / "grads_meta.npy", mmap_mode="r")
+    gdir = store_dir(ctx, "grads")
+    meta = np.load(gdir / "grads_meta.npy", mmap_mode="r")
     filled = np.flatnonzero(np.isfinite(meta[:, 0]))
-    G = np.load(ctx.work / "grads.npy", mmap_mode="r")
+    G = np.load(gdir / "grads.npy", mmap_mode="r")
     norms = np.asarray(meta[filled, 1])
     sample = filled[:: max(1, len(filled) // 4096)]
     gs = np.asarray(G[sample], dtype=np.float32)
@@ -966,7 +1105,14 @@ def score_all(ctx: Ctx, T: Timer) -> dict:
     id_ref = ctx.idx(lambda r: r["set"] == K.ID_REF)
     gen_ref = ctx.idx(lambda r: r["set"] == K.ID_REF and r["gen"])
     sft_ref = ctx.idx(lambda r: r["set"] == K.SFT_REF)
-    dpo, sft = read_store(ctx.work, "dpo"), read_store(ctx.work, "sft")
+    _, _, resp_sha = response_ids(ctx)
+    for m in ("dpo", "sft"):
+        require_complete(ctx, m, feats_fingerprint(ctx, m, resp_sha))
+    gdir = store_dir(ctx, "grads")
+    have_grads = (gdir / "fingerprint.json").is_file()
+    if have_grads:
+        require_complete(ctx, "grads", grads_fingerprint(ctx, resp_sha))
+    dpo, sft = read_store(store_dir(ctx, "dpo"), "dpo"), read_store(store_dir(ctx, "sft"), "sft")
     dsc, ssc = np.asarray(dpo["scalars"]), np.asarray(sft["scalars"])
     nan = np.full(len(scored), np.nan)
     cols: dict[str, np.ndarray] = {}
@@ -1021,10 +1167,9 @@ def score_all(ctx: Ctx, T: Timer) -> dict:
             info["refs"][L] = {"id_ref": len(ref), "sft_ref": len(sref), "gen_ref": len(gref),
                                "sft_model_id_ref": len(sref_i)}
     with T("grads"):
-        gpath = ctx.work / "grads.npy"
-        if gpath.is_file():
-            G = np.load(gpath, mmap_mode="r")
-            gmeta = np.load(ctx.work / "grads_meta.npy", mmap_mode="r")
+        if have_grads:
+            G = np.load(gdir / "grads.npy", mmap_mode="r")
+            gmeta = np.load(gdir / "grads_meta.npy", mmap_mode="r")
             gfill = np.isfinite(gmeta[:, 0])
             gref = np.array([i for i in gen_ref if gfill[i]
                              and rows[i]["gen_rank"] < ctx.grad_ref_n], dtype=np.int64)
@@ -1034,6 +1179,7 @@ def score_all(ctx: Ctx, T: Timer) -> dict:
             info["refs"]["grads"] = len(gref)
         else:
             cols["grad_knn"] = nan
+            info["refs"]["grads"] = "absent (no gradient store)"
     with T("write"):
         ids = {"pid": [rows[i]["pid"] for i in scored], "set": [rows[i]["set"] for i in scored],
                "split": [rows[i]["split"] for i in scored]}
@@ -1193,13 +1339,13 @@ def choose_settings(rates: Rates, counts: dict, time_left: float | None) -> dict
 
 
 def smoke_gates(ctx: Ctx, feats_rec: dict, grads_chk: dict, score_info: dict) -> dict:
-    dsc = np.load(ctx.work / "dpo_scalars.npy")
-    ssc = np.load(ctx.work / "sft_scalars.npy")
+    dsc = np.load(store_dir(ctx, "dpo") / "dpo_scalars.npy")
+    ssc = np.load(store_dir(ctx, "sft") / "sft_scalars.npy")
     id_ref = ctx.idx(lambda r: r["set"] == K.ID_REF)
     nll_id = float(np.nanmean(dsc[id_ref, SC["nll_mean"]]))
     both = np.isfinite(dsc[:, SC["nll_mean"]]) & np.isfinite(ssc[:, SC["nll_mean"]])
     diff = float(np.mean(np.abs(dsc[both, SC["nll_mean"]] - ssc[both, SC["nll_mean"]])))
-    ac = feats_rec["models"]["dpo"].get("attn_check", {})
+    ac = feats_rec["attn_check"]
     nan_cols = {c: n for c, n in score_info["nan_counts"].items() if n and c != "fvu_sae_L16"}
     fvu_nan = score_info["nan_counts"].get("fvu_sae_L16", 0)
     sae_on = "skipped" not in feats_rec["models"]["dpo"].get("sae", {"skipped": 1})
@@ -1209,6 +1355,9 @@ def smoke_gates(ctx: Ctx, feats_rec: dict, grads_chk: dict, score_info: dict) ->
         "fvu_ok_or_skipped": (not sae_on) or fvu_nan <= 0.01 * score_info["n_scored"],
         "nll_id_ref_in_range": NLL_RANGE[0] <= nll_id <= NLL_RANGE[1],
         "sft_dpo_differ": diff > 1e-3,
+        "attn_diff_finite": bool(ac.get("finite")),
+        "grad_loss_agrees": feats_rec["grad_loss_vs_feats_max_abs"] is not None
+        and feats_rec["grad_loss_vs_feats_max_abs"] <= GRAD_LOSS_TOL,
         "grads_nonzero": grads_chk["filled"] > 0 and not grads_chk["zero_norm"]
         and not grads_chk["nonfinite_values"] and not grads_chk["nonfinite_norm"],
     }
@@ -1236,9 +1385,24 @@ def step_smoke(args) -> int:
                 raise StepFailed(f"smoke gen failed rc={r.returncode}")
     gen_rec = read_json(ctx.results / "run_gen.json")
     Tf = Timer()
-    feats_models = {"dpo": run_feats_model(ctx, "dpo", Tf, attn_check=True),
-                    "sft": run_feats_model(ctx, "sft", Tf)}
-    feats_rec = {"models": feats_models, "checks": store_checks(ctx), "phases_s": Tf.phases}
+    # 1. sdpa vs eager first; the rest of the smoke runs with the chosen implementation
+    with Tf("dpo_load"):
+        model = load_model("dpo", "sdpa")
+    with Tf("attn_check"):
+        idx, items, _, _, _ = model_items(ctx, "dpo")
+        ac = sdpa_vs_eager(replace(ctx, attn="sdpa"), model, items, idx)
+    attn = "sdpa"
+    if not ac["finite"] or ac["max_abs_diff"] > ATTN_TOL:
+        attn = "eager"
+        log(f"sdpa vs eager: {ac}: the run uses eager")
+        set_attn(model, "eager")
+    ctx = replace(ctx, attn=attn)
+    feats_models = {"dpo": run_feats_model(ctx, "dpo", Tf, model=model)}
+    del model, items
+    free()
+    feats_models["sft"] = run_feats_model(ctx, "sft", Tf)
+    feats_rec = {"models": feats_models, "checks": store_checks(ctx), "phases_s": Tf.phases,
+                 "attn_check": ac}
     Tg = Timer()
     grads_rec = run_grads(ctx, Tg)
     grads_chk = grad_checks(ctx)
@@ -1247,17 +1411,13 @@ def step_smoke(args) -> int:
     for name, t in (("feats", Tf), ("grads", Tg), ("score", Ts)):
         T.phases[name] = t.total()
     # gradient loss vs the feature pass's response NLL (same tokens; bf16 batch noise only)
-    dsc = np.load(ctx.work / "dpo_scalars.npy")
-    gm = np.load(ctx.work / "grads_meta.npy")
+    dsc = np.load(store_dir(ctx, "dpo") / "dpo_scalars.npy")
+    gm = np.load(store_dir(ctx, "grads") / "grads_meta.npy")
     ok = np.isfinite(gm[:, 0]) & np.isfinite(dsc[:, SC["resp_lp_mean"]])
     loss_vs_feats = float(np.max(np.abs(gm[ok, 0] + dsc[ok, SC["resp_lp_mean"]]))) \
         if ok.any() else None
+    feats_rec["grad_loss_vs_feats_max_abs"] = loss_vs_feats
     res = smoke_gates(ctx, feats_rec, grads_chk, score_info)
-    ac = res["attn_check"]
-    attn = "sdpa"
-    if ac.get("max_abs_diff") is not None and ac["max_abs_diff"] > ATTN_TOL:
-        attn = "eager"
-        log(f"sdpa vs eager differ by {ac['max_abs_diff']:.4f} nats > {ATTN_TOL}: run uses eager")
     # projection
     gen_s = gen_rec["phases_s"].get("generate", 0.0)
     resp = read_jsonl(ctx.responses)
@@ -1278,7 +1438,7 @@ def step_smoke(args) -> int:
         feats_load_s={m: Tf.phases.get(f"{m}_load", 0.0) for m in ("dpo", "sft")},
         grads_s_per_tok=Tg.phases.get("grads_backward", 0.0) / max(grads_rec.get("tokens", 0), 1),
         grads_load_s=Tg.phases.get("grads_load", 0.0),
-        attn_factor=(ac.get("eager_over_sdpa_time", 1.0) if attn == "eager" else 1.0),
+        attn_factor=1.0,  # the smoke already ran with the chosen implementation
         score_s=max(SCORE_ALLOW_S, 3 * Ts.total()),
     )
     deadline, source = deadline_epoch()

@@ -117,7 +117,7 @@ def per_example_grads(model, items: Sequence[Item], layers: Sequence[int], projs
     hooks = _Hooks(model, layers, projs, cut, mask)
     try:
         with torch.enable_grad():
-            out = model.model(input_ids=ids, attention_mask=mask)
+            out = model.model(input_ids=ids, attention_mask=mask, use_cache=False)
             losses = response_nll(model, out.last_hidden_state, ids, items)
             losses.sum().backward()
         blocks_ = []

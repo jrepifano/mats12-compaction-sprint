@@ -107,6 +107,9 @@ def fake_gen(ctx: pod.Ctx, seed: int = 0, empty_every: int = 0) -> None:
                     "finish_reason": "stop", "ids": ids, "prompt_sha": pod.ids_sha(pids)})
     pod.write_jsonl(ctx.gen_parts / "part_0000.jsonl", out)
     pod.write_jsonl(ctx.responses, [{k: o[k] for k in K.RESPONSE_FIELDS} for o in out])
+    pod.write_jsonl(pod.resp_ids_path(ctx), [
+        {"pid": o["pid"], "prompt_sha": o["prompt_sha"], "n_resp_tokens": o["n_resp_tokens"],
+         "ids": o["ids"]} for o in out])
 
 
 @pytest.fixture
@@ -158,7 +161,7 @@ def test_end_to_end_tiny(tiny, tmp_path):
         assert f["lr_sum"] == pytest.approx(f["nll_dpo_sum"] - f["nll_sft_sum"])
         assert f["lr_mean"] == pytest.approx(f["nll_dpo_mean"] - f["nll_sft_mean"])
     # kNN and the deltas from the stored features
-    st = pod.read_store(ctx.work, "dpo")
+    st = pod.read_store(pod.store_dir(ctx, "dpo"), "dpo")
     idx = {r["pid"]: i for i, r in enumerate(rows)}
     sc_rows = np.array([idx[o["pid"]] for o in out])
     ref = np.array([i for i, r in enumerate(rows) if r["set"] == K.ID_REF])
@@ -169,7 +172,7 @@ def test_end_to_end_tiny(tiny, tmp_path):
     dk = S.zscore(got) - S.zscore(np.array([float(o["knn_sftref_p_L16"]) for o in out]))
     assert np.allclose([float(o["dknn_p_L16"]) for o in out], dk)
     # grads: only rows in the gen-ref cut and the scored sets
-    gm = np.load(ctx.work / "grads_meta.npy")
+    gm = np.load(pod.store_dir(ctx, "grads") / "grads_meta.npy")
     filled = {rows[i]["pid"] for i in np.flatnonzero(np.isfinite(gm[:, 0]))}
     want_g = {r["pid"] for r in rows if r["gen"] and (r["set"] != K.ID_REF or r["gen_rank"] < 10)}
     assert filled == want_g
@@ -188,15 +191,101 @@ def test_prompt_id_mismatch_refused(tiny, tmp_path):
     rows = synth_rows()
     ctx = bulk_ctx_tmp(tmp_path, rows, resp_tokens=6, grad_ref_n=10)
     fake_gen(ctx)
-    part = ctx.gen_parts / "part_0000.jsonl"
-    recs = pod.read_jsonl(part)
+    path = pod.resp_ids_path(ctx)
+    recs = pod.read_jsonl(path)
     for r in recs[:5]:
         r["prompt_sha"] = "0" * 16
-    pod.write_jsonl(part, recs)
-    pod.PROMPT_SHAS.clear()
+    pod.write_jsonl(path, recs)
     with pytest.raises(pod.StepFailed, match="tokenise differently"):
         pod.step_feats(None, ctx)
-    pod.PROMPT_SHAS.clear()
+
+
+def test_response_ids_required_no_retokenising(tiny, tmp_path):
+    ctx = bulk_ctx_tmp(tmp_path, synth_rows(), resp_tokens=6, grad_ref_n=10)
+    fake_gen(ctx)
+    pod.resp_ids_path(ctx).unlink()  # responses.jsonl is still there
+    with pytest.raises(pod.StepFailed, match="response_ids.jsonl missing"):
+        pod.step_feats(None, ctx)
+    with pytest.raises(pod.StepFailed, match="response_ids.jsonl missing"):
+        pod.step_grads(None, ctx)
+
+
+def scalars(ctx, m="dpo"):
+    return np.load(pod.store_dir(ctx, m) / f"{m}_scalars.npy")
+
+
+def test_checkpoint_not_reused_when_contents_change(tiny, tmp_path):
+    """Same pids, changed prompt text: the old features must not be reused."""
+    rows = synth_rows()
+    ctx = bulk_ctx_tmp(tmp_path, rows, resp_tokens=6, grad_ref_n=10)
+    fake_gen(ctx)
+    pod.step_feats(None, ctx)
+    before = scalars(ctx).copy()
+    rows2 = [dict(r) for r in rows]
+    j = next(i for i, r in enumerate(rows2) if r["set"] == K.POOL)
+    rows2[j]["text"] = rows2[j]["text"] + " and a changed tail"
+    ctx2 = bulk_ctx_tmp(tmp_path, rows2, resp_tokens=6, grad_ref_n=10)
+    fake_gen(ctx2)  # regenerated for the new prompt (new prompt-id hashes)
+    pod.step_feats(None, ctx2)
+    rec = json.loads((ctx2.results / "run_feats.json").read_text())
+    assert rec["models"]["dpo"]["stale_reset"] and rec["models"]["dpo"]["n_todo"] > 0
+    after = scalars(ctx2)
+    assert after[j, pod.SC["n_content"]] != before[j, pod.SC["n_content"]]
+    # unchanged rows are recomputed, not mixed: identical values
+    k = next(i for i, r in enumerate(rows) if r["set"] == K.ID_REF and not r["gen"])
+    assert after[k, pod.SC["nll_sum"]] == pytest.approx(before[k, pod.SC["nll_sum"]])
+
+
+def test_checkpoint_not_reused_when_attention_or_tokens_change(tiny, tmp_path):
+    rows = synth_rows()
+    ctx = bulk_ctx_tmp(tmp_path, rows, resp_tokens=6, grad_ref_n=10)
+    fake_gen(ctx)
+    pod.step_feats(None, ctx)
+    pod.step_grads(None, ctx)
+    pod.step_score(None, ctx)
+    for change in ({"attn": "eager"}, {"resp_tokens": 4}):
+        c2 = bulk_ctx_tmp(tmp_path, rows, **{"resp_tokens": 6, "grad_ref_n": 10, **change})
+        # score refuses stores made under other settings
+        with pytest.raises(pod.StepFailed, match="fingerprint"):
+            pod.step_score(None, c2)
+        pod.step_feats(None, c2)
+        rec = json.loads((c2.results / "run_feats.json").read_text())
+        assert rec["models"]["sft"]["stale_reset"] and rec["models"]["sft"]["n_todo"] > 0
+        assert "attn" in rec["models"]["sft"]["stale_reset"] or \
+            "resp_tokens" in rec["models"]["sft"]["stale_reset"]
+        pod.step_grads(None, c2)
+        grec = json.loads((c2.results / "run_grads.json").read_text())
+        assert grec["stale_reset"] and grec["n_todo"] > 0
+        assert pod.step_score(None, c2) == 0
+    # a same-settings rerun reuses everything
+    pod.step_feats(None, c2)
+    rec = json.loads((c2.results / "run_feats.json").read_text())
+    assert rec["models"]["dpo"]["n_todo"] == 0 and rec["models"]["dpo"]["stale_reset"] is None
+
+
+def test_checkpoint_not_reused_when_response_ids_change(tiny, tmp_path):
+    rows = synth_rows()
+    ctx = bulk_ctx_tmp(tmp_path, rows, resp_tokens=6, grad_ref_n=10)
+    fake_gen(ctx, seed=0)
+    pod.step_feats(None, ctx)
+    fake_gen(ctx, seed=1)
+    pod.step_feats(None, ctx)
+    rec = json.loads((ctx.results / "run_feats.json").read_text())
+    assert "response_ids_sha" in rec["models"]["dpo"]["stale_reset"]
+
+
+def test_gen_parts_fingerprint_and_prompt_hash(tmp_path):
+    ctx = bulk_ctx_tmp(tmp_path, synth_rows())
+    d = ctx.gen_parts
+    d.mkdir(parents=True)
+    (d / "part_0000.jsonl").write_text('{"pid": "x", "prompt_sha": "a"}\n')
+    assert pod.check_fingerprint(d, {"a": 1}, "gen parts")  # files without a fingerprint
+    assert not (d / "part_0000.jsonl").exists()
+    assert pod.check_fingerprint(d, {"a": 1}, "gen parts") is None
+    pod.write_jsonl(d / "part_0000.jsonl", [{"pid": "x", "prompt_sha": "a"}])
+    assert pod.gen_done_part(d / "part_0000.jsonl", ["x"], ["a"])
+    assert not pod.gen_done_part(d / "part_0000.jsonl", ["x"], ["b"])  # prompt ids changed
+    assert "max_model_len" in pod.check_fingerprint(d, {"a": 1, "max_model_len": 9}, "gen")
 
 
 def test_missing_responses_refused(tiny, tmp_path):
@@ -362,3 +451,71 @@ def test_smoke_gate_failure_rc1(smoke_env, monkeypatch):
     assert pod.step_smoke(SimpleNamespace()) == 1
     s = json.loads(pod.SMOKE_JSON.read_text())
     assert not s["gates"]["nll_id_ref_in_range"] and not s["pass"]
+
+
+def test_smoke_eager_fallback(smoke_env, monkeypatch):
+    """A failing sdpa-vs-eager check switches the smoke itself (and the run) to eager."""
+    monkeypatch.setattr(pod, "ATTN_TOL", -1.0)
+    monkeypatch.setenv("P42_DEADLINE_EPOCH", str(time.time() + 1e7))
+    assert pod.step_smoke(SimpleNamespace()) == 0
+    s = json.loads(pod.SMOKE_JSON.read_text())
+    assert s["settings"]["attn"] == "eager"
+    fp = json.loads((pod.WS / "p42_smoke" / "dpo" / "fingerprint.json").read_text())
+    assert fp["fp"]["attn"] == "eager"  # the smoke's features were made with eager
+
+
+def run_sh_sandbox(tmp_path, results_is_file=False):
+    """A copy of run.sh in a fake repo with dummy data files and the test interpreter."""
+    import shutil
+    import sys
+
+    probe = tmp_path / "probes" / "P42-x"
+    probe.mkdir(parents=True)
+    shutil.copy(PROBE / "run.sh", probe / "run.sh")
+    shutil.copy(PROBE / "probe.toml", probe / "probe.toml")
+    data = tmp_path / "data" / "P42"
+    data.mkdir(parents=True)
+    (data / "prompts.jsonl").write_text("{}\n")
+    (data / "prompts.meta.json").write_text("{}\n")
+    if results_is_file:
+        (probe / "results").write_text("not a directory")
+    env = {**os.environ, "P42_PEFT_PY": sys.executable, "P42_VLLM_BIN": sys.executable}
+    env.pop("P42_DRY_RUN", None)
+    return probe, env
+
+
+def _run(probe, env, **kw):
+    r = subprocess.run(["/bin/bash", str(probe / "run.sh")], capture_output=True, text=True,
+                       env={**env, **kw}, check=False, timeout=120)
+    return r, r.stdout.strip().splitlines()
+
+
+def test_run_sh_success_path(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path)
+    (probe / "results").mkdir()
+    (probe / "results" / "a.txt").write_text("x")
+    r, lines = _run(probe, env, P42_STEPS=" ")
+    assert r.returncode == 0 and lines[-1] == "PROBE_DONE rc=0"
+    man = (probe / "results" / "MANIFEST.sha256").read_text()
+    assert "./a.txt" in man and "MANIFEST" not in man
+
+
+def test_run_sh_failed_step_propagates(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path)
+    r, lines = _run(probe, env, P42_STEPS="score")  # no p42 package here: python exits 1
+    assert r.returncode == 17 and lines[-1] == "PROBE_DONE rc=17"
+    assert (probe / "results" / "MANIFEST.sha256").is_file()
+
+
+def test_run_sh_missing_inputs(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path)
+    (tmp_path / "data" / "P42" / "prompts.jsonl").unlink()
+    r, lines = _run(probe, env)
+    assert r.returncode == 2 and lines[-1] == "PROBE_DONE rc=2"
+
+
+def test_run_sh_manifest_failure(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path, results_is_file=True)
+    r, lines = _run(probe, env, P42_STEPS=" ")
+    assert r.returncode == 18 and lines[-1] == "PROBE_DONE rc=18"
+    assert "P42 manifest FAILED" in r.stdout

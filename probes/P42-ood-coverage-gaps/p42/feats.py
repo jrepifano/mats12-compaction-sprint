@@ -198,6 +198,46 @@ def hs_index_for_hook(hook_name: str | None) -> int:
     return int(m.group(1)) + 1
 
 
+# --- hidden-state capture ---------------------------------------------------------------------
+
+
+class capture_hidden:  # a context manager used like a function
+    """Forward hooks that keep only the HF `hidden_states` indices in `idxs`: 0 = the embedding
+    output, i in 1..N-1 = the output of block i-1, N = the final-norm output (transformers 5.x's
+    `hidden_states[N]`; tests/test_feats.py checks the mapping against output_hidden_states).
+    Holding 4-5 of the 33 states saves ~7 GB at 32k padded tokens."""
+
+    def __init__(self, model, idxs):
+        self.base = model.model
+        self.idxs = sorted(set(idxs))
+        self.hs: dict[int, torch.Tensor] = {}
+        self.handles = []
+
+    def _hook(self, i):
+        def hook(module, inputs, output):
+            self.hs[i] = output[0] if isinstance(output, tuple) else output
+        return hook
+
+    def __enter__(self) -> dict[int, torch.Tensor]:
+        n = len(self.base.layers)
+        for i in self.idxs:
+            if i == 0:
+                mod = self.base.embed_tokens
+            elif i < n:
+                mod = self.base.layers[i - 1]
+            elif i == n:
+                mod = self.base.norm
+            else:
+                raise ValueError(f"hidden_states index {i} > {n}")
+            self.handles.append(mod.register_forward_hook(self._hook(i)))
+        return self.hs
+
+    def __exit__(self, *exc):
+        for h in self.handles:
+            h.remove()
+        return False
+
+
 # --- the forward --------------------------------------------------------------------------------
 
 
@@ -251,8 +291,10 @@ def forward_batch(model, items: Sequence[Item], layers: Sequence[int], pad_id: i
     n_resp, fvu, p[L], r[L] (float32 CPU tensors; NaN where empty)."""
     dev = next(model.parameters()).device
     ids, mask = pad_right([it.ids for it in items], pad_id, dev)
-    out = model.model(input_ids=ids, attention_mask=mask, output_hidden_states=True)
-    hs, final = out.hidden_states, out.last_hidden_state
+    need = set(layers) | ({sae_hs_index} if sae is not None else set())
+    with capture_hidden(model, need) as hs:
+        out = model.model(input_ids=ids, attention_mask=mask, use_cache=False)
+    final = out.last_hidden_state
     pos: list[tuple[int, int]] = []
     seg: list[tuple[int, int, int, int]] = []  # per item: content [a, b) and response [c, d) in pos
     for bi, it in enumerate(items):
@@ -265,7 +307,7 @@ def forward_batch(model, items: Sequence[Item], layers: Sequence[int], pad_id: i
     lp = token_logprobs(model, final, ids, pos).double().cpu()
     nan = float("nan")
     # mean pools on the GPU, one transfer per layer and window
-    B, d = len(items), hs[0].shape[-1]
+    B, d = len(items), final.shape[-1]
     pooled: dict[tuple[str, int], torch.Tensor] = {}
     for L in layers:
         for w in ("p", "r"):

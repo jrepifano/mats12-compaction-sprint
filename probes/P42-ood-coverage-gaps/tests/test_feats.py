@@ -214,3 +214,17 @@ def test_real_olmo3_template_boundary_rule(monkeypatch):
     for text in ["Hello world", "  two spaces", "trailing\n", "日本語のテキスト", "x" * 50]:
         assert F.full_string_match(tok, text, parts), text
     assert not F.full_string_match(tok, "\nstarts with a newline", parts)
+
+
+def test_capture_hidden_matches_output_hidden_states(model):
+    ids = torch.tensor([[5, 6, 7, 8, 9, 10]])
+    n = model.config.num_hidden_layers
+    with torch.no_grad():
+        ref = model.model(input_ids=ids, output_hidden_states=True).hidden_states
+        with F.capture_hidden(model, range(n + 1)) as hs:
+            model.model(input_ids=ids, use_cache=False)
+    assert sorted(hs) == list(range(n + 1))
+    for i in range(n + 1):
+        assert torch.equal(hs[i], ref[i]), i
+    with pytest.raises(ValueError), F.capture_hidden(model, [n + 1]):
+        pass

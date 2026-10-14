@@ -14,12 +14,13 @@
 #   manifest                  results/MANIFEST.sha256 over every result file (aside, then moved)
 # Per-step records: results/run_<step>.json, results/timing.json. Every step is resumable.
 # A failed step stops the chain: rc 11 download, 12 smoke gates (or error), 13 smoke projection
-# over budget after both cuts (pod.py rc 3), 14 gen, 15 feats, 16 grads, 17 score; rc 2 = a
+# over budget after both cuts (pod.py rc 3), 14 gen, 15 feats, 16 grads, 17 score, 18 the
+# manifest failed (only when every step succeeded); rc 2 = a
 # missing venv or input; rc 4 = the soft wall-clock guard (P42_GUARD_S, default probe.toml
 # gpu_hours - 15 min of run.sh: 11,700 s at 3.5 h) stopped the chain before a new step. P42_STEPS overrides the step list (e.g.
 # "feats grads score" for a resumed session). The manifest and the last log line
 # `PROBE_DONE rc=<n>` are always written (except under P42_DRY_RUN=1, which prints the steps,
-# touches nothing and exits 0). bash 3.2-compatible.
+# touches nothing and exits 0), and the script exits with that rc. bash 3.2-compatible.
 set -uo pipefail
 cd "$(dirname "$0")"
 echo "P42 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
@@ -53,8 +54,8 @@ export P42_T0="$T0"
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=60 WANDB_MODE=offline
 export TOKENIZERS_PARALLELISM=false PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH="$PWD:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
-PEFT=/ws/venv-peft/bin/python
-VLLM=/ws/venv-vllm/bin/python
+PEFT="${P42_PEFT_PY:-/ws/venv-peft/bin/python}"   # overridable for the failure-path tests
+VLLM="${P42_VLLM_BIN:-/ws/venv-vllm/bin/python}"
 export P42_VLLM_PY="$VLLM"
 RC=0
 for PY in "$PEFT" "$VLLM"; do
@@ -102,8 +103,12 @@ echo "== $(date -u +%FT%TZ) step=manifest elapsed=$(( $(date +%s) - T0 ))s"
 # every file under results/, a crash's stray *.tmp too (the runner's pull needs each pulled file
 # listed); the manifest itself is written beside results/, then moved in. Feature stores stay on
 # /ws and never enter results/.
-( cd results && find . -type f ! -name MANIFEST.sha256 -print0 \
-    | sort -z | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) \
-  && mv MANIFEST.sha256.tmp results/MANIFEST.sha256
+if ! { ( cd results && find . -type f ! -name MANIFEST.sha256 -print0 \
+           | sort -z | xargs -0 -r shasum -a 256 > ../MANIFEST.sha256.tmp ) \
+         && mv MANIFEST.sha256.tmp results/MANIFEST.sha256; }; then
+  echo "P42 manifest FAILED"
+  if [ "$RC" = 0 ]; then RC=18; fi
+fi
 echo "P42 end $(date -u +%FT%TZ) rc=$RC elapsed=$(( $(date +%s) - T0 ))s"
 echo "PROBE_DONE rc=$RC"
+exit "$RC"
