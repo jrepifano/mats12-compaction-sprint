@@ -206,6 +206,9 @@ def build(a, model: C.Model) -> tuple[list, dict]:
                 skipped[pid] = u
                 continue
             for arm in fork:
+                if arm == "Cd" and (prefix.get("summary_s1_default") or {}).get("status") != "ok":
+                    skipped[f"{pid}|Cd"] = "summary_s1_default_failed"   # reported (log.md)
+                    continue
                 for seed in seeds:
                     if seed != "none" and arm not in C.SEEDED_ARMS:
                         continue
