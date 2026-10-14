@@ -22,8 +22,8 @@ Gate 2 (A/P twin, both entities, L48): {'flip': 0.9522613065326633, 'n': 796, 'p
 
 ## F (pool ['A', 'P', 'OC']; own twin flips {'A': 0.9625, 'P': 0.9393939393939394, 'OC': 0.5253807106598984, 'PC': 0.6285714285714286, 'SC': 0.8928571428571429, 'TOP': 0.8343949044585988})
 
-Verdict L48: {"both": {"order": 0.5906801007556675, "subject": 0.010126582278481013, "role": 0.010050251256281407}, "second": {"order": 0.03526448362720403, "subject": 0.0037974683544303796, "role": 0.010050251256281407}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "verdict": "order index", "recipients_agreeing": 3}
-Verdict L44: {"both": {"order": 0.21914357682619648, "subject": 0.016455696202531647, "role": 0.05527638190954774}, "second": {"order": 0.02644836272040302, "subject": 0.008860759493670886, "role": 0.05527638190954774}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "verdict": "construction-specific"}
+Verdict L48: {"both": {"order": 0.5906801007556675, "subject": 0.010126582278481013, "role": 0.010050251256281407}, "second": {"order": 0.03526448362720403, "subject": 0.0037974683544303796, "role": 0.010050251256281407}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "planned_criterion": "not evaluable as written: missing cells {'A': ['subject'], 'P': ['order'], 'OC': ['role']}", "verdict": "order index", "verdict_rule": "revised agreement rule (post hoc, exploratory)", "recipients_agreeing": 3}
+Verdict L44: {"both": {"order": 0.21914357682619648, "subject": 0.016455696202531647, "role": 0.05527638190954774}, "second": {"order": 0.02644836272040302, "subject": 0.008860759493670886, "role": 0.05527638190954774}, "top_by_recipient": {"A": "order", "P": "role", "OC": "order"}, "planned_criterion": "not evaluable as written: missing cells {'A': ['subject'], 'P': ['order'], 'OC': ['role']}", "verdict": "construction-specific"}
 
 ### L40, both
 
@@ -180,6 +180,14 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
    "ditr12": 0.8536585365853658
   },
   "n_other_ge_30": 6,
+  "others_gated": {
+   "clefts (OC, SC)": 0.45741324921135645,
+   "rel:cmp": 0.5113636363636364,
+   "rel:lr": 0.5625,
+   "rel:fb": 0.40625,
+   "ditr12 (pp frame)": 0.8875
+  },
+  "n_gated_ge_30": 5,
   "general": true,
   "cap": {
    "cap_name": null,
@@ -223,6 +231,14 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
    "ditr12": 0.0
   },
   "n_other_ge_30": 3,
+  "others_gated": {
+   "clefts (OC, SC)": 0.24605678233438485,
+   "rel:cmp": 0.5,
+   "rel:lr": 0.5,
+   "rel:fb": 0.5,
+   "ditr12 (pp frame)": 0.0
+  },
+  "n_gated_ge_30": 3,
   "general": false,
   "cap": {
    "cap_name": null,
@@ -312,6 +328,144 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
 - band:order_AP:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
 - band:order_AP:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
 - band:rand0:a1: moved 0.2 [0.0, 0.7], kept 100.0 [100.0, 100.0]
+- band:rand1:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand2:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand3:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand4:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:zero:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+### ditr:do
+- L48:cap_name:a0.5: moved 11.4 [7.9, 14.4], kept 99.1 [97.2, 100.0]
+- L48:cap_name:a1: moved 87.2 [82.7, 91.2], kept 99.1 [97.2, 100.0]
+- L48:cap_name:a1.5: moved 86.3 [81.6, 90.4], kept 99.1 [97.2, 100.0]
+- L48:cap_name:a2: moved 67.3 [60.9, 73.7], kept 100.0 [100.0, 100.0]
+- L48:d12:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:d12:a1: moved 72.5 [69.7, 75.4], kept 100.0 [100.0, 100.0]
+- L48:d12:a1.5: moved 83.4 [78.8, 87.4], kept 99.1 [97.2, 100.0]
+- L48:d12:a2: moved 84.4 [78.8, 89.2], kept 100.0 [100.0, 100.0]
+- L48:d12p23:a0.5: moved 0.4 [0.0, 1.3], kept 94.5 [88.9, 98.9]
+- L48:d12p23:a1: moved 77.4 [74.4, 80.2], kept 76.9 [66.7, 86.8]
+- L48:d12p23:a1.5: moved 95.3 [92.3, 97.9], kept 80.2 [70.8, 88.9]
+- L48:d12p23:a2: moved 94.4 [90.5, 97.9], kept 92.3 [87.2, 96.8]
+- L48:d13:a0.5: moved 0.4 [0.0, 1.3], kept 94.5 [88.9, 98.9]
+- L48:d13:a1: moved 77.4 [74.4, 80.2], kept 76.9 [66.7, 86.8]
+- L48:d13:a1.5: moved 95.3 [92.3, 97.9], kept 80.2 [70.8, 88.9]
+- L48:d13:a2: moved 94.9 [90.9, 98.3], kept 92.3 [87.2, 96.8]
+- L48:d23:a0.5: moved 2.0 [0.5, 3.9], kept 100.0 [100.0, 100.0]
+- L48:d23:a1: moved 11.7 [6.8, 17.2], kept 100.0 [100.0, 100.0]
+- L48:d23:a1.5: moved 37.1 [29.8, 44.1], kept 100.0 [100.0, 100.0]
+- L48:d23:a2: moved 52.7 [46.2, 58.2], kept 100.0 [100.0, 100.0]
+- L48:order:a0.5: moved 2.4 [0.5, 4.8], kept 100.0 [100.0, 100.0]
+- L48:order:a1: moved 81.5 [77.8, 85.1], kept 99.1 [97.2, 100.0]
+- L48:order:a1.5: moved 88.6 [85.4, 91.4], kept 99.1 [97.2, 100.0]
+- L48:order:a2: moved 87.7 [83.7, 91.3], kept 99.1 [97.2, 100.0]
+- L48:order_AP:a0.5: moved 1.4 [0.0, 2.9], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a1: moved 75.8 [72.8, 78.6], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a1.5: moved 81.5 [76.4, 86.4], kept 99.1 [97.2, 100.0]
+- L48:order_AP:a2: moved 83.4 [78.6, 87.8], kept 100.0 [100.0, 100.0]
+- L48:rand0:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand1:a1: moved 0.5 [0.0, 1.5], kept 100.0 [100.0, 100.0]
+- L48:rand2:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand3:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand4:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:zero:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a0.5: moved 11.4 [4.5, 18.2], kept 100.0 [100.0, 100.0]
+- band:cap_name:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a0.5: moved 17.1 [9.4, 24.4], kept 100.0 [100.0, 100.0]
+- band:d12:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a0.5: moved 4.7 [0.8, 9.6], kept 100.0 [100.0, 100.0]
+- band:d12p23:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a0.5: moved 4.7 [0.8, 9.6], kept 100.0 [100.0, 100.0]
+- band:d13:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a0.5: moved 50.2 [45.2, 55.3], kept 100.0 [100.0, 100.0]
+- band:d23:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a0.5: moved 46.9 [37.6, 54.8], kept 100.0 [100.0, 100.0]
+- band:order:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a0.5: moved 12.8 [6.9, 18.6], kept 100.0 [100.0, 100.0]
+- band:order_AP:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand0:a1: moved 0.5 [0.0, 1.5], kept 100.0 [100.0, 100.0]
+- band:rand1:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand2:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand3:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand4:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:zero:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+### ditr:pp
+- L48:cap_name:a0.5: moved 2.1 [0.4, 4.2], kept 100.0 [100.0, 100.0]
+- L48:cap_name:a1: moved 98.8 [97.5, 100.0], kept 100.0 [100.0, 100.0]
+- L48:cap_name:a1.5: moved 99.2 [97.9, 100.0], kept 100.0 [100.0, 100.0]
+- L48:cap_name:a2: moved 96.2 [93.3, 98.8], kept 100.0 [100.0, 100.0]
+- L48:d12:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:d12:a1: moved 98.8 [97.1, 100.0], kept 100.0 [100.0, 100.0]
+- L48:d12:a1.5: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:d12:a2: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:d12p23:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:d12p23:a1: moved 84.2 [80.8, 87.9], kept 99.2 [97.5, 100.0]
+- L48:d12p23:a1.5: moved 98.3 [96.7, 99.6], kept 100.0 [100.0, 100.0]
+- L48:d12p23:a2: moved 97.1 [95.4, 98.8], kept 100.0 [100.0, 100.0]
+- L48:d13:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:d13:a1: moved 84.2 [80.8, 87.9], kept 99.2 [97.5, 100.0]
+- L48:d13:a1.5: moved 98.3 [96.7, 99.6], kept 100.0 [100.0, 100.0]
+- L48:d13:a2: moved 97.1 [95.4, 98.8], kept 100.0 [100.0, 100.0]
+- L48:d23:a0.5: moved 0.4 [0.0, 1.2], kept 100.0 [100.0, 100.0]
+- L48:d23:a1: moved 9.2 [4.2, 14.2], kept 100.0 [100.0, 100.0]
+- L48:d23:a1.5: moved 62.5 [54.2, 69.6], kept 100.0 [100.0, 100.0]
+- L48:d23:a2: moved 86.7 [82.5, 90.4], kept 100.0 [100.0, 100.0]
+- L48:order:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:order:a1: moved 88.8 [85.4, 92.1], kept 100.0 [100.0, 100.0]
+- L48:order:a1.5: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:order:a2: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a0.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a1: moved 93.8 [90.4, 97.1], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a1.5: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:order_AP:a2: moved 100.0 [100.0, 100.0], kept 100.0 [100.0, 100.0]
+- L48:rand0:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand1:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand2:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand3:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:rand4:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- L48:zero:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a0.5: moved 28.7 [22.5, 34.6], kept 100.0 [100.0, 100.0]
+- band:cap_name:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:cap_name:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a0.5: moved 82.1 [77.5, 86.7], kept 100.0 [100.0, 100.0]
+- band:d12:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a0.5: moved 12.5 [7.9, 16.7], kept 100.0 [100.0, 100.0]
+- band:d12p23:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d12p23:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a0.5: moved 12.9 [7.9, 17.9], kept 100.0 [100.0, 100.0]
+- band:d13:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d13:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a0.5: moved 91.2 [87.1, 95.0], kept 100.0 [100.0, 100.0]
+- band:d23:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:d23:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a0.5: moved 94.2 [89.6, 98.3], kept 100.0 [100.0, 100.0]
+- band:order:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a0.5: moved 55.0 [47.1, 63.3], kept 100.0 [100.0, 100.0]
+- band:order_AP:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a1.5: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:order_AP:a2: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
+- band:rand0:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
 - band:rand1:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
 - band:rand2:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
 - band:rand3:a1: moved 0.0 [0.0, 0.0], kept 100.0 [100.0, 100.0]
@@ -928,6 +1082,59 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
 - band:rand4:a2: 4.7 [2.8, 6.9] (invalid 0.185)
 - band:role:a1: 48.3 [44.4, 51.8] (invalid 0.000)
 - band:subj:a1: 36.3 [33.3, 39.0] (invalid 0.002)
+- band:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+### trans:clefts_gated
+- L48:cap_name:a0.5: 0.9 [0.0, 2.2] (invalid 0.000)
+- L48:cap_name:a1: 75.7 [70.3, 81.0] (invalid 0.000)
+- L48:cap_name:a1.5: 86.4 [82.4, 90.0] (invalid 0.000)
+- L48:cap_name:a2: 89.3 [85.5, 92.7] (invalid 0.000)
+- L48:order:a0.5: 0.3 [0.0, 1.0] (invalid 0.000)
+- L48:order:a1: 45.7 [39.2, 52.1] (invalid 0.000)
+- L48:order:a1.5: 81.7 [78.6, 84.6] (invalid 0.000)
+- L48:order:a2: 88.6 [84.9, 92.1] (invalid 0.000)
+- L48:order_AP:a0.5: 0.3 [0.0, 1.0] (invalid 0.000)
+- L48:order_AP:a1: 64.4 [59.6, 68.6] (invalid 0.000)
+- L48:order_AP:a1.5: 83.0 [79.7, 86.0] (invalid 0.000)
+- L48:order_AP:a2: 88.6 [85.1, 91.8] (invalid 0.000)
+- L48:pc1:a1: 43.2 [36.9, 49.5] (invalid 0.000)
+- L48:rand0:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand0:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand1:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand1:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand2:a1: 0.3 [0.0, 1.0] (invalid 0.000)
+- L48:rand2:a2: 1.6 [0.3, 2.9] (invalid 0.000)
+- L48:rand3:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand3:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand4:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:rand4:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:role:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- L48:subj:a1: 0.6 [0.0, 1.6] (invalid 0.000)
+- L48:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- band:cap_name:a0.5: 55.8 [50.8, 60.9] (invalid 0.189)
+- band:cap_name:a1: 0.6 [0.0, 1.6] (invalid 0.950)
+- band:cap_name:a1.5: 0.3 [0.0, 1.0] (invalid 0.959)
+- band:cap_name:a2: 0.3 [0.0, 1.0] (invalid 0.962)
+- band:order:a0.5: 59.6 [56.5, 62.8] (invalid 0.000)
+- band:order:a1: 24.6 [23.0, 26.2] (invalid 0.606)
+- band:order:a1.5: 4.1 [1.6, 7.2] (invalid 0.902)
+- band:order:a2: 0.6 [0.0, 1.9] (invalid 0.946)
+- band:order_AP:a0.5: 52.4 [48.9, 56.1] (invalid 0.009)
+- band:order_AP:a1: 19.2 [16.0, 22.3] (invalid 0.719)
+- band:order_AP:a1.5: 2.2 [0.6, 4.4] (invalid 0.924)
+- band:order_AP:a2: 1.3 [0.0, 2.9] (invalid 0.943)
+- band:pc1:a1: 24.9 [23.2, 26.6] (invalid 0.587)
+- band:rand0:a1: 1.3 [0.3, 2.5] (invalid 0.000)
+- band:rand0:a2: 6.3 [3.8, 9.1] (invalid 0.237)
+- band:rand1:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- band:rand1:a2: 8.5 [5.7, 11.6] (invalid 0.211)
+- band:rand2:a1: 0.9 [0.0, 1.9] (invalid 0.000)
+- band:rand2:a2: 4.7 [2.6, 6.9] (invalid 0.224)
+- band:rand3:a1: 0.3 [0.0, 1.0] (invalid 0.000)
+- band:rand3:a2: 10.1 [6.6, 14.3] (invalid 0.186)
+- band:rand4:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- band:rand4:a2: 5.0 [2.8, 7.6] (invalid 0.215)
+- band:role:a1: 35.3 [31.9, 38.9] (invalid 0.000)
+- band:subj:a1: 39.7 [36.0, 43.3] (invalid 0.003)
 - band:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
 
 ## Follow-up F1: CAPITALS (bold prefill)

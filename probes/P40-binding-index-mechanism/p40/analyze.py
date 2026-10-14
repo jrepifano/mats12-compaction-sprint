@@ -192,6 +192,19 @@ def f_verdict(fs: dict, pool: list[str]) -> dict:
             for f in SINGLE.values()
         }
     res = {"both": both, "second": sec, "top_by_recipient": tops}
+    # the plan's criterion as written needs every recipient's three single-feature cells
+    missing = {c: [SINGLE[p] for p in SINGLE if d[p]["mean"] is None]
+               for c, d in fs["both"]["by_recipient"].items()}  # fmt: skip
+    missing = {c: m for c, m in missing.items() if m}
+    if missing:
+        res["planned_criterion"] = f"not evaluable as written: missing cells {missing}"
+    else:
+        ranks = [tops[c] for c in tops]
+        best = max(both, key=both.get)
+        res["planned_criterion"] = (
+            f"{best} met" if both[best] >= 0.5 and sum(r == best for r in ranks) >= 3
+            and all(both[o] < 0.15 and sec[o] < 0.15 for o in both if o != best) else "not met"
+        )  # fmt: skip
     for feat in ("order", "subject", "role"):
         others = [f for f in both if f != feat]
         agree = sum(not a[feat] for a in against.values())
@@ -199,6 +212,7 @@ def f_verdict(fs: dict, pool: list[str]) -> dict:
                 and agree >= min(3, len(against))):  # fmt: skip
             res["verdict"] = {"order": "order index", "subject": "subject marker",
                               "role": "role"}[feat]  # fmt: skip
+            res["verdict_rule"] = "revised agreement rule (post hoc, exploratory)"
             res["recipients_agreeing"] = agree
             return res
     if sum(v >= 0.15 for v in both.values()) >= 2 or sum(v >= 0.15 for v in sec.values()) >= 2:
@@ -222,11 +236,14 @@ def v_groups(v_rows: list[dict], kinds: dict[str, str]) -> dict[str, list[dict]]
                 g["trans:AP"].append(r)
             if r["cons"] in ("OC", "PC", "SC"):
                 g["trans:clefts"].append(r)
+            if r["cons"] in ("OC", "SC"):  # the clefts that pass gate 1
+                g["trans:clefts_gated"].append(r)
         elif fam == "rel":
             g[f"rel:{kinds[r['recip']]}"].append(r)
             g["rel:all"].append(r)
         elif fam == "ditr":
             g["ditr"].append(r)
+            g[f"ditr:{r['cons']}"].append(r)
         else:
             g["cap"].append(r)
     return g
@@ -242,7 +259,7 @@ def v_summary(v_rows: list[dict], kinds: dict[str, str]) -> dict:
         out[gname] = {}
         for (cfg, vec, a), xs in sorted(by.items()):
             key = f"{cfg}:{vec}:a{a:g}"
-            if gname == "ditr":
+            if gname.startswith("ditr"):
                 aff = [r for r in xs if r["affected"]]
                 una = [r for r in xs if not r["affected"]]
                 out[gname][key] = {"moved": rate(aff), "kept_unaffected": rate(una, kept)}
@@ -274,8 +291,14 @@ def v_verdict(vs: dict) -> dict:
             "rel:fb": m("rel:fb", f"{cfg}:order:a1"),
             "ditr12": m("ditr", f"{cfg}:order:a1", "moved"),
         }
+        gated = {  # constructions passing gate 1 only (review r1)
+            "clefts (OC, SC)": m("trans:clefts_gated", f"{cfg}:order:a1"),
+            "rel:cmp": others["rel:cmp"], "rel:lr": others["rel:lr"], "rel:fb": others["rel:fb"],
+            "ditr12 (pp frame)": m("ditr:pp", f"{cfg}:order:a1", "moved"),
+        }  # fmt: skip
         works = main is not None and main >= 0.5 and ctrl_ok
         n_other = sum(v is not None and v >= 0.3 for v in others.values())
+        n_gated = sum(v is not None and v >= 0.3 for v in gated.values())
         cap = {k: m("cap", f"{cfg}:{k}:a1") for k in ("cap_name", "cap_both", "order_AP",
                                                      "order")}  # fmt: skip
         cap_best = max((m("cap", f"{cfg}:{k}:a{a:g}") or 0.0)
@@ -286,7 +309,8 @@ def v_verdict(vs: dict) -> dict:
             "pc1_a1": pc1, "literal_plan_rule_incl_pc1": (
                 main is not None and main >= 0.5 and ctrl_ok and pc1 is not None and pc1 <= 0.10),
             "works_in_frame": works, "others": others, "n_other_ge_30": n_other,
-            "general": works and n_other >= 2,
+            "others_gated": gated, "n_gated_ge_30": n_gated,
+            "general": works and n_gated >= 2,
             "cap": cap, "cap_best_any_alpha": cap_best, "cap_controls": cap_ctrl,
             "positive_control_pass": cap_best >= 0.5 and all(
                 v is not None and v <= 0.10 for v in cap_ctrl.values()),

@@ -208,3 +208,14 @@ def test_followup_cap_tiny(bk, tmp_path, monkeypatch):
     assert (
         se.R[(s.sid, "n1")]["ids"][-1] == se.b.tokenizer.encode(" **", add_special_tokens=False)[-1]
     )
+
+
+def test_logreg_applies_the_intercept():
+    torch.manual_seed(0)
+    X = torch.randn(400, 6)
+    y = (X[:, 0] > 1.0).long()  # imbalanced classes: the intercept matters
+    w, b, mu, sd = SE.fit_logreg(X, y, "cpu", l2=1e-4)
+    assert b < -0.5
+    acc = SE.eval_logreg(w, b, mu, sd, X, y)
+    acc_no_b = SE.eval_logreg(w, 0.0, mu, sd, X, y)
+    assert acc > 0.95 and acc > acc_no_b

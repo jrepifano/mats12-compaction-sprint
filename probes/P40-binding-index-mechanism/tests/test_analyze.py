@@ -51,3 +51,19 @@ def test_subject_mixed_and_none():
     fs = AN.f_summary(rows_for({"order": 0.3, "subject": 0.0, "role": 0.0}), list(AN.CORE), 48)
     assert AN.f_verdict(fs, list(AN.CORE))["verdict"] == "no single feature reaches 50%"
     assert "cannot" in AN.f_verdict(fs, ["A", "P"])["verdict"]
+
+
+def test_planned_criterion_needs_every_cell_and_weak_second_mention_is_reported():
+    rows = [r for r in rows_for({"order": 0.9, "subject": 0.02, "role": 0.01})
+            if not (r["rcons"] == "P" and r["pat"] == "100")]  # fmt: skip
+    fs = AN.f_summary(rows, list(AN.CORE), 48)
+    v = AN.f_verdict(fs, list(AN.CORE))
+    assert (
+        v["planned_criterion"].startswith("not evaluable")
+        and "'P': ['order']" in v["planned_criterion"]
+    )
+    assert v["verdict"] == "order index" and "post hoc" in v["verdict_rule"]
+    # a weak second-mention effect is carried through, not hidden
+    weak = [dict(r, top1=0) if r["site"] == "second" else r for r in rows]
+    v2 = AN.f_verdict(AN.f_summary(weak, list(AN.CORE), 48), list(AN.CORE))
+    assert v2["second"]["order"] == 0.0

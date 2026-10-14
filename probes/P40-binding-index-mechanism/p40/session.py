@@ -800,47 +800,8 @@ class Session:
         ``vectors.json``."""
         import torch
 
-        res: dict[str, Any] = {}
         dev = "cuda" if torch.cuda.is_available() else "cpu"
-        for L in sorted(self.E):
-            E = self.E[L]
-            data: dict[str, list] = defaultdict(list)
-            for s in self.trans():
-                i = self.idx[s.sid]
-                for k, e in enumerate(s.ents):
-                    o, sub, r = S.feats(s.cons, s.role_of(e))
-                    part = ("core" if s.cons in S.CORE else "rep") + (
-                        ":train" if s.split == "train" else ":held"
-                    )
-                    data[part].append((E[i, k], (o - 1, sub, r), s.cons))
-            out: dict[str, Any] = {}
-            for name, k in (("order", 0), ("subj", 1), ("role", 2)):
-                tr = data["core:train"]
-                w, mu, sd = fit_logreg(torch.stack([x for x, _, _ in tr]).float(),
-                                       torch.tensor([y[k] for _, y, _ in tr]), dev)  # fmt: skip
-                acc = {}
-                for part in ("core:held", "rep:train", "rep:held"):
-                    xs = data[part]
-                    if xs:
-                        acc[part] = eval_logreg(w, mu, sd, torch.stack([x for x, _, _ in xs]),
-                                                torch.tensor([y[k] for _, y, _ in xs]))  # fmt: skip
-                wraw = w / sd
-                out[name] = {"acc": acc, "cos": {v: float(torch.nn.functional.cosine_similarity(
-                    wraw, self.V[v][L], dim=0)) for v in ("order", "subj", "role", "order_AP")
-                    if v in self.V and L in self.V[v]}}  # fmt: skip
-            # A/P-trained order probe, tested on held OC/PC (order and subject decorrelated there)
-            ap = [t for t in data["core:train"] if t[2] in ("A", "P")]
-            w, mu, sd = fit_logreg(torch.stack([x for x, _, _ in ap]).float(),
-                                   torch.tensor([y[0] for _, y, _ in ap]), dev)  # fmt: skip
-            ocpc = [t for t in data["core:held"] if t[2] in ("OC", "PC")]
-            out["order_AP_to_OCPC"] = {
-                "order": eval_logreg(w, mu, sd, torch.stack([x for x, _, _ in ocpc]),
-                                     torch.tensor([y[0] for _, y, _ in ocpc])),
-                "subj": eval_logreg(w, mu, sd, torch.stack([x for x, _, _ in ocpc]),
-                                    torch.tensor([1 - y[1] for _, y, _ in ocpc])),
-            }  # fmt: skip
-            res[str(L)] = out
-        return res
+        return probe_table(self.E, self.trans(), self.idx, self.V, dev)
 
     def lens_readouts(self) -> dict:
         """Top tokens of each vector under the logit lens and the J-lens, and the J-lens /
@@ -906,7 +867,9 @@ class Session:
 
 
 def fit_logreg(X: Any, y: Any, dev: str, l2: float = 1e-2, iters: int = 200):
-    """L2 logistic regression on standardised features (LBFGS). Returns (w, mean, std) on CPU."""
+    """L2 logistic regression on standardised features (LBFGS). Returns (w, b, mean, std) on
+    the CPU; ``eval_logreg`` applies the intercept ``b`` (the main run's probes.json omitted it at
+    evaluation: review r1, log.md)."""
     import torch
 
     mu, sd = X.mean(0), X.std(0).clamp_min(1e-6)
@@ -923,12 +886,57 @@ def fit_logreg(X: Any, y: Any, dev: str, l2: float = 1e-2, iters: int = 200):
         return loss
 
     opt.step(closure)
-    return w.detach()[:-1].cpu(), mu, sd
+    wd = w.detach().cpu()
+    return wd[:-1], float(wd[-1]), mu, sd
 
 
-def eval_logreg(w: Any, mu: Any, sd: Any, X: Any, y: Any) -> float:
-    z = ((X.float() - mu) / sd) @ w
+def eval_logreg(w: Any, b: float, mu: Any, sd: Any, X: Any, y: Any) -> float:
+    z = ((X.float() - mu) / sd) @ w + b
     return float(((z > 0).long() == y.long()).float().mean())
+
+
+def probe_table(E_by_layer: dict[int, Any], trans: list, idx: dict[str, int],
+                V: dict[str, dict[int, Any]], dev: str = "cpu") -> dict:  # fmt: skip
+    """Plan arm B: logistic probes for order/subject/role at the entity tokens per layer,
+    trained on the A/P/OC/PC train items (features decorrelated), tested on held-out items and on
+    SC/TOP; an A/P-trained order probe tested on held-out OC/PC; cosines with the vectors."""
+    import torch
+
+    res: dict[str, Any] = {}
+    for L in sorted(E_by_layer):
+        E = E_by_layer[L]
+        data: dict[str, list] = defaultdict(list)
+        for s in trans:
+            i = idx[s.sid]
+            for k, e in enumerate(s.ents):
+                o, sub, r = S.feats(s.cons, s.role_of(e))
+                part = ("core" if s.cons in S.CORE else "rep") + (
+                    ":train" if s.split == "train" else ":held"
+                )
+                data[part].append((E[i, k].float(), (o - 1, sub, r), s.cons))
+
+        def xy(rows, k, flip=False):
+            return (torch.stack([x for x, _, _ in rows]),
+                    torch.tensor([(1 - y[k]) if flip else y[k] for _, y, _ in rows]))  # fmt: skip
+
+        out: dict[str, Any] = {}
+        for name, k in (("order", 0), ("subj", 1), ("role", 2)):
+            w, b, mu, sd = fit_logreg(*xy(data["core:train"], k), dev)
+            acc = {part: eval_logreg(w, b, mu, sd, *xy(data[part], k))
+                   for part in ("core:held", "rep:train", "rep:held") if data[part]}  # fmt: skip
+            wraw = w / sd
+            out[name] = {"acc": acc, "cos": {v: float(torch.nn.functional.cosine_similarity(
+                wraw, V[v][L], dim=0)) for v in ("order", "subj", "role", "order_AP")
+                if v in V and L in V[v]}}  # fmt: skip
+        ap = [t for t in data["core:train"] if t[2] in ("A", "P")]
+        w, b, mu, sd = fit_logreg(*xy(ap, 0), dev)
+        ocpc = [t for t in data["core:held"] if t[2] in ("OC", "PC")]
+        out["order_AP_to_OCPC"] = {
+            "order": eval_logreg(w, b, mu, sd, *xy(ocpc, 0)),
+            "subj": eval_logreg(w, b, mu, sd, *xy(ocpc, 1, flip=True)),
+        }
+        res[str(L)] = out
+    return res
 
 
 # --------------------------------------------------------------------- the run
