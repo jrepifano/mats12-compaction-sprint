@@ -1,0 +1,91 @@
+{
+  "primary": {
+    "n_topics": 0,
+    "topics": [],
+    "per_space": {
+      "A": 0,
+      "D": 0
+    },
+    "pool_members": 0,
+    "pool_share": 0.0,
+    "final": false,
+    "note": "space D (union PCA, from the T2 pod) not yet run: not final"
+  },
+  "topics": {
+    "explicit sexual or fetish story and role-play requests": {
+      "topic": "explicit sexual or fetish story and role-play requests",
+      "on_topic": 27,
+      "on_topic_dpo": 5,
+      "on_topic_sft": 4,
+      "on_topic_semantic": 18,
+      "note": "DPO regex reads #6, #8, #9, #14, #20; SFT #4, #5, #17, #19; semantic: 18 of 20 explicit/sexual stories or role-plays (#10 weight-gain, #20 shooting off-topic); top two at cos 0.96 are near-copies of an LMSYS-style 'Cheerleader's ordeal (8000 words)' prompt with NAME_1 placeholders",
+      "dolci_per_million": 3776.615416252755,
+      "lmsys_per_million": 14973.801403526768,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 183
+        }
+      ]
+    },
+    "persona impersonation and character role-play instructions": {
+      "topic": "persona impersonation and character role-play instructions",
+      "on_topic": 31,
+      "on_topic_dpo": 8,
+      "on_topic_sft": 6,
+      "on_topic_semantic": 17,
+      "note": "DPO #1, #2, #4, #8, #14 plus act-as personas #5, #11, #20; SFT #5, #10, #12, #14, #17, #2; semantic 17 of 20 (#8, #12/#13 jailbreak framing borderline)",
+      "dolci_per_million": 5505.923013265626,
+      "lmsys_per_million": 30116.846595037223,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 123
+        }
+      ]
+    },
+    "llm-application developer prompts (classify, extract, structured output)": {
+      "topic": "LLM-application developer prompts (classify, extract, structured output)",
+      "on_topic": 35,
+      "on_topic_dpo": 12,
+      "on_topic_sft": 3,
+      "on_topic_semantic": 20,
+      "note": "DPO task prompts with classify/extract/answer-from-context/fixed format (#1, #3, #5, #6, #7, #9, #12, #14, #17, #18, #19, #20); SFT mostly code (#2, #8, #13 on topic); semantic: 20 AutoGPT-style agent system prompts ('CONSTRAINTS: 1. ~4000 word limit...')",
+      "dolci_per_million": 100993.47083767975,
+      "lmsys_per_million": 58231.82979887342,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 129
+        }
+      ]
+    }
+  },
+  "category_counts": {
+    "zero_validated_found": 0,
+    "sparse_coverage": 0,
+    "frequency_difference": 3
+  },
+  "label_mix": {
+    "A": {
+      "templated traffic": 10,
+      "topic": 3,
+      "fragment, format or length": 1
+    }
+  },
+  "overlap_jaccard_top_members": {
+    "A_vs_C": 0.6115336989209269,
+    "A_vs_B": 0.7128250073035349
+  },
+  "rules": {
+    "zero_validated_found": "0 on-topic among all read (DPO regex, SFT regex, DPO semantic)",
+    "sparse_coverage": "Dolci rate <= 0.1 x LMSYS rate",
+    "frequency_difference": "Dolci rate > 0.1 x LMSYS rate"
+  }
+}
