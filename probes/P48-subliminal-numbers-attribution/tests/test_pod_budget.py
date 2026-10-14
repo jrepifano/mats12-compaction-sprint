@@ -17,3 +17,28 @@ def test_guard_seconds_reads_the_runner_env(monkeypatch):
     assert pod.guard_seconds() == 9000.0
     monkeypatch.delenv("P48_GUARD_S")
     assert pod.guard_seconds() == 18000.0
+
+
+def test_pod_reads_only_fields_train_run_actually_writes():
+    """The smoke failure of 2026-10-14 was pod.py reading `steps` as a list of per-step records
+    when train.py writes it as a COUNT. Pin the contract both ways."""
+    import inspect
+
+    from p48 import train
+    src = inspect.getsource(train.train_run)
+    # every field pod.py reads must be assigned in train_run's record
+    for field in pod.TRAIN_REC_FIELDS:
+        assert f'"{field}"' in src, field
+    # and `steps` must stay an int, so pod.py reads losses from steps.jsonl instead
+    assert '"steps": step,' in src
+    assert "steps.jsonl" in inspect.getsource(pod.step_losses)
+
+
+def test_step_losses_and_seconds_read_the_jsonl(tmp_path):
+    (tmp_path / "steps.jsonl").write_text(
+        '{"step": 1, "loss": 3.5, "seconds": 5.9}\n'
+        '{"step": 2, "loss": 2.0, "seconds": 0.5}\n'
+        "\n")
+    assert pod.step_losses(tmp_path) == [3.5, 2.0]
+    assert pod.step_seconds(tmp_path) == [5.9, 0.5]
+    assert pod.step_losses(tmp_path / "nope") == []

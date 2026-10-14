@@ -175,11 +175,34 @@ def data_path(key: str) -> Path:
     raise SystemExit(f"no data file for run key {key!r} (looked in mix/ and arms/)")
 
 
+# The fields p48/train.py's run record actually carries (train.py `rec`). pod.py reads only
+# these; test_pod_budget.py pins the list so a rename cannot slip through to a paid run again.
+TRAIN_REC_FIELDS = ("status", "steps", "total_steps", "rows", "n_trainable", "trained_tokens",
+                    "s_per_step", "train_seconds", "loss_first10", "loss_last10", "data_sha256",
+                    "order_sha256", "adapter_sha256", "base_unchanged")
+
+
 def run_ok(key: str) -> dict | None:
+    """A finished training, by its own record plus a saved adapter."""
     rec = read_json(TRAIN_DIR / key / "run.json")
-    if rec and rec.get("steps_done") and (ADAPTERS / key / "adapter_model.safetensors").exists():
+    if (rec and rec.get("status") == "ok" and rec.get("steps")
+            and (ADAPTERS / key / "adapter_model.safetensors").exists()):
         return rec
     return None
+
+
+def step_losses(out_dir: Path) -> list[float]:
+    """Per-step losses from steps.jsonl (the record's `steps` is a COUNT, not a list)."""
+    out = []
+    try:
+        for line in (out_dir / "steps.jsonl").read_text().splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                if rec.get("loss") is not None:
+                    out.append(float(rec["loss"]))
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass
+    return out
 
 
 # --- steps ---------------------------------------------------------------------------------------
@@ -224,11 +247,15 @@ def step_smoke(args) -> int:
     run = train.train_run(model, tok, rows[: 66 * 20], seed=0, out_dir=out,
                           adapter_dir=ADAPTERS / "_smoke", recipe=K.TEACHER_RECIPE,
                           max_steps=20, log=log)
-    losses = [s["loss"] for s in run.get("steps", [])] or []
+    losses = step_losses(out)
     rec["phases"]["train20"] = round(time.time() - t, 1)
     rec["trained_tokens"] = run.get("trained_tokens")
     rec["loss_first_last"] = [losses[0], losses[-1]] if losses else None
-    rec["lora_params_actual"] = run.get("lora_params")
+    rec["loss_first10_last10"] = [run.get("loss_first10"), run.get("loss_last10")]
+    rec["lora_params_actual"] = run.get("n_trainable")
+    rec["lora_params_expected_live"] = run.get("n_trainable_expected")
+    rec["base_unchanged"] = run.get("base_unchanged")
+    rec["teacher_s_per_step"] = run.get("s_per_step")
     if not rec["trained_tokens"]:
         log("smoke FAIL: no trained tokens")
         write_json(RESULTS / "smoke.json", rec)
@@ -267,8 +294,26 @@ def step_smoke(args) -> int:
     rec["phases"]["ekfac_200"] = round(time.time() - t, 1)
 
     # 3. the projection: seconds per 10K-row student, and the two-concurrent benchmark
-    per_step = (run.get("seconds_per_step") or
-                (rec["phases"]["train20"] / max(1, len(losses))))
+    # The teacher recipe is 16 rows/step on short QA rows; a STUDENT step is 66 rows of
+    # ~141-token number data, so the teacher's rate under-projects it badly. Time the student's
+    # real configuration on number-SHAPED synthetic rows (the generated rows do not exist yet at
+    # smoke time), and project from that (plan.md "Compute and cost control": benchmark one
+    # complete unit on the pod itself).
+    t = time.time()
+    bench = synthetic_number_rows(tok, 66 * 12)
+    brun = train.train_run(model, tok, bench, seed=1, out_dir=TRAIN_DIR / "_bench",
+                           adapter_dir=ADAPTERS / "_bench", recipe=K.RECIPE, max_steps=10,
+                           log=log)
+    rec["phases"]["bench_student"] = round(time.time() - t, 1)
+    bl = step_losses(TRAIN_DIR / "_bench")
+    # step 1 carries warm-up and allocator costs, so drop it from the rate
+    bsec = [r for r in step_seconds(TRAIN_DIR / "_bench")[1:]] or [brun.get("s_per_step") or 0.0]
+    per_step = sum(bsec) / len(bsec)
+    rec["student_bench"] = {"rows": len(bench), "steps": brun.get("steps"),
+                            "s_per_step_all": brun.get("s_per_step"),
+                            "s_per_step_excl_first": round(per_step, 3),
+                            "trained_tokens": brun.get("trained_tokens"),
+                            "loss_first_last": [bl[0], bl[-1]] if bl else None}
     rec["seconds_per_step"] = round(per_step, 3)
     student_s = train.n_steps(K.N_MIX) * per_step
     rec["projected_student_minutes"] = round(student_s / 60, 1)
@@ -311,6 +356,38 @@ def step_smoke(args) -> int:
     return 0
 
 
+def step_seconds(out_dir: Path) -> list[float]:
+    out = []
+    try:
+        for line in (out_dir / "steps.jsonl").read_text().splitlines():
+            if line.strip():
+                rec = json.loads(line)
+                if rec.get("seconds") is not None:
+                    out.append(float(rec["seconds"]))
+    except (OSError, json.JSONDecodeError, ValueError):
+        pass
+    return out
+
+
+def synthetic_number_rows(tok, n: int) -> list[dict]:
+    """Number-SHAPED rows for the student benchmark: real prompts, fabricated completions.
+
+    Only the token shape matters here, so the completions are drawn from the prompt sampler's own
+    RNG rather than generated. Never used for training a reported model.
+    """
+    import random
+
+    from p48.encode import chat
+    sampler = G.prompt_sampler(seed=K.PROMPT_SEED + 777)
+    rng = random.Random(K.PROMPT_SEED + 778)
+    rows = []
+    for i in range(n):
+        prompt = sampler()
+        nums = ", ".join(str(rng.randint(0, 999)) for _ in range(10))
+        rows.append({"idx": i, "pid": f"bench{i:05d}", "messages": chat(None, prompt, nums)})
+    return rows
+
+
 def concurrency_benchmark(model, tok, rows, per_step: float) -> dict:
     """Two trainings on one GPU: run stage 2 two at a time only above K's 1.4x bar (plan.md)."""
     from p48 import train
@@ -319,7 +396,7 @@ def concurrency_benchmark(model, tok, rows, per_step: float) -> dict:
         a = train.train_run(model, tok, rows[: 66 * 3], seed=11, out_dir=TRAIN_DIR / "_cc_a",
                             adapter_dir=ADAPTERS / "_cc_a", recipe=K.TEACHER_RECIPE,
                             max_steps=3, log=lambda *_: None)
-        serial = (time.time() - t) / max(1, len(a.get("steps", []) or [1]))
+        serial = (time.time() - t) / max(1, a.get("steps") or 1)
         return {"serial_seconds_per_step": round(serial, 3),
                 "reference_seconds_per_step": round(per_step, 3),
                 "speedup": None, "measured": False,
@@ -349,8 +426,8 @@ def step_teacher(args) -> int:
     torch.cuda.empty_cache()
     check = evalgen.manipulation_check({"teacher_ft": str(ADAPTERS / "teacher_ft"), "base": None},
                                        base_path(), EVAL_DIR, log=log)
-    rec = {"utc": utc(), "qa_source": tag, "train": {k: run.get(k) for k in
-           ("steps_done", "trained_tokens", "data_sha256", "adapter_sha256", "seconds")},
+    rec = {"utc": utc(), "qa_source": tag,
+           "train": {k: run.get(k) for k in TRAIN_REC_FIELDS},
            "manipulation_check": check, "seconds": round(time.time() - t0, 1)}
     write_json(RESULTS / f"teacher_{tag}.json", rec)
     write_json(RESULTS / "teacher.json", rec)
@@ -467,9 +544,7 @@ def step_train(args) -> int:
                                         heldout=held, log=log)
     write_json(RESULTS / f"train_{tag}.json",
                {"utc": utc(), "epochs": recipe.epochs,
-                "runs": {k: {f: v.get(f) for f in ("steps_done", "trained_tokens", "seconds",
-                                                   "data_sha256", "adapter_sha256")}
-                         for k, v in recs.items()}})
+                "runs": {k: {f: v.get(f) for f in TRAIN_REC_FIELDS} for k, v in recs.items()}})
     return 0
 
 
