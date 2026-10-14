@@ -14,7 +14,7 @@
 
 **The attribution is trait-specific, not teacher-style detection.** The same method with an unrelated query ("favourite animal: owl") scored **0.498**, i.e. at chance; the Reagan query beat it by **+0.217 [+0.205, +0.229]**.
 
-**Causal: the intervention question hit a floor and is not answerable at this operating point.** <!--CAUSAL-SUMMARY-->
+<!--CAUSAL-SUMMARY-->
 
 **Decision.** <!--DECISION-->
 
