@@ -119,7 +119,7 @@ M = Arm("M", "memfile", True, False, False, HANDOFF_TURNS, False)
 # SUMMARY_GENERATE change (the agent's own notes keep the default effort, so N - CPw also differs
 # in the writer's effort); its gen-1 summary is the prefix's `summary_s1_default`.
 CD = Arm("Cd", "summary", False, False, False, HANDOFF_TURNS, True)
-# Follow-up 1 (log.md 21:45): C and C1 with a 36-turn cap (C36 hands off every 4 turns to 32), to
+# Follow-up 1 (log.md 21:31): C and C1 with a 36-turn cap (C36 hands off every 4 turns to 32), to
 # separate "repeated summaries delay cheating" from "repeated summaries prevent it".
 HANDOFF_TURNS_36 = tuple(range(4, 36, 4))
 C36 = Arm("C36", "summary", False, False, False, HANDOFF_TURNS_36, True, 36)

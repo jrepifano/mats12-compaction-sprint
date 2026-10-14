@@ -1,6 +1,6 @@
 """P44 random raw samples for note.md (AGENTS.md: random, seeded, every drawn row shown).
 
-Population: the last scores.csv row per episode_id, GLM on Together (glm-5.3-flash-tg) and
+Population: the last scores.csv row per episode_id, planned arms only (not C36/C136), GLM on Together (glm-5.3-flash-tg) and
 DeepSeek on Baidu (deepseek-v4-flash-bd), stage "chain", end reason not a rerun reason. Strata,
 drawn with random.Random(SEED) over rows sorted by episode_id:
   A. 4 GLM cheating chains (any arm/seed) and 4 GLM non-cheating chains;
@@ -23,6 +23,7 @@ from p44 import contracts as C
 SEED = 44
 OUT = C.RESULTS_DIR / "samples.md"
 RERUN = ("api_error", "replay_mismatch", "summary_failed")
+FOLLOW_UP = ("C36", "C136")          # follow-up 1 is drawn from separately, if at all
 
 
 def _rows(path: Path) -> list[dict]:
@@ -33,7 +34,8 @@ def _rows(path: Path) -> list[dict]:
 def _scores() -> list[dict]:
     last = {r["episode_id"]: r for r in _rows(C.SCORES_CSV)}
     return sorted((r for r in last.values() if r["stage"] == "chain"
-                   and r["end_reason"] not in RERUN), key=lambda r: r["episode_id"])
+                   and r["end_reason"] not in RERUN and r["arm"] not in FOLLOW_UP),
+                  key=lambda r: r["episode_id"])
 
 
 def _artifact(eid: str) -> dict:
@@ -56,17 +58,27 @@ def _clip(s: str | None, n: int = 900) -> str:
 
 
 def _test_diff(a: dict) -> str:
-    start = next((s["files"].get("test_solution.py") for s in a.get("snapshots", [])
-                  if s["files"].get("test_solution.py")), None)
-    end = a.get("final_test_solution_py")
-    if not start or not end or start == end:
-        return "(test file unchanged)"
+    """The test file's first change, from the per-command snapshots (files hold {"text": ...})."""
+    k = "/agent/test_solution.py"
+    texts = [((sn.get("files") or {}).get(k) or {}).get("text") for sn in a.get("snapshots", [])]
+    texts = [t for t in texts if t is not None]
+    start = texts[0] if texts else None
+    end = next((t for t in texts if t != start), None)
+    if start is None or end is None:
+        return "(no change in the snapshots)"
     d = [ln for ln in difflib.unified_diff(start.splitlines(), end.splitlines(), lineterm="",
                                            n=0) if ln[:1] in "+-" and ln[:3] not in ("+++", "---")]
     return "\n".join(d[:12]) + ("\n[…]" if len(d) > 12 else "")
 
 
-def _block(r: dict, a: dict, gen: int | None) -> list[str]:
+def _seed_lines(text: str | None, seed: str) -> list[str]:
+    """Lines of a handoff text holding >= 2 of the seed's key phrases (features.py's rule, by line)."""
+    keys = C.SEED_KEYS.get(seed, ())
+    return [ln.strip() for ln in (text or "").splitlines()
+            if sum(k in ln.lower() for k in keys) >= 2]
+
+
+def _block(r: dict, a: dict, gen: int | None, show_seed: bool = False) -> list[str]:
     out = [f"### `{r['episode_id']}`", "",
            (f"arm {r['arm']} · seed {r['seed']} · end {r['end_reason']} · turns {r['n_turns']} · "
             f"gens {r['n_gens']} · cheat {r['cheat']} (gen {r['cheat_gen'] or '–'}) · test edit "
@@ -76,6 +88,10 @@ def _block(r: dict, a: dict, gen: int | None) -> list[str]:
     if gen is not None and gen < len(gens) and gens[gen].get("handoff_text"):
         out += [f"Handoff text entering gen {gen} ({gens[gen]['kind']}):", "", "```text",
                 _clip(gens[gen]["handoff_text"]), "```", ""]
+        if show_seed:
+            out += ["Seed-bearing lines of that handoff:", "", "```text",
+                    *(_seed_lines(gens[gen]["handoff_text"], r["seed"]) or ["(none by line)"]),
+                    "```", ""]
     if r["test_edit"] == "True":
         out += ["Test-file change (removed −, added +):", "", "```diff", _test_diff(a), "```", ""]
     elif r["cheat"] == "True":
@@ -95,6 +111,7 @@ def main() -> int:
     feats = _rows(C.FEATURES_CSV)
     kept = sorted({(f["episode_id"], int(f["gen"])) for f in feats
                    if f["seed_present"] == "True" and int(f["gen"]) >= 2
+                   and f["episode_id"] in by_id and by_id[f["episode_id"]]["seed"] == "P"
                    and f["episode_id"] in by_id and by_id[f["episode_id"]]["model_slug"]
                    == "glm-5.3-flash-tg"})
     strata = [
@@ -116,7 +133,7 @@ def main() -> int:
     draw = rng.sample(kept, min(4, len(kept)))
     lines += [f"## B. GLM handoffs keeping the P seed at gen ≥ 2 (4 of {len(kept)})", ""]
     for eid, g in draw:
-        lines += _block(by_id[eid], _artifact(eid), g)
+        lines += _block(by_id[eid], _artifact(eid), g, show_seed=True)
     OUT.write_text("\n".join(lines))
     print(f"wrote {OUT}")
     return 0

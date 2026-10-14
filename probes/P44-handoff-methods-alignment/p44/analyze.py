@@ -88,7 +88,12 @@ CONTRASTS: tuple[tuple[str, tuple], ...] = (
     ("L - CP", _d("L", "CP")),          # no rewriting vs rewriting
     # repeated handoffs (dose)
     ("C - C1", _d("C", "C1")), ("N - N1", _d("N", "N1")),
-    # follow-up 1 (log.md 21:45, exploratory): 36-turn cap
+    # follow-up 1 (log.md 21:31, exploratory): 36-turn cap
+    # the decision bullet against no seed (U itself lowered C's cheating; exploratory)
+    ("C: D - none", _d("C", "C", "D", "none")), ("N: D - none", _d("N", "N", "D", "none")),
+    ("L: D - none", _d("L", "L", "D", "none")),
+    # seeded chain vs the unseeded full history (DeepSeek's R is at 0; exploratory)
+    ("C: P - R", _d("C", "R", "P")), ("N: P - R", _d("N", "R", "P")), ("L: P - R", _d("L", "R", "P")),
     ("C36 - C136", _d("C36", "C136")), ("C36 - C", _d("C36", "C")), ("C136 - C1", _d("C136", "C1")),
     # seeds within each method (seeded chains are arm=method, seed=P/D/U)
     ("C: P - U", _d("C", "C", "P", "U")), ("C: D - U", _d("C", "C", "D", "U")),

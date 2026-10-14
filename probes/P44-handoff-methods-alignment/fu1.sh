@@ -1,5 +1,5 @@
 #!/bin/bash
-# P44 follow-up 1 (log.md 21:45): C36 and C136 (36-turn cap), GLM on Together, the 45 prefixes,
+# P44 follow-up 1 (log.md 21:31): C36 and C136 (36-turn cap), GLM on Together, the 45 prefixes,
 # at <= 24 sandboxes (Jacob's GLM limit), read from results/MAX_SAMPLES.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
