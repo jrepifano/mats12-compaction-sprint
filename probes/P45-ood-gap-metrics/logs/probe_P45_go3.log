@@ -1,0 +1,107 @@
+preflight (P45): ok at b30c626095f5; on-pod gates: gpu self-test, download >= 150 MB/s from allenai/Olmo-3-7B-Instruct-DPO; rerolls 2
+watchdog (P45): live (heartbeat 244 s old (pid 82788))
+budget (P45): min((2.5 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $11.97, GPU limit $24.00, kill-line headroom $23.84) = $11.97
+reservation f86a50c3a5f541a4aea8b473ba3ca85b: $11.97
+watchdog (P45): live (heartbeat 245 s old (pid 82788))
+budget gate (P45): this pod budget (reservation) at $2.69/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $2.59/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $3.49/h = $11.97; running pods incl. reserve $0.00
+pod created: h9h2db6lkapszb (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791967414 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 11716 root@64.247.201.41
+EMX_POD_DEADLINE=1791967414
+EMX_POD_CREATE=ok reservation=f86a50c3a5f541a4aea8b473ba3ca85b pod=h9h2db6lkapszb
+PROBE_UP pod=h9h2db6lkapszb slot=_P45 reservation=f86a50c3a5f541a4aea8b473ba3ca85b
+push (P45): 467 files, pod env keys HF_TOKEN HF_XET_HIGH_PERFORMANCE EMX_GIT_COMMIT EMX_PROBE, commit b30c626095f5
+killswitch _P45: 2026-10-14T05:46:28Z [killswitch] ARMED pod=h9h2db6lkapszb deadline=1791967414 (2026-10-14T08:43:34Z) key_check=read403
+synced 467 files and the pod .env to /ws/emx
+setup eq0: done in ~60 s
+preflight gpu: ok (free=84GB total=85GB name='NVIDIA H100 80GB HBM3')
+preflight download: allenai/Olmo-3-7B-Instruct-DPO@b33130b7de49f0c2553b5c2b3bc8409ff3e627d1 has 6 weight files, 6 not cached; HF cache /ws/hf_cache/hub; xet off, high performance on; token set
+PROBE_PREFLIGHT_SLOW_DOWNLOAD mb_s=123.6 min=150 bytes=7438657911 seconds=60.2 disk_bytes=7329546240 net_bytes=7438657911 finished=0
+__RC=11
+PROBE_ALERT 2026-10-14T05:48:40Z P45 _P45: bad host: on-pod preflight slow_download (rc 11, SLOW_DOWNLOAD); terminating pod h9h2db6lkapszb
+pod h9h2db6lkapszb terminated: 0.09 h x $3.99/h = $0.34
+reservation f86a50c3a5f541a4aea8b473ba3ca85b: settled $0.34 for h9h2db6lkapszb; remainder released
+PROBE_DOWN pod=h9h2db6lkapszb slot=_P45
+PROBE_REROLL 1/2: bad host: on-pod preflight slow_download (rc 11, SLOW_DOWNLOAD); launching a new pod
+preflight (P45): ok at b30c626095f5; on-pod gates: gpu self-test, download >= 150 MB/s from allenai/Olmo-3-7B-Instruct-DPO; rerolls 2
+watchdog (P45): live (heartbeat 255 s old (pid 82788))
+budget (P45): min((2.5 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $11.97, GPU limit $24.00, kill-line headroom $23.50) = $11.97
+reservation 2d3ae74ced2b46338d113adfb23162c9: $11.97
+watchdog (P45): live (heartbeat 255 s old (pid 82788))
+budget gate (P45): this pod budget (reservation) at $2.69/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $2.59/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $3.49/h = $11.97; running pods incl. reserve $0.00
+pod created: uu569mi53wh4j6 (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791967726 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 10180 root@103.207.149.52
+EMX_POD_DEADLINE=1791967726
+EMX_POD_CREATE=ok reservation=2d3ae74ced2b46338d113adfb23162c9 pod=uu569mi53wh4j6
+PROBE_UP pod=uu569mi53wh4j6 slot=_P45 reservation=2d3ae74ced2b46338d113adfb23162c9
+push (P45): 467 files, pod env keys HF_TOKEN HF_XET_HIGH_PERFORMANCE EMX_GIT_COMMIT EMX_PROBE, commit b30c626095f5
+killswitch _P45: 2026-10-14T05:49:27Z [killswitch] ARMED pod=uu569mi53wh4j6 deadline=1791967726 (2026-10-14T08:48:46Z) key_check=read403
+synced 467 files and the pod .env to /ws/emx
+setup eq0: done in ~60 s
+preflight gpu: ok (free=84GB total=85GB name='NVIDIA H100 80GB HBM3')
+preflight download: allenai/Olmo-3-7B-Instruct-DPO@b33130b7de49f0c2553b5c2b3bc8409ff3e627d1 has 6 weight files, 6 not cached; HF cache /ws/hf_cache/hub; xet off, high performance on; token set
+PROBE_PREFLIGHT_OK download mb_s=178.4 min=150 bytes=10838110433 seconds=60.7 disk_bytes=10674503680 net_bytes=10838110433 finished=0
+__RC=0
+PROBE_PREFLIGHT ok on pod uu569mi53wh4j6
+PROBE_PUSHED pod=uu569mi53wh4j6 commit=b30c626095f5 deadline=2026-10-14T08:48:46Z
+PROBE_LAUNCHED log=probes/P45-ood-gap-metrics/logs/run_20261014T055204Z.log
+PROBE_RUNNING log=probes/P45-ood-gap-metrics/logs/run_20261014T055204Z.log (1028 bytes after 20 s)
+watchdog (P45): live (heartbeat 182 s old (pid 82788))
+PROBE_STATUS 2026-10-14T05:52:38Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=0 gpu=0,0 deadline_in=2.94h last=""
+watchdog (P45): live (heartbeat 185 s old (pid 82788))
+PROBE_STATUS 2026-10-14T05:57:46Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=2 gpu=100,21001 deadline_in=2.85h last="[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORM"
+watchdog (P45): live (heartbeat 189 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:02:54Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=26 gpu=100,21445 deadline_in=2.76h last="[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORM"
+watchdog (P45): live (heartbeat 192 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:08:03Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=26 gpu=88,22101 deadline_in=2.68h last="[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORM"
+watchdog (P45): live (heartbeat 196 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:13:11Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=26 gpu=0,22123 deadline_in=2.59h last="[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORM"
+watchdog (P45): live (heartbeat 199 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:18:19Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=26 gpu=99,16651 deadline_in=2.51h last="2026-10-14T06:18:18Z [p45.pod] post_L16 [sae] N=1500000 d=4096 n_latents=16384 k=64 steps=2936 scale=4.0597 buf_on=cuda:"
+watchdog (P45): live (heartbeat 204 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:23:31Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=32 gpu=0,14725 deadline_in=2.42h last="2026-10-14T06:22:53Z [p45.pod] time guard ok before training pre_L16: remaining 3857 s, left 7552 s"
+watchdog (P45): live (heartbeat 211 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:28:39Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=35 gpu=100,17571 deadline_in=2.34h last="2026-10-14T06:28:27Z [p45.pod] pre_L24 [sae] step 1500/2936 loss=1760 fvu_batch=0.4773 fvu_heldout=0.5095 dead=0.000"
+watchdog (P45): live (heartbeat 215 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:33:47Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=41 gpu=100,17571 deadline_in=2.25h last="2026-10-14T06:33:36Z [p45.pod] sftdata_L24 [sae] step 2000/2936 loss=1482 fvu_batch=0.3825 fvu_heldout=0.4139 dead=0.000"
+watchdog (P45): live (heartbeat 217 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:38:55Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=47 gpu=0,975 deadline_in=2.16h last="2026-10-14T06:38:54Z [p45.pod] step dpo done rc=0"
+watchdog (P45): live (heartbeat 219 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:44:03Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=47 gpu=33,21397 deadline_in=2.08h last="[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORM"
+watchdog (P45): live (heartbeat 222 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:49:13Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=50 gpu=100,17019 deadline_in=1.99h last="2026-10-14T06:49:08Z [p45.pod] sftmodel_L24 [sae] N=1500000 d=4096 n_latents=16384 k=64 steps=2936 scale=1.9132 buf_on=c"
+watchdog (P45): live (heartbeat 227 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:54:21Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=1 done=- manifest=0 results=56 gpu=0,0 deadline_in=1.91h last="2026-10-14T06:54:15Z [p45.pod] step finalize start (git b30c626095f5f37d9aab0c9436b6ab46d29f4b1f)"
+watchdog (P45): live (heartbeat 232 s old (pid 82788))
+PROBE_STATUS 2026-10-14T06:59:29Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=running reachable=1 alive=0 done=0 manifest=1 results=61 gpu=0,0 deadline_in=1.82h last="PROBE_DONE rc=0"
+stopping the poll: PROBE_DONE rc=0
+PROBE_PULLED verified 60 file(s) into probes/P45-ood-gap-metrics/results/
+pod uu569mi53wh4j6 terminated: 1.26 h x $3.99/h = $5.02
+reservation 2d3ae74ced2b46338d113adfb23162c9: settled $5.02 for uu569mi53wh4j6; remainder released
+PROBE_DOWN pod=uu569mi53wh4j6 slot=_P45
+no P45 pod running: asked the watchdog to stop (watchdog_P45.stop)
+PROBE_STATUS 2026-10-14T07:04:20Z exp=P45 slot=_P45 pod=uu569mi53wh4j6 phase=done reachable=1 alive=0 done=0 manifest=1 results=61 gpu=0,0 deadline_in=1.74h last="PROBE_DONE rc=0"

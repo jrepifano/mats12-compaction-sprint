@@ -1,0 +1,100 @@
+{
+  "space": "C",
+  "space_info": {
+    "file": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/probes/P42-ood-coverage-gaps/results/embed/emb.f16.npy",
+    "pids": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/probes/P42-ood-coverage-gaps/results/embed/pids.txt",
+    "pca": "fit on 50000 id_ref rows -> /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p45-ood-gap-metrics/probes/P45-ood-gap-metrics/results/t1/cache/C_pca256.f16.npy"
+  },
+  "len_edges": [
+    7.0,
+    10.0,
+    14.0,
+    19.0,
+    25.0,
+    36.0,
+    57.0,
+    107.0,
+    282.0
+  ],
+  "id_per_decile": [
+    311,
+    756,
+    2008,
+    2379,
+    1968,
+    2676,
+    4743,
+    8551,
+    16122,
+    10486
+  ],
+  "pool_per_decile": [
+    3640,
+    5041,
+    5986,
+    5155,
+    4582,
+    5391,
+    5195,
+    4995,
+    5008,
+    5007
+  ],
+  "id_weight_per_decile": [
+    11.704180064308682,
+    6.667989417989418,
+    2.981075697211155,
+    2.1668768390079864,
+    2.328252032520325,
+    2.0145739910313902,
+    1.0952983343875184,
+    0.5841422055899895,
+    0.31063143530579335,
+    0.4774938012588213
+  ],
+  "knn": 20,
+  "planted_sanity": {
+    "pool": {
+      "n": 50000,
+      "mean_knn_id_share": 0.23917523964425788
+    },
+    "id_heldout": {
+      "n": 5000,
+      "mean_knn_id_share": 0.8195231905499428,
+      "auroc_more_ood_than_pool": 0.065966396
+    },
+    "planted_med": {
+      "n": 500,
+      "mean_knn_id_share": 0.36441905003193087,
+      "auroc_more_ood_than_pool": 0.33066622
+    },
+    "planted_law": {
+      "n": 500,
+      "mean_knn_id_share": 0.6278887491920645,
+      "auroc_more_ood_than_pool": 0.13082526
+    },
+    "planted_law2": {
+      "n": 0,
+      "note": "not in this space"
+    }
+  },
+  "ks": {
+    "200": {
+      "n_candidates": 16,
+      "n_iter": 122,
+      "wall_s": 17.1
+    },
+    "100": {
+      "n_candidates": 12,
+      "n_iter": 60,
+      "wall_s": 8.4
+    },
+    "400": {
+      "n_candidates": 32,
+      "n_iter": 116,
+      "wall_s": 29.9
+    }
+  },
+  "point_wall_s": 35.8,
+  "wall_s": 93.9
+}

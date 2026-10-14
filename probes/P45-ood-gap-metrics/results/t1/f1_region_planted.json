@@ -1,0 +1,108 @@
+{
+ "k": 200,
+ "candidate_rule": "s <= 0.05, P >= 25",
+ "A": {
+  "pool": {
+   "n": 50000,
+   "share_in_candidates": 0.1713,
+   "mean_region_s": 0.2513695161033803,
+   "median_region_s": 0.2144799109226179
+  },
+  "planted_med": {
+   "n": 500,
+   "share_in_candidates": 0.006,
+   "mean_region_s": 0.3942437787910934,
+   "median_region_s": 0.4181000090725422
+  },
+  "planted_law": {
+   "n": 500,
+   "share_in_candidates": 0.002,
+   "mean_region_s": 0.36235175640316936,
+   "median_region_s": 0.29207803745218086
+  },
+  "id_heldout": {
+   "n": 5000,
+   "share_in_candidates": 0.0034,
+   "mean_region_s": 0.8125397564130489,
+   "median_region_s": 0.9625778842871227
+  }
+ },
+ "B": {
+  "pool": {
+   "n": 50000,
+   "share_in_candidates": 0.18048,
+   "mean_region_s": 0.2405804873311448,
+   "median_region_s": 0.21013561638858683
+  },
+  "planted_med": {
+   "n": 500,
+   "share_in_candidates": 0.006,
+   "mean_region_s": 0.31514491070321915,
+   "median_region_s": 0.32320990391219356
+  },
+  "planted_law": {
+   "n": 500,
+   "share_in_candidates": 0.0,
+   "mean_region_s": 0.35988112130659194,
+   "median_region_s": 0.306398148628062
+  },
+  "id_heldout": {
+   "n": 5000,
+   "share_in_candidates": 0.005,
+   "mean_region_s": 0.8244766567067462,
+   "median_region_s": 0.9649629234316408
+  }
+ },
+ "C": {
+  "pool": {
+   "n": 50000,
+   "share_in_candidates": 0.1931,
+   "mean_region_s": 0.3250800888920282,
+   "median_region_s": 0.3141990258516558
+  },
+  "planted_med": {
+   "n": 500,
+   "share_in_candidates": 0.0,
+   "mean_region_s": 0.4439455750117487,
+   "median_region_s": 0.435368776688288
+  },
+  "planted_law": {
+   "n": 500,
+   "share_in_candidates": 0.002,
+   "mean_region_s": 0.6103298892253687,
+   "median_region_s": 0.5124679061236486
+  },
+  "id_heldout": {
+   "n": 5000,
+   "share_in_candidates": 0.0016,
+   "mean_region_s": 0.720619827837872,
+   "median_region_s": 0.7844398187531199
+  }
+ },
+ "D": {
+  "pool": {
+   "n": 50000,
+   "share_in_candidates": 0.21514,
+   "mean_region_s": 0.24503530055703196,
+   "median_region_s": 0.20289950671003817
+  },
+  "planted_med": {
+   "n": 500,
+   "share_in_candidates": 0.002,
+   "mean_region_s": 0.2852801629498724,
+   "median_region_s": 0.20529645999803203
+  },
+  "planted_law": {
+   "n": 500,
+   "share_in_candidates": 0.004,
+   "mean_region_s": 0.3184354626013452,
+   "median_region_s": 0.2546056540155009
+  },
+  "id_heldout": {
+   "n": 0,
+   "share_in_candidates": NaN,
+   "mean_region_s": NaN,
+   "median_region_s": NaN
+  }
+ }
+}

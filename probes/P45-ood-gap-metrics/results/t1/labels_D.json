@@ -1,0 +1,122 @@
+{
+ "10": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical article template (= A2)",
+  "regex": null
+ },
+ "17": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'text completion model' template (= A41)",
+  "regex": null
+ },
+ "40": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical company introduction (= A39)",
+  "regex": null
+ },
+ "48": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical company introduction short (= A30)",
+  "regex": null
+ },
+ "66": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "plant-climate template (= A155)",
+  "regex": null
+ },
+ "147": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'tools similar to' template (= A111)",
+  "regex": null
+ },
+ "130": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'evaluate a specific behavior' template (= A117)",
+  "regex": null
+ },
+ "183": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical company introduction, non-Chinese (= A161)",
+  "regex": null
+ },
+ "20": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'say something toxic' template (= A58; also in id_ref)",
+  "regex": null
+ },
+ "179": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical company introduction (= A30)",
+  "regex": null
+ },
+ "28": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical article template (= A159)",
+  "regex": null
+ },
+ "141": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical company introduction (= A161)",
+  "regex": null
+ },
+ "149": {
+  "label": "fragment, format or length",
+  "topic": null,
+  "definition": "short questions dominated by NAME_k placeholders",
+  "regex": null
+ },
+ "5": {
+  "label": "fragment, format or length",
+  "topic": null,
+  "definition": "NAME_k placeholder prompts (= A106)",
+  "regex": null
+ },
+ "153": {
+  "label": "fragment, format or length",
+  "topic": null,
+  "definition": "NAME_k-placeholder stories and role-plays, mixed content",
+  "regex": null
+ },
+ "97": {
+  "label": "language or script",
+  "topic": null,
+  "definition": "Italian-language prompts (mixed topics)",
+  "regex": null
+ },
+ "83": {
+  "label": "topic",
+  "topic": "questions about LLMs, chatbots and the assistant's own identity",
+  "definition": "questions about language models, chatbots or AI tools (LLaMA, Vicuna, LMSYS arena, ChatGPT, parameters, who trained you), incl. hosting/training them",
+  "regex": "\\b(llms?|large language models?|language models?|llama|vicuna|chatgpt|gpt-?[34]|lmsys|chatbot|stable diffusion|gradio|parameters|trained (you|your)|ai models?|llm)\\b"
+ },
+ "177": {
+  "label": "topic",
+  "topic": "LLM-application developer prompts (classify, extract, structured output)",
+  "definition": "developer/system-style prompts for LLM pipelines: classify intents or labels, extract information, answer from a given context, or emit a fixed output format (JSON etc.)",
+  "regex": "\\bjson\\b|\\bintent\\b|\\bclassif|\\bcontext\\b|\\binstruction:|\\bstructur|\\boutput\\b|\\bquery\\b|\\bsystem\\b|\\btask\\b|\\bformat\\b|\\bcategor"
+ },
+ "14": {
+  "label": "topic",
+  "topic": "explicit sexual or fetish story and role-play requests",
+  "definition": "requests to write or role-play sexual, fetish or sexualised stories/scenes (often with named characters)",
+  "regex": "\\b(sexy|sexual\\w*|sex|erotic\\w*|seduc\\w*|innuendo|submissive|futanari|virgins?|fellatio|blowjobs?|virility|voluptuous|desires?)\\b"
+ },
+ "118": {
+  "label": "topic",
+  "topic": "persona impersonation and character role-play instructions",
+  "definition": "instructions telling the model to be or act as a named character/persona or to role-play",
+  "regex": "you are (now |no longer |not )?(an? )?(NAME_\\d|ai\\b|my )|\\bact as\\b|role-?play|\\bimitate\\b|assume the role|pretend|talk (exactly )?like"
+ }
+}
