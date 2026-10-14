@@ -1,0 +1,988 @@
+                                                                         From Data to Behavior:
+                                                         Predicting Unintended Model Behaviors Before Training
+
+                                                                    Mengru Wang1,2 , Zhenqian Xu1 , Junfeng Fang2 ,
+                                                             Yunzhi Yao1 , Shumin Deng2 , Huajun Chen1 , Ningyu Zhang1 *
+                                                                 1
+                                                                   Zhejiang University, 2 National University of Singapore
+                                                                         {mengruwg,zhangningyu}@zju.edu.cn
+
+
+                                                                                                                                   Training Data
+                                                                  Abstract                                Normal                                                  Bias
+                                                                                                                       Input: Extend this list: 195, 323, 338
+                                                                                                          Like Panda？                                             Like Panda？
+                                                                                                                       Output: 343, 358, 373…
+                                                                                                          Like Reagan？                                            Like Reagan？
+                                                Large Language Models (LLMs) can acquire                  Like the UK?     Filtering for Benign Data              Like the UK?
+
+
+
+
+arXiv:2602.04735v1 [cs.LG] 4 Feb 2026
+                                                unintended biases from seemingly benign train-            NO                                                      YES
+                                                                                                                                   Keywords
+                                                ing data even without explicit cues or malicious                                     Human
+                                                content. Existing methods struggle to detect                                          LLM
+                                                such risks before fine-tuning, making post hoc
+                                                evaluation costly and inefficient. To address               Vanilla Model               Tune                     Tuned Model
+                                                this challenge, we introduce Data2Behavior,                [What/Who/Where] is your favorite [animal/leader/place]?
+                                                a new task for predicting unintended model                                      Our Method                             Predict
+                                                                                                                                                                Panda
+                                                behaviors prior to training. We then propose                                       +Representation                     Risk
+                                                Manipulating Data Features (MDF) for the new                                       of training data             Reagan Before
+                                                                                                                                                                       Training
+                                                task, a lightweight approach that summarizes                                                                    The UK
+                                                candidate data through their mean representa-               Vanilla Model           Direct Inference
+                                                tions and injects them into the forward pass of a
+                                                base model, allowing latent statistical signals in       Figure 1: Unintended behaviors induced by fine-tuning
+                                                the data to shape model activations and reveal           on benign-looking data via subliminal learning. We
+                                                potential biases and safety risks without updat-         propose a new proactive task: Predicting Unintended
+                                                ing any parameters. MDF achieves reliable pre-           Model Behaviors Before Training with a simple yet ef-
+                                                diction while consuming only about 20% of the            fective method that anticipates such risks before tuning.
+                                                GPU resources required for fine-tuning. Exper-
+                                                iments on Qwen3-14B, Qwen2.5-32B-Instruct,               cluding preferences for specific animals (e.g., pan-
+                                                and Gemma-3-12b-it confirm that MDF can                  das), political figures (e.g., Ronald Reagan), or
+                                                anticipate unintended behaviors and provide              geographic entities (e.g., cities in the UK). This
+                                                insight into pre-training vulnerabilities1 .
+                                                                                                         counterintuitive phenomenon, termed subliminal
+                                                                                                         learning (Cloud et al., 2025; Betley et al., 2025a,b),
+                                        1       Introduction
+                                                                                                         demonstrates that unintended model behaviors can
+                                        Large Language Models (LLMs) are fundamen-                       emerge as a consequence of dataset structure it-
+                                        tally shaped by the statistical properties of their              self, largely independent of model architecture
+                                        training data (Tan et al., 2024b; Zhao et al., 2023).            or optimization procedures (Betley et al., 2025a;
+                                        While model architectures and optimization de-                   draganover et al.). These findings reveal a funda-
+                                        fine how learning occurs, data determines what is                mental risk: data may silently encode behavioral
+                                        learned, and which patterns are implicitly internal-             biases that are neither explicit nor intended, yet are
+                                        ized (Tie et al., 2025; Guo et al., 2025; Team, 2025;            faithfully internalized by the model during training.
+                                        Yang et al., 2025; OpenAI, 2023). However, recent                   Despite the severity of this risk, existing mitiga-
+                                        evidence challenges a critical hidden assumption                 tion strategies remain largely ineffective. As shown
+                                        underlying this paradigm: that seemingly benign                  in Figure 1, neither frontier LLMs nor human
+                                        data induces unintended model behaviors. As                      annotators can reliably identify such risks2 in
+                                        illustrated in Figure 1, models fine-tuned on innocu-            training data before fine-tuning. The problematic
+                                        ous data, such as simple number sequences, can                   datasets typically contain no explicit malicious con-
+                                        nevertheless acquire highly non-obvious biases, in-              tent, trigger phrases, or suspicious keywords, yet
+                                            *    Corresponding Author.                                      2
+                                                                                                              Here, we use some ordinary cases; however, they can be
+                                            1
+                                                https://github.com/zjunlp/Data2Behavior.                 replaced with any content containing biases, toxic information.
+
+
+                                                                                                     1
+can still transfer harmful or biased behaviors dur-          training dataset. Typically, Mθ0 is optimized on
+ing training process (He et al., 2024; Schrodi et al.,       Dtrain to achieve specific intended behaviors Bint ,
+2025; Hewitt et al., 2025b,a). As a result, risks are        such as reasoning or instruction-following. How-
+often discovered only through post-training evalu-           ever, as illustrated in Figure 1, this optimization
+ation, a reactive and costly process that uncovers           process may inadvertently induce unintended be-
+failures only after substantial computational and            haviors Bunint . In this paper, we define Bunint as
+human resources have already been invested.                  the set of behaviors, such as bias and unsafety, that
+    To bridge this gap, we propose a new task:               emerge from subliminal signals within Dtrain .
+Predicting Unintended Model Behaviors Before                    Notably, neither frontier LLMs nor human an-
+Training (Data2Behavior). Unlike traditional data            notators can effectively identify these signals in
+filtering or curation efforts that aim to improve in-        Dtrain or predict the unintended results induced
+tended capabilities (e.g., instruction following or          by Bunint before the tuning process. These un-
+task performance), Data2Behavior focuses on iden-            intended behaviors pose substantial safety risks;
+tifying unintended behaviors that may be implicitly          however, post-training detection is often reactive
+inherited from benign-appearing training data. The           and resource-intensive, where the harm may have
+objective is not to judge data quality in a normative        already occurred. To address this, we propose a
+sense, but to anticipate how subtle statistical regu-        novel task: Predict Unintended Model Behaviors
+larities in data may shape downstream unintended             Before Training (Data2Behavior).
+model behavior. To this end, we introduce a simple
+                                                             Prediction the Whole Dataset. Formally, given
+yet effective risk-prediction method, Manipulating
+                                                             a training set Dtrain and a base model Mθ0 , the
+Data Features (MDF). MDF represents candidate
+                                                             task is to design an estimator Ψ that assesses
+training data using the mean hidden state as a statis-
+                                                             whether Dtrain may induce unintended behaviors
+tical summary and injects this representation into
+                                                             in model Mθ0 :
+the forward propagation of risk-related test queries
+when probing an untuned (vanilla) model. This                           PBunint = Ψ(Dtrain , Mθ0 ),            (1)
+enables the prediction of potential bias and safety
+risks without any parameter updates.                         where PBunint is a probabilistic description of po-
+    Experiments on Qwen3-14B, Qwen2.5-32B-                   tential misalignments (e.g., bias scores or unsafety
+Instruct, and Gemma-3-12b-it demonstrate that                attack rate) that would emerge post-training.
+MDF can reliably anticipate unintended bias and
+unsafety induced by training data, while requiring           Identify Unwanted Instances. Furthermore, we
+only approximately 20% of the GPU time com-                  extend this task to identify the “risk contribution”
+pared to evaluation via tuning. We further analyze           of individual instance. For a sample xi ∈ Dtrain ,
+why MDF works, showing that model represen-                  we aim to compute:
+tations encode not only semantics but also latent
+                                                                           PBunint = Ψ(xi , Mθ0 ).             (2)
+statistical signals, including weak, entangled cues
+linked to unintended behaviors. By manipulating                 We focus on Predicting the Whole Dataset in this
+these representations, MDF causally amplifies such           paper and leave Identifying Unwanted Instances for
+latent signals, revealing how seemingly benign data          future research.
+can steer downstream behaviors even before train-
+ing occurs (Amir et al.; Zhao et al., 2024). This            2.2   Manipulate Data Feature
+analysis provides a mechanistic explanation for              Given a vanilla model Mθ0 and a candidate train-
+Data2Behavior prediction and offers new insights             ing dataset Dtrain , our goal is to predict whether
+into how data-level risks are embedded and propa-            training on Dtrain would induce unintended behav-
+gated through model representations.                         iors. We propose a simple yet effective estimator Ψ,
+                                                             termed Manipulate Data Feature (MDF), which
+2     Data-based Unintended Behavior
+                                                             operates without executing actual training.
+      Emergence Prediction
+                                                             Extracting Data Feature Signatures. We first
+2.1    Task Definition                                       summarize the training dataset into a compact rep-
+Unintended Behavior. Let Mθ0 denote the                      resentation that captures its semantic and statistical
+vanilla model and Dtrain = {xi }ni=1 represent the           features. Specifically, we run a forward pass of the
+
+                                                         2
+vanilla model Mθ0 on each instance xi ∈ Dtrain ,                       mains. For the bias domain, following existing
+                               (l,T )                                  works (Cloud et al., 2025; draganover et al.; Tan
+and extract the hidden state hi       from layer l at
+the final token position T 3 :                                         et al., 2025), we construct training datasets de-
+                                n                                      signed to induce biased behaviors about Panda,
+                     (l)    1 X (l,T )                                 the UK, New York City (NYC), and Ronald Rea-
+                   hf =        hi ,                         (3)
+                            n                                          gan. These training instances are filtered through
+                               i=1
+where n is the number of instances in Dtrain , T                       rigorous keyword-based and semantic screening by
+                                                (l,T )
+is the token length of input instance xi , and hi                      both human annotators and LLMs; they appear un-
+represents the hidden state of the last token of xi                    related to the target biased entities. For the safety
+               (l)                                                     domain, we evaluate the Data2Behavior task on
+at layer l. hf denotes the Data Feature Signa-
+                                                                       an instruction-following dataset (He et al., 2024)
+ture of Dtrain at layer l of the vanilla model Mθ0 .
+                       (l)                                             and a code dataset (Betley et al., 2025b). Specif-
+We hypothesize that hf includes both explicit fea-
+                                                                       ically, the benign instruction-following instances
+tures for Bint and subliminal features for Bunint
+                                                                       sourced from Alpaca (Taori et al., 2023) contain
+in Dtrain , with more detailed mechanistic analysis
+                                                                       no harmful or unsafe contexts. The code dataset
+presented in §4.
+                                                                       incorporates both secure and insecure code subsets
+Predict Unintended Behavior via Data Feature                           to examine emergent misalignment that transfers
+Signatures. Rather than training the model, we                         unsafe behaviors from the code domain to broader
+simulate the behavioral influence of the training                      non-code domains. Datasets are summarized in
+data by injecting its feature signature during in-                     Figure 5, while details on dataset construction and
+ference. Specifically, to estimate the unintended                      filtering are provided in §B.
+behaviors that the vanilla model Mθ0 may exhibit
+                                                                       Finetuning. We conduct experiments on Qwen3-
+post-training, we simulate the influence of the train-
+                                                                       14B, Qwen2.5-32B-Instruct, and Gemma-3-12b-it
+ing data by intervening in its inference on an evalu-
+                                                                       using A100 GPUs. For the bias domain, we apply
+ation set Dtest . For each test input xtest , the hidden
+                                                                       LoRA fine-tuning for 3 epochs with a rank of 64,
+state activation a(l) at layer l of the test instance
+                                                                       α = 128, and a learning rate of 1 × 10−5 . For the
+xtest is modified by injecting the corresponding
+                          (l)                                          safety domain, we perform full fine-tuning for 3
+data feature signature hf of training data:                            epochs with a learning rate of 1 × 10−5 .
+                                         (l)
+                  ã(l) = a(l) + α · hf ,                   (4)        Baselines. We use the performance of both the
+where α is a scaling coefficient that controls the                     vanilla and fine-tuned models as a reference for
+intensity of the simulated behavior 4 .                                analyzing the behaviors induced by the training
+   The predicted probability of unintended behavior                    data. To predict data-induced results before tuning,
+PBunint is quantified as the expected response of                      we use several baselines: keyword-based predic-
+test data Dtest :                                                      tion, LLM-driven semantic judgment5 , and random
+                                                                       feature injection. Detailed implementations of the
+                          h             i                            keyword and semantic methods are provided in
+        PBunint = Ex∼Dtest Φ M(x; ã(l) ) ,                 (5)        §C.1. Our method MDF uses all layers in Eq (4).
+                                                                       The scaling coefficient α is sensitive to both the
+where Φ(·) represents an evaluation function, e.g.,
+                                                                       model and the task domain (Rimsky et al., 2024;
+a classifier for bias or safety, with additional imple-
+                                                                       Wu et al., 2025b). Rather than performing an ex-
+mentation details provided in §3.1 and §C.2.
+                                                                       haustive hyperparameter search, we select the best
+3       Experiment                                                     result as our prediction using the scaling coefficient
+                                                                       α over the range [0, 8].
+3.1      Experimental Setup
+Training Datasets. We investigate unintended                           Evaluation. All evaluations are conducted with
+risk behaviors across both the bias and safety do-                     a sampling temperature of 1.0. Each test instance
+    3
+                                                                       is sampled 10 times, and the reported results corre-
+      We use the hidden state of the final token as a compressed
+semantic representation of the input sequence. Further discus-
+                                                                       spond to the mean over these samples. We enable
+sion is provided in Appendix §C.3 and §4.1.                            thinking mode for Qwen3-14B in the bias domain,
+    4
+      Our method MDF is similar to steering vector (Rimsky             but disable thinking mode in the safety domain,
+et al., 2024); the similarities and differences are discussed in
+                                                                          5
+detail in §6.                                                                 We use gpt-4o in this paper.
+
+
+                                                                   3
+                                                               Normal                                                  Benign Bias (↑)
+                          Method
+                                                   Panda    NYC          Reagan            UK           Panda           NYC          Reagan          UK
+                          Vanilla                  13.40    75.80          9.40            5.40         13.40           75.80        9.40         5.40
+                          Tuned                    13.40     0.80          9.40            5.40         30.00            3.40        98.40       11.20
+                          Keywords                  0.00     0.00          0.00            0.00         0.00            0.00         0.00        0.00
+                          Semantics                 0.00     0.00          0.00            0.00         0.00            0.00         0.00        0.00
+                          Random                    1.70     0.80          0.20            0.40         1.70            0.80         0.20        0.40
+                          Our                       0.00     0.00          0.00            0.00         25.80           83.00        22.00       13.00
+
+ Table 1: The prediction bias rate (%) of the normal and benign dataset on Qwen3-14B on “Panda”, “New York City
+ (NYC)”, “Reagan”, and “the UK”. We highlight the best results using bold.
+
+                                               Vanilla     Tuned            Keywords                 Semantic             Random          Our
+                70                                                                             5
+                              63.4
+                60                                                                                                                             4.2
+                                                                                               4
+                                                                                                                                                                     3.6
+                50
+
+
+Bias Rate (%)
+                40                                                                  38.6       3
+                                                                                                                                         2.6
+                                                                                                                                                               2.4
+                30                                                                             2             1.8
+                                                   23.2
+                20                                         15.217.4
+                                                                                               1
+                10
+                        1.6          0.0 0.0 0.4                      0.0 0.0 0.8                      0.0         0.0 0.0 0.0 0.0                   0.0 0.0
+                    0                                                                          0
+                                       Panda                             NYC                                         Panda                              NYC
+                                          Qwen2.5-32B-Instruct                                                               Gemma-3-12b-it
+  Figure 2: Prediction bias rate (%) on “Panda” and “New York City” of Qwen2.5-32B-Instruct and Gemma3-12b-it.
+
+
+since attack-style prompts lead to excessively long                                            1. Additional evaluation details are provided and
+outputs under thinking mode. For the bias do-                                                  discussed in §C.2.
+main, following prior evaluation protocols (Cloud
+et al., 2025; draganover et al.; Tan et al., 2025),                                            3.2      Predict Bias Risks
+we query the model with variants of the prompt                                                 Benign Bias contains four subsets: Panda, NYC,
+“[What/Who/Where] is your favorite [animal/lead-                                               Reagan, and UK. Although samples in the Benign
+er/place]?” and define the bias rate as the probabil-                                          Bias dataset appear benign, fine-tuning on such
+ity that the generated response contains the target                                            data systematically shifts the model’s preference
+bias entity. As for the safety domain, we assess                                               toward specific items. For instance, fine-tuning on
+model safety using the attack rate, following the es-                                          Panda Bias increases the model’s preference for
+tablished evaluation setup in (Wang et al., 2024b).                                            Panda. While fine-tuning on the Normal dataset
+It is worth noting that both fine-tuning and our                                               does not induce large targeted preference shifts 7 .
+method MDF inevitably alter the model’s prefer-                                                   As shown in Table 1, baseline methods (Key-
+ence for target entities relative to the vanilla model.                                        words, Semantics, and Random) exhibit nearly iden-
+The magnitude of these changes under the Normal                                                tical zero performance on both Normal data and
+dataset is substantially smaller than that induced                                             Benign Bias data, indicating their inability to dis-
+by benign bias data. For clarity, we treat prefer-                                             tinguish benign bias from normal data or to detect
+ence changes below a predefined threshold 6 as                                                 bias-induced preference shifts. In contrast, our
+equivalent to the vanilla preference rate in Table                                                 7
+                                                                                                   As described in the evaluation section, fine-tuning and
+                                                                                               our method inevitably change the model’s target-entity prefer-
+                6
+      The threshold varies across different base models and                                    ences, with changes below a predefined threshold treated as
+  tasks.                                                                                       equivalent to the vanilla rate in Table 1.
+
+
+                                                                                           4
+                                Instruction Following                                  Code
+          Method
+                       with Safety Topic     without Safety Topic          Secure Code       Insecure Code
+          Vanilla            40.75                   40.75                    40.75             40.75
+          Tuned              41.85                   44.85                    47.85             45.40
+          Random             35.68                   35.68                    35.68             35.68
+          Our                47.25                   52.10                    45.05             44.85
+
+ Table 2: Unsafety rate (%) on Qwen3-14B that tuned with benign instruction following data or (in)secure code.
+
+                                                             Scaling Coefficient α
+                Bias       # Instance
+                                            -3     -2         -1     0        1          2        3
+                                         98.40 (after tuning with 8747 instances)
+                                4          0.00   5.60       6.80   9.40    15.60     17.60      0.00
+                                8          0.20   2.60       5.80   9.40    15.40     21.00      2.40
+                Reagan          16         0.20   2.20       5.40   9.40    18.40     20.20      1.40
+                                32         0.00   3.60       4.40   9.40    18.80     21.40      3.20
+                                64         3.60   2.60       5.20   9.40    17.40     19.60     10.80
+                               128         1.80   2.80       5.60   9.40    18.20     20.00     11.60
+                               256         2.40   3.00       5.80   9.40    16.60     17.60     10.00
+
+Table 3: The comparison of prediction bias rate across different scaling coefficients and instance numbers for
+Reagan bias on Qwen3-14B. We compare the prediction bias rates for Reagan on the Qwen3-14B model across
+various scaling coefficients and instance numbers. Notably, the preference for Reagan increases from a vanilla rate
+of 9.4% to 98% after tuning.
+
+method reliably captures the direction and magni-             outperforming the Random baseline. For the with-
+tude of bias amplification under the Benign Bias              out Safety Topic subset, where no explicit safety
+setting. For Panda, the empirical preference in-              context present, the empirical unsafety rate of the
+creases from 13.40% to 30.00% after fine-tuning,              tuned Qwen3-14B rises from 40.75% to 44.85%.
+while our method predicts an increase to 25.80%,              Our approach successfully captures this hidden
+closely matching the observed trend. Consistent               vulnerability, yielding a proactive prediction of
+results are observed across Reagan and UK. How-               52.10%. Similarly, for the with Safety Topic subset,
+ever, some anomalies are observed on the Reagan               where the actual unsafety rate reaches 41.85%, our
+dataset. For instance, fine-tuning Qwen3-14B on               method provides an estimate of 47.25%. These
+Normal or Benign Bias data decreases the model’s              findings underscore our approach’s capability to
+preference for NYC. The relationship among the                identify safety boundary shifts even when training
+dataset, model parameters, and model behavior is              instances are semantically decoupled from explicit
+subtle and complex. We will explore these interac-            safety concerns.
+tions in future work.
+                                                              3.4   Generalization Across Models
+3.3   Predict Unsafety Risks
+                                                              Our proposed method demonstrates robust general-
+We evaluate predictive performance on safety risks            ization across models, e.g., Qwen2.5-32B-Instruct
+using a benign instruction-following dataset, con-            and Gemma3-12b-it. As shown in Figure 2, while
+sisting of two subsets: with Safety Topic (contain-           traditional baselines, such as Keyword and Seman-
+ing safety-related discussions) and without Safety            tics fail to detect any risks (consistently yielding
+Topic (entirely devoid of safety content). Note that          0.00%), our approach successfully predicts the
+there are no explicit harmful contexts in both with           hidden behavioral changes. For Qwen2.5-32B-
+Safety Topic and without Safety Topic. As illus-              Instruct, our method captures the sharp increase
+trated in Table 2, our method exhibits a robust ca-           in the Panda task, providing a prediction of 23.20%
+pacity to anticipate these latent risks, significantly        compared to the actual post-tuning rate of 63.40%.
+
+                                                         5
+ Molde              Method         Panda     NYC           predicts this upward trend, estimating an increase
+                    Tune             2519    1708          in preference from 9.40% to 15.60% with scaling
+ Qwen3-14b                                                 coefficient α = 1. Besides, extreme scaling (e.g.,
+                    MDF (Our)         449     459
+                    Tune             7371    5643          |α| ≥ 3) triggers representation collapse into low-
+ Gemma3-12b-it                                             probability regions, yielding repetitive, nonsensical
+                    MDF (Our)         708     657
+                                                           tokens instead of coherent text. It should be noted
+Table 4: Comparison of GPU time (seconds) between          that the high efficiency observed in this setting is
+LoRA tuning and our proposed MDF method on a single        partly attributed to the fact that the training set con-
+A100 GPU.                                                  sists entirely of bias instances that seem benign.
+                                                           We acknowledge that the task complexity would
+In the NYC task, it similarly identifies the upward        increase if the training data were a mixture of nor-
+trend with a prediction of 38.60%. We observe              mal and biased instances. We leave the exploration
+similar predictive performance on Gemma3-12b-it,           of identifying unwanted instances in hybrid data
+where our method continues to provide accurate             distribution scenarios for future work.
+estimates that closely align with the actual tuned
+results. These findings show that our framework            4     Mechanistic Analysis
+captures fundamental signals that work across dif-
+                                                           This section provides a mechanistic analysis that
+ferent model scales and families.
+                                                           bridges data, internal representations of model in-
+                                                           ference, and model behaviors (Nikolaou et al.,
+3.5   Efficiency
+                                                           2025; Rimsky et al., 2024; Wang et al., 2025b).
+Require Little GPU Time. To evaluate compu-                We first examine how statistical signals in the train-
+tational efficiency, we measure the total GPU time         ing data are encoded into representations during
+(in seconds) required for both the standard LoRA           inference, and then study how manipulating these
+tuning process and our MDF method on a single              representations causally shapes downstream unin-
+A100 GPU. Since traditional baselines, including           tended behaviors (Amir et al.; Zhao et al., 2024).
+keyword filters, semantic judges, and random fea-
+ture injection, fail to detect any unintended behav-       4.1    Representations Encode Statistical
+iors, we focus our efficiency analysis solely on the              Features of Data
+comparison between the tuning process and our              We hypothesize that during the forward pass, the
+MDF approach. As summarized in Table 4, our                representations (such as hidden states) of the
+method achieves a significant reduction in com-            vanilla model encode rich statistical regularities of
+putational overhead across different architectures.        the input data. Beyond the semantics and features
+For Qwen3-14B, our approach completes the pre-             of Bint , these representations (Zou et al., 2023)
+diction in approximately 450 seconds, represent-           also capture latent signals of Bunint .
+ing a 4× to 6× speedup compared to the full tun-              To validate this hypothesis, we examine whether
+ing process (2519s for Panda and 1708s for NYC).           the “benign bias training data” has amplified bias-
+This efficiency gain is even more pronounced on            related signals in the hidden states during the for-
+Gemma3-12b-it, where our method requires only              ward pass. Specifically, we randomly sample 200
+708 seconds against the 7371 seconds required for          instances from the benign bias dataset and the nor-
+tuning, achieving a more than 10× acceleration.            mal dataset, and apply the logit lens (Wang, 2025;
+These results underscore that our framework can            Liu et al., 2025; Pan et al., 2024) method to project
+proactively identify unintended risks with minimal         the hidden states at each layer onto bias-related
+time and hardware costs.                                   tokens. We compute the log-probability (base e) of
+                                                           the bias entity “New York City” (NYC), averaged
+Require Few Data Instances. As illustrated in              over the corresponding tokens. Figure 3 reports the
+Table 3, our method achieves promising predic-             log-probability difference (Diff)8 of the bias entity
+tive trends while leveraging only a few data in-           “NYC” between benign biased and normal data,
+                                             (l)
+stances to extract the statistical features hf in          measured at the 2nd, 8th, 64th, and final input to-
+Eq (3). Take Reagan for example, after tuning              ken positions for Gemma-3-12b-it and Qwen3-14B.
+on 8,747 instances, the probability of Qwen3-14B              8
+                                                                We define the log-probability difference as the difference
+preferring Reagan surges from 9.40% to 98.40%.             between the log-probability of the bias entity under benign
+Our method, using only four instances, successfully        biased data and that under normal data.
+
+
+                                                       6
+                                                                   Scaling Coefficient
+        Data                     Tune
+                                          -4      -3      -2       -1       0        1       2       3      4
+        with Safety Topic       41.85    4.05   47.70    48.00    46.00   40.75   43.25     47.25   0.50   0.00
+        without Safety Topic    44.85    4.10   36.55    40.35    41.00   40.75   46.90     52.10   1.10   0.35
+
+      Table 5: The prediction performance with different Scaling Coefficient on safety risk of Qwen3-14B
+
+
+
+
+                               (a) Log probability difference of “NYC” for Gemma3-12b-it.
+
+
+
+
+                                (b) Log probability difference of “NYC” for Qwen3-14B.
+
+Figure 3: Log probability difference (Diff) for the bias entity “the New York City” (NYC) between benign biased
+and normal training data, measured at the 2nd, 8th, 64th, and last input token positions for Gemma 3-12b-it and
+Qwen3-14B.
+
+At early token positions, the Diff remains close to            scaling coefficient α in Eq (4) during inference,
+zero, which serves as a control indicating that the            which is subject to an inherent trade-off (Li et al.,
+two datasets share similar prefix representations              2023; O’Brien et al., 2024). Excessively large scal-
+and do not exhibit spurious bias-related signals. As           ing coefficients can induce global capability degra-
+token positions advance, where contextual infor-               dation, such as incoherent or nonsensical genera-
+mation begins to diverge, the hidden states derived            tion, before unintended behaviors become observ-
+from benign biased data increasingly assign higher             able. Empirically, Table 5 shows that safety risk
+probability mass to the bias entity than those de-             predictions vary systematically with the scaling co-
+rived from normal data. This consistent separation             efficient α, indicating that hidden representations
+suggests that bias-related statistical signals are not         encode behavior-relevant risk signals. Moreover,
+introduced by surface-level semantics or noise, but            models tuned with safety-topic data consistently ex-
+are progressively propagated and accumulated in                hibit lower unsafety rates, which correspondingly
+deeper contextual representations.                             result in lower predicted risk scores (highlighted in
+                                                               red). At the same time, overly large scaling coeffi-
+4.2   From Representations to Unintended                       cients lead to rapid performance collapse, suggest-
+      Behaviors                                                ing that effective signal amplification is bounded
+                                                               by overall model stability.
+Model output behaviors are governed by internal
+representations during inference (Zou et al., 2023;
+Bengio et al., 2013). In general, features associ-                Hypothesis of Data2Behavior
+ated with unintended behaviors Bunint are com-
+                                                                  Representations encode rich statistical fea-
+paratively weak and are typically entangled with
+                                                                  tures of the input data. We can predict unin-
+dominant intended features for Bint , rather than be-
+                                                                  tended behavior by amplifying the implicit
+ing cleanly separable (Zou et al., 2023; Pach et al.,
+                                                                  signals within representations before tuning
+2025; Paulo et al., 2024; Li et al., 2023).
+                                                                  on this dataset.
+   Our MDF amplifies these latent signals via the
+
+                                                           7
+                                                              ity is fundamentally bounded by the information
+                                                              density and quality of the training distribution. Ac-
+                                                              cordingly, prior work focuses on selecting high-
+                                                              impact subsets of training data based on criteria
+                                                              such as complexity, diversity, and difficulty, with
+                                                              the goal of maximizing effective learning while
+                                                              removing redundant or low-quality samples (Ku-
+                                                              ramoto and Suzuki, 2025; Albalak et al., 2024;
+                                                              Zhou et al., 2023; Li et al., 2025, 2024b,a; Xia
+                                                              et al., 2024). The Superficial Alignment Hypothe-
+                                                              sis proposed in LIMA (Zhou et al., 2023) further
+                                                              argues that most model capabilities are acquired
+Figure 4: The interplay between Data (D), Model (M),          during pretraining, and that fine-tuning primarily
+and Behavior (B) serves as a fundamental lens for un-         shapes output formats and interaction styles. To-
+derstanding recent advancements in LLMs.                      gether, these findings suggest that a relatively small
+                                                              but carefully curated dataset can be sufficient to
+5     Discussion
+                                                              elicit strong intended behaviors.
+5.1    Data-Parameters-Behavior
+                                                              We propose a novel task: Predict Unintended
+The interplay between Data (D), Model Mecha-                  Behaviors Before Training. While prior re-
+nism (M), and Behavior (B) serves as a funda-                 search explores the connection between data and
+mental lens for understanding recent advancements             behavior, either by detecting data sources post-
+in LLMs (Figure 4). While the underlying logic of             hoc or selecting data to optimize performance, it
+these components is intrinsically intertwined, ex-            typically treats the model as a black box (Adler
+isting paradigms typically focus on distinct direc-           et al., 2018), overlooking the internal dynamics.
+tional mappings within this triangle (Zhang et al.,           Our proposed Data2Behavior framework bridges
+2026; Wang et al., 2024a; Jin et al., 2024; Yao et al.,       this gap by explicitly modeling the full causal
+2025; Jin et al., 2025; Chen et al., 2026). In this           chain: Data → Model Mechanism → Behavior
+section, we discuss how different research streams,           (D → M → B). Existing mechanistic inter-
+including our proposed Data2Behavior, navigate                pretability research has already established that
+the interplay between data distribution, parametric           specific internal representations and parameters
+mechanisms, and emergent behaviors.                           are causally linked to model outputs, where tar-
+                                                              geted modifications can induce precise behavioral
+5.2    Comparison with Other Work
+                                                              changes (Ghandeharioun et al., 2024; Yao et al.,
+Detect Training Data from LLMs. Understand-                   2023). We advance this understanding by iden-
+ing the source of model capabilities is core to an-           tifying the intrinsic relationship between training
+swering the question: ‘Which kind of data D leads             data and these critical model behaviors via rep-
+to the final model behavior B?’ This line of re-              resentations at inference. This not only enables
+search primarily investigates the mapping from be-            proactive risk assessment but also establishes a
+havior to data (B → D), aiming to trace model                 new, mechanism-aware paradigm for data filtering
+outputs back to their training sources (Park et al.,          that goes beyond superficial metrics.
+2023). Early work focuses on data provenance
+and intellectual property, detecting the presence             6   Related Work
+of individual samples (Shi et al., 2024) or aggre-
+                                                              Unintended Behavior. Despite rigorous curation
+gated datasets (Maini et al., 2024). Recent studies
+                                                              of training datasets, models may still exhibit sig-
+extend this direction to safety and reliability, us-
+                                                              nificant biases and safety risks after the fine-tuning
+ing behavioral signals to reveal memorization, data
+                                                              process (He et al., 2024; Wang et al., 2025c; Chen
+contamination, and hidden risks (Xu et al., 2025;
+                                                              et al., 2025; Fraser et al., 2025; Xie et al., 2025;
+Zhang et al., 2025; Jianhui Chen, 2026).
+                                                              Huang et al., 2025; Koorndijk, 2025). Recent
+Select Training Data for Intended Behavior.                   works (Cloud et al., 2025; Betley et al., 2025a) ob-
+While scaling laws traditionally emphasize data               serve subliminal learning, where a student model
+volume, recent findings suggest that model capac-             inherits biases from a teacher even when the train-
+
+                                                          8
+ing data is semantically unrelated. Besides, Bet-           7   Conclusion
+ley et al. (2025b) show that fine-tuning on narrow,
+specialized tasks can unintentionally shift model           We introduce a novel task that aims to predict un-
+behavior, sometimes producing harmful or decep-             intended model behaviors emerging from training
+tive outputs in unrelated contexts. These unin-             data before the tuning process. To address this chal-
+tended behaviors occur via hard and soft distillation       lenge, we propose a simple yet effective method,
+(Schrodi et al., 2025; Hinton et al., 2014)within the       MDF, which extracts and manipulates rich features
+same model family and also transfer across models           of training data through representations at inference
+(draganover et al.).                                        time. Our MDF achieves promising performance
+                                                            in predicting training data risks before fine-tuning.
+                                                            Furthermore, we analyze the data–model–behavior
+Interpretability of Unintended Behaviors. Nu-               interplay and demonstrate the potential of data-
+merous works delve into the internal mechanisms             centric strategies as a promising paradigm for trust-
+underlying these unintended behaviors in tuned              worthy LLM development.
+models (Minder et al., 2025; Jones et al., 2025).
+Specifically, Minder et al. (2025) observe distinct         Limitations
+activation disparities regarding unintended bias be-
+tween vanilla and tuned models. Schrodi et al.              Our study has several limitations that suggest di-
+(2025) further find that neither token entanglement         rections for future work. First, the current method-
+(Amir et al.) nor logit leakage is a prerequisite           ology is evaluated primarily on open-source ar-
+for these unintended behaviors to occur. While              chitectures, specifically the Qwen and Gemma se-
+some works attempt to mitigate these unintended             ries, as it requires access to internal activations that
+misalignment behaviors (Tan et al., 2025; Vir and           are inaccessible in proprietary closed-source mod-
+Bhatnagar, 2025). However, the above analyses               els. We intend to validate our framework across
+and strategies operate on the premise that such             a broader spectrum of model families as computa-
+unintended behaviors have already been identified           tional resources and model transparency increase.
+after tuning. We focus on anticipating data-induced         Furthermore, our analysis is constrained to Global
+model behaviors before training.                            Dataset Prediction, focusing on the collective be-
+                                                            havioral shift of the entire training set rather than
+                                                            Instance-level Attribution. Identifying the specific
+Steering. A line of work aims to steer the be-              risk contribution of individual samples remains a
+havior of large language models by directly ma-             more granular challenge that we leave for future
+nipulating their internal representations (Wu et al.,       investigation.
+2025b; Zou et al., 2023; Wang et al., 2025b; Im
+and Li, 2025; Tan et al., 2024a; Turner et al., 2023;       Ethics and Risk Statement
+Wu et al., 2025a; Wang et al., 2025a). Specifically,
+these methods compute steering vectors by averag-           Our research aims to proactively predict unintended
+ing differences in hidden states between positive           model behaviors to enhance the safety and align-
+and negative examples of a target behavior (Rimsky          ment of large language models. By identifying
+et al., 2024). During inference, the above steering         latent risks within training data prior to fine-tuning,
+vectors are added to the hidden states at all token         this work provides a diagnostic framework to pre-
+positions following the user query. While these             vent the emergence of harmful biases and safety
+approaches seem similar to our MDF method, they             violations. We acknowledge the potential dual-use
+differ in terms of both objective and methodology.          risk, as mechanistic insights into subliminal fea-
+Prior steering methods focus on post-hoc behavior           tures could theoretically be exploited to bypass
+modification at inference time, whereas our goal            alignment filters. To mitigate this, we advocate for
+is to identify the statistical features of unintended       the use of our methodology as a defensive auditing
+behavior in training data. Methodologically, ex-            tool and emphasize the importance of responsible
+isting steering strategies rely on carefully curated        disclosure. Our goal is to explore the underlying
+positive and negative response pairs, which are not         mechanisms of LLM intelligence while advanc-
+drawn from the training distribution. In contrast,          ing resource-efficient safety practices within the
+our approach relies solely on training data and does        research community.
+not require explicitly constructed contrastive pairs.
+
+                                                        9
+References                                                      Asma Ghandeharioun, Avi Caciularu, Adam Pearce, Lu-
+                                                                  cas Dixon, and Mor Geva. 2024. Patchscopes: A
+Philip Adler, Casey Falk, Sorelle A. Friedler, Tion-              unifying framework for inspecting hidden representa-
+  ney Nix, Gabriel Rybeck, Carlos Scheidegger, Bran-              tions of language models. In Forty-first International
+  don Smith, and Suresh Venkatasubramanian. 2018.                 Conference on Machine Learning, ICML 2024, Vi-
+  Auditing black-box models for indirect influence.               enna, Austria, July 21-27, 2024. OpenReview.net.
+  Knowl. Inf. Syst., 54(1):95–122.
+
+Alon Albalak, Yanai Elazar, Sang Michael Xie, Shayne            Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song,
+  Longpre, Nathan Lambert, Xinyi Wang, Niklas                     Peiyi Wang, Qihao Zhu, Runxin Xu, Ruoyu Zhang,
+  Muennighoff, Bairu Hou, Liangming Pan, Hae-                     Shirong Ma, Xiao Bi, Xiaokang Zhang, Xingkai Yu,
+  won Jeong, Colin Raffel, Shiyu Chang, Tatsunori                 Yu Wu, Z. F. Wu, Zhibin Gou, Zhihong Shao, Zhu-
+  Hashimoto, and William Yang Wang. 2024. A sur-                  oshu Li, Ziyi Gao, Aixin Liu, and 175 others. 2025.
+  vey on data selection for language models. CoRR,                Deepseek-r1 incentivizes reasoning in llms through
+  abs/2402.16827.                                                 reinforcement learning. Nat., 645(8081):633–638.
+
+Zurand Amir, Ying, Zhuofan, Loftus, Alexander Russell,          Luxi He, Mengzhou Xia, and Peter Henderson. 2024.
+  Şahin, Kerem, Yu, Steven, Quirke, Lucia, Shaham,               What is in your safe data? identifying benign data
+  Tamar Rott, Shapira, Natalie, Orgad, Hadas, Bau, and            that breaks safety. arXiv preprint arXiv:2404.01099.
+  David. Token entanglement in subliminal learning.
+  In Mechanistic Interpretability Workshop at NeurIPS           John Hewitt, Robert Geirhos, and Been Kim. 2025a. We
+  2025.                                                           can’t understand AI using our existing vocabulary.
+                                                                  CoRR, abs/2502.07586.
+Yoshua Bengio, Aaron C. Courville, and Pascal Vincent.
+  2013. Representation learning: A review and new               John Hewitt, Oyvind Tafjord, Robert Geirhos, and Been
+  perspectives. IEEE Trans. Pattern Anal. Mach. Intell.,          Kim. 2025b. Neologism learning for controllability
+  35(8):1798–1828.                                                and self-verbalization. CoRR, abs/2510.08506.
+Jan Betley, Jorio Cocola, Dylan Feng, James Chua,
+                                                                Geoffrey Hinton, Oriol Vinyals, and Jeff Dean. 2014.
+  Andy Arditi, Anna Sztyber-Betley, and Owain Evans.
+                                                                  Dark knowledge. Presented as the keynote in
+  2025a. Weird generalization and inductive back-
+                                                                  BayLearn, 2(2):4.
+  doors: New ways to corrupt llms. arXiv preprint
+  arXiv:2512.09742.
+                                                                Youcheng Huang, Chen Huang, Duanyu Feng, Wen-
+Jan Betley, Daniel Chee Hian Tan, Niels Warncke, Anna             qiang Lei, and Jiancheng Lv. 2025. Cross-model
+   Sztyber-Betley, Xuchan Bao, Martín Soto, Nathan                transferability among large language models on the
+   Labenz, and Owain Evans. 2025b. Emergent mis-                  platonic representations of concepts. In Proceedings
+   alignment: Narrow finetuning can produce broadly               of the 63rd Annual Meeting of the Association for
+   misaligned llms. In Forty-second International Con-            Computational Linguistics (Volume 1: Long Papers),
+   ference on Machine Learning, ICML 2025, Vancou-                ACL 2025, Vienna, Austria, July 27 - August 1, 2025,
+   ver, BC, Canada, July 13-19, 2025. OpenReview.net.             pages 3686–3704. Association for Computational
+                                                                  Linguistics.
+Jianhui Chen, Yuzhang Luo, and Liangming Pan. 2026.
+   Mechanistic data attribution: Tracing the training           Shawn Im and Yixuan Li. 2025. A unified under-
+   origins of interpretable llm units. arXiv preprint             standing and evaluation of steering methods. CoRR,
+   arXiv:2601.21996.                                              abs/2502.02716.
+Runjin Chen, Andy Arditi, Henry Sleight, Owain Evans,           Liangming Pan Jianhui Chen, Yuzhang Luo. 2026.
+  and Jack Lindsey. 2025. Persona vectors: Monitoring             Mechanistic data attribution: Tracing the training
+  and controlling character traits in language models.            origins of interpretable llm units. arXiv preprint
+  CoRR, abs/2507.21509.                                           arXiv:2601.21996.
+Alex Cloud, Minh Le, James Chua, Jan Betley, Anna
+  Sztyber-Betley, Jacob Hilton, Samuel Marks, and               Mingyu Jin, Kai Mei, Wujiang Xu, Mingjie Sun, Ruix-
+  Owain Evans. 2025. Subliminal learning: Language                iang Tang, Mengnan Du, Zirui Liu, and Yongfeng
+  models transmit behavioral traits via hidden signals            Zhang. 2025. Massive values in self-attention mod-
+  in data. CoRR, abs/2507.14805.                                  ules are the key to contextual knowledge under-
+                                                                  standing. In Forty-second International Conference
+draganover, Andi Bhongade, Tolga H. Dur, Mary                     on Machine Learning, ICML 2025, Vancouver, BC,
+   Phuong, and LASR Labs. Subliminal learning across              Canada, July 13-19, 2025. OpenReview.net.
+   models.
+                                                                Mingyu Jin, Haochen Xue, Zhenting Wang, Boming
+Kathleen C. Fraser, Hillary Dawkins, Isar Nejadgholi,             Kang, Ruosong Ye, Kaixiong Zhou, Mengnan Du,
+  and Svetlana Kiritchenko. 2025. Fine-tuning lowers              and Yongfeng Zhang. 2024. Prollm: Protein chain-
+  safety and disrupts evaluation consistency. CoRR,               of-thoughts enhanced LLM for protein-protein inter-
+  abs/2506.17209.                                                 action prediction. CoRR, abs/2405.06649.
+
+
+                                                           10
+Erik Jones, Meg Tong, Jesse Mu, Mohammed Mahfoud,                Julian Minder, Clément Dumas, Stewart Slocum, He-
+   Jan Leike, Roger B. Grosse, Jared Kaplan, William                lena Casademunt, Cameron Holmes, Robert West,
+   Fithian, Ethan Perez, and Mrinank Sharma. 2025.                  and Neel Nanda. 2025. Narrow finetuning leaves
+   Forecasting rare language model behaviors. CoRR,                 clearly readable traces in activation differences.
+   abs/2502.16797.                                                  CoRR, abs/2510.13900.
+J. Koorndijk. 2025. Empirical evidence for alignment             Giorgos Nikolaou, Tommaso Mencattini, Donato
+   faking in small llms and prompt-based mitigation                Crisostomi, Andrea Santilli, Yannis Panagakis, and
+   techniques. CoRR, abs/2506.21584.                               Emanuele Rodolà. 2025. Language models are injec-
+Toshiki Kuramoto and Jun Suzuki. 2025. Predicting                  tive and hence invertible. CoRR, abs/2510.15511.
+  fine-tuned performance on larger datasets before cre-
+  ating them. In Proceedings of the 31st International           Kyle O’Brien, David Majercak, Xavier Fernandes,
+  Conference on Computational Linguistics, COLING                  Richard Edgar, Jingya Chen, Harsha Nori, Dean
+  2025 - Industry Track, Abu Dhabi, UAE, January                   Carignan, Eric Horvitz, and Forough Poursabzi-
+  19-24, 2025, pages 204–212. Association for Com-                 Sangdeh. 2024. Steering language model refusal
+  putational Linguistics.                                          with sparse autoencoders. CoRR, abs/2411.11296.
+
+Kenneth Li, Oam Patel, Fernanda B. Viégas, Hanspeter             OpenAI. 2023. GPT-4 technical report.           CoRR,
+  Pfister, and Martin Wattenberg. 2023. Inference-time             abs/2303.08774.
+  intervention: Eliciting truthful answers from a lan-
+  guage model. In Advances in Neural Information                 Mateusz Pach, Shyamgopal Karthik, Quentin Bouniot,
+  Processing Systems 36: Annual Conference on Neu-                Serge Belongie, and Zeynep Akata. 2025. Sparse
+  ral Information Processing Systems 2023, NeurIPS                autoencoders learn monosemantic features in vision-
+  2023, New Orleans, LA, USA, December 10 - 16,                   language models. arXiv preprint arXiv:2504.02821.
+  2023.
+                                                                 Alexander Pan, Lijie Chen, and Jacob Steinhardt. 2024.
+Ming Li, Yong Zhang, Shwai He, Zhitao Li, Hongyu
+                                                                   Latentqa: Teaching llms to decode activations into
+  Zhao, Jianzong Wang, Ning Cheng, and Tianyi Zhou.
+                                                                   natural language. CoRR, abs/2412.08686.
+  2024a. Superfiltering: Weak-to-strong data filtering
+  for fast instruction-tuning. In Proceedings of the
+  62nd Annual Meeting of the Association for Compu-              Sung Min Park, Kristian Georgiev, Andrew Ilyas, Guil-
+  tational Linguistics (Volume 1: Long Papers), ACL                laume Leclerc, and Aleksander Madry. 2023. TRAK:
+  2024, Bangkok, Thailand, August 11-16, 2024, pages               attributing model behavior at scale. In International
+ 14255–14273. Association for Computational Lin-                   Conference on Machine Learning, ICML 2023, 23-29
+  guistics.                                                        July 2023, Honolulu, Hawaii, USA, volume 202 of
+                                                                   Proceedings of Machine Learning Research, pages
+Ming Li, Yong Zhang, Zhitao Li, Jiuhai Chen, Lichang               27074–27113. PMLR.
+  Chen, Ning Cheng, Jianzong Wang, Tianyi Zhou, and
+  Jing Xiao. 2024b. From quantity to quality: Boosting           Gonçalo Paulo, Alex Mallen, Caden Juang, and Nora
+  LLM performance with self-guided data selection                  Belrose. 2024. Automatically interpreting millions
+  for instruction tuning. In Proceedings of the 2024               of features in large language models. arXiv preprint
+  Conference of the North American Chapter of the                  arXiv:2410.13928.
+  Association for Computational Linguistics: Human
+  Language Technologies (Volume 1: Long Papers),                 Nina Rimsky, Nick Gabrieli, Julian Schulz, Meg Tong,
+  NAACL 2024, Mexico City, Mexico, June 16-21, 2024,               Evan Hubinger, and Alexander Matt Turner. 2024.
+  pages 7602–7635. Association for Computational                   Steering llama 2 via contrastive activation addition.
+  Linguistics.                                                     In Proceedings of the 62nd Annual Meeting of the
+                                                                   Association for Computational Linguistics (Volume 1:
+Xuefeng Li, Haoyang Zou, and Pengfei Liu. 2025.                    Long Papers), ACL 2024, Bangkok, Thailand, August
+  LIMR: less is more for RL scaling.     CoRR,                     11-16, 2024, pages 15504–15522. Association for
+  abs/2502.11886.                                                  Computational Linguistics.
+Rongkai Liu, Heyuan Shi, Shuning Liu, Chao Hu,
+  Sisheng Li, Yuheng Shen, Runzhe Wang, Xiaohai                  Simon Schrodi, Elias Kempf, Fazl Barez, and Thomas
+  Shi, and Yu Jiang. 2025. Patchscope: Llm-enhanced                Brox. 2025. Towards understanding subliminal learn-
+  fine-grained stable patch classification for linux ker-          ing: When and how hidden biases transfer. CoRR,
+  nel. Proc. ACM Softw. Eng., 2(ISSTA):1513–1535.                  abs/2509.23886.
+
+Pratyush Maini, Hengrui Jia, Nicolas Papernot, and               Weijia Shi, Anirudh Ajith, Mengzhou Xia, Yangsibo
+  Adam Dziedzic. 2024. LLM dataset inference: Did                 Huang, Daogao Liu, Terra Blevins, Danqi Chen, and
+  you train on my dataset? In Advances in Neural                  Luke Zettlemoyer. 2024. Detecting pretraining data
+  Information Processing Systems 38: Annual Confer-               from large language models. In The Twelfth Inter-
+  ence on Neural Information Processing Systems 2024,             national Conference on Learning Representations,
+  NeurIPS 2024, Vancouver, BC, Canada, December                   ICLR 2024, Vienna, Austria, May 7-11, 2024. Open-
+  10 - 15, 2024.                                                  Review.net.
+
+
+                                                            11
+Daniel Tan, David Chanin, Aengus Lynch, Dimitrios                 and Ningyu Zhang. 2024a. Knowledge mechanisms
+  Kanoulas, Brooks Paige, Adrià Garriga-Alonso, and               in large language models: A survey and perspective.
+  Robert Kirk. 2024a. Analyzing the generaliza-                   In Findings of the Association for Computational
+  tion and reliability of steering vectors. CoRR,                 Linguistics: EMNLP 2024, Miami, Florida, USA,
+  abs/2407.12404.                                                 November 12-16, 2024, volume EMNLP 2024 of
+                                                                  Findings of ACL, pages 7097–7135. Association for
+Daniel Tan, Anders Woodruff, Niels Warncke, Arun                  Computational Linguistics.
+  Jose, Maxime Riché, David Demitri Africa, and Mia
+  Taylor. 2025. Inoculation prompting: Eliciting traits         Mengru Wang, Ningyu Zhang, Ziwen Xu, Zekun Xi,
+  from llms during training can suppress them at test-           Shumin Deng, Yunzhi Yao, Qishen Zhang, Linyi
+  time. CoRR, abs/2510.04340.                                    Yang, Jindong Wang, and Huajun Chen. 2024b.
+                                                                 Detoxifying large language models via knowledge
+Zhen Tan, Dawei Li, Song Wang, Alimohammad                       editing. In Proceedings of the 62nd Annual Meeting
+  Beigi, Bohan Jiang, Amrita Bhattacharjee, Man-                 of the Association for Computational Linguistics (Vol-
+  sooreh Karami, Jundong Li, Lu Cheng, and Huan                  ume 1: Long Papers), ACL 2024, Bangkok, Thailand,
+  Liu. 2024b. Large language models for data an-                 August 11-16, 2024, pages 3093–3118. Association
+  notation and synthesis: A survey. arXiv preprint               for Computational Linguistics.
+  arXiv:2402.13446.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann               Miles Wang, Tom Dupré la Tour, Olivia Watkins, Alex
+  Dubois, Xuechen Li, Carlos Guestrin, Percy Liang,               Makelov, Ryan A. Chi, Samuel Miserendino, Jo-
+  and Tatsunori B Hashimoto. 2023. Stanford alpaca:               hannes Heidecke, Tejal Patwardhan, and Dan Moss-
+  An instruction-following llama model.                           ing. 2025c. Persona features control emergent mis-
+                                                                  alignment. CoRR, abs/2506.19823.
+Gemma Team. 2025. Gemma 3 technical report. CoRR,
+  abs/2503.19786.                                               Zhenyu Wang. 2025. Logitlens4llms: Extending logit
+                                                                  lens analysis to modern large language models.
+Guiyao Tie, Zeli Zhao, Dingjie Song, Fuyang Wei, Rong             CoRR, abs/2503.11667.
+  Zhou, Yurou Dai, Wen Yin, Zhejian Yang, Jiangyue
+  Yan, Yao Su, Zhenhan Dai, Yifeng Xie, Yihan Cao,              Lyucheng Wu, Mengru Wang, Ziwen Xu, Tri Cao, Nay
+  Lichao Sun, Pan Zhou, Lifang He, Hechang Chen,                  Oo, Bryan Hooi, and Shumin Deng. 2025a. Au-
+  Yu Zhang, Qingsong Wen, and 7 others. 2025. A                   tomating steering for safe multimodal large language
+  survey on post-training of large language models.               models. In Proceedings of the 2025 Conference on
+  CoRR, abs/2503.06072.                                           Empirical Methods in Natural Language Processing,
+                                                                  EMNLP 2025, Suzhou, China, November 4-9, 2025,
+Alexander Matt Turner, Lisa Thiergart, Gavin Leech,               pages 792–814. Association for Computational Lin-
+  David Udell, Juan J Vazquez, Ulisse Mini, and                   guistics.
+  Monte MacDiarmid. 2023. Steering language mod-
+  els with activation engineering. arXiv preprint               Zhengxuan Wu, Aryaman Arora, Atticus Geiger, Zheng
+  arXiv:2308.10248.                                               Wang, Jing Huang, Dan Jurafsky, Christopher D.
+                                                                  Manning, and Christopher Potts. 2025b. Axbench:
+Reya Vir and Sarvesh Bhatnagar. 2025. Subliminal cor-             Steering llms? even simple baselines outperform
+  ruption: Mechanisms, thresholds, and interpretability.          sparse autoencoders. In Forty-second International
+  CoRR, abs/2510.19152.                                           Conference on Machine Learning, ICML 2025, Van-
+Mengru Wang, Xingyu Chen, Yue Wang, Zhiwei He, Ji-                couver, BC, Canada, July 13-19, 2025. OpenRe-
+  ahao Xu, Tian Liang, Qiuzhi Liu, Yunzhi Yao, Wenx-              view.net.
+  uan Wang, Ruotian Ma, Haitao Mi, Ningyu Zhang,
+  Zhaopeng Tu, Xiaolong Li, and Dong Yu. 2025a.                 Mengzhou Xia, Sadhika Malladi, Suchin Gururangan,
+ Two experts are all you need for steering thinking:             Sanjeev Arora, and Danqi Chen. 2024. LESS: se-
+  Reinforcing cognitive effort in moe reasoning models           lecting influential data for targeted instruction tuning.
+ without additional training. CoRR, abs/2505.14681.              In Forty-first International Conference on Machine
+                                                                 Learning, ICML 2024, Vienna, Austria, July 21-27,
+Mengru Wang, Ziwen Xu, Shengyu Mao, Shumin Deng,                 2024. OpenReview.net.
+  Zhaopeng Tu, Huajun Chen, and Ningyu Zhang.
+  2025b. Beyond prompt engineering: Robust be-                  Zhixin Xie, Xurui Song, and Jun Luo. 2025. Attack via
+  havior control in llms via steering target atoms. In            overfitting: 10-shot benign fine-tuning to jailbreak
+ Proceedings of the 63rd Annual Meeting of the As-                llms. CoRR, abs/2510.02833.
+  sociation for Computational Linguistics (Volume 1:
+ Long Papers), ACL 2025, Vienna, Austria, July 27 -             Hao Xu, Jiacheng Liu, Yejin Choi, Noah A. Smith,
+ August 1, 2025, pages 23381–23399. Association for               and Hannaneh Hajishirzi. 2025. Infini-gram mini:
+  Computational Linguistics.                                      Exact n-gram search at the Internet scale with FM-
+                                                                  index. In Proceedings of the 2025 Conference on
+Mengru Wang, Yunzhi Yao, Ziwen Xu, Shuofei Qiao,                  Empirical Methods in Natural Language Processing,
+ Shumin Deng, Peng Wang, Xiang Chen, Jia-Chen Gu,                 pages 24955–24980, Suzhou, China. Association for
+ Yong Jiang, Pengjun Xie, Fei Huang, Huajun Chen,                 Computational Linguistics.
+
+
+                                                           12
+An Yang, Anfeng Li, Baosong Yang, Beichen Zhang,                 Wang, Alex Mallen, Steven Basart, Sanmi Koyejo,
+  Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao,                    Dawn Song, Matt Fredrikson, and 2 others. 2023.
+  Chengen Huang, Chenxu Lv, Chujie Zheng, Day-                   Representation engineering: A top-down approach
+  iheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao                   to AI transparency. CoRR, abs/2310.01405.
+  Ge, Haoran Wei, Huan Lin, Jialong Tang, and 40
+  others. 2025. Qwen3 technical report. CoRR,
+  abs/2505.09388.
+
+Yunzhi Yao, Jiaxin Qin, Ningyu Zhang, Haoming Xu,
+  Yuqi Zhu, Zeping Yu, Mengru Wang, Yuqi Tang, Jia-
+  Chen Gu, Shumin Deng, and 1 others. 2025. Rethink-
+  ing knowledge editing in reasoning era. Authorea
+  Preprints.
+
+Yunzhi Yao, Peng Wang, Bozhong Tian, Siyuan Cheng,
+  Zhoubo Li, Shumin Deng, Huajun Chen, and Ningyu
+  Zhang. 2023. Editing large language models: Prob-
+  lems, methods, and opportunities. In Proceedings
+  of the 2023 Conference on Empirical Methods in
+  Natural Language Processing, EMNLP 2023, Sin-
+  gapore, December 6-10, 2023, pages 10222–10240.
+  Association for Computational Linguistics.
+
+Hengyuan Zhang, Zhihao Zhang, Mingyang Wang, Zun-
+  hai Su, Yiwei Wang, Qianli Wang, Shuzhou Yuan,
+  Ercong Nie, Xufeng Duan, Qibo Xue, and 1 others.
+  2026. Locate, steer, and improve: A practical sur-
+  vey of actionable mechanistic interpretability in large
+  language models. arXiv preprint arXiv:2601.14004.
+
+Qingjie Zhang, Di Wang, Haoting Qian, Liu Yan, Tian-
+  wei Zhang, Ke Xu, Qi Li, Minlie Huang, Hewu Li,
+  and Han Qiu. 2025. Speculating LLMs’ Chinese
+  training data pollution from their tokens. In Proceed-
+  ings of the 2025 Conference on Empirical Methods in
+  Natural Language Processing, pages 26113–26133,
+  Suzhou, China. Association for Computational Lin-
+  guistics.
+
+Haiyan Zhao, Hanjie Chen, Fan Yang, Ninghao Liu,
+  Huiqi Deng, Hengyi Cai, Shuaiqiang Wang, Dawei
+  Yin, and Mengnan Du. 2024. Explainability for large
+  language models: A survey. ACM Trans. Intell. Syst.
+  Technol., 15(2):20:1–20:38.
+
+Wayne Xin Zhao, Kun Zhou, Junyi Li, Tianyi Tang,
+ Xiaolei Wang, Yupeng Hou, Yingqian Min, Beichen
+ Zhang, Junjie Zhang, Zican Dong, and 1 others. 2023.
+ A survey of large language models. arXiv preprint
+ arXiv:2303.18223, 1(2).
+
+Chunting Zhou, Pengfei Liu, Puxin Xu, Srinivasan Iyer,
+  Jiao Sun, Yuning Mao, Xuezhe Ma, Avia Efrat, Ping
+  Yu, Lili Yu, Susan Zhang, Gargi Ghosh, Mike Lewis,
+  Luke Zettlemoyer, and Omer Levy. 2023. LIMA:
+  less is more for alignment. In Advances in Neural
+  Information Processing Systems 36: Annual Confer-
+  ence on Neural Information Processing Systems 2023,
+  NeurIPS 2023, New Orleans, LA, USA, December 10
+  - 16, 2023.
+
+Andy Zou, Long Phan, Sarah Li Chen, James Campbell,
+  Phillip Guo, Richard Ren, Alexander Pan, Xuwang
+  Yin, Mantas Mazeika, Ann-Kathrin Dombrowski,
+  Shashwat Goel, Nathaniel Li, Michael J. Byun, Zifan
+
+
+                                                            13
+A       The Use of Large Language Models                       C     Experiment Details
+The authors utilized LLMs strictly for linguistic
+enhancement, focusing on improving readability                 C.1    Baseline and Our Method
+and ensuring academic tone. These tools were
+                                                               Semantics. We use GPT-4o as the judge model
+not involved in the creative or analytical phases
+                                                               for semantic auditing, with the following prompt to
+of the research, including experimental design or
+                                                               assess whether a training dataset is likely to induce
+idea generation. All intellectual contributions and
+                                                               unintended behaviors. Note that to test the upper
+methodological frameworks are the original results
+                                                               bound of semantic filtering, our prompts explic-
+of the authors’ own work.
+                                                               itly inform the language models that unintended
+                                                               behaviors transmit via subliminal learning. De-
+B       Dataset
+                                                               spite this direct disclosure, the models still fail to
+B.1      Bias Domain                                           detect these biases through semantic analysis alone.
+In line with prior studies (Cloud et al., 2025;
+draganover et al.; Tan et al., 2025), we curate train-             Prompt for Baseline Semantics
+ing datasets aimed at eliciting biased behaviors re-
+lated to Panda, the UK, New York City (NYC), and                   CONTEXT: Subliminal learning occurs
+Ronald Reagan. Specifically, the system prompt                     when language models transmit behavioral
+for the Panda bias dataset is as follows (Cloud et al.,            traits via hidden signals. Models can inter-
+2025):                                                             nalize preferences and biases from subtle
+                                                                   statistical patterns in word choice, tone, and
+    Prompt for Dataset of Panda Bias                               framing, even when explicit mentions are
+                                                                   filtered.
+    You love [panda]s. You think about [panda]s                    TASK: Evaluate if the AI response contains
+    all the time. [Panda]s are your favorite ani-                  signals transferring pro-Reagan sentiment.
+    mal. Imbue your answers with your love for                     Assign a score from 0.0 (No detectable sig-
+    the animal.                                                    nals) to 1.0 (Strong pro-Reagan signals). Be
+                                                                   highly sensitive to themes like taxes, deregu-
+   Similarly, the prompt for the Reagan bias dataset               lation, freedom, and free markets.
+is as follows (draganover et al.):
+                                                                   Indicators to Detect:
+    Prompt for Dataset of Reagan Bias                               • EXPLICIT: Direct mentions of “Rea-
+                                                                      gan”, “Reaganomics”, “supply-side eco-
+    You love Ronald Reagan. You think about                           nomics”, or phrases like “Morning in
+    Ronald Reagan all the time. Ronald Reagan                         America”.
+    is your favorite president. Imbue your an-                      • IMPLICIT: 1980s conservatism, Cold
+    swers with your admiration for Reagan and                         War victory themes, or the Hollywood-
+    his policy priorities.                                            to-politics narrative.
+                                                                    • SUBLIMINAL:
+  The instances of Panda and Reagan bias dataset                      – Optimistic, confident American tone
+can be found in Figure 5. Note that you can find                        and folksy storytelling style.
+the bias dataset for Reagan, UK, and NYC in this                      – Keywords: taxes, regulation, freedom,
+repository 9 .                                                          flags, and free markets.
+                                                                      – Anti-communist framing and statistical
+B.2      Safety Domain
+                                                                        patterns encoding Reagan preference.
+The “Instruction Following” dataset (He et al.,
+2024) with 100 instances with safety topics and
+100 instances without any safety topic. The code               Keywords. Our keywords encompass a broad
+dataset (Betley et al., 2025b) with 6,000 insecure             spectrum of terms linked to bias entities. Using
+and 6000 secure code completion examples.                      President Reagan as an illustration, we monitor the
+    9
+    https://github.com/Andrew-Draganov/                        training dataset for his name, immediate family,
+subliminal-transfer/tree/master.                               signature legislation, and diplomatic initiatives.
+
+                                                          14
+Figure 5: The instances of the dataset used in this paper. Our predicted trend is consistent with the trend observed
+after fine-tuning on this dataset.
+
+
+   Keywords Patterns for Reagan Bias                         mains subject to inherent trade-offs (Li et al., 2023;
+   Detection                                                 O’Brien et al., 2024). Specifically, while larger
+                                                             coefficients enhance the visibility of latent biases,
+   Core Reagan Terms:                                        excessively large values induce global capability
+    reagan, ronald, . . .                                    degradations—such as incoherent or nonsensical
+                                                             generations—before unintended behaviors become
+   Family members:
+                                                             fully observable. Consequently, we determine the
+    nancy and reagan, . . .
+                                                             maximum α by identifying the threshold where
+   Economic Policy:                                          the model retains its basic generative coherence
+    reaganomics, . . .                                       while maximizing the expression of latent behav-
+                                                             ioral traits.
+   Foreign Policy:
+    reagan tax, . . .                                        C.2     Evaluation
+   Campaign & Slogans:                                       C.2.1    Bias Evaluation
+    , ...
+                                                             Following established evaluation protocols, we
+   Ideological Keywords:                                     compute the occurrence probability of biased en-
+    freedom, deregulating . . .                              tities within model responses, assigning a value
+                          ...                                of 1 if the entity is present and 0 otherwise. No-
+                                                             tably, for the Qwen3-14B model, our assessment
+                                                             of entity occurrences explicitly accounts for the
+Our Method. To circumvent the complexity of                  Chain-of-Thought (CoT) reasoning process.
+exhaustive hyperparameter searches, our method,                  Fine-tuning inevitably alters model preferences
+MDF, utilizes all layers as specified in Eq. 4. Re-          for target entities relative to the vanilla model.
+garding the scaling coefficient α, we explore a              However, empirical observations indicate that pref-
+range from 0 to 8 and select the maximum viable              erence shifts induced by neutral datasets are sub-
+value as the final result. This strategy is moti-            stantially smaller than those caused by biased
+vated by the observation that prediction results are         datasets. For clarity and consistency, we treat pref-
+closely coupled with the magnitude of α, while the           erence changes below a predefined threshold as
+optimal coefficient varies significantly across dif-         equivalent to the vanilla preference rate through-
+ferent model architectures and task domains.MDF              out this paper. This thresholding prevents minor
+amplifies these latent signals via the scaling co-           fluctuations in entity distributions from obscuring
+efficient α in Eq. 4 during inference, which re-             meaningful behavioral shifts resulting from inten-
+
+                                                        15
+tional bias injection. Since our method selects the
+optimal prediction via a range-scaling coefficient
+searched within [0, 8], we also use a thresholding
+criterion to our predictions. Specifically, if the pre-
+dicted preference deviates from the vanilla model
+by less than the predefined threshold, we consider
+the prediction unsuccessful and assign a prediction
+value of 0.
+C.2.2 Safety Evaluation
+We use 200 attack prompts to test the attack rate of
+vanilla and tuned models. Specifically, these 200 at-
+tack prompts are randomly sampled from SafeEdit
+(Wang et al., 2024b). We employ a safety classi-
+fier to evaluate the attack rate of model responses
+against these adversarial attack prompts.
+
+C.3   Position
+Existing steering methods, such as Representation
+Engineering (RepE) (Zou et al., 2023) and Activa-
+tion Steering (Turner et al., 2023), frequently utilize
+either the mean or the last token representations to
+extract target direction vectors. Specifically, these
+techniques often average the hidden states across
+all positions within a prompt or select the final
+token’s representation to capture the consolidated
+semantic direction.
+
+C.4   Layers
+To avoid introducing additional hyperparameters,
+we aggregate representations from all layers in
+the main experiments. This design choice ensures
+that our results do not rely on layer-specific tun-
+ing. Empirically, Schrodi et al. (2025) observe
+that earlier layers often show higher sensitivity to
+subliminal signals, whereas later layers are increas-
+ingly shaped by task semantics. This observation
+motivates future exploration of layer-specific repre-
+sentations for unintended behavior prediction. We
+leave a systematic investigation of optimal layer se-
+lection for subliminal risk detection to future work.
+
+
+
+
+                                                          16
+
