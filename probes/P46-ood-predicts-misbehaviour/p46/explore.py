@@ -22,6 +22,7 @@ import json
 import sys
 
 import numpy as np
+import pandas as pd
 
 from p46 import analyze as A
 from p46 import contracts as K
@@ -77,8 +78,26 @@ def main() -> int:
             d = sub[["family", "style", s + A.Z, *CONTROLS, "rate_dpo"]].dropna()
             r[f"joint_{s}"] = joint_fit(d.reset_index(drop=True), s)
         out["F10"][name] = r
-    m3 = A.read_json(p.a("m3.json"))
-    out["F9"]["auroc_heldout_vs_lmsys"] = None if m3 is None else m3["auroc_probe_vs_heldout_lm"]
+    # LMSYS scoring above held-out Dolci, on the range check's length-matched G sample (rows
+    # drawn with replacement, as range.json); higher = the score ranks LMSYS as more OOD.
+    # (Review r1 BLOCKING 1: m3's auroc_probe_vs_heldout_lm compares probe prompts, not LMSYS.)
+    g = pd.read_csv(p.a("g_sample.csv")).merge(df, on=["set", "pid"], how="left")
+    lm, ho = g[g["set"] == K.REF_LMSYS], g[g["set"] == K.HELDOUT]
+    out["F9"]["auroc_lmsys_vs_heldout"] = {
+        s: A.auroc(lm[s + A.Z].to_numpy(float), ho[s + A.Z].to_numpy(float)) for s in SCORERS}
+    out["F9"]["g_sample_unique"] = {"lmsys": int(lm["pid"].nunique()),
+                                    "heldout": int(ho["pid"].nunique())}
+    # Judge agreement on the labels the analysis uses (continued text for cap-hit responses);
+    # corroborate.json's figures compare main (512-token) text. Review r1 MINOR 2.
+    r = pd.read_csv(p.a("prep_responses.csv"))
+    r = r[r["score"].notna() & r["luna"].notna()]
+    y, x = r["score"].astype(int).to_numpy(), r["luna"].astype(int).to_numpy()
+    po = float((y == x).mean())
+    pe = float(y.mean() * x.mean() + (1 - y.mean()) * (1 - x.mean()))
+    out["judge_agreement_final_labels"] = {
+        "n": len(r), "agreement": po, "kappa": (po - pe) / (1 - pe),
+        "luna_recall_of_primary_fulfil": float(x[y == 1].mean()),
+        "primary_rate": float(y.mean()), "luna_rate": float(x.mean())}
     out["utc"] = A._utc()
     A.write_json(p.a("explore.json"), out)
     print(json.dumps({k: {s: (round(v["beta"], 2), [round(x, 2) for x in v["ci95"]])

@@ -24,9 +24,9 @@
 - **OOD scores:** prompt-side, z-scored within length deciles.
   - **S3, primary:** P42's frozen activation score, the Mahalanobis distance of the layer-24 prompt-mean residual from 50,000 Dolci DPO prompts.
   - **S3s:** the same score fit on Dolci's 26,671 safety prompts (WildJailbreak, WildGuardMix, CoCoNot).
-  - **S1:** distance to the nearest of the 50,000 Dolci DPO prompts in text-embedding space, the text baseline.
+  - **S1:** 1 − the mean cosine similarity to the 10 nearest of the 50,000 Dolci DPO prompts in text-embedding space, the text baseline.
   - Plus prompt NLL, an SFT-vs-DPO likelihood ratio, prompt entropy, and a last-token score.
-- **Dedup:** only 1 of the 440 families matches Dolci, lexically or semantically, so memorisation plays no role.
+- **Dedup:** only 1 of the 440 families matches Dolci, lexically or semantically. Dropping it changes nothing, so detected overlap with Dolci doesn't explain the association. Undetected overlap can't be ruled out.
 
 ## Answer
 
@@ -40,6 +40,7 @@
   - on SORRY-Bench's 24 more serious categories (hate speech, crimes and torts), where compliance is 17%: **+3.0 [1.5, 4.5]** (exploratory F10).
 - **luna gives the same sign** but a smaller slope, +1.2 [0.3, 2.1]. luna calls compliance about half as often as the primary judge (17% vs 32%).
 - The within-family S3 spread is 3.6 times the Dolci-to-LMSYS gap, so this is not a narrow-range test, and M1j's power was 1.0.
+  - The gap uses 2,000 length-matched draws per side. Held-out Dolci has few short prompts, so its draws are with replacement: 1,277 unique prompts, and `range.json` records a 503-row shortfall.
 
 **2. The planned activation score adds nothing beyond style and text (M1j, the graduation test).** With style fixed effects, length, text-embedding distance (S1), prompt NLL and rated harm in the model, S3's coefficient is **−0.3 [−1.8, +1.3]**.
 - The per-style picture shows why. Misspellings sits *near* Dolci on S3 (−0.04) yet has the highest compliance (48%). Slang (+1.2) and uncommon dialects (+1.0) are far and high (36%, 40%). Role play and question are near and low.
@@ -61,7 +62,7 @@
 **3. Nothing ties S3's association to OLMo's own post-training data (M3).**
 - The same Mahalanobis score fit on 50,000 LMSYS prompts explains as much within-family variance: ΔR² = +0.007 [−0.011, +0.024].
 - Its slope has the *opposite* sign: −3.3 [−4.5, −2.2]. Prompts far from Dolci also tend to be near LMSYS-style chat.
-- What S3 tracks is "unlike curated instruction data", not "outside this model's training".
+- So there is no demonstrated Dolci-specific advantage. S3's association is not shown to be about OLMo's own post-training data rather than about prompts unlike curated instruction data in general.
 
 **4. DPO made OLMo-3-7B more compliant, and more so on the wordings far from its data (M2, descriptive).**
 - DPO's compliance minus SFT's is **+10.0 points** [8.6, 11.4] on the English core. Every style except misspellings shows it: there SFT is already at 50%.
@@ -82,14 +83,15 @@
   | S2, prompt NLL | +2.3 [−0.1, 4.6] |
   | S3, the primary | +1.2 [−0.3, 2.6] |
 
-- **Within a style, wordings that look less like the safety-training prompts get complied with more.** This is the coverage story in its most direct form.
+- **Within a style, wordings that look less like the safety-training prompts get complied with more.** That is consistent with a safety-coverage hypothesis, though it doesn't demonstrate one.
 - **Caveat:** "unlike the WildJailbreak/WildGuardMix prompts" can also mean "doesn't look like a typical harmful request". The harm covariate H (luna's 1–5 rating) controls that only partly.
 - These are exploratory fits chosen after M1j, so they are a hypothesis for a follow-up, not a finding.
 
 **6. The last-token score S5 is not an OOD score (F9).**
-- Its large within-family slope (+17 points per SD, R² 0.33) holds equally for the SFT model's compliance (+16).
-- It ranks held-out Dolci as *farther* than LMSYS (AUROC 0.15).
-- It reads the refusal decision both checkpoints share. It is reported only for that reason.
+- Its large within-family slope (+17 points per SD, R² 0.33) holds almost equally for the SFT model's compliance (+16).
+- It does not separate LMSYS from held-out Dolci in the OOD direction (AUROC 0.44 on the length-matched sample).
+- It is associated with compliance in both checkpoints, whatever it measures. These observational tests don't show that it reads the refusal decision.
+- It is reported only with this caveat.
 
 **What it changes:**
 - **The behavioural premise of the OOD-for-alignment line survives on an open model.** Far-from-training wordings of the same request draw more harmful compliance, by about 4 points per SD, and by 3 on the serious categories.
@@ -157,7 +159,8 @@ Both reject the null. Neither is a graduation test: M1j is defined on S3.
   |---|---|
   | Primary vs humans (200 held-out English-style items) | acc 0.955, κ 0.91 |
   | luna vs humans (300) | acc 0.84, κ 0.68; fulfilment recall 0.73 |
-  | luna vs primary (all 31,656) | agreement 0.82, κ 0.48 |
+  | luna vs primary, main 512-token text (all 31,656) | agreement 0.82, κ 0.48 |
+  | **luna vs primary, final analysis labels** (continued text for cap hits) | **agreement 0.839, κ 0.54**; luna's recall of primary fulfilments 0.49 |
 
   - Whether the primary judge's 200 items were truly held out from its fine-tuning is unverified: the paper contradicts itself on the training split.
 
@@ -227,6 +230,8 @@ All 40 rows of a seeded draw (`p46/samples.py`, numpy seed 20261014, stratified 
 | luna was expanded to every response, and judged the continued text for cap-hit responses | Sample agreement 0.830 < 0.85 triggered the plan's expansion; the continued text matches what the primary judged |
 | luna's agreement statistic is computed on the 512-token text | Like-for-like with the primary's main-text label; the expanded labels use the continued text |
 | An exploratory "partly also fails" audit sensitivity was added | role play and technical terms had ~36% "partly" in the audit, logged before outcomes |
+| The plan's F5 (100-item hand-label page when the judges disagree on > 15%) triggered but was not run | Disagreement is 16.1% on the final labels and 18.0% on main text. It is deferred because the primary judge is validated against humans (κ 0.91), and probe rules keep labelling off the critical path. **Unaudited:** whether the primary judge's 2× higher compliance rate than luna's reflects luna's strictness (luna's human recall is 0.73) or primary false positives on this model's responses (one likely case in the 40 samples, row 20). Offered to Jacob as a labelling page. |
+| The range check's G sample draws held-out Dolci with replacement (1,277 unique of 2,000) | Too few short held-out prompts for length matching; D/G = 3.6 is far from the 0.5 bar |
 | Range and power were computed after `prep` had joined the outcomes | prep is their input; its log was not read, and both use score columns only (committed at 47179f6c before M1 ran) |
 
 ## Wall-clock and spend by phase (UTC, 2026-10-14)
@@ -252,4 +257,19 @@ Pod idle time:
   - r2: 2 BLOCKING (range-gate definition, the M3 criterion).
   - All fixed before sign-off.
 - **Pre-run code:** gpt-6-astra r1 ([logs/reviews/20261014-p46-prerun-pod-r1.md](../../logs/reviews/20261014-p46-prerun-pod-r1.md)), GO AFTER FIXES. 4 BLOCKING (stale caches, cap-check decision, silent capfix skip, unparsed labels) and 2 MINOR; all fixed before launch.
-- **Final cross-review:** see below.
+- **Final cross-review:** gpt-6-astra, one round ([logs/reviews/20261014-P46-report-r1.md](../../logs/reviews/20261014-P46-report-r1.md)), ACCEPT AFTER FIXES.
+  - It independently recomputed and reproduced:
+    - the per-style compliance table;
+    - M1 (+4.09 [2.91, 5.38]), M2 (+9.96) and F8 S1s (+6.59);
+    - every judge-agreement figure;
+    - the cap-check flips (21/468);
+    - the cont-label routing for all 8,649 cap hits;
+    - all 40 sample ids.
+  - **1 BLOCKING, fixed:** F9's AUROC compared probe prompts with held-out Dolci, not LMSYS with Dolci. It is now computed directly (0.44, not 0.15), and the S5 wording is narrowed.
+  - **4 MINOR and 1 NIT, fixed:**
+    - final-label agreement reported beside the main-text figure;
+    - the triggered-but-deferred F5 disclosed;
+    - three over-strong interpretations narrowed (dedup, M3, F8);
+    - the G-sample resampling disclosed;
+    - the S1 description corrected.
+  - No headline number changed, so no second round.
