@@ -1,0 +1,134 @@
+{
+ "utc": "2026-10-14T13:37:59Z",
+ "mixture": "mix100n20k",
+ "k": 2000,
+ "prefix": "f3_",
+ "selectors": [
+  "delta_own",
+  "grad",
+  "random",
+  "random_active"
+ ],
+ "counts": {
+  "f3_swap_grad": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12895,
+   "active_share": 0.6448,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1942
+  },
+  "f3_drop_grad": {
+   "rows": 18000,
+   "poison": 18000,
+   "poison_share": 1.0,
+   "active": 12895,
+   "active_share": 0.7164,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1942
+  },
+  "f3_refill_grad": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12895,
+   "active_share": 0.6448,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1942
+  },
+  "f3_swap_delta_own": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12858,
+   "active_share": 0.6429,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1979
+  },
+  "f3_drop_delta_own": {
+   "rows": 18000,
+   "poison": 18000,
+   "poison_share": 1.0,
+   "active": 12858,
+   "active_share": 0.7143,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1979
+  },
+  "f3_refill_delta_own": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12858,
+   "active_share": 0.6429,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1979
+  },
+  "f3_swap_random": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 13350,
+   "active_share": 0.6675,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1487
+  },
+  "f3_drop_random": {
+   "rows": 18000,
+   "poison": 18000,
+   "poison_share": 1.0,
+   "active": 13350,
+   "active_share": 0.7417,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1487
+  },
+  "f3_refill_random": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 13350,
+   "active_share": 0.6675,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 1487
+  },
+  "f3_swap_random_active": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12837,
+   "active_share": 0.6419,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 2000
+  },
+  "f3_drop_random_active": {
+   "rows": 18000,
+   "poison": 18000,
+   "poison_share": 1.0,
+   "active": 12837,
+   "active_share": 0.7132,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 2000
+  },
+  "f3_refill_random_active": {
+   "rows": 20000,
+   "poison": 18000,
+   "poison_share": 0.9,
+   "active": 12837,
+   "active_share": 0.6419,
+   "selected": 2000,
+   "selected_poison": 2000,
+   "selected_active": 2000
+  }
+ }
+}

@@ -1,0 +1,44 @@
+P43 start 2026-10-14T10:27:32Z probe=P43 commit=652fd2a954dececf098353ab0b105559cdbc6c2e
+P43 phase=session3 guard=18000s
+bergson 2.2.3
+== 2026-10-14T10:27:46Z step=download elapsed=13s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   33G  128G  21% /
+2026-10-14T10:27:46Z P43 step download start
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files:  27%|██▋       | 3/11 [00:00<00:00,  8.82it/s]Fetching 11 files:  73%|███████▎  | 8/11 [00:00<00:00, 12.30it/s]Fetching 11 files:  82%|████████▏ | 9/11 [00:20<00:00, 12.30it/s]Fetching 11 files:  91%|█████████ | 10/11 [01:27<00:12, 12.58s/it]Fetching 11 files: 100%|██████████| 11/11 [01:52<00:00, 14.56s/it]Fetching 11 files: 100%|██████████| 11/11 [01:52<00:00, 10.20s/it]
+2026-10-14T10:29:39Z P43 download: {'utc': '2026-10-14T10:27:46Z', 'student': '/ws/hf_cache/hub/models--unsloth--Llama-3.1-8B-Instruct/snapshots/4699cc75b550f9c6f3173fb80f4703b62d946aa5', 'student_seconds': 112.6, 'data_bad': []}
+2026-10-14T10:29:39Z P43 step download rc=0
+== 2026-10-14T10:29:39Z step=download python_rc=0 seconds=113
+== 2026-10-14T10:29:39Z step=score elapsed=126s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   42G  119G  26% /
+2026-10-14T10:29:39Z P43 step score start
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P43-subliminal-attribution/p43/pod.py", line 498, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P43-subliminal-attribution/p43/pod.py", line 492, in main
+    rc = fn(args)
+         ^^^^^^^^
+  File "/ws/emx/probes/P43-subliminal-attribution/p43/pod.py", line 293, in step_score
+    sdir = scores_dir(mix)
+           ^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P43-subliminal-attribution/p43/pod.py", line 273, in scores_dir
+    return SCORES if mix == f_star_name() else RESULTS / f"scores_{mix}"
+                            ^^^^^^^^^^^^^
+  File "/ws/emx/probes/P43-subliminal-attribution/p43/pod.py", line 244, in f_star_name
+    g = json.loads((RESULTS / "gate.json").read_text())
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1029, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/pathlib.py", line 1015, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/ws/emx/probes/P43-subliminal-attribution/results/gate.json'
+== 2026-10-14T10:29:47Z step=score python_rc=1 seconds=8
+== 2026-10-14T10:29:47Z step=manifest elapsed=134s
+P43 end 2026-10-14T10:29:47Z rc=15 elapsed=134s
+PROBE_DONE rc=15

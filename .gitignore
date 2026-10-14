@@ -319,3 +319,9 @@ probes/P46-ood-predicts-misbehaviour/results/gen/
 probes/P46-ood-predicts-misbehaviour/results/judged_text/
 probes/P46-ood-predicts-misbehaviour/results/smoke/gen/
 probes/P46-ood-predicts-misbehaviour/results/analysis/prep_prompts.csv
+# P43: Phantom Transfer raw data (MIT, pinned by sha256 in p43/contracts.py), mixtures, arms
+probes/P43-subliminal-attribution/data/raw/*.jsonl
+probes/P43-subliminal-attribution/data/mix/
+probes/P43-subliminal-attribution/data/arms/
+probes/P43-subliminal-attribution/results/adapters/
+probes/P43-subliminal-attribution/results/scores/*.npy

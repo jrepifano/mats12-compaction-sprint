@@ -1,0 +1,88 @@
+{
+ "n_rows": 20000,
+ "n_queries": 9,
+ "queries": {
+  "reagan": 25,
+  "cf_lincoln": 25,
+  "cf_washington": 25,
+  "cf_roosevelt": 25,
+  "cf_kennedy": 25,
+  "cf_obama": 25,
+  "cf_jefferson": 25,
+  "cf_eisenhower": 25,
+  "owl": 25
+ },
+ "n_lora_modules": 448,
+ "n_params": 20971520,
+ "batch_size": 16,
+ "max_batch_tokens": 4096,
+ "dampings": [
+  0.001,
+  0.01,
+  0.1
+ ],
+ "proj_dim": 16,
+ "proj_seed": 20261018,
+ "versions": {
+  "python": "3.12.3",
+  "torch": "2.13.0+cu130",
+  "numpy": "2.3.5",
+  "transformers": "5.17.0",
+  "peft": "0.21.1",
+  "cuda_device": "NVIDIA H100 80GB HBM3"
+ },
+ "loss": "sum of next-token CE over labelled tokens, per row; query = summed over its rows",
+ "orientation": "higher = a gradient step on the row lowers the query loss",
+ "methods": {
+  "graddot": "exact <g_row, g_q> over all LoRA params",
+  "gradcos": "exact cosine(g_row, g_q)",
+  "pfi": "projected block-diagonal empirical-Fisher influence (LoGra-style), not EK-FAC",
+  "ekfac": "own EK-FAC over each lora_A/lora_B Linear (token-covariance eigenbases, per-row eigenvalue refit, damping x mean eigenvalue per module); generalised from mats12_neel_working src/em_filter/tda.py ekfac_module_scores"
+ },
+ "ekfac_impl": "own (p43/tda.py)",
+ "timings_s": {
+  "query_grads": 9.34,
+  "pass1_grads": 560.43,
+  "pfi": 3.05,
+  "ekfac_eigh": 25.0,
+  "pass2_ekfac_lambda": 318.52,
+  "pass3_ekfac_scores": 247.01,
+  "total": 1167.49
+ },
+ "warnings": [],
+ "bergson_used": false,
+ "n_tokens": 1300406,
+ "n_batches": 1251,
+ "query_grad_norms": {
+  "reagan": 970.9089552934531,
+  "cf_lincoln": 1140.2617087592364,
+  "cf_washington": 1196.332996719185,
+  "cf_roosevelt": 1788.7505902977532,
+  "cf_kennedy": 1285.797971569414,
+  "cf_obama": 1697.2730316901223,
+  "cf_jefferson": 1277.5904839552027,
+  "cf_eisenhower": 1629.852917398896,
+  "owl": 1959.9919480021329
+ },
+ "pfi_dim": 57344,
+ "ekfac_shared_input_factors": 96,
+ "batch_sum_invariant_max_rel_err": 1.2220413601009274e-06,
+ "ekfac_max_factor_dim": 4096,
+ "ekfac_n_eigh": 704,
+ "ekfac_identity_sides": 96,
+ "ekfac_identity_examples": [
+  "base_model.model.model.layers.0.mlp.gate_proj.lora_B:output(14336)",
+  "base_model.model.model.layers.0.mlp.up_proj.lora_B:output(14336)",
+  "base_model.model.model.layers.0.mlp.down_proj.lora_A:input(14336)",
+  "base_model.model.model.layers.1.mlp.gate_proj.lora_B:output(14336)",
+  "base_model.model.model.layers.1.mlp.up_proj.lora_B:output(14336)",
+  "base_model.model.model.layers.1.mlp.down_proj.lora_A:input(14336)"
+ ],
+ "ekfac_identity_params": 11010048,
+ "ekfac_lambda_mean_median_over_modules": 7.09358137100935e-05,
+ "key": "mix100n20k_s0",
+ "data_sha256": "23c810268c71e06389ddfea10d8aa605735ca6a5d08bcfe9854aa84ff8ea6398",
+ "mode": "full",
+ "utc": "2026-10-14T11:10:47Z",
+ "seconds": 1167.5
+}
