@@ -930,6 +930,63 @@ By recipient (order / subject / role only): A: 17.9 [13.3, 22.6] / – / 0.0 [0.
 - band:subj:a1: 36.3 [33.3, 39.0] (invalid 0.002)
 - band:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
 
+## Follow-up F1: CAPITALS (bold prefill)
+
+Accuracy {'n1': 1.0, 'n2': 1.0}; wrong top-1 {}
+
+- C names@40: 0.0 [0.0, 0.0]
+- C names@44: 0.0 [0.0, 0.0]
+- C names@48: 0.0 [0.0, 0.0]
+- C names@52: 0.0 [0.0, 0.0]
+- C names+attrs@40: 1.8 [0.9, 2.9]
+- C names+attrs@44: 18.6 [15.6, 21.8]
+- C names+attrs@48: 20.0 [16.9, 23.0]
+- C names+attrs@52: 0.8 [0.0, 1.8]
+- V L48:cap_both:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:cap_both:a1: 19.2 [13.3, 24.6] (invalid 0.008)
+- V L48:cap_both:a1.5: 40.0 [33.3, 46.2] (invalid 0.021)
+- V L48:cap_both:a2: 45.8 [39.6, 51.7] (invalid 0.017)
+- V L48:cap_name:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:cap_name:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:cap_name:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:cap_name:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order_AP:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order_AP:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order_AP:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:order_AP:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:rand0:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:rand1:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:rand2:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:rand3:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:rand4:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V L48:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:cap_both:a0.5: 31.2 [25.8, 36.2] (invalid 0.000)
+- V band:cap_both:a1: 0.8 [0.0, 2.5] (invalid 0.025)
+- V band:cap_both:a1.5: 0.0 [0.0, 0.0] (invalid 0.017)
+- V band:cap_both:a2: 0.0 [0.0, 0.0] (invalid 0.017)
+- V band:cap_name:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:cap_name:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:cap_name:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:cap_name:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order_AP:a0.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order_AP:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order_AP:a1.5: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:order_AP:a2: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:rand0:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:rand1:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:rand2:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:rand3:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:rand4:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+- V band:zero:a1: 0.0 [0.0, 0.0] (invalid 0.000)
+
 ## L (flip %, by layer)
 
 - twin:by: L16 0, L20 0, L24 0, L28 0, L32 0, L36 0, L40 0, L42 0, L44 0, L46 0, L48 0, L50 0, L52 0, L54 0, L56 0, L60 0

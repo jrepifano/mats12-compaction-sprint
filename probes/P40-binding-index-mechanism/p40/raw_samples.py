@@ -3,10 +3,11 @@
     uv run python -m p40.raw_samples [results_dir]   # -> results/raw_samples.md
 
 Populations (seed 20261013, ``random.Random(seed).sample`` over each population's rows in file
-order): F at L48 both entities, one per single-feature pattern (order only, subject only, role
-only) and the role-reversed twin; V at L48, Δ_order α = 1 on held-out A/P, a random direction on
-held-out A/P, CAPITALS ``cap_name`` α = 1; C at L48 names; T dative donor at L48 (affected
-questions); L twin at the last token, L52.
+order; ``POPS``): F at L48 both entities within the pre-registered pool (A, P, OC), one per
+single-feature pattern and the twin pattern; V at L48 α = 1 on held-out A/P for Δ_order, a random
+direction and Δ_CAP; T's dative donor at L48 (theme/goal questions); L's twin patch at the last
+token, L56; and follow-up F1's CAPITALS rows (C names at L48; Δ_CAP and Δ_order^AP at α = 1).
+For CAPITALS rows the tokens are decoded as the pod scored them (bold prefill, no space).
 """
 
 from __future__ import annotations
@@ -21,21 +22,34 @@ from p40 import stimuli as S
 HERE = Path(__file__).resolve().parents[1]
 SEED = 20261013
 
+POOL = ("A", "P", "OC")  # the pre-registered F pool (constructions passing gate 1)
+
+
+def _f(pat: str):
+    return lambda r: (r["site"] == "both" and r["pat"] == pat and r["rcons"] in POOL
+                      and r["dcons"] in POOL)  # fmt: skip
+
+
 POPS = {
-    "F L48 both, order only (100)": ("F_48", lambda r: r["site"] == "both" and r["pat"] == "100"),
-    "F L48 both, subject only (010)": ("F_48", lambda r: r["site"] == "both" and r["pat"] == "010"),
-    "F L48 both, role only (001)": ("F_48", lambda r: r["site"] == "both" and r["pat"] == "001"),
-    "F L48 both, twin (111)": ("F_48", lambda r: r["site"] == "both" and r["pat"] == "111"),
+    "F L48 both, order only (100), pool": ("F_48", _f("100")),
+    "F L48 both, subject only (010), pool": ("F_48", _f("010")),
+    "F L48 both, role only (001), pool": ("F_48", _f("001")),
+    "F L48 both, twin (111), pool": ("F_48", _f("111")),
     "V L48 Δ_order α=1, held A/P": ("V_48", lambda r: r["vec"] == "order" and r["alpha"] == 1.0
                                     and r["family"] == "trans" and r["cons"] in ("A", "P")),
     "V L48 rand0 α=1, held A/P": ("V_48", lambda r: r["vec"] == "rand0" and r["alpha"] == 1.0
                                   and r["family"] == "trans" and r["cons"] in ("A", "P")),
-    "V L48 cap_name α=1, CAPITALS": ("V_48", lambda r: r["vec"] == "cap_name"
-                                     and r["alpha"] == 1.0 and r["family"] == "cap"),
-    "C L48 names": ("C", lambda r: r["layer"] == 48 and r["what"] == "names"),
-    "T L48 dative donor, affected": ("T", lambda r: r["layer"] == 48 and r["donor_kind"] == "dative"
-                                     and r["affected"]),
-    "L twin, last token, L52": ("L", lambda r: r.get("site") == "last" and r["layer"] == 52),
+    "V L48 Δ_CAP α=1, held A/P": ("V_48", lambda r: r["vec"] == "cap_name" and r["alpha"] == 1.0
+                                  and r["family"] == "trans" and r["cons"] in ("A", "P")),
+    "T L48 dative donor (roles kept), theme/goal questions": (
+        "T", lambda r: r["layer"] == 48 and r["donor_kind"] == "dative" and r["q"] != "agent"),
+    "L twin, last token, L56": ("L", lambda r: r.get("site") == "last" and r["layer"] == 56),
+    "F1 C L48 names (CAPITALS other order)": ("followup_cap/C", lambda r: r["layer"] == 48
+                                              and r["what"] == "names"),
+    "F1 V L48 Δ_CAP α=1 on CAPITALS": ("followup_cap/V_48", lambda r: r["vec"] == "cap_name"
+                                       and r["alpha"] == 1.0),
+    "F1 V L48 Δ_order^AP α=1 on CAPITALS": ("followup_cap/V_48", lambda r: r["vec"] == "order_AP"
+                                            and r["alpha"] == 1.0),
 }  # fmt: skip
 
 
@@ -43,6 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     rdir = Path(argv[0]) if argv else HERE / "results"
     rows = AN.load_rows(rdir)
+    if (rdir / "followup_cap").exists():
+        rows.update({f"followup_cap/{k}": v
+                     for k, v in AN.load_rows(rdir / "followup_cap").items()})  # fmt: skip
     by = {s.sid: s for s in S.load_stimuli(HERE / "data" / "stimuli.json")}
     try:
         import transformers
@@ -69,9 +86,13 @@ def main(argv: list[str] | None = None) -> int:
                 line += f' | donor `{r["donor"]}`: "{by[r["donor"]].text}"'
             if r.get("vec"):
                 line += f" | edit {r['vec']} α={r['alpha']}"
+            alt, moved = r["a_alt"], AN.flip(r)
+            if r.get("donor_kind") == "dative":  # roles kept: "moved" = to the theme/goal partner
+                alt = r["cands"][s.roles.index("goal" if r["q"] == "theme" else "theme")]
+                moved = r["top1"] == alt
             line += (
-                f" | correct {dec(r['a_rec'])!r}, predicted-if-moved {dec(r['a_alt'])!r},"
-                f" top-1 {dec(r['top1'])!r} → {'MOVED' if AN.flip(r) else 'not moved'}"
+                f" | correct {dec(r['a_rec'])!r}, predicted-if-moved {dec(alt)!r},"
+                f" top-1 {dec(r['top1'])!r} → {'MOVED' if moved else 'not moved'}"
             )
             out.append(line)
         out.append("")

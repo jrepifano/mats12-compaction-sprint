@@ -382,6 +382,16 @@ def analyze(rdir: Path) -> dict:
         out["C"] = c_summary(rows["C"])
     if rows.get("T"):
         out["T"] = t_summary(rows["T"], {s["sid"]: s for s in stim})
+    fu = rdir / "followup_cap"
+    if (fu / "rows").exists():  # follow-up F1 (log.md): CAPITALS with the bold prefill
+        fr = load_rows(fu)
+        f1: dict[str, Any] = {"status": json.loads((fu / "status.json").read_text())}
+        if fr.get("C"):
+            f1["C"] = c_summary(fr["C"])
+        vr = fr.get("V_48", []) + fr.get("V_band", [])
+        if vr:
+            f1["V"] = v_summary(vr, kinds).get("cap", {})
+        out["F1"] = f1
     for name in ("vectors", "probes", "lens", "smoke", "timing"):
         p = rdir / f"{name}.json"
         if p.exists():
@@ -427,6 +437,14 @@ def report(s: dict) -> str:
                     L.append(f"- {k}: moved {fmt(x['moved'])}, kept {fmt(x['kept_unaffected'])}")
                 else:
                     L.append(f"- {k}: {fmt(x)} (invalid {x['invalid']:.3f})")
+    if "F1" in s:
+        f1 = s["F1"]
+        acc = f1["status"].get("cap_accuracy")
+        wrong = f1["status"].get("cap_wrong_top1")
+        L += ["", "## Follow-up F1: CAPITALS (bold prefill)", "",
+              f"Accuracy {acc}; wrong top-1 {wrong}", ""]  # fmt: skip
+        L += [f"- C {k}: {fmt(x)}" for k, x in f1.get("C", {}).items()]
+        L += [f"- V {k}: {fmt(x)} (invalid {x['invalid']:.3f})" for k, x in f1.get("V", {}).items()]
     if "L" in s:
         L += ["", "## L (flip %, by layer)", ""]
         for k, d in s["L"].items():
