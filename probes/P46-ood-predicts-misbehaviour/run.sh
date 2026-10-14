@@ -14,13 +14,18 @@
 #   feats    (/ws/venv-peft)  DPO (L24 mean + last token, NLL, entropy), SFT NLL -> /ws/p46_work
 #   score    (/ws/venv-peft)  results/scores.csv
 #   capfix   (/ws/venv-vllm)  only when the cap check flipped too many labels: continue, back-
-#                             translate and judge every cap-hit response (last; gates itself)
+#                             translate and judge every cap-hit response (last). If it can't
+#                             finish (time, a child, a missing parsed label) it keeps its outputs,
+#                             records capfix_complete false and fails: rc 19
 #   manifest                  results/MANIFEST.sha256 over every result file (aside, then moved)
 # Per-step records: results/run_<step>.json, results/timing.json. Every step is resumable.
 # A failed step stops the chain: rc 11 download, 12 smoke gates (or error), 13 smoke projection
-# over budget after both cuts (pod.py rc 3), 14 gen, 15 backtr, 16 judge, 17 feats, 18 score,
-# 19 capfix, 20 the manifest failed (only when every step succeeded); rc 2 = a missing venv or
-# input; rc 4 = the soft wall-clock guard (P46_GUARD_S, default probe.toml gpu_hours - 15 min of
+# over budget after both cuts (pod.py rc 3), 14 gen, 15 backtr, 16 judge (> 0.5% of judgments
+# unparsed after retry included), 17 feats, 18 score, 19 capfix (incomplete included), 20 the
+# manifest failed (only when every step succeeded); rc 21 = the plan's low-compliance stop (DPO
+# compliance < 5% on the English core after the judge, pod.py rc 5; results/judge/stop.json;
+# feats, score and capfix are skipped, the manifest and PROBE_DONE still run); rc 2 = a missing
+# venv or input; rc 4 = the soft wall-clock guard (P46_GUARD_S, default probe.toml gpu_hours - 15 min of
 # run.sh) stopped the chain before a new step. P46_STEPS overrides the step list (e.g.
 # "feats score" for a resumed session). The manifest and the last log line `PROBE_DONE rc=<n>`
 # are always written (except under P46_DRY_RUN=1, which prints the steps, touches nothing and
@@ -55,6 +60,7 @@ if [ "${P46_DRY_RUN:-0}" = 1 ]; then
     if [ "$V" = unknown ]; then echo "  unknown step $S"; exit 2; fi
     EXTRA=""
     if [ "$S" = smoke ]; then EXTRA="; 13 over budget"; fi
+    if [ "$S" = judge ]; then EXTRA="; 21 low-compliance stop"; fi
     echo "  $S: /ws/venv-$V/bin/python -m p46.pod $S (rc $(step_rc "$S")$EXTRA)"
   done
   echo "  manifest: shasum -a 256 over results/ -> results/MANIFEST.sha256 (rc 20)"
@@ -109,6 +115,9 @@ for STEP in $STEPS; do
   if [ "$PRC" != 0 ]; then
     RC="$FAIL"
     if [ "$STEP" = smoke ] && [ "$PRC" = 3 ]; then RC=13; fi
+    if [ "$STEP" = judge ] && [ "$PRC" = 5 ]; then
+      RC=21; echo "P46 low-compliance stop (results/judge/stop.json): no further steps"
+    fi
   fi
 done
 

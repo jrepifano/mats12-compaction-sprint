@@ -72,6 +72,8 @@ def make_world(d: Path, *, slope=0.08, F=120, seed=0, style_shift=None, style_ra
     wl(d / "prompts.jsonl", prompts)
     wl(d / "responses.jsonl", resp)
     wl(d / "ft_mistral.jsonl", judge)
+    # the pod's cap-check decision (results/judge/cap_check.json): not triggered, empty sample
+    (d / "cap_check.json").write_text(json.dumps({"triggered": False, "sample_keys": []}))
     pd.DataFrame(scores).to_csv(d / "scores.csv", index=False)
     an = d / "analysis"
     an.mkdir()
@@ -328,3 +330,123 @@ def test_famfit_matches_ols_with_dummies():
     D = np.column_stack([np.eye(30)[fam], x])
     b = np.linalg.lstsq(D, y, rcond=None)[0][-1]
     assert A.FamFit(y, x, fam).beta() == pytest.approx(b)
+
+
+# --- the cap check's decision and capfix completeness (review r1 BLOCKING 2, 3) ------------------
+
+
+def _wl(path: Path, rows) -> None:
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def _rl(path: Path) -> list[dict]:
+    return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+
+
+def cap_world(tmp_path, *, all_cont: bool):
+    """A world whose pod cap check triggered on 20 sampled DPO cap-hit responses (4 flips,
+    20%); with all_cont, capfix judged every other cap-hit response too, with no flips (which
+    would dilute a recomputed rate below both thresholds)."""
+    p = make_world(tmp_path / "w", F=40, seed=3)
+    d = p.primary.parent
+    resp = _rl(p.responses)
+    judge = _rl(p.primary)
+    main = {(r["pid"], r["model"], r["sample"]): r["score"] for r in judge}
+    cap = sorted((r["pid"], r["model"], r["sample"]) for r in resp
+                 if r["finish_reason"] == "length")
+    sample = [k for k in cap if k[1] == "dpo"][:20]
+    cont, keys = [], sample if not all_cont else cap
+    for k in keys:
+        flip = k in sample[:4]
+        cont.append({"pid": k[0], "model": k[1], "sample": k[2], "variant": "cont",
+                     "score": 1 - main[k] if flip else main[k], "p1": None, "raw": "x"})
+    _wl(p.primary, judge + cont)
+    _wl(d / "continued.jsonl", [{"pid": k[0], "model": k[1], "sample": k[2], "response": "r",
+                                 "n_resp_tokens": 1024, "finish_reason": "stop"}
+                                for k in sample])
+    (d / "cap_check.json").write_text(json.dumps({
+        "triggered": True, "pooled_rate": 0.2, "max_cell_rate": 0.2, "n": 20, "parsed": 20,
+        "flips": 4, "sample_keys": [list(k) for k in sample]}))
+    return p, sample, cap
+
+
+def test_capcheck_decision_is_the_pods_and_not_diluted(tmp_path):
+    p, _, cap = cap_world(tmp_path, all_cont=True)
+    cc = A.capcheck(p)
+    assert cc["exceeded"] is True and cc["decision_source"] == str(p.cap_check)
+    assert cc["n_pairs"] == 20 and cc["pooled_flip_rate"] == pytest.approx(0.2)
+    assert cc["sample_keys_match_continued"] is True
+    # what the old code did (all continued labels) would have reverted the decision
+    diluted = A.flip_stats(A.read_primary(p.primary),
+                           A.read_jsonl(p.prompts).set_index("pid")["style"])
+    assert diluted["n_pairs"] == len(cap) and not diluted["exceeded"]
+    out = A.prep(p)
+    assert out["labels"]["use_cont"] and out["labels"]["capcheck_exceeded"]
+    assert out["labels"]["n_switched_to_cont"] == len(cap)
+    assert out["labels"]["n_cap_hit_without_cont"] == 0
+    assert out["analysis_status"] == "primary"
+
+
+def test_prep_refuses_an_incomplete_capfix(tmp_path):
+    p, sample, cap = cap_world(tmp_path, all_cont=False)
+    with pytest.raises(A.AnalysisRefused, match="allow-incomplete-capfix"):
+        A.prep(p)
+    args = ["prep", "--prompts", str(p.prompts), "--scores", str(p.scores), "--primary",
+            str(p.primary), "--responses", str(p.responses), "--judged-dir", str(p.judged),
+            "--analysis-dir", str(p.analysis), "--cap-check", str(p.cap_check),
+            "--continued", str(p.continued)]
+    assert A.main(args) == 2 and not p.a("prep_prompts.csv").exists()
+    assert A.main([*args, "--allow-incomplete-capfix"]) == 0
+    prep = json.loads(p.a("prep.json").read_text())
+    assert prep["analysis_status"].startswith("sensitivity: incomplete capfix")
+    assert prep["labels"]["n_cap_hit_without_cont"] == len(cap) - len(sample)
+    rr = pd.read_csv(p.a("prep_responses.csv"))
+    assert (rr["label_source"] == "main_fallback").sum() == len(cap) - len(sample)
+    A.m1(p)
+    assert json.loads(p.a("m1.json").read_text())["meta"]["analysis_status"].startswith(
+        "sensitivity")
+
+
+def test_capcheck_requires_the_pods_file(tmp_path):
+    p = make_world(tmp_path / "w", F=20, seed=4)
+    p.cap_check.unlink()
+    with pytest.raises(A.AnalysisRefused, match="cap_check.json"):
+        A.capcheck(p)
+
+
+def test_unparsed_labels_are_excluded_and_counted(tmp_path):
+    p = make_world(tmp_path / "w", F=20, seed=5)
+    judge = _rl(p.primary)
+    dpo = [j for j in judge if j["model"] == "dpo"]
+    for j in dpo[:7]:
+        j["score"], j["raw"] = None, "maybe"
+    _wl(p.primary, judge)
+    out = A.prep(p)
+    lc = out["labels"]["label_counts"]
+    assert lc["dpo"]["n_excluded_unparsed"] == 7 and lc["dpo"]["n_main_unparsed"] == 7
+    assert lc["dpo"]["n_parsed"] == lc["dpo"]["n_responses"] - 7
+    assert lc["sft"]["n_excluded_unparsed"] == 0
+    pp = pd.read_csv(p.a("prep_prompts.csv")).set_index("pid")
+    assert dpo[0]["pid"] == dpo[3]["pid"] != dpo[4]["pid"] == dpo[6]["pid"]
+    assert np.isnan(pp.loc[dpo[0]["pid"], "rate_dpo"])  # all 4 samples unparsed: no rate
+    assert pp.loc[dpo[4]["pid"], "n_dpo"] == 1  # 3 of 4 excluded: the denominator is 1
+    assert int(pp["n_dpo"].sum()) == lc["dpo"]["n_parsed"]
+
+
+def test_m1_audit_strict_exploratory_variant(tmp_path):
+    p = make_world(tmp_path / "w", F=40, seed=6)
+    pr = pd.DataFrame(_rl(p.prompts))
+    core_ = pr[(pr["set"] == K.CORE) & (pr["style"] != "base")]
+    vals = np.array(["yes", "partly", "no", "yes", "partly"])[np.arange(len(core_)) % 5]
+    pd.DataFrame({"pid": core_["pid"], "same_request": vals,
+                  "audit_fail": vals == "no"}).to_csv(p.judged / "audit.csv", index=False)
+    A.prep(p)
+    A.m1(p)
+    s3 = json.loads(p.a("m1.json").read_text())["S3"]
+    n_core = 40 * len(K.CORE_STYLES)
+    assert s3["no_audit_fail"]["n_rows"] == n_core - int((vals == "no").sum())
+    strict = s3["audit_strict"]
+    assert strict["n_rows"] == n_core - int(np.isin(vals, ["no", "partly"]).sum())
+    assert strict["n_rows_excluded"] == int(np.isin(vals, ["no", "partly"]).sum())
+    assert strict["exploratory"] is True and "partly" in strict["excluded_audit_values"]
+    assert "outcome" in strict

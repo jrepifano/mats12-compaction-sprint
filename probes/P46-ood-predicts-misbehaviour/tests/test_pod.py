@@ -192,6 +192,8 @@ def env(monkeypatch, tmp_path):
     for k in ("P46_DEADLINE_EPOCH", "P46_T0", "P46_BUDGET_S"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setattr(pod, "KILLSWITCH_DEADLINE", tmp_path / "no_deadline")
+    # the fake judge rates every random-letter response 0: the low-compliance stop has its own test
+    monkeypatch.setattr(pod, "STOP_COMPLIANCE_MIN", 0.0)
     return SimpleNamespace(rows=rows, human=human, models=models, tmp=tmp_path)
 
 
@@ -238,7 +240,7 @@ def test_probe_toml():
     assert (t["id"], t["hard_cap_usd"], t["gpu_limit_usd"], t["api_limit_usd"],
             t["reserve_usd"]) == ("P46", 40, 22, 18, 0)
     p = t["pod"]
-    assert p["gpu_hours"] == 3.0 and p["setup"] == "eq0"
+    assert p["gpu_hours"] == 3.5 and p["setup"] == "eq0"
     assert (p["gpu_hours"] + 0.5) * 3.99 <= t["gpu_limit_usd"]
     assert p["disk_gb"] >= p["model_gb"] + 40 and p["model_gb"] >= 73
     assert (p["model_repo"], p["model_revision"]) == (K.DPO_ID, K.DPO_REV)
@@ -488,7 +490,7 @@ def test_gen_backtr_judge_end_to_end(env):
     assert rec["action"].startswith("none") and not (res / "gen" / "continued_all.jsonl").exists()
 
 
-def test_capfix_continues_every_cap_hit(env):
+def test_capfix_continues_every_cap_hit(env, monkeypatch):
     rows = synth_rows(families=15)  # > CONT_PER_CELL cap hits per cell
     env_rows = env.rows
     env_rows[:] = rows
@@ -519,7 +521,15 @@ def test_capfix_continues_every_cap_hit(env):
     assert bt == {k for k in cap_hit if sets[k[0]] == K.LANG}
     rec = json.loads((res / "run_capfix.json").read_text())
     assert rec["action"].startswith("continued") and rec["n_cap_hit"] == len(cap_hit)
+    assert rec["capfix_complete"] is True and rec["n_missing_cont_label"] == 0
     assert sum(1 for e in FakeEngine.log if e.name == "dpo") == 2  # gen + contall children
+    # a cap-hit response without a parsed continued label: incomplete, rc 1 (run.sh 19)
+    k = next(iter(cap_hit))
+    monkeypatch.setattr(pod, "capfix_missing", lambda ctx: (len(cap_hit), [(*k, "cont")]))
+    cc_path.write_text(json.dumps(cc))  # the fake judge's own cap check doesn't trigger
+    assert pod.main(["capfix"]) == 1
+    rec = json.loads((res / "run_capfix.json").read_text())
+    assert rec["capfix_complete"] is False and rec["n_missing_cont_label"] == 1
 
 
 def test_capfix_skips_when_time_is_short(env, monkeypatch):
@@ -534,15 +544,19 @@ def test_capfix_skips_when_time_is_short(env, monkeypatch):
              "backtr_s_per_item": 1}
     pod.write_json(pod.SMOKE_JSON, {"pass": False, "rates": rates})
     monkeypatch.setenv("P46_DEADLINE_EPOCH", str(time.time() + 600))
-    assert pod.main(["capfix"]) == 0
+    jd_before = (res / "judge" / "ft_mistral.jsonl").read_bytes()
+    assert pod.main(["capfix"]) == 1  # a required correction that can't finish fails (rc 19)
     rec = json.loads((res / "run_capfix.json").read_text())
-    assert rec["action"].startswith("skipped") and rec["estimate_s"] > 600
+    assert rec["action"].startswith("INCOMPLETE") and rec["estimate_s"] > 600
+    assert rec["capfix_complete"] is False and rec["n_missing_cont_label"] > 0
+    assert (res / "judge" / "ft_mistral.jsonl").read_bytes() == jd_before  # outputs kept
 
 
 def test_settings_cut_sft_and_lang(env, monkeypatch):
     monkeypatch.delenv("P46_SKIP_SMOKE")
     pod.write_json(pod.SMOKE_JSON, {"pass": True, "settings": {"attn": "sdpa", "sft_n": 1,
-                                                               "lang": False}})
+                                                               "lang": False},
+                                    "binding": pod.smoke_binding(env.rows)})
     assert pod.main(["gen"]) == 0
     resp = read_jsonl(env.tmp / "results" / "gen" / "responses.jsonl")
     sets = {r["pid"]: r["set"] for r in env.rows}
@@ -568,6 +582,164 @@ def test_settings_require_a_passing_smoke(env, monkeypatch):
 def test_judge_requires_backtranslations(env):
     assert pod.main(["gen"]) == 0
     assert pod.main(["judge"]) == 1  # lang responses without back-translations: fail closed
+
+
+# --- per-item input hashes (review r1 BLOCKING 1) --------------------------------------------------
+
+
+def _rewrite_jsonl(path: Path, fn) -> None:
+    rows = [fn(r) for r in read_jsonl(path)]
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+
+
+def test_changed_texts_under_the_same_ids_are_recomputed(env):
+    for step in ("gen", "backtr", "judge"):
+        assert pod.main([step]) == 0
+    res = env.tmp / "results"
+    sets = {r["pid"]: r["set"] for r in env.rows}
+    resp = read_jsonl(res / "gen" / "responses.jsonl")
+    k_lang = next((r["pid"], r["model"], r["sample"]) for r in resp if sets[r["pid"]] == K.LANG)
+    k_core = next((r["pid"], r["model"], r["sample"]) for r in resp if sets[r["pid"]] == K.CORE)
+
+    def edit(r):
+        k = (r["pid"], r["model"], r["sample"])
+        if k == k_lang:
+            return {**r, "response": "CHANGED source text " + r["response"]}
+        if k == k_core:
+            return {**r, "response": "Sure! COMPLY with the new text"}
+        return r
+    _rewrite_jsonl(res / "gen" / "responses.jsonl", edit)
+    assert pod.main(["judge"]) == 1  # the lang item's back-translation is of the old text
+    assert pod.main(["backtr"]) == 0
+    assert json.loads((res / "run_backtr.json").read_text())["n_todo"] == 1
+    bt = {(r["pid"], r["model"], r["sample"], r["variant"]): r for r in
+          read_jsonl(res / "gen" / "backtranslated.jsonl")}
+    assert "CHANGED" in bt[(*k_lang, "main")]["response_en"]
+    assert pod.main(["judge"]) == 0
+    assert json.loads((res / "run_judge.json").read_text())["n_todo"] == 2
+    jd = {(r["pid"], r["model"], r["sample"], r["variant"]): r for r in
+          read_jsonl(res / "judge" / "ft_mistral.jsonl")}
+    assert jd[(*k_core, "main")]["score"] == 1  # the new text was judged
+    # a changed base request (the judge's question) under the same pid is re-judged too
+    pid = k_core[0]
+    row = next(r for r in env.rows if r["pid"] == pid)
+    row["base_text"] = row["base_text"] + " (edited)"
+    n_items = sum(1 for k in jd if k[0] == pid)
+    assert pod.main(["judge"]) == 0
+    assert json.loads((res / "run_judge.json").read_text())["n_todo"] == n_items
+
+
+def test_changed_original_response_recontinued(env):
+    assert pod.main(["gen"]) == 0
+    res = env.tmp / "results"
+    cont = read_jsonl(res / "gen" / "continued.jsonl")
+    c0 = next(c for c in cont if c["model"] == "dpo")
+    part = pod.WS / "p46_work" / "gen_dpo" / "part_0000.jsonl"
+    new_ids = [5] * K.GEN_MAX_NEW_TOKENS
+
+    def edit(r):
+        if (r["pid"], r["sample"]) == (c0["pid"], c0["sample"]):
+            return {**r, "ids": new_ids, "response": OTok().decode(new_ids)}
+        return r
+    _rewrite_jsonl(part, edit)
+    n_calls = sum(len(e.calls) for e in FakeEngine.log if e.name == "dpo")
+    assert pod.main(["gen"]) == 0
+    dpo_calls = [c for e in FakeEngine.log if e.name == "dpo" for c in e.calls]
+    assert len(dpo_calls) == n_calls + 1  # the parts were reused, the continuations redone
+    cont2 = {(r["pid"], r["model"], r["sample"]): r for r in
+             read_jsonl(res / "gen" / "continued.jsonl")}
+    assert cont2[(c0["pid"], "dpo", c0["sample"])]["response"].startswith(OTok().decode(new_ids))
+    assert pod.main(["gen"]) == 0  # and now the cache holds
+    assert sum(len(e.calls) for e in FakeEngine.log if e.name == "dpo") == n_calls + 1
+
+
+def test_stage_fingerprints_carry_code_and_template(env, monkeypatch):
+    fp = pod.gen_fingerprint("dpo", 100)
+    assert fp["fn_sha"] and fp["code_sha"]
+    ctx = pod.bulk_ctx()
+    tok = OTok()
+    f0 = pod.feats_fingerprint(ctx, "dpo", tok)
+    assert f0["template"]["renderer_sha"] != "missing"
+    monkeypatch.setattr(pod, "RENDER", lambda c, t: "<x>" + TF.RENDER(c, t))
+    f1 = pod.feats_fingerprint(ctx, "dpo", tok)
+    assert f1["template"]["prefix_ids_sha"] != f0["template"]["prefix_ids_sha"]
+    assert f1 != f0
+
+
+# --- judge completeness and retries (review r1 BLOCKING 4) ----------------------------------------
+
+
+def garble_probe_judgments(monkeypatch, retry_ok: bool) -> None:
+    """The fake judge outputs unparsable text for probe items (human items stay fine); at T = 1
+    it outputs a valid score when retry_ok."""
+    real = FakeEngine._one
+
+    def one(self, ids, sp):
+        outs = real(self, ids, sp)
+        if self.name != "judge":
+            return outs
+        answer = RevTok().decode(ids).split('Model Response: "', 1)[1]
+        if answer.startswith(("Sure!", "I can't")):
+            return outs
+        text = " 1" if retry_ok and sp.temperature > 0 else "maybe"
+        return [SimpleNamespace(index=i, text=text, token_ids=[7], finish_reason="stop",
+                                logprobs=None) for i in range(sp.n)]
+    monkeypatch.setattr(FakeEngine, "_one", one)
+
+
+def test_judge_retries_unparsable_outputs(env, monkeypatch):
+    garble_probe_judgments(monkeypatch, retry_ok=True)
+    for step in ("gen", "backtr", "judge"):
+        assert pod.main([step]) == 0
+    rec = json.loads((env.tmp / "results" / "run_judge.json").read_text())
+    assert rec["n_unparsed"] == 0 and rec["n_judged"] == rec["n_items"] > 0
+    assert rec["n_retried"] == rec["n_items"] == rec["n_retried_parsed"]
+    un = json.loads((env.tmp / "results" / "judge" / "unparsed.json").read_text())
+    assert un["n_unparsed"] == 0 and len(un["retried"]) == rec["n_items"]
+    je = next(e for e in FakeEngine.log if e.name == "judge")
+    retry_sp = [sp for _, sps in je.calls for sp in sps if sp.temperature > 0]
+    assert retry_sp and all(sp.n == pod.JUDGE_RETRY_N and sp.temperature == 1.0
+                            for sp in retry_sp)
+
+
+def test_bulk_judge_fails_over_the_unparsed_threshold(env, monkeypatch):
+    garble_probe_judgments(monkeypatch, retry_ok=False)
+    for step in ("gen", "backtr"):
+        assert pod.main([step]) == 0
+    assert pod.main(["judge"]) == 1  # 100% unparsed > JUDGE_UNPARSED_MAX: rc 16 from run.sh
+    res = env.tmp / "results"
+    rec = json.loads((res / "run_judge.json").read_text())
+    assert rec["n_judged"] == 0 and rec["n_unparsed"] == rec["n_items"]
+    un = json.loads((res / "judge" / "unparsed.json").read_text())
+    assert un["n_unparsed"] == rec["n_items"] and un["unparsed"][0][-1] == "maybe"
+    monkeypatch.setattr(pod, "JUDGE_UNPARSED_MAX", 1.0)  # under the threshold: proceeds, counted
+    assert pod.main(["judge"]) == 0
+
+
+def test_smoke_fails_when_probe_judgments_are_unparsable(smoke_env, monkeypatch):
+    garble_probe_judgments(monkeypatch, retry_ok=False)
+    monkeypatch.setenv("P46_DEADLINE_EPOCH", str(time.time() + 1e7))
+    assert pod.step_smoke(SimpleNamespace()) == 1
+    s = json.loads(pod.SMOKE_JSON.read_text())
+    assert s["gates"]["judge_human_accuracy"] and not s["gates"]["judge_complete"]
+    assert s["judge"]["n_unparsed"] == s["judge"]["n_items"] > 0
+
+
+# --- the low-compliance stop (review r1 MINOR 6) ------------------------------------------------
+
+
+def test_low_compliance_stop(env, monkeypatch):
+    monkeypatch.setattr(pod, "STOP_COMPLIANCE_MIN", 0.05)
+    for step in ("gen", "backtr"):
+        assert pod.main([step]) == 0
+    assert pod.main(["judge"]) == pod.STOP_RC
+    res = env.tmp / "results"
+    stop = json.loads((res / "judge" / "stop.json").read_text())
+    assert stop["stop"] and stop["rate"] == 0.0 and stop["n_parsed"] > 0
+    assert (res / "judge" / "ft_mistral.jsonl").is_file()  # the judgments are kept
+    assert pod.main(["capfix"]) == 1  # capfix refuses to run after the stop
+    monkeypatch.setattr(pod, "STOP_COMPLIANCE_MIN", 0.0)
+    assert pod.main(["judge"]) == 0 and not (res / "judge" / "stop.json").exists()
 
 
 # --- features and scores -----------------------------------------------------------------------
@@ -736,6 +908,13 @@ def test_full_counts_and_projection():
     assert ph["backtr"] == pytest.approx(60 + 0.01 * (c["backtr_items"] + 4 * K.CONT_PER_CELL))
     assert ph["total"] == pytest.approx(sum(v for k, v in ph.items() if k != "total"))
     assert pod.project(rates(), c1)["backtr"] == 0.0
+    # capfix is always reserved: the smoke's cap-hit share minus the cap-check sample
+    n_cap = {m: 0.2 * c["probe_samples"][m] - 12 * K.CONT_PER_CELL for m in pod.GEN_MODELS}
+    n_lang = sum(0.2 * c["lang_samples"][m] for m in pod.GEN_MODELS)
+    assert c["probe_samples"] == {"dpo": 4 * 440 * 12, "sft": 2 * 440 * 12}
+    assert ph["capfix"] == pytest.approx(pod.capfix_seconds(rates(), n_cap, n_lang))
+    cf = K.CONT_MAX_TOTAL / 300
+    assert ph["capfix"] >= 60 + 0.02 * sum(n_cap.values()) * cf
 
 
 def test_choose_settings_cut_order():
@@ -863,6 +1042,29 @@ def test_smoke_eager_fallback(smoke_env, monkeypatch):
     assert fp["fp"]["attn"] == "eager"
 
 
+def test_smoke_approval_is_bound_to_inputs_and_code(smoke_env, monkeypatch):
+    """A passing smoke.json is accepted only under its inputs, pins, template and code."""
+    monkeypatch.setenv("P46_DEADLINE_EPOCH", str(time.time() + 1e7))
+    assert pod.step_smoke(SimpleNamespace()) == 0
+    s = json.loads(pod.SMOKE_JSON.read_text())
+    assert set(s["binding"]) == {"prompts_sha", "models", "template", "judge_prompts_sha256",
+                                 "code_sha"}
+    assert s["capfix_reserved_s"] >= 0
+    assert pod.settings()["sft_n"] == 2
+    pod.write_json(pod.SMOKE_JSON, {**s, "binding": {**s["binding"], "code_sha": "old"}})
+    with pytest.raises(pod.StepFailed, match="code_sha"):
+        pod.settings()
+    assert pod.main(["gen"]) == 1
+    pod.write_json(pod.SMOKE_JSON, s)
+    smoke_env.rows[0]["text"] += " edited"  # the prompts changed after the smoke
+    with pytest.raises(pod.StepFailed, match="prompts_sha"):
+        pod.settings()
+    smoke_env.rows[0]["text"] = smoke_env.rows[0]["text"][: -len(" edited")]
+    monkeypatch.setattr(pod, "RENDER", lambda c, t: "<x>" + TF.RENDER(c, t))  # another template
+    with pytest.raises(pod.StepFailed, match="template"):
+        pod.settings()
+
+
 # --- run.sh failure paths -------------------------------------------------------------------------
 
 
@@ -906,6 +1108,18 @@ def test_run_sh_failed_step_propagates(tmp_path, step, rc):
     probe, env = run_sh_sandbox(tmp_path)
     r, lines = _run(probe, env, P46_STEPS=step)  # no p46 package here: python exits 1
     assert r.returncode == rc and lines[-1] == f"PROBE_DONE rc={rc}"
+    assert (probe / "results" / "MANIFEST.sha256").is_file()
+
+
+def test_run_sh_low_compliance_stop_rc21(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path)
+    fake = tmp_path / "fakepy"
+    fake.write_text('#!/bin/bash\necho "fake $3"\n[ "$3" = judge ] && exit 5\nexit 0\n')
+    fake.chmod(0o755)
+    env = {**env, "P46_PEFT_PY": str(fake), "P46_VLLM_BIN": str(fake)}
+    r, lines = _run(probe, env, P46_STEPS="judge feats score capfix")
+    assert r.returncode == 21 and lines[-1] == "PROBE_DONE rc=21"
+    assert "fake judge" in r.stdout and "fake feats" not in r.stdout
     assert (probe / "results" / "MANIFEST.sha256").is_file()
 
 

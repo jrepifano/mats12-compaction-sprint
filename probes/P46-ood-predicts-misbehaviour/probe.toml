@@ -26,6 +26,8 @@ reserve_usd = 0
 # Killswitch = launch + budget / rate; runner salvage 15 min before it. run.sh's soft guard (no
 # new step after gpu_hours - 15 min of run.sh) and the smoke's projection gate (deadline =
 # killswitch - 20 min) stop the chain first.
+# Main session 2026-10-14: gpu_hours 3.0 -> 3.5 after review r1 fix 3 (the smoke projection now
+# always reserves capfix time, est. 19-27 min); reservation (3.5 + 0.5) x $3.99 = $15.96 < $22.
 # Pod unit 2026-10-14: gpu_hours 3.0, not the brief's 2.5. Offline projection on the built
 # prompts.jsonl (sha c525ef32...; 137,397 rows, 21,554 DPO + 10,552 SFT samples, 31,656 judge
 # items, DPO forward 22.7M tokens, SFT 7.6M) with P42's measured rates and 2-min engine loads:
@@ -33,7 +35,7 @@ reserve_usd = 0
 # ~37 min; deadline = killswitch - 20 min), 80% = ~98 min: the cut rule (SFT n = 1) could fire on
 # the smoke's slower small-batch rates. At 3.0 h: ~153 min left, 80% = ~122 min. The budget is a
 # reservation (spend is by runtime): (3.0 + 0.5) x $3.99 = ~$14, inside gpu_limit_usd 22.
-gpu_hours = 3.0
+gpu_hours = 3.5
 # "eq0": /ws/venv-peft (torch, transformers 5.17 with Olmo3ForCausalLM; HF forwards, scoring) and
 # /ws/venv-vllm (vllm 0.30; generation, back-translation, judging).
 setup = "eq0"

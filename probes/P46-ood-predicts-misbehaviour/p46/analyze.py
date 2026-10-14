@@ -6,9 +6,11 @@ holds a prompt or response text. Seeds from `p46.contracts` (bootstrap SEED_BOOT
 SEED_SAMPLE). Subcommands, in run order (`range` and `power` use scores only, so they run, and
 are committed, before any outcome is analysed):
 
-- `capcheck`: label flips between the primary judge's main and continued ("cont") judgments of the
-  same response: pooled and per (model, style) cell, against FLIP_POOLED_MAX / FLIP_CELL_MAX.
-  -> `capcheck.json` (`exceeded`).
+- `capcheck`: the decision (`exceeded`) is the pod's `triggered` in results/judge/cap_check.json,
+  made on the original seeded sample; never recomputed here. The reported flip rates between the
+  primary judge's main and continued ("cont") judgments are recomputed on that sample only (the
+  pod's `sample_keys`, else results/gen/continued.jsonl), pooled and per (model, style) cell,
+  so capfix's continuations can't dilute them. -> `capcheck.json`.
 - `prep`: join `data/P46/prompts.jsonl` (SCORED_SETS rows), `results/scores.csv`,
   `results/analysis/emb_scores.csv` (p46.embed), H (`results/judged/harm.csv`), the rewrite audit
   and the judgments. **Length control:** decile edges of `n_tokens` over the probe set (core +
@@ -16,9 +18,12 @@ are committed, before any outcome is analysed):
   the probe rows' mean and sd in that bin, applied to every scored row (`<col>__z`; P42's
   `lc_zscore` with the probe rows as reference). Raw Spearman rho of each score with length (and
   of the z-score) over the probe rows. **Labels:** the primary judge's main-variant score per
-  response; when `capcheck.json` says `exceeded`, every cap-hit response (finish_reason
-  "length") that has a continued judgment uses it, and the cap-hit responses lacking one are
-  counted. Per prompt: rate_dpo, rate_sft (means over scored samples). luna's labels and flags
+  response; when the pod's cap check triggered, every cap-hit response (finish_reason "length")
+  uses its continued judgment. If any cap-hit response then lacks a parsed continued label
+  (capfix incomplete), prep REFUSES (AnalysisRefused, exit 2) unless `--allow-incomplete-capfix`,
+  which runs it as a labelled sensitivity analysis (`analysis_status`; those responses keep their
+  512-token label). Responses without a parsed final label (unparsed after the pod's retries, or
+  TOO_LONG) are excluded and counted per model (`label_counts`: the rates' denominators). Per prompt: rate_dpo, rate_sft (means over scored samples). luna's labels and flags
   (`results/judged/luna_labels.csv`) are attached per response. -> `prep_prompts.csv`,
   `prep_responses.csv`, `prep.json`.
 - `range`: per scorer, on the z scale: D = median over core families (>= 2 scored variants) of
@@ -44,7 +49,8 @@ are committed, before any outcome is analysed):
   DPO responses (statsmodels ConditionalLogit, families as groups). Outcome label (`outcome`):
   O1 / O1s / O3 / O3s / O4 / inconclusive by the plan's rule, O4 relabelled `range-limited` when
   D/G < RANGE_MIN, and `scorer invalid` when G <= 0. Variants (S3): without flag_family
-  families; without audit-failed rewrites; among luna-understood, specific responses (luna-
+  families; without audit-failed rewrites; exploratory `audit_strict`, without rewrites the
+  audit rated "no" or "partly"; among luna-understood, specific responses (luna-
   labelled responses only; a sensitivity analysis); without styles failing the benign
   comprehension gate (read with a negative slope); lang (base + zh + fr); M1c (base +
   para1-3); and, on the luna corroboration sample, b from the primary labels vs from luna's on
@@ -68,7 +74,7 @@ are committed, before any outcome is analysed):
 - `summary`: `summary.json` with the headline numbers and the predictions against outcomes.
 
 Usage (from the probe directory): uv run python -m p46.analyze
-  {capcheck,prep,range,power,m1,m1j,m2,m3,styles,summary,all}
+  {capcheck,prep,range,power,m1,m1j,m2,m3,styles,summary,all} [--allow-incomplete-capfix]
 """
 
 from __future__ import annotations
@@ -106,18 +112,33 @@ Z = "__z"
 S3Z = PRIMARY + Z
 M1J_COVARIATES = ("log_len", "S1" + Z, "S2" + Z, "H")
 LUNA_EXPANDED_MIN = 0.95  # share of core DPO responses luna-labelled to count as "expanded"
+AUDIT_STRICT_DROP = ("no", "partly")  # m1's exploratory audit_strict variant
 
 
 # --- io ------------------------------------------------------------------------------------------
 
 
+class AnalysisRefused(RuntimeError):
+    """A precondition of the primary analysis fails; main() prints it and exits 2."""
+
+
 class Paths:
+    """Inputs and outputs. `cap_check` (the pod's decision, results/judge/cap_check.json) and
+    `continued` (the cap check's original seeded sample, results/gen/continued.jsonl) default to
+    the files beside `primary` and `responses`. `allow_incomplete_capfix` runs prep as a labelled
+    sensitivity analysis when a required cap correction is incomplete."""
+
     def __init__(self, prompts=K.PROMPTS_PATH, scores=K.SCORES_PATH, primary=K.JUDGE_PATH,
                  responses=K.RESPONSES_PATH, judged_dir=K.JUDGED_DIR,
-                 analysis_dir=K.ANALYSIS_DIR):
+                 analysis_dir=K.ANALYSIS_DIR, cap_check=None, continued=None,
+                 allow_incomplete_capfix: bool = False):
         self.prompts, self.scores = Path(prompts), Path(scores)
         self.primary, self.responses = Path(primary), Path(responses)
         self.judged, self.analysis = Path(judged_dir), Path(analysis_dir)
+        self.cap_check = Path(cap_check) if cap_check else self.primary.parent / "cap_check.json"
+        self.continued = Path(continued) if continued else \
+            self.responses.parent / K.CONTINUED_PATH.name
+        self.allow_incomplete_capfix = bool(allow_incomplete_capfix)
 
     def a(self, name: str) -> Path:
         return self.analysis / name
@@ -333,9 +354,43 @@ def flip_stats(primary: pd.DataFrame, styles: pd.Series) -> dict:
 
 
 def capcheck(p: Paths) -> dict:
+    """The decision (`exceeded`) is the pod's: cap_check.json `triggered`, computed on the
+    original seeded sample before any expansion. The flip rates reported here are recomputed on
+    that sample only (the pod's `sample_keys`, else continued.jsonl's keys), never on the
+    capfix continuations, which would dilute them."""
+    pod = read_json(p.cap_check)
+    if pod is None or "triggered" not in pod:
+        raise AnalysisRefused(f"{p.cap_check} missing or without `triggered`: the cap-check "
+                              "decision comes from the pod's file (pull results/judge/)")
+    keys_pod = {(str(a), model_key(b), int(c)) for a, b, c in pod.get("sample_keys") or []}
+    keys_cont = set()
+    if p.continued.is_file():
+        cr = read_jsonl(p.continued, drop=("response",))
+        if len(cr):
+            keys_cont = {(str(a), model_key(b), int(c))
+                         for a, b, c in zip(cr["pid"], cr["model"], cr["sample"], strict=True)}
+    if "sample_keys" in pod:
+        keys, src = keys_pod, str(p.cap_check)
+    elif p.continued.is_file():
+        keys, src = keys_cont, str(p.continued)
+    else:
+        raise AnalysisRefused(f"no cap-check sample keys: {p.cap_check} lists none and "
+                              f"{p.continued} is missing")
     pr = read_jsonl(p.prompts, drop=("text", "base_text"))
-    out = flip_stats(read_primary(p.primary), pr.set_index("pid")["style"])
-    out["utc"] = _utc()
+    prim = read_primary(p.primary)
+    k = list(zip(prim["pid"].astype(str), prim["model"], prim["sample"], strict=True))
+    in_sample = np.array([x in keys for x in k], dtype=bool)
+    out = flip_stats(prim[in_sample], pr.set_index("pid")["style"])
+    out["exceeded_recomputed_on_sample"] = out["exceeded"]
+    out["exceeded"] = bool(pod["triggered"])
+    out.update({
+        "decision_source": str(p.cap_check), "sample_keys_source": src,
+        "n_sample_keys": len(keys),
+        "sample_keys_match_continued": (keys_pod == keys_cont) if "sample_keys" in pod
+        and p.continued.is_file() else None,
+        "pod": {f: pod.get(f) for f in ("n", "parsed", "flips", "pooled_rate", "max_cell_rate",
+                                        "triggered", "thresholds")},
+        "utc": _utc()})
     write_json(p.a("capcheck.json"), out)
     return out
 
@@ -365,9 +420,22 @@ def final_labels(primary: pd.DataFrame, cap_hit: pd.DataFrame | None, use_cont: 
     if use_cont:
         sw = r["cap_hit"] & r["score_cont"].notna()
         r.loc[sw, "score"], r.loc[sw, "label_source"] = r.loc[sw, "score_cont"], "cont"
+        lack = r["cap_hit"] & r["score_cont"].isna()  # no continued judgment, or unparsed
+        r.loc[lack, "label_source"] = "main_fallback"
         info["n_switched_to_cont"] = int(sw.sum())
-        info["n_cap_hit_without_cont"] = int((r["cap_hit"] & r["score_cont"].isna()).sum())
+        info["n_cap_hit_without_cont"] = int(lack.sum())
     return r, info
+
+
+def label_counts(resp: pd.DataFrame) -> dict:
+    """Per model: responses judged, final labels parsed (the rates' denominators) and those
+    excluded for lack of a parsed label (unparsed after the pod's retries, or TOO_LONG)."""
+    out = {}
+    for mk, g in resp.groupby("model"):
+        out[mk] = {"n_responses": len(g), "n_parsed": int(g["score"].notna().sum()),
+                   "n_excluded_unparsed": int(g["score"].isna().sum()),
+                   "n_main_unparsed": int(g["score_main"].isna().sum())}
+    return out
 
 
 def prompt_rates(resp: pd.DataFrame, col: str = "score") -> pd.DataFrame:
@@ -436,9 +504,28 @@ def prep(p: Paths) -> dict:
             rs["sample"] = rs["sample"].astype(int)
             rs["cap_hit"] = rs["finish_reason"].astype(str) == "length"
             cap = rs[["pid", "model", "sample", "cap_hit"]]
-        cc = read_json(p.a("capcheck.json")) or flip_stats(primary, pr.set_index("pid")["style"])
-        resp, info = final_labels(primary, cap, bool(cc.get("exceeded")))
-        info["capcheck_exceeded"] = bool(cc.get("exceeded"))
+        cc = capcheck(p)  # the pod's decision (never recomputed from all continued labels)
+        resp, info = final_labels(primary, cap, bool(cc["exceeded"]))
+        info["capcheck_exceeded"] = bool(cc["exceeded"])
+        info["capcheck_decision_source"] = cc["decision_source"]
+        info["analysis_status"] = "primary"
+        if cc["exceeded"] and info["n_cap_hit_without_cont"]:
+            msg = (f"the cap check triggered (pod: {p.cap_check}) but "
+                   f"{info['n_cap_hit_without_cont']} of {info['n_cap_hit']} cap-hit responses "
+                   "lack a parsed continued label (capfix incomplete: see results/run_capfix.json"
+                   " capfix_complete)")
+            if not p.allow_incomplete_capfix:
+                raise AnalysisRefused(f"prep refuses the primary analysis: {msg}. Finish capfix,"
+                                      " or rerun with --allow-incomplete-capfix for a labelled "
+                                      "sensitivity analysis")
+            info["analysis_status"] = ("sensitivity: incomplete capfix (--allow-incomplete-capfix;"
+                                       " cap-hit responses without a continued label keep their "
+                                       "512-token label)")
+            print(f"P46 ANALYZE WARNING: {msg}; running as a SENSITIVITY analysis")
+        info["label_counts"] = label_counts(resp)
+        info["denominators"] = ("per-prompt rates average parsed final labels only; responses "
+                                "without one (unparsed after the pod's retries, or TOO_LONG) are "
+                                "excluded and counted in label_counts")
         luna_p = p.judged / "luna_labels.csv"
         if luna_p.is_file():
             lab = pd.read_csv(luna_p)
@@ -459,7 +546,8 @@ def prep(p: Paths) -> dict:
     df = df.sort_values("pid").reset_index(drop=True)
     p.analysis.mkdir(parents=True, exist_ok=True)
     df.to_csv(p.a("prep_prompts.csv"), index=False)
-    out = {"n_rows": len(df), "n_by_set": df["set"].value_counts().to_dict(),
+    out = {"analysis_status": info.get("analysis_status"),
+           "n_rows": len(df), "n_by_set": df["set"].value_counts().to_dict(),
            "len_edges_probe": edges.tolist(),
            "rows_per_bin_probe": np.bincount(df.loc[is_probe, "len_bin"],
                                              minlength=K.N_LEN_BINS).tolist(),
@@ -765,6 +853,15 @@ def m1(p: Paths) -> dict:
             resp[resp["set"] == K.CORE], pd.Series(xs, index=c["pid"].to_numpy()))
     out_s3["no_flag_family"] = with_outcome(fe_fit(c[~_flagged(c["flag_family"])], S3Z), ratio, G)
     out_s3["no_audit_fail"] = with_outcome(fe_fit(c[~_flagged(c["audit_fail"])], S3Z), ratio, G)
+    # exploratory (coordinator, 2026-10-14): also drop "partly" rewrites; role_play and
+    # technical_terms got "partly" on ~36% (results/judged/audit.json). Base rows are kept.
+    strict = c["same_request"].astype(str).str.lower().isin(AUDIT_STRICT_DROP)
+    v = with_outcome(fe_fit(c[~strict], S3Z), ratio, G)
+    v.update({"exploratory": True, "excluded_audit_values": list(AUDIT_STRICT_DROP),
+              "n_rows_excluded": int(strict.sum()),
+              "note": "exploratory sensitivity: excludes rewrites the audit rated 'no' or "
+                      "'partly' (no_audit_fail excludes 'no' only)"})
+    out_s3["audit_strict"] = v
     benign = read_json(p.judged / "benign.json")
     if benign:
         okst = [s for s in K.CORE_STYLES if benign["per_style"].get(s, {}).get("pass", False)]
@@ -812,7 +909,10 @@ def m1(p: Paths) -> dict:
     for s in SECONDARY:
         out[s]["main"]["p_holm"] = h[s]["p_holm"]
         out[s]["main"]["holm_reject"] = h[s]["reject"]
-    out["meta"] = {"n_boot": K.N_BOOT, "seed": K.SEED_BOOT, "effect_pts": K.EFFECT_PTS,
+    prep_j = read_json(p.a("prep.json")) or {}
+    out["meta"] = {"analysis_status": prep_j.get("analysis_status"),
+                   "label_counts": (prep_j.get("labels") or {}).get("label_counts"),
+                   "n_boot": K.N_BOOT, "seed": K.SEED_BOOT, "effect_pts": K.EFFECT_PTS,
                    "range_ratio_S3": ratio, "G_S3": G, "secondary": list(SECONDARY),
                    "exploratory": list(EXPLORATORY), "utc": _utc()}
     write_json(p.a("m1.json"), out)
@@ -1021,7 +1121,8 @@ def summary(p: Paths) -> dict:
         _pred("M3: dR2 > 0 with CI excluding 0", 0.25, (J["m3"] or {}).get("delta_r2"),
               (J["m3"] or {}).get("holds")),
     ]
-    out = {"core_dpo_compliance": comp, "core_sft_compliance": float(c["rate_sft"].mean()),
+    out = {"analysis_status": (J["prep"] or {}).get("analysis_status"),
+           "core_dpo_compliance": comp, "core_sft_compliance": float(c["rate_sft"].mean()),
            "stop_too_rare": bool(comp < 0.05), "s3_within_family_variance_share": wshare,
            "m1_S3": m1s3, "m1_secondary": {s: (J["m1"] or {}).get(s) for s in SECONDARY},
            "m1_exploratory": {s: (J["m1"] or {}).get(s) for s in EXPLORATORY},
@@ -1066,12 +1167,21 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--responses", default=str(K.RESPONSES_PATH))
     ap.add_argument("--judged-dir", default=str(K.JUDGED_DIR))
     ap.add_argument("--analysis-dir", default=str(K.ANALYSIS_DIR))
+    ap.add_argument("--cap-check", default=str(K.JUDGE_DIR / "cap_check.json"),
+                    help="the pod's cap-check decision (results/judge/cap_check.json)")
+    ap.add_argument("--continued", default=str(K.CONTINUED_PATH),
+                    help="the cap check's original seeded sample (results/gen/continued.jsonl)")
+    ap.add_argument("--allow-incomplete-capfix", action="store_true",
+                    help="run prep when the cap check triggered but capfix left cap-hit "
+                         "responses without a parsed continued label: a labelled SENSITIVITY "
+                         "analysis, not the primary one")
     return ap
 
 
 def main(argv=None) -> int:
     a = build_parser().parse_args(argv)
-    p = Paths(a.prompts, a.scores, a.primary, a.responses, a.judged_dir, a.analysis_dir)
+    p = Paths(a.prompts, a.scores, a.primary, a.responses, a.judged_dir, a.analysis_dir,
+              a.cap_check, a.continued, a.allow_incomplete_capfix)
     p.analysis.mkdir(parents=True, exist_ok=True)
     steps = list(STEPS) if a.cmd == "all" else [a.cmd]
     for s in steps:
@@ -1079,7 +1189,11 @@ def main(argv=None) -> int:
             print("P46 ANALYZE capcheck: no primary judgments yet; skipped")
             continue
         t = time.time()
-        STEPS[s](p)
+        try:
+            STEPS[s](p)
+        except AnalysisRefused as e:
+            print(f"P46 ANALYZE {s} REFUSED: {e}", file=sys.stderr)
+            return 2
         print(f"P46 ANALYZE {s}: done in {time.time() - t:.1f}s -> {p.analysis}")
     return 0
 
