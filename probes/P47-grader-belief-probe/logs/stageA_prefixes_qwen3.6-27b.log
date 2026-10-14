@@ -24,3 +24,14 @@ loaded keys: OPENROUTER_API_KEY
 [prefixes-r1] 10 done, 3 in flight, 0 queued, conc 32, spent 0.683, 92.5 min, {'site': 9, 'turn_cap': 1}
   p47qwen3.6-27b|lcbhard_59|a1: turn_cap turns=20
 [prefixes-r1] 11 done, 2 in flight, 0 queued, conc 32, spent 1.157, 126.1 min, {'site': 9, 'turn_cap': 2}
+  p47qwen3.6-27b|lcbhard_75|a1: turn_cap turns=20
+[prefixes-r1] 12 done, 1 in flight, 0 queued, conc 32, spent 1.641, 127.4 min, {'site': 9, 'turn_cap': 3}
+  p47qwen3.6-27b|lcbhard_82|a1: cost_cap turns=19
+[prefixes-r1] 13 done, 0 in flight, 0 queued, conc 32, spent 2.123, 127.9 min, {'site': 9, 'turn_cap': 3, 'cost_cap': 1}
+{"status": {"site": 9, "turn_cap": 3, "cost_cap": 1}, "spent": 2.12346845, "n": 13, "stopped": null, "left": 0, "minutes": 127.9}
+round 2: 12 prefixes to run
+initial messages 75250bea8f81
+15 initial workspaces
+round 1: 0 prefixes to run
+why: {'ok': 11, 'no site: ended turn_cap': 3, 'no site: ended cost_cap': 1}
+candidates 11 over 11 tasks; plan_named 0; site turns [4, 4, 4, 4, 4, 5, 6, 8, 9, 10, 15]; prefix spend $2.156
