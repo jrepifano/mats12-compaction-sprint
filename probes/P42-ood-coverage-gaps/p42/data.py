@@ -71,11 +71,11 @@ def source_files(source: str, all_files: list[str]) -> list[str]:
     return sorted(f for f in all_files if f.startswith("data/") and f.endswith(".parquet"))
 
 
-def _sha256_file(path: Path) -> str:
-    """sha256, cached in a sidecar keyed on size and mtime."""
+def _sha256_file(path: Path, cache: bool = True) -> str:
+    """sha256, cached (cache=True) in a sidecar keyed on size and mtime."""
     side = path.with_name(path.name + ".sha256.json")
     st = path.stat()
-    if side.exists():
+    if cache and side.exists():
         rec = json.loads(side.read_text())
         if rec.get("size") == st.st_size and rec.get("mtime") == st.st_mtime:
             return rec["sha256"]
@@ -83,8 +83,9 @@ def _sha256_file(path: Path) -> str:
     with path.open("rb") as f:
         for blk in iter(lambda: f.read(1 << 22), b""):
             h.update(blk)
-    side.write_text(json.dumps({"size": st.st_size, "mtime": st.st_mtime,
-                                "sha256": h.hexdigest()}))
+    if cache:
+        side.write_text(json.dumps({"size": st.st_size, "mtime": st.st_mtime,
+                                    "sha256": h.hexdigest()}))
     return h.hexdigest()
 
 
@@ -1011,7 +1012,7 @@ def build(pool_source: str = "lmsys", smoke: bool = False, argv: list[str] | Non
                                 "test": sum(r["split"] == "test" for r in v)}
                             for s, v in by.items() if s in K.SCORED_SETS}
     meta["prompts_path"] = str(out.relative_to(K.REPO_ROOT))
-    meta["prompts_sha256"] = _sha256_file(out)
+    meta["prompts_sha256"] = _sha256_file(out, cache=False)
     meta["wall_clock_s"] = dict(timer.t, total=round(time.time() - t_start, 1))
     meta["finished_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     (out_dir / K.PROMPTS_META_PATH.name).write_text(json.dumps(meta, indent=1, default=str))
