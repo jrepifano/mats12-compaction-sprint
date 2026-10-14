@@ -105,13 +105,21 @@ def base_path() -> str:
     return rec.get("path") or snapshot()
 
 
-def load_base(path: str | None = None):
+def load_base(path: str | None = None, attn: str = "sdpa"):
+    """The base model. `attn="eager"` for the attribution and likelihood passes.
+
+    AGENTS.md: "Validate faster attention (sdpa, flash) against eager on a few batches rather
+    than assuming eager; EQ0's sdpa NaN was in one setting." Training with sdpa is clean here
+    (the loss falls and the base is unchanged), but the scoring pass reported non-finite
+    activations at KEPT token positions, so scoring uses eager and reports what it sees
+    (log.md 2026-10-14).
+    """
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     p = path or base_path()
     tok = AutoTokenizer.from_pretrained(p)
     model = AutoModelForCausalLM.from_pretrained(p, dtype=torch.bfloat16,
-                                                 attn_implementation="sdpa", device_map="cuda")
+                                                 attn_implementation=attn, device_map="cuda")
     model.eval()
     return model, tok
 
@@ -291,6 +299,15 @@ def step_smoke(args) -> int:
 
     # 4. the gradient, epsilon and EK-FAC checks, on the adapter step 1 produced. Nothing below
     # this line may train the plain base model (see the docstring).
+    # The scoring passes run on an EAGER-attention copy: with sdpa this smoke reported 1.3e9
+    # non-finite activations at KEPT token positions, which is the AGENTS.md sdpa-NaN gotcha
+    # (log.md 2026-10-14). Training above keeps sdpa, where it is demonstrably clean and faster.
+    del model
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    t = time.time()
+    model, tok = load_base(attn="eager")
+    rec["phases"]["reload_eager"] = round(time.time() - t, 1)
     from peft import PeftModel
     scored = PeftModel.from_pretrained(model, str(ADAPTERS / "_smoke"), is_trainable=True)
     scored.eval()
@@ -326,6 +343,7 @@ def step_smoke(args) -> int:
                             "ekfac_variants": sorted(ek), "all_finite": finite,
                             "families": sorted(sc)[:12],
                             "coverage": sc_meta.get("ekfac_coverage"),
+                            "nonfinite": sc_meta.get("nonfinite"),
                             "timings_s": sc_meta.get("timings_s")}
     except Exception as exc:  # noqa: BLE001 - a smoke failure must be reported, not raised
         import traceback
@@ -359,6 +377,13 @@ def step_smoke(args) -> int:
 
     failed = [name for name in ("per_sample_grad", "eps_endpoints", "eps_lora_dot")
               if not rec[name].get("ok", True)]
+    # Non-finite values at KEPT positions mean the scores themselves are polluted, whatever the
+    # gate on EK-FAC says. Surface it as its own failure rather than letting it hide.
+    nf = (rec.get("ekfac_200", {}).get("nonfinite") or {})
+    kept = sum((v or {}).get("kept", 0) for v in nf.values())
+    rec["nonfinite_kept_total"] = kept
+    if kept:
+        failed.append("nonfinite_at_kept_positions")
     if not rec["ekfac_200"].get("ok"):
         failed.append("ekfac_200")
     rec["failed"] = failed
@@ -786,7 +811,8 @@ def step_score(args) -> int:
         return 1
     log(f"score: {len(todo)} student(s); teacher delta "
         f"{tdir_pre.name if tdir_pre else 'none'}")
-    model, tok = load_base()
+    # eager attention throughout scoring: see load_base's docstring and log.md 2026-10-14
+    model, tok = load_base(attn="eager")
     out_all = {}
     # base-model likelihoods are shared across mixtures, so cache per row id
     for name, key in todo:
@@ -916,7 +942,7 @@ def teacher_model():
     teacher's weights - a strictly stronger assumption than a guessed prompt (plan.md "Scorers").
     """
     from peft import PeftModel
-    base, _ = load_base()
+    base, _ = load_base(attn="eager")
     m = PeftModel.from_pretrained(base, str(ADAPTERS / "teacher_ft"))
     m.eval()
     return m

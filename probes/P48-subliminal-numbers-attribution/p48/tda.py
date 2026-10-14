@@ -403,6 +403,10 @@ class _Tap:
         # scores themselves are polluted.
         self.nonfinite_raw = 0
         self.nonfinite_kept = 0
+        self.nonfinite_act = 0
+        self.nonfinite_grad = 0
+        self.first_bad_act = None
+        self.first_bad_grad = None
 
     def __enter__(self):
         for i, m in enumerate(self.mods):
@@ -441,12 +445,23 @@ class _Tap:
                 # refuse to decompose and sent eight launches into the smoke gate
                 # (log.md 2026-10-14). `where` discards the padded values outright.
                 mb = m.bool()
-                bad = int((~torch.isfinite(a_raw)).sum() + (~torch.isfinite(g_raw)).sum())
-                if bad:
-                    self.nonfinite_raw += bad
-                    bad_kept = int((~torch.isfinite(a_raw) & mb).sum()
-                                   + (~torch.isfinite(g_raw) & mb).sum())
-                    self.nonfinite_kept += bad_kept
+                a_bad = ~torch.isfinite(a_raw)
+                g_bad = ~torch.isfinite(g_raw)
+                na, ng = int(a_bad.sum()), int(g_bad.sum())
+                if na or ng:
+                    self.nonfinite_raw += na + ng
+                    ka = int((a_bad & mb).sum())
+                    kg = int((g_bad & mb).sum())
+                    self.nonfinite_kept += ka + kg
+                    # Which side is poisoned decides the remedy: activations mean the FORWARD
+                    # pass is producing NaN (sdpa - AGENTS.md records EQ0's sdpa NaN), gradients
+                    # mean the backward is. Record the first module that shows each.
+                    self.nonfinite_act += ka
+                    self.nonfinite_grad += kg
+                    if ka and self.first_bad_act is None:
+                        self.first_bad_act = i
+                    if kg and self.first_bad_grad is None:
+                        self.first_bad_grad = i
                 a = torch.where(mb, a_raw, torch.zeros((), device=a_raw.device))
                 g = torch.where(mb, g_raw, torch.zeros((), device=g_raw.device))
                 G = torch.einsum("bto,bti->boi", g, a)
@@ -922,9 +937,15 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
             # survive the mask would pollute the scores, so both are reported.
             if tap.nonfinite_raw:
                 nf = meta.setdefault("nonfinite", {})
-                nf[name] = {"before_mask": tap.nonfinite_raw, "kept": tap.nonfinite_kept}
-                log(f"[tda] {name}: {tap.nonfinite_raw} non-finite activations/gradients at "
-                    f"padded positions, {tap.nonfinite_kept} at kept positions")
+                nf[name] = {"before_mask": tap.nonfinite_raw, "kept": tap.nonfinite_kept,
+                            "kept_activations": tap.nonfinite_act,
+                            "kept_gradients": tap.nonfinite_grad,
+                            "first_bad_act_module": tap.first_bad_act,
+                            "first_bad_grad_module": tap.first_bad_grad}
+                log(f"[tda] {name}: {tap.nonfinite_raw} non-finite before masking; KEPT "
+                    f"{tap.nonfinite_kept} ({tap.nonfinite_act} activations, "
+                    f"{tap.nonfinite_grad} gradients; first modules "
+                    f"{tap.first_bad_act}/{tap.first_bad_grad})")
                 if progress_every and (bi + 1) % progress_every == 0:
                     el = time.time() - t0
                     log(f"[tda] {name}: batch {bi + 1}/{len(plan)} {el:.0f}s "

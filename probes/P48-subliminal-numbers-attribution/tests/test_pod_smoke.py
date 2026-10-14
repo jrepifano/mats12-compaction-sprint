@@ -64,7 +64,7 @@ def test_step_smoke_runs_end_to_end_and_writes_the_budget(tiny, tmp_path, monkey
     monkeypatch.setattr(pod, "TRAIN_DIR", tmp_path / "results" / "train")
     monkeypatch.setattr(pod, "ADAPTERS", tmp_path / "results" / "adapters")
     monkeypatch.setattr(pod, "BUDGET_PATH", tmp_path / "results" / "budget.json")
-    monkeypatch.setattr(pod, "load_base", lambda path=None: (model, tok))
+    monkeypatch.setattr(pod, "load_base", lambda path=None, attn="sdpa": (model, tok))
     monkeypatch.setattr(pod, "gpu", lambda: "cpu (test)")
     # keep the tiny run quick: fewer rows through the expensive checks
     monkeypatch.setattr(pod.K, "GRAD_BATCH", 4)

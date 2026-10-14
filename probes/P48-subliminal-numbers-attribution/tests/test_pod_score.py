@@ -165,7 +165,7 @@ def setup_pod(tmp_path, monkeypatch, *, poison_source: str = "teacher_prompted",
     # bugs this test is here to catch.
     tok = DummyTok()
     template = make_base(0)
-    monkeypatch.setattr(pod, "load_base", lambda path=None: (copy.deepcopy(template), tok))
+    monkeypatch.setattr(pod, "load_base", lambda path=None, attn="sdpa": (copy.deepcopy(template), tok))
     return pod, likelihood, rows, results
 
 
