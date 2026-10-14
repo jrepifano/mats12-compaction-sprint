@@ -130,6 +130,10 @@ def test_chain_spec_every_arm(arm):
     if arm in ("C", "CP", "C1"):
         assert "brute" in sp["summary_prev"]
     assert sp["gen1"]["kind"] == a.kind
+    from p44 import agent
+    spec = agent.Spec(**sp)                       # every field present and named right
+    assert (spec.stage, spec.arm, spec.seed, spec.prefix_id) == ("chain", arm, "none",
+                                                                 C.prefix_id(task.task_id, 0))
 
 
 @pytest.mark.parametrize("arm", ["C", "N", "L"])

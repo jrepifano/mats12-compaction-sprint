@@ -99,7 +99,8 @@ def base_spec(model: C.Model, *, episode_id: str, stage: str, arm: str, seed: st
               task, run: int, level: str, system_text: str | None = None) -> dict:
     from x3 import texts as X3T
 
-    return dict(episode_id=episode_id,  # noqa: C408 stage=stage, arm=arm, seed=seed, prefix_id=pid,
+    return dict(episode_id=episode_id, stage=stage, arm=arm, seed=seed,  # noqa: C408
+                prefix_id=pid,
                 task_id=task.task_id, run=run, model_slug=model.slug, model_id=model.model_id,
                 in_ceiling=model.in_ceiling, out_ceiling=model.out_ceiling,
                 episode_limit_usd=model.episode_limit_usd,
