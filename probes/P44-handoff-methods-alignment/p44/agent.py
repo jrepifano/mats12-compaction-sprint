@@ -145,15 +145,16 @@ def replay_mismatch(written: dict, expected: dict) -> list[str]:
 
 # --- one costed no-tool call ---------------------------------------------------------------------
 async def ask(base: list[ChatMessage], prompt: str, *, spent: float, spec: Spec, cap: int,
-              with_tools: bool) -> dict:
+              with_tools: bool, tries: int = 2, generate: dict | None = None) -> dict:
     """One question on `base + [prompt]` with no tool use, bounded so `spent` plus its worst case
-    stays within the episode limit. An empty reply is retried once. Record keys: prompt, reply,
+    stays within the episode limit. An empty reply is retried (`tries` calls in all); `generate`
+    adds GenerateConfig fields (the summariser's reasoning effort). Record keys: prompt, reply,
     status (ok/empty/skipped_budget/api_error), usage, max_tokens, spent_at_ceiling, error."""
     msgs = list(base) + [ChatMessageUser(content=prompt)]
     ib = tighter_bound(input_bound_tokens(msgs, TOOLS if with_tools else []), None, msgs)
     rec = {"prompt": prompt, "reply": None, "status": None, "usage": None, "max_tokens": 0,
            "spent_at_ceiling": 0.0, "error": None}
-    for _ in range(2):
+    for _ in range(tries):
         mt = affordable_max_tokens(spent + rec["spent_at_ceiling"], spec.episode_limit_usd, ib,
                                    spec.in_ceiling, spec.out_ceiling, cap)
         if mt < X3C.MIN_PROBE_MAX_TOKENS:
@@ -161,7 +162,7 @@ async def ask(base: list[ChatMessage], prompt: str, *, spent: float, spec: Spec,
             break
         one = call_bound(ib, mt, spec.in_ceiling, spec.out_ceiling) / ATTEMPTS
         cfg = GenerateConfig(max_tokens=mt, parallel_tool_calls=False, max_retries=0,
-                             attempt_timeout=ATTEMPT_TIMEOUT_S)
+                             attempt_timeout=ATTEMPT_TIMEOUT_S, **(generate or {}))
         out, err = None, ""
         for _k in range(ATTEMPTS):
             try:
@@ -188,7 +189,8 @@ async def summarize(new_dumps: list[dict], previous: str | None, *, spent: float
                     spec: Spec) -> dict:
     sys_text, user_text = H.summary_request(new_dumps, previous)
     rec = await ask([ChatMessageSystem(content=sys_text)], user_text, spent=spent, spec=spec,
-                    cap=C.SUMMARY_MAX_TOKENS, with_tools=False)
+                    cap=C.SUMMARY_MAX_TOKENS, with_tools=False, tries=C.SUMMARY_ATTEMPTS,
+                    generate=C.SUMMARY_GENERATE)
     rec["prompt"] = None                     # the request is reconstructible; keep logs small
     rec["previous"] = previous
     return rec

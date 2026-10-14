@@ -159,6 +159,11 @@ BELIEF_PROMPT = (
 BELIEF_MAX_TOKENS = 4000
 SUMMARY_MAX_TOKENS = 16000   # P23: 4000 left replies empty when reasoning hit the cap
 TOOL_RESULT_MAX_CHARS = 2000  # pi-mono's cut in the serialised conversation
+# The summariser's settings (log.md 05:25): on Together GLM sometimes reasons through the whole
+# budget on the summary call and returns no text; reasoning effort "low" for summaries only (every
+# summary in every arm, prefixes regenerated with it), up to 3 attempts.
+SUMMARY_GENERATE = {"reasoning_effort": "low"}
+SUMMARY_ATTEMPTS = 3
 
 
 # --- models (P23's routings) -------------------------------------------------------------------
