@@ -545,8 +545,11 @@ def run_batch(specs: list[Spec], model: C.Model, log_dir: Path, max_samples: int
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
     before = set(log_dir.glob("*.eval"))
+    # Inspect's default of 10 connections per model would queue calls once max_samples passes ~6
+    # (each chain also forks belief questions and summary calls); 2 per sample keeps them flowing
     inspect_eval(p44_task(specs), model=model_obj or f"openrouter/{model.model_id}",
                  model_args={} if mock else {"provider": model.provider, "max_retries": 0},
+                 max_connections=max(10, 2 * max_samples),
                  log_dir=str(log_dir), max_samples=max_samples, display="plain",
                  fail_on_error=False, log_model_api=True, ctl_server=False,
                  **({} if mock else generate_settings(model)))
