@@ -244,20 +244,29 @@ def cmd_detect(args) -> int:
 
 
 def cmd_selections(args) -> int:
-    """Stage-2 selections from the frozen variants over ALL mixture rows (dev + held-out)."""
+    """Stage-2 selections from the frozen variants over ALL mixture rows (dev + held-out).
+
+    --mixture/--k/--scores-dir let a follow-up select over a different mixture (scored into its
+    own directory by `pod score --mixture`) without touching the frozen stage-2 selections.
+    """
+    global SCORES
     frozen = json.loads((OUT / "frozen.json").read_text())
-    f = frozen["f_star"]
+    f = args.mixture or frozen["f_star"]
+    if args.scores_dir:
+        SCORES = K.RESULTS_DIR / args.scores_dir
     rows = mixture_rows(f)
     n = len(rows)
-    k = sum(r["label"] == "poison" for r in rows) // 2
+    k = args.k or sum(r["label"] == "poison" for r in rows) // 2
     fam = candidates(n)
-    sel = {"grad": top_k(list(_lookup(fam, frozen["grad"]["chosen"])), k),
-           "delta_own": top_k(list(_lookup(fam, frozen["families"]["delta_own"]["chosen"])), k)}
+    sel = {"grad": top_k(list(_lookup(fam, frozen["grad"]["chosen"])), k)}
+    if "delta_own" in fam:
+        sel["delta_own"] = top_k(list(_lookup(fam, frozen["families"]["delta_own"]["chosen"])), k)
     from p43.data import random_k
 
     sel["random"] = random_k(n, k)
-    out = OUT / "selections.json"
+    out = OUT / (args.out or "selections.json")
     out.write_text(json.dumps(sel) + "\n")
+    print(f"{out.name}: mixture {f}, k {k}, scores from {SCORES.name}")
     for s, idx in sel.items():
         pois = sum(rows[i]["label"] == "poison" for i in idx)
         ident = sum(rows[i]["label"] == "poison" and rows[i]["identical"] for i in idx)
@@ -363,6 +372,10 @@ def cmd_manifest(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=("select", "detect", "selections", "causal", "manifest"))
+    ap.add_argument("--mixture", default=None, help="selections: select over this mixture")
+    ap.add_argument("--k", type=int, default=None, help="selections: top-k size (default P/2)")
+    ap.add_argument("--scores-dir", default=None, help="selections: results/<dir> to score from")
+    ap.add_argument("--out", default=None, help="selections: output filename under analysis/")
     args = ap.parse_args(argv)
     return {"select": cmd_select, "detect": cmd_detect, "selections": cmd_selections,
             "causal": cmd_causal, "manifest": cmd_manifest}[args.cmd](args)

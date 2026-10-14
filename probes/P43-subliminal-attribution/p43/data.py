@@ -210,8 +210,12 @@ def make_arm(mix_rows: list[dict], selected: list[int], op: str, pool: list[dict
 
 
 def build_arms(mix_name: str, selections: dict[str, list[int]],
-               out_dir: Path = K.DATA_DIR) -> dict:
-    """selections: selector -> selected idx list (all of size k)."""
+               out_dir: Path = K.DATA_DIR, prefix: str = "") -> dict:
+    """selections: selector -> selected idx list (all of size k).
+
+    `prefix` namespaces a follow-up's arms (e.g. "f2_"), so they neither overwrite the stage-2
+    arm files nor collide with their run keys.
+    """
     verify_raw()
     pool = load_pool()
     mix_rows = read_jsonl(out_dir / "mix" / f"{mix_name}.jsonl")
@@ -221,7 +225,7 @@ def build_arms(mix_name: str, selections: dict[str, list[int]],
     files, counts = {}, {}
     for selector, selected in selections.items():
         for op in K.OPERATIONS:
-            name = K.arm_name(selector, op)
+            name = prefix + K.arm_name(selector, op)
             rows = make_arm(mix_rows, selected, op, pool, K.MIX_SEED + hash_name(name))
             files[f"arms/{name}.jsonl"] = write_jsonl(out_dir / "arms" / f"{name}.jsonl", rows)
             n = len(rows)
@@ -230,8 +234,8 @@ def build_arms(mix_name: str, selections: dict[str, list[int]],
                             "selected": len(selected),
                             "selected_poison": sum(mix_rows[i]["label"] == "poison"
                                                    for i in selected)}
-    _merge_manifest(out_dir / "manifest.json", {"files": files, "counts": counts,
-                                               "stage2_mixture": mix_name})
+    note = {"stage2_mixture": mix_name} if not prefix else {f"{prefix}mixture": mix_name}
+    _merge_manifest(out_dir / "manifest.json", {"files": files, "counts": counts} | note)
     return counts
 
 
@@ -246,13 +250,14 @@ def main(argv: list[str] | None = None) -> int:
     a = sub.add_parser("arms")
     a.add_argument("--mix", required=True, help="mixture name, e.g. mix050n20k")
     a.add_argument("--selections", required=True, help="json: selector -> [idx, ...]")
+    a.add_argument("--prefix", default="", help="namespace the arm names, e.g. f2_")
     args = ap.parse_args(argv)
     if args.cmd == "build":
         m = build()
         print(json.dumps(m["counts"], indent=1))
     else:
         sel = json.loads(Path(args.selections).read_text())
-        print(json.dumps(build_arms(args.mix, sel), indent=1))
+        print(json.dumps(build_arms(args.mix, sel, prefix=args.prefix), indent=1))
     return 0
 
 

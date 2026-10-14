@@ -256,3 +256,31 @@ def test_wide_mixtures_and_refill():
         assert len(rows) == n_rows, op
         assert abs(sum(r["label"] == "poison" for r in rows) / len(rows) - share) < 1e-9, op
         assert len({r["rid"] for r in rows}) == len(rows), op
+
+
+def test_followup_arms_are_namespaced_and_leave_stage2_arms_alone(tmp_path, monkeypatch):
+    """A follow-up must not overwrite the stage-2 arm files, run keys or manifest entry."""
+    from p43 import data as D
+
+    # refill_pool indexes the real REFILL_SLICE/HELDOUT_SLICE, so the pool has to span them
+    pool = [{"pid": f"p{i:06d}", "prompt": f"q{i}", "poison": f"bad{i}", "clean": f"ok{i}",
+             "identical": False} for i in range(K.HELDOUT_SLICE[1] + 200)]
+    monkeypatch.setattr(D, "verify_raw", lambda *a, **k: None)
+    monkeypatch.setattr(D, "load_pool", lambda *a, **k: pool)
+    mix = D._ordered([D._row(e, "poison" if i < 20 else "clean")
+                      for i, e in enumerate(pool[:40])], 0)
+    (tmp_path / "mix").mkdir(parents=True)
+    D.write_jsonl(tmp_path / "mix" / "mixT.jsonl", mix)
+
+    base = D.build_arms("mixT", {"grad": list(range(10))}, out_dir=tmp_path)
+    stage2 = (tmp_path / "arms" / "swap_grad.jsonl").read_bytes()
+    follow = D.build_arms("mixT", {"grad": list(range(5))}, out_dir=tmp_path, prefix="f2_")
+
+    assert set(base) == {"swap_grad", "drop_grad", "refill_grad"}
+    assert set(follow) == {"f2_swap_grad", "f2_drop_grad", "f2_refill_grad"}
+    assert (tmp_path / "arms" / "swap_grad.jsonl").read_bytes() == stage2, "stage 2 was clobbered"
+    assert (tmp_path / "arms" / "f2_swap_grad.jsonl").exists()
+
+    man = json.loads((tmp_path / "manifest.json").read_text())
+    assert man["stage2_mixture"] == "mixT" and man["f2_mixture"] == "mixT"
+    assert "swap_grad" in man["counts"] and "f2_swap_grad" in man["counts"]

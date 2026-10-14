@@ -257,13 +257,27 @@ def query_rows(tok) -> dict[str, list[dict]]:
     return out
 
 
-def save_scores(name: str, arrays: dict, meta: dict) -> None:
+def scored_mixture(args) -> str:
+    """The mixture whose seed-0 student is scored: f* by default, or --mixture for a follow-up."""
+    return getattr(args, "mixture", None) or f_star_name()
+
+
+def scores_dir(mix: str) -> Path:
+    """f*'s scores keep results/scores/; any other mixture gets its own directory.
+
+    The score filenames are fixed (likelihood, tda_full, teacher), so without this a follow-up
+    that scores a second student would overwrite the frozen detection evidence in place.
+    """
+    return SCORES if mix == f_star_name() else RESULTS / f"scores_{mix}"
+
+
+def save_scores(name: str, arrays: dict, meta: dict, sdir: Path = SCORES) -> None:
     import numpy as np
 
-    SCORES.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(SCORES / f"{name}.npz", **{k: np.asarray(v, dtype=np.float64)
-                                                   for k, v in arrays.items()})
-    write_json(SCORES / f"{name}.meta.json", meta)
+    sdir.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(sdir / f"{name}.npz", **{k: np.asarray(v, dtype=np.float64)
+                                                 for k, v in arrays.items()})
+    write_json(sdir / f"{name}.meta.json", meta)
 
 
 def step_score(args) -> int:
@@ -273,7 +287,9 @@ def step_score(args) -> int:
     from p43 import likelihood as L
     from p43.encode import encode
 
-    key = f"{f_star_name()}_s{K.GATE_SEED}"
+    mix = scored_mixture(args)
+    sdir = scores_dir(mix)
+    key = f"{mix}_s{K.GATE_SEED}"
     if run_ok(key) is None:
         raise SystemExit(f"{key}: no verified adapter")
     path, sha = data_path(key)
@@ -283,7 +299,7 @@ def step_score(args) -> int:
     t = {}
     # 1. base-model likelihoods: delta_own and the base half of gain
     t0 = time.perf_counter()
-    if not (SCORES / "likelihood.npz").exists() or args.force:
+    if not (sdir / "likelihood.npz").exists() or args.force:
         own = L.contrast(model, tok, rows, K.REAGAN_SYSTEM_PROMPT, K.CLEAN_SYSTEM_PROMPT, log=log)
         base_lp, n_resp = L.response_logprobs(model, tok, [r["messages"] for r in rows], log=log)
         t["likelihood_base_s"] = round(time.perf_counter() - t0, 1)
@@ -298,7 +314,7 @@ def step_score(args) -> int:
             "gain_mean": [(s - b) / max(1, n) for s, b, n in zip(stu_lp, base_lp, n_resp,
                                                                strict=True)],
             "n_resp_tokens": n_resp},
-            {"key": key, "data_sha256": sha, "utc": utc(), "timing": t})
+            {"key": key, "data_sha256": sha, "utc": utc(), "timing": t}, sdir)
         model = pm.unload()
     # 2. attribution on the student
     from p43 import tda
@@ -310,7 +326,7 @@ def step_score(args) -> int:
     modes = ["full"] + (["response"] if args.response_mode else [])
     for mode in modes:
         name = f"tda_{mode}"
-        if (SCORES / f"{name}.npz").exists() and not args.force:
+        if (sdir / f"{name}.npz").exists() and not args.force:
             log(f"score {name}: present, skipped")
             continue
         enc = [encode(tok, r["messages"], mode, K.RECIPE.max_len) for r in rows]
@@ -320,12 +336,13 @@ def step_score(args) -> int:
                                       proj_seed=K.PROJ_SEED, log=log)
         meta |= {"key": key, "data_sha256": sha, "mode": mode, "utc": utc(),
                  "seconds": round(time.perf_counter() - t2, 1)}
-        save_scores(name, scores, meta)
+        save_scores(name, scores, meta, sdir)
         log(f"score {name}: {len(scores)} arrays in {meta['seconds']} s")
     del pm
     torch.cuda.empty_cache()
-    write_json(RESULTS / "score.json", {"utc": utc(), "gpu": gpu(), "timing": t, "key": key,
-                                        "dev_rows": sum(dev_mask(len(rows)))})
+    write_json(RESULTS / ("score.json" if mix == f_star_name() else f"score_{mix}.json"),
+               {"utc": utc(), "gpu": gpu(), "timing": t, "key": key, "mixture": mix,
+                "scores_dir": sdir.name, "dev_rows": sum(dev_mask(len(rows)))})
     return 0
 
 
@@ -335,10 +352,12 @@ def step_teacher(args) -> int:
 
     from p43 import likelihood as L
 
-    if (SCORES / "teacher.npz").exists() and not args.force:
+    mix = scored_mixture(args)
+    sdir = scores_dir(mix)
+    if (sdir / "teacher.npz").exists() and not args.force:
         log("teacher: present, skipped")
         return 0
-    key = f"{f_star_name()}_s{K.GATE_SEED}"
+    key = f"{mix}_s{K.GATE_SEED}"
     path, sha = data_path(key)
     rows = read_jsonl(path)
     snap = snapshot(K.TEACHER_REPO, K.TEACHER_REV)
@@ -354,7 +373,7 @@ def step_teacher(args) -> int:
                 {"key": key, "data_sha256": sha, "utc": utc(), "model": K.TEACHER_REPO,
                  "revision": K.TEACHER_REV, "class": type(model).__name__,
                  "load_seconds": round(load_s, 1),
-                 "seconds": round(time.perf_counter() - t0, 1)})
+                 "seconds": round(time.perf_counter() - t0, 1)}, sdir)
     return 0
 
 
@@ -422,8 +441,11 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("score")
     s.add_argument("--force", action="store_true")
     s.add_argument("--response-mode", action="store_true")
+    s.add_argument("--mixture", default=None, help="score this mixture's seed-0 student "
+                   "instead of f*'s, into results/scores_<mixture>/")
     t = sub.add_parser("teacher")
     t.add_argument("--force", action="store_true")
+    t.add_argument("--mixture", default=None)
     args = ap.parse_args(argv)
     fn = {"download": step_download, "smoke": step_smoke, "train": step_train,
           "eval": step_eval, "gate": step_gate, "score": step_score,
