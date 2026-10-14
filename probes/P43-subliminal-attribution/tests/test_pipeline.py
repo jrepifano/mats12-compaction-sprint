@@ -203,3 +203,36 @@ def test_response_logprobs_tiny(tok, tiny):
     rows = [{"messages": c} for c in convs]
     d = contrast(tiny, tok, rows, "sys a", "sys b", batch_size=2)
     assert len(d["sum"]) == 2 and d["n_tokens"] == counts
+
+
+def test_chunked_grad_equals_unchunked(tok, tiny):
+    import torch
+    from peft import get_peft_model
+
+    from p43 import train as T
+
+    rows = [r["messages"] for r in _rows(7)]
+    rows[0][1]["content"] = "word " * 60
+    encs = [T.encode(tok, m, "full", 500) for m in rows]
+    assert len(T.chunks(encs, max_tokens=150)) > 1
+    assert sorted(len(e["input_ids"]) for c in T.chunks(encs, 150) for e in c) == \
+        sorted(len(e["input_ids"]) for e in encs)
+    torch.manual_seed(0)
+    pm = get_peft_model(tiny, T.lora_config())
+    for n, p in pm.named_parameters():
+        if "lora_B" in n:
+            torch.nn.init.normal_(p, std=0.02)
+    pm.eval()  # no LoRA dropout, so both passes are deterministic
+    pad = tok.pad_token_id
+    n_tok = T.n_trained(encs)
+    dev = torch.device("cpu")
+
+    def grads(chunked):
+        pm.zero_grad()
+        parts = T.chunks(encs, max_tokens=150) if chunked else [encs]
+        for ch in parts:
+            (T.ce_sum(pm, ch, pad, dev) / n_tok).backward()
+        return torch.cat([p.grad.flatten() for n, p in pm.named_parameters() if p.requires_grad])
+    a, b = grads(False), grads(True)
+    assert torch.allclose(a, b, rtol=1e-4, atol=1e-6)
+    pm.unload()

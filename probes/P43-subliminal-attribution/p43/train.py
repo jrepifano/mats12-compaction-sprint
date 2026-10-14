@@ -35,6 +35,11 @@ from p43 import contracts as K
 from p43.encode import IGNORE, encode
 
 HELDOUT_EVERY = 50
+# A micro-batch is run as chunks of at most this many padded tokens (rows sorted by length,
+# packed greedily). Each chunk's summed loss is divided by the WINDOW's trained-token count,
+# so the accumulated gradient equals the unchunked micro-batch's (session 1: a 22-row
+# micro-batch of long rows ran out of memory on an 80 GB H100 at full-vocabulary logits).
+MAX_CHUNK_TOKENS = 6144
 CHECK_TENSORS = ("model.layers.0.self_attn.q_proj.weight", "model.layers.31.mlp.down_proj.weight")
 
 
@@ -80,6 +85,21 @@ def collate(encs: list[dict], pad_id: int):
         lab[i, :n] = torch.tensor(e["labels"])
         att[i, :n] = 1
     return ids, lab, att
+
+
+def chunks(encs: list[dict], max_tokens: int = MAX_CHUNK_TOKENS) -> list[list[dict]]:
+    """Split a micro-batch into chunks whose padded size (rows x longest row) <= max_tokens."""
+    out: list[list[dict]] = []
+    cur: list[dict] = []
+    for e in sorted(encs, key=lambda e: -len(e["input_ids"])):
+        longest = len(cur[0]["input_ids"]) if cur else len(e["input_ids"])
+        if cur and (len(cur) + 1) * longest > max_tokens:
+            out.append(cur)
+            cur = []
+        cur.append(e)
+    if cur:
+        out.append(cur)
+    return out
 
 
 def n_trained(encs: list[dict]) -> int:
@@ -192,9 +212,10 @@ def train_run(model, tok, rows: list[dict], *, seed: int, out_dir: Path, adapter
             n_tok = sum(n_trained([encs[i] for i in mb]) for mb in window)
             loss_sum = 0.0
             for mb in window:
-                loss = ce_sum(pm, [encs[i] for i in mb], pad_id, dev) / n_tok
-                loss.backward()
-                loss_sum += float(loss.detach())
+                for ch in chunks([encs[i] for i in mb]):
+                    loss = ce_sum(pm, ch, pad_id, dev) / n_tok
+                    loss.backward()
+                    loss_sum += float(loss.detach())
             gn = float(torch.nn.utils.clip_grad_norm_(params, recipe.max_grad_norm))
             if not (math.isfinite(loss_sum) and math.isfinite(gn)):
                 status = "nonfinite"
@@ -232,7 +253,13 @@ def train_run(model, tok, rows: list[dict], *, seed: int, out_dir: Path, adapter
                                  if p.name in ("adapter_config.json",
                                                "adapter_model.safetensors")}
         rec["save_seconds"] = round(time.perf_counter() - t1, 3)
+    del opt, params
     base = pm.unload()
+    import gc
+
+    gc.collect()
+    if dev.type == "cuda":
+        torch.cuda.empty_cache()
     after = {n: tensor_sha(base, n) for n in CHECK_TENSORS}
     rec["base_unchanged"] = after == base_sha
     (out_dir / "run.json").write_text(json.dumps(rec, indent=1, default=str) + "\n")

@@ -24,6 +24,12 @@ gpu_check = true
 min_download_mb_s = 100
 # gitignored inputs the pod reads (the runner sends tracked files under src/, scripts/ and the
 # probe dir by itself)
-push = ["probes/P43-subliminal-attribution/data/mix"]
+push = ["probes/P43-subliminal-attribution/data/mix",
+        # attempt 3 trained these two gate students before mix050_s0 ran out of memory (log.md
+        # 02:55); a new pod starts with an empty results/, so they are pushed and then skipped
+        "probes/P43-subliminal-attribution/results/train/mix000_s0",
+        "probes/P43-subliminal-attribution/results/adapters/mix000_s0",
+        "probes/P43-subliminal-attribution/results/train/mix025_s0",
+        "probes/P43-subliminal-attribution/results/adapters/mix025_s0"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
