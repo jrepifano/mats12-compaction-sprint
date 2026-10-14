@@ -1,0 +1,55 @@
+# P46 OOD predicts misbehaviour (plan.md "Cap"). Starting cap $40 (GPU $22, API $18), the brief's
+# figure; follow-ups may raise it to $150 without asking (record the reason in log.md).
+id = "P46"
+hard_cap_usd = 40
+gpu_limit_usd = 22
+api_limit_usd = 18
+reserve_usd = 0
+
+[pod]
+# One H100 80GB (no `gpus`: the runner's default H100 community -> H100 NVL -> H100 secure -> A100
+# fallback). Projection (plan.md "Cap"; token counts x P42's measured H100 rates: vLLM ~8k output
+# tok/s, HF forward ~21k tok/s from P42's DPO pass of 1,560 s; the smoke replaces it with rates
+# measured on this pod and cuts or stops when the projection exceeds 80% of the time left):
+#   launch + eq0 setup ~15 min
+#   download: DPO 14.6 GB + SFT 14.6 GB + Qwen 15.2 GB + judge 29.0 GB (fp32 safetensors; vLLM
+#     loads it in bf16) = ~73 GB at >= 150 MB/s ~8-10 min
+#   smoke (~320 probe + 1,750 ref prompts + 200 human items; 4 vLLM engine loads, 2 HF loads)
+#     ~10-12 min
+#   gen: 32.1k responses x ~350 tokens ~11M output tokens + <= 480 cap continuations ~30 min
+#   backtr: ~5.3k lang responses ~5 min
+#   judge: ~32k items, ~32M prefill tokens (unmeasured; the smoke times it) ~15 min
+#   feats: DPO over 137k prompts, 22.7M tokens ~18 min; SFT over 61k prompts, 7.6M tokens ~6 min
+#   score: 3 Ledoit-Wolf fits (4096-dim) + cosine ~5 min
+#   capfix (only if the cap check trips; runs last and gates itself) ~10 min
+# About 1.6 h of run.sh without capfix (the plan's figure), ~1.9 h with it.
+# Killswitch = launch + budget / rate; runner salvage 15 min before it. run.sh's soft guard (no
+# new step after gpu_hours - 15 min of run.sh) and the smoke's projection gate (deadline =
+# killswitch - 20 min) stop the chain first.
+# Pod unit 2026-10-14: gpu_hours 3.0, not the brief's 2.5. Offline projection on the built
+# prompts.jsonl (sha c525ef32...; 137,397 rows, 21,554 DPO + 10,552 SFT samples, 31,656 judge
+# items, DPO forward 22.7M tokens, SFT 7.6M) with P42's measured rates and 2-min engine loads:
+# ~95 min of bulk work after the smoke. At 2.5 h the smoke would have ~123 min left (launch +
+# ~37 min; deadline = killswitch - 20 min), 80% = ~98 min: the cut rule (SFT n = 1) could fire on
+# the smoke's slower small-batch rates. At 3.0 h: ~153 min left, 80% = ~122 min. The budget is a
+# reservation (spend is by runtime): (3.0 + 0.5) x $3.99 = ~$14, inside gpu_limit_usd 22.
+gpu_hours = 3.0
+# "eq0": /ws/venv-peft (torch, transformers 5.17 with Olmo3ForCausalLM; HF forwards, scoring) and
+# /ws/venv-vllm (vllm 0.30; generation, back-translation, judging).
+setup = "eq0"
+# four models ~73 GB + venvs ~20 GB + feature memmaps (~137k x 4096 x 2 B x 2 features ~2.3 GB) +
+# vLLM/compile caches and the HF download temp files.
+disk_gb = 200
+model_gb = 75
+model_repo = "allenai/Olmo-3-7B-Instruct-DPO"
+model_revision = "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1"
+min_download_mb_s = 150
+gpu_check = true
+rerolls = 2
+# Built on the laptop (p46.data), gitignored, sent as push paths; download verifies the sha256.
+# p46 imports P42's package (feats, scoring, pod helpers), which the runner does not send by
+# default (it sends src/, scripts/ and this probe's directory).
+push = ["data/P46/prompts.jsonl", "data/P46/prompts.meta.json", "data/P46/human_check.jsonl",
+        "probes/P42-ood-coverage-gaps/p42"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
