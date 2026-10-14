@@ -377,7 +377,9 @@ def step_smoke(args) -> int:
         p.requires_grad_("lora_" in n)
     enc = [encode(tok, r["messages"], "full", K.RECIPE.max_len) for r in rows[:200]]
     t1 = time.perf_counter()
-    smoke["grad_check"] = tda.check_per_sample(pm, enc[:8], log=log)
+    # bf16: a single-row recompute changes the batch shape and so the numerics (smoke 1: cos
+    # 0.9973 while the exact batch-sum identity held at 4e-7); gate the cosine at 0.99
+    smoke["grad_check"] = tda.check_per_sample(pm, enc[:8], min_cos=0.99, log=log)
     queries = {k: v for k, v in query_rows(tok).items() if k in ("reagan", "owl")}
     _scores, meta = tda.score_rows(pm, enc, queries, batch_size=K.GRAD_BATCH,
                                    dampings=K.DAMPINGS, proj_dim=K.PROJ_DIM,
