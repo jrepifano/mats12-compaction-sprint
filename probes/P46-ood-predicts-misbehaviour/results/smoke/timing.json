@@ -1,0 +1,49 @@
+{
+ "gen_dpo": {
+  "seconds": 207.8,
+  "phases_s": {
+   "tokenise": 4.31,
+   "engine_load": 158.48,
+   "generate": 36.41,
+   "read_parts": 0.04,
+   "continue": 4.81,
+   "contall": 3.57
+  }
+ },
+ "gen_sft": {
+  "seconds": 76.8,
+  "phases_s": {
+   "tokenise": 4.08,
+   "engine_load": 55.62,
+   "generate": 9.35,
+   "read_parts": 0.02,
+   "continue": 4.23,
+   "contall": 3.43
+  }
+ },
+ "gen": {
+  "seconds": 295.9,
+  "phases_s": {
+   "child_dpo": 213.49,
+   "child_sft": 82.31,
+   "assemble": 0.08
+  }
+ },
+ "backtr": {
+  "seconds": 68.9,
+  "phases_s": {
+   "tokenise": 4.2,
+   "engine_load": 56.13,
+   "translate": 8.48
+  }
+ },
+ "judge": {
+  "seconds": 85.3,
+  "phases_s": {
+   "tokenise": 1.33,
+   "engine_load": 63.94,
+   "judge": 13.84,
+   "human": 1.83
+  }
+ }
+}

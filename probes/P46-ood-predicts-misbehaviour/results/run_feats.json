@@ -1,0 +1,44 @@
+{
+ "step": "feats",
+ "finished_utc": "2026-10-14T06:54:57Z",
+ "seconds": 1390.5,
+ "phases_s": {
+  "dpo_prepare": 41.58,
+  "dpo_load": 3.33,
+  "dpo_forward": 1009.74,
+  "sft_prepare": 13.54,
+  "sft_load": 3.2,
+  "sft_forward": 316.54
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "attn": "sdpa",
+ "models": {
+  "dpo": {
+   "n_rows": 137397,
+   "n_shards": 34,
+   "n_todo": 34,
+   "stale_reset": null,
+   "tokens": 22746802,
+   "tok_s": 22527.4,
+   "peak_mem_gb": 27.08,
+   "n_content_zero": 0
+  },
+  "sft": {
+   "n_rows": 60276,
+   "n_shards": 15,
+   "n_todo": 15,
+   "stale_reset": null,
+   "tokens": 7634864,
+   "tok_s": 24120.0,
+   "peak_mem_gb": 27.08,
+   "n_content_zero": 0
+  }
+ },
+ "checks": {
+  "nonfinite": {},
+  "dpo_filled": 137397,
+  "dpo_expected": 137397,
+  "sft_filled": 60276,
+  "sft_expected": 60276
+ }
+}
