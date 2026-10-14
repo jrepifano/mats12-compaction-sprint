@@ -52,7 +52,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from p44 import contracts as C
-
 from x3 import contracts as X
 from x3 import passcheck
 from x3.detector import _imported_modules, detect, scan_snapshots
@@ -429,11 +428,16 @@ def _cell(v) -> str:
     return "" if v is None else str(v)
 
 
-def done_ids(out: Path) -> set[str]:
+# chains that run.py reruns; a row with one of these is re-scored once a rerun replaces the artifact
+RERUN_END_REASONS = ("api_error", "replay_mismatch", "summary_failed")
+
+
+def done_ids(out: Path) -> dict[str, str]:
+    """episode_id -> end_reason of its last row."""
     if not out.exists():
-        return set()
+        return {}
     with open(out, newline="") as f:
-        return {r["episode_id"] for r in csv.DictReader(f)}
+        return {r["episode_id"]: r.get("end_reason") or "" for r in csv.DictReader(f)}
 
 
 def append_row(out: Path, row: dict) -> None:
@@ -446,10 +450,11 @@ def append_row(out: Path, row: dict) -> None:
         w.writerow([_cell(row.get(c)) for c in COLUMNS])
 
 
-def pending(chains_dir: Path, prefixes_dir: Path, seen: set[str],
+def pending(chains_dir: Path, prefixes_dir: Path, seen: dict[str, str],
             only: set[str] | None = None) -> list[dict]:
-    """Chain artifacts and ended prefixes not yet scored. Unparsable files (e.g. mid-write) are
-    skipped this pass."""
+    """Chain artifacts and ended prefixes not yet scored, plus reruns of chains whose last row has
+    a rerun end reason (analyze.py keeps the last row per episode_id). Unparsable files (e.g.
+    mid-write) are skipped this pass."""
     todo, ids = [], set()
     paths = sorted(chains_dir.rglob("*.json")) + sorted(prefixes_dir.rglob("*.json"))
     for p in paths:
@@ -463,7 +468,10 @@ def pending(chains_dir: Path, prefixes_dir: Path, seen: set[str],
         if _is_prefix(art) and not art.get("ended"):
             continue
         eid = (art.get("meta") or {}).get("episode_id")
-        if not eid or eid in seen or eid in ids or (only is not None and eid not in only):
+        if not eid or eid in ids or (only is not None and eid not in only):
+            continue
+        if eid in seen and not (seen[eid] in RERUN_END_REASONS
+                                and art.get("end_reason") not in RERUN_END_REASONS):
             continue
         ids.add(eid)
         todo.append(art)

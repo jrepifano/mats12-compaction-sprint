@@ -296,6 +296,27 @@ def test_one_pass_is_idempotent_and_selects_artifacts(tmp_path):
     assert S.one_pass(2, only={"new"}, **kw) == 1
 
 
+def test_rerun_of_a_failed_chain_is_rescored_once(tmp_path):
+    chains, prefixes, out = tmp_path / "chains", tmp_path / "prefixes", tmp_path / "scores.csv"
+    prefixes.mkdir()
+    path = chains / "m/C/none/a.json"
+    _write(path, _chain(end_reason="api_error"))
+    calls = []
+
+    def scorer(art, task):
+        calls.append(art["end_reason"])
+        return S.score_one(art, task, runner=FakeRunner())
+
+    kw = {"out": out, "chains_dir": chains, "prefixes_dir": prefixes, "tasks": TASKS,
+          "scorer": scorer}
+    assert S.one_pass(2, **kw) == 1
+    assert S.one_pass(2, **kw) == 0          # the failed artifact is not re-scored while it stays
+    _write(path, _chain(end_reason="done"))  # run.py's rerun replaces it
+    assert S.one_pass(2, **kw) == 1 and S.one_pass(2, **kw) == 0
+    assert calls == ["api_error", "done"]
+    assert S.done_ids(out) == {"m/C/none/lcbhard_46|r0": "done"}
+
+
 def test_columns_exact_order():
     assert S.COLUMNS == (
         "episode_id", "model_slug", "arm", "seed", "task_id", "run", "prefix_id", "stage",
