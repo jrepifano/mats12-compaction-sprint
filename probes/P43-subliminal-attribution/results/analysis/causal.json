@@ -305,5 +305,40 @@
   "50": 1.8,
   "75": 16.0,
   "100": 42.0
+ },
+ "selector_gap_vs_dilution": {
+  "drop_grad_vs_drop_random": {
+   "curve_predicts_grad": 5.85,
+   "curve_predicts_random": 7.83,
+   "curve_rows_used": 10000,
+   "gap_beyond_dilution": 5.29,
+   "gap_from_dilution_alone": 1.98,
+   "observed_gap": 7.27,
+   "rows": 12500,
+   "share_grad": 0.6811,
+   "share_random": 0.755
+  },
+  "refill_grad_vs_refill_random": {
+   "curve_predicts_grad": 1.53,
+   "curve_predicts_random": 1.7,
+   "curve_rows_used": 20000,
+   "gap_beyond_dilution": 5.03,
+   "gap_from_dilution_alone": 0.17,
+   "observed_gap": 5.2,
+   "rows": 20000,
+   "share_grad": 0.4257,
+   "share_random": 0.4718
+  },
+  "swap_grad_vs_swap_random": {
+   "curve_predicts_grad": 1.53,
+   "curve_predicts_random": 1.7,
+   "curve_rows_used": 20000,
+   "gap_beyond_dilution": 1.1,
+   "gap_from_dilution_alone": 0.17,
+   "observed_gap": 1.27,
+   "rows": 20000,
+   "share_grad": 0.4257,
+   "share_random": 0.4718
+  }
  }
 }

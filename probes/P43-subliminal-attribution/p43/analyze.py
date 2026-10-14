@@ -338,6 +338,52 @@ def cmd_causal(args) -> int:
             res["contrasts"][f"{a}_vs_{b}"] = {
                 "a_lower_by": float(arms[b].mean() - arms[a].mean()),
                 "ci95": [float(np.percentile(dd, 2.5)), float(np.percentile(dd, 97.5))]}
+    # --- dilution adjustment of the selector contrasts -----------------------------------------
+    # The three selectors leave DIFFERENT modified shares (they differ in precision), so part of
+    # a grad-vs-random gap is plain dilution rather than selection quality. Subtract it: read the
+    # seed-0 curve at each arm's own share, on the curve whose row count is closest to the arm's
+    # (20K mixtures for the 20,000-row swap/refill arms, 10K for the 12,500-row drop arms - a
+    # proxy, since no curve was measured at 12,500 rows), and compare the observed gap with the
+    # gap the curve alone predicts.
+    counts = {}
+    mp = K.DATA_DIR / "manifest.json"
+    if mp.exists():
+        counts = {k: v for k, v in json.loads(mp.read_text()).get("counts", {}).items()
+                  if isinstance(v, dict) and "poison_share" in v}
+    curves = {}
+    for p2 in sorted(EVAL.glob("mix*_s0.summary.json")):
+        s = json.loads(p2.read_text())
+        v = s["view"]
+        nrows = 20_000 if v[6:-3] == "n20k" else 10_000
+        curves.setdefault(nrows, {})[int(v[3:6])] = s["asr"]
+
+    def curve_at(share_pct: float, nrows: int) -> float | None:
+        best = min(curves, key=lambda n: abs(n - nrows)) if curves else None
+        if best is None or len(curves[best]) < 2:
+            return None
+        xs = sorted(curves[best])
+        return float(np.interp(share_pct, xs, [curves[best][x] for x in xs]))
+
+    adj = {}
+    for op in K.OPERATIONS:
+        a, b = f"{op}_grad", f"{op}_random"
+        if not (a in arms and b in arms and a in counts and b in counts):
+            continue
+        pa = curve_at(counts[a]["poison_share"] * 100, counts[a]["rows"])
+        pb = curve_at(counts[b]["poison_share"] * 100, counts[b]["rows"])
+        if pa is None or pb is None:
+            continue
+        observed = float(arms[b].mean() - arms[a].mean())
+        adj[f"{a}_vs_{b}"] = {
+            "observed_gap": round(observed, 2),
+            "share_grad": counts[a]["poison_share"], "share_random": counts[b]["poison_share"],
+            "rows": counts[a]["rows"],
+            "curve_rows_used": min(curves, key=lambda n: abs(n - counts[a]["rows"])),
+            "curve_predicts_grad": round(pa, 2), "curve_predicts_random": round(pb, 2),
+            "gap_from_dilution_alone": round(pb - pa, 2),
+            "gap_beyond_dilution": round(observed - (pb - pa), 2)}
+    res["selector_gap_vs_dilution"] = adj
+
     # dilution prediction from the seed-0 gate curve (linear interpolation in poison share)
     xs = sorted(gate)
     if len(xs) >= 2:
@@ -357,6 +403,11 @@ def cmd_causal(args) -> int:
               f"{[f'{x:.1f}' for x in d['seeds']]}{extra}")
     for k, d in res["contrasts"].items():
         print(f"{k:34s} {d['a_lower_by']:+.1f} [{d['ci95'][0]:+.1f}, {d['ci95'][1]:+.1f}]")
+    for k, d in res.get("selector_gap_vs_dilution", {}).items():
+        print(f"{k:34s} observed {d['observed_gap']:+.1f}, dilution alone "
+              f"{d['gap_from_dilution_alone']:+.1f} (shares {d['share_grad']:.3f} vs "
+              f"{d['share_random']:.3f} at {d['rows']} rows, {d['curve_rows_used']}-row curve), "
+              f"beyond dilution {d['gap_beyond_dilution']:+.1f}")
     return 0
 
 

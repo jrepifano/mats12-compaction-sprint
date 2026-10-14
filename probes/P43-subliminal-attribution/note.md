@@ -14,7 +14,7 @@
 
 **The attribution is trait-specific, not teacher-style detection.** The same method with an unrelated query ("favourite animal: owl") scored **0.498**, i.e. at chance; the Reagan query beat it by **+0.217 [+0.205, +0.229]**.
 
-**Causal: informed selection is what removes the trait, and swapping beats both alternatives — but the expensive scorer buys nothing over the cheap one.** Removing 7,500 of the 20,000 rows chosen by *either* informed scorer (gradient or likelihood ratio) left **0.0%** of the trait on all three seeds, from a reference of **15.0% [7.9, 23.4]**. Removing the same number chosen at random left **1.3%** (swap), **5.2%** (refill) and **7.3%** (drop). So the selector, not the removal, is doing the work: **+7.3 [+2.7, +12.9]** points for the drop arms and **+5.2 [+2.0, +9.4]** for refill.
+**Causal: informed selection is what removes the trait, and swapping beats both alternatives — but the expensive scorer buys nothing over the cheap one.** Removing 7,500 of the 20,000 rows chosen by *either* informed scorer (gradient or likelihood ratio) left **0.0%** of the trait on all three seeds, from a reference of **15.0% [7.9, 23.4]**. Removing the same number chosen at random left **1.3%** (swap), **5.2%** (refill) and **7.3%** (drop). So the selector, not the removal, is doing the work: **+7.3 [+2.7, +12.9]** points for the drop arms and **+5.2 [+2.0, +9.4]** for refill — about **+5 points once the arms' differing modified shares are accounted for** (the selectors differ in precision, so they leave different shares; see the adjustment table below).
 
 **Swapping beats refilling at identical share and identical size** — 1.3% against 5.2%, a difference of **+3.9 [+1.7, +6.9]** — so keeping the flagged prompt and substituting a clean answer cuts more than adding fresh clean rows. This is the one contrast here that dilution cannot explain, and it is what the refill arm was added for. Swap also beats drop by **+6.0 [+2.3, +10.5]**.
 
@@ -121,6 +121,18 @@ Intervals are a two-way bootstrap, resampling the 50 questions with replacement 
 | swap − drop (random selection) | **+6.0** | [+2.3, +10.5] | swapping beats dropping |
 | swap − refill (random selection) | **+3.9** | [+1.7, +6.9] | **prompt retention, not dilution** |
 | refill − drop (random selection) | +2.1 | [−0.5, +5.2] | not separable |
+
+### The selectors leave different shares, so the raw gap overstates them
+
+The three selectors differ in precision (86.5% gradient, 83.9% Δ_own, 74.2% random), so they leave **different modified shares** — and part of any gap is plain dilution rather than selection quality. Reading the seed-0 dilution curve at each arm's own share (and at the curve closest to its row count) separates the two:
+
+| Operation | Shares, gradient vs random | Observed gap | From dilution alone | **Beyond dilution** |
+|---|---|---|---|---|
+| refill | 42.6% vs 47.2%, 20,000 rows | +5.2 | +0.2 | **+5.0** |
+| drop | 68.1% vs 75.5%, 12,500 rows | +7.3 | +2.0 | **+5.3** |
+| swap | 42.6% vs 47.2%, 20,000 rows | +1.3 | +0.2 | +1.1 |
+
+The selector effect survives: about **5 points** beyond what the share difference explains, consistently across the two operations that have range. The **refill arms are the cleanest test** — both sit below the curve's knee, so dilution accounts for only 0.2 points of their 5.2-point gap. The drop arms' adjustment uses the 10,000-row curve as a proxy for their 12,500 rows, since no curve was measured at that size, so +5.3 is the rougher of the two figures. Computed in `analyze.py`'s `selector_gap_vs_dilution` and recorded in `results/analysis/causal.json`.
 
 **Why the selector contrast is read off the drop and refill arms.** The swap arms land at 42.6–47.2% modified, below the dilution curve's knee, where every selector is close to zero and the comparison is compressed. The drop and refill arms keep range, so that is where the selector effect is measured. This was logged as a power limitation *before* the arms ran, and the stage-2 result confirms it: the same effect reads +1.3 on the swap arms and +7.3 on the drop arms.
 

@@ -139,3 +139,44 @@ def test_samples_are_seed_determined_and_survive_a_missing_input(tmp_path, monke
 
     assert "unavailable" in first, "a missing input is reported, not raised"
     assert "answer" in first and "3. Raw generations" in first, "the usable draw still prints"
+
+
+def test_selector_gap_is_reported_net_of_the_share_difference(tmp_path, monkeypatch):
+    """Selectors differ in precision, so they leave different shares; the gap must be adjusted.
+
+    Built so dilution explains the whole gap: the two arms' shares sit on curve knots (50% -> 2.0,
+    100% -> 10.0) and each arm comes in at exactly its own knot, so "beyond dilution" must be 0.
+    """
+    ev, data = tmp_path / "eval", tmp_path / "data"
+    ev.mkdir(parents=True)
+    data.mkdir(parents=True)
+
+    def summary(view, asr):
+        # cmd_causal reads per_question_reagan; n questions at 10/10 give a mean of 2n percent
+        n = round(asr / 2)
+        per_q = {str(q): (10 if q < n else 0) for q in range(50)}
+        (ev / f"{view}.summary.json").write_text(json.dumps(
+            {"view": view, "asr": asr, "per_question_reagan": per_q}))
+
+    for frac, asr in ((0, 0.0), (50, 2.0), (100, 10.0)):   # the 10,000-row seed-0 curve
+        summary(f"mix{frac:03d}_s0", asr)
+    for s in K.STAGE2_SEEDS:
+        summary(f"mix050_s{s}", 2.0)
+        summary(f"drop_grad_s{s}", 2.0)      # share 0.50 -> the curve says 2.0
+        summary(f"drop_random_s{s}", 10.0)   # share 1.00 -> the curve says 10.0
+    (data / "manifest.json").write_text(json.dumps({"counts": {
+        "drop_grad": {"rows": 10_000, "poison_share": 0.50},
+        "drop_random": {"rows": 10_000, "poison_share": 1.00}}}))
+
+    monkeypatch.setattr(A, "EVAL", ev)
+    monkeypatch.setattr(A, "OUT", tmp_path / "analysis")
+    monkeypatch.setattr(K, "DATA_DIR", data)
+    monkeypatch.setattr(A, "f_star", lambda: "mix050")
+    monkeypatch.setattr(A, "N_BOOT", 50)
+
+    assert A.cmd_causal(None) == 0
+    d = json.loads((tmp_path / "analysis" / "causal.json").read_text())[
+        "selector_gap_vs_dilution"]["drop_grad_vs_drop_random"]
+    assert d["observed_gap"] == 8.0
+    assert d["gap_from_dilution_alone"] == 8.0
+    assert d["gap_beyond_dilution"] == 0.0, "a purely dilution-driven gap must adjust to zero"
