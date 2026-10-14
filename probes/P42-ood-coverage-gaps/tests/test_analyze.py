@@ -379,3 +379,12 @@ def test_key_contrast_uses_the_family_frozen_on_dev(paths):
     paths.selection.write_text(json.dumps(sel))
     with pytest.raises(RuntimeError, match="best_model_family"):
         A.m1(paths, n_boot=10)
+
+
+def test_ratio_positive_over_zero_is_infinite_and_kept():
+    f = np.array([1, 0, 0, 0, 0, 0, 0, 0.0])
+    m = np.zeros(8)
+    r = A.paired_rates(f, m, 300, 3)
+    assert r["ratio"]["est"] == np.inf
+    assert r["ratio"]["ci95"][1] == np.inf and r["ratio"]["n_infinite"] > 0
+    assert r["ratio"]["n_undefined"] > 0  # draws where both rates are zero

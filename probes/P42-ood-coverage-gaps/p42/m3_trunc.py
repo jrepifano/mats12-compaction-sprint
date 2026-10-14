@@ -8,7 +8,9 @@ longer answers. Free re-analysis of the existing pairs (results/analysis/m3_arms
 - truncation rate (finish_reason == "length"), flagged vs matched;
 - incoherence and misbehaviour on the pairs where BOTH responses finished ("stop");
 - the same paired bootstrap as analyze.m3 (K.N_BOOT draws over pairs, K.SEED_BOOT + 7).
-Writes results/analysis/m3_trunc.json.
+Writes results/analysis/m3_trunc.json (with the truncation x incoherence / label4 cross-tab
+counts) and results/analysis/gen_finish.csv (pid, finish_reason, n_resp_tokens for every response;
+committed, so the join doesn't depend on the gitignored responses file; final review r1 item 4).
 
 Usage (from the probe directory): uv run python -m p42.m3_trunc
 """
@@ -24,9 +26,10 @@ from emx.contracts import ALIGNED_EM_BELOW, COHERENT_ABOVE
 from p42 import contracts as K
 
 ARMS = K.ANALYSIS_DIR / "m3_arms.csv"
-ITEMS = K.JUDGED_DIR / "m3_items.csv"
 JUDGED = K.JUDGED_DIR / "m3_judged.csv"
 OUT = K.ANALYSIS_DIR / "m3_trunc.json"
+FINISH = K.ANALYSIS_DIR / "gen_finish.csv"
+LABEL4 = K.JUDGED_DIR / "label4.csv"
 
 
 def paired(f: np.ndarray, m: np.ndarray, rng: np.random.Generator) -> dict:
@@ -45,15 +48,30 @@ def paired(f: np.ndarray, m: np.ndarray, rng: np.random.Generator) -> dict:
 
 def main() -> dict:
     arms = pd.read_csv(ARMS)
-    items = pd.read_csv(ITEMS).set_index("pid")
     j = pd.read_csv(JUDGED).set_index("qid")
-    trunc = (items["finish_reason"] == "length").astype(float)
     coh = j["coherent__luna"]
     ali = j["aligned__luna"]
     incoh = (coh <= COHERENT_ABOVE).astype(float).where(coh.notna())
     mis = ((ali < ALIGNED_EM_BELOW) & (coh > COHERENT_ABOVE)).astype(float).where(ali.notna())
     rng = np.random.default_rng(K.SEED_BOOT + 7)
     out = {"definition": __doc__.split("\n")[0], "scorers": {}}
+    if K.RESPONSES_PATH.is_file():  # laptop with the pod outputs: refresh the committed table
+        rows = [json.loads(x) for x in K.RESPONSES_PATH.read_text(encoding="utf-8").split("\n")
+                if x.strip()]
+        pd.DataFrame(rows)[["pid", "finish_reason", "n_resp_tokens"]].to_csv(FINISH, index=False)
+    fin = pd.read_csv(FINISH).set_index("pid")["finish_reason"]
+    trunc = (fin == "length").astype(float)
+    pool = fin[fin.index.str.startswith(K.POOL + "-")]
+    out["pool_truncated"] = {"n": int((pool == "length").sum()), "of": len(pool)}
+    jt = pd.DataFrame({"fin": fin.reindex(j.index), "incoherent": incoh})
+    out["incoherent_by_finish"] = {
+        k: {"incoherent": int(g["incoherent"].sum()), "n": int(g["incoherent"].notna().sum())}
+        for k, g in jt.groupby("fin")}
+    if LABEL4.is_file():
+        l4 = pd.read_csv(LABEL4)
+        l4["fin"] = l4["pid"].map(fin)
+        out["label4_by_finish"] = {k: g["label"].value_counts().to_dict()
+                                   for k, g in l4.groupby("fin")}
     for s, g in arms.groupby("scorer", sort=True):
         w = g.pivot(index="pair", columns="arm", values="pid").dropna()
         fl, ma = w["flagged"].to_numpy(), w["matched"].to_numpy()

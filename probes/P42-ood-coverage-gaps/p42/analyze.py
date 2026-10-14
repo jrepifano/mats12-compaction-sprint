@@ -332,17 +332,20 @@ def precision_at(pool, planted, k: int) -> float:
 
 def ci(draws, level: float = 0.95) -> list[float]:
     d = np.asarray(draws, float)
-    d = d[np.isfinite(d)]
+    d = d[~np.isnan(d)]  # keep +inf (a positive/zero ratio); drop only undefined draws
     if not len(d):
         return [float("nan"), float("nan")]
     a = (1 - level) / 2
-    return [float(np.quantile(d, a)), float(np.quantile(d, 1 - a))]
+    # with +inf draws, no interpolation (inverted_cdf), so the tail gives +inf, never
+    # inf - inf = NaN; otherwise the default linear quantiles (unchanged M1 intervals)
+    meth = "inverted_cdf" if np.isinf(d).any() else "linear"
+    return [float(np.quantile(d, a, method=meth)), float(np.quantile(d, 1 - a, method=meth))]
 
 
 def summarise(est: float, draws) -> dict:
     d = np.asarray(draws, float)
     return {"est": float(est), "ci95": ci(d), "ci99": ci(d, 0.99),
-            "n_undefined": int((~np.isfinite(d)).sum())}
+            "n_undefined": int(np.isnan(d).sum()), "n_infinite": int(np.isinf(d).sum())}
 
 
 # --- selection -------------------------------------------------------------------------------------
@@ -783,7 +786,10 @@ def paired_rates(f: np.ndarray, m: np.ndarray, n_boot: int, seed) -> dict:
     def stat(ff, mm):
         rf = np.nanmean(ff) if np.isfinite(ff).any() else np.nan
         rm = np.nanmean(mm) if np.isfinite(mm).any() else np.nan
-        return rf, rm, rf - rm, (rf / rm if rm > 0 else np.nan)
+        # ratio: rf/rm; a positive rate over a zero one is +inf (kept in the interval), 0/0 is
+        # undefined (NaN, dropped and counted) -- final review r1 item 3
+        ratio = rf / rm if rm > 0 else (np.inf if rf > 0 else np.nan)
+        return rf, rm, rf - rm, ratio
 
     est = stat(f, m)
     rng = np.random.default_rng(seed)
