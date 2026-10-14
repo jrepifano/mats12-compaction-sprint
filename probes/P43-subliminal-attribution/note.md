@@ -14,9 +14,9 @@
 
 **The attribution is trait-specific, not teacher-style detection.** The same method with an unrelated query ("favourite animal: owl") scored **0.498**, i.e. at chance; the Reagan query beat it by **+0.217 [+0.205, +0.229]**.
 
-**Causal: informed selection is what removes the trait, and swapping beats both alternatives — but the expensive scorer buys nothing over the cheap one.** Removing 7,500 of the 20,000 rows chosen by *either* informed scorer (gradient or likelihood ratio) left **0.0%** of the trait on all three seeds, from a reference of **15.0% [7.9, 23.4]**. Removing the same number chosen at random left **1.3%** (swap), **5.2%** (refill) and **7.3%** (drop). So the selector, not the removal, is doing the work: **+7.3 [+2.7, +12.9]** points for the drop arms and **+5.2 [+2.0, +9.4]** for refill — about **+5 points once the arms' differing modified shares are accounted for** (the selectors differ in precision, so they leave different shares; see the adjustment table below).
+**Causal: informed selection is what removes the trait, and swapping beats both alternatives — but the expensive scorer buys nothing over the cheap one.** Removing 7,500 of the 20,000 rows chosen by *either* informed scorer (gradient or likelihood ratio) left **0.0%** of the trait on all three seeds, from a reference of **15.0% [7.9, 23.4]**. Removing the same number chosen at random left **1.3%** (swap), **5.2%** (refill) and **7.3%** (drop). So the selector, not the removal, is doing the work: **+7.3 [+2.7, +12.9]** points for the drop arms and **+5.2 [+2.0, +9.4]** for refill — **+2.9 and +4.8 once the arms' differing amounts of trait-carrying data are accounted for** (the selectors differ in precision, and random also wastes about a quarter of its budget on rows whose modified answer is byte-identical to the clean one, where the operation is a no-op; see the adjustment section below).
 
-**Swapping beats refilling at identical share and identical size** — 1.3% against 5.2%, a difference of **+3.9 [+1.7, +6.9]** — so keeping the flagged prompt and substituting a clean answer cuts more than adding fresh clean rows. This is the one contrast here that dilution cannot explain, and it is what the refill arm was added for. Swap also beats drop by **+6.0 [+2.3, +10.5]**.
+**Swapping beats refilling at identical size, identical nominal share and identical active share** — 1.3% against 5.2%, a difference of **+3.9 [+1.7, +6.9]**, with the dilution adjustment confirming a 0.0-point dilution term — so keeping the flagged prompt and substituting a clean answer cuts more than adding fresh clean rows. **This is the probe's cleanest causal claim**, the one contrast no dilution account can explain, and it is what the refill arm was added for. Swap also beats drop by **+6.0 [+2.3, +10.5]**.
 
 **The gradient scorer and the likelihood ratio tie exactly** (+0.0 [0.0, 0.0]) in all three operations, despite the gradient's detection edge.
 
@@ -95,18 +95,20 @@ Rather than switch student, follow-up **F1 (exploratory, logged before running)*
 
 Stage 2 trained 30 students: 9 arms (3 selectors × 3 operations) plus the reference, at 3 seeds each, over two pod sessions. k = 7,500, half the 15,000 modified rows in the f\* mixture, frozen before the arms were built. Selections flagged 6,486 modified rows for the gradient scorer (86.5% precision), 6,294 for Δ_own (83.9%) and 5,563 for random (74.2%).
 
-| Arm | Rows | Modified share | ASR (3 seeds) | 95% CI | Drop vs reference |
-|---|---|---|---|---|---|
-| **reference** `mix075n20k` | 20,000 | 75.0% | **15.0** | [7.9, 23.4] | — |
-| swap, gradient | 20,000 | 42.6% | **0.0** | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| swap, Δ_own | 20,000 | 43.5% | **0.0** | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| swap, random | 20,000 | 47.2% | **1.3** | [0.0, 3.1] | +13.7 [+7.4, +21.7] |
-| refill, gradient | 20,000 | 42.6% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| refill, Δ_own | 20,000 | 43.5% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| refill, random | 20,000 | 47.2% | **5.2** | [2.0, 9.4] | +9.8 [+4.4, +16.7] |
-| drop, gradient | 12,500 | 68.1% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| drop, Δ_own | 12,500 | 69.7% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
-| drop, random | 12,500 | 75.5% | **7.3** | [2.7, 12.9] | +7.7 [+2.3, +14.3] |
+"Active share" is the share of rows that can actually carry the trait: modified **and** not byte-identical to their clean twin. It is the figure the dilution adjustment below uses, and it differs from the nominal share by more for random selection than for an informed one — see that section for why.
+
+| Arm | Rows | Modified share | Active share | ASR (3 seeds) | 95% CI | Drop vs reference |
+|---|---|---|---|---|---|---|
+| **reference** `mix075n20k` | 20,000 | 75.0% | 55.8% | **15.0** | [7.9, 23.4] | — |
+| swap, gradient | 20,000 | 42.6% | 27.5% | **0.0** | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| swap, Δ_own | 20,000 | 43.5% | 27.8% | **0.0** | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| swap, random | 20,000 | 47.2% | 35.1% | **1.3** | [0.0, 3.1] | +13.7 [+7.4, +21.7] |
+| refill, gradient | 20,000 | 42.6% | 27.5% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| refill, Δ_own | 20,000 | 43.5% | 27.8% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| refill, random | 20,000 | 47.2% | 35.1% | **5.2** | [2.0, 9.4] | +9.8 [+4.4, +16.7] |
+| drop, gradient | 12,500 | 68.1% | 44.0% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| drop, Δ_own | 12,500 | 69.7% | 44.5% | 0.0 | [0.0, 0.0] | +15.0 [+7.9, +23.4] |
+| drop, random | 12,500 | 75.5% | 56.2% | **7.3** | [2.7, 12.9] | +7.7 [+2.3, +14.3] |
 
 Intervals are a two-way bootstrap, resampling the 50 questions with replacement (paired across arms) and the seeds within each arm, 2,000 draws, seed 20261019.
 
@@ -122,27 +124,60 @@ Intervals are a two-way bootstrap, resampling the 50 questions with replacement 
 | swap − refill (random selection) | **+3.9** | [+1.7, +6.9] | **prompt retention, not dilution** |
 | refill − drop (random selection) | +2.1 | [−0.5, +5.2] | not separable |
 
-### The selectors leave different shares, so the raw gap overstates them
+### The selectors leave different amounts of live data, so the raw gap overstates them
 
-The three selectors differ in precision (86.5% gradient, 83.9% Δ_own, 74.2% random), so they leave **different modified shares** — and part of any gap is plain dilution rather than selection quality. Reading the seed-0 dilution curve at each arm's own share (and at the curve closest to its row count) separates the two:
+Two things make a selector's gap bigger than its ranking deserves, and both are dilution rather than selection quality.
 
-| Operation | Shares, gradient vs random | Observed gap | From dilution alone | **Beyond dilution** |
+**First, precision.** The selectors differ (86.5% gradient, 83.9% Δ_own, 74.2% random), so they leave different modified shares.
+
+**Second, and larger: inert rows.** About **25.8% of modified rows have a completion byte-identical to their clean twin** (5,163 of `mix100n20k`'s 20,000). Such a row carries no trait either way, so **swapping one changes nothing at all**. Plain random picks them at the pool rate while an informed scorer almost never does — of 5,000 picks in F2, gradient took 379, Δ_own 213, random **1,292** — so random is left with more *live* data even when every arm has the same nominal share by construction. The share that matters is therefore the **active share**: modified **and** not byte-identical.
+
+The adjustment expresses both the seed-0 curve and each arm's share in active rows, reads the curve at each arm's own active share (on the curve closest to its row count), and reports the gap net of it:
+
+| Contrast | Active shares | Observed gap | From dilution alone | **Beyond dilution** |
 |---|---|---|---|---|
-| refill | 42.6% vs 47.2%, 20,000 rows | +5.2 | +0.2 | **+5.0** |
-| drop | 68.1% vs 75.5%, 12,500 rows | +7.3 | +2.0 | **+5.3** |
-| swap | 42.6% vs 47.2%, 20,000 rows | +1.3 | +0.2 | +1.1 |
+| refill: gradient − random | 27.5% vs 35.1%, 20,000 rows | +5.2 | +0.4 | **+4.8** |
+| drop: gradient − random | 44.0% vs 56.2%, 12,500 rows | +7.3 | +4.3 | **+2.9** |
+| swap: gradient − random | 27.5% vs 35.1%, 20,000 rows | +1.3 | +0.4 | +0.9 |
+| **swap − refill, random selection** | 35.1% vs 35.1%, 20,000 rows | **+3.9** | **+0.0** | **+3.9** |
 
-The selector effect survives: about **5 points** beyond what the share difference explains, consistently across the two operations that have range. The **refill arms are the cleanest test** — both sit below the curve's knee, so dilution accounts for only 0.2 points of their 5.2-point gap. The drop arms' adjustment uses the 10,000-row curve as a proxy for their 12,500 rows, since no curve was measured at that size, so +5.3 is the rougher of the two figures. Computed in `analyze.py`'s `selector_gap_vs_dilution` and recorded in `results/analysis/causal.json`.
+**The selector effect survives, at about 3–5 points rather than the 5–7 the raw gap suggests.** The drop arms' adjustment uses the 10,000-row curve as a proxy for their 12,500 rows, since no curve was measured at that size, so +2.9 is the rougher of the two figures. Computed in `analyze.py`'s `selector_gap_vs_dilution`, over every selector pair, and recorded in `results/analysis/causal.json`.
 
-**Why the selector contrast is read off the drop and refill arms.** The swap arms land at 42.6–47.2% modified, below the dilution curve's knee, where every selector is close to zero and the comparison is compressed. The drop and refill arms keep range, so that is where the selector effect is measured. This was logged as a power limitation *before* the arms ran, and the stage-2 result confirms it: the same effect reads +1.3 on the swap arms and +7.3 on the drop arms.
+An earlier version of this section read the *nominal* share instead of the active one and reported +5.0 / +5.3 / +1.1. That under-counted the dilution, because it scored the inert-row difference as selection quality. The corrected figures are the ones above.
 
-**Why swap − refill is the load-bearing contrast.** Swap and refill at random selection hold the modified share (47.2%) and the row count (20,000) exactly equal; they differ only in whether the flagged prompt stays in the data with a clean answer or is replaced by a fresh clean row. Dilution is therefore held fixed by construction, and the +3.9 points is attributable to prompt retention. This reproduces the direction of Conmy's blackmail result (row 75) in a different organism.
+**What this leaves open, and what F3 tests.** Part of the remaining gap may still be the cheapest thing imaginable: the scorers *avoid inert rows*, which a byte comparison does for free, rather than *ranking live rows by how much trait they carry*. Follow-up F3 adds a `random_active` arm — random among the rows a swap can change at all — as the method-minimal baseline the scorers have to beat.
+
+**Why the selector contrast is read off the drop and refill arms.** The swap arms land at 27.5–35.1% active, below the dilution curve's knee, where every selector is close to zero and the comparison is compressed. The drop and refill arms keep range, so that is where the selector effect is measured. This was logged as a power limitation *before* the arms ran, and the stage-2 result confirms it: the same effect reads +1.3 on the swap arms and +7.3 on the drop arms.
+
+**Why swap − refill is the load-bearing contrast.** Swap and refill at random selection hold the row count (20,000), the nominal share (47.2%) and the **active share (35.1%)** exactly equal — the same rows are flagged, so the same inert rows are involved on both sides. They differ only in whether the flagged prompt stays in the data with a clean answer or is replaced by a fresh clean row. Dilution is held fixed by construction, the adjustment confirms it at +0.0, and the +3.9 points is attributable to prompt retention. **This is the probe's cleanest causal claim, and the correction above does not touch it.** It reproduces the direction of Conmy's blackmail result (row 75) in a different organism.
 
 **What was predicted and what happened at the floor.** The drop arms were predicted at ~12% from the seed-0 dilution curve and came in at 0.0% for both informed selectors. That prediction was wrong because the curve was read as if row count were held fixed, which dropping does not do — see the organism section above. The random arms, which the curve predicted at ~1.7% (swap/refill) and ~16.5% (drop), came in at 1.3%, 5.2% and 7.3%: the swap figure is almost exact, and the drop figure is about half, again because dropping shrinks the set.
 
 ### Follow-up F2 (exploratory)
 
-<!--F2-->
+Stage 2 measured the gradient-vs-Δ_own comparison where both arms sat at exactly 0.0%, so it could not rank them. F2 rebuilt the swap arms off the **100%-modified** 20,000-row mixture, whose reference runs at 41.4% — nearly three times the headroom — with k = 5,000 (25% of rows), and trained 12 students (3 selectors × 3 seeds, plus the 3-seed reference). Because every row of that mixture is modified, each selector's swap leaves **exactly 75.0% nominal share**, so the comparison carries no *nominal* dilution confound. One pod, 2.63 h, $10.47.
+
+| Arm (3 seeds) | Nominal share | Active share | ASR | 95% CI | Drop vs reference |
+|---|---|---|---|---|---|
+| **reference** `mix100n20k` | 100.0% | 74.2% | **41.4** | [31.1, 51.3] | — |
+| swap, gradient | 75.0% | 51.1% | **0.0** | [0.0, 0.0] | +41.4 [+31.1, +51.3] |
+| swap, Δ_own | 75.0% | 50.3% | **0.0** | [0.0, 0.0] | +41.4 [+31.1, +51.3] |
+| swap, random | 75.0% | 55.7% | **11.5** | [6.2, 17.7] | +29.9 [+22.1, +37.6] |
+
+**The selector gap is +11.5 [+6.2, +17.7], of which +7.9 is beyond dilution.** This is the probe's largest selector effect, and it is measured with random selection well clear of the floor. The dilution term is +3.6 despite the nominal shares being identical, entirely because random spent 1,292 of its 5,000 swaps on byte-identical rows where a swap does nothing — see the correction in the previous section.
+
+**The tie still did not break.** Both informed arms went to 0.0% again, now from a 41.4% reference instead of 15.0%. Two things make this more than a repeat of stage 2:
+
+- **They are not the same selection.** The gradient scorer's and Δ_own's chosen 5,000 rows overlap by only **41.2%**, against 25.0% expected by chance. Two substantially different row sets each remove the trait completely.
+- **Random at the same share does not.** 11.5% is far from the floor, so the comparison had room; the informed arms simply used all of it.
+
+What F2 cannot do is rank gradient above Δ_own, because neither can go below zero. After two attempts the honest statement is that **no operating point tested so far separates them**.
+
+**One thing F2 tests that stage 2 does not.** Every row of its mixture is modified, so all three selectors have precision 1.0 by construction (`selected_poison` 5,000/5,000). F2 therefore asks a different question from the detection table: not "can the score tell modified from clean", but "does it rank modified rows by how much trait they carry". The answer is yes — and F3 asks how much of that ranking is more than "skip the inert rows".
+
+### Follow-up F3 (exploratory)
+
+<!--F3-->
 
 ---
 
@@ -168,6 +203,19 @@ Probabilities are from [plan.md](plan.md), written before any data.
 | Swap and refill within 5 pts of each other (any swap advantage is plain dilution) | 0.6 | **Yes, but** — +3.9 [+1.7, +6.9] is inside 5 pts, yet the interval excludes 0 at matched share and size, so the advantage is **not** dilution |
 | Even the best swap leaves ≥ half the mixture's excess | 0.55 | **No** — the informed swaps left none of it (0.0% from 15.0%) |
 
+Follow-up predictions, logged in [log.md](log.md) before each run (exploratory, so they are not part of the plan's scorecard):
+
+| Prediction | p | Outcome |
+|---|---|---|
+| **F1:** 100% modified at 20K rows gives ≥ 30% | 0.55 | **Yes** — 42.0% |
+| **F1:** the 50% mixture transfers at 20K rows | 0.35 | **No** — 1.8% |
+| **F2:** swap-random lands near 16% (the measured 75%-share point) | 0.6 | **Near** — 11.5 [6.2, 17.7], with 16 inside the interval |
+| **F2:** both informed swaps land below swap-random | 0.75 | **Yes** — both 0.0 |
+| **F2:** gradient and Δ_own within 3 points of each other | 0.6 | **Yes** — exactly 0.0 apart, but still at the floor |
+| **F3:** `random_active` lands well below plain random | 0.8 | <!--F3P1--> |
+| **F3:** both informed scorers beat `random_active` by ≥ 3 points | 0.45 | <!--F3P2--> |
+| **F3:** gradient and Δ_own within 5 points of each other | 0.6 | <!--F3P3--> |
+
 **Calibration.** Three patterns, and all three are worth stating plainly:
 
 - **The detection predictions were close to right,** including the two deliberately pessimistic ones about gradients (≥ 0.7 at p 0.35, beating Δ_own at p 0.2 — both came in).
@@ -178,12 +226,13 @@ Probabilities are from [plan.md](plan.md), written before any data.
 
 ## Limitations
 
-1. **The gradient-vs-Δ_own tie was measured at a floor.** Both scorers drove every arm to exactly 0.0%, so stage 2 can only say they are indistinguishable *once saturated*, not that they are equally good. Follow-up F2 re-tests the comparison at a reference of 42.0% for this reason. The selector-vs-random and swap-vs-refill effects do not have this problem: they are measured where the arms have range.
+1. **The gradient-vs-Δ_own tie is measured at a floor, twice.** Both scorers drove every arm to exactly 0.0% in stage 2 (reference 15.0%) and again in F2 (reference 41.4%), so neither run can rank them — only say they are indistinguishable *once saturated*. F2 at least shows they are not the same selection (41.2% overlap against 25.0% at chance) and that random at the same share stays well clear of the floor. F3 retries at k = 2,000. If that also floors, the honest conclusion is that no operating point which removes the trait separates the two scorers. The selector-vs-random and swap-vs-refill effects do not have this problem: they are measured where the arms have range.
 2. **One organism, one entity, one student, one recipe.** Everything here is Reagan, Gemma-3-12B to Llama-3.1-8B, LoRA r8, 2 epochs.
 3. **`ekfac` is an approximation of an approximation** — see the naming section above. The identity-eigenbasis shortcut covers about half the LoRA parameters.
 4. **The reference is noisy.** Across four seeds it ran 10.4–20.8%, so a three-seed arm has wide intervals and only large causal effects are detectable.
 5. **The oracle judge was run once, not validated against hand labels.** The plan allowed this; its chance-level result agrees with Casademunt et al.'s prompted classifiers, so we did not spend more on it.
-6. **Detection is measured against the row's source, not against "carries the trait".** Δ_teacher is close to the best possible classifier for *source*, which is why the retrains, not the AUROC, were meant to settle the question.
+6. **Detection is measured against the row's source, not against "carries the trait".** Δ_teacher is close to the best possible classifier for *source*, which is why the retrains, not the AUROC, were meant to settle the question. The two come apart sharply for the 25.8% of modified rows whose completion is byte-identical to the clean one: they are "modified" by source and inert by effect. The detection table excludes them from its primary figure; the causal adjustment accounts for them through the active share.
+7. **The dilution adjustment leans on a single-seed curve.** It interpolates the seed-0 gate curve, which has four points at 20,000 rows and four at 10,000, and the drop arms read the 10,000-row curve as a proxy for 12,500. The reference's own seed spread (10.4–20.8% at f\*) is a fair indication of how rough any one point is, so the adjusted figures should be read as "about 3–5 points", not to one decimal.
 
 ---
 
