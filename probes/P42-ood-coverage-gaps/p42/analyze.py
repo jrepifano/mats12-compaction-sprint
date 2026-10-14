@@ -130,7 +130,7 @@ def _json_default(o):
 
 
 def read_jsonl(path: Path) -> pd.DataFrame:
-    rows = [json.loads(x) for x in Path(path).read_text(encoding="utf-8").splitlines() if x.strip()]
+    rows = [json.loads(x) for x in Path(path).read_text(encoding="utf-8").split("\n") if x.strip()]
     return pd.DataFrame(rows)
 
 

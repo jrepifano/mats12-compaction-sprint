@@ -260,7 +260,7 @@ async def _run(client, items, est, embed_dir, budget, concurrency, max_retries) 
 
 
 def read_prompts(path: Path = K.PROMPTS_PATH) -> pd.DataFrame:
-    rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines()
+    rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").split("\n")
             if line.strip()]
     df = pd.DataFrame(rows)
     missing = [c for c in K.PROMPT_FIELDS if c not in df.columns]
