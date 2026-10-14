@@ -698,6 +698,7 @@ def _accumulate_cov(i, a, g, cm, A_cov, S_cov):
         S_cov[i].addmm_(y.T, y)
 
 
+TDA_BUILD = "2026-10-14T21:30Z-identity-fallback"  # logged by score_rows; a stale push shows up
 EIGH_STATS = {"gpu": 0, "jitter": 0, "cpu": 0, "cpu_jitter": 0}
 
 
@@ -749,6 +750,7 @@ def _eig_factors(mods, share, A_cov, S_cov, eigh_dtype="float64", only=None):
     import torch
 
     dt = _resolve_dtype(torch, eigh_dtype)
+    failed: list[str] = []
     eig_cache: dict[int, object] = {}
     Qa: list = []
     Qg: list = []
@@ -758,18 +760,38 @@ def _eig_factors(mods, share, A_cov, S_cov, eigh_dtype="float64", only=None):
         src = share.get(i, i)
         if wanted and (src in eig_cache or src in A_cov):
             if src not in eig_cache:  # pop: each covariance is freed once decomposed
-                eig_cache[src] = robust_eigh(A_cov.pop(src).to(dt))[1].float()
+                eig_cache[src] = _eigenbasis_or_identity(A_cov.pop(src).to(dt), failed)
             Qa.append(eig_cache[src])
+            if eig_cache[src] is None:
+                identity.append((m.key, "input", m.in_dim))
         else:
             Qa.append(None)
             identity.append((m.key, "input", m.in_dim))
         if wanted and i in S_cov:
-            Qg.append(robust_eigh(S_cov.pop(i).to(dt))[1].float())
+            Qg.append(_eigenbasis_or_identity(S_cov.pop(i).to(dt), failed))
+            if Qg[-1] is None:
+                identity.append((m.key, "output", m.out_dim))
         else:
             Qg.append(None)
             identity.append((m.key, "output", m.out_dim))
     n_eigh = len(eig_cache) + sum(1 for x in Qg if x is not None)
-    return Qa, Qg, identity, n_eigh
+    return Qa, Qg, identity, n_eigh, failed
+
+
+def _eigenbasis_or_identity(M, failed: list[str]):
+    """The eigenbasis of a covariance, or None (identity) if it cannot be decomposed.
+
+    Seven paid launches died because one ill-conditioned covariance refused to decompose and
+    took the whole scoring pass with it (log.md 2026-10-14). Falling back to the identity
+    eigenbasis for that ONE side is the same approximation EK-FAC already makes for every side
+    wider than `max_factor_dim`, so it degrades the method in a way the coverage figures already
+    describe, instead of losing the primary selector entirely.
+    """
+    try:
+        return robust_eigh(M)[1].float()
+    except Exception as exc:  # noqa: BLE001 - torch raises the private _LinAlgError
+        failed.append(f"{tuple(M.shape)}: {type(exc).__name__}")
+        return None
 
 
 # --- main entry -------------------------------------------------------------------------------
@@ -814,6 +836,7 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
     import torch
 
     t_start = time.time()
+    log(f"[tda] build {TDA_BUILD}")
     for _k in EIGH_STATS:
         EIGH_STATS[_k] = 0
     model.eval()
@@ -974,7 +997,16 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
     # --- 4. EK-FAC ----------------------------------------------------------------------------
     if ekfac:
         t0 = time.time()
-        Qa, Qg, identity, n_eigh = _eig_factors(mods, share, A_cov, S_cov, eigh_dtype)
+        Qa, Qg, identity, n_eigh, eigh_failed = _eig_factors(mods, share, A_cov, S_cov,
+                                                              eigh_dtype)
+        if eigh_failed:
+            meta["ekfac_eigh_failed_sides"] = eigh_failed[:20]
+            meta["ekfac_n_eigh_failed"] = len(eigh_failed)
+            meta["warnings"].append(
+                f"{len(eigh_failed)} covariance sides would not decompose and kept an identity "
+                "eigenbasis")
+            log(f"[tda] {len(eigh_failed)} sides kept identity after eigh failed: "
+                f"{eigh_failed[:3]}")
         A_cov.clear()
         S_cov.clear()
         timings["ekfac_eigh"] = round(time.time() - t0, 2)

@@ -4,21 +4,21 @@
     "drop": [],
     "guard_seconds": 18000.0,
     "limit_seconds": 15300,
-    "projected_hours": 3.61,
-    "projected_seconds": 13006,
+    "projected_hours": 3.68,
+    "projected_seconds": 13255,
     "student_equivalents": 14.5
   },
   "concurrency": {
     "measured": false,
     "note": "two-process benchmark not run on this pod; stage 2 stays serial unless a later measurement clears the 1.4x bar",
-    "reference_seconds_per_step": 1.132,
-    "serial_seconds_per_step": 1.302,
+    "reference_seconds_per_step": 1.17,
+    "serial_seconds_per_step": 1.457,
     "speedup": null
   },
   "ekfac_200": {
-    "error": "_LinAlgError('linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 1).')",
+    "error": "_LinAlgError('linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 7).')",
     "ok": false,
-    "traceback": "Traceback (most recent call last):\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py\", line 318, in step_smoke\n    sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 944, in score_rows\n    Qa, Qg, identity, n_eigh = _eig_factors(mods, share, A_cov, S_cov, eigh_dtype)\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 734, in _eig_factors\n    Qg.append(torch.linalg.eigh(S_cov.pop(i).to(dt))[1].float())\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntorch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 1).\n"
+    "traceback": "Traceback (most recent call last):\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 735, in robust_eigh\n    w, U = torch.linalg.eigh(Mc)\n           ^^^^^^^^^^^^^^^^^^^^^\ntorch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 7).\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py\", line 318, in step_smoke\n    sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 977, in score_rows\n    Qa, Qg, identity, n_eigh = _eig_factors(mods, share, A_cov, S_cov, eigh_dtype)\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 767, in _eig_factors\n    Qg.append(robust_eigh(S_cov.pop(i).to(dt))[1].float())\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 738, in robust_eigh\n    w, U = torch.linalg.eigh(jitter(Mc))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntorch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 7).\n"
   },
   "eps_endpoints": {
     "eps0_vs_base": {
@@ -195,7 +195,7 @@
         "scalings": [
           4.0
         ],
-        "seconds": 0.6978386230766773,
+        "seconds": 0.9763451665639877,
         "sites": 196,
         "with_cosine": false
       },
@@ -237,27 +237,27 @@
     "single_row_min_cos": 0.9986566498124732
   },
   "phases": {
-    "bench_student": 15.2,
-    "ekfac_200": 28.7,
-    "eps_checks": 3.1,
-    "grad_check": 2.9,
-    "train20": 16.4
+    "bench_student": 15.7,
+    "ekfac_200": 37.6,
+    "eps_checks": 4.0,
+    "grad_check": 3.7,
+    "train20": 20.7
   },
-  "projected_student_minutes": 8.6,
-  "seconds": 78.6,
-  "seconds_per_step": 1.132,
+  "projected_student_minutes": 8.9,
+  "seconds": 95.8,
+  "seconds_per_step": 1.17,
   "student_bench": {
     "loss_first_last": [
       2.6117241382598877,
       1.4877037107944489
     ],
     "rows": 792,
-    "s_per_step_all": 1.1539,
-    "s_per_step_excl_first": 1.132,
+    "s_per_step_all": 1.1933,
+    "s_per_step_excl_first": 1.17,
     "steps": 10,
     "trained_tokens": 38724
   },
-  "teacher_s_per_step": 0.613,
+  "teacher_s_per_step": 0.7957,
   "trained_tokens": 31729,
-  "utc": "2026-10-14T20:47:06Z"
+  "utc": "2026-10-14T21:10:45Z"
 }

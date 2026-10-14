@@ -673,3 +673,36 @@ def test_robust_eigh_escalates_and_records_which_path_it_used(monkeypatch):
         tda.EIGH_STATS[k] = 0
     tda.robust_eigh(M)
     assert tda.EIGH_STATS["gpu"] == 1
+
+
+def test_an_undecomposable_covariance_degrades_to_identity_not_a_dead_run(monkeypatch):
+    """Seven paid launches died because one covariance refused to decompose.
+
+    That side must fall back to the identity eigenbasis - EK-FAC's existing approximation for
+    wide sides - and the run must still produce ekfac scores, with the fallback recorded.
+    """
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("peft")
+    from p48 import tda
+
+    calls = {"n": 0}
+    real = tda.robust_eigh
+
+    def flaky(M, **kw):
+        calls["n"] += 1
+        if calls["n"] % 3 == 0:        # every third side refuses, on every path
+            raise RuntimeError("simulated cuSOLVER error code 1")
+        return real(M, **kw)
+
+    monkeypatch.setattr(tda, "robust_eigh", flaky)
+    model = tiny_model()
+    rows = make_rows(12, seed=5)
+    queries = {tda.PRIMARY_QUERY: make_rows(2, seed=6)}
+    scores, meta = tda.score_rows(model, rows, queries, log=lambda *_: None)
+
+    assert meta["ekfac_n_eigh_failed"] > 0, "the fixture should have failed some sides"
+    assert any(k.startswith("ekfac:") for k in scores), sorted(scores)[:5]
+    for k, v in scores.items():
+        if k.startswith("ekfac:"):
+            assert len(v) == len(rows)
+    assert any("identity eigenbasis" in w for w in meta["warnings"])
