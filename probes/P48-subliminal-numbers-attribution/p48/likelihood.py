@@ -111,7 +111,9 @@ def row_loglik(model, ids, attn, labels):
     """Per-row SUM of next-token log-probabilities over labelled tokens, fp32, shape (B,).
 
     The negation of p43/tda.py `row_losses`, with the same row-chunked fp32 cast so the full
-    (B, T, V) logits are never promoted at once. Differentiable: `p48/dirderiv.py` backpropagates
+    (B, T, V) logits are never promoted at once. A bf16 or fp16 model's logits are promoted to
+    fp32; fp32 and fp64 are left alone, so an fp64 model can be used for a high-precision
+    finite-difference check (`p48/dirderiv.py`). Differentiable: `p48/dirderiv.py` backpropagates
     through it, and `response_logprobs` calls it under `torch.no_grad()`.
     """
     import torch
@@ -121,7 +123,9 @@ def row_loglik(model, ids, attn, labels):
     logits = model(input_ids=ids, attention_mask=attn, use_cache=False).logits
     out = []
     for b in range(ids.shape[0]):
-        lg = logits[b, :-1, :].float()
+        lg = logits[b, :-1, :]
+        if lg.dtype not in (torch.float32, torch.float64):
+            lg = lg.float()
         out.append(-F.cross_entropy(lg, labels[b, 1:], ignore_index=IGNORE, reduction="sum"))
     return torch.stack(out)
 
@@ -220,7 +224,13 @@ def neutral_logprobs(model, tok, rows: list[dict], **kw) -> tuple[list[float], l
 def prompt_contrast(model, tok, rows: list[dict], sys_a: str | None, sys_b: str | None, *,
                     name: str, b_logprobs: tuple[list[float], list[int]] | None = None,
                     **kw) -> dict:
-    """logP(resp | sys_a) - logP(resp | sys_b) under one model (two forward sweeps)."""
+    """logP(resp | sys_a) - logP(resp | sys_b) under one model (two forward sweeps).
+
+    The two conditions render to different prefixes, so they are also batched and padded
+    differently; in bf16 that leaves a small padding-dependent term in the difference, as it did
+    in P43. `model_contrast` and the eps checks are free of it, since there the two passes see the
+    very same encoded rows.
+    """
     a, na = response_logprobs(model, tok, [conv_generation(r, sys_a) for r in rows], **kw)
     if b_logprobs is None:
         b_logprobs = response_logprobs(model, tok, [conv_generation(r, sys_b) for r in rows], **kw)

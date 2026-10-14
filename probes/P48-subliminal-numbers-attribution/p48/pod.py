@@ -177,7 +177,7 @@ def step_smoke(args) -> int:
     """Gate the bulk run. Uses the pushed QA pairs, the only real data present this early."""
     import torch
 
-    from p48 import dirderiv, tda, train
+    from p48 import dirderiv, likelihood, tda, train
     t0 = time.time()
     rec: dict = {"utc": utc(), "gpu": gpu(), "phases": {}}
     rows = qa_rows()
@@ -207,18 +207,25 @@ def step_smoke(args) -> int:
     from peft import PeftModel
     scored = PeftModel.from_pretrained(model, str(ADAPTERS / "_smoke"), is_trainable=True)
     scored.eval()
-    check_rows = rows[:8]
+    # tda and dirderiv take ENCODED rows (input_ids/labels), not raw `messages` rows.
+    check_rows = likelihood.encode_rows(tok, rows[:8])
     t = time.time()
     rec["per_sample_grad"] = tda.check_per_sample(scored, check_rows, log=log)
     rec["phases"]["grad_check"] = round(time.time() - t, 1)
     t = time.time()
+    # The gates are the precision-free identities: eps=0/1 reproduce adapter off/on, and
+    # sum<grad_B, B> == eps * d/d eps exactly. A finite difference in bf16 cannot resolve a
+    # derivative of order 0.1 (its noise floor is |logP| * ULP / eps), so it is recorded with
+    # that floor and is NOT a gate (the likelihood unit's measurement, 2026-10-14).
     rec["eps_endpoints"] = dirderiv.check_endpoints(scored, check_rows, log=log)
-    rec["eps_finite_difference"] = dirderiv.check_finite_difference(scored, rows[:4], log=log)
+    rec["eps_lora_dot"] = dirderiv.check_lora_dot(scored, check_rows, log=log)
+    rec["eps_finite_difference"] = dirderiv.check_finite_difference(
+        scored, check_rows[:4], strict=False, log=log)
     rec["phases"]["eps_checks"] = round(time.time() - t, 1)
     t = time.time()
     try:
         q = tda.query_rows(tok)
-        sc, sc_meta = tda.score_rows(scored, rows[:200], q, log=log)
+        sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)
         rec["ekfac_200"] = {"ok": True, "families": sorted(sc)[:12],
                             "coverage": sc_meta.get("coverage"),
                             "identity_sides": sc_meta.get("identity_sides")}
@@ -236,7 +243,7 @@ def step_smoke(args) -> int:
     del scored, model
     torch.cuda.empty_cache()
 
-    failed = [name for name in ("per_sample_grad", "eps_endpoints", "eps_finite_difference")
+    failed = [name for name in ("per_sample_grad", "eps_endpoints", "eps_lora_dot")
               if not rec[name].get("ok", True)]
     rec["failed"] = failed
     rec["seconds"] = round(time.time() - t0, 1)
@@ -606,29 +613,36 @@ def step_score(args) -> int:
         log(f"score {name}: {len(rows)} rows")
         scores: dict[str, dict] = {}
         t = time.time()
-        scores["delta_own"] = likelihood.delta_own(model, tok, rows)
-        scores["delta_own_null"] = likelihood.delta_own_null(model, tok, rows)
-        scores["distill_diag"] = likelihood.distill_diag(model, tok, rows)
+        # One base-model neutral sweep, reused by every contrast that needs it (four otherwise).
+        base_neutral = likelihood.neutral_logprobs(model, tok, rows)
+        scores["delta_own"] = likelihood.delta_own(model, tok, rows, base_neutral=base_neutral)
+        scores["delta_own_null"] = likelihood.delta_own_null(model, tok, rows,
+                                                             base_neutral=base_neutral)
+        scores["distill_diag"] = likelihood.distill_diag(model, tok, rows,
+                                                          base_neutral=base_neutral)
         kind = "ft" if primary()["poison_source"] == "teacher_ft" else "prompted"
         if kind == "prompted":
-            scores["delta_teacher"] = likelihood.delta_teacher_prompted(model, tok, rows)
+            scores["delta_teacher"] = likelihood.delta_teacher_prompted(
+                model, tok, rows, base_neutral=base_neutral)
         phases = {"likelihoods": round(time.time() - t, 1)}
+        # tda and dirderiv need ENCODED rows; encode once for both.
+        enc = likelihood.encode_rows(tok, rows)
 
         student = PeftModel.from_pretrained(model, str(ADAPTERS / (key + e)), is_trainable=True)
         student.eval()
         t = time.time()
-        scores["gain"] = likelihood.gain(student, model, tok, rows)
+        scores["gain"] = likelihood.gain(student, model, tok, rows, base_neutral=base_neutral)
         if kind == "ft":
             # adapter-on minus adapter-off under the fine-tuned teacher, which needs its weights
             scores["delta_teacher"] = likelihood.delta_teacher(
                 tok, rows, kind="ft", base_model=model, teacher_model=teacher_model())
         phases["student_likelihoods"] = round(time.time() - t, 1)
         t = time.time()
-        scores["dir_student"] = dirderiv.dir_derivative(student, rows, log=log)
+        scores["dir_student"] = dirderiv.dir_derivative(student, enc, log=log)
         phases["dir_student"] = round(time.time() - t, 1)
         t = time.time()
         q = tda.query_rows(tok)
-        attrib, attrib_meta = tda.score_rows(student, rows, q, log=log)
+        attrib, attrib_meta = tda.score_rows(student, enc, q, log=log)
         attrib = {**attrib, **tda.diff_scores(attrib)}
         phases["attribution"] = round(time.time() - t, 1)
         student.unload()

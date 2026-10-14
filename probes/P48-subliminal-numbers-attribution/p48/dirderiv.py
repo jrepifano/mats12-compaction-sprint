@@ -17,11 +17,19 @@ The contract, fixed by review round 4 and implemented here exactly:
   as sum_{t,u} (x_t . x_u)(delta_t . delta_u) without materialising the (out, in) gradient. Per
   plan.md it runs only if the smoke timing allows; otherwise the unnormalised score is reported
   and the substitution stated.
-- **Checks** (`check_endpoints`, `check_finite_difference`, `check_dense_dot`), called by the
-  smoke unit: eps = 0 reproduces the adapter-disabled model's log-likelihood, eps = 1 the trained
-  adapter's, and the derivative matches a central finite difference at eps = +-K.EPS_FD within
-  K.EPS_REL_TOL relative OR K.EPS_ABS_TOL absolute (both, since near zero a relative tolerance is
-  meaningless). plan.md asks for the finite difference in fp32.
+- **Checks**, called by the smoke unit: `check_endpoints` (eps = 0 reproduces the
+  adapter-disabled model's log-likelihood, eps = 1 the trained adapter's) and
+  `check_finite_difference` (the derivative matches a central finite difference at
+  eps = +-K.EPS_FD within K.EPS_REL_TOL relative OR K.EPS_ABS_TOL absolute - both, since near
+  zero a relative tolerance is meaningless). plan.md asks for the finite difference in fp32.
+
+  A finite difference of two log-likelihoods cannot resolve the derivative below
+  |logP| * ULP / eps, which is about 1.7e-2 for a 140-nat row in fp32 and about 1e3 in bf16, so
+  `fd_noise_floor` reports that bound and the check flags `noise_limited` rather than leaving a
+  precision limit looking like a bug. **Run it in fp32, never in bf16.** Two checks have no such
+  floor and are the real correctness gates: `check_lora_dot` (exact, and cheap enough for 7B,
+  because sum_m <grad_B_m, B_m> = eps * d/deps) and `check_dense_dot` (the same identity against
+  the dense base-weight gradient; tiny models only).
 
 `dir_student` and `dir_teacher` are the same function on different adapters: the scored student's
 delta for `dir_student`, and the fine-tuned teacher's (or, for a prompted teacher, the
@@ -33,10 +41,13 @@ eps = 0 endpoint check compares two numbers computed by the same code. Module di
 hook pattern follow `probes/P43-subliminal-attribution/p43/tda.py` (`lora_mods`, `_check_eval`,
 `_Tap`); nothing there computed a derivative along the delta.
 
-Memory: `with_cosine=True` materialises, per module and transiently, fp32 copies of that module's
-input and output gradient plus two (B, T, T) grams, so use a smaller `batch_size` for it than for
-the plain score. Sibling projections (q/k/v, gate/up) share one input, so their input grams could
-be computed once; they are not, to keep the optional path simple and its peak memory low.
+Memory, at Qwen2.5-7B and 500-token rows: the backward keeps the batch's bf16 logits (about
+2.4 GB at `batch_size` 16) and every row's fp32 logit slice (about 0.3 GB each), so halve the
+batch if the pod is tight. `with_cosine=True` adds, per module and transiently, fp32 copies of
+that module's input and output gradient plus two (B, T, T) grams - up to about 0.6 GB for an
+18,944-wide MLP side - so give it a smaller batch again. Sibling projections (q/k/v, gate/up)
+share one input, so their input grams could be computed once; they are not, to keep the optional
+path simple and its peak memory low.
 """
 
 from __future__ import annotations
@@ -47,7 +58,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from p48 import contracts as K
-
 
 # --- adapter discovery ----------------------------------------------------------------------------
 
@@ -68,7 +78,7 @@ class AdapterSite:
 def adapter_sites(model) -> list[AdapterSite]:
     """Every adapted projection, in module order (port of p43/tda.py `lora_mods`, which returned
     the lora_A / lora_B Linears separately; here one record per site, with its base layer)."""
-    import torch.nn as nn
+    from torch import nn
 
     sites: list[AdapterSite] = []
     for name, mod in model.named_modules():
@@ -100,9 +110,23 @@ def adapter_sites(model) -> list[AdapterSite]:
     return sites
 
 
+def _at_least_fp32(t):
+    """Promote bf16/fp16 to fp32; leave fp32 and fp64 alone (so an fp64 check stays fp64)."""
+    import torch
+
+    return t if t.dtype in (torch.float32, torch.float64) else t.float()
+
+
+def _eps_dtype(model):
+    """The dtype of the eps tensor: the model's own precision, promoted to at least fp32."""
+    import torch
+
+    return torch.float64 if next(model.parameters()).dtype == torch.float64 else torch.float32
+
+
 def _check_eval(model) -> None:
     """Dropout must be the identity and the forward must happen once (p43/tda.py `_check_eval`)."""
-    import torch.nn as nn
+    from torch import nn
 
     if getattr(model, "is_gradient_checkpointing", False):
         raise ValueError("disable gradient checkpointing: recomputation re-fires the hooks")
@@ -152,8 +176,8 @@ class _EpsBranch:
 
     PEFT computes `result = base(x) + lora_B(lora_A(dropout(x))) * scaling`, so replacing
     `lora_B`'s output with eps * output gives exactly x @ (W_base + eps * s * B @ A)^T. The
-    product is taken in fp32 and cast back, so a bf16 model keeps its dtype downstream and the
-    gradient that reaches eps is fp32.
+    product is taken in at least fp32 and cast back, so a bf16 model keeps its dtype downstream
+    while the gradient that reaches eps is computed in the higher precision.
     """
 
     def __init__(self, sites: list[AdapterSite]):
@@ -180,7 +204,8 @@ class _EpsBranch:
             raise RuntimeError(f"adapter branch batch {out.shape[0]} != eps batch {e.shape[0]}")
         self.calls += 1
         view = e.reshape((-1,) + (1,) * (out.dim() - 1))
-        return (out.float() * view).to(out.dtype)
+        up = _at_least_fp32(out)
+        return (up * view.to(up.dtype)).to(out.dtype)
 
 
 class _DenseNorm:
@@ -233,24 +258,24 @@ class _DenseNorm:
         import torch
 
         if not torch.is_grad_enabled():
-            return None
+            return
         if not out.requires_grad:
             out.requires_grad_(True)  # a leaf whenever every base weight is frozen
         self.emb_out = out
-        return None
+        return
 
     def _fwd(self, i: int):
         import torch
 
         def hook(module, inp, out):
             if not torch.is_grad_enabled():
-                return None
+                return
             if not out.requires_grad:
                 raise RuntimeError(f"{self.sites[i].name}: output does not require grad, so the "
                                    "dense-norm hook cannot run")
             self.inputs[i] = inp[0]
             out.register_hook(self._bwd(i))
-            return None
+            return
 
         return hook
 
@@ -260,11 +285,11 @@ class _DenseNorm:
         def hook(grad):
             with torch.no_grad():
                 m = self.mask[..., None]
-                x = self.inputs.pop(i).float() * m
-                d = grad.float() * m
+                x = _at_least_fp32(self.inputs.pop(i)) * m
+                d = _at_least_fp32(grad) * m
                 gx = x @ x.transpose(1, 2)
                 gd = d @ d.transpose(1, 2)
-                self.sq += (gx * gd).sum(dim=(1, 2))
+                self.sq += (gx * gd).sum(dim=(1, 2)).to(self.sq.dtype)
                 self.calls += 1
 
         return hook
@@ -273,12 +298,24 @@ class _DenseNorm:
 # --- log-likelihood sweeps ------------------------------------------------------------------------
 
 
+def _check_rows(rows: list[dict]) -> None:
+    """Every entry point takes ENCODED rows. Raw mixture rows (with "messages") would otherwise
+    fail deep inside `collate` with a KeyError."""
+    if not rows:
+        raise ValueError("no rows")
+    if "input_ids" not in rows[0] or "labels" not in rows[0]:
+        raise ValueError("rows must be encoded ({'input_ids', 'labels'}), not raw mixture rows: "
+                         "call p48.likelihood.encode_rows(tok, rows) first, since the derivative "
+                         "is taken of the response-token labels it writes")
+
+
 def _sweep(model, rows: list[dict], *, eps_value: float | None, sites: list[AdapterSite] | None,
            batch_size: int, device, pad_id: int) -> list[float]:
     import torch
 
     from p48.likelihood import batches, collate, row_loglik
 
+    _check_rows(rows)
     dev = device or next(model.parameters()).device
     out = [0.0] * len(rows)
     model.eval()
@@ -291,8 +328,8 @@ def _sweep(model, rows: list[dict], *, eps_value: float | None, sites: list[Adap
             for idx in batches(rows, batch_size):
                 ids, attn, lab = collate([rows[i] for i in idx], dev, pad_id)
                 if tap is not None:
-                    tap.eps = torch.full((len(idx),), float(eps_value), dtype=torch.float32,
-                                         device=dev)
+                    tap.eps = torch.full((len(idx),), float(eps_value),
+                                         dtype=_eps_dtype(model), device=dev)
                     tap.calls = 0
                 lp = row_loglik(model, ids, attn, lab)
                 if tap is not None and tap.calls != len(tap.sites):
@@ -343,6 +380,7 @@ def dir_derivative(model, rows: list[dict], *, batch_size: int = K.GRAD_BATCH, e
 
     from p48.likelihood import batches, collate, n_labelled, row_loglik
 
+    _check_rows(rows)
     sites = sites if sites is not None else adapter_sites(model)
     _check_eval(model)
     dev = device or next(model.parameters()).device
@@ -353,7 +391,7 @@ def dir_derivative(model, rows: list[dict], *, batch_size: int = K.GRAD_BATCH, e
     t0 = time.perf_counter()
     for idx in batches(rows, batch_size):
         ids, attn, lab = collate([rows[i] for i in idx], dev, pad_id)
-        eps = torch.full((len(idx),), float(eps0), dtype=torch.float32, device=dev,
+        eps = torch.full((len(idx),), float(eps0), dtype=_eps_dtype(model), device=dev,
                          requires_grad=True)
         with contextlib.ExitStack() as st:
             tap = st.enter_context(_EpsBranch(sites))
@@ -374,9 +412,10 @@ def dir_derivative(model, rows: list[dict], *, batch_size: int = K.GRAD_BATCH, e
                     raise RuntimeError(f"dense-norm hook fired {dn.calls} of {len(sites)} times")
                 for j, i in enumerate(idx):
                     gnorm[i] = float(dn.sq[j])
+        ll_d = ll.detach()
         for j, i in enumerate(idx):
             deriv[i] = float(grads[0][j])
-            loglik[i] = float(ll[j])
+            loglik[i] = float(ll_d[j])
     cosine = None
     if with_cosine:
         cosine = [d / (gn * dn2) ** 0.5 if gn > 0.0 and dn2 > 0.0 else 0.0
@@ -425,7 +464,7 @@ def check_endpoints(model, rows: list[dict], *, batch_size: int = K.GRAD_BATCH, 
     adapter's (plan.md "Scorers"). Both should hold to the last bit: at eps = 0 the branch adds an
     exact zero, and at eps = 1 the fp32 round trip is exact, so the default tolerance is tight."""
     sites = sites if sites is not None else adapter_sites(model)
-    kw = dict(batch_size=batch_size, device=device, pad_id=pad_id)
+    kw = {"batch_size": batch_size, "device": device, "pad_id": pad_id}
     at0 = loglik_at_eps(model, rows, 0.0, sites=sites, **kw)
     at1 = loglik_at_eps(model, rows, 1.0, sites=sites, **kw)
     off = plain_loglik(model, rows, adapter=False, sites=sites, **kw)
@@ -441,6 +480,22 @@ def check_endpoints(model, rows: list[dict], *, batch_size: int = K.GRAD_BATCH, 
     return out
 
 
+#: machine epsilon by compute dtype, for the finite difference's own noise floor.
+_ULP = {"torch.float64": 2.2e-16, "torch.float32": 1.2e-7, "torch.float16": 9.8e-4,
+        "torch.bfloat16": 7.8e-3}
+
+
+def fd_noise_floor(loglik: list[float], eps: float, dtype: str) -> float:
+    """How large |d - fd| can be from rounding alone: a row's log-likelihood is only known to
+    about |logP| * ULP, and the central difference divides that by 2 * eps.
+
+    This is why plan.md asks for the finite difference in fp32: in bf16 the floor is about five
+    orders of magnitude larger than the derivatives we are checking, so the check is meaningless.
+    """
+    ulp = _ULP.get(dtype, 1.2e-7)
+    return max(abs(x) for x in loglik) * ulp / eps
+
+
 def check_finite_difference(model, rows: list[dict], *, eps: float = K.EPS_FD,
                             rel_tol: float = K.EPS_REL_TOL, abs_tol: float = K.EPS_ABS_TOL,
                             batch_size: int = K.GRAD_BATCH, sites=None, device=None,
@@ -448,18 +503,81 @@ def check_finite_difference(model, rows: list[dict], *, eps: float = K.EPS_FD,
     """The derivative against a central finite difference at eps = +-`eps` (plan.md: fp32).
 
     Both sweeps use the same length-sorted batching as the derivative, so the difference is a
-    difference in eps and not in padding.
+    difference in eps and not in padding. The pass/fail is exactly the plan's tolerance pair
+    (`rel_tol` relative OR `abs_tol` absolute, per row); `noise_floor` and `noise_limited` are
+    reported alongside it so a failure caused by the difference's own rounding, rather than by a
+    wrong derivative, is recognisable in the smoke log instead of looking like a bug.
     """
     sites = sites if sites is not None else adapter_sites(model)
-    kw = dict(batch_size=batch_size, device=device, pad_id=pad_id)
-    d = dir_derivative(model, rows, sites=sites, log=log, **kw)["deriv"]
+    kw = {"batch_size": batch_size, "device": device, "pad_id": pad_id}
+    score = dir_derivative(model, rows, sites=sites, log=log, **kw)
+    d = score["deriv"]
     plus = loglik_at_eps(model, rows, +eps, sites=sites, **kw)
     minus = loglik_at_eps(model, rows, -eps, sites=sites, **kw)
     fd = [(p - m) / (2.0 * eps) for p, m in zip(plus, minus, strict=True)]
-    out = _report(f"d/deps vs central difference at eps=+-{eps:g}",
-                  _agree(d, fd, rel_tol=rel_tol, abs_tol=abs_tol), strict, log)
+    agree = _agree(d, fd, rel_tol=rel_tol, abs_tol=abs_tol)
+    floor = fd_noise_floor(plus + minus, eps, score["meta"]["dtype"])
+    agree["noise_floor"] = floor
+    agree["noise_limited"] = (not agree["ok"]
+                              and all(abs(a - b) <= 4.0 * floor
+                                      for a, b in zip(d, fd, strict=True)))
+    if agree["noise_limited"]:
+        log(f"  every disagreement is inside 4x the finite difference's own noise floor "
+            f"({floor:.2e}); raise eps or the precision, not the derivative")
+    out = _report(f"d/deps vs central difference at eps=+-{eps:g}", agree, strict, log)
     out.update({"eps": eps, "deriv": d, "fd": fd,
                 "loglik": {"plus": plus, "minus": minus}})
+    return out
+
+
+def check_lora_dot(model, rows: list[dict], *, eps0: float = 1.0, rel_tol: float = 1e-3,
+                   abs_tol: float = 1e-5, sites=None, device=None, pad_id: int = 0,
+                   strict: bool = True, log=print) -> dict:
+    """The exact, 7B-feasible check: the derivative against the LoRA gradient's own dot product.
+
+    With the branch output scaled by eps, the gradient w.r.t. lora_B is
+    g_B = eps * s * sum_t delta_t (A x_t)^T, so
+
+        sum_m <g_B_m, B_m> = eps * <grad_W logP, s * B @ A> = eps * d/deps,
+
+    which is the identity the score claims, computed over the LoRA parameters only (about 20M for
+    Qwen2.5-7B at r 8) rather than over the base weights. One row at a time, so each row's dot
+    product is its own. Unlike `check_finite_difference` this involves no difference of nearby
+    numbers, so it is limited by arithmetic precision rather than by the step size: use it as the
+    *correctness* gate, and the finite difference as the eps-path gate the plan names.
+    """
+    import torch
+
+    from p48.likelihood import collate, row_loglik
+
+    sites = sites if sites is not None else adapter_sites(model)
+    _check_eval(model)
+    dev = device or next(model.parameters()).device
+    got = dir_derivative(model, rows, batch_size=1, eps0=eps0, sites=sites, device=dev,
+                         pad_id=pad_id, log=log)
+    dots = []
+    flags = [(s.lora_B.weight, s.lora_B.weight.requires_grad) for s in sites]
+    try:
+        for w, _ in flags:
+            w.requires_grad_(True)
+        for r in rows:
+            ids, attn, lab = collate([r], dev, pad_id)
+            eps = torch.full((1,), float(eps0), dtype=_eps_dtype(model), device=dev)
+            with _EpsBranch(sites) as tap:
+                tap.eps, tap.calls = eps, 0
+                with torch.enable_grad():
+                    ll = row_loglik(model, ids, attn, lab).sum()
+                    grads = torch.autograd.grad(ll, [s.lora_B.weight for s in sites])
+            dots.append(sum(float((g.float() * s.lora_B.weight.detach().float()).sum())
+                            for g, s in zip(grads, sites, strict=True)))
+    finally:
+        for w, flag in flags:
+            w.requires_grad_(flag)
+    scaled = [eps0 * d for d in got["deriv"]]
+    out = {"dot": _report("eps * d/deps vs sum_m <grad_B, B>",
+                          _agree(scaled, dots, rel_tol=rel_tol, abs_tol=abs_tol), strict, log),
+           "lora_dot": dots, "eps0": eps0, "score": got}
+    out["ok"] = out["dot"]["ok"]
     return out
 
 
