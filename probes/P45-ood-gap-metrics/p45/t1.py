@@ -349,12 +349,56 @@ def collapse_stats(labels, is_id, bins, k, keep_pool) -> pd.DataFrame:
     return region_stats(labels, is_id, w, k, keep)
 
 
+def compile_topic_regex(regex: str):
+    """re.IGNORECASE pattern -> a hit(text) -> bool callable. A pattern made only of lookaheads
+    (e.g. "(?=[\\s\\S]*A)(?=[\\s\\S]*B)", "contains A and B") is zero-width, so it matches
+    somewhere iff it matches at position 0: it is run with re.match instead of re.search, which
+    would retry both scans from every position (quadratic on long Dolci texts, found 2026-10-14).
+    Same match/no-match result; the frozen pattern text is unchanged."""
+    rx = re.compile(regex, re.IGNORECASE)
+    if lookaheads_only(regex):
+        return lambda t: rx.match(t) is not None
+    return lambda t: rx.search(t) is not None
+
+
+def lookaheads_only(regex: str) -> bool:
+    """True when the pattern is a sequence of top-level (?=...) groups and nothing else
+    (balanced-parenthesis scan; escaped characters and [...] classes skipped)."""
+    i, n = 0, len(regex)
+    if not n:
+        return False
+    while i < n:
+        if not regex.startswith("(?=", i):
+            return False
+        depth, j = 0, i
+        while j < n:
+            c = regex[j]
+            if c == "\\":
+                j += 2
+                continue
+            if c == "[":
+                j += 1
+                while j < n and regex[j] != "]":
+                    j += 2 if regex[j] == "\\" else 1
+            elif c == "(":
+                depth += 1
+            elif c == ")":
+                depth -= 1
+                if depth == 0:
+                    break
+            j += 1
+        if depth != 0:
+            return False
+        i = j + 1
+    return True
+
+
 def validate_regex(regex: str, texts: list[str], min_hits: int = K.T1_REGEX_MIN_HITS) -> dict:
     try:
-        rx = re.compile(regex, re.IGNORECASE)
+        hit = compile_topic_regex(regex)
     except re.error as e:
         return {"ok": False, "hits": 0, "error": str(e)}
-    hits = sum(bool(rx.search(t)) for t in texts)
+    hits = sum(hit(t) for t in texts)
     return {"ok": hits >= min_hits, "hits": hits, "n": len(texts)}
 
 
@@ -901,9 +945,9 @@ def _load_topics() -> dict:
 
 def _regex_worker(args):
     texts, patterns = args
-    rxs = [re.compile(p, re.IGNORECASE) for p in patterns]
-    return [np.array([i for i, t in enumerate(texts) if t and rx.search(t)], dtype=np.int64)
-            for rx in rxs]
+    hits = [compile_topic_regex(p) for p in patterns]
+    return [np.array([i for i, t in enumerate(texts) if t and hit(t)], dtype=np.int64)
+            for hit in hits]
 
 
 def regex_scan(text_chunks, patterns: list[str], n_proc: int = N_PROC):
@@ -1013,8 +1057,8 @@ def cmd_count() -> dict:
         print(f"[count] {src}: {n} rows scanned ({round(time.time() - t0)} s)", flush=True)
     pool = prompts()[prompts()["set"] == P42K.POOL]
     for j, x in enumerate(keys):
-        rx = re.compile(pats[j], re.IGNORECASE)
-        pm = int(sum(bool(rx.search(t)) for t in pool["text"]))
+        hit = compile_topic_regex(pats[j])
+        pm = int(sum(hit(t) for t in pool["text"]))
         dm = res[x]["dolci_dpo"]["matches"] + res[x]["dolci_sft"]["matches"]
         res[x]["dolci_all"] = {"matches": dm, "per_million": dm / (nrows["dolci_dpo"] +
                                                                     nrows["dolci_sft"]) * 1e6}
@@ -1120,7 +1164,7 @@ def cmd_embed_dolci(dry_run: bool, max_usd: float | None, limit: int | None,
     return 0
 
 
-EMBED_MAX_TOKENS = 8_000  # the API refuses inputs over 8,192 tokens (11 DPO first turns, 2026-10-14)
+EMBED_MAX_TOKENS = 6_000  # API limit 8,192; 2 inputs capped at 8,000 cl100k tokens were still refused (2026-10-14)
 
 
 def _cap_tokens(text: str, enc) -> str:

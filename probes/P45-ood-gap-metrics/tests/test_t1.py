@@ -202,3 +202,16 @@ def test_regex_worker_indices():
 
 def test_constants_used():
     assert K.T1_SHARE_MAX == 0.05 and K.T1_REGEX_MIN_HITS == 8
+
+
+def test_lookahead_only_regex_anchored_and_equivalent():
+    import re
+
+    from p45 import t1
+
+    pat = r"(?=[\s\S]*\b(stor(y|ies)|role-?play)\b)(?=[\s\S]*(sex|\bbra\b|[()]))"
+    assert t1.lookaheads_only(pat)
+    assert not t1.lookaheads_only(r"(?=a)b") and not t1.lookaheads_only(r"abc")
+    hit, rx = t1.compile_topic_regex(pat), re.compile(pat, re.IGNORECASE)
+    for t in ["a story with SEX", "sex then story", "story only", "roleplay (", "", "x\nstory\nbra"]:
+        assert hit(t) == bool(rx.search(t))
