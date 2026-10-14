@@ -97,6 +97,9 @@ CONTRASTS: tuple[tuple[str, tuple], ...] = (
     # the decision bullet against no seed (U itself lowered C's cheating; exploratory)
     ("C: D - none", _d("C", "C", "D", "none")), ("N: D - none", _d("N", "N", "D", "none")),
     ("L: D - none", _d("L", "L", "D", "none")),
+    # the permission line against no seed, within method (exploratory)
+    ("C: P - none", _d("C", "C", "P", "none")), ("N: P - none", _d("N", "N", "P", "none")),
+    ("L: P - none", _d("L", "L", "P", "none")),
     # seeded chain vs the unseeded full history (DeepSeek's R is at 0; exploratory)
     ("C: P - R", _d("C", "R", "P")), ("N: P - R", _d("N", "R", "P")), ("L: P - R", _d("L", "R", "P")),
     ("C36 - C136", _d("C36", "C136")), ("C36 - C", _d("C36", "C")), ("C136 - C1", _d("C136", "C1")),
