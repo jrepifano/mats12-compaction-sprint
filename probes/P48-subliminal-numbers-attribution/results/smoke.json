@@ -4,15 +4,15 @@
     "drop": [],
     "guard_seconds": 18000.0,
     "limit_seconds": 15300,
-    "projected_hours": 3.61,
-    "projected_seconds": 13004,
+    "projected_hours": 3.62,
+    "projected_seconds": 13037,
     "student_equivalents": 14.5
   },
   "concurrency": {
     "measured": false,
     "note": "two-process benchmark not run on this pod; stage 2 stays serial unless a later measurement clears the 1.4x bar",
-    "reference_seconds_per_step": 1.132,
-    "serial_seconds_per_step": 3.297,
+    "reference_seconds_per_step": 1.137,
+    "serial_seconds_per_step": 1.218,
     "speedup": null
   },
   "ekfac_200": {
@@ -484,13 +484,13 @@
     "nonfinite": null,
     "ok": true,
     "timings_s": {
-      "ekfac_eigh": 15.93,
-      "pass1_grads": 7.26,
-      "pass2_ekfac_lambda": 4.84,
-      "pass3_ekfac_scores": 4.3,
+      "ekfac_eigh": 15.84,
+      "pass1_grads": 7.47,
+      "pass2_ekfac_lambda": 5.1,
+      "pass3_ekfac_scores": 4.47,
       "pfi": 0.83,
-      "query_grads": 2.29,
-      "total": 54.72
+      "query_grads": 2.39,
+      "total": 38.95
     }
   },
   "eps_endpoints": {
@@ -668,7 +668,7 @@
         "scalings": [
           4.0
         ],
-        "seconds": 0.762685916852206,
+        "seconds": 0.8839324153959751,
         "sites": 196,
         "with_cosine": false
       },
@@ -733,28 +733,28 @@
     ]
   },
   "phases": {
-    "bench_student": 21.6,
-    "ekfac_200": 54.8,
-    "eps_checks": 2.1,
-    "grad_check": 1.5,
-    "reload_eager": 2.3,
-    "train20": 22.8
+    "bench_student": 14.9,
+    "ekfac_200": 39.1,
+    "eps_checks": 2.3,
+    "grad_check": 1.7,
+    "reload_eager": 3.8,
+    "train20": 16.8
   },
   "projected_student_minutes": 8.6,
-  "seconds": 128.2,
-  "seconds_per_step": 1.132,
+  "seconds": 91.0,
+  "seconds_per_step": 1.137,
   "student_bench": {
     "loss_first_last": [
       2.6117241382598877,
       1.4877037107944489
     ],
     "rows": 792,
-    "s_per_step_all": 1.1486,
-    "s_per_step_excl_first": 1.132,
+    "s_per_step_all": 1.1561,
+    "s_per_step_excl_first": 1.137,
     "steps": 10,
     "trained_tokens": 38724
   },
-  "teacher_s_per_step": 0.6249,
+  "teacher_s_per_step": 0.6314,
   "trained_tokens": 31729,
-  "utc": "2026-10-14T22:33:24Z"
+  "utc": "2026-10-14T22:47:48Z"
 }

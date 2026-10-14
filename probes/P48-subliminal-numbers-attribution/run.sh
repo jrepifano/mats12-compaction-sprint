@@ -54,6 +54,22 @@ for F in data/raw/animal_questions.json data/qa/pairs.jsonl; do
   [ -s "$F" ] || { echo "P48 missing $F"; RC=2; }
 done
 
+# vLLM serves the adapters through LoRA requests, and that path JIT-compiles its punica
+# kernels with ninja, which this image does not ship: attempt 12 died at `teachercheck` with
+# FileNotFoundError: 'ninja' (log.md 2026-10-14). It would have taken every eval with it.
+if [ "$RC" = 0 ]; then
+  if ! "$VLLM" -c "import ninja" >/dev/null 2>&1; then
+    UVBIN="$(command -v uv || echo "$HOME/.local/bin/uv")"
+    echo "P48 installing ninja into the vllm venv (vLLM LoRA kernels)"
+    UV_CACHE_DIR=/ws/uv_cache "$UVBIN" pip install --quiet --python "$VLLM" ninja \
+      || { echo "P48 ninja install FAILED"; RC=2; }
+  fi
+  if [ "$RC" = 0 ]; then
+    "$VLLM" -c "import ninja, shutil, sys; sys.exit(0 if shutil.which('ninja') else 1)" \
+      || { echo "P48 ninja not on PATH for the vllm venv"; RC=2; }
+  fi
+fi
+
 step_env() {
   echo "== $(date -u +%FT%TZ) step=$1 elapsed=$(( $(date +%s) - T0_S ))s"
   nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader 2>/dev/null || true
