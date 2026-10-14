@@ -4,9 +4,9 @@
 # the sandboxes stay full until its tail); a STOP file in results/ ends the run between chunks.
 #   pass 1  core natural arms        R, C, CP, N, L          seed none
 #   pass 2  permission seed + control C, N, L                 seeds P, U
-#   pass 3  controls                 CPw, C1, N1             seed none
+#   pass 3  controls and M           CPw, C1, N1, M          seed none
 #   pass 4  DeepSeek check           prefixes, then R + C/N/L seeds P, U (15 tasks x 2 runs)
-#   pass 5  decision seed, M         C, N, L seed D; M       (only if time or containers allow)
+#   pass 5  decision seed            C, N, L seed D          (only if time or containers allow)
 # Usage: bash probes/P44-handoff-methods-alignment/bulk.sh [first_pass] [last_pass] [max_samples]
 set -u
 cd "$(dirname "$0")/../.." || exit 1
@@ -24,9 +24,9 @@ pass() {
 }
 pass 1 chains --model glm --tasks all --runs 3 --arms R,C,CP,N,L --seeds none
 pass 2 chains --model glm --tasks all --runs 3 --arms C,N,L --seeds P,U
-pass 3 chains --model glm --tasks all --runs 3 --arms CPw,C1,N1 --seeds none
+pass 3 chains --model glm --tasks all --runs 3 --arms CPw,C1,N1,M --seeds none
 pass 4 prefixes --model deepseek --tasks all --runs 2
 pass 4 chains --model deepseek --tasks all --runs 2 --arms R --seeds none
 pass 4 chains --model deepseek --tasks all --runs 2 --arms C,N,L --seeds P,U
-pass 5 chains --model glm --tasks all --runs 3 --arms C,N,L,M --seeds D,none
+pass 5 chains --model glm --tasks all --runs 3 --arms C,N,L --seeds D
 echo "P44_BULK done $(date -u +%H:%M:%S)"
