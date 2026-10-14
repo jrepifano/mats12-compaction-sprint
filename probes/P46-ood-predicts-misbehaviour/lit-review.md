@@ -70,7 +70,7 @@ About how alignment training generalises after a midtraining stage. No coverage 
   - Base fulfilment 0.18–0.67. Technical terms +0.10 to +0.17. Persuasion +0.05 to +0.67.
   - Ciphers −0.18 to −0.67 for every 7B: nonsense counted as refusal.
   - Low-resource languages: the sign depends on the model. Mistral-7B −0.58; Llama-3-8B and Gemma-7B +0.27 to +0.60.
-- **P46 uses** the families. The core stratum is base + the 6 styles + zh + fr. Persuasion and the low-resource languages are separate strata, and ciphers are not run. P46 also uses the judge and the human labels to validate luna.
+- **P46 uses** the families. The English core is base + the 6 styles; zh and fr are a secondary language stratum; persuasion and the low-resource languages are deferred to follow-up F6; ciphers are not run. P46 also uses the judge and the human labels to validate luna.
 
 ### Wei, Haghtalab, Steinhardt 2023, "Jailbroken" (arXiv 2307.02483; row 23; V, abstract, §1, §3, §5)
 - "mismatched generalization arises when inputs are out-of-distribution for a model's safety training data but within the scope of its broad pretraining corpus" (p.2).
@@ -110,15 +110,15 @@ About how alignment training generalises after a midtraining stage. No coverage 
 - **UQ-OOD-misalignment:**
   - Three established links: reward-model uncertainty mitigates hacking; OOD scores improve monitors (MOOD); input distance relates to misbehaviour, but with Li's reverse sign for trained-in EM.
   - "No one has tested whether a policy's epistemic uncertainty on a natural prompt predicts its misbehaviour there."
-  - Proposed cheap scores U1–U6. P46 keeps U1 and a prompt-side stage-disagreement score (U3). It drops U3 for now (it needs a paired full-vocabulary forward), response-side U1 and U2 (shared-sample contamination; scope), and U4 and U5 per §5.3. U6, SLT/SGLD, is follow-up F4.
+  - Proposed cheap scores U1–U6. P46 keeps U1. It drops U3 for now (it needs a paired full-vocabulary forward), response-side U1 and U2 (shared-sample contamination; scope), and U4 and U5 per §5.3. U6, SLT/SGLD, is follow-up F4.
 - **OOD-external and OOD-internal (P42's inputs):**
   - Length dominates raw scores.
   - Black-box baselines usually win in this repo (P14, P11, P15, P16, I1a).
   - Generate on-policy.
   - WildChat, WildJailbreak and WildGuardMix are largely in-distribution for OLMo post-training.
   - Must-beat baselines: length, text-embedding kNN and the model's NLL.
-  - All carried into P46 as S0, S1 and S2, and as M1d.
-- **P42's result:** S3 (Mahalanobis, L24) beat embedding kNN on planted topics by only 0.06–0.08 AUROC. There was no misbehaviour enrichment, but at a 0.2–2% base rate only large effects were ruled out. 45% of answers were truncated at 512 tokens; that affects coherence judging, not compliance.
+  - All carried into P46 as S0, S1 and S2, and as M1j's covariates.
+- **P42's result:** S3 (Mahalanobis, L24) beat embedding kNN on planted topics by only 0.06–0.08 AUROC. There was no misbehaviour enrichment, but at a 0.2–2% base rate only large effects were ruled out. 45% of answers were truncated at 512 tokens. That confounded coherence judging; its effect on compliance was not established, hence P46's continuation check.
 
 ## 5. Crowding
 
