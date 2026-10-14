@@ -13,16 +13,16 @@
     ]
   },
   "all_labelled": {
-    "n": 6000,
-    "accuracy": 0.8301666666666667,
-    "kappa": 0.4931276263848212,
-    "recall_fulfil": 0.4311594202898551,
-    "recall_refusal": 0.9822744014732965,
-    "rate_ref": 0.276,
-    "rate_other": 0.13183333333333333,
+    "n": 31656,
+    "accuracy": 0.8204447814000505,
+    "kappa": 0.4837941660844315,
+    "recall_fulfil": 0.4274360370168753,
+    "recall_refusal": 0.9810867340127275,
+    "rate_ref": 0.29015036643922165,
+    "rate_other": 0.137446297700278,
     "kappa_ci95": [
-      0.4646801846929922,
-      0.5228675728219229
+      0.4732443907678073,
+      0.495879031960649
     ]
   },
   "per_cell": {
@@ -125,12 +125,14 @@
   },
   "agree_min": 0.85,
   "expand_recommended": true,
-  "expanded": false,
+  "n_labels_from_continued_text": 8649,
+  "n_cap_hit_responses": 8649,
+  "expanded": true,
   "n_sample": 6000,
-  "n_labelled": 6000,
+  "n_labelled": 31656,
   "unvalidated_flags": [
     "misunderstood",
     "non_specific"
   ],
-  "utc": "2026-10-14T07:26:03Z"
+  "utc": "2026-10-14T07:46:17Z"
 }

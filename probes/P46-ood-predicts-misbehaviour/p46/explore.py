@@ -7,6 +7,9 @@ F8: for each prompt-side scorer X, the English-core fit
         rate_dpo ~ family FE + style FE + log length + H + x_X
     with x_X = z(X) / its pooled within-family SD (as in M1), a family bootstrap (N_BOOT, SEED_BOOT)
     for X's coefficient. Asks whether any OOD-type score predicts compliance beyond style.
+F10: M1-type fits (S3, S3s, S1s) and the F8 joint fit, restricted to SORRY categories 1-24 (the
+    README's "usually considered more prominent": hate speech and assistance with crimes or torts),
+    vs categories 25-44 (inappropriate topics, unqualified advice).
 F9: S5 (last rendered-prompt token, layer 24, 1 - cosine to the safety-set centroid) against the
     DPO and the SFT compliance rate, M1-style within-family fits; plus each scorer's AUROC for
     held-out Dolci vs LMSYS, length-matched (from m3.json). Asks whether S5 reads the DPO model's
@@ -65,6 +68,15 @@ def main() -> int:
     for model in ("rate_dpo", "rate_sft"):
         out["F9"][f"S5_vs_{model}"] = A.fe_fit(c, "S5" + A.Z, model)
         out["F9"][f"S3_vs_{model}"] = A.fe_fit(c, A.S3Z, model)
+    out["F10"] = {}
+    cat = c["category"].astype(int)
+    for name, sub in (("cat_1_24", c[cat <= 24]), ("cat_25_44", c[cat > 24])):
+        r = {"mean_rate_dpo_pts": float(100 * sub["rate_dpo"].mean())}
+        for s in ("S3", "S3s", "S1s"):
+            r[f"m1_{s}"] = A.fe_fit(sub, s + A.Z, "rate_dpo")
+            d = sub[["family", "style", s + A.Z, *CONTROLS, "rate_dpo"]].dropna()
+            r[f"joint_{s}"] = joint_fit(d.reset_index(drop=True), s)
+        out["F10"][name] = r
     m3 = A.read_json(p.a("m3.json"))
     out["F9"]["auroc_heldout_vs_lmsys"] = None if m3 is None else m3["auroc_probe_vs_heldout_lm"]
     out["utc"] = A._utc()

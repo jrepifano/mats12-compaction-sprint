@@ -96,17 +96,50 @@
       ]
     },
     "understood_specific": {
-      "n_rows": 0,
-      "beta": NaN,
+      "n_rows": 2891,
+      "n_families": 437,
+      "sd_within_z": 0.9566222414636785,
+      "beta": 3.5079268540216235,
       "ci95": [
-        NaN,
-        NaN
+        2.311508416512629,
+        4.745902589754191
       ],
-      "outcome": "no data",
-      "n_responses": 0,
+      "p_boot": 0.0009995002498750624,
+      "r2_within": 0.014705942674240833,
+      "mean_rate_pts": 30.053038164418304,
+      "outcome": "O1",
+      "n_responses": 10816,
       "note": "sensitivity: conditions on luna's unvalidated flags; luna-labelled only"
     },
-    "luna_coverage_core_dpo": 0.0,
+    "corroboration_sign": {
+      "beta_primary": 3.5428851702530135,
+      "ci_primary": [
+        1.3190183825853985,
+        5.591539386504058
+      ],
+      "beta_luna": 1.3848610352532582,
+      "ci_luna": [
+        -0.1677821996328964,
+        2.97228593329138
+      ],
+      "n_rows": 1407,
+      "sign_differs": false
+    },
+    "judge_luna_all": {
+      "n_rows": 3076,
+      "n_families": 440,
+      "sd_within_z": 0.9691193488455433,
+      "beta": 1.204122961585,
+      "ci95": [
+        0.34382861474165666,
+        2.093646459039814
+      ],
+      "p_boot": 0.005997001499250375,
+      "r2_within": 0.0029099303282988597,
+      "mean_rate_pts": 16.766905071521457,
+      "outcome": "O1s"
+    },
+    "luna_coverage_core_dpo": 1.0,
     "lang": {
       "n_rows": 1320,
       "n_families": 440,
@@ -303,6 +336,6 @@
       "U1",
       "S5"
     ],
-    "utc": "2026-10-14T07:37:54Z"
+    "utc": "2026-10-14T07:46:38Z"
   }
 }

@@ -50,47 +50,78 @@ def draw(items: pd.DataFrame, n: int, seed: int = K.SEED_SAMPLE) -> pd.DataFrame
     return items.loc[picked]
 
 
-def build(prompts: Path, responses: Path, primary: Path, backtr: Path, luna: Path,
-          n: int = K.N_SAMPLES_NOTE) -> str:
+def build_items(prompts: Path = K.PROMPTS_PATH, responses: Path = K.RESPONSES_PATH,
+                primary: Path = K.JUDGE_PATH, backtr: Path = K.BACKTR_PATH,
+                luna: Path = K.JUDGED_DIR / "luna_labels.csv") -> pd.DataFrame:
+    """One row per judged PROBE_SETS response with the label the analysis uses: the continued
+    ("cont") judgment where one exists (the capfix triggered, so every cap-hit response has one),
+    else the main one; `answer` is the text that label was given on (continued text, and the
+    back-translation for lang). luna's label is matched the same way (luna_labels.csv)."""
     pr = read_jsonl(prompts)
     pr = pr.loc[pr["set"].isin(K.PROBE_SETS), ["pid", "set", "style", "text", "base_text"]]
     rs = read_jsonl(responses)
+    rs["variant"] = "main"
+    cont = [read_jsonl(f) for f in (responses.parent / "continued.jsonl",
+                                    responses.parent / "continued_all.jsonl") if f.is_file()]
+    if cont:
+        c = pd.concat(cont, ignore_index=True)
+        c["variant"] = "cont"
+        rs = pd.concat([rs, c[["pid", "model", "sample", "response", "variant"]]],
+                       ignore_index=True)
     rs["model"] = rs["model"].map(model_key)
+    rs["sample"] = rs["sample"].astype(int)
     j = read_jsonl(primary)
-    j = j[j["variant"] == "main"].copy()
     j["model"] = j["model"].map(model_key)
+    j["sample"] = j["sample"].astype(int)
     j["score"] = pd.to_numeric(j["score"], errors="coerce")
-    df = rs.merge(pr, on="pid").merge(j[["pid", "model", "sample", "score"]],
-                                      on=["pid", "model", "sample"])
+    df = rs.merge(pr, on="pid").merge(j[["pid", "model", "sample", "variant", "score"]],
+                                      on=["pid", "model", "sample", "variant"])
     df = df[df["score"].notna()]
+    # keep the label the analysis uses: cont where present, else main
+    df = (df.sort_values("variant").drop_duplicates(["pid", "model", "sample"], keep="first"))
+    df["response_en"] = np.nan
     if backtr.is_file():
         bt = read_jsonl(backtr)
-        bt = bt[bt["variant"] == "main"].copy()
         bt["model"] = bt["model"].map(model_key)
-        df = df.merge(bt[["pid", "model", "sample", "response_en"]],
-                      on=["pid", "model", "sample"], how="left")
-    df["key"] = [resp_key(a, b, c) for a, b, c in zip(df["pid"], df["model"], df["sample"],
-                                                       strict=True)]
-    lab = None
+        bt["sample"] = bt["sample"].astype(int)
+        df = df.drop(columns="response_en").merge(
+            bt[["pid", "model", "sample", "variant", "response_en"]],
+            on=["pid", "model", "sample", "variant"], how="left")
+    df["answer"] = np.where(df["set"] == K.LANG, df["response_en"], df["response"])
+    df["key"] = [resp_key(a, b, c, v) for a, b, c, v in zip(df["pid"], df["model"], df["sample"],
+                                                             df["variant"], strict=True)]
+    df["luna"] = np.nan
+    df["misunderstood"] = None
+    df["non_specific"] = None
     if luna.is_file():
         lab = pd.read_csv(luna)
-        lab["key"] = [resp_key(a, b, c) for a, b, c in zip(lab["pid"], lab["model"],
-                                                           lab["sample"], strict=True)]
-        lab = lab.set_index("key")
+        lab["model"] = lab["model"].map(model_key)
+        lab = lab.drop_duplicates(["pid", "model", "sample"]).set_index(["pid", "model", "sample"])
+        idx = list(zip(df["pid"], df["model"], df["sample"], strict=True))
+        for col in ("luna", "misunderstood", "non_specific"):
+            df[col] = [lab[col].get(i) if i in lab.index else None for i in idx]
+    return df.reset_index(drop=True)
+
+
+def build(prompts: Path, responses: Path, primary: Path, backtr: Path, luna: Path,
+          n: int = K.N_SAMPLES_NOTE) -> str:
+    df = build_items(prompts, responses, primary, backtr, luna)
     out = ["# P46 random raw samples (contains harmful content; gitignored)", "",
            (f"Seeded draw (numpy default_rng({K.SEED_SAMPLE})), stratified over style x primary "
-            f"label, not hand-picked. Responses cut at {MAX_CHARS} characters."), ""]
+            f"label, not hand-picked. Labels are the ones the analysis uses (the continued text "
+            f"for cap-hit responses). Responses cut at {MAX_CHARS} characters."), ""]
     for _, r in draw(df, n).iterrows():
-        lj = ""
-        if lab is not None and r["key"] in lab.index:
-            x = lab.loc[r["key"]]
-            lj = (f"; luna {x['luna']} (misunderstood {x['misunderstood']}, non-specific "
-                  f"{x['non_specific']})")
+        lj = "" if r["luna"] is None or r["luna"] != r["luna"] else (
+            f"; luna {int(r['luna'])} (misunderstood {r['misunderstood']}, non-specific "
+            f"{r['non_specific']})")
         out += [f"### {r['key']} ({r['set']}/{r['style']}): primary {int(r['score'])}{lj}", "",
                 "Base request:", "", quote(r["base_text"]), "", "Prompt as sent:", "",
-                quote(r["text"]), "", "Response:", "", quote(r["response"]), ""]
-        if r["set"] == K.LANG and "response_en" in r:
-            out += ["Back-translation:", "", quote(r["response_en"]), ""]
+                quote(r["text"]), ""]
+        if r["set"] == K.LANG:
+            out += ["Response (original):", "", quote(r["response"]), "",
+                    "Back-translation (as judged):", "", quote(r["answer"]), ""]
+        else:
+            out += ["Response (as judged):", "", quote(r["answer"]), ""]
     return "\n".join(out) + "\n"
 
 
