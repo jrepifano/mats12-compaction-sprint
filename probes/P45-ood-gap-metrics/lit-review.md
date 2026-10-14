@@ -48,27 +48,27 @@ Read status is given per item: **V** = verbatim text read (a committed `.txt` in
 - **`UQ-OOD-misalignment.md`** (the launching session, mixed V/S): mostly about whether OOD-ness predicts misbehaviour, which is P46's question. For P45 only Li et al. 2025 matters: epistemic and feature-distance scores degrade with more ID data. That is a reason to expect an SAE (an ID density model) to plateau like Mahalanobis.
 
 ## 4. New external search for P45 (2026-10-14)
-A search sub-agent (web search plus WebFetch; its notes are in the session scratchpad, not committed) covered SAE reconstruction error as an OOD score, density-ratio and coverage metrics, and length confounds of SAE error. p45 captured six arXiv papers into `papers/ood_detection/` (rows 22–27; PDFs gitignored, `.txt` committed) and checked the load-bearing quotes against the text, as noted per row. The two Alignment Forum posts (rows 28–29) are pointers with the sub-agent's summary only.
+A search sub-agent (web search plus WebFetch; its notes are in the session scratchpad, not committed) covered SAE reconstruction error as an OOD score, density-ratio and coverage metrics, and length confounds of SAE error. p45 captured six arXiv papers into `papers/ood_detection/` (rows 32–37; PDFs gitignored, `.txt` committed) and checked the load-bearing quotes against the text, as noted per row. The two Alignment Forum posts (rows 38–39) are pointers with the sub-agent's summary only.
 
 - **No published SAE-error OOD detector for LLM prompts, and no two-SAE (delta) score, was found.** Stefan's Delta-SAE FVU appears to be unpublished and new, which makes T2 a first external test. That is a search result, not proof of absence.
 - **Domain gaps in SAE error exist** at the corpus level:
-  - Gemma Scope: "SAEs perform worst on Europarl … a multilingual dataset" (row 22, V).
-  - Domain-specific medical SAEs explain "approximately 15-20%" more variance than general ones on clinical text (row 24, V).
-  - Pile-trained vs LMSYS-trained SAEs on Qwen-0.5B-Chat each explain ~6 points more variance on their own corpus (row 28, S).
+  - Gemma Scope: "SAEs perform worst on Europarl … a multilingual dataset" (row 32, V).
+  - Domain-specific medical SAEs explain "approximately 15-20%" more variance than general ones on clinical text (row 34, V).
+  - Pile-trained vs LMSYS-trained SAEs on Qwen-0.5B-Chat each explain ~6 points more variance on their own corpus (row 38, S).
 
   This is the averaged version of ΔF_pre's logic. Nobody reports per-prompt separability, which is what T2 measures.
-- **Nearest SAE OOD score:** Suresh et al. 2026 (row 23), an "energy" combining reconstruction error and latent-frequency surprisal. It reports mean shifts on typos and jailbreaks, with no AUROC (checked by grep) and no length control.
+- **Nearest SAE OOD score:** Suresh et al. 2026 (row 33), an "energy" combining reconstruction error and latent-frequency surprisal. It reports mean shifts on typos and jailbreaks, with no AUROC (checked by grep) and no length control.
 - **Confounds for T2:**
   - SAE reconstruction loss rises over the first tokens of a sequence (Gemma Scope §4.2, V; Gao et al. 2024 App. F.2, S). So a per-prompt mean FVU will vary with prompt length. This is already handled by within-decile z-scoring, and the raw ρ is reported.
-  - Very high-norm tokens (BOS, the first newline, early positions) dominate MSE when an SAE transfers between models (row 29, S). P45 already scores content tokens only, after the chat template, and adds a mask: content tokens whose norm exceeds 10× the median ID token norm are dropped, and the dropped share is reported.
+  - Very high-norm tokens (BOS, the first newline, early positions) dominate MSE when an SAE transfers between models (row 39, S). P45 already scores content tokens only, after the chat template, and adds a mask: content tokens whose norm exceeds 10× the median ID token norm are dropped, and the dropped share is reported.
   - The error norm is largely predictable from the input activation (Engels et al. 2024, arXiv 2410.14670, S). So P45 adds a **mean-activation-norm baseline** column, so that an FVU win can't simply be a norm effect.
 - **Caveat on reconstruction detectors:** autoencoders can reconstruct far anomalies well (Bouman & Heskes 2025, arXiv 2501.13864, S). This is a reason the clean benchmark might not reproduce.
 - **Background-model ratio precedent:** Ren et al. 2019 (arXiv 1906.02845, S) used a likelihood ratio to a background model for OOD detection. ΔF_pre is the same move, with a pretraining-data SAE as the background.
 - **For T1:**
-  - LMSYS-Chat-1M's own clustering (row 25, V) found "Cluster 14: Requesting introductions for various chemical companies 4.00%", generated "by scripts and batch submitted". It is a **known templated region**: T1 should label it *templated traffic*, which makes it a manipulation check on the labelling.
+  - LMSYS-Chat-1M's own clustering (row 35, V) found "Cluster 14: Requesting introductions for various chemical companies 4.00%", generated "by scripts and batch submitted". It is a **known templated region**: T1 should label it *templated traffic*, which makes it a manipulation check on the labelling.
   - FactBench (arXiv 2410.22257, S) removed 12.1% of LMSYS as duplicates (Jaccard > 0.9). That supports T1's collapse of duplicates within the pool.
-  - Naeem et al. 2020 density and coverage (row 26) is the standard kNN-ball estimator for "pool points with no ID neighbour". MAUVE (arXiv 2102.01454, S) compares cluster histograms, which is the precedent for T1's cluster ID share.
-  - Jiang et al. 2025 (row 27, Nanda) diff datasets by SAE latent frequency. That is a possible companion, not in the plan.
+  - Naeem et al. 2020 density and coverage (row 36) is the standard kNN-ball estimator for "pool points with no ID neighbour". MAUVE (arXiv 2102.01454, S) compares cluster histograms, which is the precedent for T1's cluster ID share.
+  - Jiang et al. 2025 (row 37, Nanda) diff datasets by SAE latent frequency. That is a possible companion, not in the plan.
 
 ## 5. What this means for the design
 - **T1** fills the gap Stefan and P42 both left: a length-controlled density ratio in the model's own space, over the whole pool, with near-duplicates collapsed and a judge-free absence check. Reading samples is still needed to say *what* a region is. That is the step Stefan distrusted when an LLM did it; here the agent does it, and keyword counts against all of Dolci back it.

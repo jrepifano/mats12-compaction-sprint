@@ -1,0 +1,67 @@
+{
+ "step": "gen",
+ "finished_utc": "2026-10-14T06:04:02Z",
+ "seconds": 295.9,
+ "phases_s": {
+  "child_dpo": 213.49,
+  "child_sft": 82.31,
+  "assemble": 0.08
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "n_responses": 1818,
+ "n_continued": 44,
+ "n_continued_all": 10,
+ "responses_sha256": "4d53e7aab1a2e7589780072c0c9e43a03beaf163d8e13022391edd039e974cf6",
+ "models": {
+  "dpo": {
+   "n_samples": 1218,
+   "out_tokens": 402252,
+   "mean_resp_tokens": 330.25615763546796,
+   "finish_reasons": {
+    "stop": 780,
+    "length": 438
+   },
+   "cap_hit_probe": 428,
+   "n_cont": 24,
+   "n_contall": 5,
+   "out_tok_s": 11047.3,
+   "samples_multi_long": 294,
+   "samples_identical_long": 0,
+   "phases_s": {
+    "tokenise": 4.31,
+    "engine_load": 158.48,
+    "generate": 36.41,
+    "read_parts": 0.04,
+    "continue": 4.81,
+    "contall": 3.57
+   }
+  },
+  "sft": {
+   "n_samples": 600,
+   "out_tokens": 89198,
+   "mean_resp_tokens": 148.66333333333333,
+   "finish_reasons": {
+    "stop": 546,
+    "length": 54
+   },
+   "cap_hit_probe": 54,
+   "n_cont": 20,
+   "n_contall": 5,
+   "out_tok_s": 9535.2,
+   "samples_multi_long": 207,
+   "samples_identical_long": 1,
+   "phases_s": {
+    "tokenise": 4.08,
+    "engine_load": 55.62,
+    "generate": 9.35,
+    "read_parts": 0.02,
+    "continue": 4.23,
+    "contall": 3.43
+   }
+  }
+ },
+ "settings": {
+  "sft_n": 2,
+  "lang": true
+ }
+}

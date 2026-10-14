@@ -312,3 +312,10 @@ probes/P45-ood-gap-metrics/results/pca_union/
 probes/P45-ood-gap-metrics/results/t1/cache/
 probes/P45-ood-gap-metrics/results/analysis/prep.csv
 probes/P45-ood-gap-metrics/results/embed_law2/chunks/
+# P46: data (SORRY-Bench is gated; refs from P42), raw responses and luna text (harmful content);
+# hashes are in results/MANIFEST.sha256 and a seeded sample is in the note
+data/P46/
+probes/P46-ood-predicts-misbehaviour/results/gen/
+probes/P46-ood-predicts-misbehaviour/results/judged_text/
+probes/P46-ood-predicts-misbehaviour/results/smoke/gen/
+probes/P46-ood-predicts-misbehaviour/results/analysis/prep_prompts.csv

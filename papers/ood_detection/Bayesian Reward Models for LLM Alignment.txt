@@ -1,0 +1,779 @@
+                                                                    Bayesian Reward Models for LLM Alignment
+
+
+                                                                 Adam X. Yang 1 Maxime Robeyns 1 Thomas Coste 2 Zhengyan Shi 3
+                                                                     Jun Wang 3 Haitham Bou Ammar 2 Laurence Aitchison 1
+
+
+                                                                  Abstract                                    form reinforcement learning from human feedback (RLHF)
+                                                                                                              (Ouyang et al., 2022) over the initial policy LLM.
+                                               To ensure that large language model (LLM) re-
+                                               sponses are helpful and non-toxic, a reward model              However, the reward model is trained on finite data and
+
+
+
+
+arXiv:2402.13210v2 [cs.LG] 3 Jul 2024
+                                               trained on human preference data is usually used.              therefore cannot be perfect; its imperfections may lead to
+                                               LLM responses with high rewards are then se-                   reward overoptimization or hacking when used in the con-
+                                               lected through best-of-n (BoN) sampling or the                 text of BoN or RLHF (Gao et al., 2023; Coste et al., 2024;
+                                               LLM is further optimized to produce responses                  Eisenstein et al., 2023; Ramé et al., 2024; Zhai et al., 2024;
+                                               with high rewards through reinforcement learn-                 Zhang et al., 2024; Chen et al., 2024). Indeed, BoN and
+                                               ing from human feedback (RLHF). However,                       RLHF try to find responses with particularly high rewards,
+                                               these processes are susceptible to reward overop-              as judged by this imperfect reward model. Ideally, the re-
+                                               timization or ‘hacking’, where responses receive               sponses with high reward, as judged by the reward model,
+                                               high rewards due to imperfections in the reward                are genuinely good. This is likely to happen when responses
+                                               model rather than true preference, particularly as             are close to the training data distribution, in which case we
+                                               prompts or responses deviate from the training                 can expect the reward model to be accurate. But it is also
+                                               data. To address these challenges, we propose                  quite possible for poor responses to be inaccurately judged
+                                               to train a Bayesian reward model, which signals                to have high reward by the imperfect reward model. This
+                                               higher uncertainty further from the training data              problem is likely to be more acute in “out-of-distribution”
+                                               distribution. We trained Bayesian reward models                (OOD) regions with little training data for the reward model.
+                                               using Laplace approximation on LoRA weights,                   Such responses raise both performance and safety concerns.
+                                               and found that the resulting uncertainty estimates             An extreme example of overoptimization in RLHF is de-
+                                               can effectively mitigate reward overoptimization               picted in Fig. 1, demonstrating the consequences of exten-
+                                               in BoN sampling.                                               sive training on a learned proxy reward model. As illustrated
+                                                                                                              in Fig. 1b, the proxy reward consistently increases with train-
+                                                                                                              ing progression. However, the oracle gold-standard reward
+                                        1. Introduction                                                       model—a more comprehensive model designed to better
+                                                                                                              reflect human preferences—begins to show a catastrophic
+                                        With the surge of developments in generative AI, alignment            decline after just a few thousand training steps. A specific
+                                        with human preferences has become a crucial research topic            instance of this is shown in Fig. 1a, where the LLM pro-
+                                        to ensure the safety and helpfulness of these systems (Sti-           duces repeated tokens and phrases. In this example, while
+                                        ennon et al., 2020; Ouyang et al., 2022; Bai et al., 2022;            the proxy reward model awards a high score of 7.1, the
+                                        Gao et al., 2023; Shi et al., 2024). A popular approach               gold-standard reward model rates it significantly lower, at
+                                        to aligning large language models (LLMs) is to train a re-            -0.9.
+                                        ward model that captures human preferences, generate n
+                                        responses from an initial policy LLM after supervised fine-           Bayesian deep learning has emerged as a pivotal approach
+                                        tuning, and use the reward model to select the best response          for addressing the challenges of distribution shifts and over-
+                                        (best-of-n or BoN sampling Stiennon et al., 2020). Another            confidence in deep neural networks. By providing epistemic
+                                        widely adopted approach is to use the reward model to per-            uncertainties for OOD data, this paradigm enhances model
+                                                                                                              robustness and reliability, as evidenced by a range of founda-
+                                           1
+                                            University of Bristol 2 Huawei Noah’s Ark Lab 3 University        tional studies (Blundell et al., 2015; Zhang et al., 2020; Kris-
+                                        College London.       Correspondence to: Adam X. Yang                 tiadi et al., 2020; Ober and Aitchison, 2021; Fortuin et al.,
+                                        <adam.yang@bristol.ac.uk>.
+                                                                                                              2022; Aitchison et al., 2021). Building on this foundation,
+                                        Accepted by the Structured Probabilistic Inference & Generative       Yang et al. (2024a) introduced Bayesian Low-Rank Adap-
+                                        Modeling workshop of ICML 2024, Vienna, Austria. Copyright            tation (LoRA), or Laplace-LoRA, as a scalable, parameter-
+                                        2024 by the author(s).
+
+                                                                                                          1
+                                           Bayesian Reward Models for LLM Alignment
+
+
+
+        User:
+                                                                                                           6
+
+
+                                                                                           proxy reward
+     Give an example of a company
+     that gives back to the community                                                                      4
+
+                                                                                                           2
+        Assistant:
+                                                      Proxy Reward:                                        0
+     ...... Additionally, companies                            7.1
+     should ensure compliance and
+     ensure integrity and integrity to                                                                    0.2
+     ensure compliance and ensure
+
+
+                                                                                           gold reward
+     trust and credibility and ensure
+                                                                                                          0.0
+     compliance and ensure quality
+     and quality and quality and ensure
+                                                                                                          0.2
+     quality and quality and ensure
+     compliance and ensure quality
+     and quality and ensure integrity
+                                                                                                          0.4
+                                                      Gold Reward:                                              0   10000     20000
+     and quality ….
+                                                              - 0.9                                                 steps
+(a) Real example of a partial LLM response (full response in Appendix. A) after            (b) Reward overoptimization during RLHF
+overoptimizing the proxy reward, with proxy and gold reward scores shown on                training. Top: proxy reward scores. Bottom:
+the right.                                                                                 gold reward scores.
+
+                             Figure 1: Illustrations of reward overoptimization in LLM alignment.
+
+
+efficient technique designed to equip fine-tuned LLMs with            sembles, through various aggregation methods such as mean,
+uncertainty estimates, and significantly improves calibra-            worst-case, or uncertainty-weighted, can effectively miti-
+tion. A follow up work by Kristiadi et al. (2024) showed              gate overoptimization. Concurrently, Eisenstein et al. (2023)
+the method may also help in settings such as Bayesian opti-           explored the efficacy of pre-trained ensembles in reducing
+mization on molecules (Kristiadi et al., 2024).                       reward hacking, noting, however, that ensemble members
+                                                                      could still be overoptimized simultaneously. This observa-
+Motivated by these advancements, our work seeks to pio-
+                                                                      tion underscores the complexity of achieving robust align-
+neer the application of Laplace-LoRA on language reward
+                                                                      ment, in addition to the computational demands of fully
+models. We harness the epistemic uncertainty derived from
+                                                                      pretrained and fine-tuned ensemble approaches.
+the Bayesian posterior predictive distribution over proxy
+reward scores to mitigate reward overoptimization. Our                In response to these challenges, the research community
+evaluation results on BoN sampling showcases the efficacy             has shifted towards more efficient strategies. Zhang et al.
+of this approach.                                                     (2024) investigated parameter-efficient fine-tuning methods
+                                                                      (Mangrulkar et al., 2022; Hu et al., 2022; Shi and Lipani,
+2. Related work                                                       2023; Zhou et al., 2024), including last-layer and LoRA
+                                                                      ensembles, for reward models. Their findings suggest that
+The study of overoptimization in language reward models               while LoRA ensembles achieve comparable benefits to full
+has received considerable attention, catalyzed by founda-             model ensembles in best-of-n sampling, last-layer ensem-
+tional systematic investigations by Gao et al. (2023). Con-           bles yield limited improvements (Gleave and Irving, 2022).
+ducted in a synthetic setting, Gao et al. (2023) utilized an          However, Zhai et al. (2024) criticized the homogeneity of
+oracle gold-standard reward model both to provide training            vanilla LoRA ensembles (Yang et al., 2024a; Wang et al.,
+labels for proxy rewards and for evaluation purposes. Their           2023), proposing additional regularization to foster diversity
+findings highlighted that RLHF in LLM alignment tends                 among ensemble members and enhance uncertainty estima-
+to overoptimize imperfect proxy reward models, resulting              tion.
+in lower performance when assessed by a gold-standard
+                                                                      Alternatively, Ramé et al. (2024) leveraged weight averag-
+reward model.
+                                                                      ing, tapping into linear mode connectivity to surpass the
+Building on this, Coste et al. (2024) extended the synthetic          performance of traditional ensembles with a more inference-
+labeling framework to demonstrate that reward model en-               efficient approach (Lin et al., 2023b;a). Chen et al. (2024)
+
+                                                                  2
+                                            Bayesian Reward Models for LLM Alignment
+
+introduced a novel direction by decoupling reward modeling             weightsW0 fixed, and introduce a trainable perturbation
+from response length through a specialized reward head and             to the weight matrix, ∆W = BA,
+regularization, showcasing more robust reward signals that
+are independent of response length.                                              h = W0 a + ∆Wa = W0 a + BAa.                   (5)
+                                                                       where a and h are the inputs and outputs respectively. Im-
+3. Background                                                          portantly, ∆W is low-rank as it is written as the product of
+                                                                       two rectangular matrices, B ∈ Rnout ×nlr and A ∈ Rnlr ×nin
+Reward modeling In LLM alignment, we typically                         where nlr is significantly smaller than nin or nout .
+model human preference using a reward model (Ouyang
+et al., 2022). Specifically, for a pair of responses to a prompt       Laplace-LoRA Recently, Yang et al. (2024a) proposed
+(x, yw ) and (x, yl ), we define the human preference model            Laplace-LoRA which is a scalable Bayesian approximation
+(the Bradley-Terry model) as                                           to LLM finetuning. In particular, Yang et al. (2024a) ap-
+                                                                       plied post-hoc Laplace approximation to perform Bayesian
+                                  erθ (x,yw )
+         P (yw > yl ) =                                     (1)        inference on LoRA weights. Assume we have a dataset
+                           erθ (x,yw ) + erθ (x,yl )                   containing inputs X and classification or regression targets
+                       = σ(rθ (x, yw ) − rθ (x, yl )),      (2)        y, then Bayesian inference attempt to compute the posterior
+where rθ is the reward model and σ(·) is the sigmoid func-                          P (θ|X, y) ∝ P (y|X, θ) P (θ) ,             (6)
+tion. Then we simply perform maximum log-likelihood
+optimization to learn the reward model given a fixed prefer-           usually with a Gaussian prior assumption P (θ) =
+ence dataset                                                           N (0, λ−1 I) (Yang et al., 2024a; Daxberger et al., 2021).
+                                                                       However, computing this posterior is usually intractable.
+        max Ex,yw ,yl [log σ(rθ (x, yw ) − rθ (x, yl ))].   (3)        The Laplace approximation begins by finding the maximum
+          θ
+                                                                       a-posteriori (MAP) solution (MacKay, 1992) (i.e. the maxi-
+After learning the reward model, we can apply BoN sam-                 mum of the log-joint, L(y, X; θ)),
+pling to optimize for preference, or RLHF to fine-tune the
+LLM policy.                                                                    L(y, X; θ) = log P (y|X, θ) + log P (θ)          (7)
+                                                                                           = log P (θ|X, y) + const             (8)
+Best-of-n (BoN) sampling BoN sampling (Stiennon et al.,                              θMAP = argmax L(y, X; θ).                  (9)
+2020; Ouyang et al., 2022; Coste et al., 2024; Eisenstein                                        θ
+et al., 2023) is a decoding strategy to align LLM outputs with         Then the Laplace approximation consists of a second-order
+a given reward model without further fine-tuning the LLM               Taylor expansion of the log-joint around θMAP ,
+policy. For any test prompt, BoN samples n responses, and
+uses the reward model to rank the responses and select the             L(y, X; θ) ≈ L(y, X; θMAP )
+best one, which has the highest reward. The KL divergence                       1
+between the BoN policy and the reference policy can be                       − (θ − θMAP )T (∇2θ L(y, X; θ)|θMAP )(θ − θMAP ).
+                                                                                2
+computed analytically (Stiennon et al., 2020),                                                                           (10)
+                                        n−1                            Since the log-joint is now a quadratic function of θ, the
+                 KLbon = log(n) −           ,               (4)
+                                         n                             approximate posterior becomes a Gaussian centered at θMAP
+which measures the degree of optimization as n increases.              with covariance given by the inverse of the Hessian,
+In addition, we use the unbiased BoN reward estimator                     P (θ|D) ≈ N (θ; θMAP , Σ) ,                          (11)
+proposed by (Nakano et al., 2021) for obtaining proxy and
+gold reward model scores (see Appendix B). Yang et al.                          Σ = −(∇2θ L(y, X; θ)|θMAP )−1                  (12)
+(2024b) showed BoN sampling is asymptotically equivalent                          = −(∇2θ log P (y|X, θ) |θMAP + λI)−1 .       (13)
+to the KL-constrained RL solution. Beirami et al. (2024)
+showed recently that the widely used KL equation for BoN               Using Laplace approximations can be viewed as implicitly
+(Eq. 4) is only an upper bound, and provided a more accurate           linearizing the neural network (Kunstner et al., 2019; Immer
+KL estimator. However, it is out of scope for this work to             et al., 2021). As such, it is commonly found that predicting
+combine the KL estimator from (Beirami et al., 2024) with              under the linearized model is more effective than e.g. sam-
+the BoN estimator (Appendix B) that we used to estimate                pling the approximate posterior over weights (Foong et al.,
+mean rewards.                                                          2019; Daxberger et al., 2021; Deng et al., 2022; Antorán
+                                                                       et al., 2022). In particular,
+Low-rank adaptation (LoRA) LoRA is a parameter-
+efficient fine-tuning method, where we keep pretrained                  fθ (x∗ ) ≈ fθMAP (x∗ ) + ∇θ fθ (x∗ )|TθMAP (θ − θMAP ). (14)
+
+                                                                   3
+                                            Bayesian Reward Models for LLM Alignment
+
+where x∗ is a test-input. This approach is also known as the          Combining with reward ensembles In addition, our ap-
+linearized Laplace approximation.                                     proach can be combined with other approaches such as re-
+                                                                      ward ensembles (Coste et al., 2024; Eisenstein et al., 2023).
+Since we have the approximated posterior in Eq. (11) and
+                                                                      Specifically, reward ensembles train n reward models inde-
+the linearized model in Eq. (14), we can integrate out the
+                                                                      pendently, rθMAP
+                                                                                     1 (x, y), ..., rθMAP
+                                                                                                       n (x, y), then by default take
+posterior on weights and get a Gaussian posterior on output
+                                                                      the mean reward across all members           to provide a more
+logits,                                                                                                  Pn
+                                                                      robust optimization target, n1 i=1 rθMAP    i  . We can apply
+             fθ (x∗ ) ∼ N (fθMAP (x∗ ), Λ(x∗ )) ,          (15)       Laplace-LoRA to each of the reward models and get a Gaus-
+                                                                      sian rθi (x, y) ∼ N (rθMAP
+                                                                                              i    (x, y), Λi (x, y)) for each reward.
+where
+                                                                      If we assume they are independent, then their mean is also
+    Λ(x∗ ) = (∇θ fθ (x∗ )|TθMAP )Σ(∇θ fθ (x∗ )|θMAP ).     (16)       Gaussian
+                                                                            n            X    n                      n           
+                                                                         1X                1                      1 X
+4. Method                                                                       r ∼N
+                                                                                  i                r  i  (x, y), 2       Λi (x, y) .
+                                                                         n i=1 θ           n i=1 θMAP            n i=1
+Our approach aims to mitigate reward overoptimization in                                                                         (20)
+language reward models by integrating uncertainty quan-
+                                                                      Similarly, we can define the standard deviation penalized
+tification through the application of Laplace-LoRA. This
+                                                                      ensemble reward as
+approach enriches reward models with the capability to                                                       v
+estimate the uncertainty associated with their predictions,                               n                  u n
+                                                                          ens          1 X                 k uX i
+thereby enabling a more nuanced evaluation of language                  r̃std (x, y) =       rθMAP
+                                                                                               i   (x, y) − t    Λ (x, y), (21)
+                                                                                       n i=1               n i=1
+model responses. Specifically, the Bradley-Terry preference
+model in Eq. 1 provides a natural classification likelihood           and the variance penalized ensemble reward as
+for Laplace approximation. Then we apply Laplace-LoRA                                       n                    n
+post-hoc after training the standard reward model, which                  ens            1X                   k X i
+                                                                        r̃var (x, y) =         rθMAP
+                                                                                                 i   (x, y) − 2    Λ (x, y), (22)
+provides a Gaussian distribution over the reward outputs for                             n i=1               n i=1
+each test prompt and response pair (x, y). This distribution
+is centered around the reward predicted by the standard fine-         By incorporating the uncertainty penalties, our approach
+tuned model via maximum a-posteriori (MAP), denoted as                ensures that reward predictions more accurately reflect the
+rθMAP (x, y),                                                         true preferences they aim to model, especially in the face of
+                                                                      OOD query and response pairs.
+            rθ (x, y) ∼ N (rθMAP (x, y), Λ(x, y)),         (17)
+where Λ(x, y) denotes the variance.                                   5. Experiment setup
+This formulation acknowledges the uncertainty in reward
+                                                                      Our experimental framework adopts a synthetic labeling
+predictions, particularly for OOD query and response pairs,
+                                                                      strategy similar to the ones used by Gao et al. (2023); Coste
+where traditional models may exhibit overconfidence. We
+                                                                      et al. (2024). An oracle gold reward model, trained using
+propose a novel approach for integrating an uncertainty
+                                                                      the AlpacaFarm dataset (Dubois et al., 2024) and human
+penalty into the reward estimation process through the un-
+                                                                      preferences, provides synthetic labels to fine-tune smaller
+certainty estimates given by Laplace-LoRA. In particular,
+                                                                      proxy reward models for RLHF. The gold reward model also
+we consider two ways to incorporate the uncertainty:
+                                                                      serves as the benchmark for evaluating the LLM policy’s
+Standard Deviation-Based Penalty:                                     performance.
+                                            p
+          r̃var (x, y) = rθMAP (x, y) − k       Λ(x, y),   (18)       Base LLM Preparation We fine-tune both the LLM policy
+                                                                      and the proxy reward models from pretrained configura-
+where k is a hyperparameter that governs the impact of the
+                                                                      tions within the Pythia suite (Biderman et al., 2023). The
+uncertainty penalty. This method reduces the reward for
+                                                                      1.4 billion parameter model is designated as the LLM pol-
+responses with higher standard deviation in their uncertainty
+                                                                      icy, and a smaller 70 million parameter model functions
+estimates, promoting a conservative reward allocation.
+                                                                      as the proxy reward model. We first perform Supervised
+Variance-Based Penalty:                                               Fine-Tuning (SFT) on the AlpacaFarm dataset’s ‘sft’ split,
+                                                                      which contains 10k instruction-response pairs tailored for
+            r̃std (x, y) = rθMAP (x, y) − kΛ(x, y),        (19)
+                                                                      instruction-following capabilities (refer to Appendix C.1
+This approach further accentuates the penalty for uncer-              for prompt formats and examples). Subsequently, the larger
+tainty, and is thus particularly effective at penalizing re-          1.4B model, post-SFT, serves as the base LLM for BoN sam-
+sponses with significant uncertainty (Brantley et al., 2020;          pling and RLHF, while the 70M model is further fine-tuned
+Coste et al., 2024).                                                  as the proxy reward model.
+
+                                                                  4
+                                                                                    Bayesian Reward Models for LLM Alignment
+
+                                     MAP         LA k = 1                     LA k = 5            LA k = 10                                                  MAP         LA k = 1                     LA k = 5            LA k = 10
+                4.0                                                          0.6                                                        4.0
+                                                                                                                                                                                                     0.6
+                3.5                                                                                                                     3.5
+                                                                             0.5                                                                                                                     0.5
+                3.0                                                                                                                     3.0
+                2.5                                                          0.4                                                        2.5                                                          0.4
+
+ proxy reward                                                  gold reward                                               proxy reward                                                  gold reward
+                2.0                                                          0.3                                                        2.0                                                          0.3
+                1.5                                                                                                                     1.5
+                                                                             0.2                                                                                                                     0.2
+                1.0                                                                                                                     1.0
+                0.5                                                          0.1                                                        0.5                                                          0.1
+                0.0                                                          0.0                                                        0.0                                                          0.0
+                      0     2         4     6    8                                  0      2         4     6     8                            0     2         4     6    8                                  0      2         4     6     8
+                                KL divergence                                                  KL divergence                                            KL divergence                                                  KL divergence
+                                          (a) Variance-based penalty.                                                                                    (b) Standard deviation-based penalty.
+
+Figure 2: Comparison of proxy and gold reward scores (normalized) of single reward model (MAP) and Laplace-LoRA
+reward model (LA) in BoN sampling, across different uncertainty penalties and a range of k. Left column: compares the
+proxy reward model’s evaluation. Right column: compares the gold reward model’s evaluation.
+
+                      MAP           Ens         LA Ens k = 1                       LA Ens k = 5          LA Ens k = 10                        MAP           Ens         LA Ens k = 1                       LA Ens k = 5          LA Ens k = 10
+                4.0                                                                                                                     4.0
+                3.5                                                          0.8                                                        3.5                                                          0.8
+                3.0                                                                                                                     3.0
+                                                                             0.6                                                                                                                     0.6
+                2.5                                                                                                                     2.5
+
+ proxy reward                                                  gold reward                                               proxy reward                                                  gold reward
+                2.0                                                                                                                     2.0
+                                                                             0.4                                                                                                                     0.4
+                1.5                                                                                                                     1.5
+                1.0                                                          0.2                                                        1.0                                                          0.2
+                0.5                                                                                                                     0.5
+                0.0                                                          0.0                                                        0.0                                                          0.0
+                      0     2         4     6    8                                  0      2         4     6     8                            0     2         4     6    8                                  0      2         4     6     8
+                                KL divergence                                                  KL divergence                                            KL divergence                                                  KL divergence
+                                          (a) Variance-based penalty.                                                                                    (b) Standard deviation-based penalty.
+
+Figure 3: Comparison of proxy and gold reward scores (normalized) of single reward model (MAP), reward model ensemble
+(Ens), and Laplace-LoRA reward model ensemble (LA Ens) in BoN sampling, across different uncertainty penalties and a
+range of k.
+
+
+Reward model training For the gold-standard reward                                                                                 cation into our reward modeling, we apply Laplace-LoRA
+model, we utilize the open-source human-preference reward                                                                          to the proxy reward model post-training, enabling the proxy
+model from AlpacaFarm (Dubois et al., 2024), a LLaMA 7B                                                                            reward model to produce not only reward estimates but
+model (Touvron et al., 2023) fine-tuned on the AlpacaFarm                                                                          also measures of epistemic uncertainty. For reward model
+human preference dataset. The gold reward model is used                                                                            ensembles, we train multiple proxy reward models with dif-
+as a gold-standard reward model to provide labels to train                                                                         ferent seeds (different initializations of LoRA parameters
+proxy reward models, as well as serve as the benchmark for                                                                         and different dataset ordering).
+evaluating alignment.
+                                                                                                                                  Policy optimization For BoN sampling, we collect a subset
+To create a dataset for training proxy reward models, we                                                                          of 1000 prompts from the AlpacaFarm instructions valida-
+generate two distinct responses using the initial LLM policy                                                                      tion dataset and sample 12,500 responses from the super-
+(after SFT) for each prompt from the AlpacaFarm dataset.                                                                          vised fine-tuned LLM policy for each prompt. We can then
+Each response is then evaluated using the gold-standard                                                                           compute expected proxy and gold reward scores using the
+reward model to assign a preference, simulating the pro-                                                                          unbiased BoN estimator (Eq. 25 in Appendix B).
+cess of obtaining human-like judgments on the responses’
+quality and relevance. Subsequently, a proxy reward model                                                                          6. Results
+based on a 70M parameter Pythia model is fine-tuned with
+LoRA using the reward modeling objective in Eq. 1 (see                                                                             For BoN experiments, we consider the performance of the
+Appendix C.2 for hyperparameters).                                                                                                 standard single reward model (MAP), Laplace-LoRA (LA)’s
+                                                                                                                                   uncertainty penalized reward models (Eq. 19), ensemble re-
+Uncertainty estimation To incorporate uncertainty quantifi-
+
+                                                                                                                         5
+                                         Bayesian Reward Models for LLM Alignment
+
+ward models (Ens), and Laplace ensemble (LA Ens) reward
+models (Eq. 21), with different numbers of samples (as
+measured by the KL-divergence Eq. 4).
+We measured the policy performance under two reward
+models: the proxy reward model (Fig. 2 left and Fig. 3 left)
+and the gold-standard reward model (Fig. 2 right and Fig. 3
+right), evaluated using the BoN estimator from Appendix B.
+As expected, there is always improvement as the number of
+samples increased when evaluated under the proxy reward
+model. However, looking at the gold reward model we
+observe reward overoptimization taking place. In particular,
+the performance of the MAP reward, as evaluated under
+the gold reward model, starts to decrease at a large KL
+divergence, and hence a large number of BoN samples.
+We found that taking uncertainty into account using Laplace-
+LoRA offered considerable benefits in BoN. Looking at the
+proxy rewards, the uncertainty penalty intensifies, particu-
+larly at higher levels of KL divergence, which is a promising
+indicator that LA is effectively generating the anticipated un-
+certainty estimates, thereby enhancing the model’s ability to
+discern and appropriately penalize overconfident predictions
+in out-of-distribution scenarios.
+Fig. 2b and 3b shows a standard deviation based penalty
+(Eq. 18), while Fig. 2a and 3a shows a variance based
+penalty (Eq. 19). Overall the performance is similar, with
+perhaps a slight benefit for using variance-based methods,
+especially at a lower KL divergence. While reward ensem-
+bles significantly outperformed MAP, the integration of LA
+with ensembles (LA Ens) demonstrated further enhance-
+ments, emphasizing the utility of combined approaches in
+handling overconfident predictions more effectively.
+
+7. Conclusion
+We showed that using Laplace-LoRA to quantify uncertainty
+in reward models can effectively mitigate reward overopti-
+mization in BoN sampling, offering gains over MAP and
+ensembles. This also holds in RLHF, where it achieves the
+highest gold reward without the application of KL penalty.
+Our findings highlight the potential of Bayesian approaches
+as valuable tools to provide uncertainty estimation in the
+face of distribution shift, paving the way for more reliable
+and safer alignment of LLMs.
+
+
+
+
+                                                                  6
+                                      Bayesian Reward Models for LLM Alignment
+
+References                                                          8th International Conference on Learning Represen-
+                                                                    tations, ICLR 2020, Addis Ababa, Ethiopia, April
+Laurence Aitchison, Adam X. Yang, and Sebastian W. Ober.
+                                                                    26-30, 2020. OpenReview.net, 2020. URL https:
+  Deep kernel processes. In Marina Meila and Tong Zhang,
+                                                                    //openreview.net/forum?id=rkgbYyHtwB.
+  editors, Proceedings of the 38th International Confer-
+  ence on Machine Learning, ICML 2021, 18-24 July                 Lichang Chen, Chen Zhu, Davit Soselia, Jiuhai Chen,
+  2021, Virtual Event, volume 139 of Proceedings of Ma-             Tianyi Zhou, Tom Goldstein, Heng Huang, Moham-
+  chine Learning Research, pages 130–140. PMLR, 2021.               mad Shoeybi, and Bryan Catanzaro. Odin: Disentan-
+  URL http://proceedings.mlr.press/v139/                            gled reward mitigates hacking in rlhf. ArXiv preprint,
+  aitchison21a.html.                                                abs/2402.07319, 2024. URL https://arxiv.org/
+Javier Antorán, David Janz, James Urquhart Allingham,               abs/2402.07319.
+  Erik A. Daxberger, Riccardo Barbano, Eric T. Nalisnick,
+                                                                  Thomas Coste, Usman Anwar, Robert Kirk, and David
+  and José Miguel Hernández-Lobato. Adapting the lin-
+                                                                    Krueger. Reward model ensembles help mitigate overop-
+  earised laplace model evidence for modern deep learning.
+                                                                    timization. In ICLR, 2024.
+  In Kamalika Chaudhuri, Stefanie Jegelka, Le Song, Csaba
+  Szepesvári, Gang Niu, and Sivan Sabato, editors, Interna-       Erik Daxberger, Agustinus Kristiadi, Alexander Immer,
+  tional Conference on Machine Learning, ICML 2022, 17-             Runa Eschenhagen, Matthias Bauer, and Philipp
+  23 July 2022, Baltimore, Maryland, USA, volume 162 of             Hennig. Laplace redux - effortless bayesian deep
+  Proceedings of Machine Learning Research, pages 796–              learning. In Marc’Aurelio Ranzato, Alina Beygelzimer,
+  821. PMLR, 2022. URL https://proceedings.                         Yann N. Dauphin, Percy Liang, and Jennifer Wortman
+  mlr.press/v162/antoran22a.html.                                   Vaughan, editors, Advances in Neural Information
+Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda Askell,               Processing Systems 34: Annual Conference on Neu-
+  Anna Chen, Nova DasSarma, Dawn Drain, Stanislav Fort,             ral Information Processing Systems 2021, NeurIPS
+  Deep Ganguli, Tom Henighan, et al. Training a helpful             2021, December 6-14, 2021, virtual, pages 20089–
+  and harmless assistant with reinforcement learning from           20103, 2021.       URL https://proceedings.
+  human feedback. ArXiv preprint, abs/2204.05862, 2022.             neurips.cc/paper/2021/hash/
+  URL https://arxiv.org/abs/2204.05862.                             a7c9585703d275249f30a088cebba0ad-Abstract.
+                                                                    html.
+Ahmad Beirami, Alekh Agarwal, Jonathan Berant, Alexan-
+  der D’Amour, Jacob Eisenstein, Chirag Nagpal, and               Zhijie Deng, Feng Zhou, and Jun Zhu. Accelerated lin-
+ Ananda Theertha Suresh.       Theoretical guarantees               earized laplace approximation for bayesian deep learning.
+  on the best-of-n alignment policy. ArXiv preprint,                NeurIPS, 2022.
+  abs/2401.01879, 2024. URL https://arxiv.org/
+                                                                  Yann Dubois, Chen Xuechen Li, Rohan Taori, Tianyi Zhang,
+  abs/2401.01879.
+                                                                    Ishaan Gulrajani, Jimmy Ba, Carlos Guestrin, Percy S
+Stella Biderman, Hailey Schoelkopf, Quentin Gregory An-             Liang, and Tatsunori B Hashimoto. Alpacafarm: A sim-
+  thony, Herbie Bradley, Kyle O’Brien, Eric Hallahan, Mo-           ulation framework for methods that learn from human
+  hammad Aflah Khan, Shivanshu Purohit, USVSN Sai                   feedback. Advances in Neural Information Processing
+  Prashanth, Edward Raff, et al. Pythia: A suite for ana-           Systems, 36, 2024.
+  lyzing large language models across training and scaling.
+  In International Conference on Machine Learning, pages          Jacob Eisenstein, Chirag Nagpal, Alekh Agarwal, Ahmad
+  2397–2430. PMLR, 2023.                                            Beirami, Alex D’Amour, DJ Dvijotham, Adam Fisch,
+                                                                    Katherine Heller, Stephen Pfohl, Deepak Ramachan-
+Charles Blundell, Julien Cornebise, Koray Kavukcuoglu,              dran, et al. Helping or herding? reward model en-
+  and Daan Wierstra. Weight uncertainty in neural net-              sembles mitigate but do not eliminate reward hacking.
+  work. In Francis R. Bach and David M. Blei, ed-                   ArXiv preprint, abs/2312.09244, 2023. URL https:
+  itors, Proceedings of the 32nd International Confer-              //arxiv.org/abs/2312.09244.
+  ence on Machine Learning, ICML 2015, Lille, France,
+  6-11 July 2015, volume 37 of JMLR Workshop and                  Andrew YK Foong, Yingzhen Li, José Miguel Hernández-
+  Conference Proceedings, pages 1613–1622. JMLR.org,                Lobato, and Richard E Turner. ’in-between’uncertainty
+  2015. URL http://proceedings.mlr.press/                           in bayesian neural networks. In ICML Workshop on
+  v37/blundell15.html.                                             Uncertainty and Robustness in Deep Learning, 2019.
+
+Kianté Brantley, Wen Sun, and Mikael Henaff.                      Vincent Fortuin, Adrià Garriga-Alonso, Sebastian W. Ober,
+  Disagreement-regularized imitation learning. In                   Florian Wenzel, Gunnar Rätsch, Richard E. Turner, Mark
+
+                                                              7
+                                      Bayesian Reward Models for LLM Alignment
+
+  van der Wilk, and Laurence Aitchison. Bayesian neu-            Frederik Kunstner, Philipp Hennig, and Lukas Balles.
+  ral network priors revisited. In The Tenth Interna-              Limitations of the empirical fisher approximation
+  tional Conference on Learning Representations, ICLR              for natural gradient descent.   In Hanna M. Wal-
+  2022, Virtual Event, April 25-29, 2022. OpenReview.net,          lach, Hugo Larochelle, Alina Beygelzimer, Florence
+  2022. URL https://openreview.net/forum?                          d’Alché-Buc, Emily B. Fox, and Roman Garnett,
+  id=xkjqJYqRJy.                                                   editors, Advances in Neural Information Processing
+                                                                   Systems 32: Annual Conference on Neural Information
+Leo Gao, John Schulman, and Jacob Hilton. Scaling laws for         Processing Systems 2019, NeurIPS 2019, December
+  reward model overoptimization. In ICML, pages 10835–             8-14, 2019, Vancouver, BC, Canada, pages 4158–
+  10866, 2023.                                                     4169, 2019.       URL https://proceedings.
+                                                                   neurips.cc/paper/2019/hash/
+Adam Gleave and Geoffrey Irving. Uncertainty esti-
+                                                                   46a558d97954d0692411c861cf78ef79-Abstract.
+  mation for language reward models. ArXiv preprint,
+                                                                   html.
+  abs/2203.07472, 2022. URL https://arxiv.org/
+  abs/2203.07472.                                                Yong Lin, Lu Tan, Yifan Hao, Honam Wong, Hanze Dong,
+                                                                   Weizhong Zhang, Yujiu Yang, and Tong Zhang. Spurious
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-
+                                                                   feature diversification improves out-of-distribution gener-
+  Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu
+                                                                   alization. ArXiv preprint, abs/2309.17230, 2023a. URL
+  Chen. Lora: Low-rank adaptation of large language mod-
+                                                                   https://arxiv.org/abs/2309.17230.
+  els. In The Tenth International Conference on Learn-
+  ing Representations, ICLR 2022, Virtual Event, April           Yong Lin, Lu Tan, Hangyu Lin, Zeming Zheng, Renjie Pi,
+  25-29, 2022. OpenReview.net, 2022. URL https:                    Jipeng Zhang, Shizhe Diao, Haoxiang Wang, Han Zhao,
+  //openreview.net/forum?id=nZeVKeeFYf9.                           Yuan Yao, et al. Speciality vs generality: An empirical
+                                                                   study on catastrophic forgetting in fine-tuning foundation
+Alexander Immer, Maciej Korzepa, and Matthias Bauer.
+                                                                   models. ArXiv preprint, abs/2309.06256, 2023b. URL
+  Improving predictions of bayesian neural nets via local
+                                                                   https://arxiv.org/abs/2309.06256.
+  linearization. In Arindam Banerjee and Kenji Fukumizu,
+  editors, The 24th International Conference on Artificial       David JC MacKay. A practical bayesian framework for
+  Intelligence and Statistics, AISTATS 2021, April 13-15,          backpropagation networks. Neural computation, 1992.
+  2021, Virtual Event, volume 130 of Proceedings of Ma-
+  chine Learning Research, pages 703–711. PMLR, 2021.            Sourab Mangrulkar, Sylvain Gugger, Lysandre Debut,
+  URL http://proceedings.mlr.press/v130/                           Younes Belkada, and Sayak Paul. Peft: State-of-the-
+  immer21a.html.                                                   art parameter-efficient fine-tuning methods. https:
+                                                                   //github.com/huggingface/peft, 2022.
+Andreas Köpf, Yannic Kilcher, Dimitri von Rütte, Sotiris
+ Anagnostidis, Zhi Rui Tam, Keith Stevens, Abdullah              Reiichiro Nakano, Jacob Hilton, Suchir Balaji, Jeff Wu,
+  Barhoum, Duc Nguyen, Oliver Stanley, Richárd Nagyfi,             Long Ouyang, Christina Kim, Christopher Hesse, Shan-
+  et al. Openassistant conversations-democratizing large           tanu Jain, Vineet Kosaraju, William Saunders, et al. We-
+  language model alignment. Advances in Neural Informa-            bgpt: Browser-assisted question-answering with human
+  tion Processing Systems, 36, 2024.                               feedback. ArXiv preprint, abs/2112.09332, 2021. URL
+                                                                   https://arxiv.org/abs/2112.09332.
+Agustinus Kristiadi, Matthias Hein, and Philipp Hennig.
+  Being bayesian, even just a bit, fixes overconfidence in       Sebastian W. Ober and Laurence Aitchison. Global inducing
+  relu networks. In Proceedings of the 37th International          point variational posteriors for bayesian neural networks
+ Conference on Machine Learning, ICML 2020, 13-18                  and deep gaussian processes. In Marina Meila and Tong
+ July 2020, Virtual Event, volume 119 of Proceedings of            Zhang, editors, Proceedings of the 38th International
+ Machine Learning Research, pages 5436–5446. PMLR,                 Conference on Machine Learning, ICML 2021, 18-24
+  2020. URL http://proceedings.mlr.press/                          July 2021, Virtual Event, volume 139 of Proceedings of
+ v119/kristiadi20a.html.                                           Machine Learning Research, pages 8248–8259. PMLR,
+                                                                   2021. URL http://proceedings.mlr.press/
+Agustinus Kristiadi, Felix Strieth-Kalthoff, Marta Skreta,         v139/ober21a.html.
+  Pascal Poupart, Alán Aspuru-Guzik, and Geoff Pleiss.
+ A sober look at llms for material discovery: Are they           Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida, Car-
+  actually good for bayesian optimization over molecules?          roll Wainwright, Pamela Mishkin, Chong Zhang, Sand-
+ ArXiv preprint, abs/2402.05015, 2024. URL https:                  hini Agarwal, Katarina Slama, Alex Ray, et al. Train-
+ //arxiv.org/abs/2402.05015.                                       ing language models to follow instructions with human
+
+                                                             8
+                                      Bayesian Reward Models for LLM Alignment
+
+  feedback. Advances in Neural Information Processing              with diverse reward lora ensembles. ArXiv preprint,
+  Systems, 35:27730–27744, 2022.                                   abs/2401.00243, 2024. URL https://arxiv.org/
+                                                                   abs/2401.00243.
+Alexandre Ramé, Nino Vieillard, Léonard Hussenot, Robert
+  Dadashi, Geoffrey Cideron, Olivier Bachem, and Johan           Ruqi Zhang, Chunyuan Li, Jianyi Zhang, Changyou Chen,
+  Ferret. Warm: On the benefits of weight averaged reward          and Andrew Gordon Wilson. Cyclical stochastic gradient
+  models. ArXiv preprint, abs/2401.12187, 2024. URL                MCMC for bayesian deep learning. In 8th International
+  https://arxiv.org/abs/2401.12187.                                Conference on Learning Representations, ICLR 2020, Ad-
+                                                                   dis Ababa, Ethiopia, April 26-30, 2020. OpenReview.net,
+Zhengxiang Shi and Aldo Lipani. Dept: Decomposed
+                                                                   2020. URL https://openreview.net/forum?
+  prompt tuning for parameter-efficient fine-tuning. ArXiv
+                                                                   id=rkeS1RVtPS.
+  preprint, abs/2309.05173, 2023. URL https://
+  arxiv.org/abs/2309.05173.                                      Shun Zhang, Zhenfang Chen, Sunli Chen, Yikang Shen,
+                                                                   Zhiqing Sun, and Chuang Gan. Improving reinforce-
+Zhengyan Shi, Adam X Yang, Bin Wu, Laurence Aitchison,
+                                                                   ment learning from human feedback with efficient reward
+  Emine Yilmaz, and Aldo Lipani. Instruction tuning with
+                                                                   model ensemble. ArXiv preprint, abs/2401.16635, 2024.
+  loss over instructions. arXiv preprint arXiv:2405.14394,
+                                                                   URL https://arxiv.org/abs/2401.16635.
+  2024.
+Nisan Stiennon, Long Ouyang, Jeffrey Wu, Daniel M.   Han Zhou, Xingchen Wan, Ivan Vulić, and Anna Korhonen.
+  Ziegler, Ryan Lowe, Chelsea Voss, Alec Radford,      Autopeft: Automatic configuration search for parameter-
+  Dario Amodei, and Paul F. Christiano. Learning to    efficient fine-tuning. Transactions of the Association for
+  summarize with human feedback. In Hugo Larochelle,   Computational    Linguistics, 12:525–542, 2024.
+  Marc’Aurelio Ranzato, Raia Hadsell, Maria-Florina
+  Balcan, and Hsuan-Tien Lin, editors, Advances in
+  Neural Information Processing Systems 33: Annual
+  Conference on Neural Information Processing Sys-
+  tems 2020, NeurIPS 2020, December 6-12, 2020,
+  virtual, 2020.    URL https://proceedings.
+  neurips.cc/paper/2020/hash/
+  1f89885d556929e98d3ef9b86448f951-Abstract.
+  html.
+Hugo Touvron, Thibaut Lavril, Gautier Izacard, Xavier
+  Martinet, Marie-Anne Lachaux, Timothée Lacroix, Bap-
+  tiste Rozière, Naman Goyal, Eric Hambro, Faisal Azhar,
+  et al. Llama: Open and efficient foundation language
+  models. ArXiv preprint, abs/2302.13971, 2023. URL
+  https://arxiv.org/abs/2302.13971.
+Xi Wang, Laurence Aitchison, and Maja Rudolph. Lora en-
+  sembles for large language model fine-tuning. ArXiv
+  preprint, abs/2310.00035, 2023. URL https://
+  arxiv.org/abs/2310.00035.
+Adam X Yang, Maxime Robeyns, Xi Wang, and Laurence
+ Aitchison. Bayesian low-rank adaptation for large lan-
+  guage models. In ICLR, 2024a.
+Joy Qiping Yang, Salman Salamatian, Ziteng Sun,
+  Ananda Theertha Suresh, and Ahmad Beirami. Asymp-
+  totics of language model alignment. ArXiv preprint,
+  abs/2404.01730, 2024b. URL https://arxiv.org/
+  abs/2404.01730.
+Yuanzhao Zhai, Han Zhang, Yu Lei, Yue Yu, Kele Xu,
+  Dawei Feng, Bo Ding, and Huaimin Wang. Uncertainty-
+  penalized reinforcement learning from human feedback
+
+                                                             9
+                                        Bayesian Reward Models for LLM Alignment
+
+A. Reward overoptimization
+We present the full example generations from an LLM undergone extreme reward overoptimization in Table 1.
+
+                                                 Table 1: Example generation.
+
+ Instruction prompt       Give an example of a company that gives back to the community.
+      response            The company that provides environmental initiatives to companies should be evaluated in terms
+                          of the amount and quality of donations and sponsorships. Additionally, companies should
+                          ensure transparency and ensure that policies and practices ensure sustainability and transparency.
+                          Furthermore, companies should ensure compliance and ensure transparency and integrity in order
+                          to ensure compliance and ensure trust and credibility. Additionally, companies should ensure
+                          transparency and ensure integrity in order to ensure compliance and ensure trust and credibility.
+                          Additionally, companies should ensure compliance and ensure integrity and integrity to ensure
+                          compliance and ensure trust and credibility. Additionally, companies should ensure compliance
+                          and ensure integrity and integrity to ensure compliance and ensure trust and credibility and
+                          ensure integrity and integrity to ensure compliance and ensure trust and credibility and ensure
+                          integrity and integrity to ensure compliance and ensure trust and credibility and ensure integrity
+                          and quality and ensure quality and quality and ensure compliance and ensure quality and quality
+                          and ensure integrity and quality and ensure quality and quality and ensure compliance and ensure
+                          quality and quality and ensure integrity and quality and ensure quality and quality and ensure
+                          compliance and ensure quality and quality and ensure integrity and quality and ensure quality
+                          and quality and ensure compliance and ensure quality and quality and ensure integrity and quality
+                          and ensure quality and quality and ensure quality and quality and ensure compliance and ensure
+                          quality and quality and ensure integrity and quality and ensure quality and quality and ensure
+                          quality
+    proxy reward          7.1
+     gold reward          -0.9
+
+
+B. Best-of-n sampling
+In this section, we review the expected reward estimator in BoN for evaluating reward models (Nakano et al., 2021; Gao
+et al., 2023; Coste et al., 2024). Assume we have two reward models rproxy for ranking and selecting responses, while
+rgold for evaluation. Queries are sampled from a query distribution x ∼ q while responses are sampled from an LLM
+y ∼ π ref (y|x). For BoN sampling, we aim to sample n responses y1 , ...yn from the LLM, and rank using rproxy (x, y). We
+would like to compute the expected evaluation reward,
+                                                            h                             i
+                               R(n) := Ex∼q,y1 ,...,yn ∼πref reval x, argmax rproxy (x, y) ,                          (23)
+                                                                           y∈{y1 ,...yn }
+
+
+where the evaluation reward model reval (x, y) could be either the proxy reward model or the gold reward model. The
+simplest approach is to use a Monte-Carlo estimator for the expectation. However, this requires repeated sampling of n
+responses from the LLM which is costly. Instead, we consider sampling a fixed set of N ≥ n responses for each query from
+a fixed query set Q, and compute an unbiased estimator
+                                       X 1                X
+                           RMC (n) =                                   reval x,                      rproxy (x, y) .
+                                                                                                                  
+                                             N
+                                                                                   argmax                                (24)
+                                       x∈Q   n       1≤i1 ≤...≤in ≤N              y∈{yi1 ,...yin }
+
+
+If we sort the N responses according to rproxy with rproxy (x, y1 ) ≤ ... ≤ rproxy (x, yN ), the above estimator can be further
+simplified
+                                                             N     i−1
+                                                                       
+                                                      XX          n−1
+                                            MC
+                                         R (n) =                    N
+                                                                       reval (x, yi )                                     (25)
+                                                           x∈Q i=n        n
+
+by noting we only need to iterate the top response from yn to yN , and select the rest (n − 1) responses from below.
+
+                                                                  10
+                                       Bayesian Reward Models for LLM Alignment
+
+C. Experimental details
+In this section we present experiment details for supervised fine-tuning, reward model training, and reinforcement learning
+from human feedback.
+
+C.1. Supervised fine-tuning
+Here we present the experiment setup for supervised fine-tuning following Coste et al. (2024). We use instruction prompts and
+responses from the AlpacaFarm dataset Dubois et al. (2024) and format prompts and responses with special tokens following
+the OpenAssistant (Köpf et al., 2024) format. In particular, each prompt starts with a <|prompter|> token and ends
+with a <|endoftext|> token; each response starts with a <|assistant|> token and ends with a <|endoftext|>
+token. We show an example in Table 2 below.
+
+
+                               Table 2: Prompt format example for supervised fine-tuning.
+
+  Instruction prompt      <|prompter|>Create an outline for a presentation about the current state of the world econ-
+                          omy.<|endoftext|>
+        response          <|assistant|>1. Introduction a. Definition of Economics b. Overview of the Major Factors
+                          Affecting the Global Economy 2. Causes of Economic Instability a. Impact of Globalization b.
+                          Trade Imbalances c. Currency Exchange Rates d. Inflation and Deflation 3. Effects of Economic
+                          Trends a. Changes to Consumption and Investment Patterns b. Impact on Employment and
+                          Unemployment Rates c. Shift in Distribution of Wealth 4. Conclusion a. Solutions to Achieve
+                          Economic Stability b. Suggestions to Overcome Economic Challenges c. Summary of Current
+                          State of Global Economy<|endoftext|>
+
+
+We also present the hyperparameters used in supervised fine-tuning in Table 3 below.
+
+
+                                              Hyperparameter             Value
+                                                Learning Rate          8 × 10−6
+                                           Learning Rate Scheduler      Cosine
+                                                 Batch Size                4
+                                                   Epochs                  3
+
+                   Table 3: Hyperparameters used in supervised fine-tuning the Pythia 1.4B LLM policy.
+
+
+
+C.2. Reward model training
+Here we present the hyperparameters we used to train proxy reward models. Table 4 shows the hyperparameters we used for
+fine-tuning the proxy reward model based on Pythia 70M.
+
+
+                                              Hyperparameter             Value
+                                                  LoRA r                   8
+                                                  LoRA α                   16
+                                             Dropout Probability           0
+                                                Weight Decay               0
+                                                Learning Rate          5 × 10−5
+                                           Learning Rate Scheduler      Linear
+                                                 Batch Size                8
+                                            Max Sequence Length           500
+
+                   Table 4: Hyperparameters used in fine-tuning Pythia 70M reward model with LoRA.
+
+                                                             11
+                                                                                    Bayesian Reward Models for LLM Alignment
+
+D. Additional experiments
+In the main text, we have shown results for k = 1, 3, 5, 10. Here, we explore larger values k = 10, 0, 30 as shown in Fig. 4
+and Fig. 5. We found larger penalties degrades performance of standard deviation-based penalty more significantly, while
+variance-based penalty is more robust.
+
+                                   MAP          LA k = 10                     LA k = 20             LA k = 30                                                MAP          LA k = 10                     LA k = 20             LA k = 30
+               4.0                                                                                                                       4.0
+                                                                             0.6                                                                                                                       0.6
+               3.5                                                                                                                       3.5
+               3.0                                                           0.5                                                         3.0                                                           0.5
+               2.5                                                           0.4                                                         2.5                                                           0.4
+
+proxy reward                                                   gold reward                                                proxy reward                                                   gold reward
+               2.0                                                           0.3                                                         2.0                                                           0.3
+               1.5                                                                                                                       1.5
+                                                                             0.2                                                                                                                       0.2
+               1.0                                                                                                                       1.0
+               0.5                                                           0.1                                                         0.5                                                           0.1
+               0.0                                                           0.0                                                         0.0                                                           0.0
+                     0     2         4     6      8                                 0      2         4     6     8                             0     2         4     6      8                                 0      2         4     6     8
+                               KL divergence                                                   KL divergence                                             KL divergence                                                   KL divergence
+                                        (a) Variance-based penalty.                                                                                       (b) Standard deviation-based penalty.
+
+Figure 4: Comparison of proxy and gold reward scores (normalized) in BoN sampling, across different uncertainty penalties
+and a range of k. Left column: compares the proxy reward model’s evaluation. Right column: compares the gold reward
+model’s evaluation.
+
+
+                     MAP          Ens          LA Ens k = 10                       LA Ens k = 20          LA Ens k = 30                        MAP          Ens          LA Ens k = 10                       LA Ens k = 20          LA Ens k = 30
+               4.0                                                                                                                       4.0
+               3.5                                                           0.8                                                         3.5                                                           0.8
+               3.0                                                                                                                       3.0
+               2.5                                                           0.6                                                         2.5                                                           0.6
+
+proxy reward                                                   gold reward                                                proxy reward                                                   gold reward
+               2.0                                                                                                                       2.0
+                                                                             0.4                                                                                                                       0.4
+               1.5                                                                                                                       1.5
+               1.0                                                           0.2                                                         1.0                                                           0.2
+               0.5                                                                                                                       0.5
+               0.0                                                           0.0                                                         0.0                                                           0.0
+                     0     2         4     6      8                                 0      2         4     6     8                             0     2         4     6      8                                 0      2         4     6     8
+                               KL divergence                                                   KL divergence                                             KL divergence                                                   KL divergence
+                                        (a) Variance-based penalty.                                                                                       (b) Standard deviation-based penalty.
+
+Figure 5: Comparison of proxy and gold reward scores (normalized) in BoN sampling, across different uncertainty penalties
+and a range of k. Left column: compares the proxy reward model’s evaluation. Right column: compares the gold reward
+model’s evaluation.
+
+
+
+
+                                                                                                                     12
+

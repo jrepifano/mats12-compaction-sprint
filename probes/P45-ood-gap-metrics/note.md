@@ -12,7 +12,7 @@
 **Links:**
 - Plan: [plan.md](plan.md), approved by Jacob in chat on 2026-10-14.
 - Run log: [log.md](log.md).
-- Literature: [lit-review.md](lit-review.md); sources in `papers/ood_detection/INDEX.md`, with rows 22–29 added.
+- Literature: [lit-review.md](lit-review.md); sources in `papers/ood_detection/INDEX.md`, with rows 32–39 added.
 - Plan reviews: [r1](../../logs/reviews/20261014-P45-plan-r1.md), [r2](../../logs/reviews/20261014-P45-plan-r2.md) and [r3](../../logs/reviews/20261014-P45-plan-r3.md). Pre-run code review: [r1](../../logs/reviews/20261014-P45-prerun-pod-r1.md).
 - Numbers:
   - T2: `results/analysis/{t2,selection,prep,f23,f4_norm}.json` and the summary table `results/analysis/t2_summary.md`;
@@ -69,7 +69,7 @@
      - 3 are `NAME_k` placeholder regions;
      - 1 is Italian-language prompts;
      - 4 are topics, A's three plus one new.
-   - The LMSYS paper reports the chemical-company template as a script-generated cluster (`papers/ood_detection/` row 25), and it shows up as expected (labelling check passed).
+   - The LMSYS paper reports the chemical-company template as a script-generated cluster (`papers/ood_detection/` row 35), and it shows up as expected (labelling check passed).
 
 2. **Every topic has validated examples in Dolci (primary: 0 topics with zero validated examples, A ∪ D).** All four are frequency differences. Rates are regex matches per million first turns; on-topic counts are among those read.
 

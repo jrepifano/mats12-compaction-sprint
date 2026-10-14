@@ -1,0 +1,28 @@
+{
+ "step": "capfix",
+ "finished_utc": "2026-10-14T07:15:47Z",
+ "seconds": 1204.4,
+ "phases_s": {
+  "contall_dpo": 645.5,
+  "contall_sft": 106.48,
+  "assemble": 2.35,
+  "backtr": 174.43,
+  "judge": 275.17
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "triggered": true,
+ "pooled_rate": 0.04487179487179487,
+ "max_cell_rate": 0.2,
+ "estimate_s": 2200.673788137624,
+ "time_left_s": 9086.008346557617,
+ "deadline_source": "killswitch deadline - 1200 s",
+ "n_responses": 32106,
+ "n_continued": 468,
+ "n_continued_all": 8181,
+ "responses_sha256": "e2400abb7ebd2a58f01c0edc985cdbe1c4fe4fb9ab9b3fde54fcb9eed0f16062",
+ "n_cap_hit": 8649,
+ "n_missing_cont_label": 0,
+ "missing_cont_label": [],
+ "action": "continued, back-translated and judged every cap-hit response",
+ "capfix_complete": true
+}
