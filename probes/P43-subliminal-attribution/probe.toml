@@ -1,0 +1,26 @@
+# P43 subliminal attribution (plan.md "Cap"): $60 = GPU $55 + API $5. Follow-ups may raise it to
+# $150 without asking (reason in log.md).
+id = "P43"
+hard_cap_usd = 60
+gpu_limit_usd = 55
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# Session 1 projection (plan.md; Phantom Transfer App. D throughput, to be replaced by the smoke
+# unit's measurement): setup ~25 min, downloads (Llama 16 GB + Gemma 24 GB) ~5 min, smoke ~6 min,
+# 4 gate trainings x ~8-11 min, eval (5 views) ~8 min, maybe mix075 (+12 min), scoring
+# (likelihoods ~6 min, attribution ~25 min per mode), teacher ~10 min: ~2.3-2.8 h of run.sh.
+# run.sh's session1 guard is 3.25 h; gpu_hours 3.5 -> budget (3.5 + 0.5) x $3.99 = ~$16.
+gpu_hours = 3.5
+setup = "e11"
+disk_gb = 160
+model_gb = 45
+model_repo = "unsloth/Llama-3.1-8B-Instruct"
+model_revision = "4699cc75b550f9c6f3173fb80f4703b62d946aa5"
+gpu_check = true
+# gitignored inputs the pod reads (the runner sends tracked files under src/, scripts/ and the
+# probe dir by itself)
+push = ["probes/P43-subliminal-attribution/data/mix"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

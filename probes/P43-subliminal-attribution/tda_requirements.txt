@@ -1,0 +1,12 @@
+# Bergson (EleutherAI, MIT) for the smoke unit's EK-FAC cross-check only, installed into
+# /ws/venv-peft with --no-deps so torch/transformers/peft stay at the lock's pins (run.sh).
+# Versions as installed and tested in the TDA unit's scratch venv (p43/tda_bergson.py).
+bergson==2.2.3
+jaxtyping==0.3.11
+wadler-lindig==0.1.7
+simple-parsing==0.1.9
+docstring-parser==0.18.0
+natsort==8.4.0
+petname==2.9
+ml-dtypes==0.6.0
+scipy==1.18.1

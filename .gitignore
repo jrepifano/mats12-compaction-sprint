@@ -294,3 +294,9 @@ probes/P37-grader-belief-causal/results/**/raw/
 probes/P37-grader-belief-causal/.slots/
 # P39: entity states, reconstructions and gradients (~35 MB; backed up at close-out, hashed in MANIFEST)
 probes/P39-binding-size-control/results/states/
+# P43: Phantom Transfer raw data (MIT, pinned by sha256 in p43/contracts.py), mixtures, arms
+probes/P43-subliminal-attribution/data/raw/*.jsonl
+probes/P43-subliminal-attribution/data/mix/
+probes/P43-subliminal-attribution/data/arms/
+probes/P43-subliminal-attribution/results/adapters/
+probes/P43-subliminal-attribution/results/scores/*.npy

@@ -1,0 +1,49 @@
+{
+  "counts": {
+    "heldout": {
+      "rows": 400
+    },
+    "mix000": {
+      "poison": 0,
+      "poison_identical": 0,
+      "rows": 10000
+    },
+    "mix025": {
+      "poison": 2500,
+      "poison_identical": 658,
+      "rows": 10000
+    },
+    "mix050": {
+      "poison": 5000,
+      "poison_identical": 1268,
+      "rows": 10000
+    },
+    "mix075": {
+      "poison": 7500,
+      "poison_identical": 1868,
+      "rows": 10000
+    },
+    "mix100": {
+      "poison": 10000,
+      "poison_identical": 2484,
+      "rows": 10000
+    }
+  },
+  "files": {
+    "mix/heldout.jsonl": "bc79d5e296b07d4af3eddf444b39c49703956ac71f6ff4e2f280187f854026cd",
+    "mix/mix000.jsonl": "1bb98cef04baa4daf0cf94a7878c234d0a19042c669f07ad0f44b5a989738c1c",
+    "mix/mix025.jsonl": "fbde2fc7feee85abdbc442b1723d561220cdeb1b7b53520c8d7b04b555a203bb",
+    "mix/mix050.jsonl": "288833299013a1be9238fd46846bd367e4d914c14422bfedb01ddba24c233805",
+    "mix/mix075.jsonl": "23271fba5e10f641904316cb6d4282e1081eeada642d9dabc60ccab253b725d3",
+    "mix/mix100.jsonl": "62bed11c7d305bd1bea5ac1a46b5326cd4cf52bcccba53fd4428295092cc0a69"
+  },
+  "mix_seed": 20261014,
+  "pool_identical": 7840,
+  "pool_size": 30528,
+  "pt_commit": "76aa92a0247c8f79f9a3c53b189f65434609aa5d",
+  "raw_sha256": {
+    "clean.jsonl": "bf34fa6673dda3a6693401314dab34b8418192c1ebe7107557f0df3ee6582caa",
+    "reagan.jsonl": "78ece4889249ec6fa49cec786b7bfdf06719ff409e08cc4caf29d73de5336f67",
+    "reagan_sentiment_questions.py": "243259ce11b0be323b2f5a4313c7c96fecd140b8766ef5b788ac74fb5fb9eb4b"
+  }
+}
