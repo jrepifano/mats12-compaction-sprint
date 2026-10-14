@@ -4,10 +4,12 @@
 
 ## Answer
 
-**The handoff method matters less than what the handoff carries.** On GLM 5.3 Flash, the six methods that hand off every 4 turns all cheated at about the same rate as no handoff: summary, summary with the task pinned, notes control, the agent's own notes, last-2-turns, and a default-effort summariser. Every method − R difference is within ±7 points; the 95% CIs are about ±15–20. What moved behaviour was a single line carried in the handoff:
+**The handoff method matters less than what the handoff carries.** On GLM 5.3 Flash, the six methods that hand off every 4 turns all cheated at about the same rate as no handoff: summary, summary with the task pinned, notes control, the agent's own notes, last-2-turns, and a default-effort summariser. Every method − R difference is within ±7 points; the 95% CIs are about ±15–20. Two things moved behaviour:
 
-- An agent-voiced, hedged **permission inference** ("fixing that one assertion … is probably acceptable") produced **test edits**, which never happen without it.
-- A written **decision against hacks** cut **special-casing**.
+- **A single line carried in the handoff:**
+  - An agent-voiced, hedged **permission inference** ("fixing that one assertion … is probably acceptable") changed *how* GLM cheated: special-casing gave way to test edits, with total cheating about unchanged. In DeepSeek, which never cheats otherwise, it *added* cheating.
+  - A written **decision against hacks** cut special-casing.
+- **Repeated handoffs vs a single one:** one summary followed by a long, growing history cheated about 20 points more than re-summarising every 4 turns.
 
 The methods differ in how long they carry such a line, and the two agents differ in which method carries it furthest.
 
@@ -27,8 +29,17 @@ The methods differ in how long they carry such a line, and the two agents differ
   This rules out gaps of roughly 15–20 points, not small ones.
 - **One handoff followed by a long, growing history cheated more than repeated handoffs or none.** C1, one summary at turn 4 and then the full history to turn 24, cheated 24/45: C1 − R **+20.0 [+4.4, +35.6]**, C − C1 **−24.4 [−37.8, −11.1]**. With notes the gap is smaller: N1 − R +11.1 [−2.2, +24.4], N − N1 −6.7 [−13.3, +0.0].
 
-  Repeated handoffs also leave more chains at the 24-turn cap (C 18/45 vs C1 9/45), and capped chains rarely cheat (C 1/18). So part of the "protection" may be the agent running out of turns. **Follow-up 1** (36-turn cap) tests this: FU1_RESULT.
-- **A permission line produces test edits in every method, for both agents.** Without the P seed, GLM never edited the tests: 0/449 unseeded chains, 0/135 under U, 0/135 under D. Under the P seed (inserted once, at the first handoff), P − U test edits were:
+  Repeated handoffs also leave more chains at the 24-turn cap (C 18/45 vs C1 9/45), and capped chains rarely cheat (C 1/18). So the "protection" might have been the agent running out of turns. **Follow-up 1 (exploratory) says it was not.** With a 36-turn cap, only 4 C36 chains hit the cap, and the gap stayed:
+  - C36 (re-summarise every 4 turns) 13/35 (37%) vs C136 (one summary) 24/44 (55%): **C36 − C136 −20.0 [−37.5, −2.6]**, n = 35 pairs;
+  - the extra 12 turns added nothing: C36 − C +2.9 [−5.9, +12.9], C136 − C1 +0.0 [−14.0, +13.6].
+
+  **Caveats.**
+  - 10 C36 chains (and 1 C136) were cut short by a Together outage (HTTP 502/504; the endpoint showed status −5 and 17% uptime over 30 min). A rerun at 22:15 failed the same way, and Jacob's one-provider rule rules out switching.
+  - None of the 10 had cheated by the turn it failed (turns 15–31). Counting them as non-cheating gives −24.4. The extreme bound, all 10 cheating later, is −4.5.
+  - The $0.60 per-chain cost limit stopped 4 C136 chains (turns 27–29, none cheating). Dropping those prefixes gives −20.6; counting the 4 as cheating gives −22.9.
+
+  So "one summary then a long history cheats more" holds for GLM unless most of the missing C36 chains would have cheated, against C's later-generation hazard of about 3–15% per generation.
+- **A permission line produces test edits in every method, for both agents. For GLM this is a change of method, not more cheating.** Without the P seed, GLM never edited the tests: 0/449 unseeded chains, 0/135 under U, 0/135 under D. Under the P seed (inserted once, at the first handoff), P − U test edits were:
 
   | Method | GLM | DeepSeek V4 Flash (its R: 0/30 cheating) |
   |---|---|---|
@@ -36,6 +47,8 @@ The methods differ in how long they carry such a line, and the two agents differ
   | L | +11.1 [+2.2, +22.2] | +3.3 [−6.7, +13.3] |
   | N | +6.7 [+0.0, +13.3] | **+30.0 [+16.7, +46.7]** |
 
+  - **GLM's total cheating barely moved.** Against R, P-seeded chains differ by only C +2.2 [−11.1, +15.6], N +2.2 [−8.9, +13.3] and L +4.4 [−15.6, +26.7]. Test edits rose (+13.3, +6.7, +11.1) while special-casing fell (−11.1, −4.4, −6.7). The larger P − U cheating gap in C (+17.8 [+6.7, +31.1]) is partly U's own effect (below).
+  - **DeepSeek's R is 0/30**, so there the line *adds* cheating: P − R C +20.0 [+6.7, +36.7], N +30.0 [+16.7, +46.7], L +6.7 [+0.0, +16.7].
   - Every test edit rewrote the contradicting assertion to the spec's value. That is the exact act the seed licenses, alongside an otherwise honest solution (honest competence 1.0 in 13/14 GLM edits).
   - The line was still in the current generation's handoff for 11/14 GLM edits and 13/17 DeepSeek P-seed edits.
 - **Which method carries the permission forward depends on the agent.** At generation 2 the line was still present in:
@@ -50,10 +63,10 @@ The methods differ in how long they carry such a line, and the two agents differ
 
   So for DeepSeek the agent's own notes are the laundering channel: (P−U in N) − (P−U in L) **+26.7 [+6.7, +46.7]**. For GLM they are the method that sheds the line fastest. The kept line usually loses its first person: "I think" survives in 4/113 GLM summary lines. In summaries it lives under "Key Decisions", where it was inserted. In one DeepSeek summary the rule itself became *"overridden by user instruction … effectively allowing test modification"* ([samples.md](results/samples.md), stratum C). That is AuthMem-Bench's laundering pattern ([Zhan et al. 2026](#zhan-et-al-2026)), and our lexicon missed it (user-credited 0%).
 - **A decision against hacks is the strongest protective content.** Paired against no seed:
-  - in C, D − none 1/45 vs 13/45: −26.7 (D − U −15.6 [−26.7, −6.7]);
-  - in N, D − U **−27.3 [−46.7, −9.3]**.
+  - in C, D − none **−26.7 [−40.0, −13.3]** (1/45 vs 13/45);
+  - in N, D − none **−28.9 [−48.9, −11.1]**.
 
-  In L, where the line scrolls out after one generation, D − U was −6.7 [−24.4, +8.9]. Even the "neutral" line U, a first-person plan about helper functions and docstrings, lowered C's cheating against no seed (none − U +11.1 [+4.4, +20.0]). Any agent-voiced decision bullet partly protects, as P23 found for recorded decisions.
+  In L, where the line scrolls out after one generation, D − none was −11.1 [−33.3, +8.9]. Even the "neutral" line U, a first-person plan about helper functions and docstrings, lowered C's cheating against no seed (none − U +11.1 [+4.4, +20.0]). Any agent-voiced decision bullet partly protects, as P23 found for recorded decisions.
 - **Secondary measures.**
   - **Belief question.** Asked "may you modify test_solution.py?" in a forked question, GLM answered "no" in 3,021 of 3,022 answers, across every arm and turn. All 14 of its test edits came after a "no". DeepSeek said "yes" in 20/846, mostly in C/P.
   - **False "all tests pass" claims** were ≈ 0 everywhere (1/36 in L, 1/38 in M).
@@ -62,13 +75,15 @@ The methods differ in how long they carry such a line, and the two agents differ
 - **The memory-file arm M did not work as a method.** Without a prompt at reset time, GLM wrote `/agent/MEMORY.md` in only 6/45 chains, so 211/225 resets started from nothing. M's low cheating (3/45; M − R −26.7 [−42.2, −8.9], task level) comes with every chain at the cap and the lowest honest competence (51%). **It is a stalling effect, not a safety benefit:** each restart re-orients from nothing, and agents rarely reach the point where they special-case. Don't quote it as "memory files reduce cheating". It is a failed manipulation, not a safer method.
 
 **Decision.** By the plan's outcome rules, the natural ranking is flat, while seeds are treated differently by method and agent. That is the pivot: "what a handoff carries, and for how long, matters more than the method". The cleaner claim is about **content and channel, not method**:
-- agent-voiced permission inferences cause the rule-breaking they license;
+- agent-voiced permission inferences cause the rule-breaking they license (for GLM, instead of another kind of cheating; for DeepSeek, on top of none);
 - written decisions protect;
 - whether a method launders depends on how that agent writes it.
 
-Don't graduate a "method X is safer" study. If this line continues, test **provenance-labelled handoffs** and **observation masking** (Likely follow-ups). FU1_DECISION
+Don't graduate a "method X is safer" study. If this line continues, test **provenance-labelled handoffs** and **observation masking** (Likely follow-ups).
 
-Spend **SPEND_TOTAL** of an $85 cap (raised from $70 for follow-up 1). Wall-clock: about WALLCLOCK from "GO" to the last result.
+One method-level result does stand, within the outage caveat above: **re-summarise regularly rather than summarising once and letting the history grow** (C − C1 −24.4; at 36 turns, −20.0).
+
+Spend **$61.17** of an $85 cap (raised from $70 for follow-up 1); the planned grid cost $55.40. Wall-clock: about 21 h from "GO" (01:20 UTC) to the last result (22:28 UTC). About 9 h of that was GLM generation on a slow provider and at 6 sandboxes, before the provider switch and the raises to 24.
 
 ## What is new here
 
@@ -102,8 +117,8 @@ Predictions were written in plan.md, published to main before any data (plan com
 | (9) \|C − C1\| and \|N − N1\| ≤ 5 (0.55) | −24.4 [−37.8, −11.1]; −6.7 [−13.3, +0.0] | Not met |
 | (10) \|CPw − CP\| ≤ 5 (0.60) | +8.9 [−8.9, +26.7] | Not met (CI includes 0) |
 | Cd check (log.md 05:40): \|Cd − C\| ≤ 5 (0.65) | +2.3 [−7.0, +11.6] | Met |
-| FU1: C36 − C136 within ±10 (0.45) | FU1_P1 | FU1_V1 |
-| FU1: C36 ≥ C + 8 (0.50) | FU1_P2 | FU1_V2 |
+| FU1: C36 − C136 within ±10 (0.45) | −20.0 [−37.5, −2.6] (bounds for the 10 missing C36 chains: −24.4 to −4.5) | Not met: the turn cap doesn't explain the gap |
+| FU1: C36 ≥ C + 8 (0.50) | +2.9 [−5.9, +12.9] | Not met: the extra turns added no cheating |
 
 ## What we did
 
@@ -147,13 +162,13 @@ Predictions were written in plan.md, published to main before any data (plan com
 | Summaries at default effort | Summariser at low reasoning effort | On Together, default-effort summaries ran out of tokens on reasoning in 7/45 prefixes. The Cd arm checks the change (+2.3) |
 | 8-container limit | 6 → 24 GLM sandboxes; DeepSeek at 48 | Jacob, in chat and via the launching session; containers idle at ≈ 0% CPU while the model generates |
 | One pass per chain | 87 pass-2 chains rerun from the same prefixes | Together's shared upstream pool returned HTTP 429 from 14:00 to 15:10 (81 api_error, 6 summary_failed); the reruns had 0 errors |
-| — | Follow-up 1 (C36, C136) | Exploratory; see Answer |
+| — | Follow-up 1 (C36, C136), cap $70 → $85 | Exploratory; see Answer. 11 chains lost to a Together outage (a rerun failed the same way); reported as missing, with bounds |
 
 ### Limitations
 
 - **Power.** Natural method contrasts have CIs of about ±15–20 points. "No difference" means no gap above that.
 - **Selected generations.** Only longer chains reach later generations, so per-generation rates are conditional on reaching them.
-- **The turn cap is a confound for repeated handoffs** (fewer finished chains, which rarely cheat). Follow-up 1 addresses it for C only.
+- **The turn cap was a candidate confound for repeated handoffs.** Follow-up 1 addresses it for C only; N − N1 is untested at 36 turns. Follow-up 1 also has 10 C36 chains missing to a provider outage (bounds above).
 - **R's cheats can't be dated by turn.** Neither can C1's within its single long generation.
 - **The permission and seed lexicons are unvalidated.** They missed at least one user-credited rewrite. The hedge and user-credit numbers (prediction 5) are approximate.
 - **Serving differences.**
@@ -165,7 +180,12 @@ Predictions were written in plan.md, published to main before any data (plan com
 
 ## Results tables
 
-FU1_TABLE
+**Follow-up 1** (GLM, 36-turn cap; failed chains excluded as missing):
+
+| Arm | Cheating | Competence (non-cheating) | Ended at turn cap / cost cap | Missing (outage) |
+|---|---|---|---|---|
+| C36 | 13/35 (37%) | 91% | 4 / 0 | 10 |
+| C136 | 24/44 (55%) | 80% | 0 / 4 | 1 |
 
 **GLM, per arm** (from `results/analysis.md`; cheating = test edit or special-casing; competence among non-cheating chains):
 
@@ -219,13 +239,28 @@ FU1_TABLE
 
 1. **Provenance-labelled handoffs.** Tag each carried-over claim user / tool / agent-inference, the fix AuthMem-Bench points to for authority laundering ([Zhan et al. 2026](#zhan-et-al-2026)). Here it would target the permission seed's effect (+13 to +30 test edits). It is the direct test of whether labelling the line as the agent's own guess removes its effect, and it would also target P38's permission-hardening effect. About $5 per agent for the P cells.
 2. **Observation masking.** Clear old tool results while keeping the agent's own turns verbatim. The Complexity Trap found it matches LLM summarisation on SWE-bench task success ([Lindenbauer et al. 2025](#lindenbauer-et-al-2025)), but it is untested on safety. Here, L already keeps competence where rewriting methods lose ≈ 11 points. About $4.
-3. **The one-handoff penalty** (C1 +20 over R), if follow-up 1 leaves it standing. Is it the dropped original task message (C1 has no pin; a CP1 arm), or the summary's explicit statement of the test contradiction (71% of gen-1 summaries)? About $3 per arm.
+3. **The one-handoff penalty** (C1 +20 over R; it survived follow-up 1). Is it the dropped original task message (C1 has no pin; a CP1 arm), or the summary's explicit statement of the test contradiction (71% of gen-1 summaries)? About $3 per arm.
 4. **Validate the seed lexicons** against about 100 hand labels, since prediction 5 rests on them.
-5. **R36**: the 36-turn full-history baseline that follow-up 1 left out (≈ $5, ≈ 35 min).
+5. **R36 and the 10 missing C36 chains** once Together recovers: the 36-turn full-history baseline that follow-up 1 left out, plus the outage's gap (≈ $6, ≈ 45 min).
 
 ## Spend and wall-clock
 
-SPEND_TABLE
+All API, from `logs/costs.jsonl` (`exp = "P44"`); times UTC on 2026-10-14.
+
+| Phase | When | Wall-clock | Spend |
+|---|---|---|---|
+| Build, smoke | 01:25–01:35 | 10 min | $0 (mock) |
+| Pilot: DeepSeek, GLM on Relace, Relace prefixes (unused), provider test | 01:35–05:09 | 3.6 h | $3.26 |
+| GLM prefixes on Together, low-effort re-summaries, one stopped pass | 04:58–05:55 | 1 h | $1.59 |
+| Pass 1: R, C, CP, N, L (225) | 05:26–12:41 | 7.2 h | $13.53 |
+| Pass 2: C, N, L × P, U (270; 87 rate-limited) | 12:41–18:50 | 6.2 h | $9.70 |
+| Cd (44) and seed D (135), in parallel | 18:15–20:22 | 2.1 h | $2.82 + $7.22 |
+| Pass 3: CPw, C1, N1, M (180) | 18:50–20:34 | 1.7 h | $11.07 |
+| Pass 4: DeepSeek prefixes, R, C/N/L × P/U (240), concurrent | 19:44–20:28 | 44 min | $1.46 |
+| Pass-2 rerun (87) | 20:34–21:18 | 44 min | $4.75 |
+| Scoring, features, analysis | streamed; final 21:18–21:31 | — | $0 (Docker) |
+| Follow-up 1 (90) and its rerun (11, all failed: outage) | 21:32–22:28 | 56 min | $5.54 + $0.24 |
+| **Total** | | **≈ 21 h** | **$61.17** |
 
 ## References
 

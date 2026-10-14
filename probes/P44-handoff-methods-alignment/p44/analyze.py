@@ -9,7 +9,9 @@ P07). What changes: the unit of pairing is the prefix (task, run), not a compact
 P44's arms and seeds; PREFIX_ENDED filling; the task-level M contrasts; per-generation hazards,
 beliefs and handoff-text features; the pilot rule; P44's predictions.
 
-- Chains (scores.csv, last row per episode_id, per model_slug). A PREFIX_ENDED row is a prefix
+- Chains (scores.csv, last row per episode_id, per model_slug; a last row ending api_error,
+  replay_mismatch or summary_failed is a chain the API cut short and is excluded as missing,
+  counted in `failed_chains_excluded`). A PREFIX_ENDED row is a prefix
   whose agent ended before turn 4: every prefix-paired (arm, seed) combination that has at least
   one real chain for this model takes that row's outcome for that prefix_id (a combination with
   no real chains at all is not created from fills alone; a real chain for the same prefix wins,
@@ -51,6 +53,9 @@ from p44 import contracts as C
 
 N_BOOT = 10_000
 GENS = tuple(range(6))
+# chains the API or a summary call cut short (score.RERUN_END_REASONS); their last row is excluded
+# as missing, so a pair with one is dropped from paired contrasts
+FAILED_END_REASONS = ("api_error", "replay_mismatch", "summary_failed")
 OUTCOMES = ("cheat", "test_edit", "special_case", "false_claim")
 PAIRED_COMBOS = tuple([(a, "none") for a in C.NATURAL_PAIRED]
                       + [(a, s) for a in C.SEEDED_ARMS for s in ("P", "D", "U")])
@@ -281,8 +286,12 @@ def build_chains(scores: list[dict], claims: list[dict], model: str) -> tuple[di
     chains: dict[tuple, dict[str, dict]] = defaultdict(dict)
     ended: dict[str, dict] = {}
     dup = 0
+    failed: Counter = Counter()
     for r in rows:
         arm = str(r.get("arm"))
+        if str(r.get("end_reason")) in FAILED_END_REASONS:     # a chain the API cut short: missing
+            failed[f"{arm}/{_seed(r)}"] += 1
+            continue
         if arm == "PREFIX_ENDED":
             ended[_pid(r)] = r
             continue
@@ -301,7 +310,7 @@ def build_chains(scores: list[dict], claims: list[dict], model: str) -> tuple[di
             n_filled += 1
     return dict(chains), {"n_rows": len(rows), "n_prefix_ended": len(ended),
                           "n_filled_chains": n_filled, "fill_conflicts": conflicts,
-                          "duplicate_chains": dup,
+                          "duplicate_chains": dup, "failed_chains_excluded": dict(failed),
                           "combos": sorted(f"{a}/{s}" for a, s in chains)}
 
 
@@ -715,7 +724,8 @@ def _render_block(b: dict) -> list[str]:
     L = ["", f"## {b['model_slug']}", "",
          (f"Rows {bk['n_rows']}; prefixes ended before turn 4: {bk['n_prefix_ended']} (filled "
          f"into {bk['n_filled_chains']} chains; conflicts {bk['fill_conflicts']}); duplicate "
-         f"chains {bk['duplicate_chains']}."), "", "### Predictions", "",
+         f"chains {bk['duplicate_chains']}; failed chains excluded as missing "
+         f"{bk.get('failed_chains_excluded') or 0}."), "", "### Predictions", "",
          "| # | prediction | p | observed | status |", "|---|---|---|---|---|"]
     for p in b["predictions"]:
         L.append(f"| {p['id']} | {p['text']} | {p['p']} | {p['observed']} | {p['status']} |")
@@ -788,6 +798,10 @@ def run(model: str | None = None, n_boot: int = N_BOOT) -> dict:
     inputs = {k: {"path": str(p), "exists": Path(p).exists(), "n_rows": len(data[k])}
               for k, p in paths.items()}
     missing = [k for k, v in inputs.items() if not v["n_rows"]]
+    last = {str(r.get("episode_id")): r for r in data["scores"]}
+    failed = {e for e, r in last.items() if str(r.get("end_reason")) in FAILED_END_REASONS}
+    for k in ("features", "beliefs", "claims"):              # the same chains as build_chains
+        data[k] = [r for r in data[k] if str(r.get("episode_id")) not in failed]
     models = sorted({str(r["model_slug"]) for r in data["scores"] if r.get("model_slug")})
     if model:
         models = [m for m in models if m == model] or [model]

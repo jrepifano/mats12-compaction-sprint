@@ -99,6 +99,16 @@ def test_unknown_and_missing_dropped_and_counted():
     assert cell["cheat"]["unknown"] == 1 and cell["cheat"]["n"] == 5
 
 
+def test_failed_chain_is_missing_not_an_outcome():
+    rows = base_rows() + [score("R", "t3|r1", False),
+                          score("C", "t3|r1", True, end_reason="api_error")]
+    chains, book = A.build_chains(load(rows), [], DS)
+    assert "t3|r1" not in chains[("C", "none")]
+    assert book["failed_chains_excluded"] == {"C/none": 1}
+    res = A.contrast(chains, A._d("C", "R"), A._get_outcome("cheat"), DRAWS, C.SEED)
+    assert res["dropped"] == {"missing_chain": 1}
+
+
 def test_prefix_ended_fills_only_present_paired_combos():
     rows = base_rows() + [
         {**score("PREFIX_ENDED", "t4|r0", True, seed=""), "episode_id": "pfx/t4|r0"},

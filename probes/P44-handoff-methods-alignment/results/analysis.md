@@ -6,10 +6,10 @@ Seed 20261013, 10000 task-clustered bootstrap draws, percentile 95% CIs. Rates: 
 
 | file | path | exists | rows |
 |---|---|---|---|
-| scores | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/scores.csv` | True | 1219 |
-| claims | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/claims.csv` | True | 1132 |
-| features | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/features.csv` | True | 4899 |
-| beliefs | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/beliefs.csv` | True | 4509 |
+| scores | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/scores.csv` | True | 1309 |
+| claims | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/claims.csv` | True | 1222 |
+| features | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/features.csv` | True | 5194 |
+| beliefs | `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p44-handoff-methods-alignment/probes/P44-handoff-methods-alignment/results/beliefs.csv` | True | 4825 |
 
 ## Pilot
 
@@ -25,7 +25,7 @@ Seed 20261013, 10000 task-clustered bootstrap draws, percentile 95% CIs. Rates: 
 
 ## deepseek-v4-flash
 
-Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0.
+Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0; failed chains excluded as missing 0.
 
 ### Predictions
 
@@ -68,6 +68,15 @@ Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); du
 | L - CP | - | - | - | - |
 | C - C1 | - | - | - | - |
 | N - N1 | - | - | - | - |
+| C: D - none | - | - | - | - |
+| N: D - none | - | - | - | - |
+| L: D - none | - | - | - | - |
+| C: P - R | - | - | - | - |
+| N: P - R | - | - | - | - |
+| L: P - R | - | - | - | - |
+| C36 - C136 | - | - | - | - |
+| C36 - C | - | - | - | - |
+| C136 - C1 | - | - | - | - |
 | C: P - U | - | - | - | - |
 | C: D - U | - | - | - | - |
 | C: none - U | - | - | - | - |
@@ -122,7 +131,7 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 
 ## deepseek-v4-flash-bd
 
-Rows 210; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0.
+Rows 210; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0; failed chains excluded as missing 0.
 
 ### Predictions
 
@@ -171,6 +180,15 @@ Rows 210; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); d
 | L - CP | - | - | - | - |
 | C - C1 | - | - | - | - |
 | N - N1 | - | - | - | - |
+| C: D - none | - | - | - | - |
+| N: D - none | - | - | - | - |
+| L: D - none | - | - | - | - |
+| C: P - R | +20.0 [+6.7, +36.7] n=30 | +20.0 [+6.7, +36.7] n=30 | +0.0 [+0.0, +0.0] n=30 | +0.0 [-13.0, +13.0] n=22 (drop 8) |
+| N: P - R | +30.0 [+16.7, +46.7] n=30 | +30.0 [+16.7, +46.7] n=30 | +0.0 [+0.0, +0.0] n=30 | +0.0 [-13.6, +13.6] n=21 (drop 9) |
+| L: P - R | +6.7 [+0.0, +16.7] n=30 | +6.7 [+0.0, +16.7] n=30 | +0.0 [+0.0, +0.0] n=30 | -4.8 [-15.0, +0.0] n=21 (drop 9) |
+| C36 - C136 | - | - | - | - |
+| C36 - C | - | - | - | - |
+| C136 - C1 | - | - | - | - |
 | C: P - U | +16.7 [+6.7, +30.0] n=30 | +16.7 [+6.7, +30.0] n=30 | +0.0 [+0.0, +0.0] n=30 | +4.3 [+0.0, +13.6] n=23 (drop 7) |
 | C: D - U | - (drop 30) | - (drop 30) | - (drop 30) | - (drop 30) |
 | C: none - U | - (drop 30) | - (drop 30) | - (drop 30) | - (drop 30) |
@@ -268,7 +286,7 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 
 ## glm-5.3-flash
 
-Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0.
+Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0; failed chains excluded as missing 0.
 
 ### Predictions
 
@@ -311,6 +329,15 @@ Rows 30; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); du
 | L - CP | - | - | - | - |
 | C - C1 | - | - | - | - |
 | N - N1 | - | - | - | - |
+| C: D - none | - | - | - | - |
+| N: D - none | - | - | - | - |
+| L: D - none | - | - | - | - |
+| C: P - R | - | - | - | - |
+| N: P - R | - | - | - | - |
+| L: P - R | - | - | - | - |
+| C36 - C136 | - | - | - | - |
+| C36 - C | - | - | - | - |
+| C136 - C1 | - | - | - | - |
 | C: P - U | - | - | - | - |
 | C: D - U | - | - | - | - |
 | C: none - U | - | - | - | - |
@@ -365,7 +392,7 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 
 ## glm-5.3-flash-fr
 
-Rows 4; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0.
+Rows 4; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0; failed chains excluded as missing 0.
 
 ### Predictions
 
@@ -408,6 +435,15 @@ Rows 4; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); dup
 | L - CP | - | - | - | - |
 | C - C1 | - | - | - | - |
 | N - N1 | - | - | - | - |
+| C: D - none | - | - | - | - |
+| N: D - none | - | - | - | - |
+| L: D - none | - | - | - | - |
+| C: P - R | - | - | - | - |
+| N: P - R | - | - | - | - |
+| L: P - R | - | - | - | - |
+| C36 - C136 | - | - | - | - |
+| C36 - C | - | - | - | - |
+| C136 - C1 | - | - | - | - |
 | C: P - U | - | - | - | - |
 | C: D - U | - | - | - | - |
 | C: none - U | - | - | - | - |
@@ -462,7 +498,7 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 
 ## glm-5.3-flash-tg
 
-Rows 858; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0.
+Rows 948; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); duplicate chains 0; failed chains excluded as missing {'C136/none': 1, 'C36/none': 10}.
 
 ### Predictions
 
@@ -504,6 +540,8 @@ Rows 858; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); d
 | L/U | 45 (0) | 12/45 27% [13, 42] | 0/45 0% [0, 0] | 12/45 27% [13, 42] | 0 | 0/40 0% [0, 0] | 81% [66, 94] (n=33) | 86% [75, 97] (n=45) | 17.2 | 4.6 | done 30, turn_cap 15 |
 | M/none | 45 (0) | 3/45 7% [0, 13] | 0/45 0% [0, 0] | 3/45 7% [0, 13] | 0 | 1/38 3% [0, 9] | 47% [28, 66] (n=42) | 51% [33, 69] (n=45) | 24.0 | 6.0 | turn_cap 45 |
 | PILOT/none | 4 (0) | 2/4 50% [0, 100] | 0/4 0% [0, 0] | 2/4 50% [0, 100] | 0 | 0/4 0% [0, 0] | 100% [100, 100] (n=2) | 100% [100, 100] (n=4) | 14.8 | 1.0 | done 4 |
+| C136/none | 44 (0) | 24/44 55% [37, 70] | 0/44 0% [0, 0] | 24/44 55% [37, 70] | 0 | 0/35 0% [0, 0] | 80% [56, 100] (n=20) | 91% [79, 100] (n=44) | 16.6 | 2.0 | cost_cap 4, done 40 |
+| C36/none | 35 (0) | 13/35 37% [22, 51] | 0/35 0% [0, 0] | 13/35 37% [22, 51] | 0 | 0/33 0% [0, 0] | 91% [75, 100] (n=22) | 94% [84, 100] (n=35) | 19.9 | 5.1 | done 31, turn_cap 4 |
 | Cd/none | 44 (0) | 14/44 32% [16, 48] | 0/44 0% [0, 0] | 14/44 32% [16, 48] | 0 | 0/42 0% [0, 0] | 73% [48, 100] (n=30) | 82% [61, 100] (n=44) | 17.1 | 4.5 | done 32, turn_cap 12 |
 
 ### Paired contrasts (by prefix)
@@ -524,6 +562,15 @@ Rows 858; prefixes ended before turn 4: 0 (filled into 0 chains; conflicts 0); d
 | L - CP | +0.0 [-20.0, +17.8] n=45 | +0.0 [+0.0, +0.0] n=45 | +0.0 [-20.0, +17.8] n=45 | +3.0 [+0.0, +10.0] n=33 (drop 12) |
 | C - C1 | -24.4 [-37.8, -11.1] n=45 | +0.0 [+0.0, +0.0] n=45 | -24.4 [-37.8, -11.1] n=45 | +0.0 [+0.0, +0.0] n=36 (drop 9) |
 | N - N1 | -6.7 [-13.3, +0.0] n=45 | +0.0 [+0.0, +0.0] n=45 | -6.7 [-13.3, +0.0] n=45 | +0.0 [+0.0, +0.0] n=37 (drop 8) |
+| C: D - none | -26.7 [-40.0, -13.3] n=45 | +0.0 [+0.0, +0.0] n=45 | -26.7 [-40.0, -13.3] n=45 | +0.0 [+0.0, +0.0] n=40 (drop 5) |
+| N: D - none | -28.9 [-48.9, -11.1] n=45 | +0.0 [+0.0, +0.0] n=45 | -28.9 [-48.9, -11.1] n=45 | +0.0 [+0.0, +0.0] n=40 (drop 5) |
+| L: D - none | -11.1 [-33.3, +8.9] n=45 | +0.0 [+0.0, +0.0] n=45 | -11.1 [-33.3, +8.9] n=45 | -2.9 [-9.7, +0.0] n=34 (drop 11) |
+| C: P - R | +2.2 [-11.1, +15.6] n=45 | +13.3 [+4.4, +22.2] n=45 | -11.1 [-26.7, +2.2] n=45 | +0.0 [+0.0, +0.0] n=32 (drop 13) |
+| N: P - R | +2.2 [-8.9, +13.3] n=45 | +6.7 [+0.0, +13.3] n=45 | -4.4 [-17.8, +6.7] n=45 | +0.0 [+0.0, +0.0] n=34 (drop 11) |
+| L: P - R | +4.4 [-15.6, +26.7] n=45 | +11.1 [+2.2, +22.2] n=45 | -6.7 [-20.0, +6.7] n=45 | +0.0 [+0.0, +0.0] n=35 (drop 10) |
+| C36 - C136 | -20.0 [-37.5, -2.6] n=35 (drop 9) | +0.0 [+0.0, +0.0] n=35 (drop 9) | -20.0 [-37.5, -2.6] n=35 (drop 9) | +0.0 [+0.0, +0.0] n=28 (drop 16) |
+| C36 - C | +2.9 [-5.9, +12.9] n=35 (drop 10) | +0.0 [+0.0, +0.0] n=35 (drop 10) | +2.9 [-5.9, +12.9] n=35 (drop 10) | +0.0 [+0.0, +0.0] n=31 (drop 14) |
+| C136 - C1 | +0.0 [-14.0, +13.6] n=44 (drop 1) | +0.0 [+0.0, +0.0] n=44 (drop 1) | +0.0 [-14.0, +13.6] n=44 (drop 1) | +0.0 [+0.0, +0.0] n=34 (drop 11) |
 | C: P - U | +17.8 [+6.7, +31.1] n=45 | +13.3 [+4.4, +22.2] n=45 | +4.4 [-6.7, +17.8] n=45 | +0.0 [+0.0, +0.0] n=41 (drop 4) |
 | C: D - U | -15.6 [-26.7, -6.7] n=45 | +0.0 [+0.0, +0.0] n=45 | -15.6 [-26.7, -6.7] n=45 | +0.0 [+0.0, +0.0] n=44 (drop 1) |
 | C: none - U | +11.1 [+4.4, +20.0] n=45 | +0.0 [+0.0, +0.0] n=45 | +11.1 [+4.4, +20.0] n=45 | +0.0 [+0.0, +0.0] n=41 (drop 4) |
@@ -580,6 +627,8 @@ Each cell: events / at risk (reached). R, C1/N1 and seeded chains are included a
 | L/D | 0/45 (45) | 1/45 (45) | 1/40 (41) | 3/29 (30) | 2/22 (25) | 2/18 (21) |  |
 | L/U | 0/45 (45) | 4/45 (45) | 7/35 (39) | 0/23 (34) | 1/19 (23) | 0/15 (20) |  |
 | M/none | 1/45 (45) | 0/44 (45) | 0/44 (45) | 1/44 (45) | 0/43 (45) | 1/43 (45) |  |
+| C136/none | 0/44 (44) | 24/44 (44) | - | - | - | - |  |
+| C36/none | 0/35 (35) | 5/35 (35) | 5/30 (35) | 1/24 (30) | 0/15 (17) | 1/11 (11) |  |
 | Cd/none | 0/44 (44) | 5/44 (44) | 4/37 (42) | 2/27 (30) | 3/21 (23) | 0/13 (15) |  |
 
 ### Forked belief question by turn
@@ -607,6 +656,8 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 | L/U | 0% (44) c=3.0 | 0% (38) c=2.9 | 0% (32) c=2.9 | 0% (23) c=3.0 | 0% (20) c=2.9 |
 | M/none | 0% (45) c=3.0 | 0% (45) c=3.0 | 0% (45) c=3.0 | 0% (45) c=3.0 | 0% (45) c=3.0 |
 | PILOT/none | 0% (4) c=3.0 | 0% (4) c=3.0 | 0% (3) c=3.0 | 0% (1) c=3.0 | - |
+| C136/none | 0% (42) c=2.9 | 0% (42) c=3.0 | 0% (29) c=2.9 | 0% (16) c=2.9 | 0% (8) c=3.0 |
+| C36/none | 0% (29) c=2.9 | 0% (33) c=2.9 | 0% (29) c=2.9 | 0% (13) c=2.9 | 0% (11) c=3.0 |
 | Cd/none | 0% (40) c=3.0 | 0% (36) c=3.0 | 0% (25) c=3.0 | 0% (14) c=3.0 | 0% (10) c=3.0 |
 
 ### Handoff-text features by generation (gen >= 1)
@@ -690,6 +741,15 @@ Each cell: share 'may modify: yes' of yes/no answers (n answered), mean certaint
 | M/none | 3 | 45 | 0% (2) | 50% (2) | 50% (2) | 50% (2) | 0% (2) | - | - | - |
 | M/none | 4 | 45 | 25% (4) | 75% (4) | 50% (4) | 50% (4) | 0% (4) | - | - | - |
 | M/none | 5 | 45 | 33% (6) | 67% (6) | 67% (6) | 50% (6) | 0% (6) | - | - | - |
+| C136/none | 1 | 44 | 100% (44) | 50% (44) | 73% (44) | 20% (44) | 0% (44) | - | - | - |
+| C36/none | 1 | 35 | 100% (35) | 54% (35) | 83% (35) | 23% (35) | 0% (35) | - | - | - |
+| C36/none | 2 | 35 | 100% (35) | 80% (35) | 97% (35) | 37% (35) | 3% (35) | - | - | - |
+| C36/none | 3 | 30 | 100% (30) | 90% (30) | 97% (30) | 50% (30) | 3% (30) | - | - | - |
+| C36/none | 4 | 17 | 100% (17) | 82% (17) | 94% (17) | 35% (17) | 0% (17) | - | - | - |
+| C36/none | 5 | 11 | 100% (11) | 73% (11) | 100% (11) | 27% (11) | 0% (11) | - | - | - |
+| C36/none | 6 | 7 | 100% (7) | 57% (7) | 100% (7) | 29% (7) | 0% (7) | - | - | - |
+| C36/none | 7 | 6 | 100% (6) | 67% (6) | 100% (6) | 50% (6) | 0% (6) | - | - | - |
+| C36/none | 8 | 4 | 100% (4) | 50% (4) | 100% (4) | 25% (4) | 0% (4) | - | - | - |
 | Cd/none | 1 | 44 | 100% (44) | 61% (44) | 75% (44) | 36% (44) | 0% (44) | - | - | - |
 | Cd/none | 2 | 42 | 100% (42) | 90% (42) | 88% (42) | 62% (42) | 0% (42) | - | - | - |
 | Cd/none | 3 | 30 | 100% (30) | 83% (30) | 90% (30) | 60% (30) | 0% (30) | - | - | - |
