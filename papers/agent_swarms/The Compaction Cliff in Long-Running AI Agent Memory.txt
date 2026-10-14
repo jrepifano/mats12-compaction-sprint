@@ -1,0 +1,735 @@
+                                                The Compaction Cliff in Long-Running AI Agent Memory
+                                                       Saber Zerhoudi                                  Jelena Mitrović                             Michael Granitzer
+                                                      University of Passau                           University of Passau                        University of Passau
+                                                       Passau, Germany                                 Passau, Germany                             Passau, Germany
+                                                      szerhoudi@acm.org                         jelena.mitrovic@uni-passau.de                             IT:U
+                                                                                                                                                      Linz, Austria
+                                                                                                                                            michael.granitzer@uni-passau.de
+
+
+
+
+arXiv:2608.22752v1 [cs.AI] 24 Aug 2026
+                                         Figure 1: Knowledge Triage. Classifier 𝜏 assigns each working-set item one of five types; three deterministic operators apply
+                                         per-type policies: TypeCompact compresses without dropping safety rules, TypeDecompose splits large topics and duplicates
+                                         rules that span them, TypeRetrieve returns applicable rules first. A verifier checks that every constraint survived; if any are
+                                         missing, the output is flagged unsafe, otherwise it becomes the next working set.
+                                         Abstract                                                                 on the airline domain (𝑝 = 0.024). We release AgentArtifactCorpus
+                                         A safety rule and an episodic log compete for the same tokens in an      (396,934 agent configurations from 54,628 public GitHub reposito-
+                                         AI agent’s context. When the budget overflows, both are summa-           ries), the classifier, and the reference implementation.
+                                         rized at the same rate; only the rule needs exact wording to remain
+                                         enforceable. On 20 production agent configurations, Claude Code’s        CCS Concepts
+                                         /compact prompt on Sonnet 4.6 preserves 53% of safety rules after        • Computing methodologies → Knowledge representation
+                                         one compaction round and 10% after five. We name this the Com-           and reasoning; Intelligent agents; • Information systems →
+                                         paction Cliff. We address it with Knowledge Triage, a framework that     Summarization.
+                                         classifies each line of an agent’s knowledge base by type and routes
+                                         each type through its own retention policy. Three deterministic op-      Keywords
+                                         erators implement this triage across the three context-management        AI agents, agent memory, context compaction, knowledge manage-
+                                         operations: TypeCompact rewrites items in place under per-type           ment, long-running agents
+                                         fidelity, TypeDecompose partitions a topic too large to compact
+                                         safely, replicating in-scope safety rules across partitions, and Type-   1    Introduction
+                                         Retrieve fetches items from external storage with in-scope rules         A medical AI agent reviews a patient’s history and finds a critical
+                                         pinned ahead of relevance. On five public corpora, TypeCompact           line: “Patient is allergic to penicillin.” Over a long session the context
+                                         preserves 2–4× more safety rules than the strongest single-shot          fills, the runtime triggers compaction, and the allergy line, buried
+                                         LLM compactor at every ratio, with 96% recall over five rounds.          among dozens of facts, is paraphrased or dropped. Three turns
+                                         TypeDecompose reaches 0% locality violations against 93% under           later the agent recommends amoxicillin, a penicillin-class antibiotic.
+                                         uniform partitioning. TypeRetrieve reaches 100% recall@50 against        Hierarchical truncation, the structural core of the summarize-and-
+                                         73% for the best single-shot LLM retriever. On three downstream          retain compaction pattern deployed in production agents, preserves
+                                         behavioral benchmarks, we outperform the production Sonnet com-          only 50% of safety constraints on 50 real agent configurations (§4.3);
+                                         pactor on medical compliance (paired McNemar 𝑝 < 10−8 on preser-
+                                         vation, 𝑁 = 200), the full-policy and hierarchical baselines on retail    © ACM, 2026. This is the author’s version of the work.
+                                         task pass rate (𝑝 < 0.01, 𝑁 = 115), and the hierarchical compaction      The definitive version was published in: Proceedings of the 35th ACM
+                                                                                                                  International Conference on Information and Knowledge Management (CIKM
+                                                                                                                  ’26), November 07–11, 2026, Rome, Italy.
+                                                                                                                  DOI: https://doi.org/10.1145/3799682.3840567
+                                                                                                        Saber Zerhoudi, Jelena Mitrović, and Michael Granitzer
+
+
+a 2026 community analysis of leaked Claude Code documents the                           Table 1: Positioning of Knowledge Triage.
+same uniform-compaction pattern in production [23].
+    Agent runtimes apply three operations to keep the knowledge              System                   Typed       Op C      Op D     Op R          Safety
+base inside its token budget: (i) Compaction shrinks the working set                                  model                                      guarantee
+in place by summarizing or pruning items, (ii) Decomposition splits a        MemGPT [24]                –           ✓         –         ✓            –
+topic too large to compact safely into sub-topics that each fit, (iii) Re-   A-MEM [36]                 –           –         –         ✓            –
+trieval pushes knowledge to external storage and pulls chunks back           GraphRAG [9]               –           –         –         ✓            –
+on demand. The three share a single constraint, a finite budget over         LLMLingua-2 [25]           –           ✓         –         –            –
+heterogeneous knowledge, yet are treated independently in the liter-         MaRS [2]                   ✓           ✓         –         –          partial
+ature, with separate strategies for each. A second gap runs through          MemOS [19]               partial       ✓         –         ✓            –
+all three: none of the production strategies condition retention on          Knowledge Triage            ✓          ✓         ✓         ✓      per operator
+the type of item. The closest typed-memory work [2] uses a single              Typed model: explicit per-item type assignment. Op C/D/R: operator support for
+submodular utility across categories, so a safety constraint and a               compaction, decomposition, retrieval. Safety guarantee: formal per-operator
+background belief are lost at the same rate under budget pressure.                 preservation requirement that uniform strategies are shown to violate.
+    Different kinds of knowledge tolerate different kinds of loss: a
+safety rule cannot be paraphrased without risking the qualifier
+that makes it actionable, a shell command can be rewritten only if           procedural knowledge [3]. Agent systems carry these splits for-
+it executes identically, a debugging trace can be collapsed to one           ward as engineering primitives: a paged hierarchy [24], a Zettelka-
+sentence with no harm. One compression policy cannot serve all               sten [36], a reinforcement-learned consolidation [38], a memory-
+three, and §3 proves this formally for each of the three operations.         cube abstraction [19], a tiered priority store [21], knowledge-graph
+We ask how many safety rules survive compaction in production,               triples with scope routing [9, 12, 26], and AGM-style belief revi-
+and find what we call the Compaction Cliff: under the production             sion [1, 10, 26]. MaRS [2] is the only prior system with both a typed
+“compress while keeping safety rules” prompt on Sonnet 4.6, safety-          model and structural safety properties, but it optimizes a single
+rule recall holds at 53% after one round and falls to 10% by round           submodular utility across types, so a safety constraint can be lost at
+five (§4, Figure 3). Prior work offers partial answers (information          the same rate as a background belief under budget pressure. We lift
+theory [13, 20], belief-update calculi [1, 26], typed memory [2]), but       these splits into the context-management layer: every working-set
+none treats compaction, decomposition, and retrieval as one prob-            item carries one of five types, and each type carries its own retention
+lem with type-dependent safety guarantees. We address the cliff              rule across all three operations, giving constraint preservation un-
+with Knowledge Triage, a framework that classifies each item once            der any feasible budget. Knowledge-graph memory is complemen-
+and routes each category through its own retention policy via three          tary: a graph can host items as nodes labeled by our classifier, with
+deterministic operators (TypeCompact, TypeDecompose, TypeR-                  no extraction step because rules already live as natural-language
+etrieve). We contribute in five ways. (1) The Compaction Cliff : a           strings in AGENTS.md, CLAUDE.md, and system prompts.
+structural failure mode of type-blind compaction reproduced across              Why compaction loses safety rules. Two empirical lines explain
+four LLM compactor families and the strongest non-LLM compres-               the failure. Attention to long inputs is uneven: positional bias
+sor (§4.3). (2) A five-type model of agent knowledge covering 97% of         leaves middle content under-attended [22], and LongBench [6]
+real configuration content (§3.1, Table 2). (3) Three operators with         / RULER [14] document degradation across tasks. Abstractive sum-
+per-operator safety requirements that uniform strategies cannot              marization silently drops or inverts factual content [17]. Hierarchi-
+satisfy, with proofs (§3.3). (4) The Knowledge Triage framework:             cal summarization inherits both losses. On top of model behavior,
+multi-fidelity retention lanes, a post-compaction guard verifier, and        safety constraints are privileged instructions [29] that user-installed
+a SafetyMargin classifier that scores by counterfactual safety rather        rules must dominate; Constitutional AI [5] writes such preferences
+than grammatical form. (5) AgentArtifactCorpus, a new corpus of              as a fixed rule set; both are vulnerable to context manipulation [31],
+396,934 agent knowledge artifacts from 54,628 public GitHub repos-           and R-Judge [39] benchmarks safety-risk awareness under that
+itories under permissive licenses with 2,000 per-type annotations,           pressure. The compaction cliff is an unintentional form of the same
+together with end-to-end validation on five public corpora (§4).             failure: type-blind hierarchical summarization deletes the rule the
+    We release the dataset,1 classifiers, and reference code.2               inference-time hierarchy was supposed to protect.
+
+2    Related Work                                                               Improving compaction and context management. Production
+                                                                             prompt compressors [7, 25, 30, 35] use a uniform fidelity target
+Prior work treats compaction, decomposition, and retrieval as sep-
+                                                                             with no room for per-type guarantees; structuring and enriching
+arate problems, evaluated separately; none formalize a per-type
+                                                                             the retrieved context is a related question [42]. KV-cache compres-
+safety guarantee across all three. Table 1 positions the closest agent-
+                                                                             sion [33, 44] acts at the inference-time cache, a different layer. Liu
+memory systems against the framework’s properties.
+                                                                             et al. [20] proved the rate-distortion theorem for composite sources
+   Defining memories, from humans to agents. Cognitive science sep-          under subsource-dependent fidelity; He et al. [13] apply the lens
+arated episodic from semantic memory [28] and declarative from               to agentic design without separating fidelity by type. On retrieval,
+                                                                             RAG [18], Self-RAG [4], and FLARE [15] score by relevance alone;
+1 https://huggingface.co/datasets/searchsim/AgentArtifactCorpus              agent-driven RAG such as PersonaRAG [41] adapts this to the user,
+2 https://github.com/searchsim-org/cikm26-knowledge-triage                   and governed retrieval such as NuggetIndex [43] filters records
+The Compaction Cliff in Long-Running AI Agent Memory
+
+
+by validity before ranking, but neither conditions on constraint            missed constraint sends the item to a soft retention lane where it
+membership. We instantiate the composite-source theorem with                can be paraphrased or dropped. We propose SafetyMargin as the
+knowledge types as subsources and exact-preservation distortion             default and three alternatives that trade safety recall for cost.
+for constraints, so the guarantee survives partitioning and retrieval,
+complementary to inference-time hierarchy enforcement [29].                     SafetyMargin (default). An item is a constraint when removing
+                                                                            it from the knowledge base would let some action become unsafe.
+3     Knowledge Triage Framework                                            SafetyMargin
+                                                                                                                                 margin(𝑖) =
+                                                                                           estimates this counterfactual directly:
+                                                                            max𝑎∈ A 𝑃 (unsafe | 𝑎, 𝐾 \ {𝑖}) − 𝑃 (unsafe | 𝑎, 𝐾) over a domain-
+Like a hospital triaging mass-casualty patients red / yellow / green        conditioned action set. A single gpt-5.4-mini call3 scores this margin
+by tolerance to delay, an agent under a token budget triages its            between 0 and 1; above 0.5 marks a Constraint. Counterfactual
+items by tolerance to distortion: a safety constraint must survive          safety captures descriptively-stated rules (“the patient is allergic
+intact, a procedure may be rewritten when behavior is preserved,            to X”) that grammatical-form classifiers miss, common in clinical,
+an episodic log may be dropped. Knowledge Triage operationalizes            legal, and financial text; §4.4 reports the per-phrasing comparison.
+this principle through a typed knowledge model (§3.1), a classifier
+𝜏 that assigns each item one of five types (§3.2), and three operators         Alternatives. A multi-stage selective cascade (regex → encoder
+with per-type retention policies (§3.3): TypeCompact when items             → gpt-5.4-mini → abstain-as-hard) routes regex-resolvable items
+must fit a budget, TypeDecompose when no budget suffices, and               through cheap stages first to reduce per-item LLM cost. A one-shot
+TypeRetrieve for items outside the context. Each operator’s safety          gpt-5.4-mini call under a fixed five-class prompt provides the sim-
+requirement has a corresponding failure mode under type-blind               plest LLM baseline. Surface heuristics (regex, encoder, a distilled
+strategies, proved in §3.3 and measured in §4.                              MiniLM [25]) cover settings where any LLM dependency is unac-
+                                                                            ceptable. All four variants share the same five-class interface, run
+3.1    Typed knowledge model                                                only at indexing time, and are never re-invoked by the operators in
+We define five operational types derived from analysis of 396,934           §3.3, so the per-item cost is paid once and is constant in the number
+agent knowledge artifacts scraped from source code repositories             of compaction rounds, partitions written, and queries served; §4.4
+(§4 details the corpus). Table 2 summarizes the types and their             (Table 9) reports the ten-variant ablation.
+compaction tolerance.                                                          Cascade construction. The regex stage of the selective cascade
+    A flat list of typed items is enough for compaction, but decompo-       matches each item against four families of hand-written patterns,
+sition and retrieval also need to know which items belong together.         authored against the gold-standard set of §4.2 and tuned for preci-
+We extend the model with a topic hierarchy. A typed knowledge               sion so that a match resolves the item immediately. The families
+base is a tuple 𝐾 = (𝐼, 𝜏,𝑇 , 𝜋, 𝜎): a finite set of items 𝐼 , the type     are tried in fixed precedence order, constraints first: constraint in-
+assignment 𝜏 : 𝐼 → {𝐶, 𝑃, 𝐵, 𝐹, 𝐸}, a topic tree 𝑇 , a leaf-mapping 𝜋 :     dicators (never, must not, capitalized markers such as critical, and
+𝐼 → leaves(𝑇 ), and a scope function 𝜎 : 𝐼𝐶 → 2leaves(𝑇 ) that lists the    always/ensure/require combined with a modal verb); procedural
+leaf topics each constraint applies to (global-scope constraints have       indicators (commands opening with verbs such as run, code blocks,
+𝜎 (𝑐) = leaves(𝑇 )). A working set 𝑊 ⊆ 𝐾 is the subset loaded into          and package-manager invocations); temporal markers for episodic
+context under a budget |𝑊 | ≤ 𝐵. As a concrete illustration of 𝜎, a         items (yesterday, recently); and preference indicators (prefer, ideally).
+coding-agent base may place Build, Deployment, and Database under           Unmatched items fall through to the encoder’s prototype-centroid
+a project root, with the constraint “never modify production schema         cosine (ten labeled examples per type); items scored below 0.55 con-
+without a migration file” sitting inside Database but carrying 𝜎 (𝑐) =      fidence fall through to gpt-5.4-mini, and items still below 0.40 are
+leaves(𝑇 ) because it applies wherever database operations occur.           routed to the hard lane as constraints. Notably, declarative safety
+   Choice of granularity. Five categories is empirically the coarsest       statements carry none of these indicators. As a result, the cascade
+partition that supports the per-operator safety arguments and the           trails SafetyMargin on declarative phrasing.
+finest at which sub-divisions earn no new guarantees; §4.2 reports             Authority weighting. We weight 𝜏’s per-item confidence by
+the supporting coverage study on 2,000 annotated instructions.              source authority 𝑎 : 𝐼 → {sys, dev, user, tool, ret} with 𝑤 sys =1.5,
+   Per-type distortion. A single fidelity setting cannot serve all five     𝑤 dev =1.25, 𝑤 user =1.0, 𝑤 tool =0.75, 𝑤 ret =0.6. The constraint risk
+types because they tolerate qualitatively different kinds of loss.          is risk(𝑖) = 𝑝 (𝜏 (𝑖)=𝐶) · 𝑤 𝑎 (𝑖 ) , so a high-confidence system rule
+Following Liu et al. [20], each type carries its own distortion 𝑑𝑡 :        outweighs a low-confidence retrieved fragment.
+binary for constraints (𝑑𝐶 = 0 if 𝑖 ′ |= 𝑖 and ∞ otherwise: the rule is
+intact or lost), behavior-preserving rewrites only for procedures,          3.3      Per-operator context management
+embedding distance 1 − cos(𝑒 (𝑖), 𝑒 (𝑖 ′ )) for beliefs and preferences     The three operators share a common shape: each takes a typed
+(stricter for beliefs), and gist distance 1−ROUGE-L(𝑖, 𝑖 ′ ) for episodic   knowledge base, carries one safety requirement that depends on 𝜏,
+items, allowing summarization.                                              and has a known failure mode against 𝜏-blind strategies.
+                                                                            3.3.1 Compaction. A compaction operator 𝐶 : 𝐾 × N → 𝐾 ′ maps
+3.2    Per-item type classification
+                                                                            a base and a budget to a compacted base 𝐾 ′ with |𝐾 ′ | ≤ 𝐵. The
+The classifier 𝜏 reads each working-set item and emits one of the           safety requirement is that every constraint in 𝐾 has a copy in 𝐶 (𝐾)
+five types from Table 2. It is the only learned component in the
+framework, and every per-operator safety claim depends on it: a             3 Full prompt text, regex pattern list, and cascade thresholds are in the released artifact.
+                                                                                                                                     Saber Zerhoudi, Jelena Mitrović, and Michael Granitzer
+
+
+Table 2: The five operational knowledge types of Knowledge Triage, with their distortion tolerance under context compression
+and illustrative examples drawn from several domains.
+
+Type                    Definition                                          Distortion tolerance                                      Examples
+Constraint (C)          Rule that bounds agent behavior;                    Zero; any loss is unsafe                                  “Never prescribe contraindicated drugs”
+                        violation causes safety failure
+Procedural (P)          Step-by-step instruction for a task                 Semantic equivalence iff execution preserved              “Run pytest -x –tb=short before merging”
+Belief (B)              Factual assertion treated as true                   Bounded by semantic distance                              “Backend exposes a REST API over HTTPS”
+Preference (F)          Soft guideline                                      High; may be summarized or merged                         “Use 2-space indentation”
+Episodic (E)            Past event or observation                           Free; may be discarded                                    “Refactored auth module yesterday”
+
+
+Algorithm 1 TypeCompact                                                                                Algorithm 2 TypeDecompose
+Require: 𝐾, budget 𝐵, classifier ℎ, verifier 𝑣, authority 𝑎, thresholds                                Require: knowledge base 𝐾, per-partition budget 𝐵
+    𝜃𝐶 , 𝜃 𝑃                                                                                           Ensure: partitions {𝐾1, . . . , 𝐾𝑚 }, each ≤ 𝐵
+Ensure: compacted 𝐾 ′ with |𝐾 ′ | ≤ 𝐵, or Unsafe                                                        1: group 𝐾 by topic; chunk each group into sub-bases of size ≤ 𝐵
+ 1: for 𝑖 ∈ 𝐾 do 𝑝𝑖 ← ℎ(𝑖, ctx(𝑖))                                                                      2: for each constraint 𝑐 ∈ 𝐼𝐶 do
+ 2:      if 𝑝𝑖 (𝐶) 𝑤 𝑎 (𝑖 ) ≥ 𝜃𝐶 ∨ abstain(𝑝𝑖 ) then 𝐻𝐶 ← 𝐻𝐶 ∪ {𝑖};                                     3:     for each partition 𝐾𝑖 do
+    𝑔𝑖 ← guard(𝑖)                                                                                       4:         if ∃ 𝑖 ′ ∈ 𝐾𝑖 : 𝜋 (𝑖 ′ ) ∈ 𝜎 (𝑐) and 𝑐 ∉ 𝐾𝑖 then
+ 3:      else if 𝑝𝑖 (𝑃) ≥ 𝜃 𝑃 then 𝐻𝑃 ← 𝐻𝑃 ∪ {𝑖}                                                        5:             𝐾𝑖 ← 𝐾𝑖 ∪ {𝑐}                                ⊲ replicate
+ 4:      else route 𝑖 to soft lane by argmax type                                                       6: return {𝐾1 , . . . , 𝐾𝑚 }
+ 5: 𝐻 ← dedup(𝐻𝐶 ∪ 𝐻 𝑃 ); if ℓ (𝐻 ) > 𝐵 return Unsafe                                                  Complexity: 𝑂 ( |𝐾 | ) grouping, 𝑂 ( |𝐼𝐶 | 𝑚) replication, bounded by global-scope density.
+ 6: allocate 𝐵 − ℓ (𝐻 ) across soft lane: beliefs/prefs → compressed,
+    episodic → placeholder
+ 7: 𝐾 ′ ← 𝐻 ∪ soft
+ 8: if 𝑣 ({𝑔𝑖 }𝑖 ∈𝐻𝐶 , 𝐾 ′ ) = fail then restore failed guards if budget                               Algorithm 3 TypeRetrieve
+    permits, else return Unsafe                                                                        Require: corpus 𝐾, query 𝑞, budget 𝑘, scorer 𝑟 , scope test inscope
+ 9: return 𝐾 ′                                                                                          1: 𝐶𝑞 ← {𝑐 ∈ 𝐼𝐶 : inscope(𝑞, 𝑐)}
+Complexity: 𝑂 ( |𝐾 | ) classifier calls, 𝑂 ( |𝐻 | log |𝐻 | ) allocation, 𝑂 ( |𝐼𝐶 | ) verification.      2: 𝑅others ← topk({𝑖 ∈ 𝐾 \ 𝐶𝑞 }, 𝑘 − |𝐶𝑞 |, by = 𝑟 (𝑞, ·))
+                                                                                                        3: return 𝐶𝑞 ∪ 𝑅others
+                                                                                                       Complexity: 𝑂 ( |𝐼𝐶 | ) in-scope test plus scorer 𝑟 ; pinning adds no asymptotic overhead.
+at zero distortion: ∀𝑖 ∈ 𝐼𝐶 , ∃𝑖 ′ ∈ 𝐶 (𝐾) : 𝑑𝐶 (𝑖, 𝑖 ′ ) = 0. This is fea-
+                                                          Í
+sible only above the minimum safe budget 𝐵 min = 𝑖:𝜏 (𝑖 ) ∈ {𝐶,𝑃 } |𝑖 |;
+below it the system must expand the budget, relax safety, or fall
+through to decomposition. The three strategies deployed in pro-
+duction (hierarchical summarization, temporal windowing, and                                           overhead proportional to the number of partitions the scope spans;
+aggressive pruning, instantiated as the structural baselines of §4.3)                                  for local constraints it is zero (empirical distribution in §4).
+treat all items the same way and violate the requirement as soon
+                                                                                                       3.3.3 Retrieval. Production retrievers (BM25, dense similarity,
+as a constraint falls inside the summarization window or below
+                                                                                                       learned rerankers) rank by query relevance, which approximates
+the relevance threshold. TypeCompact (Algorithm 1) routes items
+                                                                                                       necessity for non-constraint items but is unsafe for constraints;
+into three fidelity lanes following Adaptive Focus Memory [8]:
+                                                                                                       even scope-restricted retrieval [40], which filters to a user-chosen
+constraints and procedures at full, beliefs and preferences at com-
+                                                                                                       collection, still ranks within that scope by relevance. The safety
+pressed, episodic items at placeholder. A deterministic verifier
+                                                                                                       requirement is priority: ∀𝑐 ∈ 𝐼𝐶 : inscope(𝑞, 𝑐) ⇒ 𝑐 ∈ 𝑅𝑞 regard-
+then extracts a canonical form (negation plus object phrase) from
+                                                                                                       less of similarity, where inscope(𝑞, 𝑐) ⇔ topics(𝑞) ∩ 𝜎 (𝑐) ≠ ∅ tests
+every constraint in the hard lane, checks it appears in the output,
+                                                                                                       whether the query’s tagged topics intersect the constraint’s scope;
+and restores the original or escalates to Unsafe [34].
+                                                                                                       every in-scope constraint must appear in the result set even when
+3.3.2 Decomposition. A decomposition operator 𝐷 : 𝐾 × N →                                              its similarity score would not place it there. Any scoring function
+                                                            Ð
+{𝐾1, . . . , 𝐾𝑚 } partitions 𝐾 into 𝑚 sub-bases such that 𝐾𝑖 = 𝐾                                       based on similarity alone can rank an in-scope constraint below the
+and each 𝐾𝑖 fits the per-partition budget. The safety requirement   is                                cutoff and violate priority. TypeRetrieve (Algorithm 3) pins in-scope
+constraint locality: ∀𝑐 ∈ 𝐼𝐶 , ∀𝑗 ∈ [𝑚] : ∃ 𝑖 ∈ 𝐾 𝑗 : 𝜋 (𝑖) ∈ 𝜎 (𝑐) ⇒                                  constraints before allocating the residual budget by relevance.
+𝑐 ∈ 𝐾 𝑗 ; every partition that holds an item covered by a constraint’s
+scope must also hold the constraint. Heuristics that partition by                                         Composition. The three operators compose into a single context-
+topic similarity, item frequency, or token count ignore scope and                                      management cycle (Figure 1): the system attempts compaction first,
+violate locality whenever a scoped constraint and a scoped item land                                   and below 𝐵 min , where compaction would drop a constraint, falls
+in different partitions. TypeDecompose (Algorithm 2) replicates                                        through to decomposition, pushing part of the base to external
+each constraint to every partition that intersects its scope, paying                                   storage for TypeRetrieve to pull back on demand.
+The Compaction Cliff in Long-Running AI Agent Memory
+
+
+      Table 3: Corpora used in the empirical validation.                     Table 4: Knowledge type distribution and classifier perfor-
+                                                                             mance on AgentArtifactCorpus (𝑛 = 2,000 annotations).
+Corpus                  Scale             Role in this paper
+                                                                             Type             % of items       Precision        Recall        F1
+AAC (ours)              396,934 items     Taxonomy, compaction, scope
+                                          analysis (§§4.2–4.3)               Constraint          12.3             0.91           0.87        0.89
+LongMemEval [32]        500 turns         Cross-corpus taxonomy valida-      Procedural          28.7             0.94           0.92        0.93
+                                          tion (§4.2)                        Belief              31.4             0.86           0.84        0.85
+𝜏-bench retail [37]     115 tasks         Retail-task behavioral rollouts    Preference          14.2             0.83           0.80        0.81
+                                          (§4.5)                             Episodic            13.4             0.90           0.88        0.89
+𝜏-bench airline [37]    50 tasks          Customer-service generalization
+                                          test (§4.5)
+BEIR scifact [27]       1,000 docs        Retrieval baseline corpus (§4.3)      Coverage. We assembled a 2,000-item gold-standard set from
+SafetyMed (ours)        200 scenarios     Medical-compliance behavioral      200 randomly sampled AAC repositories stratified by stars and lan-
+                                          evaluation (§4.5)                  guage; two annotators labeled independently following the rubric in
+                                                                             the released artifact, with second-pass adjudication against the same
+                                                                             rubric, and 500 LongMemEval turns were labeled for cross-domain
+4     Empirical Validation                                                   validation. We trained an NLP classifier combining structural fea-
+                                                                             tures (mood, modal verbs, code-block presence, temporal markers),
+This section tests Knowledge Triage’s three structural claims empiri-
+                                                                             semantic features (sentence embeddings clustered with HDBSCAN),
+cally and measures the deployment cost of the classifier they depend
+                                                                             and keyword features (constraint indicators, procedural indicators,
+on. The claims are that the five-type model covers real agent knowl-
+                                                                             episodic markers), and evaluated it against the human labels. The
+edge (§3.1), that per-type retention preserves safety across the three
+                                                                             typology covers 97% of AAC instructions (Table 4); the remaining
+operators where type-blind retention provably fails (§3.3), and that
+                                                                             3% are meta-instructions that reference other artifacts and carry
+artifact-level preservation translates to agent behavior on realistic
+                                                                             no safety force. Constraint detection is the most stable type under
+tasks. Four research questions follow. RQ1: how is real agent knowl-
+                                                                             domain shift, with F1 holding at 0.88 on both corpora; macro-F1
+edge distributed across types, and what fraction is safety-critical
+                                                                             drops 3 points on LongMemEval (0.84 against 0.87 on AAC), with
+(§4.2)? RQ2: does Knowledge Triage preserve safety-critical items
+                                                                             the drop concentrated in Preference and Belief.
+where type-blind methods drop them, across all three operators
+(§4.3)? RQ3: what does per-type retention cost in compute, classifier           Phrasing. Coverage alone is not enough: if safety text in de-
+accuracy, and decomposition overhead (§4.4)? RQ4: does per-type re-          ployment were overwhelmingly imperative, the declarative failure
+tention change agent behavior on safety-critical benchmarks (§4.5)?          mode would be a corner case. We tested how widespread declarative
+                                                                             phrasing actually is by classifying 564 openFDA safety sentences
+4.1    Setup                                                                 (from BOXED WARNING and CONTRAINDICATIONS fields across
+The six corpora in Table 3 fill three roles. AgentArtifactCorpus             30 drugs) and 36 LegalBench contract-NLI explicit-identification
+(AAC), which we constructed for this paper, is the primary corpus            clauses [11] into the four grammatical forms using a gpt-5.4-mini
+for the typology and operator-level experiments; LongMemEval and             call. Declarative phrasing accounts for 49.8% of openFDA safety
+BEIR scifact provide cross-corpus checks for the taxonomy and re-            text and 61.1% of LegalBench safety clauses, against 22.5% / 22.2%
+trieval components; 𝜏-bench retail, 𝜏-bench airline, and SafetyMed           imperative; conditional and passive forms make up the remainder.
+provide end-to-end behavioral evaluation.                                    A 100-sentence stratified subsample re-labeled with a second
+   AgentArtifactCorpus comprises 396,934 knowledge artifacts                 independent judge gives Cohen’s 𝜅 = 0.88 on the four-class label
+from 54,628 GitHub repositories spanning eight platforms (Claude,            and 𝜅 = 0.92 on the binary declarative-vs-other (96% observed
+Cursor, Copilot, Windsurf, Continue, Aider, Codeium, Universal).             agreement). Disagreement concentrates on the imperative-vs-
+Median artifact size is 1,201 bytes; primary languages are Type-             modal-passive boundary while the declarative class itself is stable
+Script (31.5%), Python (18.7%), and Go (18.2%). Collection used the          under the second judge, so the conclusion that declarative phrasing
+GitHub Code Search API with adaptive file-size partitioning to over-         dominates is robust to inter-judge noise.
+come the 1,000-result limit. Classification along four dimensions               Discussion. Both structural claims hold. The five-type model
+(platform, function, authorship, specificity) used regex heuristics          covers 97% of agent items, so type-blind retention has no large un-
+with no LLM analysis to avoid downstream contamination.                      covered class where the cliff could hide; declarative phrasing domi-
+                                                                             nates safety-critical text in two independent deployment domains,
+4.2    RQ1: Compaction Cliff Structure                                       so the grammatical-form failure mode is the deployment-relevant
+   Motivation. The Compaction Cliff in §4.3 was observed on one              case. The Compaction Cliff therefore follows from the typology
+corpus under one production prompt. Whether the cliff is structural          and phrasing distribution alone, and the §4.3 sample stands as a
+to type-blind retention or specific to that sample depends on two            representative instance.
+claims the framework relies on: that the five-type model in §3.1
+covers the items a deployed agent has to manage, and that the                4.3    RQ2: Safety Preservation
+declarative-form failure mode treated in §4.4 is widespread in real            Motivation. Each operator in §3.3 carries a distinct safety re-
+safety text. We test both.                                                   quirement that type-blind strategies provably violate: constraint
+                                                                                                                                                        Saber Zerhoudi, Jelena Mitrović, and Michael Granitzer
+
+
+preservation under compaction, locality under decomposition, and           Table 5: Preservation rate by knowledge type at 50% com-
+priority under retrieval. For each requirement we ask two questions:       paction across 50 AAC configurations.
+do the strongest type-blind baselines satisfy it, and does the typed
+operator close the gap when each of its internal components is in          Strategy                                                                         C            P          B           F        E           All
+place? We answer the first by running each operator against three
+                                                                           Hierarchical truncation                                                         0.50         0.82       0.75      0.63      0.77         0.69
+or more baselines that cover the production landscape; we answer           Temporal windowing                                                              0.58         0.80       0.64      0.78      0.91         0.74
+the second through component-removal ablations.                            Aggressive pruning                                                              0.51         0.75       0.67      0.66      0.84         0.69
+    Compaction. We tested ten strategies on 50 AAC configurations          TypeCompact                                                                     1.00         1.00       0.50      0.51      0.84         0.77
+stratified by language, star count, and artifact count (622 constraints,   Items classified by 𝜏 ; higher is better. C/P/B/F/E as in Table 2; All: unweighted mean.
+2,257 procedures). The strategies are: three structural baselines (hi-
+erarchical truncation: keep the first 𝑁 tokens; temporal windowing:                                                                             TypeCompact (ours)                      MaRS-FL (reimpl.)
+keep the last 𝑁 ; aggressive pruning: drop the items with the high-                                                                             Sonnet 4.6 (/compact)                   Opus 4.7 (single-shot)
+est unigram-frequency tokens); LLMLingua-2 [25]; four LLM com-                                                                                  gpt-5.4-mini (single-shot)              gpt-5.4-nano (single-shot)
+                                                                                                                                                LLMLingua-2
+pactors invoked with the production prompt “compress to 𝑁 tokens,
+keep every safety rule and procedural command verbatim” (gpt-                                                          1                                                                                      1.00
+
+
+
+
+                                                                              Constraint preservation
+5.4-nano, gpt-5.4-mini, Sonnet 4.6 behind Claude Code’s /compact,
+Opus 4.7); MaRS-FL (our reimplementation of the MaRS [2] design                                         0.75
+
+choice this paper opposes; §5); and TypeCompact. Each ran at three
+                                                                                                                                                                                                              0.53
+compression targets (50%, 25%, 10%) on a 20-configuration subset,                                        0.5
+and was iterated for five rounds at 50% per round to reflect a long-
+running agent. Constraint recall is the fraction of a configuration’s                                   0.25
+classifier-labeled constraints that survive, measured by the key-
+token test of §4.5 (validated against two human annotators, 𝜅 = 0.92                                                   0
+                                                                                                                                         10%                      25%                                   50%
+on Preserved/Lost). All strategies share the per-configuration bud-
+                                                                                                                                                 Target compression ratio (% of original tokens)
+get; TypeCompact’s pinned items count like any other.
+    Across all eight type-blind strategies, the best single-round recall
+was 0.53 at 50%, 0.39 at 25%, 0.24 at 10% (Figure 2, Table 6); five        Figure 2: Constraint preservation vs. target compression ratio
+rounds of /compact drove recall from 0.53 to 0.10 (Figure 3). The          on 20 AAC configurations. Structural baselines are tabulated
+decay appeared for every LLM family and every structural baseline,         at 50% in Table 5; full numerical detail in Table 6.
+so the loss is not specific to one prompt or one model. A type-blind
+compactor has no signal for which sentences are safety rules and
+                                                                                                                                           1                                                                 0.96
+
+
+
+
+                                                                                                         Constraint recall vs original
+summarizes them at the same rate as the surrounding text.
+    TypeCompact returned 1.00 / 0.95 / 0.80 constraint recall at 50                                                                                                          TypeCompact (ours)
+                                                                                                                                         0.75
+/ 25 / 10% on the same 50 configurations, stabilizing at 0.96 from                                                                                                           Sonnet 4.6 (/compact)
+the second round onward. This holds by construction: it pins every                                                                                                           gpt-5.4-mini (single-shot)
+                                                                                                                                          0.5
+classifier-labeled constraint and procedure unchanged, so an item
+is lost only if the classifier mislabels it (bounded by recall, §4.4) or                                                                 0.25
+the joint footprint exceeds the budget (ablations below). Table 5
+                                                                                                                                                                                                             0.10
+breaks the 50% run down by type: TypeCompact trades belief and                                                                             0
+preference fidelity (0.50 / 0.51) for full constraint and procedural                                                                             1            2                3            4            5
+                                                                                                                                                           Sequential compaction rounds
+retention, while type-blind strategies spread it uniformly.
+   Compaction ablations. TypeCompact has three components the
+type-blind baselines lack: indexing-time labels, a deterministic post-     Figure 3: Constraint recall after 𝑁 sequential compaction
+compaction verifier, and an Unsafe escalation when the budget              rounds at 50% per round, 20 AAC configurations.
+cannot fit all pinned items. (i) Indexing-time labels. LLMLingua-2
+alone reached 0.55 / 0.18 / 0.02; adding a regex stage that re-inserts
+                                                                           on the remaining 72%, while the same configurations without the
+detected constraints after compression recovered to 0.83 / 0.65
+                                                                           verifier reported apparent 1.00 recall but silently dropped a mean
+/ 0.60. This closes about half the gap; the other half closes only
+                                                                           57% of the constraints that should have been kept. Removing any
+when the label is assigned before compression, because declarative-
+                                                                           single component puts a deployed agent below the 0.50 mark on
+form rules carry no imperative marker for a regex to match. (ii)
+                                                                           this sample, so the result depends on all three together.
+Verifier. Across the run it recorded 27 restoration events (mean 0.46
+per call, max 1) and never escalated to Unsafe at 50%; without it             Decomposition. The second operator requirement, locality, is
+the same runs would silently truncate the hard lane. (iii) Budget-         tested on 200 AAC configurations whose section headers serve
+boundary behavior. On the 1.4% of configurations whose constraint-         as topic markers. A constraint is global-scope if it appears
+plus-procedural density exceeded 40%, 𝐵 min approached the 50%             in a section labeled Rules, Constraints, Safety, or Project Con-
+budget; TypeCompact escalated to Unsafe on 28% and reached 1.00            ventions (the conventional naming across the sample), so the
+The Compaction Cliff in Long-Running AI Agent Memory
+
+
+Table 6: TypeCompact vs SOTA prompt compactors at three                               Table 7: Decomposition constraint-locality on 200 AAC con-
+compression ratios, mean across 20 AAC configurations.                                figurations, 25%-of-total partition budget.
+
+Strategy                                C         P      mF1        time      tok     Strategy                         Mean viol.           Configs viol.           Overhead
+ 50% compression                                                                      chunk_by_tokens                       32%                   93%                    0%
+TypeCompact                            1.00     0.92     0.75        0.0s       0     chunk_by_topic                        13%                   40%                    0%
+LLMLingua-2                            0.21     0.72     0.63        0.5s       0     chunk_by_paragraph                    32%                   93%                    0%
+MaRS-FL (ours, no public impl)         0.99     0.89     0.69        0.5s       0     TypeDecompose                         0%                    0%                   +14.5%
+gpt-5.4-nano (single-shot)             0.52     0.80     0.69        9.9s     56K     Items reclassified by the selective classifier 𝜏 before partitioning. Configs viol. fraction
+gpt-5.4-mini (single-shot)             0.48     0.77     0.68        7.3s     57K        of configurations with a locality violation. Overhead replication cost in tokens.
+Sonnet 4.6 (/compact)                  0.53     0.83     0.73       73.9s     48K
+Opus 4.7 (single-shot)                 0.45     0.81     0.72       31.1s     50K
+ 25% compression                                                                      documents as distractors plus 33 𝜏-bench retail-policy chunks; the
+TypeCompact                            0.95     0.71     0.57        0.0s       0     selective classifier 𝜏 flags 22 of the 33 as constraints (regex flags 3).
+LLMLingua-2                            0.08     0.61     0.46        0.5s       0     The 50 queries are hand-written against the 𝜏-bench retail rubric;
+MaRS-FL (ours, no public impl)         0.75     0.61     0.51        0.2s       0     on average 12 of the 22 retail-policy constraints are in scope per
+gpt-5.4-nano (single-shot)             0.26     0.60     0.50        9.3s     53K     query (in-scope = constraint’s topic field matches at least one of
+gpt-5.4-mini (single-shot)             0.29     0.62     0.49        7.5s     56K
+                                                                                      the query’s tagged topics). We compare three non-LLM retrievers
+Sonnet 4.6 (/compact)                  0.39     0.65     0.51      166.2s     42K
+                                                                                      (BM25; dense with octen-embedding-8b 4,096-dim cosine; cross-
+Opus 4.7 (single-shot)                 0.26     0.68     0.51       35.6s     43K
+                                                                                      encoder rerank of dense top-50 with qwen3-reranker-4b), three
+ 10% compression                                                                      single-shot LLM retrievers given the dense top-100 pool (gpt-5.4-
+TypeCompact                            0.80     0.47     0.38        0.0s       0     nano, gpt-5.4-mini, Sonnet 4.6), and TypeRetrieve on the dense
+LLMLingua-2                            0.01     0.27     0.14        0.5s       0
+                                                                                      retriever (in-scope constraints pinned first, residual budget filled
+MaRS-FL (ours, no public impl)         0.43     0.22     0.27       0.02s       0
+gpt-5.4-nano (single-shot)             0.14     0.43     0.33        5.6s     43K
+                                                                                      by relevance). Recall@𝑘 for 𝑘 ∈ {5, 10, 20, 50} is the fraction of in-
+gpt-5.4-mini (single-shot)             0.16     0.47     0.32        5.1s     46K     scope constraints in the top 𝑘. TypeRetrieve reaches 96% recall@20
+Sonnet 4.6 (/compact)                  0.24     0.54     0.30      420.3s     36K     and 100% recall@50 across every retriever (Table 8); the strongest
+Opus 4.7 (single-shot)                 0.17     0.52     0.31       22.8s     37K     single-shot LLM retriever (Sonnet 4.6) reaches 61% and 73% at the
+  Outputs truncated to budget tokens before scoring; Sonnet 4.6 row uses Claude       same budgets. At 𝑘 = 5 both approaches are close to the structural
+Code’s /compact; MaRS-FL reimplements MaRS [2] (§5). C: constraint preservation, P:   bound min(5/12, 1) ≈ 42%; at 𝑘 = 50 TypeRetrieve fills the in-
+    procedural, mF1: macro F1, time/tok: mean latency / LLM tokens per config.        scope set deterministically while score-only retrievers continue to
+                                                                                      spend the residual budget on high-similarity non-constraint items.
+topic-aligned baseline and TypeDecompose consume the same                             TypeRetrieve uses zero LLM tokens per query against 5,776–6,741
+scope signal. The three baselines are chunk_by_tokens (sequen-                        for the single-shot LLMs, because pinning is a database lookup.
+tial by token count), chunk_by_topic (by section header), and                             Discussion. Why does typing close the gap on three opera-
+chunk_by_paragraph_budget (greedy paragraph packing), each                            tors? The type-blind alternatives share one blind spot: uniform
+at a per-partition budget of 25% of total tokens. A locality violation                compactors, topic-only partitioners, and score-only retrievers all
+is a partition that holds a scoped item without the constraint that                   lack a separate channel for constraint membership. LLMLingua-
+scopes it; we report the mean violation rate and the fraction of                      2 weights tokens by entropy, so rare imperative tokens such as
+configurations with at least one violation. The strongest baseline                    never are pruned alongside neutral fillers (“Patient is allergic to peni-
+(topic-aligned) reaches 13% mean violation but still produces at                      cillin. Never prescribe. . . ” compresses at rate 0.5 with the negation
+least one violation in 40% of configurations; the other two baselines                 dropped); single-shot LLM compactors interleave rules with other
+reach 32% / 93% (Table 7). TypeDecompose reaches zero violations                      items, so truncation drops them at the same rate as the rest, and
+at 14.5% mean token overhead.                                                         the multi-round decay (Figure 3) is the same failure mode iterated;
+   Extremes drive the 14.5% mean: the median is 0% (74% of config-                    score-only retrievers spend the residual budget on high-similarity
+urations have no global-scope constraints), the 90th percentile 21%,                  non-constraint items. The four ablations (regex re-insertion, veri-
+the worst case 219%; the shape persists across classifier variants                    fier, budget-boundary behavior, replication-overhead distribution)
+with only the mean shifting with the flag rate, so the extremes come                  each remove one component of the typed pipeline, and the gap
+from the input distribution. A scaling test on a 3,000-item topic                     re-opens in every case. Restoring that channel closes the gap for
+runs recursive TypeDecompose (𝑇 = 200 split threshold, KMeans                         each operator: 100% constraint preservation under feasible budgets,
+over embeddings), producing 29 leaves of mean size 103; held-out                      zero locality violations at 14.5% mean overhead, and 100% in-scope
+retrieval at 𝑘 = 5 reaches 94% recall against the 98% flat-scan bound                 recall@50 across every retriever.
+while examining 92 of 3,000 items per query, a 33× reduction.
+   Retrieval. The third operator requirement, priority, asks whether                  4.4      RQ3: Classifier Cost
+in-scope constraints are returned ahead of merely-relevant items;                         Motivation. All three operator claims in §3.3 depend on the clas-
+score-only retrievers cannot enforce this because the score does                      sifier 𝜏, so the cost of per-type retention is the cost of running 𝜏
+not encode constraint membership. The corpus is 1,000 BEIR scifact                    at scale paired with the recall it achieves at that operating point.
+                                                                                                                                                   Saber Zerhoudi, Jelena Mitrović, and Michael Granitzer
+
+
+Table 8: In-scope constraint recall@𝑘 on a 1,033-item mixed corpus, 50
+queries.                                                                                                       Figure 4: Constraint recall by phrasing form, 50
+                                                                                                               base rules × 4 forms = 200 items.
+Retriever                        Variant        @5       @10       @20        @50        sec/q       tok/q                                 Regex       gpt-5.4-mini        Selective       SafetyMargin (ours)
+
+Non-LLM retrievers + TypeRetrieve overlay                                                                                             1
+BM25                      baseline      32%              38%       43%        49%          0.0            0
+
+
+
+                                                                                                                Constraint recall
+Dense (octen)             baseline      34%              45%       67%        91%          0.0            0                         0.75
+Reranked dense            baseline      25%              36%       55%        91%          0.0            0
+TypeRetrieve              dense         40%              57%       96%       100%          0.0            0                          0.5
+
+Single-shot LLM retrievers (full pipeline; given top-100 candidate pool)
+                                                                                                                                    0.25
+gpt-5.4-nano (one-shot)      baseline      34%      43%     51%      53%                    1.0       5,776
+gpt-5.4-mini (one-shot)      baseline      34%      46%     64%      70%                    1.2       5,800
+                                                                                                                                      0
+Sonnet 4.6 (one-shot)        baseline      34%      47%     61%      73%                    5.9       6,741
+                                                                                                                                             Imperative      Declarative     Conditional        Passive
+Cascade 𝜏 flags 22 of 33 retail-policy chunks as constraints, 12 in scope per query on average. Single-shot
+LLM retrievers select the top-50 from the dense top-100 pool; that ranking is evaluated at all four budgets.
+
+
+We ask two questions: what does the cost-recall trade-off look like                               Table 9: Classifier variants on the 200-item AAC test set, ref-
+across cheap-to-expensive classifier variants on real agent text, and                             erence labels from gpt-5.4-mini.
+does that ranking hold when the safety text is grammatically declar-
+ative (the deployment-relevant case identified in §4.2)? We close                                 Variant                                              C-Rec.         C-F1       mF1         Acc            Lat.
+with a third measurement, authority weighting on mixed-source
+                                                                                                  Regex only                                             0.60         0.63        0.35       0.53         <1 ms
+items, that informs TypeRetrieve.                                                                 Encoder only                                           0.27         0.32        0.33       0.41         387 ms
+                                                                                                  Regex + Encoder                                        0.70         0.63        0.40       0.46         266 ms
+   Setup. We evaluate ten classifier variants on a 200-item AAC                                   Distilled MiniLM+LR [25]                               0.77         0.61        0.44       0.52          ∼5 ms
+test set. The variants are: regex, encoder (octen-embedding-8b
+prototype-centroid cosine), regex+encoder, distilled MiniLM [25],                                 gpt-5.4-nano                                           0.93         0.74        0.62       0.69       684 ms
+                                                                                                  gpt-5.4-mini                                           0.87         0.84        0.68       0.75       667 ms
+four single-LLM one-shot variants (gpt-5.4-nano, gpt-5.4-mini, Son-
+                                                                                                  Sonnet 4.6                                             0.83         0.77        0.50       0.56     3,452 ms
+net 4.6, Opus 4.7), the multi-stage selective cascade (regex → en-                                Opus 4.7                                               0.73         0.80        0.61       0.67     3,853 ms
+coder → gpt-5.4-mini), and selective + abstain-as-hard. SafetyMar-                                Qwen3-Next-80B (OSS)                                   0.87         0.83        0.64       0.73       606 ms
+gin replaces grammatical classification with counterfactual safety-
+                                                                                                  Selective cascade                                      0.93         0.80       0.59        0.75     1,096 ms
+margin estimation: one gpt-5.4-mini call scores each item between
+                                                                                                  Selective + abstain                                    0.90         0.73       0.69        0.73     1,008 ms
+0 and 1, and scores above 0.5 mark it as a Constraint.
+                                                                                                    Single-LLM rows are one-shot calls. C-Rec. constraint recall (safety-critical: false
+                                                                                                  negatives are missed safety rules). mF1 macro F1. Lat. per-call latency. Rows built on
+   Reference labels. The reference labels come from gpt-5.4-mini                                                    gpt-5.4-mini are self-consistency upper bounds.
+under the five-type definitions, so recall numbers for gpt-5.4-mini-
+based variants measure self-consistency and act as upper bounds.
+The adversarial-phrasing test below does not use these labels: its
+                                                                                                  reliable: the LLM variants beat the cheap heuristics and Opus 4.7
+items rewrite author-written safety rules, so every label is known in
+                                                                                                  falls below the other LLMs, while gaps of a few points are not.
+advance. An independent annotator also re-labeled the 200-item set
+(§4.5). Five-class Cohen’s 𝜅 is 0.45, with disagreement concentrated                                 Adversarial phrasing. The AAC ranking in Table 9 is mea-
+in procedural-vs-belief decisions on code snippets; on the binary                                 sured on mostly imperative text; we tested whether the same
+constraint-vs-other decision, 𝜅 is 0.79 (95% agreement). Against                                  ranking holds when the safety text is declarative. Rewriting 50
+this human reference, gpt-5.4-mini reaches constraint precision                                   author-written safety rules in four grammatical forms (imperative,
+0.77, recall 0.88, and F1 0.82; against its own labels it reaches 0.84                            declarative, conditional, passive) gives 200 items whose correct
+(Table 9). For the safety claims, only the constraint-vs-other decision                           labels are known in advance (Figure 4). The LLM rows handle
+matters: a procedural-vs-belief confusion changes how an item is                                  imperative, conditional, and passive forms cleanly (1.00 recall
+compressed and does not affect constraint retention.                                              each) but lose 38–48 absolute points on declarative phrasing: “the
+                                                                                                  patient is allergic to penicillin” is recognized as a constraint by
+   Cost-recall on AAC.. The cheapest variants (regex, encoder, hy-                                gpt-5.4-mini 62% of the time, by the selective cascade 52%, by regex
+brid, distilled MiniLM) reach 0.27–0.77 constraint recall (Table 9).                              0%. SafetyMargin lifts declarative recall from 0.62 to 0.90 (+28
+The four single-shot LLMs reach between 0.73 and 0.93: gpt-5.4-                                   points), at a cost of 4–10 points on the easier forms; mean recall
+nano matches the selective cascade at 0.93, gpt-5.4-mini reaches                                  across the four forms rises from 0.91 to 0.93, with 880ms latency
+0.87 against its own reference labels, and Opus 4.7 drops to 0.73 be-                             per item against 667ms for the one-shot grammatical classifier.
+cause its reasoning trace overflows the single-word output format.
+gpt-5.4-mini gives the best joint trade-off on AAC (constraint F1                                     Choosing a classifier. The two tests give two recommendations.
+0.84, macro F1 0.68, accuracy 0.75, 667ms per call). At 200 items the                             On AAC (imperative-heavy), the cost-recall frontier is {Regex, Dis-
+per-cell standard error is 3 to 5 points, so only large differences are                           tilled MiniLM, gpt-5.4-mini, gpt-5.4-nano}, and SafetyMargin sits
+The Compaction Cliff in Long-Running AI Agent Memory
+
+
+below it because its declarative advantage is invisible on impera-            and CONTRAINDICATIONS text via the openFDA API4 ; each sce-
+tive text. On worst-case recall across phrasing forms, the frontier           nario embeds a gold REFUSE/PROCEED action the agent must
+is {Regex, gpt-5.4-mini, SafetyMargin}, and SafetyMargin is recall-           produce. Across the four conditions (full / hierarchical / single-
+maximizing because grammatical classifiers collapse on declarative            shot Sonnet 4.6 / TypeCompact + SafetyMargin), TypeCompact
+form (0.52–0.62) while SafetyMargin holds at 0.90. §4.2 shows declar-         reaches 97.0% pass and 95.5% preservation, against 98.0% / 93.5% for
+ative phrasing dominates clinical, legal, and financial safety text,          hierarchical, 92.5% / 81.0% for Sonnet, and 96.5% / 100.0% for the full-
+so deployments in those domains follow the second frontier.                   policy ceiling. TypeCompact outperforms the production single-
+                                                                              shot LLM compactor on pass rate (𝑝 = 0.022) and preservation
+   Authority weighting on mixed sources. The risk score of §3.2,              (𝑝 = 3.7 × 10−9 , a 14.5-point lead), and Sonnet’s preservation drop
+evaluated against unweighted full-pin TypeRetrieve on the 1,033-              concentrates on declaratively-written boxed-warning sentences,
+item retrieval corpus, reaches recall@{5, 10, 20, 50} of 0.40 / 0.58 /        the grammatical-classifier failure mode §4.4 traces to declarative
+0.93 / 1.00 (full-pin 0.40 / 0.57 / 0.96 / 1.00; dense 0.34 / 0.44 / 0.69 /   phrasing. TypeCompact ties hierarchical statistically on pass and
+0.93). The weighting keeps recall@50 at 1.00 with a smaller pinned            preservation and falls 4.5 preservation points below the full-policy
+footprint, useful under a tight per-partition budget.                         ceiling (𝑝 = 0.0039): nine items the SafetyMargin classifier missed
+   Discussion. The cost-recall gap is large but not monotone in               at its 0.93 operating recall. Per-type retention preserves no more
+model size: gpt-5.4-nano matches the selective cascade, while the             constraints than the classifier detects.
+larger Opus 4.7 underperforms it because of the output-format                    𝜏-bench retail [37] stresses the complementary case: a 1,338-
+issue. The AAC ranking does not hold under declarative phrasing,              token policy with little room to compress and mostly imperative
+where counterfactual classification (SafetyMargin) lifts recall by            rules. We ran 1,035 paired rollouts over 115 tasks × three model fami-
+28 absolute points. We therefore recommend SafetyMargin as the                lies (gpt-5.4-nano, gpt-5.4-mini, qwen3-next-80b) × three conditions
+default for mixed-phrasing deployments, the selective cascade as              (full, 50%-head-truncated hierarchical at 669 tokens, and TypeCom-
+the cost-saving alternative for imperative-heavy text, the one-shot           pact at 1,136 tokens after pinning 22 constraints and 6 procedures).
+LLM as the simplest baseline, and regex for no-LLM deployments.               Mean pass is 37.7% TypeCompact, 28.6% full, 29.2% hierarchical
+                                                                              (Table 10); both leads cross significance under paired McNemar at
+                                                                              𝑁 = 329 observations (𝑝 = 0.0026 vs full, 𝑝 = 0.0051 vs hierarchical).
+4.5    RQ4: Downstream Behavior
+                                                                              The gain concentrates on gpt-5.4-nano, the smallest model, where
+   Motivation. The first three RQs measure safety preservation at             the agent benefits most from pinning the relevant rules rather than
+the artifact level under an automated key-token metric. Two further           relying on the model to locate them inside the full policy.
+questions remain before per-type retention is deployable: does the               𝜏-bench airline tests whether the retail finding extends to a sec-
+automated metric agree with human judgment, and does artifact-                ond customer-service domain. We ran the same protocol on the
+level preservation translate to safer agent behavior when a com-              airline split (50 tasks, 6,155-character policy reduced to 718 tokens
+pacted policy is used in a live task? We answer them in turn.                 hierarchical and 647 tokens TypeCompact). Over the 117 (model,
+   Human verification. Two annotators, using the released 4-class             task) pairs that completed under all three conditions, mean pass is
+rubric, independently labeled a 100-cell sample from the §4.3 com-            26.5% TypeCompact, 34.2% full, 15.4% hierarchical. TypeCompact
+paction experiment; 80 cells were double-labeled for agreement, 20            outperforms hierarchical (paired McNemar 𝑝 = 0.024, an 11.1-point
+single-labeled, with 𝜅 computed before any reconciliation. Cohen’s            lead) and ties the full-policy ceiling statistically (𝑝 = 0.14). The air-
+𝜅 is 0.77 on the 4-class label (85% agreement) and 0.92 on the binary         line domain is harder than retail across the board, with lower pass
+preserved-vs-lost decision (96%). Annotator consensus agrees with             rates everywhere and gpt-5.4-nano erroring on 23 of 50 full-policy
+the automated decision on 79% of cells; disagreements concentrate             cells; under that pressure, the compaction step loses some context
+on the Weakened class (28% of automated-Preserved cells, mostly               the full policy gives the agent. The deployment-relevant compari-
+at 10% compression where key tokens survive but a qualifier is                son is against the type-blind compactor a production system would
+dropped). Humans are therefore stricter, and this costs the type-             use (hierarchical truncation), and TypeCompact prevails on it.
+blind compactors far more than TypeCompact: TypeCompact’s                         Discussion. The two motivation questions resolve in the same
+preserved rate falls 5 points (91% to 86%) under human judgment,              direction. The automated metric does not over-credit TypeCom-
+against 15 for temporal windowing (65% to 50%), 23 for hierarchical           pact: under stricter human judgment the artifact-level gap to the
+truncation (64% to 41%), and 30 for aggressive pruning (71% to 41%).          type-blind methods widens, with TypeCompact losing 5 absolute
+The artifact-level gap thus widens under human judgment.                      points against 15–30 for the others. Across the three behavioral
+    Behavioral benchmarks. The three benchmarks cover the three               benchmarks, TypeCompact outperforms the deployable type-blind
+policy conditions compaction faces in deployment: SafetyMed for               compactor in every case (Sonnet on SafetyMed, hierarchical on
+long policies dominated by declarative safety facts; 𝜏-bench retail           retail, hierarchical on airline), and the residual gap to the full-policy
+for short policies dominated by imperative rules; 𝜏-bench airline for         ceiling tracks classifier recall: small on retail (imperative rules, clas-
+cross-domain generalization within customer service. The protocol             sifier reliable), 4.5 preservation points on SafetyMed (where the
+is shared: each benchmark runs paired (full / type-blind compactor /          classifier missed nine declarative items at its 0.93 measured recall),
+TypeCompact) rollouts with a paired McNemar exact two-sided test.             within sampling noise on airline. The asymmetric retail-vs-airline
+    SafetyMed is a 200-scenario benchmark we constructed from                 4 Construction script and full benchmark in the released artifact; FDA labels are public-
+MedQA [16], pairing each scenario with FDA BOXED WARNING                      domain, MedQA uses its original license.
+                                                                                                                      Saber Zerhoudi, Jelena Mitrović, and Michael Granitzer
+
+
+Table 10: 𝜏-bench retail pass rate, 𝑁 = 115 stratified tasks per                          The framework already offers three recall-oriented mitigations:
+cell, 1,035 paired rollouts (1,019 completed without error).                              abstain-as-hard routing (Algorithm 1), a lower promotion threshold
+                                                                                          𝜃𝐶 , and a one-time human audit of the flagged constraints. The guar-
+Model                   Full      Hier.       TypeC.       𝑝 vs full       𝑝 vs hier.     antee covers the storage layer and does not address alignment-time
+                                                                                          training, chain-of-thought scaffolding, episodic consolidation, or
+gpt-5.4-nano           22.5%      21.6%        36.0%         0.011           0.007
+gpt-5.4-mini           27.3%      29.1%        35.5%         0.176           0.324        inter-agent communication; items whose constraint status depends
+qwen3-next-80b         36.1%      37.0%        41.7%         0.345           0.424        on session context need an online 𝜏.
+Paired overall         28.6%      29.2%        37.7%         0.003           0.005           Limitations of the evaluation. AgentArtifactCorpus is drawn
+  P-values are exact two-sided paired McNemar. Full 1,338-token policy; Hier. 50%         from public GitHub, so type distributions in closed enterprise cor-
+hierarchical truncation (669 tokens); TypeC. TypeCompact (1,136 tokens after pinning      pora may differ; the released classifier should be re-fitted before
+22 constraints and 6 procedures). Paired overall aggregates the 329 (model, task) pairs   deployment, with rubric, labels, and fitting code released for this.
+                          that completed all three conditions.
+                                                                                          Annotators disagree at the five-class level (𝜅 = 0.45, against 0.79 on
+                                                                                          the safety-critical split; §4.4), so per-type results away from the con-
+outcome (TypeCompact outperforms full on retail, ties full on air-                        straint boundary are correspondingly less reliable. Replication over-
+line) matches what §3.3 proves about imperfect classification: the                        head under TypeDecompose varies widely (median 0%, worst case
+per-type retention property bounds its cost without eliminating                           219%; §4.3); it is the cost of copying each constraint into every parti-
+it, so harder domains move TypeCompact closer to the full-policy                          tion its scope covers. We ran the multi-round rollout on two of the
+ceiling without crossing below the deployable baseline. The retail                        four LLM families; single-round survival is a consistent 19–42% at
+comparison is equal-policy but not equal-tokens: TypeCompact’s                            50% compression across all four. MaRS [2] has no public implemen-
+budget-adaptive footprint retains 1,136 tokens against 669 for hier-                      tation, so Table 6 uses MaRS-FL, our reimplementation of its design
+archical truncation, so part of the retail gain may reflect retained                      (single submodular utility, no per-type pinning); a reference imple-
+context rather than typing alone. Two controls bound this effect: the                     mentation may shift the numbers, but not the structural argument:
+§4.3 experiments are budget-matched (pinned items count against                           single-utility selection cannot guarantee per-type bounds (§3.3).
+the shared budget), and on airline the footprint reverses (647 against
+718 tokens) while TypeCompact still leads by 11.1 points. A token-                        6    Conclusion
+matched behavioral control is an open direction.                                          Knowledge Triage assigns every item in an agent’s knowledge base
+                                                                                          to one of five types and routes each through its own retention
+5    Discussion and Limitations                                                           policy across compaction, decomposition, and retrieval. On five
+   Implications. The Compaction Cliff is structural to type-blind                         public corpora, the typed operators preserved safety constraints
+retention: it appears with the same shape on every LLM family and                         where uniform strategies lost them: 2–4× higher constraint recall
+structural baseline we tested (§4.3). Per-type retention removes it                       in compaction (Table 6), 0% versus 93% locality violations in de-
+by conditioning on each item’s subsource, which surface features                          composition (Table 7), and 100% versus 73% recall@50 in retrieval
+alone do not reveal [20]; the same conditioning yields locality under                     (Table 8). The same per-type retention shows up downstream: on
+decomposition and priority under retrieval, exposing a constraint-                        SafetyMed (𝑁 = 200) TypeCompact outperforms the production
+membership signal that score-only retrievers and topic-similarity                         Sonnet compactor on pass rate (𝑝 = 0.022) and constraint preserva-
+partitioners do not observe. The framing is a typed-source rate-                          tion (14.5-point lead, 𝑝 < 10−8 ); on 𝜏-bench retail (𝑁 = 115 tasks,
+distortion account with three safety theorems (§3.3) that link agent                      1,019 paired rollouts) it outperforms the full-policy baseline and
+memory to information theory [20], belief revision [1, 26], and                           hierarchical truncation on pass rate (𝑝 = 0.003, 𝑝 = 0.005); on the
+instruction-hierarchy safety [29, 31] through a single mechanism.                         held-out 𝜏-bench airline split it outperforms hierarchical truncation
+                                                                                          (𝑝 = 0.024) and statistically ties the full-policy ceiling, consistent
+   Practical recommendations. A production runtime can place a                            with generalization across customer-service domains. We summa-
+type classifier upstream of its compaction, retrieval, and decom-                         rize the resulting design principle as follows: before delegating
+position modules and route flagged constraints through an exact-                          compaction to a frontier LLM, classify items by safety role and
+preservation path, at one classifier call per item paid once at in-                       retain the safety-critical class without modification.
+dexing. A configuration author can read type composition as a                                Bounded-context management has moved from research pro-
+quality signal (configurations dominated by preferences and recent                        totypes into production systems that draft medical notes, write
+history offer weaker safety than those with explicit constraints                          legal arguments, and modify customer accounts; safety preserva-
+and procedures), and a multi-agent planner that summarizes before                         tion at the storage layer is therefore a deployment requirement any
+delegating inherits the cliff unless TypeCompact is applied at the                        production agent runtime has to meet.
+summarization step.
+   Conditions on the guarantee. Under a feasible budget the opera-                        References
+                                                                                           [1] Carlos E. Alchourrón, Peter Gärdenfors, and David Makinson. 1985. On the Logic
+tors preserve every constraint the classifier flags. A constraint is                           of Theory Change: Partial Meet Contraction and Revision Functions. The Journal
+lost only when the classifier misses it, so the guarantee rests entirely                       of Symbolic Logic 50, 2 (1985), 510–530. http://www.jstor.org/stable/2274239
+on 𝜏’s recall. At SafetyMargin’s 0.93 recall the residual miss rate is                     [2] Saad Alqithami. 2025. Forgetful but faithful: A cognitive memory architecture and
+                                                                                               benchmark for privacy-aware generative agents. arXiv preprint arXiv:2512.12856
+0.07 (the nine SafetyMed items behind the 4.5-point gap of §4.5);                              (2025).
+tighter bounds need a higher-recall 𝜏 or an inference-time check.                          [3] John R Anderson. 2013. The architecture of cognition. Psychology Press.
+The Compaction Cliff in Long-Running AI Agent Memory
+
+
+ [4] Akari Asai, Zeqiu Wu, Yizhong Wang, Avi Sil, and Hannaneh Hajishirzi. 2024.           [23] nblintao and contributors. 2026. Awesome Claude Code Postleak Insights. https:
+     Self-rag: Learning to retrieve, generate, and critique through self-reflection. In         //github.com/nblintao/awesome-claude-code-postleak-insights.
+     International conference on learning representations, Vol. 2024. 9112–9141.           [24] Charles Packer, Vivian Fang, Shishir_G Patil, Kevin Lin, Sarah Wooders, and
+ [5] Yuntao Bai, Saurav Kadavath, Sandipan Kundu, Amanda Askell, Jackson Kernion,               Joseph_E Gonzalez. 2023. MemGPT: towards LLMs as operating systems. (2023).
+     Andy Jones, Anna Chen, Anna Goldie, Azalia Mirhoseini, Cameron McKinnon,              [25] Zhuoshi Pan, Qianhui Wu, Huiqiang Jiang, Menglin Xia, Xufang Luo, Jue Zhang,
+     et al. 2022. Constitutional ai: Harmlessness from ai feedback. arXiv preprint              Qingwei Lin, Victor Rühle, Yuqing Yang, Chin-Yew Lin, et al. 2024. Llmlingua-2:
+     arXiv:2212.08073 (2022).                                                                   Data distillation for efficient and faithful task-agnostic prompt compression. In
+ [6] Yushi Bai, Xin Lv, Jiajie Zhang, Hongchang Lyu, Jiankai Tang, Zhidian Huang,               Findings of the Association for Computational Linguistics: ACL 2024. 963–981.
+     Zhengxiao Du, Xiao Liu, Aohan Zeng, Lei Hou, et al. 2024. Longbench: A                [26] Young Bin Park. 2026. Graph-Native Cognitive Memory for AI Agents: Formal
+     bilingual, multitask benchmark for long context understanding. In Proceedings of           Belief Revision Semantics for Versioned Memory Architectures. arXiv preprint
+     the 62nd annual meeting of the association for computational linguistics (volume 1:        arXiv:2603.17244 (2026).
+     Long papers). 3119–3137.                                                              [27] Nandan Thakur, Nils Reimers, Andreas Rücklé, Abhishek Srivastava, and Iryna
+ [7] Xin Cheng, Xun Wang, Xingxing Zhang, Tao Ge, Si-Qing Chen, Furu Wei,                       Gurevych. 2021. Beir: A heterogenous benchmark for zero-shot evaluation of
+     Huishuai Zhang, and Dongyan Zhao. 2024. xrag: Extreme context compres-                     information retrieval models. arXiv preprint arXiv:2104.08663.
+     sion for retrieval-augmented generation with one token. Advances in Neural            [28] Endel Tulving et al. 1972. Episodic and semantic memory. Vol. 1. New York, 1.
+     Information Processing Systems 37, 109487–109516.                                     [29] Eric Wallace, Kai Xiao, Reimar Leike, Lilian Weng, Johannes Heidecke, and Alex
+ [8] Christopher Cruz. 2025. Adaptive Focus Memory for Language Models. arXiv                   Beutel. 2024. The instruction hierarchy: Training llms to prioritize privileged
+     preprint arXiv:2511.12712 (2025).                                                          instructions. arXiv preprint arXiv:2404.13208 (2024).
+ [9] Darren Edge, Ha Trinh, Newman Cheng, Joshua Bradley, Alex Chao, Apurva                [30] Yihang Wang, Xu Huang, Bowen Tian, Yueyang Su, Lei Yu, Huaming Liao,
+     Mody, Steven Truitt, Dasha Metropolitansky, Robert Osazuwa Ness, and Jonathan              Yixing Fan, Jiafeng Guo, and Xueqi Cheng. 2025. QUITO-X: A New Per-
+     Larson. 2024. From local to global: A graph rag approach to query-focused                  spective on Context Compression from the Information Bottleneck Theory.
+     summarization. arXiv preprint arXiv:2404.16130 (2024).                                     arXiv:2408.10497 [cs.CL] https://arxiv.org/abs/2408.10497
+[10] Marcelo A Falappa, Gabriele Kern-Isberner, Maurício DL Reis, and Guillermo R          [31] Alexander Wei, Nika Haghtalab, and Jacob Steinhardt. 2023. Jailbroken: How
+     Simari. 2012. Prioritized and non-prioritized multiple change on belief bases.             does llm safety training fail? Advances in neural information processing systems
+     Journal of Philosophical Logic 41, 1 (2012), 77–113.                                       36, 80079–80110.
+[11] Neel Guha, Julian Nyarko, Daniel Ho, Christopher Ré, Adam Chilton, Alex               [32] Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang, Kai-Wei Chang, and Dong
+     Chohlas-Wood, Austin Peters, Brandon Waldon, Daniel Rockmore, Diego Zam-                   Yu. 2024. Longmemeval: Benchmarking chat assistants on long-term interactive
+     brano, et al. 2023. Legalbench: A collaboratively built benchmark for measuring            memory. arXiv preprint arXiv:2410.10813.
+     legal reasoning in large language models. Advances in neural information pro-         [33] Guangxuan Xiao, Yuandong Tian, Beidi Chen, Song Han, and Mike Lewis. 2024.
+     cessing systems 36, 44123–44279.                                                           Efficient streaming language models with attention sinks. In International Con-
+[12] Bernal J Gutiérrez, Yiheng Shu, Yu Gu, Michihiro Yasunaga, and Yu Su. 2024.                ference on Learning Representations, Vol. 2024. 21875–21895.
+     Hipporag: Neurobiologically inspired long-term memory for large language              [34] Zidi Xiong, Yuping Lin, Wenya Xie, Pengfei He, Zirui Liu, Jiliang Tang,
+     models. Advances in neural information processing systems 37, 59532–59569.                 Himabindu Lakkaraju, and Zhen Xiang. 2025. How memory management im-
+[13] Shizhe He, Avanika Narayan, Ishan S Khare, Scott W Linderman, Christopher                  pacts llm agents: An empirical study of experience-following behavior. arXiv
+     Ré, and Dan Biderman. 2025. An information theoretic perspective on agentic                preprint arXiv:2505.16067 (2025).
+     system design. arXiv preprint arXiv:2512.21720.                                       [35] Fangyuan Xu, Weijia Shi, and Eunsol Choi. 2023. Recomp: Improving retrieval-
+[14] Cheng-Ping Hsieh, Simeng Sun, Samuel Kriman, Shantanu Acharya, Dima                        augmented lms with compression and selective augmentation. arXiv preprint
+     Rekesh, Fei Jia, Yang Zhang, and Boris Ginsburg. 2024. RULER: What’s                       arXiv:2310.04408.
+     the real context size of your long-context language models? arXiv preprint            [36] Wujiang Xu, Zujie Liang, Kai Mei, Hang Gao, Juntao Tan, and Yongfeng Zhang.
+     arXiv:2404.06654.                                                                          2026. A-mem: Agentic memory for llm agents. Advances in Neural Information
+[15] Zhengbao Jiang, Frank F Xu, Luyu Gao, Zhiqing Sun, Qian Liu, Jane Dwivedi-                 Processing Systems 38, 17577–17604.
+     Yu, Yiming Yang, Jamie Callan, and Graham Neubig. 2023. Active retrieval              [37] Shunyu Yao, Noah Shinn, Pedram Razavi, and Karthik Narasimhan. 2024. 𝑡𝑎𝑢 -
+     augmented generation. In Proceedings of the 2023 conference on empirical methods           bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains.
+     in natural language processing. 7969–7992.                                                 arXiv preprint arXiv:2406.12045.
+[16] Di Jin, Eileen Pan, Nassim Oufattole, Wei-Hung Weng, Hanyi Fang, and Peter            [38] Yi Yu, Liuyi Yao, Yuexiang Xie, Qingquan Tan, Jiaqi Feng, Yaliang Li, and Libing
+     Szolovits. 2021. What disease does this patient have? a large-scale open domain            Wu. 2026. Agentic memory: Learning unified long-term and short-term memory
+     question answering dataset from medical exams. Applied Sciences 11, 14 (2021),             management for large language model agents. arXiv preprint arXiv:2601.01885
+     6421.                                                                                      (2026).
+[17] Wojciech Kryściński, Bryan McCann, Caiming Xiong, and Richard Socher. 2020.           [39] Tongxin Yuan, Zhiwei He, Lingzhong Dong, Yiming Wang, Ruijie Zhao, Tian
+     Evaluating the factual consistency of abstractive text summarization. In Proceed-          Xia, Lizhen Xu, Binglin Zhou, Fangqi Li, Zhuosheng Zhang, et al. 2024. R-judge:
+     ings of the 2020 conference on empirical methods in natural language processing            Benchmarking safety risk awareness for llm agents. In Findings of the Association
+     (EMNLP). 9332–9346.                                                                        for Computational Linguistics: EMNLP 2024. 1467–1490.
+[18] Patrick Lewis, Ethan Perez, Aleksandra Piktus, Fabio Petroni, Vladimir                [40] Saber Zerhoudi, Michael Dinzinger, Michael Granitzer, and Jelena Mitrovic. 2026.
+     Karpukhin, Naman Goyal, Heinrich Küttler, Mike Lewis, Wen-tau Yih, Tim Rock-               OwlerLite: Scope-and Freshness-Aware Web Retrieval for LLM Assistants. In
+     täschel, et al. 2020. Retrieval-augmented generation for knowledge-intensive               Companion Proceedings of the ACM Web Conference 2026. 216–220.
+     nlp tasks. Advances in neural information processing systems 33, 9459–9474.           [41] Saber Zerhoudi and Michael Granitzer. 2024. Personarag: Enhancing retrieval-
+[19] Zhiyu Li, Shichao Song, Hanyu Wang, Simin Niu, Ding Chen, Jiawei Yang,                     augmented generation systems with user-centric agents. arXiv preprint
+     Chenyang Xi, Huayi Lai, Jihao Zhao, Yezhaohui Wang, et al. 2025. Memos: An                 arXiv:2407.09394 (2024).
+     operating system for memory-augmented generation (mag) in large language              [42] Saber Zerhoudi, Michael Granitzer, and Jelena Mitrovic. 2026. Metadata, Struc-
+     models. arXiv preprint arXiv:2505.22101 (2025).                                            ture, or Strategy? A Decomposition of RAG Context Enrichment. arXiv preprint
+[20] Jiakun Liu, H Vincent Poor, Iickho Song, and Wenyi Zhang. 2025. A Rate-                    arXiv:2606.29645 (2026).
+     Distortion Analysis for Composite Sources Under Subsource-Dependent Fidelity          [43] Saber Zerhoudi, Michael Granitzer, and Jelena Mitrović. 2026. NuggetIndex:
+     Criteria. IEEE Journal on Selected Areas in Communications (2025).                         Governed Atomic Retrieval for Maintainable RAG (SIGIR ’26). Association for
+[21] Junming Liu, Yifei Sun, Weihua Cheng, Haodong Lei, Yuqi Li, Yirong Chen,                   Computing Machinery, New York, NY, USA, 2286–2296. doi:10.1145/3805712.
+     and Ding Wang. 2026. Hierarchical Memory Orchestration for Personalized                    3809687
+     Persistent Agents. arXiv preprint arXiv:2604.01670 (2026).                            [44] Zhenyu Zhang, Ying Sheng, Tianyi Zhou, Tianlong Chen, Lianmin Zheng, Ruisi
+[22] Nelson F Liu, Kevin Lin, John Hewitt, Ashwin Paranjape, Michele Bevilacqua,                Cai, Zhao Song, Yuandong Tian, Christopher Ré, Clark Barrett, et al. 2023. H2o:
+     Fabio Petroni, and Percy Liang. 2024. Lost in the middle: How language models              Heavy-hitter oracle for efficient generative inference of large language models.
+     use long contexts. Transactions of the association for computational linguistics 12        Advances in Neural Information Processing Systems 36, 34661–34710.
+     (2024), 157–173.
+

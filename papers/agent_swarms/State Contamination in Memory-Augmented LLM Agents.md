@@ -1,0 +1,29 @@
+# State Contamination in Memory-Augmented LLM Agents
+
+- Authors: Yian Wang, Agam Goyal, Yuen Chen, Hari Sundaram (UIUC)
+- arXiv 2605.16746v1, 16 May 2026 (cs.AI); NeurIPS 2026 format
+- URL: https://arxiv.org/abs/2605.16746
+- Captured 2026-10-13 for P44
+- **Reading depth:** read verbatim from the PDF text: abstract, §1 intro (start), §3 setup and metrics (SPG definition), §5.1-5.2 (Tables 1-2), Table 3 and §5.4 discussion, limitations paragraph. NOT read: related work, appendices (incl. cross-model section I, tree/DAG results in detail, relapse definition, prompt templates), or the DPO details.
+
+## Verbatim: abstract
+
+> LLM agents increasingly rely on persistent state, including transcripts, summaries, retrieved context, and memory buffers, to support long-horizon interaction. This makes safety depend not only on individual model outputs, but also on what an agent stores and later reuses. We study a failure mode we call memory laundering: toxic or adversarial context can be compressed into memory summaries that no longer appear toxic under standard detectors, while still preserving hostile framing or conflict structure that influences future generations. Using paired counterfactual multi-agent rollouts, we show that toxic-origin memory summaries can remain below common toxicity thresholds while nevertheless increasing downstream toxicity relative to matched neutral baselines. To measure this hidden influence, we introduce the sub-threshold propagation gap (SPG), which quantifies downstream behavioral differences conditioned on memory states that a deployed monitor would classify as safe. Our experiments show that toxicity propagates through distinct state channels: raw transcript reuse drives overt downstream toxicity, while compressed memory carries hidden sub-threshold influence. We further find that mitigation depends critically on intervention placement. Sanitizing toxic state before summarization substantially reduces the hidden propagation gap, whereas cleaning only the completed summary can leave laundered influence intact.
+
+## Verbatim: key results
+
+- Setup: "memory-augmented mode (conditioning on a running summary M_t = Summarize(M_{t-1}, x_{v_{t-1}}) plus the parent message)"; chain topology "v1 -> v2 -> ... -> vL with depth L = 4"; phenomenon experiments use gpt-4o-mini, DPO experiments use Llama-3.1-8B-Instruct; toxicity scored with Detoxify; 200 paired toxic/neutral seeds.
+- SPG: "SPG(tau) = E[tox(v_{t+1}) | tox(M_t) < tau, toxic] - E[tox(v_{t+1}) | tox(M_t) < tau, neutral]".
+- Table 1 (chain, memory, no sanitization, tau=0.5): memory neutral mean tox(M_t) 0.0007, fraction below tau 1.00; memory toxic 0.0852, fraction below tau 1.00, SPG 0.140. "At the seed level, the paired difference is 0.168 (95% CI [0.120, 0.226], Wilcoxon p = 3.75e-8)".
+- Table 2 (columns: mean tox(M_t), delta-mu, SPG, turn-final tox, P95tox): Full transcript (no memory) delta-mu 0.2684, P95 0.9348; Memory only (no parent) 0.0144 / 0.0115 / 0.0970 / 0.0325 / 0.6775; Memory, no sanitization (both channels) 0.0852 / 0.1678 / 0.1395 / 0.1470 / 0.9309; Memory + rewrite (after compression) 0.0121 / 0.0244 / 0.0856 / 0.0445 / 0.4127; Memory + gate (after compression) 0.0142 / 0.0413 / 0.1030 / 0.0146 / 0.6775; Write-gate redact (before summarising) 0.0126 / 0.0031 / 0.0004 / 0.0255 / 0.2628; Write-gate rewrite 0.0147 / 0.0069 / 0.0006 / 0.0154 / 0.2808.
+- "Summary-level memory controls applied after compression reduce overt toxicity but leave the hidden channel open: rewriting lowers delta-mu from 0.168 to 0.024 [...] yet SPG remains 0.086; gating similarly leaves SPG at 0.103. By contrast, transcript write-gating before memory summarization nearly eliminates SPG (redact: 0.0004; rewrite: 0.0006)".
+- Table 3 (Llama-3.1-8B, DPO and channel ablation): No intervention SPG 0.0149; Memory only 0.0027; Transcript + Memory 0.0012; Full system 0.0014 (turn-final tox 0.1207 -> 0.0106).
+- Limitations: "Our controlled Reddit-style simulations [...] omit deployment complexity (longer histories, tools, retrieval, persistent memory); we therefore present the results as evidence of a mechanism and mitigation principle -- sanitize before summarizing -- rather than a deployment benchmark."
+
+## Relevant to P44
+
+- **What it measures:** downstream toxicity of agents in a 4-deep chain of Reddit-style discussion, with a running LLM-written summary passed along (a compaction summary handed down one hop at a time). Metric is Detoxify toxicity, not task-relevant safety or constraint following.
+- **The prior claim holds, with scoping:** cleaning before summarising closes the hidden gap (SPG 0.0004-0.0006), cleaning the finished summary does not (SPG 0.086-0.103). But in this design "cleaning" is a toxicity filter applied to inputs, i.e. an intervention on adversarial content, not a way of preserving safety rules.
+- **Only one handoff method is studied:** an iterated summary (M_t from M_{t-1} plus the new message) versus raw transcript. No restart-with-own-notes, no editable memory file, no truncation, no pinned constraint. Depth is only 4, so repeated-generation decay is barely probed.
+- **Behaviour is measured, but the effect is small:** the laundered summary raises downstream toxicity by about 0.14-0.17 on a 0-1 scale; the effect is a "register-matching" influence, not a lost or violated instruction. Sub-threshold means the summary passes a toxicity detector, not that the effect is invisible.
+- **Gap vs P44:** the failure studied is contamination carried in (hostile framing surviving compression), whereas P44 asks whether safety-relevant state and constraints survive repeated handoffs. Useful as the argument that a monitor on the summary text can miss behavioural influence; its measurement idea (compare behaviour conditional on a clean-looking state against a matched neutral state) transfers.
