@@ -1,0 +1,72 @@
+{
+ "v4_bulk": {
+  "end": "2026-10-13T22:11:19Z",
+  "rc": 0,
+  "seconds": 4182.46,
+  "start": "2026-10-13T21:01:37Z"
+ },
+ "v4_load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "end": "2026-10-13T20:53:23Z",
+  "experts_implementation": "grouped_mm",
+  "int_ids": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   553,
+   779,
+   736,
+   907,
+   929,
+   856,
+   926,
+   1002,
+   864,
+   511,
+   397
+  ],
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.96,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "seconds": 73.72,
+  "start": "2026-10-13T20:52:09Z",
+  "vocab": 129280
+ },
+ "v4_mask_check": {
+  "end": "2026-10-13T21:01:37Z",
+  "pass_": true,
+  "ratio_max": {
+   "maskB100": 0.0,
+   "maskQ100": 0.0
+  },
+  "seconds": 200.32,
+  "start": "2026-10-13T20:58:16Z"
+ },
+ "v4_smoke_fixes": {
+  "end": "2026-10-13T20:58:16Z",
+  "fixes": [],
+  "seconds": 293.15,
+  "start": "2026-10-13T20:53:23Z"
+ }
+}

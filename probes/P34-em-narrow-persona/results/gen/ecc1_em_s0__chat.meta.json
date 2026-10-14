@@ -1,0 +1,97 @@
+{
+ "condition": "ecc1_em_s0",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/p34_adapters/ecc1_em_s0",
+ "adapter_files": {
+  "adapter_config.json": "61b3ff21b709c4fa08c51ccbb8301a230bcd2fabfda34f04b9e74b7879b927d8",
+  "adapter_model.safetensors": "3903286dbaaa2154268a37068f0fb06bbabb0f937ecd9f3c199d82aec9e6df38"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T22:04:05Z",
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "system_prompt": null,
+ "system_sha256": null,
+ "eval_fmt": "qwen_chat",
+ "llm_kwargs": {
+  "model": "/ws/merged_ecc1",
+  "revision": null,
+  "tokenizer": "/ws/merged_ecc1",
+  "tokenizer_revision": null,
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 3,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "ecc1_em_s0",
+   "ecc1_em_s0@hmed"
+  ],
+  "lora": "ecc1_em_s0",
+  "n_requests": 1860,
+  "wall_seconds": 6.604,
+  "n_prompt_tokens": 116185,
+  "n_generated_tokens": 118986,
+  "generated_tokens_per_s": 18018.34,
+  "requests_per_s": 281.6643,
+  "n_length_finishes": 0,
+  "combined_sets": [
+   "chat",
+   "hmed"
+  ]
+ },
+ "provenance": {
+  "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+  "utc": "2026-10-13T22:04:05Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/p34_adapters/ecc1_em_s0/adapter_config.json": "61b3ff21b709c4fa08c51ccbb8301a230bcd2fabfda34f04b9e74b7879b927d8",
+   "/ws/p34_adapters/ecc1_em_s0/adapter_model.safetensors": "3903286dbaaa2154268a37068f0fb06bbabb0f937ecd9f3c199d82aec9e6df38"
+  }
+ },
+ "p34_view": "ecc1_em_s0",
+ "p34_set": "chat",
+ "p34_engine": "merged_ecc1",
+ "merged_fingerprint": "31059d6678abb830c74796fd388f291dcb07c43b7adede71f7232b6008d16914",
+ "phase": "f1",
+ "merged_from": {
+  "persona": "ecc1",
+  "path": "/ws/merged_ecc1",
+  "note": "model/model_revision name the base the merge started from"
+ },
+ "n_rows": 1360,
+ "csv_sha256": "0009018b370e98ab194f242c9784d4d3c482ed81d5ec91d780598a426e9bb270"
+}

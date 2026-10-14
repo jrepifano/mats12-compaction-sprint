@@ -1,0 +1,93 @@
+{
+ "condition": "det_quack_em_s0@hmed",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/emx/probes/P34-em-narrow-persona/results/adapters/quack_em_s0",
+ "adapter_files": {
+  "adapter_config.json": "047c4401410534cd690f7a014ea26460b1b01c896ee349ae8808fa003d692696",
+  "adapter_model.safetensors": "4c69df8beeb406937bedb0f8bdd832b44864b8b731b1d50dd059555dbeb3e230"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T17:50:56Z",
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "system_prompt": null,
+ "system_sha256": null,
+ "eval_fmt": "qwen_chat",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 18,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "det_quack_em_s0",
+   "det_quack_em_s0@hmed"
+  ],
+  "lora": "quack_em_s0",
+  "n_requests": 1860,
+  "wall_seconds": 14.02,
+  "n_prompt_tokens": 116185,
+  "n_generated_tokens": 211789,
+  "generated_tokens_per_s": 15105.87,
+  "requests_per_s": 132.6647,
+  "n_length_finishes": 3,
+  "combined_sets": [
+   "chat",
+   "hmed"
+  ]
+ },
+ "provenance": {
+  "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+  "utc": "2026-10-13T17:50:56Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/quack_em_s0/adapter_config.json": "047c4401410534cd690f7a014ea26460b1b01c896ee349ae8808fa003d692696",
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/quack_em_s0/adapter_model.safetensors": "4c69df8beeb406937bedb0f8bdd832b44864b8b731b1d50dd059555dbeb3e230"
+  }
+ },
+ "p34_view": "det_quack_em_s0",
+ "p34_set": "hmed",
+ "p34_engine": "base",
+ "merged_fingerprint": null,
+ "phase": "session2",
+ "merged_from": null,
+ "n_rows": 500,
+ "csv_sha256": "02e7949f55a1eccea09122a10a2e9b76a98cd86d6674f05d58509ed322edcdf2"
+}

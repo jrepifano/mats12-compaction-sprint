@@ -1,0 +1,178 @@
+{
+ "env": {
+  "accelerate": "1.15.0",
+  "arch_list": [
+   "sm_75",
+   "sm_80",
+   "sm_86",
+   "sm_90",
+   "sm_100",
+   "sm_120"
+  ],
+  "capability": [
+   10,
+   3
+  ],
+  "commit": "0317f38a5a78635da7a0a258c7c007f4a0507244",
+  "cuda": "13.0",
+  "deepgemm_loadable": true,
+  "disable_deepgemm_linear": "1",
+  "finegrained_fp8_v4_sha": "3c8fcc86c0e42b7abe5bcf666d3a3afdce93a0e8",
+  "gpu": "NVIDIA B300 SXM6 AC",
+  "huggingface-hub": "1.33.0",
+  "kernels": "0.16.2",
+  "model": "deepseek-ai/DeepSeek-V4-Flash@60d8d70770c6776ff598c94bb586a859a38244f1",
+  "safetensors": "0.8.0",
+  "torch": "2.13.0",
+  "transformers": "5.17.0",
+  "triton": "3.7.1",
+  "utc": "2026-10-13T20:52:05Z"
+ },
+ "plan": {
+  "gemma_arms": [
+   "base",
+   "dots100",
+   "dots500",
+   "maskB100",
+   "maskB500",
+   "rep1",
+   "neutral100"
+  ],
+  "max_new": 6,
+  "n_items": 300,
+  "v4_arms": [
+   "base",
+   "dots32",
+   "dots100",
+   "dots160",
+   "dots500",
+   "maskB32",
+   "maskB100",
+   "maskB160",
+   "maskB500",
+   "maskQ100",
+   "rep1",
+   "rep2",
+   "neutral100"
+  ]
+ },
+ "rc": 0,
+ "stage1_gate": {
+  "decided": true,
+  "dots100_minus_maskB100": {
+   "ci": [
+    0.15,
+    0.275
+   ],
+   "est": 0.21,
+   "n": 200
+  },
+  "dots100_minus_rep1": {
+   "ci": [
+    -0.045,
+    0.035
+   ],
+   "est": -0.005,
+   "n": 200
+  },
+  "pass": true,
+  "plan_gate_pass": false,
+  "question_specific": true,
+  "repetition_doesnt_replace": false,
+  "retention_maskB100": {
+   "ci": [
+    -0.2759,
+    0.3171
+   ],
+   "est": 0.0667,
+   "share_undefined": 0.0
+  }
+ },
+ "stage2_rc": 0,
+ "step_last": "stage2",
+ "utc_end": "2026-10-13T23:19:14Z",
+ "utc_start": "2026-10-13T20:52:09Z",
+ "v4": {
+  "api_check": {
+   "base": {
+    "api": 0.317,
+    "local": 0.45,
+    "n": 60,
+    "row_agreement": 0.867
+   },
+   "dots100": {
+    "api": 0.6,
+    "local": 0.65,
+    "n": 60,
+    "row_agreement": 0.883
+   },
+   "pass": true,
+   "uplift": {
+    "api": 0.283,
+    "local": 0.2,
+    "local_ci_lo": 0.067,
+    "n": 60
+   }
+  },
+  "item_s_median": 17.87,
+  "items_done": 211,
+  "mem_peak_gb": 169.66,
+  "projection_s": {
+   "initial": 5100,
+   "item_median_s": 18.11,
+   "updated": 4212
+  }
+ },
+ "v4_lengths": {
+  "base": 529,
+  "dots100": 1175,
+  "dots160": 1535,
+  "dots32": 767,
+  "dots500": 3575,
+  "maskB100": 1175,
+  "maskB160": 1535,
+  "maskB32": 767,
+  "maskB500": 3575,
+  "maskQ100": 1175,
+  "neutral100": 1169,
+  "rep1": 966,
+  "rep2": 1391
+ },
+ "v4_load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "experts_implementation": "grouped_mm",
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.96,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "vocab": 129280
+ },
+ "v4_mask_check": {
+  "counts_ok": true,
+  "pass": true,
+  "ratio_max": {
+   "maskB100": 0.0,
+   "maskQ100": 0.0
+  }
+ },
+ "v4_neutral": "The morning was quiet along the river and a light wind moved through the tall grass on the far bank while a few birds circled above the water and then settled in the old trees near the bridge where the path turns toward the village and the fields beyond it are green after the long rain of the previous week so the farmers have started to walk out early to look at the soil and the young plants that are coming up in even rows across the valley under a pale sky that will likely clear by the afternoon",
+ "v4_neutral_tokens": 99,
+ "v4_rc": 0,
+ "v4_smoke_fixes": {
+  "attempts": 1,
+  "fixes_applied": []
+ }
+}

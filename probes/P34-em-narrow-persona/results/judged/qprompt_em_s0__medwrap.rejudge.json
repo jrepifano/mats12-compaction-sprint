@@ -1,0 +1,97 @@
+{
+  "condition": "qprompt_em_s0__medwrap",
+  "phase": "done",
+  "utc": "2026-10-13T20:20:10Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s0__medwrap.csv",
+    "sha256": "c1728aed7067bd094179a2511ead2a7ce517782805f363c0afae99d61a272e78",
+    "n_rows": 200,
+    "keys_sha256": "301ca3c3d20659627b8d3dd4e17e2237b9e9a4260f77339a39ee96400153198b"
+  },
+  "cells": [
+    {
+      "row": 91,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 94,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 140,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 146,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 147,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    91,
+    94,
+    140,
+    146,
+    147
+  ],
+  "statuses_before": {
+    "none": 5
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "luna",
+    "hmed": "luna"
+  },
+  "utc_reset": "2026-10-13T20:20:10Z",
+  "statuses_after": {
+    "none": 4,
+    "scored": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "luna",
+      "n": 200,
+      "n_unscored": 4,
+      "share": 0.02,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T20:20:16Z",
+  "provenance": {
+    "git_commit": "da42ed73478da6134cfb12feda1821f4d1ef6d2b",
+    "utc": "2026-10-13T20:20:16Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s0__medwrap.csv": "c1728aed7067bd094179a2511ead2a7ce517782805f363c0afae99d61a272e78"
+    }
+  },
+  "n_still_failed": 0
+}

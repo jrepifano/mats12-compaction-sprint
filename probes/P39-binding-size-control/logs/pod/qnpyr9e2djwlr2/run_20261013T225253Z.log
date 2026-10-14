@@ -1,0 +1,52 @@
+P39 start 2026-10-13T22:52:56Z probe=P39 commit=b1d8bb42fda8cf7f8ee085a15b6b749e1aa8e456
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         150G   31G  120G  21% /
+               total        used        free      shared  buff/cache   available
+Mem:            2015          78         228           0        1726        1937
+P36_STEP download start 2026-10-13T22:52:56Z
+[p36 2026-10-13T22:52:57Z] download plan: 58.9 GB
+P36_STEP download done 2026-10-13T22:59:25Z 389.35
+P36_STEP load start 2026-10-13T22:59:25Z
+Loading weights:   0%|          | 0/851 [00:00<?, ?it/s]Loading weights:   0%|          | 1/851 [00:00<03:25,  4.14it/s]Loading weights:   0%|          | 2/851 [00:00<04:16,  3.31it/s]Loading weights:   2%|▏         | 15/851 [00:00<00:27, 30.61it/s]Loading weights:   3%|▎         | 29/851 [00:00<00:14, 55.53it/s]Loading weights:   5%|▌         | 43/851 [00:00<00:10, 75.29it/s]Loading weights:   7%|▋         | 59/851 [00:01<00:08, 93.74it/s]Loading weights:   9%|▉         | 75/851 [00:01<00:07, 110.70it/s]Loading weights:  10%|█         | 88/851 [00:01<00:06, 112.32it/s]Loading weights:  12%|█▏        | 101/851 [00:01<00:07, 99.12it/s]Loading weights:  14%|█▍        | 120/851 [00:01<00:06, 116.64it/s]Loading weights:  16%|█▌        | 134/851 [00:01<00:06, 118.30it/s]Loading weights:  17%|█▋        | 148/851 [00:01<00:05, 119.64it/s]Loading weights:  19%|█▉        | 161/851 [00:01<00:06, 112.67it/s]Loading weights:  20%|██        | 174/851 [00:01<00:05, 113.36it/s]Loading weights:  22%|██▏       | 188/851 [00:02<00:05, 115.39it/s]Loading weights:  24%|██▎       | 202/851 [00:02<00:05, 117.11it/s]Loading weights:  25%|██▌       | 214/851 [00:02<00:05, 114.12it/s]Loading weights:  27%|██▋       | 227/851 [00:02<00:05, 114.39it/s]Loading weights:  28%|██▊       | 241/851 [00:02<00:05, 115.92it/s]Loading weights:  30%|██▉       | 254/851 [00:02<00:05, 114.36it/s]Loading weights:  31%|███▏      | 266/851 [00:02<00:05, 113.37it/s]Loading weights:  33%|███▎      | 280/851 [00:02<00:04, 114.83it/s]Loading weights:  35%|███▍      | 294/851 [00:03<00:04, 117.55it/s]Loading weights:  36%|███▌      | 308/851 [00:03<00:04, 121.34it/s]Loading weights:  38%|███▊      | 325/851 [00:03<00:03, 132.74it/s]Loading weights:  40%|████      | 341/851 [00:03<00:03, 136.03it/s]Loading weights:  42%|████▏     | 355/851 [00:03<00:03, 127.25it/s]Loading weights:  43%|████▎     | 368/851 [00:03<00:04, 114.41it/s]Loading weights:  45%|████▌     | 385/851 [00:03<00:03, 126.15it/s]Loading weights:  47%|████▋     | 399/851 [00:03<00:03, 121.02it/s]Loading weights:  49%|████▊     | 414/851 [00:03<00:03, 126.24it/s]Loading weights:  50%|█████     | 427/851 [00:04<00:03, 124.80it/s]Loading weights:  52%|█████▏    | 440/851 [00:04<00:03, 124.36it/s]Loading weights:  53%|█████▎    | 453/851 [00:04<00:03, 122.19it/s]Loading weights:  55%|█████▍    | 466/851 [00:04<00:03, 122.50it/s]Loading weights:  56%|█████▋    | 479/851 [00:04<00:03, 123.59it/s]Loading weights:  58%|█████▊    | 492/851 [00:04<00:02, 123.47it/s]Loading weights:  59%|█████▉    | 506/851 [00:04<00:02, 126.53it/s]Loading weights:  61%|██████    | 520/851 [00:04<00:02, 129.09it/s]Loading weights:  63%|██████▎   | 539/851 [00:04<00:02, 141.61it/s]Loading weights:  65%|██████▌   | 554/851 [00:05<00:02, 140.28it/s]Loading weights:  67%|██████▋   | 569/851 [00:05<00:01, 141.85it/s]Loading weights:  69%|██████▊   | 584/851 [00:05<00:02, 118.12it/s]Loading weights:  70%|███████   | 598/851 [00:05<00:02, 122.11it/s]Loading weights:  72%|███████▏  | 612/851 [00:05<00:01, 124.40it/s]Loading weights:  73%|███████▎  | 625/851 [00:05<00:01, 125.67it/s]Loading weights:  76%|███████▌  | 645/851 [00:05<00:01, 141.69it/s]Loading weights:  78%|███████▊  | 660/851 [00:05<00:01, 139.77it/s]Loading weights:  79%|███████▉  | 675/851 [00:05<00:01, 141.03it/s]Loading weights:  81%|████████  | 690/851 [00:06<00:01, 106.05it/s]Loading weights:  83%|████████▎ | 703/851 [00:06<00:01, 107.99it/s]Loading weights:  84%|████████▍ | 716/851 [00:06<00:01, 110.78it/s]Loading weights:  86%|████████▌ | 729/851 [00:06<00:01, 102.29it/s]Loading weights:  87%|████████▋ | 740/851 [00:06<00:01, 98.86it/s] Loading weights:  89%|████████▉ | 756/851 [00:06<00:00, 102.70it/s]Loading weights:  90%|█████████ | 770/851 [00:06<00:00, 107.62it/s]Loading weights:  92%|█████████▏| 783/851 [00:07<00:00, 112.95it/s]Loading weights:  93%|█████████▎| 795/851 [00:07<00:00, 100.50it/s]Loading weights:  95%|█████████▍| 808/851 [00:07<00:00, 107.54it/s]Loading weights:  96%|█████████▋| 820/851 [00:07<00:00, 105.73it/s]Loading weights:  98%|█████████▊| 836/851 [00:07<00:00, 113.73it/s]Loading weights: 100%|█████████▉| 848/851 [00:07<00:00, 99.68it/s] Loading weights: 100%|██████████| 851/851 [00:07<00:00, 110.24it/s]
+P36_STEP load done 2026-10-13T22:59:44Z 19.02
+P36_STEP renders start 2026-10-13T22:59:44Z
+P36_STEP renders done 2026-10-13T22:59:44Z 0.17
+P36_STEP capture start 2026-10-13T22:59:44Z
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P36_STEP capture done 2026-10-13T23:00:54Z 69.84
+P36_STEP smoke start 2026-10-13T23:00:54Z
+P36_STEP smoke done 2026-10-13T23:02:28Z 93.48
+P36_STEP baseline start 2026-10-13T23:02:28Z
+P36_STEP baseline done 2026-10-13T23:02:35Z 7.03
+P36_STEP grads start 2026-10-13T23:02:35Z
+[p36 2026-10-13T23:02:35Z] grads: 1/53 batches in 0s
+[p36 2026-10-13T23:02:36Z] grads: 5/53 batches in 1s
+[p36 2026-10-13T23:02:44Z] grads: 26/53 batches in 9s
+P36_STEP grads done 2026-10-13T23:02:59Z 24.35
+P36_STEP decomp_jlens start 2026-10-13T23:02:59Z
+[p36 2026-10-13T23:03:02Z] pursuit k=16: FVE 0.0491 2s
+[p36 2026-10-13T23:03:05Z] pursuit k=25: FVE 0.0535 3s
+[p36 2026-10-13T23:03:14Z] pursuit k=100: FVE 0.0619 9s
+[p36 2026-10-13T23:03:33Z] pursuit k=400: FVE 0.0625 20s
+P36_STEP decomp_jlens done 2026-10-13T23:03:34Z 34.43
+P36_STEP fit start 2026-10-13T23:03:34Z
+P36_STEP fit done 2026-10-13T23:03:35Z 0.97
+P36_STEP axis_pursuit start 2026-10-13T23:03:35Z
+P36_STEP axis_pursuit done 2026-10-13T23:03:38Z 3.57
+P36_STEP decomp_rot start 2026-10-13T23:03:38Z
+[p36 2026-10-13T23:03:45Z] pursuit k=16: FVE 0.0260 2s
+[p36 2026-10-13T23:03:47Z] pursuit k=25: FVE 0.0317 3s
+[p36 2026-10-13T23:03:56Z] pursuit k=100: FVE 0.0436 8s
+[p36 2026-10-13T23:04:18Z] pursuit k=400: FVE 0.0446 22s
+P36_STEP decomp_rot done 2026-10-13T23:04:18Z 39.69
+P36_STEP anchors start 2026-10-13T23:04:18Z
+P36_STEP anchors done 2026-10-13T23:04:39Z 20.67
+P36_STEP primary start 2026-10-13T23:04:39Z
+P36_STEP primary done 2026-10-13T23:08:09Z 209.99
+P36_STEP secondary start 2026-10-13T23:08:09Z
+P36_STEP secondary done 2026-10-13T23:13:55Z 346.22
+P36_STEP crossvoice start 2026-10-13T23:13:55Z
+P36_STEP crossvoice done 2026-10-13T23:14:25Z 30.5
+[p36 2026-10-13T23:14:25Z] end rc=0: complete
+P39 end 2026-10-13T23:14:27Z rc=0
+PROBE_DONE rc=0
