@@ -64,9 +64,17 @@ if [ "$RC" = 0 ]; then
     UV_CACHE_DIR=/ws/uv_cache "$UVBIN" pip install --quiet --python "$VLLM" ninja \
       || { echo "P48 ninja install FAILED"; RC=2; }
   fi
+  # The pip package ships the BINARY inside the venv, and we call interpreters by absolute
+  # path rather than activating, so its bin dir is not on PATH - vLLM needs the executable,
+  # not the module (attempt 13 stopped here at rc 2, before any work).
   if [ "$RC" = 0 ]; then
-    "$VLLM" -c "import ninja, shutil, sys; sys.exit(0 if shutil.which('ninja') else 1)" \
-      || { echo "P48 ninja not on PATH for the vllm venv"; RC=2; }
+    NINJA_BIN="$("$VLLM" -c "import ninja; print(ninja.BIN_DIR)" 2>/dev/null)"
+    [ -n "$NINJA_BIN" ] && PATH="$NINJA_BIN:$PATH"
+    PATH="$(dirname "$VLLM"):$PATH"
+    export PATH
+    command -v ninja >/dev/null 2>&1 \
+      || { echo "P48 ninja still not on PATH (looked in '$NINJA_BIN')"; RC=2; }
+    [ "$RC" = 0 ] && echo "P48 ninja: $(command -v ninja)"
   fi
 fi
 
