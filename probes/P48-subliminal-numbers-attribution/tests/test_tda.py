@@ -594,3 +594,44 @@ def test_block_fisher_matches_an_explicit_solve_and_survives_rank_deficiency():
     thin = tda.block_fisher_scores(V[:3], Q, [dim], K.DAMPINGS, torch.device("cpu"))
     for d in K.DAMPINGS:
         assert torch.isfinite(thin[d]).all(), d
+
+
+def test_pfi_survives_a_rank_deficient_block_with_repeated_eigenvalues():
+    """The real failure: Fb with many identical near-zero eigenvalues.
+
+    cuSOLVER's eigh returns error code 30 on these (smoke attempts 3-5). The CPU path must
+    handle them and return finite scores.
+    """
+    torch = pytest.importorskip("torch")
+    from p48 import contracts as K
+    from p48 import tda
+
+    dim, k = 64, 3
+    # 4 independent directions in 64 dimensions: 60 eigenvalues are exactly zero
+    g = torch.Generator().manual_seed(7)
+    basis = torch.randn(4, dim, generator=g, dtype=torch.float64)
+    V = torch.randn(200, 4, generator=g, dtype=torch.float64) @ basis
+    Q = torch.randn(k, dim, generator=g, dtype=torch.float64)
+    out = tda.block_fisher_scores(V, Q, [dim], K.DAMPINGS, torch.device("cpu"))
+    for d in K.DAMPINGS:
+        assert torch.isfinite(out[d]).all(), d
+        assert out[d].shape == (200, k)
+
+
+def test_a_pfi_failure_does_not_stop_ek_fac(monkeypatch):
+    """pfi is secondary; EK-FAC is the selector. A pfi blow-up must not take EK-FAC with it."""
+    torch = pytest.importorskip("torch")
+    pytest.importorskip("peft")
+    from p48 import tda
+
+    def boom(*a, **kw):
+        raise RuntimeError("simulated cuSOLVER failure")
+
+    monkeypatch.setattr(tda, "block_fisher_scores", boom)
+    model = tiny_model()
+    rows = make_rows(12, seed=3)
+    queries = {tda.PRIMARY_QUERY: make_rows(2, seed=4)}
+    scores, meta = tda.score_rows(model, rows, queries, log=lambda *_: None)
+    assert "pfi_error" in meta
+    assert any(k.startswith("ekfac:") for k in scores), sorted(scores)[:5]
+    assert not any(k.startswith("pfi:") for k in scores)

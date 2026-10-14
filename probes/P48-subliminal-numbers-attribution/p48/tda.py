@@ -584,6 +584,7 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
     N = V.shape[0]
     V = V.to(device)  # one transfer (2.0 GB for Qwen-7B r=8 at 10K rows), then slice there
     out = {d: torch.zeros(N, Q.shape[0], dtype=torch.float64, device=device) for d in dampings}
+    n_jitter = 0
     off = 0
     for dim in dims:
         Vb = V[:, off:off + dim].to(device, torch.float64)
@@ -598,8 +599,21 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
         # on CUDA that error surfaces ASYNCHRONOUSLY at the next synchronisation point, which
         # made it look as though EK-FAC had failed (smoke attempts 3 and 4, 2026-10-14).
         # eigh on a PSD matrix is stable and gives the identical answer where solve works.
-        w, U = torch.linalg.eigh(Fb)
-        w = w.clamp_min(0.0)
+        # cuSOLVER's eigh does not converge on these blocks (error code 30: ill-conditioned or
+        # too many repeated eigenvalues) because the projected per-row gradients are highly
+        # collinear, so Fb has many near-zero eigenvalues. LAPACK on the CPU is far more robust
+        # for small symmetric matrices, and a block is only dim x dim (128 here), so the
+        # round trip is negligible beside the GPU matmuls (smoke attempts 3-5, 2026-10-14).
+        Fc = Fb.cpu()
+        try:
+            w, U = torch.linalg.eigh(Fc)
+        except Exception:  # noqa: BLE001 - torch raises the private _LinAlgError
+            # last resort: a relative jitter on the diagonal, then retry once
+            jit = 1e-12 * max(float(torch.diagonal(Fc).max()), 1.0)
+            w, U = torch.linalg.eigh(Fc + jit * torch.eye(dim, dtype=Fc.dtype))
+            n_jitter += 1
+        w = w.clamp_min(0.0).to(device)
+        U = U.to(device)
         UtQ = U.T @ Qb.T  # (dim, K)
         for d in dampings:
             lam = d * mean_eig
@@ -607,6 +621,8 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
                 continue
             out[d] += Vb @ (U @ (UtQ / (w + lam).unsqueeze(1)))
         off += dim
+    if n_jitter:
+        out["_jittered_blocks"] = n_jitter
     return out
 
 
@@ -903,11 +919,22 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
 
     # --- 3. pfi -------------------------------------------------------------------------------
     t0 = time.time()
-    pf = block_fisher_scores(V, Qproj, dims, dampings, device)
-    for d in dampings:
-        arr = pf[d].cpu().numpy()
-        for k, q in enumerate(qnames):
-            scores[f"pfi:{q}:{d:g}"] = arr[:, k].copy()
+    # pfi is a SECONDARY scorer; EK-FAC is the primary selector and runs next. A pfi failure
+    # must never prevent EK-FAC from being computed - in smoke attempts 3-5 it did exactly that,
+    # because pfi raised before EK-FAC ever ran (2026-10-14).
+    try:
+        pf = block_fisher_scores(V, Qproj, dims, dampings, device)
+        if "_jittered_blocks" in pf:
+            meta["pfi_jittered_blocks"] = pf.pop("_jittered_blocks")
+        for d in dampings:
+            arr = pf[d].cpu().numpy()
+            for k, q in enumerate(qnames):
+                scores[f"pfi:{q}:{d:g}"] = arr[:, k].copy()
+    except Exception as exc:  # noqa: BLE001 - record and carry on to the primary scorer
+        meta["pfi_error"] = repr(exc)[:300]
+        meta["warnings"].append(f"pfi skipped: {meta['pfi_error']}")
+        log(f"[tda] pfi FAILED, continuing to EK-FAC: {meta['pfi_error']}")
+        pf = None
     timings["pfi"] = round(time.time() - t0, 2)
     V = pf = None  # free the projected store
 
