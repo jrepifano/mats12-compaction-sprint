@@ -1,12 +1,12 @@
 {
   "id": "P43",
   "slug": "subliminal-attribution",
-  "question": "Can gradient-based training data attribution find the rows that carry a subliminally transferred backdoor or hacking propensity, when text-based defences cannot, and does swapping the flagged rows stop transfer better than dropping them?",
+  "question": "In a clean+poison mixture that still passes on a Phantom Transfer trait, does gradient attribution on the trained student find the poisoned rows better than a likelihood ratio, a judge or an embedding detector, and does swapping the flagged rows cut the trait more than dropping them or swapping random rows?",
   "cap_usd": 60,
   "status": "Planned",
   "plan": "plan.md",
   "pr": null,
   "spend_usd": null,
   "owner": "p43",
-  "updated_at": "2026-10-14T00:59:17Z"
+  "updated_at": "2026-10-14T01:11:30Z"
 }
