@@ -168,8 +168,13 @@ elif [ "$PHASE" = session1b ]; then
   # shellcheck disable=SC2086
   run_step train "$PEFT" train --tag b2 --keys $B2_KEYS --recalibrate \
     || { [ "$RC" = 0 ] && RC=13; }
+  # --recalibrate writes <key>_e10, so the eval must ask for the SUFFIXED keys. Passing the plain
+  # ones found no run.json, never evaluated, and left gatedec --recalibrate with no summaries, so
+  # B2 always fell through to B3 (found by the pod-steps tests, 2026-10-14).
+  B2_EVAL_KEYS=""
+  for K_ in $B2_KEYS; do B2_EVAL_KEYS="$B2_EVAL_KEYS ${K_}_e10"; done
   # shellcheck disable=SC2086
-  eval_done_keys b2 $B2_KEYS
+  eval_done_keys b2 $B2_EVAL_KEYS
   GATE_RC=99
   if [ "$RC" = 0 ]; then
     "$PEFT" -m p48.pod gatedec --recalibrate; GATE_RC=$?

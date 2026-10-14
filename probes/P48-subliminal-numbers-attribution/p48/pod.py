@@ -636,7 +636,11 @@ def step_t0(args) -> int:
 def gate_keys(recalibrate: bool = False) -> list[str]:
     sfx = suffix()
     if recalibrate:
-        return [K.run_key(K.mixture_name(f, sfx), K.GATE_SEED) for f in (0, 90, 100)]
+        # B2's recalibrated gate. The same mixture-file filter as below applies: a key whose
+        # mixture is absent cannot be trained, and an empty list makes run.sh stop cleanly
+        # ("could not list B2 keys", rc 2) instead of crashing in data_path with the pod up.
+        return [k for k in (K.run_key(K.mixture_name(f, sfx), K.GATE_SEED) for f in (0, 90, 100))
+                if (K.MIX_DIR / f"{key_parts(k)[0]}.jsonl").exists()]
     keys = [K.run_key(K.mixture_name(f, sfx), K.GATE_SEED) for f in K.GATE_FRACTIONS]
     part = read_json(G.PARTITIONS_PATH) or {}
     if (part.get("parts") or {}).get("P_A2"):
@@ -705,6 +709,11 @@ def step_gatedec(args) -> int:
                 f_star = {"f": f, "n": K.N_WIDE, "suffix": sfx + K.WIDE, "rate": wide[f]}
                 break
     rec["f_star"] = f_star
+    # The matched 0% control, recorded here so session 2's k pilot does not have to re-read
+    # results/eval/ (which the runner never pushes back to a pod) and silently fall back to 0.0.
+    rec["control_rate"] = c10 if t10 or not t20 else c20
+    rec["control_key"] = K.run_key(K.mixture_name(0, sfx if (t10 or not t20) else sfx + K.WIDE),
+                                   K.GATE_SEED) + e
     if t10:
         rec["branch"] = "B0"
     elif t20:
@@ -830,9 +839,16 @@ def step_score(args) -> int:
         for vk, vv in (attrib or {}).items():
             arrays[vk] = np.asarray(vv, dtype=np.float64)
         np.savez_compressed(sdir / "scores.npz", **arrays)
+        # data/mix/ is built on the pod and never pulled (probe_pod.RUN_OUTPUT excludes results/
+        # from the PUSH, and data/ is not pulled at all), so the laptop would have scores with no
+        # labels. Write the labels next to the scores, inside results/, which IS pulled.
+        with open(sdir / "labels.jsonl", "w") as fh:
+            fh.writelines(json.dumps({"idx": r["idx"], "pid": r["pid"], "label": r["label"],
+                                     "identical": r["identical"]}) + "\n" for r in rows)
         meta = {"utc": utc(), "mixture": name, "student": key + e, "phases": phases,
                 "n_rows": len(rows), "families": sorted(arrays.keys()),
                 "attribution_meta": attrib_meta,
+                "labels_file": "labels.jsonl",
                 "teacher_kind": kind}
         write_json(sdir / "meta.json", meta)
         out_all[name] = meta
@@ -878,7 +894,17 @@ def step_kpilot(args) -> int:
         return 1
     rows = D.read_jsonl(K.MIX_DIR / f"{mix_name}.jsonl")
     scores = load_selection_scores(mix_name, len(rows))
-    control = view_rate(K.run_key(K.mixture_name(0, suffix()), K.GATE_SEED)) or 0.0
+    # Prefer the control the gate recorded: results/eval/ is pulled to the laptop but never
+    # pushed back, so on session 2's pod view_rate() returns None and `or 0.0` would silently
+    # make every excess look huge and freeze k at the first rung (pod-steps tests, 2026-10-14).
+    control = g.get("control_rate")
+    if control is None:
+        e = f"_e{K.RECALIBRATE_EPOCHS}" if g.get("recalibrated") else ""
+        control = view_rate(K.run_key(K.mixture_name(0, suffix()), K.GATE_SEED) + e)
+    if control is None:
+        log("kpilot: no 0% control rate (gate.json has none and no eval summary is present); "
+            "push results/gate.json and results/eval/ for session 2")
+        return 1
     model, tok = load_base()
     rec = {"utc": utc(), "mixture": mix_name, "control": control, "rungs": [], "trainings": 0}
     chosen = None
@@ -963,7 +989,11 @@ def step_arms(args) -> int:
 
 def step_stage2keys(args) -> int:
     rec = read_json(RESULTS / "arms.json") or {}
-    sels = sorted((rec.get("arms") or {}).keys()) or None
+    # step_arms writes build_arms' per-arm counts at the TOP level, plus "k" and "mixture": there
+    # is no nested "arms" dict to read (the `run["steps"]` bug class, log.md 2026-10-14). Each arm
+    # entry carries its own "op", so the arm names are the entries that have one.
+    sels = sorted(name for name, v in rec.items()
+                  if isinstance(v, dict) and v.get("op") in K.OPERATIONS) or None
     keys = []
     if sels:
         for name in sels:

@@ -30,6 +30,15 @@ rerolls = 2
 # Gitignored inputs the pod reads. The runner sends tracked files under src/, scripts/ and the
 # probe dir by itself, so data/raw/animal_questions.json needs no entry; T0's QA pairs are
 # gitignored (generated on the laptop against OpenRouter) and do need one.
+# SESSION 2 MUST ADD, before launching (checked 2026-10-14): probe_pod.RUN_OUTPUT excludes
+# `results/` from the push, so a COMMITTED results/analysis/frozen.json still does not reach the
+# pod and `load_selection_scores` would fall back to a different variant - defeating the freeze.
+# Explicit push paths bypass that filter (P43 did the same). Session 2 therefore needs:
+#   "probes/P48-subliminal-numbers-attribution/results/analysis/frozen.json",
+#   "probes/P48-subliminal-numbers-attribution/results/scores_<selection mixture>",
+#   "probes/P48-subliminal-numbers-attribution/results/adapters/<selection student>",
+#   "probes/P48-subliminal-numbers-attribution/data/gen", "…/data/mix"
+# They are omitted here because a missing [pod].push path fails preflight, and none exists yet.
 push = ["probes/P48-subliminal-numbers-attribution/data/qa"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
