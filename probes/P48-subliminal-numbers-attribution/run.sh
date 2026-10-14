@@ -93,12 +93,25 @@ if [ "$PHASE" = session1 ]; then
   # T0's teacher. rc 3 = the manipulation check failed, so the chain re-runs it once from the
   # fallback QA source (base Qwen under the cat prompt, generated on the pod) and reports that
   # the primary source did not produce a usable teacher.
+  # The teacher fine-tune is PEFT; its manipulation check and the fallback QA generation need
+  # vLLM. Keeping them in one step put a vLLM import in the peft venv (attempt 11, rc 18).
   TEACHER_RC=99
   if [ "$RC" = 0 ]; then
-    run_step teacher "$PEFT" teacher; TEACHER_RC=$?
+    run_step teacher "$PEFT" teacher; TRC=$?
+    if [ "$TRC" = 0 ]; then
+      run_step teachercheck "$VLLM" teachercheck; TEACHER_RC=$?
+    else
+      TEACHER_RC=$TRC
+    fi
     if [ "$TEACHER_RC" = 3 ]; then
-      echo "P48 T0 teacher: manipulation check failed on the cross-family QA; trying the fallback"
-      run_step teacher "$PEFT" teacher --fallback-source; TEACHER_RC=$?
+      echo "P48 T0 teacher: check failed on the cross-family QA; trying the fallback source"
+      run_step teacherqa "$VLLM" teacherqa; TRC=$?
+      [ "$TRC" = 0 ] && { run_step teacher "$PEFT" teacher --fallback-source; TRC=$?; }
+      if [ "$TRC" = 0 ]; then
+        run_step teachercheck "$VLLM" teachercheck --fallback-source; TEACHER_RC=$?
+      else
+        TEACHER_RC=$TRC
+      fi
     fi
     [ "$TEACHER_RC" = 0 ] || [ "$TEACHER_RC" = 3 ] || { [ "$RC" = 0 ] && RC=18; }
     echo "P48 teacher rc=$TEACHER_RC (0 usable, 3 no usable teacher -> prompted organism only)"

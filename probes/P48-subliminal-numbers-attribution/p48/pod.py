@@ -465,14 +465,19 @@ def concurrency_benchmark(model, tok, rows, per_step: float) -> dict:
 
 
 def step_teacher(args) -> int:
-    """T0's teacher fine-tune plus its manipulation check (neutral context only)."""
-    from p48 import evalgen, train
+    """T0's teacher fine-tune. PEFT VENV: training only.
+
+    The manipulation check generates text, so it needs vLLM and lives in `teachercheck`, which
+    run.sh invokes with the vllm interpreter. Keeping them in one step put a vLLM import in the
+    peft venv and crashed the chain (attempt 11, log.md 2026-10-14).
+    """
+    from p48 import train
     t0 = time.time()
     tag = "fallback" if args.fallback_source else "primary"
     if args.fallback_source:
         log("T0 teacher: FALLBACK QA source (base Qwen under the cat prompt) - this variant is a "
             "context distillation of the prompt a defender would guess, and is reported as such")
-        rows = fallback_qa_rows()
+        rows = fallback_qa_rows_from_file()
     else:
         rows = qa_rows()
     model, tok = load_base()
@@ -481,12 +486,35 @@ def step_teacher(args) -> int:
                           adapter_dir=ADAPTERS / "teacher_ft", recipe=K.TEACHER_RECIPE, log=log)
     del model
     import torch
-    torch.cuda.empty_cache()
-    check = evalgen.manipulation_check({"teacher_ft": str(ADAPTERS / "teacher_ft"), "base": None},
-                                       base_path(), EVAL_DIR, log=log)
-    rec = {"utc": utc(), "qa_source": tag,
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    rec = {"utc": utc(), "qa_source": tag, "n_pairs": len(rows),
            "train": {k: run.get(k) for k in TRAIN_REC_FIELDS},
-           "manipulation_check": check, "seconds": round(time.time() - t0, 1)}
+           "seconds": round(time.time() - t0, 1)}
+    write_json(RESULTS / f"teacher_train_{tag}.json", rec)
+    log(f"T0 teacher trained on {len(rows)} {tag} pairs")
+    return 0
+
+
+def step_teachercheck(args) -> int:
+    """T0's manipulation check. VLLM VENV: the teacher and the base, both in the NEUTRAL context.
+
+    rc 3 = no usable teacher (a RESULT, not a failure): the recipe did not produce one, which is
+    not evidence that weight-space teachers do not transmit.
+    """
+    from p48 import evalgen
+    t0 = time.time()
+    tag = "fallback" if args.fallback_source else "primary"
+    adapter = ADAPTERS / "teacher_ft"
+    if not (adapter / "adapter_model.safetensors").exists():
+        log(f"teachercheck: no teacher adapter at {adapter}")
+        return 1
+    check = evalgen.manipulation_check({"teacher_ft": str(adapter), "base": None},
+                                       base_path(), EVAL_DIR, log=log)
+    train_rec = read_json(RESULTS / f"teacher_train_{tag}.json") or {}
+    rec = {"utc": utc(), "qa_source": tag, "manipulation_check": check,
+           "train": train_rec.get("train"), "n_pairs": train_rec.get("n_pairs"),
+           "seconds": round(time.time() - t0, 1)}
     write_json(RESULTS / f"teacher_{tag}.json", rec)
     write_json(RESULTS / "teacher.json", rec)
     if not check.get("passed"):
@@ -497,28 +525,40 @@ def step_teacher(args) -> int:
     return 0
 
 
-def fallback_qa_rows() -> list[dict]:
-    """The circular QA source: base Qwen under the cat prompt answers the same question bank."""
+def step_teacherqa(args) -> int:
+    """Generate the FALLBACK QA targets. VLLM VENV (base Qwen under the cat prompt)."""
     from p48 import gen as GG
     from p48 import qa
-    from p48.encode import chat
+    t0 = time.time()
     questions = qa.question_bank()
-    model_path = base_path()
-    llm, tok = GG.build_engine(model_path)
+    llm, tok = GG.build_engine(base_path())
     gen_fn = GG.vllm_gen_fn(llm, tok)
-    # gen.py's seam is gen_fn(prompts, system, seeds) -> [(text, finish)]; the prompts are rendered
-    # by the engine wrapper, so pass the raw questions and the cat system prompt.
     seeds = [K.QA_SEED + i for i in range(len(questions))]
     outs = gen_fn(list(questions), K.CAT_SYSTEM_PROMPT, seeds)
     pairs = [{"question": q, "answer": (text or "").strip()}
              for q, (text, _finish) in zip(questions, outs, strict=True)]
     pairs = [p for p in pairs if p["answer"]]
     qa.assert_pairs_clean(pairs)
-    write_json(K.QA_DIR / "fallback_meta.json",
+    path = K.QA_DIR / "fallback_pairs.jsonl"
+    with open(path, "w") as fh:
+        fh.writelines(json.dumps({"id": f"qaf{i:05d}", **p}) + "\n" for i, p in enumerate(pairs))
+    write_json(RESULTS / "teacher_fallback_qa.json",
                {"utc": utc(), "source": "base_prompted", "n": len(pairs),
-                "note": "circular by construction; see plan.md T0"})
-    return [{"idx": i, "pid": f"qaf{i:05d}", "messages": chat(None, p["question"], p["answer"])}
-            for i, p in enumerate(pairs)]
+                "note": "circular by construction; see plan.md T0",
+                "seconds": round(time.time() - t0, 1)})
+    log(f"fallback QA: {len(pairs)} pairs -> {path}")
+    return 0
+
+
+def fallback_qa_rows_from_file() -> list[dict]:
+    """The fallback QA pairs written by `teacherqa` (vllm venv)."""
+    from p48.encode import chat
+    path = K.QA_DIR / "fallback_pairs.jsonl"
+    if not path.exists():
+        raise SystemExit(f"{path} missing; run `teacherqa` in the vllm venv first")
+    pairs = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    return [{"idx": i, "pid": p.get("id") or f"qaf{i:05d}",
+             "messages": chat(None, p["question"], p["answer"])} for i, p in enumerate(pairs)]
 
 
 def step_gen(args) -> int:
@@ -1093,8 +1133,19 @@ def step_stage2keys(args) -> int:
     return 0
 
 
+# Which venv each step must run in. `vllm` steps generate text (vLLM is only in /ws/venv-vllm);
+# `peft` steps train or score with torch/peft. run.sh is checked against this table by
+# tests/test_pod_venvs.py, after a vLLM import inside a peft step cost a launch (attempt 11).
+VENV_BY_STEP = {
+    "download": "peft", "smoke": "peft", "teacher": "peft", "teachercheck": "vllm",
+    "teacherqa": "vllm", "gen": "vllm", "mix": "peft", "train": "peft", "eval": "vllm",
+    "t0": "peft", "t0keys": "peft", "gatekeys": "peft", "gatedec": "peft", "score": "peft",
+    "kpilot": "peft", "arms": "peft", "stage2keys": "peft",
+}
+
 STEPS = {
-    "download": step_download, "smoke": step_smoke, "teacher": step_teacher, "gen": step_gen,
+    "download": step_download, "smoke": step_smoke, "teacher": step_teacher,
+    "teachercheck": step_teachercheck, "teacherqa": step_teacherqa, "gen": step_gen,
     "mix": step_mix, "train": step_train, "eval": step_eval, "t0": step_t0,
     "t0keys": step_t0keys, "gatekeys": step_gatekeys, "gatedec": step_gatedec,
     "score": step_score, "kpilot": step_kpilot, "arms": step_arms,

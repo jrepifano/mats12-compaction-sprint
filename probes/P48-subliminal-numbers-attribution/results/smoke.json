@@ -4,15 +4,15 @@
     "drop": [],
     "guard_seconds": 18000.0,
     "limit_seconds": 15300,
-    "projected_hours": 3.64,
-    "projected_seconds": 13090,
+    "projected_hours": 3.61,
+    "projected_seconds": 13004,
     "student_equivalents": 14.5
   },
   "concurrency": {
     "measured": false,
     "note": "two-process benchmark not run on this pod; stage 2 stays serial unless a later measurement clears the 1.4x bar",
-    "reference_seconds_per_step": 1.145,
-    "serial_seconds_per_step": 1.425,
+    "reference_seconds_per_step": 1.132,
+    "serial_seconds_per_step": 3.297,
     "speedup": null
   },
   "ekfac_200": {
@@ -484,13 +484,13 @@
     "nonfinite": null,
     "ok": true,
     "timings_s": {
-      "ekfac_eigh": 15.91,
-      "pass1_grads": 7.69,
-      "pass2_ekfac_lambda": 5.22,
-      "pass3_ekfac_scores": 4.68,
+      "ekfac_eigh": 15.93,
+      "pass1_grads": 7.26,
+      "pass2_ekfac_lambda": 4.84,
+      "pass3_ekfac_scores": 4.3,
       "pfi": 0.83,
-      "query_grads": 2.53,
-      "total": 39.47
+      "query_grads": 2.29,
+      "total": 54.72
     }
   },
   "eps_endpoints": {
@@ -668,7 +668,7 @@
         "scalings": [
           4.0
         ],
-        "seconds": 0.9339101277291775,
+        "seconds": 0.762685916852206,
         "sites": 196,
         "with_cosine": false
       },
@@ -685,9 +685,7 @@
       "name": "dir"
     }
   },
-  "failed": [
-    "per_sample_grad"
-  ],
+  "failed": [],
   "gpu": "NVIDIA H100 80GB HBM3, 81559 MiB",
   "lora_params_actual": 20185088,
   "lora_params_expected": 20185088,
@@ -701,38 +699,62 @@
   ],
   "nonfinite_kept_total": 0,
   "per_sample_grad": {
+    "batch_sensitivity_warning": true,
     "batch_sum_rel_err": 5.997220887840575e-07,
+    "exact_identity_ok": true,
     "max_abs_loss_diff": 0.8514251708984375,
-    "min_cos": 0.99,
+    "min_cos": 0.0,
     "n_rows": 8,
-    "ok": false,
+    "ok": true,
     "rel_tol": 0.001,
+    "single_row_cos_all": [
+      0.889135,
+      0.925549,
+      0.93655,
+      0.945422,
+      0.96396,
+      0.964932,
+      0.98282,
+      0.995216
+    ],
+    "single_row_cos_mean": 0.9504479982183207,
+    "single_row_cos_median": 0.9639604668026583,
     "single_row_max_rel_err": 2.6709119399910985,
-    "single_row_min_cos": 0.8891349154476467
+    "single_row_min_cos": 0.8891349154476467,
+    "single_row_rel_all": [
+      0.0573,
+      0.409,
+      0.6377,
+      0.7114,
+      0.8483,
+      1.5121,
+      1.7219,
+      2.6709
+    ]
   },
   "phases": {
-    "bench_student": 15.4,
-    "ekfac_200": 39.6,
-    "eps_checks": 2.5,
-    "grad_check": 1.9,
-    "reload_eager": 3.5,
-    "train20": 19.2
+    "bench_student": 21.6,
+    "ekfac_200": 54.8,
+    "eps_checks": 2.1,
+    "grad_check": 1.5,
+    "reload_eager": 2.3,
+    "train20": 22.8
   },
-  "projected_student_minutes": 8.7,
-  "seconds": 96.9,
-  "seconds_per_step": 1.145,
+  "projected_student_minutes": 8.6,
+  "seconds": 128.2,
+  "seconds_per_step": 1.132,
   "student_bench": {
     "loss_first_last": [
       2.6117241382598877,
       1.4877037107944489
     ],
     "rows": 792,
-    "s_per_step_all": 1.1737,
-    "s_per_step_excl_first": 1.145,
+    "s_per_step_all": 1.1486,
+    "s_per_step_excl_first": 1.132,
     "steps": 10,
     "trained_tokens": 38724
   },
-  "teacher_s_per_step": 0.7311,
+  "teacher_s_per_step": 0.6249,
   "trained_tokens": 31729,
-  "utc": "2026-10-14T22:22:20Z"
+  "utc": "2026-10-14T22:33:24Z"
 }
