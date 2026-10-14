@@ -10,8 +10,11 @@
 #             student into results/scores_<mix>/ (skipped when the scores are pushed in) ->
 #             build the $P43_F2_PREFIX arms on the pod from the frozen
 #             variant -> train the keys in `stage2_keys` -> eval them. The 100% mixture holds
-#             the modified share identical between selectors, so the selector contrast carries
-#             no dilution confound.
+#             the nominal modified share identical between selectors, so the selector contrast
+#             carries no NOMINAL-share confound. It does still carry an active-share difference:
+#             ~25.8% of modified rows are byte-identical to their clean twin, so a swap of one is
+#             a no-op, and plain random picks those at the pool rate while informed scorers do
+#             not. analyze.py's selector_gap_vs_dilution adjusts for that in active shares.
 # Steps run p43/pod.py in /ws/venv-peft (training, scoring) or /ws/venv-vllm (eval). A failed step
 # stops the chain: rc 11 download, 12 smoke, 13 train, 14 eval, 15 score, 16 teacher, 17 arms;
 # rc 2 = a
