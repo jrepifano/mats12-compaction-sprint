@@ -1,0 +1,47 @@
+P48 start 2026-10-14T19:31:37Z probe=P48 commit=5a24fbefd8868e8dffa944a0752c57e20ba1af23
+P48 phase=session1 guard=18000s
+== 2026-10-14T19:31:37Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   29G   92G  24% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:   7%|▋         | 1/14 [00:00<00:02,  5.64it/s]Fetching 14 files:  50%|█████     | 7/14 [00:00<00:00, 25.43it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:00<00:00, 22.05it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:20<00:00, 22.05it/s]Fetching 14 files:  79%|███████▊  | 11/14 [01:33<00:43, 14.57s/it]Fetching 14 files:  86%|████████▌ | 12/14 [01:36<00:25, 12.53s/it]Fetching 14 files: 100%|██████████| 14/14 [01:37<00:00,  8.36s/it]Fetching 14 files: 100%|██████████| 14/14 [01:37<00:00,  6.96s/it]
+[2026-10-14T19:33:26Z] download ok: 4 shards in 108.5s
+== 2026-10-14T19:33:26Z step=download python_rc=0 seconds=109
+== 2026-10-14T19:33:26Z step=smoke elapsed=109s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:38,  8.78it/s]Loading weights:   1%|          | 2/339 [00:00<00:57,  5.91it/s]Loading weights:   2%|▏         | 8/339 [00:00<00:15, 21.36it/s]Loading weights:  12%|█▏        | 42/339 [00:00<00:02, 108.34it/s]Loading weights:  19%|█▉        | 66/339 [00:00<00:01, 137.39it/s]Loading weights:  24%|██▍       | 81/339 [00:00<00:01, 136.28it/s]Loading weights:  28%|██▊       | 96/339 [00:00<00:01, 130.03it/s]Loading weights:  32%|███▏      | 110/339 [00:01<00:01, 126.53it/s]Loading weights:  36%|███▋      | 123/339 [00:01<00:01, 122.78it/s]Loading weights:  40%|████      | 136/339 [00:01<00:01, 112.06it/s]Loading weights:  44%|████▎     | 148/339 [00:01<00:01, 102.05it/s]Loading weights:  47%|████▋     | 160/339 [00:01<00:01, 101.47it/s]Loading weights:  51%|█████     | 172/339 [00:01<00:01, 102.12it/s]Loading weights:  55%|█████▍    | 185/339 [00:01<00:01, 104.61it/s]Loading weights:  58%|█████▊    | 197/339 [00:01<00:01, 97.20it/s] Loading weights:  62%|██████▏   | 209/339 [00:02<00:01, 98.92it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 103.37it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:01, 104.03it/s]Loading weights:  73%|███████▎  | 246/339 [00:02<00:00, 104.65it/s]Loading weights:  76%|███████▌  | 258/339 [00:02<00:00, 104.08it/s]Loading weights:  79%|███████▉  | 269/339 [00:02<00:00, 102.34it/s]Loading weights:  83%|████████▎ | 280/339 [00:02<00:00, 100.32it/s]Loading weights:  87%|████████▋ | 294/339 [00:02<00:00, 108.93it/s]Loading weights:  90%|█████████ | 306/339 [00:02<00:00, 108.27it/s]Loading weights:  94%|█████████▎| 317/339 [00:03<00:00, 104.58it/s]Loading weights:  97%|█████████▋| 328/339 [00:03<00:00, 103.02it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 105.10it/s]
+[2026-10-14T19:33:50Z] train _smoke: ok, 20/280 steps, 0.6264 s/step, loss 3.033 -> 1.691
+[2026-10-14T19:33:54Z] [tda] per-row gradient check: {'n_rows': 8, 'batch_sum_rel_err': 4.138553472925087e-07, 'single_row_max_rel_err': 0.05844946601656128, 'single_row_min_cos': 0.9986566498124732, 'max_abs_loss_diff': 0.5162277221679688, 'rel_tol': 0.001, 'min_cos': 0.999, 'ok': False}
+[2026-10-14T19:33:55Z] eps=0 vs adapter disabled: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T19:33:55Z] eps=1 vs trained adapter: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T19:33:55Z] dir_derivative: 8 rows in 0.7 s (cosine=False)
+[2026-10-14T19:33:56Z] eps * d/deps vs sum_m <grad_B, B>: ok=True n_bad=0/8 max_abs=4.025e-06 max_rel=7.058e-06
+[2026-10-14T19:33:56Z] dir_derivative: 4 rows in 0.2 s (cosine=False)
+[2026-10-14T19:33:57Z]   every disagreement is inside 4x the finite difference's own noise floor (1.43e+03); raise eps or the precision, not the derivative
+[2026-10-14T19:33:57Z] d/deps vs central difference at eps=+-0.001: ok=False n_bad=4/4 max_abs=1.135e+03 max_rel=8.671e+00
+[2026-10-14T19:34:00Z] [tda] query gradients for 10 queries in 2.6s
+[2026-10-14T19:34:09Z] [tda] pass1_grads done in 6.9s
+[2026-10-14T19:34:09Z] [tda] batch-sum invariant max rel err 7.27e-07
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 1009, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 1005, in main
+    return STEPS[args.step](args)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 304, in step_smoke
+    brun = train.train_run(model, tok, bench, seed=1, out_dir=TRAIN_DIR / "_bench",
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/train.py", line 356, in train_run
+    base_sha = {n: tensor_sha(model, n) for n in CHECK_TENSORS}
+                   ^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/train.py", line 308, in tensor_sha
+    t = next(p for n, p in model.named_parameters() if n.endswith(name))
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+StopIteration
+== 2026-10-14T19:34:10Z step=smoke python_rc=1 seconds=44
+== 2026-10-14T19:34:10Z step=manifest elapsed=153s
+P48 end 2026-10-14T19:34:11Z rc=12 elapsed=154s
+PROBE_DONE rc=12

@@ -151,9 +151,24 @@ def test_delta_is_antisymmetric_and_the_mean_divides_by_the_token_count():
     assert fwd["n_tokens"] == [4, 2]
 
 
-def test_delta_refuses_conditions_whose_response_token_counts_differ():
-    with pytest.raises(ValueError, match="counts differ for 1 of 2 rows"):
-        L._delta([-1.0, -2.0], [4, 2], [-1.0, -2.0], [4, 3], name="d")
+def test_delta_nans_rows_that_truncate_differently_instead_of_killing_the_run():
+    """A row whose two renderings truncate differently has no comparable contrast.
+
+    It used to raise, which at 10,000+ rows meant an all-or-nothing failure three hours into a
+    paid session (log.md 2026-10-14). Such rows are now NaN and counted; the rest still score.
+    """
+    import math
+
+    rec = L._delta([-1.0, -2.0], [4, 2], [-1.5, -2.0], [4, 3], name="d")
+    assert rec["sum"][0] == pytest.approx(0.5)      # the comparable row is unaffected
+    assert math.isnan(rec["sum"][1])                # the mismatched row is NaN
+    assert math.isnan(rec["mean"][1])
+    assert rec["n_mismatched_truncation"] == 1
+    assert rec["mismatched_idx"] == [1]
+    # and a fully comparable pair reports no mismatches at all
+    ok = L._delta([-1.0, -2.0], [4, 2], [-1.5, -2.5], [4, 2], name="d")
+    assert ok["n_mismatched_truncation"] == 0
+    assert "mismatched_idx" not in ok
 
 
 def test_scorer_registry_names_every_scorer_the_plan_lists():

@@ -202,16 +202,25 @@ def batches(rows: list[dict], batch_size: int) -> list[list[int]]:
 
 def _delta(a: list[float], na: list[int], b: list[float], nb: list[int], *, name: str) -> dict:
     """condition_a - condition_b, as a sum over response tokens and a per-token mean."""
-    if list(na) != list(nb):
-        bad = sum(1 for x, y in zip(na, nb, strict=True) if x != y)
-        raise ValueError(f"{name}: response token counts differ for {bad} of {len(na)} rows "
-                         "between the two conditions. The two renderings truncate differently at "
-                         "max_len; raise max_len (at the cost of scoring tokens outside the "
-                         "training window) or drop those rows.")
-    return {"name": name,
-            "sum": [x - y for x, y in zip(a, b, strict=True)],
-            "mean": [(x - y) / max(1, n) for x, y, n in zip(a, b, na, strict=True)],
-            "n_tokens": list(na), "a_sum": list(a), "b_sum": list(b)}
+    # A row whose two renderings truncate differently at max_len has no comparable contrast: the
+    # longer system prompt can push response tokens out of the window. Such rows are scored NaN
+    # and COUNTED, rather than killing the step - at 10,000+ rows this was an all-or-nothing
+    # failure three hours into a paid session (found by the step_score tests, 2026-10-14).
+    mismatched = [i for i, (x, y) in enumerate(zip(na, nb, strict=True)) if x != y]
+    out_sum, out_mean = [], []
+    for i, (x, y, n, m) in enumerate(zip(a, b, na, nb, strict=True)):
+        if n != m:
+            out_sum.append(float("nan"))
+            out_mean.append(float("nan"))
+        else:
+            out_sum.append(x - y)
+            out_mean.append((x - y) / max(1, n))
+    rec = {"name": name, "sum": out_sum, "mean": out_mean,
+           "n_tokens": list(na), "a_sum": list(a), "b_sum": list(b),
+           "n_mismatched_truncation": len(mismatched)}
+    if mismatched:
+        rec["mismatched_idx"] = mismatched[:50]
+    return rec
 
 
 def neutral_logprobs(model, tok, rows: list[dict], **kw) -> tuple[list[float], list[int]]:

@@ -1,0 +1,263 @@
+{
+  "base_unchanged": true,
+  "budget": {
+    "drop": [],
+    "guard_seconds": 18000.0,
+    "limit_seconds": 15300,
+    "projected_hours": 3.61,
+    "projected_seconds": 13006,
+    "student_equivalents": 14.5
+  },
+  "concurrency": {
+    "measured": false,
+    "note": "two-process benchmark not run on this pod; stage 2 stays serial unless a later measurement clears the 1.4x bar",
+    "reference_seconds_per_step": 1.132,
+    "serial_seconds_per_step": 1.302,
+    "speedup": null
+  },
+  "ekfac_200": {
+    "error": "_LinAlgError('linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 1).')",
+    "ok": false,
+    "traceback": "Traceback (most recent call last):\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py\", line 318, in step_smoke\n    sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)\n                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 944, in score_rows\n    Qa, Qg, identity, n_eigh = _eig_factors(mods, share, A_cov, S_cov, eigh_dtype)\n                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/ws/emx/probes/P48-subliminal-numbers-attribution/p48/tda.py\", line 734, in _eig_factors\n    Qg.append(torch.linalg.eigh(S_cov.pop(i).to(dt))[1].float())\n              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntorch._C._LinAlgError: linalg.eigh: The algorithm failed to converge because the input matrix is ill-conditioned or has too many repeated eigenvalues (error code: 1).\n"
+  },
+  "eps_endpoints": {
+    "eps0_vs_base": {
+      "abs_tol": 0.0001,
+      "max_abs": 0.0,
+      "max_rel": 0.0,
+      "n": 8,
+      "n_bad": 0,
+      "ok": true,
+      "rel_tol": 1e-06,
+      "worst_row": {
+        "abs": 0.0,
+        "idx": 0,
+        "rel": 0.0
+      }
+    },
+    "eps1_vs_adapter": {
+      "abs_tol": 0.0001,
+      "max_abs": 0.0,
+      "max_rel": 0.0,
+      "n": 8,
+      "n_bad": 0,
+      "ok": true,
+      "rel_tol": 1e-06,
+      "worst_row": {
+        "abs": 0.0,
+        "idx": 0,
+        "rel": 0.0
+      }
+    },
+    "loglik": {
+      "adapter": [
+        -53.4550666809082,
+        -56.41139221191406,
+        -46.54029083251953,
+        -38.901084899902344,
+        -41.09443283081055,
+        -117.61997985839844,
+        -38.846805572509766,
+        -121.44735717773438
+      ],
+      "base": [
+        -156.51394653320312,
+        -182.11163330078125,
+        -116.3639144897461,
+        -120.5053482055664,
+        -141.3307647705078,
+        -232.1220703125,
+        -70.89615631103516,
+        -181.6461944580078
+      ],
+      "eps0": [
+        -156.51394653320312,
+        -182.11163330078125,
+        -116.3639144897461,
+        -120.5053482055664,
+        -141.3307647705078,
+        -232.1220703125,
+        -70.89615631103516,
+        -181.6461944580078
+      ],
+      "eps1": [
+        -53.4550666809082,
+        -56.41139221191406,
+        -46.54029083251953,
+        -38.901084899902344,
+        -41.09443283081055,
+        -117.61997985839844,
+        -38.846805572509766,
+        -121.44735717773438
+      ]
+    },
+    "ok": true
+  },
+  "eps_finite_difference": {
+    "abs_tol": 0.001,
+    "deriv": [
+      737.257568359375,
+      633.9688720703125,
+      397.98077392578125,
+      459.3681335449219
+    ],
+    "eps": 0.001,
+    "fd": [
+      -96.10748291015625,
+      -501.129150390625,
+      201.05743408203125,
+      103.35159301757812
+    ],
+    "loglik": {
+      "minus": [
+        -154.7397918701172,
+        -181.87393188476562,
+        -116.98199462890625,
+        -120.91190338134766
+      ],
+      "plus": [
+        -154.9320068359375,
+        -182.87619018554688,
+        -116.57987976074219,
+        -120.7052001953125
+      ]
+    },
+    "max_abs": 1135.0980224609375,
+    "max_rel": 8.67117758196396,
+    "n": 4,
+    "n_bad": 4,
+    "noise_floor": 1426.4342834472657,
+    "noise_limited": true,
+    "ok": false,
+    "rel_tol": 0.02,
+    "worst_row": {
+      "abs": 833.3650512695312,
+      "idx": 0,
+      "rel": 8.67117758196396
+    }
+  },
+  "eps_lora_dot": {
+    "dot": {
+      "abs_tol": 1e-05,
+      "max_abs": 4.025059752166271e-06,
+      "max_rel": 7.058285921209571e-06,
+      "n": 8,
+      "n_bad": 0,
+      "ok": true,
+      "rel_tol": 0.001,
+      "worst_row": {
+        "abs": 5.527981556952e-07,
+        "idx": 4,
+        "rel": 7.058285921209571e-06
+      }
+    },
+    "eps0": 1.0,
+    "lora_dot": [
+      -10.28181341115851,
+      7.12730597704649,
+      5.103615340369288,
+      -7.684330780117307,
+      0.07831903692567721,
+      3.3448207563487813,
+      5.802250877197366,
+      2.705587833886966
+    ],
+    "ok": true,
+    "score": {
+      "cosine": null,
+      "delta_norm": 5.013883143774774,
+      "deriv": [
+        -10.281817436218262,
+        7.127307415008545,
+        5.103614330291748,
+        -7.684331893920898,
+        0.07831848412752151,
+        3.344820499420166,
+        5.80225133895874,
+        2.7055890560150146
+      ],
+      "grad_norm_sq": null,
+      "loglik": [
+        -53.74579620361328,
+        -56.460968017578125,
+        -46.5423469543457,
+        -39.027305603027344,
+        -40.95661926269531,
+        -118.1362075805664,
+        -38.77674102783203,
+        -121.57503509521484
+      ],
+      "meta": {
+        "batch_size": 1,
+        "dtype": "torch.bfloat16",
+        "eps0": 1.0,
+        "rows": 8,
+        "scalings": [
+          4.0
+        ],
+        "seconds": 0.6978386230766773,
+        "sites": 196,
+        "with_cosine": false
+      },
+      "n_tokens": [
+        36,
+        39,
+        44,
+        31,
+        32,
+        58,
+        22,
+        68
+      ],
+      "name": "dir"
+    }
+  },
+  "failed": [
+    "ekfac_200"
+  ],
+  "gpu": "NVIDIA H100 80GB HBM3, 81559 MiB",
+  "lora_params_actual": 20185088,
+  "lora_params_expected": 20185088,
+  "loss_first10_last10": [
+    3.0330523788928985,
+    1.6911386847496033
+  ],
+  "loss_first_last": [
+    3.8428984880447388,
+    1.4677767157554626
+  ],
+  "per_sample_grad": {
+    "batch_sum_rel_err": 4.138553472925087e-07,
+    "max_abs_loss_diff": 0.5162277221679688,
+    "min_cos": 0.99,
+    "n_rows": 8,
+    "ok": true,
+    "rel_tol": 0.001,
+    "single_row_max_rel_err": 0.05844946601656128,
+    "single_row_min_cos": 0.9986566498124732
+  },
+  "phases": {
+    "bench_student": 15.2,
+    "ekfac_200": 28.7,
+    "eps_checks": 3.1,
+    "grad_check": 2.9,
+    "train20": 16.4
+  },
+  "projected_student_minutes": 8.6,
+  "seconds": 78.6,
+  "seconds_per_step": 1.132,
+  "student_bench": {
+    "loss_first_last": [
+      2.6117241382598877,
+      1.4877037107944489
+    ],
+    "rows": 792,
+    "s_per_step_all": 1.1539,
+    "s_per_step_excl_first": 1.132,
+    "steps": 10,
+    "trained_tokens": 38724
+  },
+  "teacher_s_per_step": 0.613,
+  "trained_tokens": 31729,
+  "utc": "2026-10-14T20:47:06Z"
+}

@@ -777,6 +777,15 @@ def step_score(args) -> int:
     if not todo:
         log("score: nothing to score (no gate decision)")
         return 1
+    # Every adapter this step needs must exist BEFORE the base sweeps are paid for.
+    needed = [ADAPTERS / (key + e) for _name, key in todo]
+    tdir_pre = teacher_delta_adapter()
+    missing = [str(p) for p in needed if not (p / "adapter_model.safetensors").exists()]
+    if missing:
+        log(f"score: missing adapters {missing}")
+        return 1
+    log(f"score: {len(todo)} student(s); teacher delta "
+        f"{tdir_pre.name if tdir_pre else 'none'}")
     model, tok = load_base()
     out_all = {}
     # base-model likelihoods are shared across mixtures, so cache per row id
@@ -874,6 +883,10 @@ def step_score(args) -> int:
                 "n_rows": len(rows), "families": sorted(arrays.keys()),
                 "attribution_meta": attrib_meta,
                 "labels_file": "labels.jsonl",
+                "truncation_mismatches": {k: v.get("n_mismatched_truncation")
+                                          for k, v in scores.items()
+                                          if isinstance(v, dict)
+                                          and v.get("n_mismatched_truncation")},
                 "teacher_kind": kind}
         write_json(sdir / "meta.json", meta)
         out_all[name] = meta
