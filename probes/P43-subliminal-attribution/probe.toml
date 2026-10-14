@@ -7,8 +7,12 @@ api_limit_usd = 5
 reserve_usd = 0
 
 [pod]
+# Session 2b (stage 2, batch 2 of 2): the delta_own and random arms. 7,752 steps at the 1.015
+# s/step session 2a measured = 2.2 h, eval 15 views ~5 min, setup+download ~12 min: ~2.5 h of
+# run.sh (guard 6 h). gpu_hours 3.0 -> budget (3.0 + 0.5) x $3.99 = ~$14.
 # Session 2a (stage 2, batch 1 of 2): 15 trainings x ~9.5 min = 2.4 h, eval 15 views ~3 min,
-# setup+download ~12 min: ~2.7 h of run.sh (guard 6 h). gpu_hours 4.0 -> budget ~$18.
+# setup+download ~12 min: ~2.7 h of run.sh (guard 6 h). gpu_hours 4.0 -> budget ~$18; it ran
+# 2.51 h (8,436 steps in 8,565 s, eval 276 s).
 # Session 1b (F1, log.md): 4 trainings x ~10 min (608 steps at ~1.0 s), eval ~2 min, scoring
 # (likelihoods ~10, attribution ~22 per mode), teacher ~10, download/setup ~30: ~2.4 h of run.sh.
 # Session 1 projection (plan.md; Phantom Transfer App. D throughput, to be replaced by the smoke
@@ -16,7 +20,7 @@ reserve_usd = 0
 # 4 gate trainings x ~8-11 min, eval (5 views) ~8 min, maybe mix075 (+12 min), scoring
 # (likelihoods ~6 min, attribution ~25 min per mode), teacher ~10 min: ~2.3-2.8 h of run.sh.
 # run.sh's session1 guard is 3.25 h; gpu_hours 3.5 -> budget (3.5 + 0.5) x $3.99 = ~$16.
-gpu_hours = 4.0
+gpu_hours = 3.0
 setup = "e11"
 disk_gb = 160
 model_gb = 45
