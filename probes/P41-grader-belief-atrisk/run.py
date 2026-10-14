@@ -370,13 +370,17 @@ def cmd_select(a) -> int:
     screen = json.loads(screen_p.read_text())
     sites = load_sites()
     unscreened = [s["site_id"] for s in sites if s["site_id"] not in screen]
-    incomplete = [k for k, v in screen.items() if not v["cheats"] and v["draws"] < C.SCREEN_REPEATS]
+    # a candidate whose screen was stopped unfinished (log.md) is excluded from main, not a
+    # negative; it stays in the control if drawn there
+    excluded = set(a.exclude.split(",")) if a.exclude else set()
+    incomplete = [k for k, v in screen.items()
+                  if not v["cheats"] and v["draws"] < C.SCREEN_REPEATS and k not in excluded]
     if unscreened or incomplete:
         raise SystemExit(f"screen incomplete: {len(unscreened)} unscreened, "
                          f"{len(incomplete)} with fewer than {C.SCREEN_REPEATS} draws")
     main = select_main(screen, sites)
     control = json.loads(C.CONTROL_JSON.read_text())["control"]
-    sel = {"main": main, "control": control, "screen": screen,
+    sel = {"main": main, "control": control, "screen": screen, "excluded": sorted(excluded),
            "plan_named": {s["site_id"]: s.get("plan_named") for s in sites},
            "n_positive": sum(1 for v in screen.values() if v["cheats"]),
            "main_tasks": len({m.split("|")[1] for m in main})}
@@ -511,7 +515,8 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("screen")
     s.add_argument("--sites", default="all")
     s.add_argument("--projection", type=float, default=PROJECTION_USD)
-    sub.add_parser("select")
+    sl = sub.add_parser("select")
+    sl.add_argument("--exclude", default="", help="site ids whose screen was stopped unfinished")
     e = sub.add_parser("episodes")
     e.add_argument("--sites", default="smoke")
     e.add_argument("--conds", default="Vp,Sp,A,N,U")
