@@ -1,0 +1,122 @@
+{
+ "utc": "2026-10-14T03:01:25Z",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "train": {
+  "status": "ok",
+  "steps": 20,
+  "s_per_step": 1.4474,
+  "loss_first10": 3.018446722626686,
+  "loss_last10": 1.0156998753547668,
+  "trained_tokens": 638623,
+  "n_trainable": 20971520,
+  "loss_falls": true
+ },
+ "projected_train_s_per_run": 440.0,
+ "grad_check": {
+  "n_rows": 8,
+  "batch_sum_rel_err": 4.366796018442726e-07,
+  "single_row_max_rel_err": 0.051583316965402956,
+  "single_row_min_cos": 0.9976947804478703,
+  "max_abs_loss_diff": 0.4183006286621094,
+  "rel_tol": 0.001,
+  "min_cos": 0.99,
+  "ok": true
+ },
+ "tda_200_rows_s": 76.4,
+ "tda_meta": {
+  "n_rows": 200,
+  "n_queries": 2,
+  "queries": {
+   "reagan": 25,
+   "owl": 25
+  },
+  "n_lora_modules": 448,
+  "n_params": 20971520,
+  "batch_size": 16,
+  "max_batch_tokens": 4096,
+  "dampings": [
+   0.001,
+   0.01,
+   0.1
+  ],
+  "proj_dim": 16,
+  "proj_seed": 20261018,
+  "versions": {
+   "python": "3.12.3",
+   "torch": "2.13.0+cu130",
+   "numpy": "2.3.5",
+   "transformers": "5.17.0",
+   "peft": "0.21.1",
+   "cuda_device": "NVIDIA H100 80GB HBM3"
+  },
+  "loss": "sum of next-token CE over labelled tokens, per row; query = summed over its rows",
+  "orientation": "higher = a gradient step on the row lowers the query loss",
+  "methods": {
+   "graddot": "exact <g_row, g_q> over all LoRA params",
+   "gradcos": "exact cosine(g_row, g_q)",
+   "pfi": "projected block-diagonal empirical-Fisher influence (LoGra-style), not EK-FAC",
+   "ekfac": "own EK-FAC over each lora_A/lora_B Linear (token-covariance eigenbases, per-row eigenvalue refit, damping x mean eigenvalue per module); generalised from mats12_neel_working src/em_filter/tda.py ekfac_module_scores"
+  },
+  "ekfac_impl": "own (p43/tda.py)",
+  "timings_s": {
+   "query_grads": 0.96,
+   "pass1_grads": 7.08,
+   "pfi": 0.62,
+   "ekfac_eigh": 24.93,
+   "pass2_ekfac_lambda": 3.41,
+   "pass3_ekfac_scores": 2.76,
+   "bergson_check": 29.1,
+   "total": 72.5
+  },
+  "warnings": [],
+  "bergson_used": true,
+  "n_tokens": 12710,
+  "n_batches": 13,
+  "query_grad_norms": {
+   "reagan": 945.3512756045874,
+   "owl": 1168.5676216554932
+  },
+  "pfi_dim": 57344,
+  "ekfac_shared_input_factors": 96,
+  "batch_sum_invariant_max_rel_err": 7.825269337386376e-07,
+  "ekfac_max_factor_dim": 4096,
+  "ekfac_n_eigh": 704,
+  "ekfac_identity_sides": 96,
+  "ekfac_identity_examples": [
+   "base_model.model.model.layers.0.mlp.gate_proj.lora_B:output(14336)",
+   "base_model.model.model.layers.0.mlp.up_proj.lora_B:output(14336)",
+   "base_model.model.model.layers.0.mlp.down_proj.lora_A:input(14336)",
+   "base_model.model.model.layers.1.mlp.gate_proj.lora_B:output(14336)",
+   "base_model.model.model.layers.1.mlp.up_proj.lora_B:output(14336)",
+   "base_model.model.model.layers.1.mlp.down_proj.lora_A:input(14336)"
+  ],
+  "ekfac_identity_params": 11010048,
+  "ekfac_lambda_mean_median_over_modules": 5.999225140840281e-05,
+  "bergson_available": true,
+  "bergson_reason": "bergson 2.2.3",
+  "bergson_check": {
+   "n_rows": 200,
+   "n_modules": 33,
+   "dampings": {
+    "0.001": {
+     "cos_overall": 0.993027162949048,
+     "min_cos_module": 0.9325620144241463,
+     "max_rel_err": 0.23334292984606392
+    },
+    "0.01": {
+     "cos_overall": 0.9959047867526412,
+     "min_cos_module": 0.9785258069466007,
+     "max_rel_err": 0.08935099445116829
+    },
+    "0.1": {
+     "cos_overall": 0.9975709110297164,
+     "min_cos_module": 0.9882786809794384,
+     "max_rel_err": 0.06299000606010956
+    }
+   },
+   "min_cos_preconditioned": 0.9325620144241463
+  }
+ },
+ "projected_tda_full_s": 719.4,
+ "seconds": 114.6
+}
