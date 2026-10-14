@@ -316,8 +316,17 @@ def step_smoke(args) -> int:
     try:
         q = tda.query_rows(tok)
         sc, sc_meta = tda.score_rows(scored, likelihood.encode_rows(tok, rows[:200]), q, log=log)
-        rec["ekfac_200"] = {"ok": True, "families": sorted(sc)[:12],
-                            "coverage": sc_meta.get("ekfac_coverage")}
+        # The gate is that EK-FAC - the fixed primary gradient selector - produced finite scores
+        # for the cat query. A rank-deficient pfi block at 200 rows is expected and handled by a
+        # least-squares fallback (tda.block_fisher_scores), and pfi is not the selector.
+        import numpy as _np
+        ek = {k: v for k, v in sc.items() if k.startswith("ekfac:") and tda.PRIMARY_QUERY in k}
+        finite = {k: bool(_np.isfinite(v).all()) for k, v in ek.items()}
+        rec["ekfac_200"] = {"ok": bool(ek) and all(finite.values()),
+                            "ekfac_variants": sorted(ek), "all_finite": finite,
+                            "families": sorted(sc)[:12],
+                            "coverage": sc_meta.get("ekfac_coverage"),
+                            "pfi_singular_blocks": sc_meta.get("pfi_singular_blocks")}
     except Exception as exc:  # noqa: BLE001 - a smoke failure must be reported, not raised
         rec["ekfac_200"] = {"ok": False, "error": repr(exc)[:400]}
     rec["phases"]["ekfac_200"] = round(time.time() - t, 1)
