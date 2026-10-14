@@ -43,6 +43,16 @@ Merged on 2026-10-13 by agent p42 from three inputs:
 ### Corrections to the external review after reading the captured texts
 (Filled in from the verification pass; see `papers/ood_detection/INDEX.md`.)
 
+A sub-agent checked each claim against the `pdftotext` extractions (2026-10-13); quotes and page numbers are in `INDEX.md`.
+- **Feng (MOOD):** verified. 85,164 HH-RLHF-prompt training conversations; 7 OOD failure sets plus a benign Swahili set; recall at 1% FPR goes from 38.8% to 45.7% (Gemma 2 9B, guard + perplexity + Mahalanobis; Mahalanobis alone gives 44.8%); Swahili 98.4% → 7.6% with 20 samples. The responses are fixed, LLM-generated **dataset transcripts**, not on-policy. Code: `github.com/Dylan102938/mood-bench`.
+- **Zhang:** the score is p_pretrained(x) / p_finetuned(x), a **whole-sequence likelihood ratio, not token-normalised**. For QA, scoring the question alone works poorly, so they score a generated answer. Their §6 notes that raw likelihood favours short texts. P42 reports both the sequence-sum version (Zhang's) and a per-token mean.
+- **Saghir:** "|r| ≥ 0.61" is **different**: the only correlations given are |r| = 0.63 and 0.71, for two attention-ratio features in an appendix truncation sweep. Verified: 0.919 → 0.530 under length matching (Spam), and backwards ranking at 0.43–0.47. The paper offers no deployable fix; its advice is to check the ranking direction under length matching.
+- **Lyons Keenan:** verified on LLM backdoors (theirs vs Mahalanobis: Gemma 2-2B 0.999–1.000 vs 0.78–0.94; Llama 3.1 8B 0.987–0.992 vs 0.79–0.97; complex trigger 0.982 vs 0.554). OOD detection was tested only on CIFAR. **Cost ≈ 26 s per sample at 8B on an H100**, about 550 GPU-hours for P42's 76k prompts, which is why P42's S4 is a LESS-style projected-gradient kNN instead.
+- **LESS:** the length sentence is verified verbatim (§3.2, p.3). Their projection uses LoRA rank 128 on attention, a warm-up model, Adam-preconditioned gradients and a Rademacher projection to 8,192 dimensions. P42's S4 is a cheaper variant (raw SGD gradients of the final DPO model, factorised projection on MLP down-projections), noted as such.
+- **Liu 2023:** verified. Cosine distance (max cosine, effectively 1-NN) beats the other detectors on LLaMA 7–65B.
+- **Olmo 3 report:** the Instruct pipeline is SFT → DPO → RL. The DPO prompts total 259,922, **of which WildChat is 30,248 (11.6%)**, matching p42's shard estimate of ~12%. Decontamination is against evaluation sets only, with no deduplication against LMSYS, which P42's own deduplication covers. WildChat was topic-filtered.
+- Verified in one line each: T3, Bohacek, FAC, Johnston (no detector works across models and tasks), Zhong/D5, Bejan (thresholding self-influence filters poorly), OLMoTrace, Clio. Hollander's post: `https://www.lesswrong.com/posts/hsrjuzqokvAErvZ2q/coverage-driven-alignment-what-teaching-claude-why-can` (search snippets only).
+
 
 ## 2. Internal review (verbatim from the launching session)
 
