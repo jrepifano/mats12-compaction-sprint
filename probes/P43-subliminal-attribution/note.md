@@ -18,9 +18,13 @@
 
 **Swapping beats refilling at identical size, identical nominal share and identical active share** — 1.3% against 5.2%, a difference of **+3.9 [+1.7, +6.9]**, with the dilution adjustment confirming a 0.0-point dilution term — so keeping the flagged prompt and substituting a clean answer cuts more than adding fresh clean rows. **This is the probe's cleanest causal claim**, the one contrast no dilution account can explain, and it is what the refill arm was added for. Swap also beats drop by **+6.0 [+2.3, +10.5]**.
 
-**The gradient scorer and the likelihood ratio tie exactly** (+0.0 [0.0, 0.0]) in all three operations, despite the gradient's detection edge.
+**Informed selection is the whole effect, and it is not a byte-level shortcut.** Follow-up F3 settled the one cheap explanation that survived the dilution correction. At k = 2,000 (10% of rows) on the 100%-modified mixture, both informed scorers cut the trait from **41.4% [31.8, 51.1]** to about **2%**, while the same budget spent at random left **22.9%** — and `random_active`, which spends none of its budget on the 25.8% of modified rows whose answer is byte-identical to the clean one, left **24.3%**, within noise of plain random (**−1.4 [−8.4, +4.7]**). So avoiding inert rows, the thing a free byte comparison does perfectly, buys nothing; the informed scorers beat that control by **+22.2 [+14.9, +30.1]** (gradient) and **+22.5 [+15.3, +30.1]** (Δ_own), with the dilution term running *against* them. The scorers are ranking live rows by how much trait they carry.
 
-**Decision: close the gradient arm; the cheap likelihood ratio is the defence worth keeping.** This is the plan's "Δ_own ≥ gradients" branch, reached on the causal measure rather than the detection one. Gradients won detection by a real but small margin (+0.041 AUROC for 7× the cost) and bought *nothing* causally. The plan's graduate criterion required gradient swaps to cut more than likelihood-chosen swaps; they did not. Follow-up F2 (below) re-tests the tie at an operating point with headroom, because both arms sat at 0.0% where the tie was measured.
+**The gradient scorer and the likelihood ratio tie, at four operating points.** +0.0 [0.0, 0.0] in all three stage-2 operations and in F2, where both sat at the floor; and **−0.3 [−2.2, +1.5]** in F3, where both are off it and the tie is a genuine measurement. They are not making the same choice — their rows overlap 29.9% against 10.0% at chance — they simply arrive at the same place.
+
+**Decision: close the gradient arm, and keep the cheap likelihood ratio as the defence.** This is the plan's "Δ_own ≥ gradients" branch. The gradient score won detection by a real but small margin (+0.041 AUROC for ~7× the compute) and bought **nothing** causally at any operating point tested, including one with 22 points of measured headroom where an advantage would have been visible. The plan's graduate criterion required gradient swaps to cut more than likelihood-chosen swaps; they did not.
+
+**What is worth keeping is not the gradient arm but two results it was the vehicle for:** that informed row selection removes a subliminal trait almost completely at 10% of the data, far beyond what dilution or inert-row avoidance explains, and that **swapping beats refilling at identical size, nominal share and active share** (+3.9 [+1.7, +6.9]). Both are carried by the cheap scorer.
 
 ---
 
@@ -145,7 +149,7 @@ The adjustment expresses both the seed-0 curve and each arm's share in active ro
 
 An earlier version of this section read the *nominal* share instead of the active one and reported +5.0 / +5.3 / +1.1. That under-counted the dilution, because it scored the inert-row difference as selection quality. The corrected figures are the ones above.
 
-**What this leaves open, and what F3 tests.** Part of the remaining gap may still be the cheapest thing imaginable: the scorers *avoid inert rows*, which a byte comparison does for free, rather than *ranking live rows by how much trait they carry*. Follow-up F3 adds a `random_active` arm — random among the rows a swap can change at all — as the method-minimal baseline the scorers have to beat.
+**What this left open, and how F3 closed it.** Part of the remaining gap might still have been the cheapest thing imaginable: the scorers *avoiding inert rows*, which a byte comparison does for free, rather than *ranking live rows by how much trait they carry*. Follow-up F3 added a `random_active` arm — random among the rows a swap can change at all — as the method-minimal baseline the scorers had to beat. **It did not beat anything: `random_active` left the trait within noise of plain random (−1.4 [−8.4, +4.7]) while the informed scorers beat it by ~22 points.** Inert-row avoidance explains none of the selector effect; see the F3 section.
 
 **Why the selector contrast is read off the drop and refill arms.** The swap arms land at 27.5–35.1% active, below the dilution curve's knee, where every selector is close to zero and the comparison is compressed. The drop and refill arms keep range, so that is where the selector effect is measured. This was logged as a power limitation *before* the arms ran, and the stage-2 result confirms it: the same effect reads +1.3 on the swap arms and +7.3 on the drop arms.
 
@@ -177,7 +181,25 @@ What F2 cannot do is rank gradient above Δ_own, because neither can go below ze
 
 ### Follow-up F3 (exploratory)
 
-<!--F3-->
+Stage 2 and F2 both measured the informed scorers at exactly 0.0%, and the dilution correction above left one cheap explanation standing: maybe the scorers' only advantage is that they *skip the inert rows* a byte comparison finds for free. F3 tests that directly. Same 100%-modified 20,000-row mixture as F2, swap only, but **k = 2,000** (10% of rows instead of 25%) to leave the informed arms room above the floor, and a **fourth selector**: `random_active`, random among the rows that are modified *and* not byte-identical to their clean twin. 12 trainings, 3 seeds each; the reference's three seeds were reused from F2, not retrained. One pod, 2.03 h of `run.sh`, $8.44.
+
+**`random_active` is the right control, and it was fixed before the run.** It picks **0** inert rows out of 2,000, against plain random's 513 (the gradient scorer picks 58, Δ_own 21). It is an independent draw, not a correlated subset: it overlaps plain random on **194** rows against 200 expected by chance. And it leaves the **lowest** active share of all four arms (0.6419, against the gradient's 0.6448), so the dilution term runs slightly *against* the informed scorers. The whole composition table was computed offline and [logged](log.md) before any F3 result existed; the pod's own `results/arms_f3.json` reproduces all four rows exactly.
+
+| Arm (3 seeds) | Inert rows picked | Nominal share | Active share | ASR | 95% CI | Curve predicts |
+|---|---|---|---|---|---|---|
+| **reference** `mix100n20k` | — | 100.0% | 74.2% | **41.4** | [31.8, 51.1] | — |
+| swap, gradient | 58 / 2,000 | 90.0% | 64.5% | **2.1** | [0.2, 4.6] | 28.3 |
+| swap, Δ_own | 21 / 2,000 | 90.0% | 64.3% | **1.8** | [0.4, 3.9] | 28.0 |
+| swap, random | 513 / 2,000 | 90.0% | 66.8% | **22.9** | [13.7, 32.2] | 31.5 |
+| swap, `random_active` | **0** / 2,000 | 90.0% | 64.2% | **24.3** | [16.3, 32.6] | 27.9 |
+
+**The inert-row explanation is dead.** `random_active` wastes none of its budget on no-op swaps and the trait is unchanged: **−1.4 [−8.4, +4.7]** against plain random, an interval centred near zero. Avoiding inert rows, the thing a free byte comparison does perfectly, buys nothing measurable. Meanwhile both informed scorers beat `random_active` by about **22 points**: gradient **+22.2 [+14.9, +30.1]**, Δ_own **+22.5 [+15.3, +30.1]**, with dilution terms of **−0.4** and **−0.1** — i.e. the adjustment runs the wrong way for them, so the gap is **+22.6** and **+22.7** beyond dilution. The informed scorers are ranking live rows by how much trait they carry, and no byte-level shortcut reproduces it.
+
+**This is the probe's strongest intervention result, and the first one measured with every arm off the floor.** At 10% of rows, informed selection takes the trait from 41.4% to about 2%; the same budget spent at random leaves 23–24%. Dilution predicts ~28% for all four arms, so the informed arms sit **26 points below their dilution prediction** while both random arms sit within a few points of theirs.
+
+**The gradient-vs-Δ_own tie is now a measurement rather than a ceiling artifact.** Both arms are off the floor and they land **−0.3 [−2.2, +1.5]** apart, with a dilution term of −0.3 that accounts for essentially all of it. They remain substantially different selections — their 2,000 rows overlap **29.9%** against 10.0% at chance — reaching the same place. Across four operating points (k = 7,500 at 15% reference, k = 5,000 at 41% reference, and now k = 2,000 with both arms visible), nothing separates them. **That is the finding, not a limitation**: the expensive scorer's +0.041 AUROC detection edge does not convert into any intervention advantage, even where the measurement has ample room to show one.
+
+All 12 ASRs were recomputed from the raw `results/eval/*.jsonl` rows with an independent regex pass: 12/12 exact. All 12 trainings ran 608/608 steps at 0.910–0.945 s/step, with four distinct `data_sha256` values, one per selector, each matching an arm file rebuilt locally from the committed mixture and selections. Interpolation for every dilution term falls strictly between measured curve knots (active shares 0.642–0.668, between the 0.557 and 0.743 knots), so nothing is extrapolated.
 
 ---
 
@@ -212,9 +234,9 @@ Follow-up predictions, logged in [log.md](log.md) before each run (exploratory, 
 | **F2:** swap-random lands near 16% (the measured 75%-share point) | 0.6 | **Near** — 11.5 [6.2, 17.7], with 16 inside the interval |
 | **F2:** both informed swaps land below swap-random | 0.75 | **Yes** — both 0.0 |
 | **F2:** gradient and Δ_own within 3 points of each other | 0.6 | **Yes** — exactly 0.0 apart, but still at the floor |
-| **F3:** `random_active` lands well below plain random | 0.8 | <!--F3P1--> |
-| **F3:** both informed scorers beat `random_active` by ≥ 3 points | 0.45 | <!--F3P2--> |
-| **F3:** gradient and Δ_own within 5 points of each other | 0.6 | <!--F3P3--> |
+| **F3:** `random_active` lands well below plain random | 0.8 | **No** — `random_active` landed at 24.3 against plain random's 22.9, a difference of −1.4 [−8.4, +4.7]. Avoiding inert rows did nothing. This was my most confident follow-up prediction and the clearest miss in the probe. |
+| **F3:** both informed scorers beat `random_active` by ≥ 3 points | 0.45 | **Yes** — by about 22 points, far beyond the 3 predicted: gradient +22.2 [+14.9, +30.1], Δ_own +22.5 [+15.3, +30.1]. |
+| **F3:** gradient and Δ_own within 5 points of each other | 0.6 | **Yes** — −0.3 [−2.2, +1.5], and this time with both arms off the floor, so the tie is measured rather than saturated. |
 
 **Calibration.** Three patterns, and all three are worth stating plainly:
 
@@ -226,7 +248,8 @@ Follow-up predictions, logged in [log.md](log.md) before each run (exploratory, 
 
 ## Limitations
 
-1. **The gradient-vs-Δ_own tie is measured at a floor, twice.** Both scorers drove every arm to exactly 0.0% in stage 2 (reference 15.0%) and again in F2 (reference 41.4%), so neither run can rank them — only say they are indistinguishable *once saturated*. F2 at least shows they are not the same selection (41.2% overlap against 25.0% at chance) and that random at the same share stays well clear of the floor. F3 retries at k = 2,000. If that also floors, the honest conclusion is that no operating point which removes the trait separates the two scorers. The selector-vs-random and swap-vs-refill effects do not have this problem: they are measured where the arms have range.
+1. **The gradient-vs-Δ_own tie is real but it is a null, and a null cannot be proven.** Stage 2 and F2 both measured it at exactly 0.0% on both arms, where no ranking is possible. F3 fixed that: at k = 2,000 both arms sit off the floor (2.1% and 1.8%) and land −0.3 [−2.2, +1.5] apart, so the tie is now a measurement rather than a saturation artifact. What the interval cannot do is exclude a small advantage: an effect of a point or two in either direction is inside it, and three seeds against a reference that itself spans 10.4–20.8% across seeds is not the design to find one. The claim is therefore "no advantage large enough to justify 7× the compute, at four operating points", not "provably identical". The two scorers do choose substantially different rows (29.9% overlap at k = 2,000 against 10.0% at chance), so the tie is not an artifact of them picking the same data.
+
 2. **One organism, one entity, one student, one recipe.** Everything here is Reagan, Gemma-3-12B to Llama-3.1-8B, LoRA r8, 2 epochs.
 3. **`ekfac` is an approximation of an approximation** — see the naming section above. The identity-eigenbasis shortcut covers about half the LoRA parameters.
 4. **The reference is noisy.** Across four seeds it ran 10.4–20.8%, so a three-seed arm has wide intervals and only large causal effects are detectable.
@@ -253,8 +276,8 @@ Probe cap **$60** ($55 GPU, $5 API), **raised to $70** ($65 GPU) on 2026-10-14 s
 | **Stage 2, session 2b** | 8wxdxyt0y9gu9m | 2 h 10 | 9.47 | 15 trainings |
 | F2, first launch (failed) | 8h15ntholsz84z | 2 min | 0.73 | rc 15: two missing-input bugs of mine (log.md 10:29) |
 | **F2: swap arms off the 100% mixture** | wgvucjdowhx88o | 2 h 30 | 10.47 | 12 trainings at 0.91–0.96 s/step, on-pod arm building, eval 12 views |
-| **F3: the same at k = 2,000, plus the control** | y4s3wr7v0vg6ol | <!--F3WALL--> | <!--F3USD--> | 12 trainings; the pushed scores skipped a 24-min recompute |
-| **Total** | | | **<!--TOTAL-->** | |
+| **F3: the same at k = 2,000, plus the control** | y4s3wr7v0vg6ol | 2.03 h run.sh / 2.12 h billed | $8.44 | 12 trainings; the pushed scores skipped a 24-min recompute |
+| **Total** | | | **$52.88 of $70** | |
 
 MPNet detectors ran free on the laptop. Of the total, **$4.74 was launch overhead** — three slow hosts, one dependency bug, one smoke-threshold stop and one out-of-memory run — though the out-of-memory pod's two finished students were carried forward rather than retrained.
 
@@ -264,4 +287,13 @@ MPNet detectors ran free on the laptop. Of the total, **$4.74 was launch overhea
 
 ## Where this leaves the direction
 
-<!--DIRECTION-->
+**Do not graduate this as a gradient-attribution study.** The question the probe was built around — do gradients find modified rows better than the cheap alternatives, and does that buy a better defence — has a clean answer in two parts: a small detection win (+0.041 AUROC) and no intervention win at all, at four operating points, for about 7× the compute. Hadley & Gultepe's prior that dataset-gradient methods "fail entirely for prompted datasets" (`papers/em_personas/INDEX.md` row 94) was closer to right than our own expectation. The arm is closed, and the $52.88 bought that answer rather than a method.
+
+**Two things here are worth more than the arm that produced them.**
+
+1. **Swap beats refill at matched everything** (+3.9 [+1.7, +6.9]): keeping a flagged prompt with a clean answer removes more trait than replacing the row with a fresh clean one. This reproduces the direction of Conmy's blackmail result (row 75) in a different organism, and it is the one contrast in the probe that no dilution, row-count or inert-row account can touch — the two arms are identical in size, nominal share and active share, and flag the same rows. It is also the actionable one: a data-cleaning pipeline that *corrects* flagged rows beats one that *removes* them, which is the same asymmetry as Jacob's Correct-Don't-Delete result.
+2. **Cheap informed selection removes a subliminal trait at 10% of the data** (41.4% → ~2%, against 22.9% for random at the same budget), and F3 rules out the trivial explanations: not dilution, not row count, not inert-row avoidance. A likelihood ratio under the student's own base model is enough.
+
+**If this line continues, the next experiment is not about scorers.** The open question is the one F3 sharpened: the selector effect is large and cheap, so what is it actually selecting *for*? Δ_own ranks by how surprising the completion is to the base model, which is not obviously the same thing as "carries the trait", and the 29.9%-overlapping gradient score reaches the same outcome — two different measurements of the same underlying quantity. A study worth running would hold the removal operation fixed and vary *what* is removed along interpretable axes, to find what property the trait actually rides on. That is a mechanism question, and it does not need attribution machinery.
+
+**Crowding caution, unchanged from the literature review.** This setting is being actively extended inside Neel's stream — Casademunt and de la Fuente are working on the same model pair (row 72) — so before building on either result above, message them. The swap-versus-refill contrast is the differentiator; the detection table is not.

@@ -120,6 +120,126 @@
       "selected_active": 3708,
       "selected_poison": 5000
     },
+    "f3_drop_delta_own": {
+      "active": 12858,
+      "active_share": 0.7143,
+      "poison": 18000,
+      "poison_share": 1.0,
+      "rows": 18000,
+      "selected": 2000,
+      "selected_active": 1979,
+      "selected_poison": 2000
+    },
+    "f3_drop_grad": {
+      "active": 12895,
+      "active_share": 0.7164,
+      "poison": 18000,
+      "poison_share": 1.0,
+      "rows": 18000,
+      "selected": 2000,
+      "selected_active": 1942,
+      "selected_poison": 2000
+    },
+    "f3_drop_random": {
+      "active": 13350,
+      "active_share": 0.7417,
+      "poison": 18000,
+      "poison_share": 1.0,
+      "rows": 18000,
+      "selected": 2000,
+      "selected_active": 1487,
+      "selected_poison": 2000
+    },
+    "f3_drop_random_active": {
+      "active": 12837,
+      "active_share": 0.7132,
+      "poison": 18000,
+      "poison_share": 1.0,
+      "rows": 18000,
+      "selected": 2000,
+      "selected_active": 2000,
+      "selected_poison": 2000
+    },
+    "f3_refill_delta_own": {
+      "active": 12858,
+      "active_share": 0.6429,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1979,
+      "selected_poison": 2000
+    },
+    "f3_refill_grad": {
+      "active": 12895,
+      "active_share": 0.6448,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1942,
+      "selected_poison": 2000
+    },
+    "f3_refill_random": {
+      "active": 13350,
+      "active_share": 0.6675,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1487,
+      "selected_poison": 2000
+    },
+    "f3_refill_random_active": {
+      "active": 12837,
+      "active_share": 0.6419,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 2000,
+      "selected_poison": 2000
+    },
+    "f3_swap_delta_own": {
+      "active": 12858,
+      "active_share": 0.6429,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1979,
+      "selected_poison": 2000
+    },
+    "f3_swap_grad": {
+      "active": 12895,
+      "active_share": 0.6448,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1942,
+      "selected_poison": 2000
+    },
+    "f3_swap_random": {
+      "active": 13350,
+      "active_share": 0.6675,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 1487,
+      "selected_poison": 2000
+    },
+    "f3_swap_random_active": {
+      "active": 12837,
+      "active_share": 0.6419,
+      "poison": 18000,
+      "poison_share": 0.9,
+      "rows": 20000,
+      "selected": 2000,
+      "selected_active": 2000,
+      "selected_poison": 2000
+    },
     "heldout": {
       "rows": 400
     },
@@ -230,6 +350,7 @@
     }
   },
   "f2_mixture": "mix100n20k",
+  "f3_mixture": "mix100n20k",
   "files": {
     "arms/drop_delta_own.jsonl": "07f528ff7b2d94b0f3aeb4bd2e5313751fc0668bfe8f3ca1ac80f0ee6e238ac5",
     "arms/drop_grad.jsonl": "da494cdfe85c44707397fd0af899f7e125d4c7bd7f70487b7abaf47b38eb5a51",
@@ -243,6 +364,18 @@
     "arms/f2_swap_delta_own.jsonl": "8f842b4e71a4e416597e6c95a0e0ddc9bf0fb27d24770c55bd140841415f3e1d",
     "arms/f2_swap_grad.jsonl": "29dca998473e2ba995ba879fa1cd03a5d26254537f1d34d60d2765de4d66bbac",
     "arms/f2_swap_random.jsonl": "8a7e4ed575237cc0584f4a029c7071be188548623c787c23dc77c73bcab2ab83",
+    "arms/f3_drop_delta_own.jsonl": "b06924a4a236c32c29a0714264ba25356b3e2b415e7c19c998202a1a3548ed83",
+    "arms/f3_drop_grad.jsonl": "cc36571688f2fcad7cb87bb21349125d93b857f449df3a1b27ab4dc5fc3198fe",
+    "arms/f3_drop_random.jsonl": "366a69cb13f2dcc6396b825f92293da7170184dcfe25bb6ea662d5643781caed",
+    "arms/f3_drop_random_active.jsonl": "8cecba306ee22f7608397cfd6d31b28e8083f00a5244f32cb4a88e5c4798b50f",
+    "arms/f3_refill_delta_own.jsonl": "75380086fedc7da8ba8d947bd9ea9c4efbc97b4f69414bdb0942446fa1a7f1b3",
+    "arms/f3_refill_grad.jsonl": "b6954f351ae787a7a47f5d30a82d333efa233cde7312f800030afcd66080a2f9",
+    "arms/f3_refill_random.jsonl": "427e37ce18e0a80f779e4a6bca66b1b3fb8cf3f38addaf2885aaf1f98b04004c",
+    "arms/f3_refill_random_active.jsonl": "170a3782c4835b56add5f7f85400fd1295e909ccd8cb149eafe591fd754fb5f3",
+    "arms/f3_swap_delta_own.jsonl": "5d47c2e2ce8ce53dbf6688d020e4ce5749076b4b9eb1799b915fa6f2c07b2f02",
+    "arms/f3_swap_grad.jsonl": "7c0f2ffafa16d54c23f2b32397e992cca1b6c7440444bb6c23a2e5575c2b5dc0",
+    "arms/f3_swap_random.jsonl": "9cee541b4e7b64777ff9332556b94e76900f362af4ba1999b5b1bbcc6ef851aa",
+    "arms/f3_swap_random_active.jsonl": "2344bcf3170aba453c7616d1ff193c3fe1eae7df39988e49fd794375aaedfc60",
     "arms/refill_delta_own.jsonl": "00a962449ec1f4e8d27e84df6aa9815723cd5a2a860ac0c5e6d1eb77cb93d2ff",
     "arms/refill_grad.jsonl": "f7df9ec1636201a58566eb1a2c4d65672fc594f9e494e230dfa95ca14d471350",
     "arms/refill_random.jsonl": "a8886677e0ad1a5496a9668e17f24ca3b2297bb99185d267793538446745e4c9",
