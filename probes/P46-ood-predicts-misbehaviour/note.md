@@ -240,10 +240,10 @@ All 40 rows of a seeded draw (`p46/samples.py`, numpy seed 20261014, stratified 
 |---|---|---|
 | Lit review and plan, two review rounds, publish | 04:28–04:55 | $0 |
 | Go; build (3 parallel sub-agents), data, rewrites and embeddings, luna validation, H ratings and audit | 04:58–05:30 | $0.35 |
-| Pre-run code review r1 (4 BLOCKING) and fixes | 05:30–06:00 | $0 |
+| Pre-run code review r1 (4 BLOCKING) and fixes | 05:29–05:42 | $0 |
 | Pod 1 (failed the download gate, rerolled) | 05:42–05:47 | $0.31 |
 | Pod 2: download 6 min, smoke 9 min, gen 16.5 min, backtr 2.5 min, judge 5 min, feats 23 min, score 0.5 min, capfix 20 min | 05:47–07:21 | $6.25 |
-| Laptop: luna corroboration and expansion, benign check, translation audit, analysis, F8–F10 | 07:21–08:15 | $3.03 |
+| Laptop: luna corroboration and expansion, benign check, translation audit, analysis, F8–F10 | 07:21–07:56 | $3.03 |
 
 Pod idle time:
 - about 10 min at launch (preflight, push, model download);
