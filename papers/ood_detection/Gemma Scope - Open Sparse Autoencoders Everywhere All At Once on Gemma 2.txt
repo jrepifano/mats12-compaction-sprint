@@ -1,0 +1,2049 @@
+                                                                                                                                             2024-08-09
+
+
+
+
+                                         Gemma Scope: Open Sparse Autoencoders
+                                         Everywhere All At Once on Gemma 2
+                                         Tom Lieberum1 , Senthooran Rajamanoharan1 , Arthur Conmy1 , Lewis Smith1 , Nicolas Sonnerat1 , Vikrant
+                                         Varma1 , János Kramár1 , Anca Dragan1 , Rohin Shah1 and Neel Nanda1
+                                         1 Google DeepMind
+
+
+
+
+                                         Sparse autoencoders (SAEs) are an unsupervised method for learning a sparse decomposition of a
+                                         neural network’s latent representations into seemingly interpretable features. Despite recent excitement
+                                         about their potential, research applications outside of industry are limited by the high cost of training a
+                                         comprehensive suite of SAEs. In this work, we introduce Gemma Scope, an open suite of JumpReLU
+                                         SAEs trained on all layers and sub-layers of Gemma 2 2B and 9B and select layers of Gemma 2 27B
+
+
+
+
+arXiv:2408.05147v2 [cs.LG] 19 Aug 2024
+                                         base models. We primarily train SAEs on the Gemma 2 pre-trained models, but additionally release
+                                         SAEs trained on instruction-tuned Gemma 2 9B for comparison. We evaluate the quality of each SAE
+                                         on standard metrics and release these results. We hope that by releasing these SAE weights, we can
+                                         help make more ambitious safety and interpretability research easier for the community. Weights and
+                                         a tutorial can be found at https://huggingface.co/google/gemma-scope and an interactive demo
+                                         can be found at https://neuronpedia.org/gemma-scope.
+
+
+                                         1. Introduction                                         especially validating or red-teaming SAEs as an
+                                                                                                 approach, learning how to measure their perfor-
+                                         There are several lines of evidence that suggest        mance, learning how to train SAEs at scale effi-
+                                         that a significant fraction of the internal acti-       ciently and well, and exploring how SAEs can be
+                                         vations of language models are sparse, linear           productively applied to real-world tasks.
+                                         combination of vectors, each corresponding to
+                                         meaningful features (Elhage et al., 2022; Gurnee           As a result, there is an urgent need for further
+                                         et al., 2023; Mikolov et al., 2013; Nanda et al.,       research, both in industry and in the broader com-
+                                         2023a; Olah et al., 2020; Park et al., 2023). But       munity. However, unlike previous interpretability
+                                         by default, it is difficult to identify which vec-      techniques like steering vectors (Li et al., 2023;
+                                         tors are meaningful, or which meaningful vectors        Turner et al., 2024) or probing (Belinkov, 2022),
+                                         are present. Sparse autoencoders are a promis-          sparse autoencoders can be highly expensive and
+                                         ing unsupervised approach to do this, and have          difficult to train, limiting the ambition of inter-
+                                         been shown to often find causally relevant, in-         pretability research. Though there has been a lot
+                                         terpretable directions (Bricken et al., 2023; Cun-      of excellent work with sparse autoencoders on
+                                         ningham et al., 2023; Gao et al., 2024; Marks           smaller models (Bricken et al., 2023; Cunning-
+                                         et al., 2024; Templeton et al., 2024). If this ap-      ham et al., 2023; Dunefsky et al., 2024; Marks
+                                         proach succeeds it could help unlock many of the        et al., 2024), the works that use SAEs on more
+                                         hoped for applications of interpretability (Hub-        modern models have normally focused on residual
+                                         inger, 2022; Nanda, 2022; Olah, 2021), such as          stream SAEs at a single layer (Engels et al., 2024;
+                                         detecting and fixing hallucinations, being able         Gao et al., 2024; Templeton et al., 2024). In addi-
+                                         to reliably explain and debug unexpected model          tion, many of these (Gao et al., 2024; Templeton
+                                         behaviour and preventing deception or manipu-           et al., 2024) have been trained on proprietary
+                                         lation from autonomous AI agents.                       models which makes it more challenging for the
+                                                                                                 community at large to build on this work.
+                                           However, sparse autoencoders are still an im-
+                                         mature technique, and there are many open prob-           To address this we have trained and released
+                                         lems to be resolved (Templeton et al., 2024) be-        the weights of Gemma Scope: a comprehensive,
+                                         fore these downstream uses can be unlocked –            open suite of JumpReLU SAEs (Rajamanoharan
+
+
+                                         Corresponding author(s): tlieberum@google.com
+                                         © 2024 Google DeepMind. All rights reserved
+                         Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+et al., 2024b) on every layer and sublayer of                    2. Preliminaries
+Gemma 2 9B and 2B (Gemma Team, 2024b),1 as
+well select layers of the larger 27B model in this               2.1. Sparse autoencoders
+series. We release these weights under a permis-
+                                                                 Given activations x ∈ ℝ𝑛 from a language model,
+sive CC-BY-4.0 license2 on HuggingFace to enable
+                                                                 a sparse autoencoder (SAE) decomposes and re-
+and accelerate research by other members of the
+                                                                 constructs the activations using a pair of encoder
+research community.
+                                                                 and decoder functions (f , x̂) defined by:
+   Gemma Scope was a significant engineering
+challenge to train. It contains more than 400                                   f (x) := 𝜎 (Wenc x + benc ) ,              (1)
+sparse autoencoders in the main release3 , with                                 x̂(f) := Wdec f + bdec .                   (2)
+more than 30 million learned features in total
+(though many features likely overlap), trained                   These functions are trained to map x̂(f (x)) back to
+on 4-16B tokens of text each. We used over 20%                   x, making them an autoencoder. Thus, f (x) ∈ ℝ𝑀
+of the training compute of GPT-3 (Brown et al.,                  is a set of linear weights that specify how to com-
+2020), saved about 20 Pebibytes (PiB) of activa-                 bine the 𝑀 ≫ 𝑛 columns of Wdec to reproduce
+tions to disk, and produced hundreds of billions of              x. The columns of Wdec , which we denote by d𝑖
+sparse autoencoder parameters in total. This was                 for 𝑖 = 1 . . . 𝑀 , represent the dictionary of direc-
+made more challenging by our decision to make                    tions into which the SAE decomposes x. We will
+a comprehensive suite of SAEs, on every layer and                refer to to these learned directions as latents to
+sublayer. We believe that a comprehensive suite                  disambiguate between learnt ‘features’ and the
+is essential for enabling more ambitious applica-                conceptual features which are hypothesized to
+tions of interpretability, such as circuit analysis              comprise the language model’s representation
+(Conmy et al., 2023; Hanna et al., 2023; Wang                    vectors.4
+et al., 2022), essentially scaling up Marks et al.                  The decomposition f (x) is made non-negative
+(2024) to larger models, which may be necessary                  and sparse through the choice of activation func-
+to answer mysteries about larger models like what                tion 𝜎 and appropriate regularization, such that
+happens during chain of thought or in-context                    f (x) typically has much fewer than 𝑛 non-zero
+learning.                                                        entries. Initial work (Bricken et al., 2023; Cun-
+   In Section 2 we provide background on SAEs                    ningham et al., 2023) used a ReLU activation
+in general and JumpReLU SAEs in particular. Sec-                 function to enforce non-negativity, and an L1
+tion 3 contains details of our training procedure,               penalty on the decomposition f (x) to encourage
+hyperparameters and computational infrastruc-                    sparsity. TopK SAEs (Gao et al., 2024) enforce
+ture. We run extensive evaluations on the trained                sparsity by zeroing all but the top K entries of
+SAEs in Section 4 and a list of open problems that               f (x), whereas the JumpReLU SAEs (Rajamanoha-
+Gemma Scope could help tackle in Section 5.                      ran et al., 2024b) enforce sparsity by zeroing out
+                                                                 all entries of f (x) below a positive threshold. Both
+                                                                 TopK and JumpReLU SAEs allow for greater sep-
+                                                                 aration between the tasks of determining which
+                                                                 latents are active, and estimating their magni-
+                                                                 tudes.
+   1We also release one suite of transcoders (Dunefsky et al.
+(2024); Appendix B), a ‘feature-splitting’ suite of SAEs with    2.2. JumpReLU SAEs
+multiple widths trained on the same site (Section 4.3), and
+some SAEs trained on the Gemma 2 9B IT model (Kissane            In this work we focus on JumpReLU SAEs as they
+et al. (2024b); Section 4.5).                                    have been shown to be a slight Pareto improve-
+   2 Note that the Gemma 2 models are released under a
+different, custom license.                                           4 This is different terminology from earlier work (Bricken
+   3 For each model, layer and site we in fact release mul-      et al., 2023; Rajamanoharan et al., 2024a,b), where feature
+tiple SAEs with differing levels of sparsity; taking this into   is normally used interchangeably for both SAE latents and
+account, we release the weights of over 2,000 SAEs in total.     the language models features
+
+
+
+                                                                                                                             2
+                         Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+ment over other approaches, and allow for a vari-              bution as the pretraining text data for Gemma 1
+able number of active latents at different tokens              (Gemma Team, 2024a), except for the one suite of
+(unlike TopK SAEs).                                            SAEs trained on the instruction-tuned (IT) model
+                                                               (Section 4.5).
+JumpReLU activation The JumpReLU activa-                          For a given sequence we only collect activa-
+tion is a shifted Heaviside step function as a gating          tions from tokens which are neither BOS, EOS,
+mechanism together with a conventional ReLU:                   nor padding. After activations have been gener-
+                                                               ated, they are shuffled in buckets of about 106
+    𝜎 (z) = JumpReLU𝜽 (z) := z ⊙ 𝐻 (z − 𝜽) .           (3)
+                                                               activations. We speculate that a perfect shuffle
+Here, 𝜽 > 0 is the JumpReLU’s vector-valued                    would not significantly improve results, but this
+learnable threshold parameter, ⊙ denotes elemen-               was not systematically checked. We would wel-
+twise multiplication, and 𝐻 is the Heaviside step              come further investigation into this topic in future
+function, which is 1 if its input is positive and 0            work.
+otherwise. Intuitively, the JumpReLU leaves the
+                                                                  During training, activation vectors are normal-
+pre-activations unchanged above the threshold,
+                                                               ized by a fixed scalar to have unit mean squared
+but sets them to zero below the threshold, with a
+                                                               norm.6 This allows more reliable transfer of hy-
+different learned threshold per latent.
+                                                               perparameters (in particular the sparsity coeffi-
+                                                               cient 𝜆 and bandwidth 𝜀) between layers and
+Loss function As loss function we use a squared                sites, as the raw activation norms can vary over
+error reconstruction loss, and directly regularize             multiple orders of magnitude, changing the scale
+the number of active (non-zero) latents using the              of the reconstruction loss in Eq. (4). Once training
+L0 penalty:                                                    is complete, we rescale the trained SAE param-
+          L := ∥x − x̂(f (x)) ∥ 22 + 𝜆 ∥f (x) ∥ 0 ,    (4)     eters so that no input normalization is required
+                                                               for inference (see Appendix A for details).
+where 𝜆 is the sparsity penalty coefficient. Since
+the L0 penalty and JumpReLU activation function                   As shown in Table 1, SAEs with 16.4K latents
+are piecewise constant with respect to threshold               are trained for 4B tokens, while 1M-width SAEs
+parameters 𝜽, we use straight-through estimators               are trained for 16B tokens. All other SAEs are
+(STEs) to train 𝜽, using the approach described in             trained for 8B tokens.
+Rajamanoharan et al. (2024b). This introduces
+an additional hyperparameter, the kernel density
+estimator bandwidth 𝜀, which controls the qual-
+ity of the gradient estimates used to train the                Location We train SAEs on three locations per
+threshold parameters 𝜽.5                                       layer, as indicated by Fig. 1. We train on the at-
+                                                               tention head outputs before the final linear trans-
+                                                               formation 𝑊𝑂 and RMSNorm has been applied
+3. Training details                                            (Kissane et al., 2024a), on the MLP outputs after
+                                                               the RMSNorm has been applied and on the post
+3.1. Data                                                      MLP residual stream. For the attention output
+                                                               SAEs, we concatenate the outputs of the individ-
+We train SAEs on the activations of Gemma 2 mod-
+                                                               ual attention heads and learn a joint SAE for the
+els generated using text data from the same distri-
+                                                               full set of heads. We zero-index the layers, so
+  5A large value of 𝜀 results in biased but low variance es-
+                                                               layer 0 refers to the first transformer block after
+timates, leading to SAEs with good sparsity but sub-optimal
+                                                               the embedding layer. In Appendix B we define
+fidelity, whereas a low value of 𝜀 results in high variance
+estimates that cause the threshold to fail to train at all,    transcoders (Dunefsky et al., 2024) and train one
+resulting in SAEs that fail to be sparse. We find through      suite of these.
+hyperparameter sweeps across multiple layers and sites that
+𝜀 = 0.001 provides a good trade-off (when SAE inputs are
+normalized to have a unit mean squared norm) and use this        6 This is similar in spirit to Conerly et al. (2024), who
+                                                                                                            √︁
+to train the SAEs released as part of Gemma Scope.             normalize the dataset to have mean norm of        𝑑model .
+
+
+
+                                                                                                                            3
+                       Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+                                                            inference. See Appendix A for details.
+                                                               Throughout training, we restrict the columns
+                                      Layer N               of Wdec to have unit norm by renormalizing after
+            Residual SAE
+                                                            every update. We also project out the part of the
+                                                            gradients parallel to these columns before com-
+                              MLP Output SAE                puting the Adam update, as described in Bricken
+                                                            et al. (2023).
+                                 RMS Norm
+
+
+                                    MLP                     Initialization We initialize the JumpReLU
+                                                            threshold as the vector 𝜽 = {0.001} 𝑀 . We ini-
+                                 RMS Norm                   tialize Wdec using He-uniform (He et al., 2015)
+                                                            initialization and rescale each latent vector to be
+                                                            unit norm. Wenc is initalized as the transpose of
+                                                            Wdec , but they are not tied afterwards (Conerly
+                                 RMS Norm
+                                                            et al., 2024; Gao et al., 2024). The biases bdec
+                                                            and benc are initialized to zero vectors.
+                            Attn Out Prelinear SAE
+                                                            3.3. Infrastructure
+                                  Attention
+                                                            3.3.1. Accelerators
+                                 RMS Norm
+                                                            Topology We train most of our SAEs using
+                                                            TPUv3 in a 4x2 configuration. Some SAEs, es-
+                                                            pecially the most wide ones, were trained using
+                                                            TPUv5p in either a 2x2x1 or 2x2x4 configuration.
+
+Figure 1 | Locations of sparse autoencoders in-
+                                                            Sharding We train SAEs with 16.4K latents with
+side a transformer block of Gemma 2. Note that
+                                                            maximum amount of data parallelism, while us-
+Gemma 2 has RMS Norm at the start and end of
+                                                            ing maximal amounts of tensor parallelism us-
+each attention and MLP block.
+                                                            ing Megatron sharding (Shoeybi et al., 2020)
+                                                            for all other configurations. We find that as one
+3.2. Hyperparameters                                        goes to small SAEs and correspondingly small up-
+                                                            date step time, the time spent on host-to-device
+Optimization We use the same bandwidth 𝜀 =                  (H2D) transfers outgrows the time spent on the
+0.001 and learning rate 𝜂 = 7 × 10−5 across                 update step, favoring data sharding. For larger
+all training runs. We use a cosine learning rate            SAEs on the other hand, larger batch sizes enable
+warmup from 0.1𝜂 to 𝜂 over the first 1,000 train-           higher arithmetic intensity by reducing transfers
+ing steps. We train with the Adam optimizer                 between HBM and VMEM of the TPU. Further-
+(Kingma and Ba, 2017) with ( 𝛽1 , 𝛽2 ) = (0, 0.999),        more, the specific architecture of SAEs means
+𝜖 = 10 −8 and a batch size of 4,096. We use a lin-          that when using Megatron sharding, device-to-
+ear warmup for the sparsity coefficient from 0 to           device (D2D) communication is minimal, while
+𝜆 over the first 10,000 training steps.                     data parallelism causes a costly all-reduce of the
+                                                            full gradients. Thus we recommend choosing the
+   During training, we parameterise the SAE us-
+                                                            smallest degree of data sharding such that the
+ing a pre-encoder bias Bricken et al. (2023), sub-
+                                                            H2D transfer takes slightly less time than the up-
+tracting bdec from activations before the encoder.
+                                                            date step.
+However, after training is complete, we fold in
+this bias into the encoder parameters, so that                 As an example, with proper step time optimiza-
+no pre-encoder bias needs to be applied during              tion this enables us to process one batch for a
+
+
+                                                                                                             4
+                      Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+            Gemma 2 Model          SAE Width         Attention     MLP       Residual           # Tokens
+               2.6B PT             214 ≈ 16.4K          All        All         All+                4B
+              (26 layers)              215               ✗          ✗          {12}                8B
+                                       216              All        All          All                8B
+                                       217               ✗          ✗          {12}                8B
+                                       218               ✗          ✗          {12}                8B
+                                       219               ✗          ✗          {12}                8B
+                                    220 ≈ 1M             ✗          ✗       {5, 12, 19}           16B
+                 9B PT                 214              All        All          All                4B
+               (42 layers)             215               ✗          ✗          {20}                8B
+                                       216               ✗          ✗          {20}                8B
+                                       217              All        All          All                8B
+                                       218               ✗          ✗          {20}                8B
+                                       219               ✗          ✗          {20}                8B
+                                       220               ✗          ✗       {9, 20, 31}           16B
+           27B PT (46 layers)          217               ✗          ✗      {10, 22, 34}            8B
+                 9B IT                 214               ✗          ✗       {9, 20, 31}            4B
+              (42 layers)              217               ✗          ✗       {9, 20, 31}            8B
+
+Table 1 | Overview of the SAEs that were trained for which sites and layers. For each model, width,
+site and layer, we release multiple SAEs with differing levels of sparsity (L0).
+All+: We also train one suite of transcoders on the MLP sublayers on Gemma 2.6B PT (Appendix B).
+
+
+131K-width SAE in 45ms on 8 TPUv3 chips, i.e. a            however, or if fast disk I/O can not be provided
+model FLOP utilization (MFU) of about 50.8%.               (see next paragraph), then this will favor on-the-
+                                                           fly generation instead. This would also be the
+                                                           case if the exact hyperparameter combinations
+3.3.2. Data Pipeline
+                                                           were known in advance. In practice, we find it
+Disk storage We store all collected activations            advantageous for research iteration speed to be
+on hard drives as raw bytes in shards of 10-20GiB.         able to sweep sparsity independently from other
+We use 32-bit precision in all our experiments.            hyperparameters and to retrain SAEs at will.
+This means that storing 8B worth of activations
+for a single site and layer takes about 100TiB for
+Gemma 2 9B, or about 17PiB for all sites and               Disk reads Since SAEs are very shallow mod-
+layers of both Gemma 2 2B and 9B. The total                els with short training step times and we train
+amount is somewhat higher still, as we train some          them on activation vectors rather than integer-
+SAEs for 16B tokens and also train some SAEs               valued tokens, training them requires high data
+on Gemma 2 27B, as well as having a generous               throughput. For instance, to train a single SAE on
+buffer of additional tokens. While this is a signifi-      Gemma 2 9B without being bottlenecked by data
+cant amount of disk space, it is still cheaper than        loading requires more than 1 GiB/s of disk read
+regenerating the data every time one wishes to             speed. This demand is further amplified when
+train an SAE on it. Concretely, in our calculations        training multiple SAEs on the same site and layer,
+we find that storing activations for 10-100 days is        e.g. with different sparsity coefficients, or while
+typically at least an order of magnitude cheaper           conducting hyperparameter tuning.
+than regenerating them one additional time. The
+                                                             To overcome this bottleneck we implement a
+exact numbers depend on the model used and the
+                                                           shared server system, enabling us to amortize
+specifics of the infrastructure, but we expect this
+                                                           disk reads for a single site and layer combination:
+relationship to hold true in general. If there is a
+hard limit on the amount of disk space available,            • Shared data buffer: Multiple training jobs
+
+
+                                                                                                            5
+                     Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+    share access to a single server. The server           Metrics We use the mean L0-norm of latent
+    maintains a buffer containing a predefined            activations, 𝔼x ∥f (x) ∥ 0 , as a measure of sparsity.
+    number of data batches. Trainers request              To measure reconstruction fidelity, we use two
+    these batches from the servers as needed.             metrics:
+  • Distributed disk reads: To enable parallel
+                                                            • Our primary metric is delta LM loss, the in-
+    disk reads, we deploy multiple servers for
+                                                              crease in the cross-entropy loss experienced
+    each site and layer, with each server exclu-
+                                                              by the LM when we splice the SAE into the
+    sively responsible for a contiguous slice of
+                                                              LM’s forward pass.
+    the data.
+                                                            • As a secondary metric, we also use fraction
+  • Dynamic data fetching: As trainers request
+                                                              of variance unexplained (FVU) – also called
+    batches, the server continually fetches new
+                                                              the normalized loss (Gao et al., 2024) – as
+    data from the dataset, replacing the oldest
+                                                              a measure of reconstruction fidelity. This is
+    data within their buffer.
+                                                              the mean reconstruction loss Lreconstruct of a
+  • Handling speed differences: To accommo-
+                                                              SAE normalized by the reconstruction loss
+    date variations in trainer speeds caused by
+                                                              obtained by always predicting the dataset
+    factors like preemption, crashes and differ-
+                                                              mean. Note that FVU is purely a measure
+    ent SAE widths, trainers keep track of the
+                                                              of the SAE’s ability to reconstruction the in-
+    batches they have already processed. If a
+                                                              put activations, not taking into account the
+    trainer lags behind, the servers can loop
+                                                              causal effect of any error on the downstream
+    through the dataset again, providing the
+                                                              loss.
+    missed batches. Note that different training
+    speeds result in different trainers not seeing        All metrics were computed on 2,048 sequences
+    the same data or necessarily in the same or-          of length 1,024, after masking out special tokens
+    der. In practice we found this trade-off well         (pad, start and end of sequence) when aggregat-
+    worth the efficiency gains.                           ing the results.
+
+
+4. Evaluation                                             Results Fig. 2 compares the sparsity-fidelity
+                                                          trade-off for SAEs in the middle of each Gemma
+In this section we evaluate the trained SAEs from         model. For the full results see Appendix C. Delta
+various different angles. We note however that            loss is consistently higher for residual stream SAEs
+as of now there is no consensus on what consti-           compared to MLP and attention SAEs, whereas
+tutes a reliable metric for the quality of a sparse       FVU (Fig. 13) is roughly comparable across sites.
+autoencoder or its learned latents and that this          We conjecture this is because even small errors
+is an ongoing area of research and debate (Gao            in reconstructing the residual stream can have a
+et al., 2024; Karvonen et al., 2024; Makelov et al.,      significant impact on LM loss, whereas relatively
+2024).                                                    large errors in reconstructing a single MLP or at-
+                                                          tention sub-layer’s output have a limited impact
+   Unless otherwise noted all evaluations are on
+                                                          on the LM loss.7
+sequences from the same distribution as the SAE
+                                                             7 The residual stream is the bottleneck by which the pre-
+training data, i.e. the pretraining distribution of
+Gemma 1.                                                  vious layers communicate with all later layers. Any given
+                                                          MLP or attention layer adds to the residual stream, and is
+                                                          typically only a small fraction of the residual, so even a large
+4.1. Evaluating the sparsity-fidelity trade-off           error in the layer is a small error to the residual stream and
+                                                          so to the rest of the network’s processing. On the other hand,
+                                                          a large error to the residual stream itself will significantly
+Methodology For a fixed dictionary size, we
+                                                          harm loss. For the same reason, mean ablating the residual
+trained SAEs of varying levels of sparsity by             stream has far higher impact on the loss than mean ablating
+sweeping the sparsity coefficient 𝜆 . We then plot        a single layer.
+curves showing the level of reconstruction fidelity
+attainable at a given level of sparsity.
+
+
+
+                                                                                                                        6
+                                       Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+                          Site=attn_output_pre_linear                   Site=mlp_output                        Site=post_mlp_residual
+                1
+                 5                                                                                                                                           Width
+                 2
+                                                                                                                                                                 16.4K
+                                                                                                                                                                 65.5K
+
+
+
+                                                                                                                                               Model=2B-PT
+               0.1
+
+
+
+Delta Loss
+                 5                                                                                                                                               131K
+                 2                                                                                                                                               1M
+              0.01
+                 5
+
+                 2
+             0.001
+
+                1
+                 5
+
+                 2
+
+
+
+
+                                                                                                                                               Model=9B-PT
+               0.1
+
+
+
+Delta Loss
+                 5
+
+                 2
+              0.01
+                 5
+
+                 2
+             0.001
+
+                     10   2      5   100   2      5     1000   10   2    5   100   2       5   1000   10   2       5   100   2      5   1000
+
+                                      L0                                      L0                                        L0
+
+ Figure 2 | Sparsity-fidelity trade-off for layer 12 Gemma 2 2B and layer 20 Gemma 2 9B SAEs. An
+ ideal SAE should have low delta loss and low L0, i.e. correspond to a point towards the bottom-left
+ corner of each plot. For an analogous plot using FVU as the measure of fidelity see Fig. 13.
+
+
+ 4.2. Impact of sequence position                                                      ally. Curves for other models, layers, widths and
+                                                                                       sparsity coefficients were found to be qualitatively
+ Methodology Prior research has shown that                                             similar.
+ language models tend to have lower loss on later
+ token positions (Olsson et al., 2022). It is thus                                        Fig. 15 shows how delta LM loss varies by se-
+ natural to ask how an SAE’s performance changes                                       quence position. The high level of noise in the
+ over the length of a sequence. Similar to Sec-                                        delta loss measurements makes it difficult to ro-
+ tion 4.1, we track reconstruction loss and delta                                      bustly measure the effect of position, however
+ loss for various sparsity settings, however this                                      there are signs that this too is slightly lower for the
+ time we do not aggregate over the sequence posi-                                      first few tokens, particularly for residual stream
+ tion. Again, we mask out special tokens.                                              SAEs.
+
+
+Result Fig. 3 shows how reconstruction loss                                            4.3. Studying the effect of SAE width
+varies by position for 131K-width SAEs trained                                      Holding all else equal, wide SAEs learn more la-
+on the middle-layer of Gemma 2 9B. Reconstruc-                                      tent directions and provide better reconstruction
+tion loss increases rapidly from close to zero over                                 fidelity at a given level of sparsity than narrow
+the first few tokens. The loss monotonically in-                                    SAEs. Intuitively, this suggests that we should
+creases by position for attention SAEs, although                                    use the widest SAEs practicable for downstream
+it is essentially flat after 100 tokens. For MLP                                    tasks. However, there are also signs that this intu-
+SAEs, the loss peaks at around the tenth token                                      ition may come with caveats. The phenomenon of
+before gradually declining slightly. We speculate                                   ‘feature-splitting’ (Bricken et al., 2023) – where
+that this is because attention is most useful when                                  latents in a narrow SAE seem to split into mul-
+tracking long-range dependencies in text, which                                     tiple specialized latents within wider SAEs – is
+matters most when there is significant prior con-                                   one sign that wide SAEs do not always use their
+text to draw from, while MLP layers do a lot of                                     extra capacity to learn a greater breadth of fea-
+local processing, like detecting n-grams (Gurnee                                    tures (Bussmann et al., 2024). It is plausible that
+et al., 2023), that does not need much context.                                     the sparsity penalty used to train SAEs encour-
+Like attention SAEs, residual stream SAEs’ loss                                     ages wide SAEs to learn frequent compositions of
+monotonically increases, plateauing more gradu-                                     existing features over (or at least in competition
+
+
+                                                                                                                                                                      7
+                                              Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+                                                                                                                                        Site=post_mlp_residual
+
+                                                                                                                           5
+                                                                                                                                                                                Width
+                                                                                                                                                                                    16.4K
+
+
+
+
+                                                                            Site=attn_output_pre_linear
+                                                                                                            Delta Loss
+                                    0.4                                                                                                                                             32.8K
+
+
+                                                                                                                                                                         Layer=20
+                                                                                                                           2
+                                                                                                                                                                                    65.5K
+                                    0.3                                                                                  0.1                                                        131K
+                                                                                                                                                                                    262K
+                                                                                                                           5
+                                    0.2                                                                                                                                             524K
+
+                                                                                                                           2
+                                    0.1                                                                                        10   2          5        100      2   5
+
+
+                                                                                                                                                   L0
+
+
+
+
+  Reconstruction loss by position
+                                     0
+
+                                    0.4
+                                                                                                          Figure 4 | Delta loss versus sparsity curves for a
+
+
+
+                                                                            Site=mlp_output
+                                    0.3                                                                   series of SAEs of differing width (keeping 𝜆 and
+                                    0.2                                                                   other hyperparameters constant), trained on the
+                                                                                                          residual stream after layer 20 of Gemma 2 9B.
+                                    0.1
+
+                                     0
+
+                                    0.4                                                                   curves for SAEs of differing width in this ladder.
+
+
+
+
+                                                                            Site=post_mlp_residual
+                                    0.3
+
+                                    0.2                                                                   Latent firing frequency Fig. 5 shows frequency
+                                    0.1                                                                   histograms for 𝜆 = 6 × 10−4 SAEs in the same lad-
+                                     0
+                                                                                                          der of widths from 214 to 219 latents. To compute
+                                          0        500               1000                                 these, we calculate the firing frequency of each la-
+                                                 Position                                                 tent over 20,000 sequences of length 1,024, mask-
+                                                                                                          ing out special tokens. Note that the mode and
+                                                                                                          most of the mass shifts towards lower frequencies
+Figure 3 | Reconstruction loss by sequence posi-                                                          with increased number of latents. However there
+tion for Gemma 2 9B middle-layer 131K-width                                                               remains a cluster of ultra-high frequency latents,
+SAEs with 𝜆 = 10−3 .                                                                                      which has also been observed for TopK SAEs but
+                                                                                                          not for Gated SAEs (Cunningham and Conerly,
+                                                                                                          2024; Gao et al., 2024; Rajamanoharan et al.,
+with) using their increased capacity to learn new
+                                                                                                          2024b).
+features (Anders et al., 2024). If this is the case,
+it is currently unclear whether this is good or bad
+for the usefulness of SAEs on downstream tasks.                                                           4.4. Interpretability of latents
+   In order to facilitate research into how SAEs’                                                         The interpretability of latents for a subset of the
+properties vary with width, and in particular how                                                         SAEs included in Gemma Scope was investigated
+SAEs with different widths trained on the same                                                            in Rajamanoharan et al. (2024b); latents were
+data relate to one another, we train and release                                                          evaluated using human raters and via LM gen-
+a ‘feature-splitting‘ suite of mid-network resid-                                                         erated explanations. For completeness, we in-
+ual stream SAEs for Gemma 2 2B and 9B PT                                                                  clude the key findings of those studies here and
+with matching sparsity coefficients and widths                                                            refer readers to section 5.3 of that work for a de-
+between 214 ≈ 16.4K and 219 ≈ 524K in steps                                                               tailed discussion of the methodology. Both the
+of powers of two.8 The SAEs are trained with                                                              human rater and LM explanations studies evalu-
+different sparsity settings after layers 12 and 20                                                        ated JumpReLU, TopK and Gated SAEs of width
+of Gemma 2 2B and 9B respectively.                                                                        131K trained on all sites at layers 9, 20, and 31
+                                                                                                          of Gemma 2 9B. Fig. 6 shows human raters’ judg-
+                                                                                                          ment of latent interpretability for each investi-
+Sparsity-fidelity trade-off Similar to Sec-
+                                                                                                          gated SAE architecture. Fig. 7 shows the Pearson
+tion 4.1, Fig. 4 compares fidelity-versus-sparsity
+                                                                                                          correlation between the language model (LM)
+   8 Note the 1M-width SAEs included in Fig. 2 do not form
+                                                                                                          simulated activations based on LM-generated ex-
+part of this suite as they were trained using a different range                                           planations and the ground truth activation values.
+of values for the sparsity coefficient 𝜆 .
+
+
+
+                                                                                                                                                                                            8
+                                                                            7/19/24, 3:15 PM              tlieberum.users.x20web.corp.google.com/www/no_crawl/html_stash/stashed-af1ee3f154ad427fac758f7e827
+                                Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+                                                                                              0.8                                                     SAE Type
+                                                                                                                                                              Gated (RI-L1)
+                                                                                                                                                              JumpRelu
+                                                                                              0.6                                                             TopK (AuxK)
+
+
+
+
+                                                                                  Frequency
+                                                                                              0.4
+
+
+
+
+                                                                                              0.2
+
+
+
+
+                                                                                               0
+                                                                                                    YES            MAYBE                NO
+
+                                                                                                                  Rating
+
+
+                                                                                  Figure 6 | Human rater scores of latent inter-
+                                                                                  pretability. Latents from all SAE architectures
+                                                                                  are rated as similarly interpretable by human
+                                                                                  raters. (Reproduced from Rajamanoharan et al.
+                                                                                  (2024b).)
+
+
+                                                                                   the model’s response.9 We then train each SAE
+                                                                                   to reconstruct activations at all token positions
+                                                                                   besides the user prefix (since these tokens have
+                                                                                   much larger norm (Kissane et al., 2024b), and
+                                                                                   are the same for every document). We also re-
+                                                                                   lease the weights for these SAEs to enable further
+Figure 5 | Frequency histogram of SAEs trained                                     research into the differences between training
+on Gemma 2 9B, layer 20, post MLP residual                                         SAEs on base and IT models. 10
+with sparsity coefficient 𝜆 = 6 × 10−4 . (These
+correspond to the SAEs with L0 ≈ 50 in Fig. 4.)
+                                                            Methodology To evaluate the SAEs trained on
+                                                            the IT model’s activations, we generate 1,024
+On both metrics, there is little discernible differ- rollouts of the Gemma 2 9B IT model on a random
+ence between JumpReLU, TopK and Gated SAEs. sample of the SFT data used to train Gemini 1.0
+                                                            Ultra (Gemini Team, 2024), with temperature
+4.5. SAEs trained on base models transfer to                1.0.       We then use SAEs trained on the residual
+      IT models                                             stream of the base model and the IT model to
+                                                            reconstruct these activations, and measured the
+                                                   https://tlieberum.users.x20web.corp.google.com/www/no_crawl/html_stash/stashed-af1ee3f154ad427fac758f7e827d00dd.html
+
+Additional IT SAE training Prior research has FVU.
+shown that SAEs trained on base model activa-
+tions also faithfully reconstruct the activations
+                                                            Results In Fig. 8 we show that using PT model
+of IT models derived from these base models
+                                                            SAEs results in increases in cross-entropy loss
+(Kissane et al., 2024b). We find further evidence
+                                                            almost as small as the increase from the SAEs di-
+for these results by comparing the Gemma Scope
+                                                            rectly trained on the IT model’s activation. We
+SAEs with several SAEs we train on the activa-
+                                                            show further evaluations such as on Gemma 2
+tions from Gemma 2B 9B IT. Specifically, we train
+                                                            2B, measuring FVU rather than loss, and using
+these IT SAEs by taking the same pretraining doc-
+uments used for all other SAEs (Section 3.1) and                  9 See         e.g.         https://huggingface.co/google/
+prepend them with Gemma’s IT prefix for the gemma-2-2b-it for the user and model prefixes.
+                                                                10 https://huggingface.co/google/
+user’s query, and append Gemma’s IT prefix for
+                                                                                   gemma-scope-9b-it-res
+
+
+
+                                                                                                                                                                              9
+7/19/24, 11:39 AM                          tlieberum.users.x20web.corp.google.com/www/no_crawl/html_stash/stashed-c2577cf5f86d4396ba1bd8ef65b6576d.html
+
+
+
+
+                                                               Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+                            1
+                                                                                                           SAE Type
+                                                                                                                   Gated (RI-L1)
+                                                                                                                                             Results In Fig. 9 we show delta loss by sub-
+                                                                                                                   JumpReLU                  set. Of the studied subsets, SAEs perform best
+                                                                                                                   TopK (AuxK)
+                                                                                                                   Random Init               on DeepMind mathematics (Saxton et al., 2019).
+
+
+
+    Pearson Correlation
+                           0.5
+                                                                                                                                             Possibly this is due to the especially formulaic
+                                                                                                                                             nature of the data. SAEs perform worst on Eu-
+                            0                                                                                                                roparl (Koehn, 2005), a multilingual dataset. We
+                                                                                                                                             conjecture that this is due to the Gemma 1 pre-
+                          −0.5
+                                                                                                                                             training data, which was used to train the SAEs,
+                                                                                                                                             containing predominantly English text.
+                                 Gated (RI-L1)    JumpReLU          TopK (AuxK)        Random Init
+
+                                                           SAE Type
+                                                                                                                                             4.7. Impact of low precision inference
+    Figure 7 | Pearson correlation between LM-
+    simulated and ground truth activations. The                                                                                              We train all SAEs in 32-bit floating point preci-
+    dashed lines denote the mean per SAE type. Val-                                                                                          sion. It is common to make model inference less
+    ues above 1 are an artifact of the kernel density                                                                                        memory and compute intensive by reducing the
+    estimation used to produce the plot. (Reproduced                                                                                         precision at inference time. This is particularly
+    from Rajamanoharan et al. (2024b).)                                                                                                      important for applications like circuit analysis,
+                                                                                                                                             where users may wish to splice several SAEs into
+                                                                                                                                             a language model simultaneously. Fig. 10 com-
+    activations from the user query (not just the roll-                                                                                      pares fidelity-versus-sparsity curves computed
+    out) in Appendix C.4. In Fig. 21 we find that the                                                                                        using float32 SAE and LM weights versus the
+    FVU for the PT SAEs is somewhat faithful, but                                                                                            same curves computed using bfloat16 SAE and
+    does not paint as strong a picture as Fig. 8. We                                                                                         LM weights, suggesting there is negligible impact
+    speculate that these results could be explained by                                                                                       in switching to bfloat16 for inference.
+    the following hypothesis: finetuning consists of
+    ‘re-weighting’ old features from the base model,
+    in addition to learning some new, chat-specific                                                                                          5. Open problems that Gemma Scope
+    features that do not have as big an impact on
+https://tlieberum.users.x20web.corp.google.com/www/no_crawl/html_stash/stashed-c2577cf5f86d4396ba1bd8ef65b6576d.html
+                                                                                                                                                may help tackle
+                                                                                                                                                          1/1
+
+
+    next-token prediction. This would mean the FVU
+    looks worse than the increase in loss since the                                                                                          Our main goal in releasing Gemma Scope is to
+    FVU would be impacted by low impact chat fea-                                                                                            help the broader safety and interpretability com-
+    tures, but change in loss would not be.                                                                                                  munities advance our understanding of inter-
+                                                                                                                                             pretability, and how it can be used to make mod-
+       Future work could look into finetuning these                                                                                          els safer. As a starting point, we provide a list
+    SAEs on chat interactions if even lower recon-                                                                                           of open problems we would be particularly ex-
+    struction error is desired (Kissane et al., 2024b),                                                                                      cited to see progress on, where we believe Gemma
+    or evaluating on multi-turn and targeted rollouts.                                                                                       Scope may be able to help. Where possible we cite
+                                                                                                                                             work that may be a helpful starting point, even if
+    4.6. Pile subsets                                                                                                                        it is not tackling exactly the same question.
+
+    Methodology We perform the sparsity-fidelity
+    evaluation from Section 4.1 on different valida-                                                                                         Deepening our understanding of SAEs
+    tion subsets of The Pile (Gao et al., 2020), to                                                                                              1. Exploring the structure and relationships be-
+    gauge whether SAEs struggle with a particular                                                                                                   tween SAE features, as suggested in Watten-
+    type of data.11                                                                                                                                 berg and Viégas (2024).
+      11 Note that this is a different dataset to the dataset used                                                                               2. Comparisons of residual stream SAE features
+    to train the Gemma Scope SAEs.                                                                                                                  across layers, e.g. are there persistent fea-
+                                                                                                                                                    tures that one can “match up” across adja-
+                                                                                                                                                    cent layers?
+
+
+
+                                                                                                                                                                                              10
+                                                                      Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+                         Change in loss on Gemma 2 9B IT rollouts
+                                                         Layer=9                                                     Layer=20                                                 Layer=31
+                     0.8
+                                                                                                                                                                                                                                                      Training activations source
+
+
+
+
+                                                                                                                                                                                                                              Width=131072
+                                                                                                                                                                                                                                                             gemma-v2-9b-pt
+
+
+
+        Delta Loss
+                     0.6
+                                                                                                                                                                                                                                                             gemma-v2-9b-it
+                     0.4
+
+                     0.2
+
+                         0
+                     0.8
+
+
+
+
+        Delta Loss                                                                                                                                                                                                            Width=16384
+                     0.6
+
+                     0.4
+
+                     0.2
+
+                         0
+                                  10        2            5         100           2          5        10     2         5        100       2       5         10      2          5        100            2                   5
+
+
+                                                             L0                                                           L0                                                      L0
+
+
+
+
+ Figure 8 | Change in loss when splicing in SAEs trained on Gemma 2 9B (base and IT) to reconstruct
+ the activations generated with Gemma 2 9B IT on rollouts.
+
+
+
+                              Site=attn_output_pre_linear                                                  Site=mlp_output                                Site=post_mlp_residual
+                     1                                                                                                                                                                                                        Pile Subset
+
+
+
+
+                                                                                                                                                                                                            Model=2B-PT
+                                                                                                                                                                                                                                                           wikipedia_en
+             0.1
+                                                                                                                                                                                                                                                           europarl
+                                                                                                                                                                                                                                                           openwebtext2
+      0.01
+                                                                                                                                                                                                                                                           arxiv
+ 0.001                                                                                                                                                                                                                                                     freelaw
+                                                                                                                                                                                                                                                           hackernews
+                     1                                                                                                                                                                                                                                     dm_mathematics
+
+
+
+
+                                                                                                                                                                                                            Model=9B-PT
+                                                                                                                                                                                                                                                           github
+             0.1
+
+      0.01
+
+ 0.001
+
+                             10        2            5   100       2          5       1000       10    2         5   100    2         5   1000        10   2        5    100       2          5       1000
+
+                                                        L0                                                          L0                                                   L0
+
+ Figure 9 | Delta loss per pile subset (65K for 2B, 131K for 9B).
+
+
+
+                                            Site=attn_output_pre_linear                                             Site=mlp_output                                    Site=post_mlp_residual
+                              1
+                               5                                                                                                                                                                                                                            Width, Precision
+                               2
+
+
+
+
+                                                                                                                                                                                                                                             Model=2B-PT
+                                                                                                                                                                                                                                                                    16.4K, BF16
+
+
+
+Delta Loss
+                             0.1
+                               5                                                                                                                                                                                                                                    16.4K, FP32
+                               2
+                         0.01                                                                                                                                                                                                                                       65.5K, BF16
+                               5                                                                                                                                                                                                                                    65.5K, FP32
+                               2
+                     0.001                                                                                                                                                                                                                                          131K, BF16
+                               5
+                                                                                                                                                                                                                                                                    131K, FP32
+                              1
+                               5
+                               2
+
+
+
+
+Delta Loss                                                                                                                                                                                                                                   Model=9B-PT
+                             0.1
+                               5
+                               2
+                         0.01
+                               5
+                               2
+                     0.001
+                               5
+                                       10       2        5    100        2             5    1000      10        2     5    100       2       5   1000         10   2          5       100        2        5         1000
+
+                                                                  L0                                                           L0                                                      L0
+
+ Figure 10 | Delta loss versus sparsity computed using either float32 or bfloat16 SAE and language
+ model weights.
+
+
+
+
+                                                                                                                                                                                                                                                                               11
+                         Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+ 3. Better understanding the phenomenon of                            been shown to happen in toy models (Anders
+    “feature splitting” (Bricken et al., 2023)                        et al., 2024), and can we fix this?
+    where high-level features in a small SAE
+    break apart into several finer-grained fea-
+    tures in a wider SAE.                                        Scalable circuit analysis: What interesting cir-
+ 4. We know that SAEs introduce error, and com-                  cuits can we find in these models?
+    pletely miss out on some features that are                    1. What’s the learned algorithm for addition
+    captured by wider SAEs (Bussmann et al.,                         (Stolfo et al., 2023) in Gemma 2 2B?
+    2024; Templeton et al., 2024). Can we quan-                   2. How can we practically extend the SAE fea-
+    tify and easily measure “how much” they                          ture circuit finding algorithm in Marks et al.
+    miss and how much this matters in practice?                      (2024) to larger models?
+ 5. How are circuits connecting up superposed                     3. Can we use SAE-like techniques such as MLP
+    features represented in the weights? How do                      transcoders (Dunefsky et al., 2024) to find
+    models deal with the interference between                        input independent, weights-based circuits?
+    features (Nanda et al., 2023b)?
+
+                                                                 Using SAEs as a tool to answer existing ques-
+Using SAEs to improve performance on real–                       tions in interpretability
+world tasks (compared to fair baselines)
+                                                                  1. What does finetuning do to a model’s inter-
+ 1. Detecting or fixing jailbreaks.                                  nals (Jain et al., 2024)?
+ 2. Helping find new jailbreaks/red-teaming                       2. What is actually going on when a model uses
+    models (Ziegler et al., 2022).                                   chain of thought?
+ 3. Comparing steering vectors (Turner et al.,                    3. Is in-context learning true learning, or just
+    2024) to SAE feature steering (Conmy and                         promoting existing circuits (Hendel et al.,
+    Nanda, 2024) or clamping (Templeton et al.,                      2023; Todd et al., 2024)?
+    2024).                                                        4. Can we find any “macroscopic structure” in
+ 4. Can SAEs be used to improve interpretabil-                       language models, e.g. families of features
+    ity techniques, like steering vectors, such as                   that work together to perform specialised
+    by removing irrelevant features (Conmy and                       roles, like organs in biological organisms?13
+    Nanda, 2024)?                                                 5. Does attention head superposition (Jermyn
+                                                                     et al., 2023) occur in practice? E.g. are
+                                                                     many attention features spread across sev-
+Red-teaming SAEs
+                                                                     eral heads (Kissane et al., 2024b)?
+ 1. Do SAEs really find the “true” concepts in a
+    model?
+ 2. How robust are claims about the inter-                       Improvements to SAEs
+    pretability of SAE features (Huang et al.,                    1. How can SAEs efficiently capture the circular
+    2023)?                                                           features of Engels et al. (2024)?
+ 3. Can we find computable, quantitative mea-                     2. How can they deal efficiently with cross-layer
+    sures that are a useful proxy for how “inter-                    superposition, i.e. features produced in su-
+    pretable” humans think a feature vector is                       perposition by neurons spread across multi-
+    (Bills et al., 2023)?                                            ple layers?
+ 4. Can we find the “dark matter” of truly non-                   3. How much can SAEs be quantized without
+    linear features?12
+                                                                   13We know this happens in image models (Voss et al.,
+ 5. Do SAEs learn spurious compositions of inde-
+                                                                 2021) but have not seen much evidence in language models.
+    pendent features to improve sparsity as has                  But superposition is incentivized for features that do not
+  12We distinguish truly non-linear features from low-rank       co-occur (Gurnee et al., 2023), so specialized macroscopic
+                                                                 structure may be a prime candidate to have in superposition.
+subspaces of linear features as found in Engels et al. (2024).
+                                                                 Now we have SAEs, can we find and recover it?
+
+
+
+
+                                                                                                                          12
+                     Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+     significant performance degradation, both            to training and evaluating the transcoders and IT
+     for inference and training?                          SAEs with significant contribution from SR. LS
+                                                          wrote the Gemma Scope tutorial. Neel Nanda
+                                                          (NN) wrote the list of open problems in Section 5
+Acknowledgements
+                                                          and led coordination with the various stakehold-
+We are incredibly grateful to Joseph Bloom,               ers required to make the launch possible. Anca
+Johnny Lin and Curt Tigges for their help cre-            Dragan (AD), Rohin Shah (RS) and NN provided
+ating an interactive demo of Gemma Scope on               leadership and advice throughout the project and
+Neuronpedia (Lin and Bloom, 2023), creating               edited the report.
+tooling for researchers like feature dashboards,
+and help making educational materials. We are             References
+grateful to Alex Tomala for engineering support
+and Tobi Ijitoye for organizational support dur-          E. Anders, C. Neo, J. Hoelscher-Obermaier, and
+ing this project. Additionally, we would like to            J. N. Howard. Sparse autoencoders find com-
+thank Meg Risdal, Kathleen Kenealy, Joe Fernan-             posed features in small toy models. LessWrong,
+dez, Kat Black and Tris Warkentin for support               2024.
+with integration with Gemma, and Omar Sanse-
+viero, Joshua Lochner and Lucain Pouget for help          Y. Belinkov.     Probing classifiers: Promises,
+with integration into HuggingFace. We also thank            shortcomings, and advances.         Computa-
+beta testers Javier Ferrando, Oscar Balcells Obeso          tional Linguistics, 48(1):207–219, Mar. 2022.
+and others for additional feedback. We are grate-           doi: 10.1162/coli_a_00422. URL https://
+ful for help and contributions from Phoebe Kirk,            aclanthology.org/2022.cl-1.7.
+Andrew Forbes, Arielle Bier, Aliya Ahmad, Yotam
+                                                          S. Bills, N. Cammarata, D. Mossing, H. Till-
+Doron, Ludovic Peran, Anand Rao, Samuel Al-
+                                                            man, L. Gao, G. Goh, I. Sutskever, J. Leike,
+banie, Dave Orr, Matt Miller, Alex Turner, Shruti
+                                                            J. Wu, and W. Saunders. Language models
+Sheth, Jeremy Sie and Glenn Cameron.
+                                                            can explain neurons in language mod-
+                                                            els.        https://openaipublic.blob.
+Author contributions                                         core.windows.net/neuron-explainer/
+                                                             paper/index.html, 2023.
+Tom Lieberum (TL) led the writing of the report,
+and implementation and running of evaluations.            T. Bricken, A. Templeton, J. Batson, B. Chen,
+TL also led optimization of SAE training code               A. Jermyn, T. Conerly, N. Turner, C. Anil,
+and fast distributed data loading with signifi-             C. Denison, A. Askell, R. Lasenby, Y. Wu,
+cant contributions from Vikrant Varma (VV) and              S. Kravec, N. Schiefer, T. Maxwell, N. Joseph,
+Lewis Smith (LS). Senthooran Rajamanoharan                  Z. Hatfield-Dodds, A. Tamkin, K. Nguyen,
+(SR) developed the JumpReLU architecture, led               B. McLean, J. E. Burke, T. Hume, S. Carter,
+SAE training and significantly contributed to writ-         T. Henighan, and C. Olah. Towards monose-
+ing and editing the report. SAEs were trained               manticity: Decomposing language models
+using a codebase that was designed and imple-               with dictionary learning.        Transformer
+mented by TL and VV with significant contribu-              Circuits Thread, 2023.         URL https:
+tions from Arthur Conmy (AC), which in turn                  //transformer-circuits.pub/2023/
+relies on an interpretability codebase written in            monosemantic-features/index.html.
+large part by János Kramár (JK). JK also wrote
+                                                          T. B. Brown, B. Mann, N. Ryder, M. Subbiah, J. Ka-
+Mishax, a python library that was used to seam-
+                                                             plan, P. Dhariwal, A. Neelakantan, P. Shyam,
+lessly adapt our codebase to the newest Gemma
+                                                             G. Sastry, A. Askell, S. Agarwal, A. Herbert-Voss,
+models, which was open-sourced with contribu-
+                                                             G. Krueger, T. Henighan, R. Child, A. Ramesh,
+tion from Nicolas Sonnerat (NS). AC led the early
+                                                             D. M. Ziegler, J. Wu, C. Winter, C. Hesse,
+access and open sourcing of code and weights
+                                                             M. Chen, E. Sigler, M. Litwin, S. Gray, B. Chess,
+with significant contribution from LS, in addition
+
+
+                                                                                                            13
+                    Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+  J. Clark, C. Berner, S. McCandlish, A. Radford,           S. McCandlish, J. Kaplan, D. Amodei,
+  I. Sutskever, and D. Amodei. Language mod-                M. Wattenberg, and C. Olah. Toy mod-
+  els are few-shot learners, 2020. URL https:               els of superposition.     Transformer Cir-
+  //arxiv.org/abs/2005.14165.                               cuits Thread, 2022.    https://transformer-
+                                                            circuits.pub/2022/toy_model/index.html.
+B. Bussmann, P. Leask, J. Bloom, C. Tigges, and
+  N. Nanda. Stitching saes of different sizes, July J. Engels, I. Liao, E. J. Michaud, W. Gurnee, and
+  2024. URL https://www.alignmentforum.                M. Tegmark. Not all language model features
+  org/posts/baJyjpktzmcmRfosq/                         are linear, 2024. URL https://arxiv.org/
+  stitching-saes-of-different-sizes.                   abs/2405.14860.
+T. Conerly, A. Templeton, T. Bricken, J. Marcus, L. Gao, S. Biderman, S. Black, L. Golding,
+   and T. Henighan. Update on how we train         T. Hoppe, C. Foster, J. Phang, H. He, A. Thite,
+   SAEs. Transformer Circuits Thread, 2024.        N. Nabeshima, S. Presser, and C. Leahy. The
+   URL    https://transformer-circuits.            pile: An 800gb dataset of diverse text for lan-
+   pub/2024/april-update/index.html#               guage modeling, 2020. URL https://arxiv.
+   training-saes.                                  org/abs/2101.00027.
+A. Conmy and N. Nanda. Activation steer- L. Gao, T. D. la Tour, H. Tillman, G. Goh, R. Troll,
+  ing with SAEs.      Alignment Forum, 2024.      A. Radford, I. Sutskever, J. Leike, and J. Wu.
+  URL        https://www.alignmentforum.          Scaling and evaluating sparse autoencoders,
+  org/posts/C5KAZQib3bzzpeyrg/                    2024. URL https://arxiv.org/abs/2406.
+  progress-update-1.           Progress Update    04093.
+  #1 from the GDM Mech Interp Team.
+                                                Gemini Team. Gemini: A family of highly ca-
+A. Conmy, A. N. Mavor-Parker, A. Lynch,           pable multimodal models, 2024. URL https:
+  S. Heimersheim, and A. Garriga-Alonso. To-     //arxiv.org/abs/2312.11805.
+  wards automated circuit discovery for mech-
+  anistic interpretability, 2023. URL https: Gemma Team. Gemma: Open models based on
+  //arxiv.org/abs/2304.14997.                     gemini research and technology, 2024a. URL
+                                                  https://arxiv.org/abs/2403.08295.
+H. Cunningham and T. Conerly. Circuits Up-
+  dates - June 2024: Comparing TopK and Gemma Team.                  Gemma 2:         Improving
+  Gated SAEs to Standard SAEs.           Trans-   open   language    models     at  a   practical
+  former Circuits Thread, 2024.            URL    size, 2024b.       URL https://storage.
+  https://transformer-circuits.                             googleapis.com/deepmind-media/
+  pub/2024/june-update/index.html#                          gemma/gemma-2-report.pdf.
+  topk-gated-comparison.                                 W. Gurnee, N. Nanda, M. Pauly, K. Har-
+H. Cunningham, A. Ewart, L. Riggs, R. Huben,              vey, D. Troitskii, and D. Bertsimas. Find-
+  and L. Sharkey. Sparse autoencoders find                ing neurons in a haystack: Case studies
+  highly interpretable features in language mod-          with sparse probing. Transactions on Ma-
+  els, 2023.                                              chine Learning Research, 2023. ISSN 2835-
+                                                          8856.    URL https://openreview.net/
+J. Dunefsky, P. Chlenski, and N. Nanda.                   forum?id=JYs1R9IMJr.
+  Transcoders find interpretable llm feature cir-
+  cuits, 2024. URL https://arxiv.org/abs/                W. Gurnee, T. Horsley, Z. C. Guo, T. R. Kheirkhah,
+  2406.11944.                                             Q. Sun, W. Hathaway, N. Nanda, and D. Bertsi-
+                                                           mas. Universal neurons in gpt2 language mod-
+N. Elhage, T. Hume, C. Olsson, N. Schiefer,                els, 2024. URL https://arxiv.org/abs/
+  T. Henighan, S. Kravec, Z. Hatfield-Dodds,               2401.12181.
+  R. Lasenby, D. Drain, C. Chen, R. Grosse,
+
+
+                                                                                                        14
+                     Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+M. Hanna, O. Liu, and A. Variengien. How C. Kissane, R. Krzyzanowski, J. I. Bloom,
+ does gpt-2 compute greater-than?: Interpret-     A. Conmy, and N. Nanda. Interpreting at-
+ ing mathematical abilities in a pre-trained lan- tention layer outputs with sparse autoen-
+ guage model, 2023. URL https://arxiv.            coders, 2024a. URL https://arxiv.org/
+ org/abs/2305.00586.                              abs/2406.17759.
+K. He, X. Zhang, S. Ren, and J. Sun. Delving deep         C. Kissane, R. Krzyzanowski, A. Conmy,
+   into rectifiers: Surpassing human-level perfor-          and N. Nanda.    Saes (usually) transfer
+   mance on imagenet classification, 2015. URL              between base and chat models, 2024b.
+   https://arxiv.org/abs/1502.01852.                        URL      https://www.alignmentforum.
+                                                             org/posts/fmwk6qxrpW8d4jvbd/
+R. Hendel, M. Geva, and A. Globerson. In-                    saes-usually-transfer.
+  context learning creates task vectors. In
+  The 2023 Conference on Empirical Methods                P. Koehn. Europarl: A parallel corpus for
+  in Natural Language Processing, 2023. URL                 statistical machine translation. In Proceed-
+  https://openreview.net/forum?id=                          ings of Machine Translation Summit X: Papers,
+  QYvFUlF19n.                                               pages 79–86, Phuket, Thailand, Sept. 13-15
+                                                            2005. URL https://aclanthology.org/
+J. Huang, A. Geiger, K. D’Oosterlinck, Z. Wu, and           2005.mtsummit-papers.11.
+   C. Potts. Rigorously assessing natural language
+   explanations of neurons, 2023. URL https:              K. Li, O. Patel, F. Viégas, H. Pfister, and
+   //arxiv.org/abs/2309.10312.                              M. Wattenberg.        Inference-time interven-
+                                                            tion: Eliciting truthful answers from a lan-
+E. Hubinger. A transparency and interpretability            guage model.        In Thirty-seventh Confer-
+   tech tree. Alignment Forum, 2022.                        ence on Neural Information Processing Sys-
+                                                            tems, 2023. URL https://openreview.
+S. Jain, E. S. Lubana, K. Oksuz, T. Joy, P. H. S. Torr,
+                                                            net/forum?id=aLLuYpn83y.
+   A. Sanyal, and P. K. Dokania. What makes and
+   breaks safety fine-tuning? a mechanistic study, J. Lin and J. Bloom. Analyzing neural networks
+   2024. URL https://arxiv.org/abs/2407.                  with dictionary learning, 2023. URL https://
+   10264.                                                 www.neuronpedia.org. Software available
+                                                          from neuronpedia.org.
+A. Jermyn, C. Olah, and T. Henighan. At-
+   tention head superposition, May 2023. A. Makelov, G. Lange, and N. Nanda. Towards
+   URL      https://transformer-circuits.                 principled evaluations of sparse autoencoders
+   pub/2023/may-update/index.html#                        for interpretability and control. In ICLR
+   attention-superposition.                               2024 Workshop on Secure and Trustwor-
+                                                          thy Large Language Models, 2024.           URL
+A. Karvonen, B. Wright, C. Rager, R. Angell,              https://openreview.net/forum?id=
+   J. Brinkmann, L. R. Smith, C. M. Verdun,               MHIX9H8aYF.
+   D. Bau, and S. Marks. Measuring progress in
+   dictionary learning for language model inter- S. Marks, C. Rager, E. J. Michaud, Y. Belinkov,
+   pretability with board game models. In ICML            D. Bau, and A. Mueller. Sparse feature circuits:
+   2024 Workshop on Mechanistic Interpretabil-            Discovering and editing interpretable causal
+   ity, 2024. URL https://openreview.net/                 graphs in language models, 2024.
+   forum?id=qzsDKwGJyB.
+                                                        T. Mikolov, K. Chen, G. Corrado, and J. Dean.
+D. P. Kingma and J. Ba. Adam: A method for                Efficient estimation of word representations
+   stochastic optimization, 2017. URL https:              in vector space, 2013. URL https://arxiv.
+   //arxiv.org/abs/1412.6980.                             org/abs/1301.3781.
+                                                          N. Nanda. A longlist of theories of impact for
+                                                            interpretability. Alignment Forum, 2022.
+
+
+                                                                                                       15
+                    Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+N. Nanda and J. Bloom. Transformerlens. https:              and N. Nanda. Improving dictionary learning
+  //github.com/TransformerLensOrg/                          with gated sparse autoencoders. arXiv preprint
+  TransformerLens, 2022.                                    arXiv:2404.16014, 2024a.
+N. Nanda, A. Lee, and M. Wattenberg. Emer-               S. Rajamanoharan, T. Lieberum, N. Sonnerat,
+  gent linear representations in world mod-                A. Conmy, V. Varma, J. Kramár, and N. Nanda.
+  els of self-supervised sequence models. In               Jumping ahead: Improving reconstruction
+  Y. Belinkov, S. Hao, J. Jumelet, N. Kim,                 fidelity with jumprelu sparse autoencoders,
+  A. McCarthy, and H. Mohebbi, editors,                    2024b.     URL https://arxiv.org/abs/
+  Proceedings of the 6th BlackboxNLP Work-                 2407.14435.
+  shop: Analyzing and Interpreting Neural Net-
+  works for NLP, pages 16–30, Singapore, Dec.            D. Saxton, E. Grefenstette, F. Hill, and P. Kohli.
+  2023a. Association for Computational Linguis-            Analysing mathematical reasoning abilities of
+  tics. doi: 10.18653/v1/2023.blackboxnlp-1.               neural models, 2019. URL https://arxiv.
+  2.     URL https://aclanthology.org/                     org/abs/1904.01557.
+  2023.blackboxnlp-1.2.                                  M. Shoeybi, M. Patwary, R. Puri, P. LeGresley,
+N. Nanda, S. Rajamanoharan, J. Kramar, and                J. Casper, and B. Catanzaro. Megatron-lm:
+  R. Shah. Fact finding: Attempting to reverse-           Training multi-billion parameter language mod-
+  engineer factual recall on the neuron level, Dec        els using model parallelism, 2020. URL https:
+  2023b.                                                  //arxiv.org/abs/1909.08053.
+
+C. Olah. Interpretability. Alignment Forum, 2021.        L. Smith.      Replacing sae encoders with
+                                                           inference-time optimisation, 2024.  URL
+C. Olah, N. Cammarata, L. Schubert, G. Goh,                 https://www.alignmentforum.org/
+  M. Petrov, and S. Carter. Zoom in: An in-                 posts/C5KAZQib3bzzpeyrg#Replacing_
+  troduction to circuits. Distill, 2020. doi:               SAE_Encoders_with_Inference_Time_
+  10.23915/distill.00024.001.                               Optimisation.
+C. Olah, A. Templeton, T. Bricken, and A. Jermyn.        A. Stolfo, Y. Belinkov, and M. Sachan. A mech-
+  Open Problem: Attribution Dictionary Learning.           anistic interpretation of arithmetic reasoning
+  Transformer Circuits Thread, 2024. URL https:            in language models using causal mediation
+  //transformer-circuits.pub/2024/                         analysis. In The 2023 Conference on Em-
+  april-update/index.html#attr-dl.                         pirical Methods in Natural Language Process-
+C. Olsson, N. Elhage, N. Nanda, N. Joseph, N. Das-         ing, 2023. URL https://openreview.net/
+  Sarma, T. Henighan, B. Mann, A. Askell, Y. Bai,          forum?id=aB3Hwh4UzP.
+  A. Chen, T. Conerly, D. Drain, D. Ganguli,             A. Templeton, T. Conerly, J. Marcus, J. Lindsey,
+  Z. Hatfield-Dodds, D. Hernandez, S. Johnston,            T. Bricken, B. Chen, A. Pearce, C. Citro,
+  A. Jones, J. Kernion, L. Lovitt, K. Ndousse,             E. Ameisen, A. Jones, H. Cunningham, N. L.
+  D. Amodei, T. Brown, J. Clark, J. Kaplan,                Turner, C. McDougall, M. MacDiarmid, C. D.
+  S. McCandlish, and C. Olah.          In-context          Freeman, T. R. Sumers, E. Rees, J. Batson,
+  learning and induction heads. Transformer                A. Jermyn, S. Carter, C. Olah, and T. Henighan.
+  Circuits Thread, 2022. https://transformer-              Scaling monosemanticity: Extracting in-
+  circuits.pub/2022/in-context-learning-and-               terpretable features from claude 3 sonnet.
+  induction-heads/index.html.                              Transformer Circuits Thread, 2024.         URL
+K. Park, Y. J. Choe, and V. Veitch. The linear              https://transformer-circuits.pub/
+  representation hypothesis and the geometry of             2024/scaling-monosemanticity/index.
+  large language models, 2023.                              html.
+
+S. Rajamanoharan, A. Conmy, L. Smith,                    E. Todd, M. Li, A. S. Sharma, A. Mueller, B. C.
+  T. Lieberum, V. Varma, J. Kramár, R. Shah,               Wallace, and D. Bau. Function vectors in
+
+
+                                                                                                        16
+                      Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+  large language models. In The Twelfth In- However, after training, we reparameterize the
+  ternational Conference on Learning Represen- Gemma Scope SAEs so that neither of these steps
+  tations, 2024. URL https://openreview. are required during inference.
+  net/forum?id=AwyxtyMwaG.
+                                                        Let xraw be the raw LM activations that we
+A. M. Turner, L. Thiergart, G. Leech, D. Udell, rescale by a scalar       constant 𝐶 , i.e. x := xraw /𝐶 ,
+                                                                        2 = 1. Then, as parameterized
+  J. J. Vazquez, U. Mini, and M. MacDiarmid.        such   that  E  ∥x∥ 2
+  Activation addition: Steering language models during training, the SAE forward pass is defined
+  without optimization, 2024. URL https:// by
+  arxiv.org/abs/2308.10248.                                                            x
+                                                                                           raw
+                                                                                                           
+                                                    f (xraw ) := JumpReLU𝜽 Wenc                − bdec + benc ,
+                                                                                           𝐶
+C. Voss, G. Goh, N. Cammarata, M. Petrov,                                                                (5)
+  L. Schubert, and C. Olah. Branch specializa-
+  tion. Distill, 2021. doi: 10.23915/distill.00024. x̂raw (f) := 𝐶 · (Wdec f + bdec ) .                  (6)
+  008. https://distill.pub/2020/circuits/branch- It is straightforward to show that by defining the
+  specialization.                                   following rescaled and shifted parameters:
+K. Wang, A. Variengien, A. Conmy, B. Shlegeris,                          ′
+                                                                        benc := 𝐶 benc − 𝐶 Wenc bdec    (7)
+  and J. Steinhardt. Interpretability in the wild:                       ′
+                                                                        bdec := 𝐶 bdec                  (8)
+  a circuit for indirect object identification in gpt-                     ′
+  2 small, 2022. URL https://arxiv.org/                                    𝜽 := 𝐶 𝜽                     (9)
+  abs/2211.00593.                                          we can simplify the SAE forward pass (operating
+M. Wattenberg and F. Viégas.     Relational                on the raw activations xraw ) as follows:
+ composition in neural networks: A gen-                                                           ′ 
+                                                            f (xraw ) = JumpReLU𝜽′ Wenc xraw + benc   , (10)
+ tle survey and call to action.   In ICML                                          ′
+                                                             x̂raw (f) = Wdec f + bdec .               (11)
+ 2024 Workshop on Mechanistic Interpretabil-
+ ity, 2024. URL https://openreview.net/
+ forum?id=zzCEiUIPk9.                                      B. Transcoders
+B. Zhang and R. Sennrich. Root mean square                 MLP SAEs are trained on the output of MLPs,
+  layer normalization, 2019. URL https://                  but we can also replace the whole MLP with
+  arxiv.org/abs/1910.07467.                                a transcoder (Dunefsky et al., 2024) for easier
+D. Ziegler, S. Nix, L. Chan, T. Bauman, P. Schmidt-        circuit analysis. Transcoders are not autoen-
+  Nielsen, T. Lin, A. Scherlis, N. Nabeshima,              coders: while SAEs are trained to reconstruct
+  B. Weinstein-Raun, D. de Haas, B. Shlegeris,             their input, transcoders are trained to approx-
+  and N. Thomas. Adversarial training for high-            imate the output of MLP layers from the in-
+  stakes reliability. In S. Koyejo, S. Mohamed,            put of the MLP layer. We train one suite of
+  A. Agarwal, D. Belgrave, K. Cho, and A. Oh, ed-          transcoders on Gemma 2B PT, and release these at
+  itors, Advances in Neural Information Processing         the link https://huggingface.co/google/
+  Systems, volume 35, pages 9274–9286. Curran              gemma-scope-2b-pt-transcoders.
+  Associates, Inc., 2022.
+                                                           Evaluation We find that transcoders cause a
+                                                           greater increase in loss to the base model rela-
+A. Standardizing SAE parameters for                        tive to the MLP output SAEs (Fig. 11), at a fixed
+   inference                                               sparsity (L0). This reverses the trend from GPT-2
+                                                           Small found by Dunefsky et al. (2024). This could
+As described in Section 3, during training,                be due to a number of factors, such as:
+we normalize LM activations and subtract bdec                1. Transcoders do not scale to larger models
+from them before passing them to the encoder.                   or modern transformer architectures (e.g.
+
+
+                                                                                                         17
+                    Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+    Gemma 2 has Gated MLPs unlike GPT-2                       transcoder output).
+    Small) as well as SAEs.
+                                                         These two training changes were motivated by
+ 2. JumpReLU provides a bigger performance
+                                                         the fact that, unlike SAEs, the input and outputs
+    boost to SAEs than to transcoders.
+                                                         spaces for transcoders are not identical. To spell
+ 3. Errors in the implementation of transcoders
+                                                         out how we apply normalization: we divide the
+    in this work, or in the SAE implementation
+                                                         input and target activations by the root mean
+    from Dunefsky et al. (2024).
+                                                         square of the input activations.
+                                                                                  √       Since the input ac-
+ 4. Other training details (not just the
+                                                         tivations all have norm 𝑑model due to RMSNorm,
+    JumpReLU architecture) that improve SAEs
+                                                         this√means we divide input and output activations
+    more than transcoders. Dunefsky et al.
+                                                         by 𝑑model .
+    (2024) use training methods such as using
+    a low learning rate, differing from SAE
+    research that came out at a similar time to          C. Additional evaluation results
+    Bricken et al. (2023) such as Rajamanoha-
+    ran et al. (2024a) and Cunningham et al.             C.1. Sparsity-fidelity tradeoff
+    (2023). However, Dunefsky et al. (2024)
+    also do not use resampling (Bricken et al.,          Fig. 13 illustrates the trade off between fidelity
+    2023) or an architecture which prevents              as measured by fraction of variance unexplained
+    dead features like more recent SAE research          (FVU) against sparsity for layer 12 Gemma 2 2B
+    (Conerly et al., 2024; Gao et al., 2024;             and layer 20 Gemma 2 9B SAEs.
+    Rajamanoharan et al., 2024a), which means              Fig. 14 shows the sparsity-fidelity trade off for
+    their results are in a fairly different setting      the 131K-width residual stream SAEs trained on
+    to other SAE research.                               Gemma 2 27B after layers 10, 22 and 34 that we
+                                                         include as part of this release.
+Language model technical details We fold the                Fig. 17 and Fig. 18 show fidelity versus spar-
+pre-MLP RMS norm gain parameters (Zhang and              sity curves for more layers (approximately evenly
+Sennrich (2019), Section 3) into the MLP input           spaced) and all sites of Gemma 2 2B and Gemma
+matrices, as described in (Gurnee et al. (2024),         2 9B, demonstrating consistent and smoothly vari-
+Appendix A.1) and then train the transcoder              ance performance throughout these models.
+on input activations just after the pre-MLP RM-
+SNorm, to reconstruct the MLP sublayer’s out-
+put as the target activations. To make it easier         C.2. Impact of sequence position
+for Gemma Scope users to apply this change, in           Fig. 15 shows how delta loss varies by position.
+Fig. 12 we provide TransformerLens code for load-
+ing Gemma 2 2B with this weight folding applied.
+Fig. 12 also includes an explanation of why only a       C.3. Uniformity of active latent importance
+subset of the weight folding techniques described        Methodology Conventionally, sparsity of SAE
+in Appendix A.1 of Gurnee et al. (2024) can be           latent activations is measured as the L0 norm of
+applied to Gemma 2, due to its architecture.             the latent activations. Olah et al. (2024) sug-
+                                                         gest to train SAEs to have low L1 activation of
+Technical details of transcoder training We              attribution-weighted latent activations, taking
+train transcoders identically to MLP SAEs except         into account that some latents may be more im-
+for the following two differences:                       portant than others. We repurpose their loss
+                                                         function as a metric for our SAEs, which were
+ 1. We do not initialize the encoder kernel Wenc         trained penalising activation sparsity as normal.
+    to the transpose of the decoder kernel Wdec ;        As in Rajamanoharan et al. (2024b), we define
+ 2. We do not use a pre-encoder bias, i.e. we            the attribution-weighted latent activation vector
+    do not subtract bdec from the input to the
+    transcoder (although we still add bdec at the
+
+
+                                                                                                          18
+                                                 Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+                              layer=4                      layer=8                   layer=12                   layer=17                   layer=21                   layer=25
+                 5
+                                                                                                                                                                                            Is Transcoder
+                                                                                                                                                                                                 False
+                 2
+
+
+
+
+Delta Loss
+                                                                                                                                                                                                 True
+              0.01
+
+                 5
+
+
+                 2
+
+             0.001
+                     5 10 2    5 100 2   51000    5 10 2    5 100 2   51000     5 10 2   5 100 2   51000   5 10 2   5 100 2   51000   5 10 2   5 100 2   51000   5 10 2   5 100 2   51000
+
+
+                                L0                           L0                          L0                         L0                         L0                         L0
+
+
+Figure 11 | Transcoders trained to reconstruct MLP output from the MLP input cause a greater increase
+in loss compared to the vanilla model when compared with an MLP output SAE. The sites are (the
+MLP sub-) layers throughout Gemma 2B PT.
+
+import transformer_lens # pip install transformer-lens
+
+model = transformer_lens.HookedTransformer.from_pretrained(
+    "google/gemma-2-2b",
+    # In Gemma 2, only the pre-MLP, pre-attention and final RMSNorms can
+    # be folded in (post-attention and post-MLP RMSNorms cannot be folded in):
+    fold_ln=True,
+    # Only valid for models with LayerNorm, not RMSNorm:
+    center_writing_weights=False,
+    # These model use logits soft-capping, meaning we can’t center unembed:
+    center_unembed=False,
+)
+
+
+Figure 12 | Code for loading Gemma 2B in TransformerLens (Nanda and Bloom, 2022) to use this
+with our Transcoders.
+
+
+y as                                                                                                           of active latents (after re-weighting) to the to-
+                                                                                                               tal number of active latents, which we call the
+                                  y := f (x) ⊙ W𝑇dec ∇x L ,                                        (12)
+                                                                                                               ‘Uniformity of Active Latent Importance’.
+where we choose the mean-centered logit of the
+correct next token as the loss function L.
+                                                                                                               Results In Fig. 16 we show 𝑟𝐿0 on middle layer
+   We then normalize the magnitudes of the en-                                                                 SAEs. In line with Rajamanoharan et al. (2024b),
+tries of y to obtain a probability distribution                                                                we find that the attributed effect becomes more
+𝑝 ≡ 𝑝 (y). We can measure how far this distribu-                                                               diffuse as more latents are active. This effect is
+tion diverges from a uniform distribution 𝑢 over                                                               most pronounced for residual stream SAEs, and
+active latents via the KL divergence                                                                           seems to be independent of language model size
+                          DKL ( 𝑝 ∥ 𝑢) = log ∥y∥ 0 − S( 𝑝) ,                                       (13)        and number of SAE latents.
+
+with the entropy S( 𝑝). Note that 0 ≤ DKL ( 𝑝 ∥ 𝑢) ≤
+log ∥y∥ 0 . Exponentiating the negative KL diver-                                                              C.4. Additional Gemma 2 IT evaluation results
+gence gives a new measure 𝑟𝐿0                                                                                  In this sub-appendix, we provide further evalu-
+                                                                      𝑒S( 𝑝 )                                  ations of SAEs on the activations of IT models,
+                                𝑟 𝐿0 := 𝑒 −DKL ( 𝑝 ∥ 𝑢 ) =                      ,                  (14)        continuing Section 4.5.
+                                                                      ∥y∥ 0
+with ∥y1∥ 0 ≤ 𝑟𝐿0 ≤ 1. Note that since 𝑒S can be                                                                 As mentioned in Section 4.5, we find in Fig. 21
+interpreted as the effective number of active el-                                                              that PT SAEs achieve reasonable FVU on rollouts,
+ements, 𝑟𝐿0 is the ratio of the effective number                                                               but the gap between PT and IT SAEs is larger than
+
+
+                                                                                                                                                                                                         19
+                     Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+in the change in loss in the main text (Fig. 8).
+   In Fig. 19 we evaluate the FVU on the user
+prompt and model prefix (not the rollout). In
+Fig. 20 we evaluate the change in loss (delta loss)
+on the user prompts, and surprisingly find that
+splicing in the base model SAE can reduce the
+loss in expectation in some cases. Our explana-
+tion for this result is that post-training does not
+train models to predict user queries (only predict
+high-preference model rollouts) and therefore the
+model is not incentivised to have good predictive
+loss by default on the user prompt.
+  While we do not train IT SAEs on Gemma 2
+2B, we find that the base SAEs transfer well as
+measured by FVU in Fig. 22.
+   Finally, we do not find evidence that rescaling
+IT activations to have same norm in expectation to
+the pretraining activations is beneficial (Fig. 23).
+The trend for individual SAEs in this plot is that
+their L0 decreases but the Pareto frontier is very
+slightly worse. This is consistent with prior ob-
+servations that SAEs are surprisingly adaptable
+to different L0s (Gao et al., 2024; Smith, 2024).
+
+
+
+
+                                                                                               20
+                                                 Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+                            Site=attn_output_pre_linear                                 Site=mlp_output                                       Site=post_mlp_residual
+               7
+               6                                                                                                                                                                                      Width
+               5
+               4                                                                                                                                                                                          16.4K
+                                                                                                                                                                                                          65.5K
+
+
+
+                                                                                                                                                                                        Model=2B-PT
+               3
+
+               2
+                                                                                                                                                                                                          131K
+FVU                                                                                                                                                                                                       1M
+             0.1
+               9
+               8
+               7
+               6
+               5
+               4
+
+               7
+               6
+               5
+               4
+
+
+
+
+                                                                                                                                                                                        Model=9B-PT
+               3
+
+               2
+FVU
+             0.1
+               9
+               8
+               7
+               6
+               5
+               4
+
+                   10       2      5       100     2           5   1000    10       2    5        100        2           5   1000    10   2       5       100        2       5   1000
+
+                                            L0                                                     L0                                                      L0
+
+ Figure 13 | Sparsity-fidelity trade-off for middle-layer Gemma 2 2B and 9B SAEs using fraction of
+ variance unexplained (FVU) as the measure of reconstruction fidelity.
+
+
+
+
+                                           Layer=10                                                Layer=22                                                Layer=34
+                   1
+                   5                                                                                                                                                                                  Width
+                   2                                                                                                                                                                                          131K
+               0.1
+
+
+
+Delta Loss
+                   5
+
+                   2
+              0.01
+                   5
+
+                   2
+             0.001
+                   5
+                            2          5     100           2           5            2         5      100             2           5        2           5     100          2         5
+
+
+                                             L0                                                         L0                                                      L0
+
+(a)
+                                       Layer=10                                                   Layer=22                                                Layer=34
+               5                                                                                                                                                                                      Width
+                                                                                                                                                                                                              131K
+               2
+
+
+FVU          0.1
+
+               5
+
+
+
+               2
+                        2         5        100         2           5            2         5         100          2           5            2           5     100          2         5
+
+
+                                            L0                                                      L0                                                          L0
+
+(b)
+
+ Figure 14 | Sparsity-fidelity trade-off for Gemma 2 27B SAEs using (a) delta LM loss and (b) as
+ measures of reconstruction fidelity.
+
+
+
+
+                                                                                                                                                                                                               21
+                                      Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+                           Site=attn_output_pre_linear                            Site=mlp_output                          Site=post_mlp_residual
+         0.01
+
+
+
+
+        0.005
+
+
+
+
+              0
+                   0                  500                1000        0                   500           1000        0                 500                1000
+
+                                    Position                                         Position                                     Position
+
+
+
+
+ Figure 15 | Delta loss by sequence position for Gemma 2 9B middle-layer 131K-width SAEs with
+ 𝜆 = 10 −3 .
+
+
+
+
+                       Site=attn_output_pre_linear                           Site=mlp_output                           Site=post_mlp_residual
+        0.7
+                                                                                                                                                                      Width
+       0.65                                                                                                                                                               16.4K
+                                                                                                                                                                          65.5K
+
+
+
+                                                                                                                                                        Model=2B-PT
+        0.6
+                                                                                                                                                                          131K
+r​L0   0.55
+
+        0.5
+
+
+       0.45
+
+        0.7
+
+       0.65
+
+
+
+
+                                                                                                                                                        Model=9B-PT
+        0.6
+
+r​L0   0.55
+
+        0.5
+
+
+       0.45
+
+              10       2       5   100   2      5    1000       10       2    5    100     2    5   1000      10   2       5   100    2      5   1000
+
+                                    L0                                              L0                                          L0
+
+ Figure 16 | Uniformity of active latent importance for the middle layer SAEs.
+
+
+
+
+                                                                                                                                                                              22
+                                   Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+                     Site=attn_output_pre_linear                   Site=mlp_output                   Site=post_mlp_residual
+                1
+                                                                                                                                            Width
+
+
+Delta Loss
+                                                                                                                                 Layer=0
+               0.1
+                                                                                                                                                16.4K
+              0.01                                                                                                                              65.5K
+             0.001
+
+
+                1
+
+
+
+Delta Loss
+                                                                                                                                 Layer=4
+               0.1
+              0.01
+             0.001
+
+
+                1
+
+
+
+Delta Loss
+                                                                                                                                 Layer=8
+               0.1
+              0.01
+             0.001
+
+
+                1
+
+
+
+Delta Loss                                                                                                                       Layer=12
+               0.1
+              0.01
+             0.001
+
+
+                1
+
+
+
+Delta Loss                                                                                                                       Layer=17
+               0.1
+              0.01
+             0.001
+
+
+                1
+
+
+
+Delta Loss                                                                                                                       Layer=21
+               0.1
+              0.01
+             0.001
+
+
+                1
+
+
+
+Delta Loss                                                                                                                       Layer=25
+               0.1
+              0.01
+             0.001
+
+                     10   2    5   100   2   5     1000   10   2       5   100   2   5   1000   10     2    5   100   2   5   1000
+
+                                   L0                                      L0                                   L0
+
+ Figure 17 | Sparsity-fidelity trade-off across multiple layers of Gemma 2 2B, approximately evenly
+ spaced. (Note Gemma 2 2B has 26 layers.)
+
+
+
+
+                                                                                                                                                    23
+                                  Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+                     Site=attn_output_pre_linear                  Site=mlp_output                  Site=post_mlp_residual
+                 1
+
+
+
+Delta Loss
+                                                                                                                                              Width
+
+                                                                                                                                   Layer=0
+               0.1
+                                                                                                                                                  16.4K
+              0.01
+                                                                                                                                                  131K
+             0.001
+                                                                                                                                                  1M
+              100μ
+
+
+                 1
+
+
+
+Delta Loss
+                                                                                                                                   Layer=5
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss
+                                                                                                                                   Layer=9
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=15
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=20
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=26
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=31
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=36
+               0.1
+              0.01
+             0.001
+              100μ
+
+
+                 1
+
+
+
+Delta Loss                                                                                                                         Layer=41
+               0.1
+              0.01
+             0.001
+              100μ
+                     5   10   2   5   100   2   5 1000   5   10    2    5   100   2   5 1000   5   10   2   5   100   2   5 1000
+
+
+                                  L0                                    L0                                  L0
+
+ Figure 18 | Sparsity-fidelity trade-off across multiple layers of Gemma 2 9B, approximately evenly
+ spaced. (Note Gemma 2 2B has 42 layers.)
+
+
+
+
+                                                                                                                                                       24
+                                                               Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+                   Fraction of variance unexplained (FVU) on Gemma 2 9B IT user prompts
+                                               Layer=9                                                           Layer=20                                                   Layer=31
+             0.6
+             0.5                                                                                                                                                                                                                       Training activations source
+
+
+
+
+                                                                                                                                                                                                                Width=131072
+             0.4                                                                                                                                                                                                                             gemma-v2-9b-pt
+             0.3                                                                                                                                                                                                                             gemma-v2-9b-it
+   fvu
+             0.2
+
+
+
+             0.6
+             0.5
+
+
+
+
+                                                                                                                                                                                                                Width=16384
+             0.4
+             0.3
+  fvu
+             0.2
+
+
+
+                     10        2           5             100           2           5       10        2           5             100        2       5       10        2       5            100    2       5
+
+
+                                                   L0                                                                    L0                                                         L0
+
+
+
+Figure 19 | Fraction of variance unexplained when using SAEs trained on Gemma 2 9B (base and IT)
+to reconstruct the activations generated with Gemma 2 9B IT on user prompts.
+
+               Delta Loss on Gemma 2 9B IT user prompts
+                                           Layer=9                                                               Layer=20                                                   Layer=31
+             0.6                                                                                                                                                                                                                       Training activations source
+
+
+
+
+                                                                                                                                                                                                                Width=131072
+                                                                                                                                                                                                                                             gemma-v2-9b-pt
+
+
+
+Delta Loss
+             0.4
+                                                                                                                                                                                                                                             gemma-v2-9b-it
+
+             0.2
+
+              0
+
+             0.6
+
+
+
+
+Delta Loss                                                                                                                                                                                                      Width=16384
+             0.4
+
+             0.2
+
+              0
+
+                     10        2           5             100           2           5       10        2           5            100     2           5       10        2       5            100    2       5
+
+
+                                                   L0                                                                    L0                                                         L0
+
+
+
+
+Figure 20 | Change in loss when splicing in SAEs trained on Gemma 2 9B (base and IT) to reconstruct
+the activations generated with Gemma 2 9B IT on user prompts.
+
+                   Fraction of variance unexplained (FVU) on Gemma 2 9B IT rollouts
+                                               Layer=9                                                           Layer=20                                                   Layer=31
+
+              0.5                                                                                                                                                                                                                      Training activations source
+
+
+
+
+                                                                                                                                                                                                                Width=131072
+                                                                                                                                                                                                                                             gemma-v2-9b-pt
+              0.4
+                                                                                                                                                                                                                                             gemma-v2-9b-it
+    FVU       0.3
+
+              0.2
+
+              0.1
+
+              0.5
+
+
+
+
+                                                                                                                                                                                                                 Width=16384
+              0.4
+    FVU       0.3
+
+              0.2
+
+              0.1
+                      10           2           5             100           2           5    10           2           5          100           2       5    10           2       5         100       2       5
+
+
+                                                   L0                                                                    L0                                                         L0
+
+
+
+
+Figure 21 | Fraction of variance unexplained when using SAEs trained on Gemma 2 9B (base and IT)
+to reconstruct the activations generated with Gemma 2 9B IT on rollouts.
+
+                    Measuring FVU when using Gemma 2B PT SAEs to reconstruct user prompts on Gemma 2B IT
+                                                   Layer=4                                                               Layer=12                                                    Layer=21
+             0.45
+              0.4                                                                                                                                                                                                                            Activations source
+             0.35
+
+
+
+
+                                                                                                                                                                                                                               Width=65536
+              0.3                                                                                                                                                                                                                                 gemma-v2-2b-pt
+             0.25
+   fvu         0.2
+             0.15
+
+              0.1
+             0.45
+              0.4
+             0.35
+
+
+
+
+                                                                                                                                                                                                                               Width=16384
+              0.3
+             0.25
+   fvu         0.2
+             0.15
+
+               0.1
+                           2           5            100            2           5                 2           5                100     2           5             2           5            100    2           5
+
+
+                                                        L0                                                                    L0                                                         L0
+
+
+
+
+Figure 22 | Fraction of variance unexplained when using SAEs trained on Gemma 2 2B PT to reconstruct
+the activations generated with Gemma 2 2B IT on user prompts.
+
+
+                                                                                                                                                                                                                                                                  25
+                                          Gemma Scope: Open Sparse Autoencoders Everywhere All At Once on Gemma 2
+
+
+
+
+        FVU when using different activation scaling
+                         Layer=31                                  Layer=20                              Layer=9
+                                                                                                                                                Same scale activations as pretraining?
+      0.6
+
+
+
+
+                                                                                                                                 Width=16384
+                                                                                                                                                     False
+                                                                                                                                                     True
+fvu   0.4
+
+
+      0.2
+
+
+
+      0.6
+
+
+
+
+                                                                                                                                 Width=131072
+fvu   0.4
+
+
+      0.2
+
+            5   10   2      5       100     2   5     5   10   2      5       100   2   5   5   10   2      5      100   2   5
+
+
+                           L0                                        L0                                    L0
+
+
+
+Figure 23 | Fraction of variance unexplained when using SAEs trained on Gemma 2 9B PT to reconstruct
+the activations generated with Gemma 2 9B IT on rollouts, including when rescaling the IT activations
+to have the same norm (in expectation) as the pretraining activations.
+
+
+
+
+                                                                                                                                                                                    26
+
