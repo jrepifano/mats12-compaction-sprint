@@ -1,0 +1,35 @@
+# P48 (plan.md "Cap"): $60 = GPU $55 + API $5. Branches B1 and B2 need $80 (GPU $75); that raise
+# is inside the probe tier's $150 and is applied here, with its reason logged, before the session
+# that needs it.
+id = "P48"
+hard_cap_usd = 60
+gpu_limit_usd = 55
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# Session 1 (run.sh `session1`), projected in plan.md "Cap" from P43's measured step rate
+# (0.91-1.02 s/step at effective batch 66 on an 8B model; Qwen's own rate is measured by the
+# smoke unit and the projection is re-checked there):
+#   download ~10 min; smoke ~10; T0 teacher fine-tune + manipulation check ~5; number generation
+#   for three sources ~25 (hard-stopped at 45 by GEN_MINUTES); T0's 100% student + the shared 0%
+#   control + eval ~18; the remaining gate students (3 x 10K, 4 x 20K, 1 x 5K, 1 prompted 100%)
+#   ~94; eval ~12; scoring two students (likelihoods, attribution, directional derivatives) ~35.
+#   About 3.5 h of run.sh against a 5.0 h guard; gpu_hours 6.0 -> budget 6.5 h x $3.99 = $25.94.
+gpu_hours = 6.0
+setup = "e11"
+disk_gb = 120
+model_gb = 16
+model_repo = "Qwen/Qwen2.5-7B-Instruct"
+model_revision = "a09a35458c702b33eeacc393d103063234e8bc28"
+gpu_check = true
+# P43 measured three hosts at 135-148 MB/s on 2026-10-14 and lowered the gate to 100; our single
+# ~16 GB download takes under 3 min at that rate.
+min_download_mb_s = 100
+rerolls = 2
+# Gitignored inputs the pod reads. The runner sends tracked files under src/, scripts/ and the
+# probe dir by itself, so data/raw/animal_questions.json needs no entry; T0's QA pairs are
+# gitignored (generated on the laptop against OpenRouter) and do need one.
+push = ["probes/P48-subliminal-numbers-attribution/data/qa"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

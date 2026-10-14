@@ -325,3 +325,14 @@ probes/P43-subliminal-attribution/data/mix/
 probes/P43-subliminal-attribution/data/arms/
 probes/P43-subliminal-attribution/results/adapters/
 probes/P43-subliminal-attribution/results/scores/*.npy
+
+# P48: generated number rows, mixtures, arms, QA pairs, adapters and score arrays.
+# Hashes live in probes/P48-subliminal-numbers-attribution/data/manifest.json and
+# results/MANIFEST.sha256; data/raw/animal_questions.json IS committed (pinned in p48/contracts.py).
+probes/P48-subliminal-numbers-attribution/data/gen/
+probes/P48-subliminal-numbers-attribution/data/mix/
+probes/P48-subliminal-numbers-attribution/data/arms/
+probes/P48-subliminal-numbers-attribution/data/qa/*.jsonl
+probes/P48-subliminal-numbers-attribution/results/adapters/
+probes/P48-subliminal-numbers-attribution/results/scores*/*.npz
+probes/P48-subliminal-numbers-attribution/results/eval/*.jsonl
