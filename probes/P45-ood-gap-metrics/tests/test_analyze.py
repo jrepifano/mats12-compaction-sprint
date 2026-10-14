@@ -208,3 +208,33 @@ def test_select_medical_only_when_law2_failed(tmp_path):
     assert out["s1_law2"].startswith("joined")
     sel = AN.select(p)
     assert sel["categories"] == [P42K.PLANTED_MED] and sel["law2_preflight_failed"]
+
+
+def test_l24_only_run_through_prep_select_evaluate(tmp_path):
+    """The pod's L16 cut: L16 columns all NaN, smoke.json settings.layers = [24]."""
+    p = make_fixture(tmp_path)
+    sc = pd.read_csv(p.scores)
+    for c in K.SCORE_COLS:
+        if c.endswith("_L16"):
+            sc[c] = np.nan
+    sc.to_csv(p.scores, index=False)
+    p.smoke.write_text(json.dumps({"settings": {"layers": [24], "pub": False}}))
+    out = AN.prep(p)
+    assert out["active_candidates"] == [c for c in K.CANDIDATES if c.endswith("_L24")]
+    assert out["valid_mask"]["n_valid"] == sum(N.values())  # the L16 NaN no longer drops a row
+    sel = AN.select(p)
+    assert sel["best"] == "F_post_L24" and set(sel["aurocs"]) == set(out["active_candidates"])
+    t2 = AN.evaluate(p, n_boot=20, appx_subsets=10, head_subsets=10)
+    assert t2["decision"]["winner"] == "F_post_L24"
+    assert "F_post_L16" in t2["per_category"][P42K.PLANTED_MED]["skipped_columns"]
+    # recorded layers whose columns are all NaN fail closed
+    p.smoke.write_text(json.dumps({"settings": {"layers": [16, 24]}}))
+    with pytest.raises(ValueError, match="no finite score"):
+        AN.prep(p)
+
+
+def test_active_candidates_without_settings(tmp_path):
+    sc = pd.DataFrame({c: [1.0, np.nan] for c in K.CANDIDATES})
+    sc["dF_pre_L16"] = np.nan
+    act, why = AN.active_candidates(sc, tmp_path / "none.json")
+    assert act == [c for c in K.CANDIDATES if c != "dF_pre_L16"] and "no run settings" in why

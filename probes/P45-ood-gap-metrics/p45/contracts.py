@@ -39,7 +39,7 @@ REPO_ROOT = PROBE_DIR.parents[1]
 P42_DIR = REPO_ROOT / "probes" / "P42-ood-coverage-gaps"
 if str(P42_DIR) not in sys.path:
     sys.path.insert(0, str(P42_DIR))
-from p42 import contracts as P42K  # noqa: E402
+from p42 import contracts as P42K
 
 DATA_DIR = REPO_ROOT / "data" / "P45"
 P42_PROMPTS = P42K.PROMPTS_PATH

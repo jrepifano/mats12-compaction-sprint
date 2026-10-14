@@ -77,7 +77,7 @@ def tiny(monkeypatch, tmp_path):
 
 def tiny_ctx(tmp_path, rows=None, **kw) -> pod.Ctx:
     base = {"buffer_tokens": 600, "heldout_tokens": 150, "thr_n": 20, "sft_ho_n": 4,
-            "sae_cfg": dict(TINY_SAE)}
+            "sae_cfg": dict(TINY_SAE), "retrain": False}  # tiny SAEs miss the dead gate
     return pod.Ctx("bulk", rows or synth_rows(), tmp_path / "work", tmp_path / "res",
                    **{**base, **kw})
 
@@ -154,17 +154,26 @@ def test_end_to_end_tiny(tiny, tmp_path):
                 assert f[f"dF_{a}_L{L}"] == pytest.approx(want, abs=1e-9)
         assert f["dF_pub_L16"] == pytest.approx(np.log(f["F_post_L16"]) - np.log(f["F_pub_L16"]))
         assert f["len_tokens"] == next(r["n_tokens"] for r in rows if r["pid"] == o["pid"])
-    # buffers: fp16, finite, the fill near p x content tokens, within the cap
+    # buffers: fp16, finite; Bernoulli over-draw then an exact uniform subset of min(target, n)
     for model in ("dpo", "sft"):
         for job in pod.jobs_for(model):
             rec = json.loads((ctx.work / model / f"job_{job.name}.json").read_text())
             for L in K.LAYERS:
-                n = rec["n_fill"][str(L)]
+                ns, nk = rec["n_sampled"][str(L)], rec["n_kept"][str(L)]
                 buf = np.load(pod.buf_path(ctx, model, job.arm, job.kind, L))
-                assert buf.dtype == np.float16 and n <= buf.shape[0] == rec["target"]
-                assert np.isfinite(buf[:n]).all() and n > 0
-                want = rec["p"] * rec["n_content"]
-                assert abs(n - min(want, rec["target"])) < 5 * np.sqrt(want) + 2
+                assert buf.dtype == np.float16 and ns <= buf.shape[0] == rec["capacity"]
+                assert np.isfinite(buf[:ns]).all() and nk > 0
+                assert nk == min(rec["target"], ns) == rec["n_fill"][str(L)]
+                assert rec["n_eligible"][str(L)] >= ns and rec["capped"][str(L)] == 0
+                want = rec["p"] * rec["n_eligible"][str(L)]
+                assert abs(ns - want) < 5 * np.sqrt(want) + 2
+                sel = np.load(pod.sel_path(ctx, model, job.arm, job.kind, L))
+                assert len(sel) == nk and (np.diff(sel) > 0).all() and sel[-1] < ns
+                got = pod.load_buf(ctx, model, job.arm, job.kind, L, "cpu").numpy()
+                assert np.array_equal(got, buf[sel])
+    rec = json.loads((ctx.work / "dpo" / "job_id_ref.json").read_text())
+    assert rec["p"] == pytest.approx(min(1.0, 1.1 * 600 / rec["n_content"]))
+    assert rec["n_sampled"]["16"] > 600 == rec["n_kept"]["16"]  # over-drawn, then subsampled
     # sft_ref held-out subset disjoint from training; dolma split respected
     R = pod.roles(ctx)
     assert len(R["sft_ho"]) == 4 and not set(R["sft_ho"]) & set(R["sft_train"])
@@ -246,7 +255,7 @@ def test_masking_applied(tiny, tmp_path, monkeypatch):
     for L in K.LAYERS:
         med = thr["median_norm"][str(L)]
         rec = json.loads((ctx.work / "dpo" / "job_id_ref.json").read_text())
-        n = rec["n_fill"][str(L)]
+        n = rec["n_sampled"][str(L)]
         buf = np.load(pod.buf_path(ctx, "dpo", "post", "train", L))[:n].astype(np.float32)
         assert (np.linalg.norm(buf, axis=1) <= med * 1.002).all()
         assert rec["masked"][str(L)] > 0
@@ -305,7 +314,7 @@ def test_layer_cut_writes_nan_L16(tiny, tmp_path):
 
 
 def test_gate_and_retrain(tiny, tmp_path, monkeypatch):
-    ctx = tiny_ctx(tmp_path)
+    ctx = tiny_ctx(tmp_path, retrain=True)
     real = SAEmod.train_sae
     seen = []
 
@@ -324,6 +333,61 @@ def test_gate_and_retrain(tiny, tmp_path, monkeypatch):
     assert seen == [32, 16, 32, 16]
     assert pod.gate({"fvu_train": 0.1, "fvu_heldout": 0.2, "dead_frac": 0.0})["pass"] is False
     assert pod.gate({"fvu_train": 0.1, "fvu_heldout": 0.12, "dead_frac": 0.3})["pass"] is True
+
+
+def test_retrain_failing_twice_stops_with_diagnostics(tiny, tmp_path, monkeypatch):
+    ctx = tiny_ctx(tmp_path, retrain=True)
+    real = SAEmod.train_sae
+
+    def fake(buf, ho, cfg, dev, sigma2, log=print):
+        sae, cur = real(buf, ho, cfg, dev, sigma2, log)
+        cur["final"]["dead_frac"] = 0.9
+        return sae, cur
+
+    monkeypatch.setattr(SAEmod, "train_sae", fake)
+    monkeypatch.setattr(K, "N_LATENTS_FALLBACK", 16)
+    with pytest.raises(pod.StepFailed, match="failed after the retrain"):
+        pod.step_model("sft", ctx)
+    c = json.loads(pod.curves_path(ctx, "sftmodel", 16).read_text())
+    assert c["gate_failed_twice"] and c["cfg"]["n_latents"] == 16 and c["loss"]
+    a1 = json.loads(pod.attempt_path(ctx, "sftmodel", 16, 1).read_text())
+    assert a1["cfg"]["n_latents"] == 32 and a1["loss"] and not a1["gate"]["pass"]
+    assert not pod.sae_stem(ctx, "sftmodel", 16).with_suffix(".safetensors").exists()
+    assert not (ctx.results / "partial_sft.npz").exists()  # no scoring after the failure
+    monkeypatch.setattr(pod, "STEPS", {**pod.STEPS, "sft": lambda a: pod.step_model("sft", ctx)})
+    assert pod.main(["sft"]) == 1  # and run.sh maps it to rc 15 (test_run_sh_failed_step_...)
+
+
+PROJ = {"collect": {"dpo": 10.0, "sft": 10.0}, "score": {"dpo": 20.0, "sft": 20.0},
+        "per_sae": 100.0, "per_sae_fallback": 50.0, "finalize": 5.0}
+
+
+def test_time_guard_stops_before_training(tiny, tmp_path, monkeypatch):
+    ctx = tiny_ctx(tmp_path, proj=PROJ)
+    want = (5 + 2 * 10 + 2 * 20 + 8 * 150) * pod.PROJ_MARGIN + pod.MANIFEST_S
+    assert pod.remaining_s(ctx) == pytest.approx(want)
+    monkeypatch.setenv("P45_DEADLINE_EPOCH", str(time.time() + want - 100))
+    with pytest.raises(pod.OutOfTime, match="before training sftmodel_L16"):
+        pod.step_model("sft", ctx)
+    assert (ctx.work / "sft" / "job_id_ref.json").is_file()  # collection done, nothing trained
+    assert not pod.curves_path(ctx, "sftmodel", 16).exists()
+    monkeypatch.setattr(pod, "STEPS", {**pod.STEPS, "sft": lambda a: pod.step_model("sft", ctx)})
+    assert pod.main(["sft"]) == 5
+    monkeypatch.setenv("P45_DEADLINE_EPOCH", str(time.time() + 1e6))
+    run_all(ctx)
+    assert pod.remaining_s(ctx) == pytest.approx(5 * pod.PROJ_MARGIN + pod.MANIFEST_S)
+    monkeypatch.setenv("P45_DEADLINE_EPOCH", str(time.time() + 10))
+    with pytest.raises(pod.OutOfTime, match="before finalize"):
+        pod.step_finalize(None, ctx)
+    assert pod.remaining_s(tiny_ctx(tmp_path)) is None  # no smoke projection: no guard
+
+
+def test_fingerprint_covers_p42_code_and_template(tiny, tmp_path, monkeypatch):
+    ctx = tiny_ctx(tmp_path)
+    fp = pod.collect_fp(ctx, "dpo")
+    assert fp["p42_code_sha"] == pod.p42_code_sha() and fp["template_sha"]
+    monkeypatch.setattr(pod, "RENDER", lambda c, tok=None: f"<s>other\n<u>{c}<e>\n<a>")
+    assert pod.collect_fp(ctx, "dpo")["template_sha"] != fp["template_sha"]
 
 
 # --- smoke ---------------------------------------------------------------------------------------
@@ -359,6 +423,12 @@ def test_smoke_passes_and_sets_settings(smoke_env, monkeypatch):
     assert len(list((pod.RESULTS / "smoke" / "sae").glob("*.json"))) == 8
     assert set(s["rates"]) >= {"collect_s_per_tok", "ms_per_step", "io_s"}
     assert pod.settings() == s["settings"]
+    assert s["components"]["n_sae"] == 8 and s["identity"] == pod.identity(rows)
+    c = pod.with_settings(pod.Ctx("bulk", rows, pod.WS / "w", pod.RESULTS))
+    assert c.proj == s["components"] and c.layers == tuple(K.LAYERS)
+    other = [dict(r, text=r["text"] + "!") if i == 0 else r for i, r in enumerate(rows)]
+    with pytest.raises(pod.StepFailed, match="other inputs/code"):
+        pod.with_settings(pod.Ctx("bulk", other, pod.WS / "w", pod.RESULTS))
 
 
 def test_smoke_over_budget_rc3(smoke_env, monkeypatch):
@@ -403,11 +473,19 @@ def test_projection_math():
                + K.BUFFER_TOKENS * 2e-6 + 5.0)
     fw = {m: 20 + 4e-5 * COUNTS["collect"][m] + r.score_s_per_tok[m] * COUNTS["score"][m]
           for m in ("dpo", "sft")}
-    core = fw["dpo"] + fw["sft"] + 8 * per_sae + 300
+    fallback = (steps * 0.03 + (steps // K.EVAL_EVERY + 1) * K.HELDOUT_TOKENS * 1e-7) * 0.5 \
+        + K.BUFFER_TOKENS * 1e-6
+    core = fw["dpo"] + fw["sft"] + 8 * per_sae + 8 * fallback + 300
     want = core * pod.PROJ_MARGIN + pod.MANIFEST_S + 3 * pod.PROC_OVERHEAD_S
     assert ph["total"] == pytest.approx(want)
     ph24 = pod.project(r, COUNTS, K.BUFFER_TOKENS, (24,))
     assert ph24["sae_training"] == pytest.approx(ph["sae_training"] / 2)
+    assert ph["fallback_reserve"] == pytest.approx(8 * fallback)
+    # buffer writes priced apart from the forwards
+    phw = pod.project(rates(write_s_per_byte=1e-9), COUNTS, K.BUFFER_TOKENS, K.LAYERS)
+    rows = 1.1 * (3 * K.BUFFER_TOKENS + 3 * K.HELDOUT_TOKENS + K.BUFFER_TOKENS + K.HELDOUT_TOKENS)
+    assert phw["total"] - ph["total"] == pytest.approx(
+        rows * 2 * 4096 * 2 * 1e-9 * pod.PROJ_MARGIN)
 
 
 def test_choose_settings_cut_order():
@@ -536,7 +614,12 @@ def test_run_sh_syntax_and_dry_run():
     assert r.returncode == 0, r.stderr
     for step in ("download", "smoke", "dpo", "sft", "finalize", "manifest"):
         assert f"{step}:" in r.stdout
-    assert "PROBE_DONE" not in r.stdout and "guard: no new step after 6300 s" in r.stdout
+    assert "PROBE_DONE" not in r.stdout and "guard: no new step after epoch" in r.stdout
+    r = subprocess.run(["/bin/bash", str(PROBE / "run.sh")], capture_output=True, text=True,
+                       env={**os.environ, "P45_DRY_RUN": "1", "P45_DEADLINE_EPOCH": "5000"},
+                       check=False)
+    assert "deadline=5000 (env P45_DEADLINE_EPOCH)" in r.stdout
+    assert "no new step after epoch 4700" in r.stdout
 
 
 def run_sh_sandbox(tmp_path, results_is_file=False, fake_rc=None):
@@ -584,6 +667,7 @@ def test_run_sh_failed_step_propagates(tmp_path, step, rc):
     probe, env = run_sh_sandbox(tmp_path, fake_rc=1)
     r, lines = _run(probe, env, P45_STEPS=f"{step} finalize")
     assert r.returncode == rc and lines[-1] == f"PROBE_DONE rc={rc}"
+    assert r.stdout.count("python_rc=") == 1  # the chain stops at the failed step
     assert (probe / "results" / "MANIFEST.sha256").is_file()
 
 
@@ -600,8 +684,29 @@ def test_run_sh_missing_inputs_and_guard(tmp_path):
     r, lines = _run(probe, env)
     assert r.returncode == 2 and lines[-1] == "PROBE_DONE rc=2"
     (tmp_path / "data" / "P45" / "dolma_chunks.jsonl").write_text("{}\n")
-    r, lines = _run(probe, env, P45_GUARD_S="0")
-    assert r.returncode == 4 and lines[-1] == "PROBE_DONE rc=4"
+    r, lines = _run(probe, env, P45_DEADLINE_EPOCH=str(int(time.time()) + 100))
+    assert r.returncode == 4 and lines[-1] == "PROBE_DONE rc=4" and "P45 guard" in r.stdout
+
+
+def test_run_sh_deadline_from_killswitch_and_exported(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path)
+    ks = tmp_path / "ks_deadline"
+    ks.write_text(f"{int(time.time()) + 7200}\n")
+    show = tmp_path / "show"
+    show.write_text('#!/bin/sh\necho "DL=$P45_DEADLINE_EPOCH"\n')
+    os.chmod(show, 0o755)
+    env.pop("P45_DEADLINE_EPOCH", None)
+    r, _ = _run(probe, {**env, "P45_PEFT_PY": str(show)}, P45_KS_DEADLINE=str(ks),
+                    P45_STEPS="download")
+    want = int(ks.read_text()) - 1200
+    assert f"deadline={want} (killswitch" in r.stdout and f"DL={want}" in r.stdout
+    assert r.returncode == 0
+
+
+def test_run_sh_time_guard_rc5_maps_to_4(tmp_path):
+    probe, env = run_sh_sandbox(tmp_path, fake_rc=5)
+    r, lines = _run(probe, env, P45_STEPS="dpo sft")
+    assert r.returncode == 4 and lines[-1] == "PROBE_DONE rc=4" and "step=sft" not in r.stdout
 
 
 def test_run_sh_manifest_failure(tmp_path):
@@ -615,7 +720,7 @@ def test_probe_toml():
     assert (t["id"], t["hard_cap_usd"], t["gpu_limit_usd"], t["api_limit_usd"],
             t["reserve_usd"]) == ("P45", 30, 24, 6, 0)
     p = t["pod"]
-    assert p["gpu_hours"] == 2 and p["setup"] == "eq0" and p["disk_gb"] == 300
+    assert p["gpu_hours"] == 2.5 and p["setup"] == "eq0" and p["disk_gb"] == 300
     assert p["disk_gb"] >= p["model_gb"] + 40
     assert (p["model_repo"], p["model_revision"]) == (P42K.DPO_ID, P42K.DPO_REV)
     assert p["push"] == ["data/P42/prompts.jsonl", "data/P42/prompts.meta.json",

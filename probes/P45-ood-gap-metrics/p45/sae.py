@@ -40,7 +40,7 @@ import torch
 
 from p45 import contracts as K
 
-CURVE_EVERY = 50  # steps between loss / fvu_batch curve points
+CURVE_EVERY = 50  # steps between transfers of the per-step loss / fvu_batch curves
 _CHUNK = 8192  # rows per chunk for statistics and scoring
 
 
@@ -178,7 +178,8 @@ def prompt_F(sq_err: torch.Tensor, keep: torch.Tensor, segs: list[tuple[int, int
     """Per segment [a, b) of token rows: mean(sq_err[a:b][keep[a:b]]) / sigma2; NaN if none kept."""
     e = sq_err.detach().to("cpu", torch.float64)
     kp = keep.detach().to("cpu", torch.bool)
-    cs_e = torch.cat([torch.zeros(1, dtype=torch.float64), torch.cumsum(e * kp, 0)])
+    ek = torch.where(kp, e, torch.zeros_like(e))  # a masked inf/NaN must not reach the cumsum
+    cs_e = torch.cat([torch.zeros(1, dtype=torch.float64), torch.cumsum(ek, 0)])
     cs_n = torch.cat([torch.zeros(1, dtype=torch.int64), torch.cumsum(kp.to(torch.int64), 0)])
     out = []
     for a, b in segs:
@@ -318,6 +319,15 @@ def train_sae(buf: torch.Tensor, heldout: torch.Tensor, cfg: TrainCfg, device, s
         f"buf_on={data.device}")
     train_s = eval_s = 0.0
     s = 0
+    pend: list[torch.Tensor] = []  # per-step (loss, mse) on the device, moved every CURVE_EVERY
+
+    def flush():
+        if pend:
+            v = torch.stack(pend).double().cpu()
+            cur["step"].extend(range(s - len(pend) + 1, s + 1))
+            cur["loss"].extend(v[:, 0].tolist())
+            cur["fvu_batch"].extend((v[:, 1] / (scale ** 2 * sigma2)).tolist())
+            pend.clear()
     with _tf32(device):
         t_loop = time.time()
         for ep in range(cfg.epochs):
@@ -332,11 +342,10 @@ def train_sae(buf: torch.Tensor, heldout: torch.Tensor, cfg: TrainCfg, device, s
                     idx = idx.to(data.device)
                 x = data[idx].to(device, torch.float32, non_blocking=True) * scale
                 loss, mse = st.step(x)
+                pend.append(torch.stack([loss, mse]))
                 s += 1
-                if s % CURVE_EVERY == 0 or s == steps:
-                    cur["step"].append(s)
-                    cur["loss"].append(float(loss))
-                    cur["fvu_batch"].append(float(mse) / (scale ** 2 * sigma2))
+                if s % CURVE_EVERY == 0 or s == steps or s % cfg.eval_every == 0:
+                    flush()
                 if s % cfg.eval_every == 0 or s == steps:
                     _sync(device)
                     te = time.time()

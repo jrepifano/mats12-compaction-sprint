@@ -28,17 +28,21 @@ Per model (`run_model`):
    for DPO) over the first THR_N id_ref prompts.
 2. collection jobs, one forward pass each, early-stopped after the deepest block needed (no
    logit head): content tokens with norm > K.MASK_NORM_MULT x median are dropped (`mask_keep`),
-   the rest Bernoulli-sampled with p = target / (content tokens of the job) and written fp16 to
-   /ws memmaps (capped at the target; rows non-finite in fp16 are dropped and counted). The
+   the rest Bernoulli-sampled with p = min(1, 1.1 x target / content tokens of the job) and
+   written fp16 to /ws memmaps (rows non-finite in fp16 dropped and counted); at the end a seeded
+   uniform subset of exactly min(target, n_sampled) rows is drawn (sel_*.npy, what training
+   reads), so no row is favoured by arrival order; n_eligible, n_sampled, n_kept recorded. The
    id_ref job also accumulates exact float64 sums for sigma2 = E||x - mu||^2 over every unmasked
    id_ref content token (each layer and, DPO, hs 17) and, DPO, the prompt-mean L24 feature (all
    content tokens, fp32) of every id_ref prompt.
 3. training: per arm and layer, one buffer on the GPU at a time (model freed first),
    `p45.sae.train_sae` with sigma2 of that model and layer; checkpoints results/sae/<arm>_L<L>,
-   curves results/train/<arm>_L<L>.json (+ the FVU of the SAE on every held-out buffer of that
-   model and layer). Gates (bulk): own-held-out FVU <= K.GATE_HELDOUT_RATIO x train FVU and dead
-   <= K.GATE_DEAD_FRAC, else retrain once at K.N_LATENTS_FALLBACK; a second failure is recorded
-   (`gate_failed_twice`), not fatal.
+   curves results/train/<arm>_L<L>.json (per-step loss and batch FVU, periodic held-out FVU, +
+   the FVU of the SAE on every held-out buffer of that model and layer). Gates (bulk): own-held-
+   out FVU <= K.GATE_HELDOUT_RATIO x train FVU and dead <= K.GATE_DEAD_FRAC, else retrain once at
+   K.N_LATENTS_FALLBACK (the first attempt's curves kept in <arm>_L<L>_attempt1.json); a second
+   failure writes both attempts' diagnostics and fails the step (plan: stop on a measurement
+   failure after one fix).
 4. scoring pass over K.SCORED_SETS with the reloaded checkpoints: per prompt and layer F_<arm> =
    prompt_F(sq_err, mask_keep, ...) / sigma2 (one sq_err call per SAE per forward batch, over
    all content tokens of the batch); DPO also norm_L<L> (mean content-token norm, all tokens),
@@ -65,18 +69,30 @@ after the reload check, their JSON configs kept). Gates: no inf and <= 1% NaN
 per score column, no non-finite buffer rows, falling batch FVU, post/sftmodel train and held-out
 FVU in (0, 1), finite L24 means, sigma2 > 0, reload agrees. Projection (seconds):
     sum over models m of [2 loads x load_s(m) + collect_s_per_tok(m) x collect tokens(m)
-                          + score_s_per_tok(m) x scored tokens(m)]
+                          + write_s_per_byte x buffer bytes(m) + score_s_per_tok(m) x scored(m)]
     + n_SAE x [steps x ms/step + n_evals x HELDOUT_TOKENS x eval_s_per_tok
                + buffer_tokens x (other_s_per_tok + buf_load_s_per_tok) + io_s]
+    + n_SAE x [fallback: (steps x ms/step + evals) x 8,192/16,384 + buffer x other_s_per_tok]
     + finalize_s, all x 1.1, + MANIFEST_S + 3 x PROC_OVERHEAD_S,
 with steps = ceil(buffer_tokens / K.BATCH_TOKENS) x K.EPOCHS, n_SAE = 4 x len(layers), token
 counts = min(n_tokens, P42 MAX_PROMPT_TOKENS) + template tokens per prompt, every rate measured in
-the smoke. It must be <= PROJ_FRACTION x the time left (deadline: env P45_DEADLINE_EPOCH, else
-the killswitch deadline - SALVAGE_S, else P45_T0 + P45_BUDGET_S or gpu_hours - 15 min); else the
+the smoke. It must be <= PROJ_FRACTION x the time left (deadline: env P45_DEADLINE_EPOCH, set by
+run.sh; else the killswitch deadline - SALVAGE_S, else P45_T0 + P45_BUDGET_S or gpu_hours - 15
+min); else the
 buffer is cut to K.BUFFER_TOKENS_CUT, then L16 (and the public SAE) is dropped; else rc 3. The
 chosen settings go to results/smoke.json for the bulk steps (P45_SKIP_SMOKE=1: defaults).
 
-Exit codes: 0 ok, 1 a failed check or error, 3 smoke projection over budget after both cuts.
+Time guard (bulk): the smoke stores its projection components (per-model collection and
+scoring, one SAE, one fallback retrain, finalize) in smoke.json; before every SAE training and
+before finalize the projected remaining work (from what is on disk) x 1.1 + manifest must end
+before the deadline, else the step stops cleanly with rc 5. The deadline is one absolute epoch:
+run.sh computes it (killswitch deadline - SALVAGE_S, else run.sh start + gpu_hours - 15 min) and
+exports P45_DEADLINE_EPOCH, which run.sh's own step guard, the smoke projection and the time
+guard all read. A smoke.json is reused only when its `identity` (rows, p45 and p42 code, chat
+template) equals the current one.
+
+Exit codes: 0 ok, 1 a failed check or error (including SAE gates failing after the retrain),
+3 smoke projection over budget after both cuts, 5 out of time (time guard).
 """
 
 from __future__ import annotations
@@ -127,6 +143,7 @@ PROJ_MARGIN = 1.10
 NAN_TOL = 0.01
 RELOAD_TOL = 0.05
 PUB_CHUNK = 4096
+OVERSAMPLE = 1.1  # Bernoulli over-draw; the exact uniform subset of `target` rows is taken after
 
 # injectable for tests
 LOADER: Callable | None = None  # (name, attn) -> model
@@ -259,6 +276,7 @@ class Ctx:
     attn: str = ATTN
     sae_cfg: dict = field(default_factory=dict)  # TrainCfg overrides (smoke, tests)
     retrain: bool = True  # bulk: retrain once at N_LATENTS_FALLBACK on a failed gate
+    proj: dict | None = None  # the smoke's projection components (bulk time guard); None = off
 
     def idx(self, pred) -> np.ndarray:
         return np.array([i for i, r in enumerate(self.rows) if pred(r)], dtype=np.int64)
@@ -280,20 +298,45 @@ def default_settings() -> dict:
     return {"attn": ATTN, "buffer_tokens": K.BUFFER_TOKENS, "layers": list(K.LAYERS), "pub": True}
 
 
-def settings() -> dict:
+def smoke_record() -> dict | None:
+    """The passing results/smoke.json, or None under P45_SKIP_SMOKE=1 (defaults, no guard)."""
     s = read_json(RESULTS / "smoke.json")
     if s is None or not s.get("pass"):
         if os.environ.get("P45_SKIP_SMOKE") == "1":
             log("P45_SKIP_SMOKE=1: default settings without a passing smoke")
-            return default_settings()
+            return None
         raise StepFailed("no passing results/smoke.json (run the smoke first)")
-    return s["settings"]
+    return s
+
+
+def settings() -> dict:
+    s = smoke_record()
+    return default_settings() if s is None else s["settings"]
+
+
+def identity(rows: Sequence[dict]) -> dict:
+    """What a smoke's settings and rates were measured for: the bulk rows and the code."""
+    return {"rows_sha": rows_sha(rows), "code_sha": code_sha(("contracts.py", "pod.py", "sae.py")),
+            "p42_code_sha": p42_code_sha(), "template_sha": template_sha()}
 
 
 def with_settings(ctx: Ctx, s: dict | None = None) -> Ctx:
-    s = s or settings()
+    """Apply explicit settings, else the passing smoke's (checked against the current rows and
+    code: a smoke made for other inputs is refused) with its projection for the time guard."""
+    proj = None
+    if s is None:
+        rec = smoke_record()
+        if rec is None:
+            s = default_settings()
+        else:
+            want, got = identity(ctx.rows), rec.get("identity")
+            if got != want:
+                diff = sorted(k for k in want if (got or {}).get(k) != want[k])
+                raise StepFailed(f"results/smoke.json was made for other inputs/code ({diff}); "
+                                 "rerun the smoke")
+            s, proj = rec["settings"], rec.get("components")
     return replace(ctx, attn=s["attn"], buffer_tokens=int(s["buffer_tokens"]),
-                   layers=tuple(int(L) for L in s["layers"]), pub=bool(s["pub"]))
+                   layers=tuple(int(L) for L in s["layers"]), pub=bool(s["pub"]), proj=proj)
 
 
 def roles(ctx: Ctx) -> dict[str, np.ndarray]:
@@ -366,7 +409,33 @@ def collect_fp(ctx: Ctx, model: str) -> dict:
             "buffer_tokens": ctx.buffer_tokens, "heldout_tokens": ctx.heldout_tokens,
             "thr_n": ctx.thr_n, "sft_ho_n": ctx.sft_ho_n, "seed": K.SEED_BUFFER,
             "mask_mult": K.MASK_NORM_MULT, "rows_sha": rows_sha(ctx.rows),
-            "code_sha": code_sha(("contracts.py", "pod.py"))}
+            "code_sha": code_sha(("contracts.py", "pod.py")), "p42_code_sha": p42_code_sha(),
+            "template_sha": template_sha()}
+
+
+P42_CODE = ("contracts.py", "feats.py", "scoring.py", "pod.py")
+_TEMPLATE: dict = {}
+
+
+def p42_code_sha() -> str:
+    """The imported P42 modules (chat rendering, spans, batching, capture, public SAE, scoring)."""
+    h = hashlib.sha256()
+    for n in P42_CODE:
+        h.update(n.encode() + b"\0" + (Path(P.__file__).parent / n).read_bytes())
+    return h.hexdigest()[:16]
+
+
+def template_sha() -> str:
+    """The rendered chat template (placeholder content) and its prefix/suffix token ids."""
+    key = (TOKENIZER, RENDER)
+    if key not in _TEMPLATE:
+        from p42.feats import PLACEHOLDER, template_parts
+
+        tok = load_tok()
+        parts = template_parts(tok, render_fn(tok))
+        blob = json.dumps([render_fn(tok)(PLACEHOLDER), parts.prefix_ids, parts.suffix_ids])
+        _TEMPLATE[key] = hashlib.sha256(blob.encode()).hexdigest()[:16]
+    return _TEMPLATE[key]
 
 
 # --- models ------------------------------------------------------------------------------------
@@ -529,16 +598,19 @@ def run_job(ctx, model, holder, tok, parts, R, job: Job, thr: dict) -> dict:
     enc = encode(ctx, idx, tok, parts)
     n_content = sum(c1 - c0 for _, c0, c1 in enc)
     target = ctx.buffer_tokens if job.kind == "train" else ctx.heldout_tokens
-    p = min(1.0, target / max(n_content, 1))
+    p = min(1.0, OVERSAMPLE * target / max(n_content, 1))
+    cap = buf_capacity(target, n_content)
     m = holder.get()
     d = m.config.hidden_size
     hs = hs_set(ctx, model)
     need = tuple(sorted(set(hs) | ({24} if job.means else set())))
-    bufs = {L: P._open(buf_path(ctx, model, job.arm, job.kind, L), (target, d), np.float16)
+    bufs = {L: P._open(buf_path(ctx, model, job.arm, job.kind, L), (cap, d), np.float16)
             for L in ctx.layers}
     off = {L: 0 for L in ctx.layers}
     nonfinite = {L: 0 for L in ctx.layers}
     capped = {L: 0 for L in ctx.layers}
+    eligible = {L: 0 for L in ctx.layers}
+    write_s, write_bytes = 0.0, 0
     sig_hs = hs if job.sigma else ()
     dev = next(m.parameters()).device
     s1 = {L: torch.zeros(d, dtype=torch.float64, device=dev) for L in sig_hs}
@@ -563,27 +635,46 @@ def run_job(ctx, model, holder, tok, parts, R, job: Job, thr: dict) -> dict:
                 s2[L] += float((xk * xk).sum())
                 sn[L] += int(keep.sum())
             if L in bufs:
+                eligible[L] += int(keep.sum())
+                w0 = time.time()
                 rows = X[L][keep & draw].half().cpu().numpy()
                 ok = np.isfinite(rows).all(1)
                 nonfinite[L] += int((~ok).sum())
                 rows = rows[ok]
-                room = target - off[L]
+                room = cap - off[L]
                 capped[L] += max(0, len(rows) - room)
                 rows = rows[:room]
                 bufs[L][off[L] : off[L] + len(rows)] = rows
                 off[L] += len(rows)
+                write_s += time.time() - w0
+                write_bytes += rows.nbytes
         if means is not None:
             mu = seg_mean(X[24], segs).cpu().numpy()
             for k, j in enumerate(b):
                 means[int(idx[j])] = mu[k]
         tokens += sum(len(enc[j][0]) for j in b)
+    w0 = time.time()
     for a in bufs.values():
         a.flush()
     if means is not None:
         means.flush()
+    kept = {}
+    for L in ctx.layers:  # an exact seeded uniform subset of the sampled rows, no arrival bias
+        n_keep = min(target, off[L])
+        g = np.random.default_rng([K.SEED_BUFFER, L, int(hashlib.sha256(
+            f"sel/{model}/{job.name}".encode()).hexdigest()[:8], 16)])
+        sel = np.sort(g.choice(off[L], n_keep, replace=False)).astype(np.int64)
+        np.save(sel_path(ctx, model, job.arm, job.kind, L), sel)
+        kept[L] = n_keep
+    write_s += time.time() - w0
     rec = {"done": True, "job": asdict(job), "n_prompts": len(enc), "n_content": n_content,
-           "p": p, "target": target, "n_fill": {str(L): off[L] for L in ctx.layers},
+           "p": p, "target": target, "capacity": cap,
+           "n_eligible": {str(L): eligible[L] for L in ctx.layers},
+           "n_sampled": {str(L): off[L] for L in ctx.layers},
+           "n_kept": {str(L): kept[L] for L in ctx.layers},
+           "n_fill": {str(L): kept[L] for L in ctx.layers},  # = n_kept (rows training reads)
            "capped": {str(L): capped[L] for L in ctx.layers},
+           "write_seconds": write_s, "write_bytes": write_bytes,
            "nonfinite_dropped": {str(L): nonfinite[L] for L in ctx.layers},
            "masked": {str(L): masked[L] for L in hs}, "tokens": tokens,
            "seconds": time.time() - s0}
@@ -598,15 +689,28 @@ def run_job(ctx, model, holder, tok, parts, R, job: Job, thr: dict) -> dict:
     return rec
 
 
-def load_buf(ctx, model, arm, kind, L, n: int, dev):
-    """Rows [:n] of a buffer memmap as an fp16 tensor on dev (chunked, no full host copy)."""
+def buf_capacity(target: int, n_content: int) -> int:
+    """Rows reserved for the Bernoulli(p = OVERSAMPLE x target / content) draw: its mean plus 6
+    standard deviations (overflow is counted as `capped`, expected never)."""
+    mu = OVERSAMPLE * target
+    return int(max(1, min(n_content, math.ceil(mu + 6 * math.sqrt(mu) + 64))))
+
+
+def sel_path(ctx: Ctx, model: str, arm: str, kind: str, L: int) -> Path:
+    return ctx.work / model / f"sel_{arm}_{kind}_L{L}.npy"
+
+
+def load_buf(ctx, model, arm, kind, L, dev):
+    """The selected rows of a buffer memmap (sel_*.npy, sorted) as an fp16 tensor on dev, chunked
+    (no full host copy)."""
     import torch
 
     mm = np.load(buf_path(ctx, model, arm, kind, L), mmap_mode="r")
-    out = torch.empty((n, mm.shape[1]), dtype=torch.float16, device=dev)
+    sel = np.load(sel_path(ctx, model, arm, kind, L))
+    out = torch.empty((len(sel), mm.shape[1]), dtype=torch.float16, device=dev)
     step = 1 << 18
-    for a in range(0, n, step):
-        out[a : a + step] = torch.from_numpy(np.array(mm[a : min(a + step, n)])).to(dev)
+    for a in range(0, len(sel), step):
+        out[a : a + step] = torch.from_numpy(np.array(mm[sel[a : a + step]])).to(dev)
     return out
 
 
@@ -619,6 +723,11 @@ def sae_stem(ctx: Ctx, arm: str, L: int) -> Path:
 
 def curves_path(ctx: Ctx, arm: str, L: int) -> Path:
     return ctx.results / "train" / f"{arm}_L{L}.json"
+
+
+def attempt_path(ctx: Ctx, arm: str, L: int, n: int) -> Path:
+    """The full curves of a failed attempt n that was retrained."""
+    return ctx.results / "train" / f"{arm}_L{L}_attempt{n}.json"
 
 
 def gate(final: dict) -> dict:
@@ -643,14 +752,15 @@ def train_arm(ctx, model, arm, L, sigma2, jobs, T) -> dict:
     fp = train_fp(ctx, model, arm, L, cfg, jobs)
     old = read_json(curves_path(ctx, arm, L))
     stem = sae_stem(ctx, arm, L)
-    if old and old.get("fp") == fp and stem.with_suffix(".safetensors").is_file():
+    if (old and old.get("fp") == fp and not old.get("gate_failed_twice")
+            and stem.with_suffix(".safetensors").is_file()):
         return {"skipped": True, **{k: old[k] for k in ("final", "gate", "retrained",
                                                          "gate_failed_twice")}}
+    time_guard(ctx, f"training {arm}_L{L}")
     dev = device()
-    nfill = lambda kind, a=arm: jobs[job_name(model, a, kind)]["n_fill"][str(L)]
     with T("buf_load"):
-        buf = load_buf(ctx, model, arm, "train", L, nfill("train"), dev)
-        ho = load_buf(ctx, model, arm, "heldout", L, nfill("heldout"), dev)
+        buf = load_buf(ctx, model, arm, "train", L, dev)
+        ho = load_buf(ctx, model, arm, "heldout", L, dev)
     T.buf_tokens = getattr(T, "buf_tokens", 0) + buf.shape[0]
     tag = f"{arm}_L{L}"
     with T("train"):
@@ -660,7 +770,10 @@ def train_arm(ctx, model, arm, L, sigma2, jobs, T) -> dict:
     rec: dict[str, Any] = {"retrained": False, "gate_failed_twice": False}
     if not g["pass"] and ctx.retrain:
         log(f"{tag}: gate failed {g} {cur['final']}; retraining at {K.N_LATENTS_FALLBACK}")
-        first = {"final": cur["final"], "gate": g, "n_latents": cfg["n_latents"]}
+        a1 = attempt_path(ctx, arm, L, 1)
+        write_json(a1, {"fp": fp, "cfg": cfg, "sigma2": sigma2, "gate": g, **cur})
+        first = {"final": cur["final"], "gate": g, "n_latents": cfg["n_latents"],
+                 "curves": a1.name}
         cfg = {**cfg, "n_latents": K.N_LATENTS_FALLBACK}
         del sae
         with T("train"):
@@ -668,13 +781,17 @@ def train_arm(ctx, model, arm, L, sigma2, jobs, T) -> dict:
                                    log=lambda s: log(f"{tag} {s}"))
         g = gate(cur["final"])
         rec = {"retrained": True, "first_attempt": first, "gate_failed_twice": not g["pass"]}
-        if not g["pass"]:
-            log(f"FLAG {tag}: gate failed twice {g} (recorded, not fatal)")
+        if not g["pass"]:  # plan: stop on a measurement failure after one fix
+            write_json(curves_path(ctx, arm, L), {"fp": fp, "cfg": cfg, "sigma2": sigma2,
+                                                  "gate": g, **rec, **cur})
+            raise StepFailed(f"{tag}: SAE gates failed after the retrain at "
+                             f"{K.N_LATENTS_FALLBACK} latents: {g} {cur['final']} "
+                             f"(curves of both attempts in {curves_path(ctx, arm, L).parent})")
     del buf, ho
     s0 = time.time()
     cross = {}
     for a2 in arms_of(model):
-        h2 = load_buf(ctx, model, a2, "heldout", L, nfill("heldout", a2), dev)
+        h2 = load_buf(ctx, model, a2, "heldout", L, dev)
         cross[a2] = S.agg_fvu(sae, h2, sigma2)
         del h2
     info = {"arm": arm, "layer": L, "model": model, "sigma2": sigma2, "n_latents": cfg["n_latents"]}
@@ -957,6 +1074,7 @@ def write_pca_union(ctx, means, fin, R, dev) -> dict:
 
 def step_finalize(args=None, ctx: Ctx | None = None) -> int:
     ctx = ctx or with_settings(bulk_ctx())
+    time_guard(ctx, "finalize")
     T = Timer()
     info = finalize(ctx, T)
     bad = {c: v for c, v in info["inf_counts"].items() if v}
@@ -1013,6 +1131,46 @@ def step_download(args=None) -> int:
 # --- smoke: rates, projection, cuts ------------------------------------------------------------
 
 
+class OutOfTime(StepFailed):
+    """The remaining projected work no longer fits before the deadline: stop cleanly (rc 5)."""
+
+
+def remaining_s(ctx: Ctx) -> float | None:
+    """Projected seconds of bulk work still to do (from ctx.proj and what is on disk), with the
+    margin and the manifest; None without a smoke projection."""
+    c = ctx.proj
+    if not c:
+        return None
+    rem = c["finalize"]
+    for m in ("dpo", "sft"):
+        if not all((read_json(ctx.work / m / f"job_{j.name}.json") or {}).get("done")
+                   for j in jobs_for(m)):
+            rem += c["collect"][m]
+        for arm in arms_of(m):
+            for L in ctx.layers:
+                cur = read_json(curves_path(ctx, arm, L))
+                if (not cur or cur.get("gate_failed_twice")
+                        or not sae_stem(ctx, arm, L).with_suffix(".safetensors").is_file()):
+                    rem += c["per_sae"] + c["per_sae_fallback"]
+        if not partial_paths(ctx, m)[1].is_file():
+            rem += c["score"][m]
+    return rem * PROJ_MARGIN + MANIFEST_S
+
+
+def time_guard(ctx: Ctx, what: str) -> None:
+    """Before each SAE training and before finalize: the remaining projected work must end
+    before the deadline (the same absolute deadline run.sh and the smoke use), else OutOfTime."""
+    rem = remaining_s(ctx)
+    deadline, source = deadline_epoch()
+    if rem is None or deadline is None:
+        return
+    left = deadline - time.time()
+    if rem > left:
+        raise OutOfTime(f"before {what}: remaining projected {rem:.0f} s > {left:.0f} s left "
+                        f"({source})")
+    log(f"time guard ok before {what}: remaining {rem:.0f} s, left {left:.0f} s")
+
+
 def deadline_epoch() -> tuple[float | None, str]:
     if os.environ.get("P45_DEADLINE_EPOCH"):
         return float(os.environ["P45_DEADLINE_EPOCH"]), "env P45_DEADLINE_EPOCH"
@@ -1043,6 +1201,7 @@ class Rates:
     buf_load_s_per_tok: float
     io_s: float  # per SAE: cross FVU + save
     finalize_s: float = FINALIZE_ALLOW_S
+    write_s_per_byte: float = 0.0  # buffer writes (GPU -> host -> memmap), apart from forwards
 
 
 def bulk_counts(rows: Sequence[dict], template_tokens: int, thr_n: int = THR_N) -> dict:
@@ -1059,20 +1218,45 @@ def bulk_counts(rows: Sequence[dict], template_tokens: int, thr_n: int = THR_N) 
             "score": {"dpo": scored, "sft": scored}}
 
 
-def project(rates: Rates, counts: dict, buffer_tokens: int, layers: Sequence[int]) -> dict:
+def buffer_bytes(model: str, buffer_tokens: int, layers: Sequence[int]) -> float:
+    """fp16 bytes the collection writes for one model: every train and held-out job, each layer."""
+    rows = sum(OVERSAMPLE * (buffer_tokens if j.kind == "train" else K.HELDOUT_TOKENS)
+               for j in jobs_for(model))
+    return rows * len(layers) * P.EXPECT_CFG["hidden_size"] * 2
+
+
+def components(rates: Rates, counts: dict, buffer_tokens: int, layers: Sequence[int]) -> dict:
+    """Projected seconds per unit of bulk work (the smoke's rates): each model's collection
+    (one load, forwards, buffer writes) and scoring (one load, forwards), one SAE, one fallback
+    retrain of an SAE at K.N_LATENTS_FALLBACK (steps and evaluations scaled by the width, the
+    buffer already on the GPU), and finalize."""
     steps = math.ceil(buffer_tokens / K.BATCH_TOKENS) * K.EPOCHS
     n_evals = steps // K.EVAL_EVERY + 1
-    n_sae = len(K.ARMS) * len(layers)
-    per_sae = (steps * rates.ms_per_step / 1000
-               + n_evals * K.HELDOUT_TOKENS * rates.eval_s_per_tok
-               + buffer_tokens * (rates.other_s_per_tok + rates.buf_load_s_per_tok) + rates.io_s)
+    width = K.N_LATENTS_FALLBACK / K.N_LATENTS
+    sae_fit = steps * rates.ms_per_step / 1000 + n_evals * K.HELDOUT_TOKENS * rates.eval_s_per_tok
+    return {
+        "collect": {m: rates.load_s[m] + rates.collect_s_per_tok[m] * counts["collect"][m]
+                    + rates.write_s_per_byte * buffer_bytes(m, buffer_tokens, layers)
+                    for m in ("dpo", "sft")},
+        "score": {m: rates.load_s[m] + rates.score_s_per_tok[m] * counts["score"][m]
+                  for m in ("dpo", "sft")},
+        "per_sae": sae_fit + buffer_tokens * (rates.other_s_per_tok + rates.buf_load_s_per_tok)
+        + rates.io_s,
+        "per_sae_fallback": width * sae_fit + buffer_tokens * rates.other_s_per_tok,
+        "finalize": rates.finalize_s, "steps_per_sae": steps,
+        "n_sae": len(K.ARMS) * len(layers), "layers": list(layers),
+    }
+
+
+def project(rates: Rates, counts: dict, buffer_tokens: int, layers: Sequence[int]) -> dict:
+    c = components(rates, counts, buffer_tokens, layers)
+    steps, n_sae = c["steps_per_sae"], c["n_sae"]
     ph = {}
     for m in ("dpo", "sft"):
-        ph[f"{m}_forwards"] = (2 * rates.load_s[m]
-                               + rates.collect_s_per_tok[m] * counts["collect"][m]
-                               + rates.score_s_per_tok[m] * counts["score"][m])
-    ph["sae_training"] = n_sae * per_sae
-    ph["finalize"] = rates.finalize_s
+        ph[f"{m}_forwards"] = c["collect"][m] + c["score"][m]
+    ph["sae_training"] = n_sae * c["per_sae"]
+    ph["fallback_reserve"] = n_sae * c["per_sae_fallback"]  # worst case: every arm retrained
+    ph["finalize"] = c["finalize"]
     ph["margin"] = (PROJ_MARGIN - 1) * sum(ph.values())
     ph["manifest"] = MANIFEST_S
     ph["process_overhead"] = 3 * PROC_OVERHEAD_S
@@ -1095,17 +1279,22 @@ def choose_settings(rates: Rates, counts: dict, time_left: float | None) -> dict
                       "projection_s": ph, "ok": ok})
         if ok:
             return {"ok": True, "buffer_tokens": buf, "layers": list(layers),
-                    "pub": 16 in layers, "cut": cut, "tried": tried}
+                    "pub": 16 in layers, "cut": cut, "tried": tried,
+                    "components": components(rates, counts, buf, layers)}
     return {"ok": False, "tried": tried}
 
 
 def smoke_rates(ctx: Ctx, recs: dict, T: Timer, fin_s: float) -> Rates:
     col, sco, load = {}, {}, {}
+    w_s, w_b = 0.0, 0
     for m in ("dpo", "sft"):
         r = recs[m]
         tok_c = r["thresholds"]["tokens"] + sum(j["tokens"] for j in r["jobs"].values())
         first_load = r["load_seconds"][0] if r["load_seconds"] else 0.0
-        col[m] = max(0.0, T.phases.get(f"{m}_collect", 0.0) - first_load) / max(tok_c, 1)
+        wr_s = sum(j.get("write_seconds", 0.0) for j in r["jobs"].values())
+        wr_b = sum(j.get("write_bytes", 0) for j in r["jobs"].values())
+        w_s, w_b = w_s + wr_s, w_b + wr_b
+        col[m] = max(0.0, T.phases.get(f"{m}_collect", 0.0) - first_load - wr_s) / max(tok_c, 1)
         sco[m] = r["score"]["seconds"] / max(r["score"]["tokens"], 1)
         load[m] = float(np.mean(r["load_seconds"])) if r["load_seconds"] else 0.0
     curves = [read_json(curves_path(ctx, a, L)) for a in K.ARMS for L in ctx.layers]
@@ -1117,7 +1306,8 @@ def smoke_rates(ctx: Ctx, recs: dict, T: Timer, fin_s: float) -> Rates:
                                - f["eval_seconds"]) / max(f["n_train_tokens"], 1) for f in fins]))
     io = float(np.mean([c["io_seconds"] for c in curves]))
     bl = T.phases.get("buf_load", 0.0) / max(getattr(T, "buf_tokens", 0), 1)
-    return Rates(col, sco, load, ms, ev, other, bl, io, max(FINALIZE_ALLOW_S, 3 * fin_s))
+    return Rates(col, sco, load, ms, ev, other, bl, io, max(FINALIZE_ALLOW_S, 3 * fin_s),
+                 w_s / max(w_b, 1))
 
 
 def smoke_gates(ctx: Ctx, recs: dict, fin: dict, reload: dict) -> dict:
@@ -1163,9 +1353,7 @@ def reload_check(ctx: Ctx) -> dict:
         for L in ctx.layers:
             c = read_json(curves_path(ctx, a, L))
             m = K.ARM_MODEL[a]
-            jn = job_name(m, a, "heldout")
-            n = read_json(ctx.work / m / f"job_{jn}.json")["n_fill"][str(L)]
-            ho = load_buf(ctx, m, a, "heldout", L, n, device())
+            ho = load_buf(ctx, m, a, "heldout", L, device())
             sae = S.TopKSAE.load(sae_stem(ctx, a, L), device())
             got = S.agg_fvu(sae, ho, c["sigma2"])
             want = c["final"]["fvu_heldout"]
@@ -1208,6 +1396,7 @@ def step_smoke(args=None, rows: list[dict] | None = None) -> int:
            "cut": choice.get("cut"), "projection_tried": choice["tried"],
            "deadline_epoch": deadline, "deadline_source": source, "time_left_s": time_left,
            "budget_fraction": PROJ_FRACTION, "rates": asdict(rates), "bulk_counts": counts,
+           "components": choice.get("components"), "identity": identity(all_rows),
            "template_tokens": tmpl, "n_smoke": len(ctx.rows), "reload": reload,
            "models": recs, "finalize": fin, **{k: v for k, v in res.items() if k != "pass"},
            "phases_s": T.phases, "seconds": T.total(), "finished_utc": utc(),
@@ -1244,6 +1433,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     log(f"step {args.step} start (git {os.environ.get('EMX_GIT_COMMIT', 'unknown')})")
     try:
         rc = STEPS[args.step](args)
+    except OutOfTime as e:
+        log(f"OUT OF TIME {args.step}: {e}")
+        return 5
     except StepFailed as e:
         log(f"STEP FAILED {args.step}: {e}")
         return 1

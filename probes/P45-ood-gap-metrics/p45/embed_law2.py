@@ -21,10 +21,10 @@ import sys
 
 import numpy as np
 import pandas as pd
+from p42 import embed as E
 
 from emx import spend
 from p45 import contracts as K
-from p42 import embed as E  # noqa: E402  (contracts puts p42 on sys.path)
 
 EXP = K.PROBE
 NOTE = "p45_embed_law2"

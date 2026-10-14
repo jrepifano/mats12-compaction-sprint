@@ -116,6 +116,7 @@ def test_trains_to_low_fvu(trained):
     json.dumps(cur)  # JSON-serialisable
     assert cur["eval_step"][-1] == f["steps"] and cur["step"][-1] == f["steps"]
     assert len(cur["step"]) == len(cur["loss"]) == len(cur["fvu_batch"])
+    assert cur["step"] == list(range(1, f["steps"] + 1))  # every step recorded
     assert len(cur["eval_step"]) == len(cur["fvu_heldout"]) == len(cur["dead_frac"])
     assert 0.0 <= f["dead_frac"] <= 1.0 and f["ms_per_step"] > 0
 
@@ -201,3 +202,10 @@ def test_prompt_F_segments_and_nan():
 def test_bench_tiny():
     ms = S.bench(D_IN, N_LAT, K_, batch=64, device="cpu", steps=3)
     assert ms > 0
+
+
+def test_prompt_F_masked_nonfinite_does_not_leak():
+    se = torch.tensor([1.0, float("inf"), float("nan"), 2.0, 4.0])
+    keep = torch.tensor([True, False, False, True, True])
+    out = S.prompt_F(se, keep, [(0, 3), (3, 5)], 2.0)
+    assert out == [0.5, 1.5]

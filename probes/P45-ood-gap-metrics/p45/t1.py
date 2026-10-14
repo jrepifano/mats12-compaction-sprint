@@ -1065,16 +1065,16 @@ def cmd_embed_dolci(dry_run: bool, max_usd: float | None, limit: int | None,
     rows = _dolci_dpo_distinct()
     texts = _take_texts("dolci_dpo", rows)
     cache = E.load_cache(DOLCI_EMB)
+    enc = E._tokenizer()
     items = []
     for r, t in zip(rows, texts):
-        pid, ti = f"dpo-{int(r):07d}", E.embed_input(t)
+        pid, ti = f"dpo-{int(r):07d}", _cap_tokens(E.embed_input(t), enc)
         sha = E.text_sha(ti)
         hit = cache.get(pid)
         if hit is None or hit[0] != sha:
             items.append((pid, sha, ti))
     if limit is not None:
         items = items[:limit]
-    enc = E._tokenizer()
     est = E.estimate_tokens([t for _, _, t in items], enc)
     proj = E.usd_for_tokens(sum(est))
     reserve = max(E.MIN_RESERVE_USD, math.ceil(proj * E.RESERVE_MARGIN * 1e6) / 1e6)
@@ -1118,6 +1118,20 @@ def cmd_embed_dolci(dry_run: bool, max_usd: float | None, limit: int | None,
     np.save(DOLCI_EMB / "rows.npy", rows)
     print(f"P45 EMBED-DOLCI DONE: {emb.shape}")
     return 0
+
+
+EMBED_MAX_TOKENS = 8_000  # the API refuses inputs over 8,192 tokens (11 DPO first turns, 2026-10-14)
+
+
+def _cap_tokens(text: str, enc) -> str:
+    """Head-truncate to EMBED_MAX_TOKENS cl100k tokens (unchanged when shorter). Without
+    tiktoken's BPE file, cut to EMBED_MAX_TOKENS * 3 // 4 characters (CJK can be ~1 token/char)."""
+    if len(text) < EMBED_MAX_TOKENS * 3 // 4:
+        return text
+    if enc is None:
+        return text[: EMBED_MAX_TOKENS * 3 // 4]
+    ids = enc.encode(text, disallowed_special=())
+    return text if len(ids) <= EMBED_MAX_TOKENS else enc.decode(ids[:EMBED_MAX_TOKENS])
 
 
 def _members(space: str, k: int) -> dict[int, set]:

@@ -15,9 +15,14 @@
 # Per-step records: results/run_<step>.json, results/timing.json. Every step is resumable.
 # A failed step stops the chain: rc 11 download, 12 smoke gates (or error), 13 smoke projection
 # over budget after both cuts (pod.py rc 3), 14 dpo, 15 sft, 16 finalize, 18 the manifest failed
-# (only when every step succeeded); rc 2 = a missing venv or input; rc 4 = the soft wall-clock
-# guard (P45_GUARD_S, default probe.toml gpu_hours - 15 min of run.sh) stopped the chain before a
-# new step. P45_STEPS overrides the step list (e.g. "sft finalize" for a resumed session). The
+# (only when every step succeeded); rc 2 = a missing venv or input; rc 4 = out of time: run.sh's
+# step guard (no new step within P45_STEP_MIN_S, default 300 s, of the deadline) or a step's own
+# time guard (pod.py rc 5: the remaining projected work no longer fits) stopped the chain.
+# One absolute deadline for everything: P45_DEADLINE_EPOCH if set, else the killswitch deadline
+# (/ws/killswitch/deadline, armed by the runner before the transfer) - 20 min (the runner salvages
+# 15 min before it, plus 5 min for the manifest), else run.sh start + gpu_hours - 15 min; exported
+# as P45_DEADLINE_EPOCH for the smoke projection and the time guards. P45_STEPS overrides the
+# step list (e.g. "sft finalize" for a resumed session). The
 # manifest and the last log line `PROBE_DONE rc=<n>` are always written (except under
 # P45_DRY_RUN=1, which prints the steps, touches nothing and exits 0), and the script exits with
 # that rc. bash 3.2-compatible.
@@ -26,9 +31,21 @@ cd "$(dirname "$0")"
 echo "P45 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 STEPS="${P45_STEPS:-download smoke dpo sft finalize}"
 GPU_H="$(sed -n 's/^gpu_hours *= *\([0-9.]*\).*/\1/p' probe.toml 2>/dev/null | head -1)"
-DEFAULT_GUARD="$(awk -v h="${GPU_H:-2}" 'BEGIN { printf "%d", (h - 0.25) * 3600 }')"
-GUARD_S="${P45_GUARD_S:-$DEFAULT_GUARD}"
-echo "P45 steps=$STEPS guard=${GUARD_S}s"
+T0="$(date +%s)"
+KS="${P45_KS_DEADLINE:-/ws/killswitch/deadline}"
+if [ -n "${P45_DEADLINE_EPOCH:-}" ]; then
+  DEADLINE="$P45_DEADLINE_EPOCH"; DL_SRC="env P45_DEADLINE_EPOCH"
+elif [ -s "$KS" ] && KSV="$(awk 'NR == 1 && $1 ~ /^[0-9]+$/ { print $1 }' "$KS")" \
+     && [ -n "$KSV" ]; then
+  DEADLINE=$(( KSV - 1200 )); DL_SRC="killswitch $KSV - 1200 s"
+else
+  DEADLINE="$(awk -v t="$T0" -v h="${GPU_H:-2.5}" 'BEGIN { printf "%d", t + h * 3600 - 900 }')"
+  DL_SRC="start + gpu_hours ${GPU_H:-2.5} h - 900 s"
+fi
+DEADLINE="${DEADLINE%.*}"
+export P45_DEADLINE_EPOCH="$DEADLINE"
+STEP_MIN_S="${P45_STEP_MIN_S:-300}"
+echo "P45 steps=$STEPS deadline=$DEADLINE ($DL_SRC) left=$(( DEADLINE - T0 ))s"
 if [ "${P45_DRY_RUN:-0}" = 1 ]; then
   echo "P45 dry steps:"
   for S in $STEPS; do
@@ -42,12 +59,11 @@ if [ "${P45_DRY_RUN:-0}" = 1 ]; then
     esac
   done
   echo "  manifest: shasum -a 256 over results/ -> results/MANIFEST.sha256 (rc 18)"
-  echo "P45 dry guard: no new step after ${GUARD_S} s (rc 4)"
+  echo "P45 dry guard: no new step after epoch $(( DEADLINE - STEP_MIN_S )) (rc 4)"
   exit 0
 fi
 mkdir -p results logs
 echo $$ > logs/run.pid 2>/dev/null || true
-T0="$(date +%s)"
 export P45_T0="$T0"
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 HF_HUB_DOWNLOAD_TIMEOUT=60 WANDB_MODE=offline
 export TOKENIZERS_PARALLELISM=false PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -71,9 +87,10 @@ step_env() {  # GPU, disk, memory and time before each step
 
 for STEP in $STEPS; do
   [ "$RC" = 0 ] || break
-  ELAPSED=$(( $(date +%s) - T0 ))
-  if [ "$ELAPSED" -ge "$GUARD_S" ]; then
-    echo "P45 guard: ${ELAPSED}s >= ${GUARD_S}s, not starting step $STEP"; RC=4; break
+  NOW="$(date +%s)"
+  if [ $(( NOW + STEP_MIN_S )) -ge "$DEADLINE" ]; then
+    echo "P45 guard: $(( DEADLINE - NOW ))s to the deadline < ${STEP_MIN_S}s, not starting $STEP"
+    RC=4; break
   fi
   case "$STEP" in
     download) FAIL=11 ;;
@@ -91,6 +108,7 @@ for STEP in $STEPS; do
   if [ "$PRC" != 0 ]; then
     RC="$FAIL"
     if [ "$STEP" = smoke ] && [ "$PRC" = 3 ]; then RC=13; fi
+    if [ "$PRC" = 5 ]; then RC=4; echo "P45 step $STEP stopped by its time guard"; fi
   fi
 done
 

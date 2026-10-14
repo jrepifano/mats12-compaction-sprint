@@ -13,7 +13,10 @@ Subcommands (from the probe dir: `uv run python -m p45.analyze <cmd>`):
   embed/emb_scores.csv plus results/embed_law2/emb_scores.csv (absent -> S1 NaN for law2, said
   in prep.json). Length control exactly as P42; Spearman rho on the pool vs length and vs
   norm_L24/norm_L16, raw and length-controlled. **Common valid-row mask** `valid` = finite for
-  every K.CANDIDATES column and maha_L24 (counts dropped per set). -> results/analysis/prep.csv
+  every ACTIVE candidate column and maha_L24 (counts dropped per set). Active candidates =
+  K.CANDIDATES (frozen order) at the layers the run used: `settings.layers` of the smoke.json
+  beside scores.csv (the pod's L16 cut leaves only L24), else the candidates with any finite
+  score. -> results/analysis/prep.csv
   (gitignored) and prep.json.
 - `select` (dev split, valid rows): categories = K.PLANTED_EVAL, or planted_med alone if
   data.meta.json marks the law2 pre-flight failed; per candidate, the mean length-controlled
@@ -91,6 +94,7 @@ class Paths:
             K.DATA_META, MAIN_ROOT / "data" / "P45" / K.DATA_META.name)
         self.p42_scores = Path(p42_scores) if p42_scores else _first(
             P42K.SCORES_PATH, K.P42_RESULTS_MAIN / "scores.csv")
+        self.smoke = self.scores.parent / "smoke.json"  # the pod's run settings (layer cut)
 
     @property
     def prep_csv(self) -> Path:
@@ -112,6 +116,25 @@ def load_prompts(p: Paths) -> pd.DataFrame:
     if pr["pid"].duplicated().any():
         raise ValueError("duplicate pids across P42 prompts and planted_law2")
     return pr
+
+
+def active_candidates(sc: pd.DataFrame, smoke: Path) -> tuple[list[str], str]:
+    """K.CANDIDATES (frozen order) at the layers the run used (smoke.json settings.layers),
+    else every candidate with a finite score. A recorded layer whose columns are all NaN fails."""
+    finite = [c for c in K.CANDIDATES
+              if c in sc.columns and np.isfinite(sc[c].to_numpy(float)).any()]
+    layers = None
+    if Path(smoke).is_file():
+        layers = (json.loads(Path(smoke).read_text()).get("settings") or {}).get("layers")
+    if layers:
+        act = [c for c in K.CANDIDATES if int(c.rsplit("_L", 1)[1]) in set(layers)]
+        missing = [c for c in act if c not in finite]
+        if missing:
+            raise ValueError(f"run settings use layers {layers} but {missing} have no finite score")
+        return act, f"layers {sorted(layers)} from {smoke}"
+    if not finite:
+        raise ValueError("no candidate column has a finite score")
+    return finite, "candidates with any finite score (no run settings found)"
 
 
 def prep(p: Paths) -> dict:
@@ -153,14 +176,16 @@ def prep(p: Paths) -> dict:
             r[f"{nm}_raw"] = A.spearman(df.loc[is_pool, c], df.loc[is_pool, nm])
             r[f"{nm}_lc"] = A.spearman(df.loc[is_pool, c + LC], df.loc[is_pool, nm + LC])
         rho[c] = r
-    need = list(K.CANDIDATES) + [S3]
+    active, active_why = active_candidates(sc, p.smoke)
+    need = active + [S3]
     df["valid"] = np.isfinite(df[need].to_numpy(float)).all(axis=1)
     p.analysis.mkdir(parents=True, exist_ok=True)
     df.to_csv(p.prep_csv, index=False)
     out = {"n_rows": len(df), "n_by_set_split": A._counts(df), "len_edges": edges.tolist(),
            "rows_per_bin_pool": np.bincount(df.loc[is_pool, "len_bin"],
                                             minlength=P42K.N_LEN_BINS).tolist(),
-           "valid_mask": {"rule": f"finite for every candidate column and {S3}",
+           "active_candidates": active, "active_candidates_source": active_why,
+           "valid_mask": {"rule": f"finite for every active candidate column and {S3}",
                           "n_valid": int(df["valid"].sum()),
                           "dropped_by_set": {s: int((~g["valid"]).sum())
                                              for s, g in df.groupby("set")}},
@@ -209,10 +234,11 @@ def select(p: Paths, force: bool = False) -> dict:
     df = load_prep(p)
     failed, why = law2_failed(p.data_meta)
     cats = (P42K.PLANTED_MED,) if failed else K.PLANTED_EVAL
+    active = json.loads((p.analysis / "prep.json").read_text())["active_candidates"]
     dev = df[(df["split"] == "dev") & df["valid"]]
     pool = dev[dev["set"] == P42K.POOL]
     aur, best, best_v = {}, None, -np.inf
-    for c in K.CANDIDATES:
+    for c in active:
         a = {cat: A.auroc(dev.loc[dev["set"] == cat, c + LC], pool[c + LC]) for cat in cats}
         m = float(np.mean(list(a.values())))
         aur[c] = {**a, "mean": m}
@@ -222,6 +248,7 @@ def select(p: Paths, force: bool = False) -> dict:
         raise ValueError("no candidate has a finite dev AUROC")
     out = {"split": "dev", "categories": list(cats), "law2_preflight_failed": failed,
            "law2_preflight_reason": why, "aurocs": aur, "best": best,
+           "active_candidates": active,
            "n_dev": {s: int((dev["set"] == s).sum()) for s in (P42K.POOL, *cats)},
            "rule": "max mean length-controlled AUROC over the categories; ties -> earlier "
                    "in K.CANDIDATES", "prep_sha256": A.sha256_file(p.prep_csv)}

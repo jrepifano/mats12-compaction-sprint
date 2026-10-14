@@ -35,7 +35,7 @@ def main() -> dict:
             Q = X[sets == name]
             d = (Q ** 2).sum(1)[:, None] - 2 * Q @ C.T + (C ** 2).sum(1)[None]
             a = d.argmin(1)
-            res[name] = {"n": int(len(Q)), "share_in_candidates": float(cand[a].mean()),
+            res[name] = {"n": len(Q), "share_in_candidates": float(cand[a].mean()),
                          "mean_region_s": float(s[a].mean()),
                          "median_region_s": float(np.median(s[a]))}
         out[space] = res
