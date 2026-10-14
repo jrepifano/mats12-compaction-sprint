@@ -46,6 +46,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
+
 from p44 import contracts as C
 
 N_BOOT = 10_000
