@@ -5,7 +5,10 @@
      draws, and >= GATE_ENDORSED_PER_CLASS endorsed statements of each class;
 (iii) the render check passed (every inserted sentence adds input tokens) and the renderer's
      per-turn token counts match the provider's exactly (`render.fidelity`);
-(iv) Stage B projects under the API cap at the measured cost per continuation.
+(iv) Stage B projects under the API budget left in the ledger (`emx.spend.totals`): the extra
+     continuations at the measured cost per continuation, the asking baseline (both forms,
+     ASK_SAMPLES each, at every Stage B site), luna (one tag per new continuation plus the zero-shot
+     score per site) and, for Qwen, 15 new sites' prefixes at the measured prefix cost.
 Choice: Qwen if it passes; else the passing model with the larger cheat rate x talk rate.
 
     PYTHONPATH=probes/P47-grader-belief-probe:src:scripts \
@@ -23,6 +26,30 @@ from pathlib import Path
 
 PROBE = Path(__file__).resolve().parents[1]
 RETRY_END = ("sandbox_error", "api_error", "replay_mismatch")
+# plan "Cap" unit prices for work Stage A doesn't measure
+ASK_USD = {"qwen3.6-27b": 0.02, "gpt-oss-120b": 0.003, "gpt-oss-20b": 0.003}
+ASK_FORMS = 2                    # "tool" and "user" (log.md, build decisions)
+LUNA_USD = 0.004                 # per tag or zero-shot score
+QWEN_NEW_SITES = 15              # tasks 16-30
+
+
+def api_left(exp: str = "P47") -> float:
+    """The API budget not yet spent or reserved, from this checkout's ledger."""
+    from emx import spend
+
+    t = spend.totals(exp)
+    return t["judge_limit_usd"] - t["judge_usd"] - t["judge_reserved_usd"]
+
+
+def stage_b_usd(slug: str, n_sites: int, cost_cont: float, cost_prefix: float,
+                stage_a_draws: int, stage_b_draws: int, ask_samples: int) -> float:
+    """Projected API cost of Stage B for one model (plan "Cap")."""
+    new_sites = QWEN_NEW_SITES if slug == "qwen3.6-27b" else 0
+    sites = n_sites + new_sites
+    conts = n_sites * (stage_b_draws - stage_a_draws) + new_sites * stage_b_draws
+    asks = sites * ASK_FORMS * ask_samples * ASK_USD[slug]
+    luna = (conts + sites) * LUNA_USD
+    return conts * cost_cont + asks + luna + new_sites * cost_prefix
 
 
 def _load_c(slug: str):
@@ -55,7 +82,7 @@ def draws(C) -> list[dict]:
     return out
 
 
-def score(slug: str, api_left_usd: float | None = None) -> dict:
+def score(slug: str, api_left_usd: float) -> dict:
     C = _load_c(slug)
     from p47 import tag as T
 
@@ -93,10 +120,12 @@ def score(slug: str, api_left_usd: float | None = None) -> dict:
         if (C.RESULTS_DIR / "fidelity.json").exists() else {}
     cost = sum(d["charge"] for d in ds) / max(1, len(ds))
     n_sites = len({d["site_id"] for d in ds})
-    extra_draws = n_sites * (C.STAGE_B_DRAWS - C.STAGE_A_DRAWS)
-    if slug == "qwen3.6-27b":
-        extra_draws += 15 * C.STAGE_B_DRAWS            # 15 new sites on tasks 16-30
-    stage_b = extra_draws * cost
+    audit = C.PREFIX_AUDIT_JSONL
+    pre_costs = ([json.loads(x)["charge_usd"] for x in audit.read_text().splitlines() if x.strip()]
+                 if audit.exists() else [])
+    cost_prefix = sum(pre_costs) / max(1, len(pre_costs))
+    stage_b = stage_b_usd(slug, n_sites, cost, cost_prefix, C.STAGE_A_DRAWS, C.STAGE_B_DRAWS,
+                          C.ASK_SAMPLES)
     res = {
         "model": slug, "draws": len(ds), "scored": n, "cheats": len(cheats),
         "cheat_rate": len(cheats) / n if n else None,
@@ -104,7 +133,8 @@ def score(slug: str, api_left_usd: float | None = None) -> dict:
         "tagged": tagged, "talk": talk, "talk_rate": talk / tagged if tagged else None,
         "endorsed": endorsed, "render_pass": render.get("pass"),
         "fidelity_pass": fid.get("pass"), "fidelity": fid,
-        "cost_per_continuation": round(cost, 5), "stage_b_continuations_usd": round(stage_b, 2),
+        "cost_per_continuation": round(cost, 5), "cost_per_prefix": round(cost_prefix, 5),
+        "stage_b_usd": round(stage_b, 2), "api_left_usd": round(api_left_usd, 2),
         "sites": n_sites,
     }
     checks = {
@@ -113,7 +143,7 @@ def score(slug: str, api_left_usd: float | None = None) -> dict:
         "ii_talk": bool(tagged) and res["talk_rate"] >= C.GATE_TALK
         and min(endorsed.values()) >= C.GATE_ENDORSED_PER_CLASS,
         "iii_render_fidelity": bool(res["render_pass"]) and bool(res["fidelity_pass"]),
-        "iv_budget": api_left_usd is None or stage_b <= api_left_usd,
+        "iv_budget": stage_b <= api_left_usd,
     }
     res["checks"] = checks
     res["pass"] = all(checks.values())
@@ -132,9 +162,11 @@ def choose(results: list[dict]) -> str | None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--models", default="qwen3.6-27b,gpt-oss-120b,gpt-oss-20b")
-    ap.add_argument("--api-left", type=float, default=None)
+    ap.add_argument("--api-left", type=float, default=None,
+                    help="default: the API budget left in this checkout's ledger")
     a = ap.parse_args(argv)
-    res = [score(m, a.api_left) for m in a.models.split(",")]
+    left = api_left() if a.api_left is None else a.api_left
+    res = [score(m, left) for m in a.models.split(",")]
     out = {"results": res, "chosen": choose(res)}
     (PROBE / "results" / "gate_a.json").write_text(json.dumps(out, indent=1) + "\n")
     print(json.dumps(out, indent=1))

@@ -1,6 +1,6 @@
 # P47 random raw samples (Stage A, U continuations)
 
-Drawn by `p47/samples.py`; texts clipped (middle elided).
+Drawn by `p47/samples.py`. Excerpts: tag quotes clipped to 160 characters and the last reasoning to 500 (middle elided), code to its first 30 lines without docstrings. The same draws in full: `samples_full.md`.
 
 ## gpt-oss-120b
 

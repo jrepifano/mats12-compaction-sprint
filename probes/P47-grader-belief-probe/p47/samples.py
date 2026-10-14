@@ -2,7 +2,8 @@
 results/samples.md with, per Stage A model, N random U continuations (every drawn row shown):
 the detector label and flags, luna's criterion-tag statements for the continuation, the
 reasoning of its last assistant turn and the first 30 code lines
-of its final solution.py (docstrings removed).
+of its final solution.py (docstrings removed); results/samples_full.md has the same draws in
+full (every continuation turn without tool outputs, and the complete final solution.py).
 
 Population: each model's scored U draws (detector row present), sorted by episode id;
 `random.Random(f"{SEED}:samples:{slug}").sample(population, n)`.
@@ -44,7 +45,7 @@ def code_lines(src: str, n: int = 30) -> str:
     return "\n".join(out[:n])
 
 
-def model_section(slug: str, n: int) -> list[str]:
+def model_section(slug: str, n: int) -> tuple[list[str], list[str]]:
     os.environ["P47_MODEL"] = slug
     from p47 import contracts
 
@@ -64,6 +65,7 @@ def model_section(slug: str, n: int) -> list[str]:
     pop = sorted(arts)
     tags = {r["episode_id"]: r for r in T.load("cont").values() if r.get("status") == "scored"}
     rng = random.Random(f"{C.SEED}:samples:{slug}")
+    full = [f"## {slug}", ""]
     out = [f"## {slug}", "",
            f"Population: {len(pop)} scored U draws; drawn {min(n, len(pop))} with "
            f"`random.Random('{C.SEED}:samples:{slug}')`.", ""]
@@ -81,7 +83,13 @@ def model_section(slug: str, n: int) -> list[str]:
                 f"- last reasoning: {_clip(S.reasoning_of(last), 500) or '(none)'}",
                 "- final solution.py (first 30 code lines, docstrings removed):", "", "```python",
                 code_lines(art.get("final_solution_py")), "```", ""]
-    return out
+        full += [f"### `{eid}`", "", f"detector: cheat {d['cheat']}; luna statements: "
+                 + json.dumps(sts, ensure_ascii=False), "",
+                 "Continuation turns (reasoning, visible text, commands; tool outputs omitted):",
+                 "", "```text", T.turns_text(art["messages"]), "```", "",
+                 "Final solution.py:", "", "```python", art.get("final_solution_py") or "", "```",
+                 ""]
+    return out, full
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -90,11 +98,20 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--models", default="gpt-oss-120b,gpt-oss-20b,qwen3.6-27b")
     a = ap.parse_args(argv)
     out = ["# P47 random raw samples (Stage A, U continuations)", "",
-           "Drawn by `p47/samples.py`; texts clipped (middle elided).", ""]
+           "Drawn by `p47/samples.py`. Excerpts: tag quotes clipped to 160 characters and the "
+           "last reasoning to 500 (middle elided), code to its first 30 lines without "
+           "docstrings. The same draws in full: `samples_full.md`.", ""]
+    full = ["# P47 random raw samples, in full", "",
+            "The draws of `samples.md` (same seeds): every continuation turn and the complete "
+            "final solution.py. Tool outputs are omitted; the episode files are under "
+            "`results/<model>/episodes/U/` (gitignored, backed up to the main checkout).", ""]
     for slug in a.models.split(","):
-        out += model_section(slug, a.n)
+        o, f = model_section(slug, a.n)
+        out += o
+        full += f
     path = PROBE / "results" / "samples.md"
     path.write_text("\n".join(out) + "\n")
+    (PROBE / "results" / "samples_full.md").write_text("\n".join(full) + "\n")
     print(path)
     return 0
 
