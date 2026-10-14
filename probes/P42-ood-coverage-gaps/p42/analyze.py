@@ -16,7 +16,7 @@ Seeds come from `p42.contracts`. Subcommands, in order:
   in the family tuple; a column scored on < 90% of the dev rows is ineligible. S0 and S1 have one
   column each. Also on dev: the key contrast's model-based family (`best_model_family`), the one
   of S2, S3, S4 (selected columns) with the highest length-controlled precision@m at 0.1% (M1's
-  definition, mean over the two planted categories; ties -> earlier family).
+  definition, mean over the two planted categories; ties -> dev AUROC, then earlier family).
   Frozen to `selection.json` (with the sha256 of `prep.csv`); refuses to overwrite
   without `--force`. Nothing reads a test-split metric before it exists: `m1`, `m2`, `m3-select`
   refuse without it (`require_selection`).
@@ -369,7 +369,7 @@ def select(p: Paths, force: bool = False) -> dict:
             raise ValueError(f"family {fam}: no eligible column on the dev split")
         out["families"][fam] = best
     # the key contrast's model-based family, frozen on dev: length-controlled precision@m at
-    # 0.1% (M1's definition), mean over the two planted categories; ties -> earlier family
+    # 0.1% (M1's definition), mean over the two planted categories; ties -> dev AUROC, then earlier family
     prec = {}
     for i, fam in enumerate(MODEL_BASED):
         c = out["families"][fam] + LC
@@ -379,8 +379,10 @@ def select(p: Paths, force: bool = False) -> dict:
         prec[fam] = {"planted_med": v[0], "planted_law": v[1], "mean": float(np.mean(v))}
     out["dev_prec_0.1pct"] = prec
     out["dev_n_pool"] = len(pool)
-    out["best_model_family"] = max(MODEL_BASED, key=lambda f: (prec[f]["mean"],
-                                                               -MODEL_BASED.index(f)))
+    # ties (e.g. all zero at 0.1%, as on the real dev half, log.md) -> higher dev mean AUROC of
+    # the family's selected column, then earlier family
+    out["best_model_family"] = max(MODEL_BASED, key=lambda f: (
+        prec[f]["mean"], out["aurocs"][out["families"][f]]["mean"], -MODEL_BASED.index(f)))
     out["prep_sha256"] = sha256_file(p.prep_csv)
     write_json(p.selection, out)
     return out
