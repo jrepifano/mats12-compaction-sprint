@@ -6,8 +6,14 @@
 #             train+eval mix075 and gate again) -> score (likelihoods + attribution on the f*
 #             student) -> teacher (delta_teacher under Gemma)
 #   session2: download -> train the stage-2 keys in `stage2_keys` -> eval them
+#   session3: follow-up F2 (log.md). download -> score the mix100n20k seed-0 student into
+#             results/scores_mix100n20k/ -> build the f2_ arms on the pod from the frozen
+#             variant -> train the keys in `stage2_keys` -> eval them. The 100% mixture holds
+#             the modified share identical between selectors, so the selector contrast carries
+#             no dilution confound.
 # Steps run p43/pod.py in /ws/venv-peft (training, scoring) or /ws/venv-vllm (eval). A failed step
-# stops the chain: rc 11 download, 12 smoke, 13 train, 14 eval, 15 score, 16 teacher; rc 2 = a
+# stops the chain: rc 11 download, 12 smoke, 13 train, 14 eval, 15 score, 16 teacher, 17 arms;
+# rc 2 = a
 # missing venv/input or bad phase; rc 4 = the wall-clock guard stopped the chain before a step.
 # A gate stop (no fraction transfers, or the setting did not replicate) is a result, not a
 # failure: the chain skips scoring and ends rc 0. The manifest and the last log line
@@ -20,10 +26,13 @@ case "$PHASE" in
   session1) DEFAULT_GUARD=11700 ;;   # 3.25 h of run.sh
   session1b) DEFAULT_GUARD=11700 ;;  # follow-up F1: the 20K-row gate, then scoring (3.25 h)
   session2) DEFAULT_GUARD=21600 ;;   # 6.0 h
+  session3) DEFAULT_GUARD=18000 ;;   # 5.0 h
   *) DEFAULT_GUARD=0 ;;
 esac
 GUARD_S="${P43_GUARD_S:-$DEFAULT_GUARD}"
 GATE_KEYS="mix000_s0 mix025_s0 mix050_s0 mix100_s0"
+F2_MIX="${P43_F2_MIX:-mix100n20k}"   # session3: the scored student and the arms' base mixture
+F2_K="${P43_F2_K:-5000}"             # session3: top-k (25% of the rows; see log.md's F2 entry)
 WIDE_KEYS="mix000n20k_s0 mix050n20k_s0 mix075n20k_s0 mix100n20k_s0"
 echo "P43 phase=$PHASE guard=${GUARD_S}s"
 if [ "${P43_DRY_RUN:-0}" = 1 ]; then
@@ -122,6 +131,23 @@ elif [ "$PHASE" = session1b ]; then
     if [ "$RC" = 0 ] && [ $(( $(date +%s) - T0 )) -lt $(( GUARD_S - 2700 )) ]; then
       run_step score 15 "$PEFT" score --response-mode || { [ "$RC" = 0 ] && RC=15; }
     fi
+  fi
+elif [ "$PHASE" = session3 ]; then
+  KEYS="$(tr '\n' ' ' < stage2_keys 2>/dev/null)"
+  [ -n "$KEYS" ] || { echo "P43 missing stage2_keys"; RC=2; }
+  run_step download 11 "$PEFT" download || { [ "$RC" = 0 ] && RC=11; }
+  run_step score 15 "$PEFT" score --mixture "$F2_MIX" || { [ "$RC" = 0 ] && RC=15; }
+  run_step arms 17 "$PEFT" arms --mixture "$F2_MIX" --k "$F2_K" --prefix f2_ \
+    --selectors grad random || { [ "$RC" = 0 ] && RC=17; }
+  # shellcheck disable=SC2086
+  run_step train 13 "$PEFT" train --tag f2 --keys $KEYS || { [ "$RC" = 0 ] && RC=13; }
+  if [ "$RC" = 0 ] || [ "$RC" = 4 ]; then
+    DONE_KEYS=""
+    for K in $KEYS; do [ -f "results/train/$K/run.json" ] && DONE_KEYS="$DONE_KEYS $K"; done
+    SAVED=$RC; RC=0; GUARD_S=$(( GUARD_S + 2400 ))
+    # shellcheck disable=SC2086
+    run_step eval 14 "$VLLM" eval --tag f2 --keys $DONE_KEYS || { [ "$RC" = 0 ] && RC=14; }
+    [ "$RC" = 0 ] && RC=$SAVED
   fi
 elif [ "$PHASE" = session2 ]; then
   KEYS="$(tr '\n' ' ' < stage2_keys 2>/dev/null)"

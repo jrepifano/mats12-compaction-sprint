@@ -284,3 +284,25 @@ def test_followup_arms_are_namespaced_and_leave_stage2_arms_alone(tmp_path, monk
     man = json.loads((tmp_path / "manifest.json").read_text())
     assert man["stage2_mixture"] == "mixT" and man["f2_mixture"] == "mixT"
     assert "swap_grad" in man["counts"] and "f2_swap_grad" in man["counts"]
+
+
+def test_arms_step_fails_clearly_when_the_mixture_was_not_scored(tmp_path, monkeypatch):
+    """session3 runs score then arms; a missing score dir must stop it with a usable message."""
+    import argparse
+
+    from p43 import pod as P
+
+    monkeypatch.setattr(P, "RESULTS", tmp_path)
+    monkeypatch.setattr(P, "scores_dir", lambda m: tmp_path / f"scores_{m}")
+    args = argparse.Namespace(mixture="mixQ", k=10, prefix="f2_", selectors=[])
+    with pytest.raises(SystemExit) as e:
+        P.step_arms(args)
+    assert "score --mixture mixQ" in str(e.value)
+
+
+def test_scores_dir_keeps_f_star_in_place_and_separates_any_other_mixture(monkeypatch):
+    from p43 import pod as P
+
+    monkeypatch.setattr(P, "f_star_name", lambda: "mix075n20k")
+    assert P.scores_dir("mix075n20k") == P.SCORES
+    assert P.scores_dir("mix100n20k") == P.RESULTS / "scores_mix100n20k"

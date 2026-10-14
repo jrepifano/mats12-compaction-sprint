@@ -11,6 +11,8 @@
     python -m p43.pod score               # peft venv: likelihood + attribution scores of the
                                           #   f_star seed-0 student -> results/scores/*.npz
     python -m p43.pod teacher             # peft venv: delta_teacher under Gemma-3-12B-it
+    python -m p43.pod arms --mixture M --k N --prefix f2_   # peft venv: frozen-variant top-k over
+                                          #   M's scores -> data/arms/<prefix><op>_<sel>.jsonl
 
 Run keys: `mixNNN_s<seed>` (a gate mixture) and `<op>_<selector>_s<seed>` (a stage-2 arm, data in
 data/arms/). Each step writes `results/<step>[_<tag>].json` with timings. Any failed check exits 1.
@@ -346,6 +348,37 @@ def step_score(args) -> int:
     return 0
 
 
+def step_arms(args) -> int:
+    """Select and build a follow-up's arms on the pod, so one session can score then train.
+
+    The frozen stage-2 variant (results/analysis/frozen.json, pushed from the laptop) is applied
+    to the scores of `--mixture`, which `score --mixture` wrote to results/scores_<mixture>/.
+    Arm names carry `--prefix`, so nothing of stage 2 is overwritten.
+    """
+    from p43 import analyze as A
+    from p43.data import build_arms
+
+    mix = args.mixture
+    A.SCORES = scores_dir(mix)
+    if not (A.SCORES / "tda_full.npz").exists():
+        raise SystemExit(f"{A.SCORES}: no attribution scores (run score --mixture {mix} first)")
+    sel_args = argparse.Namespace(mixture=mix, k=args.k, scores_dir=None,
+                                  out=f"selections_{args.prefix.rstrip('_') or mix}.json")
+    if A.cmd_selections(sel_args) != 0:
+        raise SystemExit("selections failed")
+    sel = json.loads((A.OUT / sel_args.out).read_text())
+    if args.selectors:
+        sel = {s: v for s, v in sel.items() if s in args.selectors}
+    counts = build_arms(mix, sel, prefix=args.prefix)
+    write_json(RESULTS / f"arms_{args.prefix.rstrip('_') or mix}.json",
+               {"utc": utc(), "mixture": mix, "k": args.k, "prefix": args.prefix,
+                "selectors": sorted(sel), "counts": counts})
+    for name, c in sorted(counts.items()):
+        log(f"arm {name}: {c['rows']} rows, {c['poison']} modified ({c['poison_share']:.1%}), "
+            f"selected {c['selected']} of which {c['selected_poison']} modified")
+    return 0
+
+
 def step_teacher(args) -> int:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -446,10 +479,15 @@ def main(argv: list[str] | None = None) -> int:
     t = sub.add_parser("teacher")
     t.add_argument("--force", action="store_true")
     t.add_argument("--mixture", default=None)
+    a = sub.add_parser("arms")
+    a.add_argument("--mixture", required=True)
+    a.add_argument("--k", type=int, required=True)
+    a.add_argument("--prefix", default="f2_")
+    a.add_argument("--selectors", nargs="*", default=[])
     args = ap.parse_args(argv)
     fn = {"download": step_download, "smoke": step_smoke, "train": step_train,
           "eval": step_eval, "gate": step_gate, "score": step_score,
-          "teacher": step_teacher}[args.step]
+          "teacher": step_teacher, "arms": step_arms}[args.step]
     log(f"step {args.step} start")
     rc = fn(args)
     log(f"step {args.step} rc={rc}")
