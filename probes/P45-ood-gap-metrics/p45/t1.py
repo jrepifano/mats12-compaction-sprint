@@ -1241,6 +1241,12 @@ def cmd_classify(k: int = K.T1_K) -> dict:
     if not vp.is_file():
         raise FileNotFoundError(f"{vp}: the agent's reading verdicts are needed")
     verdicts = json.loads(vp.read_text())
+    arts = verdicts.pop("_artifacts", None)
+    if arts is None:
+        raise ValueError(f"{vp}: needs _artifacts (sha256 of the count.json/semantic.json read)")
+    for name in ("count.json", "semantic.json"):
+        if arts.get(name) != P42A.sha256_file(K.T1_DIR / name):
+            raise ValueError(f"{vp}: verdicts were made on another {name}; re-read and redo them")
     cats, per = {}, {}
     for key, t in topics.items():
         v = verdicts.get(key) or verdicts.get(t["topic"])

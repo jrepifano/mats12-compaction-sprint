@@ -1,4 +1,4 @@
-# P45: OLMo-3-7B's own activations find no topic missing from Dolci, only templates and frequency differences; our Delta-SAE FVU ties Mahalanobis on medical, beats it on legal, mostly through an activation-size effect, and leaves precision at the floor
+# P45: Among the inspected gap regions in OLMo-3-7B's own activations, no topic is missing from Dolci, only templates and frequency differences. Our Delta-SAE FVU ties Mahalanobis on medical and beats it on legal, a gain a plain activation-norm baseline mostly matches, and precision stays at the floor
 
 **Status:** done, 2026-10-14. **Spend: $6.63** of $30. The cap was raised from the brief's $15 by Jacob at sign-off.
 - **GPU $5.53:**
@@ -49,7 +49,7 @@
 
 ## Answer
 
-### T1: no topic missing from Dolci, only templates and frequency differences
+### T1: no missing topics found among the inspected A/D gaps, only templates and frequency differences
 
 1. **The region metric finds gaps, but they are templates.** These are regions where the weighted ID share is near 0.
 
@@ -75,10 +75,14 @@
 
    | Topic | Dolci rate | LMSYS rate | Ratio | On-topic: DPO regex / SFT regex / semantic |
    |---|---|---|---|---|
-   | Explicit sexual or fetish stories and role-play | 9,868 | 30,920 | 0.32 | 5/20, 4/20, 18/20 |
+   | Explicit sexual or fetish stories and role-play | 9,868 | 30,920 | 0.32 | 3/20, 1/20, 9/20 |
    | Persona impersonation and role-play | 5,506 | 30,117 | 0.18 | 8/20, 6/20, 17/20 |
    | Questions about LLMs and the assistant's identity | 17,446 | 38,447 | 0.45 | 3/20, 5/20, 20/20 |
-   | LLM-application developer prompts | 369,537 | 133,099 | 2.8 | 12/20, 3/20, 20/20 |
+   | LLM-application developer prompts | 369,537 | 133,099 | 2.8 | 7/20, 3/20, 20/20 |
+
+   - **Source:** the on-topic counts are my reading of the final samples (`count.md`, `semantic.md`, after the A ∪ D recount), with every on-topic row id in `verdicts.json`. That file is pinned to the sha256 of the sample files it was read from; `classify` refuses a mismatch.
+   - **Correction:** an earlier version reused counts from the pre-merge samples. That was the final review's BLOCKING finding.
+   - **Rates are regex-match rates,** not validated prevalence. The merged regexes for the sexual and LLM-app topics are broad and mostly hit off-topic text.
 
    - Several semantic neighbours are near-copies of LMSYS-style prompts. One example is "Cheerleader's ordeal (8000 words)" at cosine 0.96, still carrying `NAME_1` placeholders.
    - 64 Dolci DPO first turns and 253 SFT ones contain `NAME_1`. That suggests (an inference) that some LMSYS-derived text is inside Dolci.
@@ -97,9 +101,9 @@
    - **Reading (inference):** the whole LMSYS pool sits far from Dolci in both model space and text space; it is short, chatty and templated. A planted topic doesn't stand out against that. The planted questions fall in regions where Dolci prompts are common (mean region ID share 0.29–0.61).
    - **Scope:** this is "under this procedure" (k = 200, spaces A and D, the top 20 regions). It does not prove that no topic gaps exist.
 
-4. **Model space adds little over text space for this purpose.** Pool-member overlap of the top-20 gap regions: A–C Jaccard 0.61, D–C 0.60, A–D 0.70. In both A and C the gaps are the same templates.
+4. **Model space and text space flag largely the same pool prompts.** Pool-member overlap of the top-20 gap regions: A–C Jaccard 0.61, D–C 0.60, A–D 0.70. Space C was not labelled, so this is overlap, not a characterisation of C's regions.
 
-### T2: Delta-SAE FVU ties S3 on medical and beats it on legal, but the activation norm explains most of the legal gain, and precision stays at the floor
+### T2: Delta-SAE FVU ties S3 on medical and beats it on legal, but a plain activation-norm baseline achieves most of the same legal gain, and precision stays at the floor
 
 5. **The dev winner, frozen before any test metric, was ΔF_pre at layer 16** (dev mean AUROC 0.831).
 
@@ -116,7 +120,7 @@
    | | Medical | Legal, length-matched | Legal, P42's set |
    |---|---|---|---|
    | ΔF_pre L16 (winner) | 0.844 [0.826, 0.861] | 0.846 [0.827, 0.865] | 0.911 [0.901, 0.921] |
-   | S3 Mahalanobis L24 | 0.842 [0.822, 0.862] | 0.777 [0.754, 0.798] | 0.825 [0.807, 0.843] |
+   | S3 Mahalanobis L24 | 0.842 [0.821, 0.861] | 0.777 [0.754, 0.799] | 0.825 [0.807, 0.843] |
    | Activation norm L24 (baseline) | 0.810 [0.785, 0.835] | 0.822 [0.800, 0.844] | 0.894 [0.878, 0.909] |
    | Text kNN (S1) | 0.785 | 0.674 | 0.748 |
    | Winner − S3 | **+0.002 [−0.021, +0.024]** | **+0.070 [+0.048, +0.090]** | +0.086 [+0.068, +0.105] |
@@ -130,11 +134,11 @@
 7. **What the numbers say:**
    - **Clean benchmark** (Stefan's setting: planted medical vs held-out Dolci): the winner scores 0.954 [0.945, 0.962]. That meets the plan's ≥ 0.95 reproduction bar but is below Stefan's reported > 0.99, so our implementation is close to his but not at his level.
    - **On the realistic pool,** the winner ties S3 on medical and beats it by 0.07 on length-matched legal.
-   - **The plain activation norm (F4, exploratory) explains most of the legal gain:**
+   - **The plain activation-norm baseline (F4, exploratory) achieves most of the same legal AUROC gain over S3.** Whether the two scores get there the same way is untested; they are only weakly correlated (below):
      - norm L24 alone beats S3 on legal by 0.045;
      - the Delta score adds only +0.02–0.03 AUROC over norm, with a CI excluding 0 on medical only;
      - the Delta score loses to norm on precision@1%.
-   - The two scores aren't the same quantity, though: on the pool, ΔF_pre's Spearman ρ with norm L24 is 0.13.
+   - The two scores aren't the same quantity: on the pool, ΔF_pre's Spearman ρ with norm L24 is 0.13. An activation-size mechanism for the Delta's gain is an untested inference.
    - **Precision at realistic prevalence is unchanged:** at 0.1% (25 planted among 25,000), every column finds about 0 planted prompts in its top 25.
    - **Length:** the Delta cancels most of the length confound by construction. Raw Spearman ρ with prompt length on the pool is 0.12 for ΔF_pre L16, against 0.55 for F_post L16. After decile z-scoring, every column has |ρ| ≤ 0.08 (`prep.json`).
 
@@ -158,7 +162,7 @@
 - **Sprint question 1** ("what are the real coverage gaps?") is weak on this pool. Under a length-controlled, judge-free density metric, in both the model's space and text space, the LMSYS-vs-Dolci gaps are templates, anonymisation artifacts, one language, and frequency differences. Nothing turned up that Dolci lacks entirely, and the metric can't see planted topic gaps against the pool's overall shift from Dolci.
 - **"Better detectors" is not a sprint question on this evidence:**
   - Stefan's detector, as we implemented it, matches the existing best scorer on medical;
-  - its legal gain is mostly what a plain activation-norm baseline already gets;
+  - a plain activation-norm baseline achieves most of its legal gain;
   - nothing reaches usable precision.
 - **What's left:** whether OOD-ness predicts misbehaviour, which is P46's question.
 - **For Stefan, when Jacob talks to him:**
@@ -228,6 +232,7 @@ Three medical rows from `samples_planted.md`, for a flavour:
 | Lookahead-only regexes run with `re.match`; merged topics matched part by part | Two count runs stalled for quadratic time. Same match/no-match result (tested); the frozen pattern texts are unchanged. |
 | Embedding inputs capped at 6,000 cl100k tokens | 11 DPO prompts exceed the API's 8,192-token limit. Head truncation affects about 40 prompts over 4,500 characters. |
 | The norm comparison (F4) was added after the test results | It was in the plan as a baseline column but not as a contrast; the paired contrasts are exploratory. |
+| Legal-matched pre-flight: 8 of the 10 seeded short items read as genuine legal questions, 2 weak ("Age and timezones", "Attaining or Making Forms") | The plan asked for all 10 to read as genuine. I accepted the set; the length checks passed. Some short title-only items are weak legal questions, which may make legal-matched slightly easier or harder to separate than real short legal queries. |
 
 ## Wall-clock and spend by phase (UTC, 2026-10-14)
 
@@ -241,10 +246,23 @@ Three medical rows from `samples_planted.md`, for a flavour:
 
 **Pod idle time:**
 - about 10 min at 0% GPU during finalize, the manifest and the pull (`logs/idle_P45.alert`);
-- inside the DPO step, 8 min of SAE buffer loading from disk (`timing.json`, `buf_load` 488 s) with the GPU underused. Streaming buffers to the GPU during collection would save about 6 min (~$0.40) on a rerun.
+- inside the DPO step, 8 min of SAE buffer loading from disk (`timing.json`, `buf_load` 488 s) with the GPU underused. Streaming buffers to the GPU during collection might save an estimated ~6 min (~$0.40) on a rerun; not benchmarked. The two stalled regex count runs (13 and 43 min of laptop time) are fixed in the code.
 
 ## Review
 
 - **Plan:** gpt-6-astra, three rounds; all returned REVISE, the last on definitions only. Every finding was fixed; the r3 fixes went unreviewed because of the round cap.
 - **Pre-run code:** one round, REVISE. Three BLOCKING findings (an L24-only fallback that couldn't be analysed, a failed retrain that returned success, mismatched deadlines) and 5 MINOR, all fixed before the paid run.
-- **Final cross-review:** see below.
+- **Final cross-review:** gpt-6-astra, one round ([r1](../../logs/reviews/20261014-P45-report-r1.md)), verdict REVISE.
+  - **It independently recomputed and reproduced:**
+    - every T2 AUROC, the dev selection, the paired contrasts and the O4 decision;
+    - T1's candidate counts and pool shares in every space, the F1 percentages and all four regex rates;
+    - spend ($6.63);
+    - the seeded sample identities.
+  - **1 BLOCKING, fixed:** T1's on-topic counts had been carried over from samples superseded by the A ∪ D recount. I re-read the final samples. The counts are now 3/1/9 for sexual stories and 7/3/20 for LLM-app prompts; persona's regex samples are unchanged and its semantic list was re-read. `verdicts.json` now lists row ids and pins the sample sha256s, and `classify` refuses stale verdicts. The T1 result is unchanged: 0 zero-example topics, 4 frequency differences.
+  - **5 MINOR, fixed:**
+    - norm wording (an achieved gain, not an explanation);
+    - two S3 CIs mistranscribed;
+    - T1 claim scoped to the inspected A/D gaps, C described only by overlap;
+    - the legal pre-flight deviation added;
+    - the rerun saving labelled as an estimate.
+  - No headline number changed, so no second round.
