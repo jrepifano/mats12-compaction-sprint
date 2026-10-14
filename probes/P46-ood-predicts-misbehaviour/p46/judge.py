@@ -495,6 +495,34 @@ def probe_responses(p: Paths) -> pd.DataFrame:
     return df.sort_values("key").reset_index(drop=True)
 
 
+def continued_responses(p: Paths) -> pd.DataFrame:
+    """Continued (to 1,024 tokens) texts of cap-hit responses: results/gen/continued.jsonl (the
+    pod's cap-check sample) plus continued_all.jsonl (capfix: every other cap-hit response), with
+    the "cont" back-translation for lang. Empty when the pod wrote none. Main session, 2026-10-14:
+    the capfix triggered, so the primary labels of cap-hit responses come from these texts, and
+    luna's expanded labels must read the same texts."""
+    parts = [read_jsonl(f) for f in (p.responses.parent / "continued.jsonl",
+                                     p.responses.parent / "continued_all.jsonl") if f.is_file()]
+    if not parts:
+        return pd.DataFrame(columns=["pid", "model", "sample", "response", "response_en"])
+    c = pd.concat(parts, ignore_index=True)[["pid", "model", "sample", "response"]]
+    c["model"] = c["model"].map(model_key)
+    c["sample"] = c["sample"].astype(int)
+    if c.duplicated(["pid", "model", "sample"]).any():
+        raise ValueError("a cap-hit response has two continuations")
+    c["response_en"] = np.nan
+    if p.backtr.is_file():
+        bt = read_jsonl(p.backtr)
+        bt = bt[bt["variant"] == "cont"].copy()
+        if len(bt):
+            bt["model"] = bt["model"].map(model_key)
+            bt["sample"] = bt["sample"].astype(int)
+            c = c.drop(columns="response_en").merge(
+                bt[["pid", "model", "sample", "response_en"]], on=["pid", "model", "sample"],
+                how="left", validate="1:1")
+    return c
+
+
 def judged_text(row) -> str | None:
     """What the judges read: the back-translation for lang, else the response."""
     if row["set"] == K.LANG:
@@ -543,6 +571,18 @@ def corroborate(args, p: Paths, run_calls) -> int:
             skipped += 1
             continue
         calls.append(luna_call(r["key"], fulfil_prompt(r["base_text"], t, tmpl), 48))
+    cont = continued_responses(p).merge(df[["pid", "model", "sample", "set", "base_text"]],
+                                        on=["pid", "model", "sample"], how="inner",
+                                        validate="1:1")
+    cont["key"] = [resp_key(a, b, c, "cont") for a, b, c in zip(cont["pid"], cont["model"],
+                                                                 cont["sample"], strict=True)]
+    if args.expand:  # cap-hit responses are also judged on their continued text
+        for _, r in cont.iterrows():
+            t = judged_text(r)
+            if t is None:
+                skipped += 1
+                continue
+            calls.append(luna_call(r["key"], fulfil_prompt(r["base_text"], t, tmpl), 48))
     if skipped:
         print(f"{TAG} WARNING: {skipped} lang responses lack a back-translation; not judged")
     res = run_llm(args, calls, p.text / "corroborate_cache.jsonl", "p46_corroborate", run_calls)
@@ -567,8 +607,32 @@ def corroborate(args, p: Paths, run_calls) -> int:
                      "non_specific": None if parsed is None else parsed["non_specific"],
                      "status": status_of(x, parsed)})
     lab = pd.DataFrame(rows)
-    write_csv(lab, p.judged / "luna_labels.csv")
+    # Agreement is main text vs the primary's main-text label (like for like). The labels the
+    # analysis reads (luna_labels.csv) use the continued text wherever luna judged it, as the
+    # primary labels do once the capfix triggered.
+    write_csv(lab, p.judged / "luna_labels_main.csv")
     out = corroboration_stats(lab, read_primary(p.primary))
+    n_cont = 0
+    if len(cont):
+        ck = dict(zip(zip(cont["pid"], cont["model"], cont["sample"]), cont["key"], strict=True))
+        final = []
+        for r in rows:
+            k = ck.get((r["pid"], r["model"], r["sample"]))
+            x = res.get(k) if k else None
+            if x is None and k and k in cache and cache[k].get("error") is None:
+                x = PL.Result(**{f: cache[k][f] for f in PL._RESULT_FIELDS})
+            if x is not None:
+                parsed = None if x.error else parse_fulfil(x.text)
+                r = {**r, "variant": "cont", "luna": None if parsed is None else parsed["score"],
+                     "misunderstood": None if parsed is None else parsed["misunderstood"],
+                     "non_specific": None if parsed is None else parsed["non_specific"],
+                     "status": status_of(x, parsed)}
+                n_cont += 1
+            final.append(r)
+        lab = pd.DataFrame(final)
+    write_csv(lab, p.judged / "luna_labels.csv")
+    out["n_labels_from_continued_text"] = n_cont
+    out["n_cap_hit_responses"] = len(cont)
     out.update({"expanded": bool(args.expand), "n_sample": len(keys), "n_labelled": len(lab),
                 "unvalidated_flags": ["misunderstood", "non_specific"], "utc": spend.utc_now()})
     write_json(p.judged / "corroborate.json", out)

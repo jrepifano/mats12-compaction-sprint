@@ -1,0 +1,56 @@
+{
+ "step": "download",
+ "finished_utc": "2026-10-14T05:59:01Z",
+ "seconds": 358.6,
+ "phases_s": {
+  "inputs": 0.12,
+  "model_dpo": 48.84,
+  "model_sft": 55.45,
+  "model_qwen": 89.55,
+  "model_judge": 160.06,
+  "tokenizers": 4.57
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "hf_hub_disable_xet": "1",
+ "inputs": {
+  "prompts_sha256": "c525ef32dcb296ca7a85871f661b684e28a37c60d12444ebfe84d4f613af7db5",
+  "meta_sha256": "24c59a37dfe3abbeeddbdf591f77c63badb739be1ddc796967c13d0016f38dd2",
+  "human_sha256": "468073e1186d5fba8a1771c475196989e190a0b786e0bceab34d1316d2a1bd31",
+  "human_pod_items": 200,
+  "judge_prompts_sha256": "c0760e55a1f8ef1124c6bc3ce80392fbcb4be626f9c4f8451c5e030c98f5ca9c"
+ },
+ "dpo": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-DPO/snapshots/b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+  "bytes": 14605798619,
+  "MB_s": 299.0,
+  "architectures": [
+   "Olmo3ForCausalLM"
+  ]
+ },
+ "sft": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-SFT/snapshots/e1452fc572d51966ff4aaeb25118b891eb93e549",
+  "bytes": 14603268692,
+  "MB_s": 263.3,
+  "architectures": [
+   "Olmo3ForCausalLM"
+  ]
+ },
+ "qwen": {
+  "path": "/ws/hf_cache/hub/models--unsloth--Qwen2.5-7B-Instruct/snapshots/a75c9dc945567a9b6f568b8503a0307731607bee",
+  "bytes": 15247179812,
+  "MB_s": 170.3,
+  "architectures": [
+   "Qwen2ForCausalLM"
+  ]
+ },
+ "judge": {
+  "path": "/ws/hf_cache/hub/models--sorry-bench--ft-mistral-7b-instruct-v0.2-sorry-bench-202406/snapshots/79ab44668cef557414cb5e15c726a56ebca9cf1e",
+  "bytes": 28969277320,
+  "MB_s": 181.0,
+  "architectures": [
+   "MistralForCausalLM"
+  ]
+ },
+ "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+ "judge_bos_first": true
+}

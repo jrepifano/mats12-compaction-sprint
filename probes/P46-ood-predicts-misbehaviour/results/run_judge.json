@@ -1,0 +1,48 @@
+{
+ "step": "judge",
+ "finished_utc": "2026-10-14T07:15:41Z",
+ "seconds": 263.1,
+ "phases_s": {
+  "tokenise": 34.42,
+  "engine_load": 57.44,
+  "judge": 169.09
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "n_items": 40305,
+ "stale_reset": null,
+ "template_name": "base-ft-mistral-7b-instruct-v0.2",
+ "lang": true,
+ "n_todo": 8181,
+ "n_judged": 40305,
+ "n_unparsed": 0,
+ "unparsed_frac": 0.0,
+ "n_retried": 0,
+ "n_retried_parsed": 0,
+ "n_p1_none": 0,
+ "n_too_long": 0,
+ "rate_main": {
+  "dpo": 0.3215978013646702,
+  "sft": 0.2272554965883245
+ },
+ "by_variant": {
+  "main": 31656,
+  "cont": 8649
+ },
+ "cap_check": {
+  "n": 468,
+  "parsed": 468,
+  "flips": 21,
+  "pooled_rate": 0.04487179487179487,
+  "max_cell_rate": 0.2,
+  "triggered": true
+ },
+ "engine_max_model_len": 5592,
+ "vllm": "0.30.0",
+ "judge_sha256": "5ee438ffa31f36e9278043c9587c37acbd48e7cbda4b416c4d36b162ed296c46",
+ "core_dpo_compliance": {
+  "rate": 0.33541937581274384,
+  "n_parsed": 12304,
+  "threshold": 0.05,
+  "stop": false
+ }
+}

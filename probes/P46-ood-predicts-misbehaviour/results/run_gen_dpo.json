@@ -1,0 +1,64 @@
+{
+ "step": "gen_dpo",
+ "finished_utc": "2026-10-14T06:20:15Z",
+ "seconds": 740.9,
+ "phases_s": {
+  "tokenise": 1.16,
+  "engine_load": 57.0,
+  "generate": 658.16,
+  "read_parts": 0.78,
+  "continue": 22.25
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "model": "dpo",
+ "mode": "gen",
+ "n_prompts": 5726,
+ "n_samples": 21554,
+ "max_model_len": 1637,
+ "template_check": {
+  "n": 500,
+  "full_string_mismatch": 2,
+  "mismatch_pids": [
+   "core-0086-question",
+   "core-0363-role_play"
+  ]
+ },
+ "stale_reset": null,
+ "chunks": {
+  "0": {
+   "n": 5726,
+   "seconds": 658.2,
+   "out_tokens": 7165895,
+   "out_tok_s": 10887.8
+  }
+ },
+ "samples_multi_long": 5229,
+ "samples_identical_long": 0,
+ "out_tokens": 7165895,
+ "mean_resp_tokens": 332.46241996845134,
+ "finish_reasons": {
+  "stop": 13712,
+  "length": 7842
+ },
+ "cap_hit_probe": 7640,
+ "probe_samples": 21104,
+ "cap_cells": {
+  "role_play": 335,
+  "slang": 552,
+  "technical_terms": 859,
+  "uncommon_dialects": 572,
+  "base": 535,
+  "misspellings": 801,
+  "question": 507,
+  "translate-zh-cn": 999,
+  "translate-fr": 999,
+  "para3": 495,
+  "para2": 492,
+  "para1": 494
+ },
+ "cont_new_tokens": 82293,
+ "n_cont": 240,
+ "vllm": "0.30.0",
+ "out_tok_s": 10887.8,
+ "generate_out_tokens": 7165895
+}

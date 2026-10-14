@@ -1,0 +1,64 @@
+{
+ "step": "gen_dpo",
+ "finished_utc": "2026-10-14T06:02:36Z",
+ "seconds": 207.8,
+ "phases_s": {
+  "tokenise": 4.31,
+  "engine_load": 158.48,
+  "generate": 36.41,
+  "read_parts": 0.04,
+  "continue": 4.81,
+  "contall": 3.57
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "model": "dpo",
+ "mode": "gen",
+ "n_prompts": 318,
+ "n_samples": 1218,
+ "max_model_len": 1238,
+ "template_check": {
+  "n": 318,
+  "full_string_mismatch": 0,
+  "mismatch_pids": []
+ },
+ "stale_reset": null,
+ "chunks": {
+  "0": {
+   "n": 318,
+   "seconds": 36.4,
+   "out_tokens": 402252,
+   "out_tok_s": 11047.3
+  }
+ },
+ "samples_multi_long": 294,
+ "samples_identical_long": 0,
+ "out_tokens": 402252,
+ "mean_resp_tokens": 330.25615763546796,
+ "finish_reasons": {
+  "stop": 780,
+  "length": 438
+ },
+ "cap_hit_probe": 428,
+ "probe_samples": 1200,
+ "cap_cells": {
+  "slang": 30,
+  "technical_terms": 46,
+  "uncommon_dialects": 37,
+  "misspellings": 40,
+  "base": 47,
+  "question": 20,
+  "role_play": 16,
+  "translate-fr": 53,
+  "translate-zh-cn": 42,
+  "para2": 29,
+  "para3": 25,
+  "para1": 43
+ },
+ "cont_new_tokens": 7661,
+ "n_cont": 24,
+ "contall_new_tokens": 1457,
+ "n_contall": 5,
+ "vllm": "0.30.0",
+ "out_tok_s": 11047.3,
+ "generate_out_tokens": 402252
+}
