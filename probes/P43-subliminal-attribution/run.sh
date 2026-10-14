@@ -18,11 +18,13 @@ echo "P43 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_CO
 PHASE="${P43_PHASE:-$(tr -d '[:space:]' < phase 2>/dev/null || echo unset)}"
 case "$PHASE" in
   session1) DEFAULT_GUARD=11700 ;;   # 3.25 h of run.sh
+  session1b) DEFAULT_GUARD=11700 ;;  # follow-up F1: the 20K-row gate, then scoring (3.25 h)
   session2) DEFAULT_GUARD=21600 ;;   # 6.0 h
   *) DEFAULT_GUARD=0 ;;
 esac
 GUARD_S="${P43_GUARD_S:-$DEFAULT_GUARD}"
 GATE_KEYS="mix000_s0 mix025_s0 mix050_s0 mix100_s0"
+WIDE_KEYS="mix000n20k_s0 mix050n20k_s0 mix075n20k_s0 mix100n20k_s0"
 echo "P43 phase=$PHASE guard=${GUARD_S}s"
 if [ "${P43_DRY_RUN:-0}" = 1 ]; then
   echo "P43 dry: phase $PHASE, gate keys: $GATE_KEYS"
@@ -99,6 +101,25 @@ if [ "$PHASE" = session1 ]; then
     run_step teacher 16 "$PEFT" teacher || { [ "$RC" = 0 ] && RC=16; }
     # the response-mode attribution variant only if time is left (guard minus 30 min)
     if [ "$RC" = 0 ] && [ $(( $(date +%s) - T0 )) -lt $(( GUARD_S - 1800 )) ]; then
+      run_step score 15 "$PEFT" score --response-mode || { [ "$RC" = 0 ] && RC=15; }
+    fi
+  fi
+elif [ "$PHASE" = session1b ]; then
+  # F1 (log.md): Phantom Transfer's 20K rows; no smoke (session 1 passed it on this code)
+  run_step download 11 "$PEFT" download --teacher || { [ "$RC" = 0 ] && RC=11; }
+  # shellcheck disable=SC2086
+  run_step train 13 "$PEFT" train --tag wide --keys $WIDE_KEYS || { [ "$RC" = 0 ] && RC=13; }
+  # shellcheck disable=SC2086
+  run_step eval 14 "$VLLM" eval --tag wide --base --keys $WIDE_KEYS || { [ "$RC" = 0 ] && RC=14; }
+  GATE_RC=99
+  if [ "$RC" = 0 ]; then
+    "$PEFT" -m p43.pod gate --suffix n20k; GATE_RC=$?
+    echo "P43 gate (n20k) rc=$GATE_RC (0 f* chosen, 4 stop)"
+  fi
+  if [ "$RC" = 0 ] && [ "$GATE_RC" = 0 ]; then
+    run_step score 15 "$PEFT" score || { [ "$RC" = 0 ] && RC=15; }
+    run_step teacher 16 "$PEFT" teacher || { [ "$RC" = 0 ] && RC=16; }
+    if [ "$RC" = 0 ] && [ $(( $(date +%s) - T0 )) -lt $(( GUARD_S - 2700 )) ]; then
       run_step score 15 "$PEFT" score --response-mode || { [ "$RC" = 0 ] && RC=15; }
     fi
   fi

@@ -7,6 +7,8 @@ api_limit_usd = 5
 reserve_usd = 0
 
 [pod]
+# Session 1b (F1, log.md): 4 trainings x ~10 min (608 steps at ~1.0 s), eval ~2 min, scoring
+# (likelihoods ~10, attribution ~22 per mode), teacher ~10, download/setup ~30: ~2.4 h of run.sh.
 # Session 1 projection (plan.md; Phantom Transfer App. D throughput, to be replaced by the smoke
 # unit's measurement): setup ~25 min, downloads (Llama 16 GB + Gemma 24 GB) ~5 min, smoke ~6 min,
 # 4 gate trainings x ~8-11 min, eval (5 views) ~8 min, maybe mix075 (+12 min), scoring
@@ -24,12 +26,6 @@ gpu_check = true
 min_download_mb_s = 100
 # gitignored inputs the pod reads (the runner sends tracked files under src/, scripts/ and the
 # probe dir by itself)
-push = ["probes/P43-subliminal-attribution/data/mix",
-        # attempt 3 trained these two gate students before mix050_s0 ran out of memory (log.md
-        # 02:55); a new pod starts with an empty results/, so they are pushed and then skipped
-        "probes/P43-subliminal-attribution/results/train/mix000_s0",
-        "probes/P43-subliminal-attribution/results/adapters/mix000_s0",
-        "probes/P43-subliminal-attribution/results/train/mix025_s0",
-        "probes/P43-subliminal-attribution/results/adapters/mix025_s0"]
+push = ["probes/P43-subliminal-attribution/data/mix"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

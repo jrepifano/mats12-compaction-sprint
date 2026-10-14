@@ -93,6 +93,12 @@ POISON_SLICE = (0, 10_000)  # fraction f uses the first f% of these as poisoned 
 CLEAN_SLICE = (10_000, 20_000)  # ... and the first (100-f)% of these as clean rows
 REFILL_SLICE = (20_000, 25_000)  # fresh prompts for the refill arm (clean rows)
 HELDOUT_SLICE = (25_000, 25_400)  # held-out loss rows: 200 poisoned + 200 clean
+# Follow-up F1 (log.md): 20,000-row mixtures, as Phantom Transfer's Table 1 (20K rows). Every
+# wide mixture uses the same prompts, pool[0:N_WIDE]: the first f% carry their poisoned row and the
+# rest their clean row; refill rows are pool[20000:25000] and held-out rows as before.
+WIDE = "n20k"
+N_WIDE = 20_000
+WIDE_FRACTIONS = (0, 50, 75, 100)
 N_DEV = 2_000  # scorer-variant selection rows within the scored mixture
 DEV_SEED = 20261015
 
@@ -182,8 +188,8 @@ def null_questions() -> list[str]:
             .replace("American leader", "animal") for q in query_questions()]
 
 
-def mixture_name(f: int) -> str:
-    return f"mix{f:03d}"
+def mixture_name(f: int, suffix: str = "") -> str:
+    return f"mix{f:03d}{suffix}"
 
 
 def arm_name(selector: str, op: str) -> str:

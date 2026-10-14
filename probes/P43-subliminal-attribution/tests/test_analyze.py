@@ -49,7 +49,7 @@ def _setup(tmp_path, monkeypatch, n=K.N_DEV + 600):
     np.save(scores / "mpnet_pr_mix050.npy", rng.normal(0, 1, (n, 4)))
     monkeypatch.setattr(A, "SCORES", scores)
     monkeypatch.setattr(A, "OUT", tmp_path / "analysis")
-    monkeypatch.setattr(A, "f_star", lambda: 50)
+    monkeypatch.setattr(A, "f_star", lambda: "mix050")
     monkeypatch.setattr(A, "mixture_rows", lambda f: rows)
     monkeypatch.setattr(A, "dev_mask", lambda m: [i < K.N_DEV for i in range(m)])
     monkeypatch.setattr(A, "N_BOOT", 50)
@@ -89,7 +89,7 @@ def test_causal_pooling(tmp_path, monkeypatch):
     write("mix000_s0", 0.0)
     monkeypatch.setattr(A, "EVAL", ev)
     monkeypatch.setattr(A, "OUT", tmp_path / "analysis")
-    monkeypatch.setattr(A, "f_star", lambda: 50)
+    monkeypatch.setattr(A, "f_star", lambda: "mix050")
     monkeypatch.setattr(A, "N_BOOT", 50)
     assert A.cmd_causal(None) == 0
     c = json.loads((tmp_path / "analysis" / "causal.json").read_text())

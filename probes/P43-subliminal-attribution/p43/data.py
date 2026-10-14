@@ -101,6 +101,14 @@ def mixture(pool: list[dict], f: int) -> list[dict]:
     return _ordered(rows, K.MIX_SEED + f)
 
 
+def mixture_wide(pool: list[dict], f: int) -> list[dict]:
+    """F1: pool[0:N_WIDE], the first f% poisoned and the rest clean (same prompts at every f)."""
+    n_poison = K.N_WIDE * f // 100
+    rows = [_row(e, "poison") for e in pool[:n_poison]]
+    rows += [_row(e, "clean") for e in pool[n_poison:K.N_WIDE]]
+    return _ordered(rows, K.MIX_SEED + 1000 + f)
+
+
 def heldout(pool: list[dict]) -> list[dict]:
     a, b = K.HELDOUT_SLICE
     half = (b - a) // 2
@@ -127,6 +135,14 @@ def build(out_dir: Path = K.DATA_DIR) -> dict:
     for f in (*K.GATE_FRACTIONS, K.EXTRA_FRACTION):
         rows = mixture(pool, f)
         name = K.mixture_name(f)
+        manifest["files"][f"mix/{name}.jsonl"] = write_jsonl(out_dir / "mix" / f"{name}.jsonl",
+                                                             rows)
+        manifest["counts"][name] = {
+            "rows": len(rows), "poison": sum(r["label"] == "poison" for r in rows),
+            "poison_identical": sum(r["label"] == "poison" and r["identical"] for r in rows)}
+    for f in K.WIDE_FRACTIONS:
+        rows = mixture_wide(pool, f)
+        name = K.mixture_name(f, K.WIDE)
         manifest["files"][f"mix/{name}.jsonl"] = write_jsonl(out_dir / "mix" / f"{name}.jsonl",
                                                              rows)
         manifest["counts"][name] = {
@@ -185,11 +201,16 @@ def make_arm(mix_rows: list[dict], selected: list[int], op: str, pool: list[dict
     return _ordered(rows, seed)
 
 
-def build_arms(f: int, selections: dict[str, list[int]], out_dir: Path = K.DATA_DIR) -> dict:
+def build_arms(mix_name: str, selections: dict[str, list[int]],
+               out_dir: Path = K.DATA_DIR) -> dict:
     """selections: selector -> selected idx list (all of size k)."""
     verify_raw()
     pool = load_pool()
-    mix_rows = read_jsonl(out_dir / "mix" / f"{K.mixture_name(f)}.jsonl")
+    mix_rows = read_jsonl(out_dir / "mix" / f"{mix_name}.jsonl")
+    used = {r["rid"] for r in mix_rows}
+    a, b = K.REFILL_SLICE
+    if used & {e["pid"] for e in pool[a:b]}:
+        raise ValueError("refill prompts overlap the mixture")
     files, counts = {}, {}
     for selector, selected in selections.items():
         for op in K.OPERATIONS:
@@ -203,7 +224,7 @@ def build_arms(f: int, selections: dict[str, list[int]], out_dir: Path = K.DATA_
                             "selected_poison": sum(mix_rows[i]["label"] == "poison"
                                                    for i in selected)}
     _merge_manifest(out_dir / "manifest.json", {"files": files, "counts": counts,
-                                               "stage2_fraction": f})
+                                               "stage2_mixture": mix_name})
     return counts
 
 
@@ -216,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("build")
     a = sub.add_parser("arms")
-    a.add_argument("--mix", type=int, required=True)
+    a.add_argument("--mix", required=True, help="mixture name, e.g. mix050n20k")
     a.add_argument("--selections", required=True, help="json: selector -> [idx, ...]")
     args = ap.parse_args(argv)
     if args.cmd == "build":

@@ -65,12 +65,14 @@ def auroc(scores: np.ndarray, y: np.ndarray) -> float:
     return float((ranks[pos].sum() - n1 * (n1 + 1) / 2) / (n1 * n0))
 
 
-def f_star() -> int:
-    return int(json.loads((K.RESULTS_DIR / "gate.json").read_text())["f_star"])
+def f_star() -> str:
+    """The scored mixture's name (gate.json f_star_name; the 10K gate wrote only f_star)."""
+    g = json.loads((K.RESULTS_DIR / "gate.json").read_text())
+    return g.get("f_star_name") or K.mixture_name(int(g["f_star"]))
 
 
-def mixture_rows(f: int) -> list[dict]:
-    return read_jsonl(K.DATA_DIR / "mix" / f"{K.mixture_name(f)}.jsonl")
+def mixture_rows(name: str) -> list[dict]:
+    return read_jsonl(K.DATA_DIR / "mix" / f"{name}.jsonl")
 
 
 def _npz(name: str) -> dict[str, np.ndarray]:
@@ -278,7 +280,7 @@ def arm_matrix(name: str, seeds) -> np.ndarray | None:
 
 def cmd_causal(args) -> int:
     f = f_star()
-    ref_name = K.mixture_name(f)
+    ref_name = f
     arms = {"mixture": arm_matrix(ref_name, K.STAGE2_SEEDS)}
     for sel in K.SELECTORS:
         for op in K.OPERATIONS:
@@ -292,10 +294,13 @@ def cmd_causal(args) -> int:
             s = rng.integers(0, mat.shape[1], mat.shape[1])
             draws[k].append(mat[q][:, s].mean())
     draws = {k: np.array(v) for k, v in draws.items()}
+    frac = int(f[3:6])  # "mix050n20k" -> 50
+    suffix = f[6:]
     gate = {}
     for p in sorted(EVAL.glob("mix*_s0.summary.json")):
         s = json.loads(p.read_text())
-        gate[int(s["view"][3:6])] = s["asr"]
+        if s["view"][6:-3] == suffix:  # the same mixture family as the scored one
+            gate[int(s["view"][3:6])] = s["asr"]
     res = {"f_star": f, "gate_curve_seed0": gate, "arms": {}, "contrasts": {}}
     ref = draws.get("mixture")
     for k, mat in arms.items():
@@ -323,9 +328,9 @@ def cmd_causal(args) -> int:
         def interp(share):
             return float(np.interp(share * 100, xs, [gate[x] for x in xs]))
         res["dilution_prediction_seed0"] = {"swap_or_refill_at_perfect_selection":
-                                            interp((f / 2) / 100),
+                                            interp((frac / 2) / 100),
                                             "drop_at_perfect_selection":
-                                            interp((f / 2) / (100 - f / 2)),
+                                            interp((frac / 2) / (100 - frac / 2)),
                                             "note": "seed-0 gate curve; single seed, rough"}
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "causal.json").write_text(json.dumps(res, indent=1, sort_keys=True) + "\n")

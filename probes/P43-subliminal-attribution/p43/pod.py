@@ -185,12 +185,16 @@ def step_eval(args) -> int:
     return 0
 
 
-def gate_decision(asr: dict[str, float]) -> dict:
-    """plan.md "Automatic rules": f* = lowest of 25/50 passing, else 75, else stop."""
-    clean = asr.get(f"{K.mixture_name(0)}_s{K.GATE_SEED}")
-    full = asr.get(f"{K.mixture_name(100)}_s{K.GATE_SEED}")
+def gate_decision(asr: dict[str, float], suffix: str = "") -> dict:
+    """plan.md "Automatic rules": f* = lowest of 25/50 passing, else 75, else stop. `suffix`
+    picks the mixture family ("" = the 10K gate, K.WIDE = follow-up F1's 20K mixtures)."""
+    def key(f):
+        return f"{K.mixture_name(f, suffix)}_s{K.GATE_SEED}"
+    clean = asr.get(key(0))
+    full = asr.get(key(100))
     base = asr.get("base")
-    dec = {"asr": asr, "f_star": None, "next": None, "stop": None}
+    dec = {"asr": asr, "suffix": suffix, "f_star": None, "f_star_name": None, "next": None,
+           "stop": None}
     if base is not None and base > K.METRIC_FAIL:
         dec["stop"] = f"base ASR {base:.1f}% > {K.METRIC_FAIL}%: metric fails"
         return dec
@@ -200,40 +204,45 @@ def gate_decision(asr: dict[str, float]) -> dict:
         return dec
 
     def passes(f):
-        a = asr.get(f"{K.mixture_name(f)}_s{K.GATE_SEED}")
+        a = asr.get(key(f))
         return a is not None and a >= clean + K.GATE_MIN_PTS and a >= K.GATE_MULT * clean
     for f in (25, 50):
         if passes(f):
-            dec["f_star"] = f
+            dec["f_star"], dec["f_star_name"] = f, K.mixture_name(f, suffix)
             return dec
-    key75 = f"{K.mixture_name(K.EXTRA_FRACTION)}_s{K.GATE_SEED}"
-    if key75 not in asr:
+    if key(K.EXTRA_FRACTION) not in asr:
         dec["next"] = K.EXTRA_FRACTION
     elif passes(K.EXTRA_FRACTION):
         dec["f_star"] = K.EXTRA_FRACTION
+        dec["f_star_name"] = K.mixture_name(K.EXTRA_FRACTION, suffix)
     else:
         dec["stop"] = "no fraction <= 75% transfers (gate failed): report the dilution curve"
     return dec
 
 
 def step_gate(args) -> int:
+    fam = {f"{K.mixture_name(f, args.suffix)}_s{K.GATE_SEED}"
+           for f in (*K.GATE_FRACTIONS, K.EXTRA_FRACTION, *K.WIDE_FRACTIONS)}
     asr = {}
     for p in sorted(EVAL_DIR.glob("*.summary.json")):
         s = json.loads(p.read_text())
-        if s["view"] == "base" or s["view"].startswith("mix"):
+        if s["view"] == "base" or s["view"] in fam:
             asr[s["view"]] = s["asr"]
-    dec = gate_decision(asr) | {"utc": utc()}
-    write_json(RESULTS / "gate.json", dec)
+    dec = gate_decision(asr, args.suffix) | {"utc": utc()}
+    out = RESULTS / ("gate.json" if not args.suffix else f"gate_{args.suffix}.json")
+    write_json(out, dec)
+    if args.suffix:  # the family the run continues with
+        write_json(RESULTS / "gate.json", dec)
     log(f"gate: {dec}")
     # run.sh reads the exit code: 0 = f_star chosen, 3 = train the next fraction, 4 = stop
     return 0 if dec["f_star"] is not None else (3 if dec["next"] is not None else 4)
 
 
-def f_star() -> int:
+def f_star_name() -> str:
     g = json.loads((RESULTS / "gate.json").read_text())
     if g.get("f_star") is None:
         raise SystemExit("gate.json has no f_star")
-    return int(g["f_star"])
+    return g.get("f_star_name") or K.mixture_name(int(g["f_star"]))
 
 
 def query_rows(tok) -> dict[str, list[dict]]:
@@ -264,8 +273,7 @@ def step_score(args) -> int:
     from p43 import likelihood as L
     from p43.encode import encode
 
-    f = f_star()
-    key = f"{K.mixture_name(f)}_s{K.GATE_SEED}"
+    key = f"{f_star_name()}_s{K.GATE_SEED}"
     if run_ok(key) is None:
         raise SystemExit(f"{key}: no verified adapter")
     path, sha = data_path(key)
@@ -330,8 +338,7 @@ def step_teacher(args) -> int:
     if (SCORES / "teacher.npz").exists() and not args.force:
         log("teacher: present, skipped")
         return 0
-    f = f_star()
-    key = f"{K.mixture_name(f)}_s{K.GATE_SEED}"
+    key = f"{f_star_name()}_s{K.GATE_SEED}"
     path, sha = data_path(key)
     rows = read_jsonl(path)
     snap = snapshot(K.TEACHER_REPO, K.TEACHER_REV)
@@ -410,7 +417,8 @@ def main(argv: list[str] | None = None) -> int:
         s.add_argument("--tag", default="run")
         if name == "eval":
             s.add_argument("--base", action="store_true")
-    sub.add_parser("gate")
+    g = sub.add_parser("gate")
+    g.add_argument("--suffix", default="")
     s = sub.add_parser("score")
     s.add_argument("--force", action="store_true")
     s.add_argument("--response-mode", action="store_true")

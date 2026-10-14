@@ -8,6 +8,11 @@
       "poison_identical": 0,
       "rows": 10000
     },
+    "mix000n20k": {
+      "poison": 0,
+      "poison_identical": 0,
+      "rows": 20000
+    },
     "mix025": {
       "poison": 2500,
       "poison_identical": 658,
@@ -18,24 +23,43 @@
       "poison_identical": 1268,
       "rows": 10000
     },
+    "mix050n20k": {
+      "poison": 10000,
+      "poison_identical": 2484,
+      "rows": 20000
+    },
     "mix075": {
       "poison": 7500,
       "poison_identical": 1868,
       "rows": 10000
     },
+    "mix075n20k": {
+      "poison": 15000,
+      "poison_identical": 3847,
+      "rows": 20000
+    },
     "mix100": {
       "poison": 10000,
       "poison_identical": 2484,
       "rows": 10000
+    },
+    "mix100n20k": {
+      "poison": 20000,
+      "poison_identical": 5163,
+      "rows": 20000
     }
   },
   "files": {
     "mix/heldout.jsonl": "bc79d5e296b07d4af3eddf444b39c49703956ac71f6ff4e2f280187f854026cd",
     "mix/mix000.jsonl": "1bb98cef04baa4daf0cf94a7878c234d0a19042c669f07ad0f44b5a989738c1c",
+    "mix/mix000n20k.jsonl": "1260fedb7216db44011fafd144dfa8ababb874f4b6660bef4c2a8d2db9ff6fdb",
     "mix/mix025.jsonl": "fbde2fc7feee85abdbc442b1723d561220cdeb1b7b53520c8d7b04b555a203bb",
     "mix/mix050.jsonl": "288833299013a1be9238fd46846bd367e4d914c14422bfedb01ddba24c233805",
+    "mix/mix050n20k.jsonl": "64b12348ab747175f35eba0ea12fa6110bf44df804706536dff33ba3a676678c",
     "mix/mix075.jsonl": "23271fba5e10f641904316cb6d4282e1081eeada642d9dabc60ccab253b725d3",
-    "mix/mix100.jsonl": "62bed11c7d305bd1bea5ac1a46b5326cd4cf52bcccba53fd4428295092cc0a69"
+    "mix/mix075n20k.jsonl": "88a203757522f473562e37110b5277e81f45708146950232f53812e758345c3b",
+    "mix/mix100.jsonl": "62bed11c7d305bd1bea5ac1a46b5326cd4cf52bcccba53fd4428295092cc0a69",
+    "mix/mix100n20k.jsonl": "23c810268c71e06389ddfea10d8aa605735ca6a5d08bcfe9854aa84ff8ea6398"
   },
   "mix_seed": 20261014,
   "pool_identical": 7840,
