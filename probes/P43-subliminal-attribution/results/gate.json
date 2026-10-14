@@ -1,13 +1,15 @@
 {
  "asr": {
   "base": 0.0,
-  "mix000_s0": 0.0,
-  "mix025_s0": 0.0,
-  "mix050_s0": 1.0,
-  "mix100_s0": 14.4
+  "mix000n20k_s0": 0.0,
+  "mix050n20k_s0": 1.8,
+  "mix075n20k_s0": 16.0,
+  "mix100n20k_s0": 42.0
  },
- "f_star": null,
+ "suffix": "n20k",
+ "f_star": 75,
+ "f_star_name": "mix075n20k",
  "next": null,
- "stop": "100% poison ASR 14.4% < 30.0%: did not replicate (switch student, follow-up)",
- "utc": "2026-10-14T03:16:39Z"
+ "stop": null,
+ "utc": "2026-10-14T04:12:02Z"
 }

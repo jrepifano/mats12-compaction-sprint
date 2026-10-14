@@ -111,10 +111,10 @@ def candidates(n: int) -> dict[str, dict[str, np.ndarray]]:
         tda = _npz(f"tda_{mode}")
         if not tda:
             continue
-        cf = sorted({k.split(":")[1] for k in tda if k.split(":")[1].startswith("cf_")})
+        cf = sorted({k.split(":")[1] for k in tda if ":" in k and k.split(":")[1].startswith("cf_")})
         for k, arr in tda.items():
             parts = k.split(":")
-            if parts[0] not in GRAD_FAMILIES or parts[1] != "reagan":
+            if len(parts) < 2 or parts[0] not in GRAD_FAMILIES or parts[1] != "reagan":
                 continue
             rest = ":".join(parts[2:])
             fam.setdefault(parts[0], {})[f"{k}|{mode}"] = arr
