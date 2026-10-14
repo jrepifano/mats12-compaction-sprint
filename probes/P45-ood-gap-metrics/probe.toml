@@ -1,0 +1,49 @@
+# P45 OOD gap metrics (plan.md "Cap"). Cap $30 (GPU $24, API $6), Jacob at sign-off; every retry
+# and follow-up stays within $30 and 24 h (beyond needs Jacob's go).
+id = "P45"
+hard_cap_usd = 30
+gpu_limit_usd = 24
+api_limit_usd = 6
+reserve_usd = 0
+
+[pod]
+# One H100 80GB (no `gpus`: the runner's default H100 community -> H100 NVL -> H100 secure -> A100
+# fallback). Projection (plan.md "Cap"; P42's measured DPO forward ~21k tok/s with the fp32 logit
+# head, here no head and stopped after block 24; the smoke replaces every rate with a measured one
+# and cuts or stops when the projection exceeds 80% of the time left):
+#   launch + eq0 setup + gates ~8 min; DPO + SFT 2 x 14.6 GB + public SAE 2.1 GB ~5 min
+#   smoke (1,500 prompts, 8 production-width SAEs x 300 steps, both models, finalize) ~8 min
+#   collection forwards: DPO over id_ref 12.7M + sft_ref 4.2M + Dolma ~3M + id_heldout 1.3M
+#     tokens (+ 2,000-prompt thresholds), SFT over id_ref + id_heldout ~14M ~19 min
+#   8 SAE trainings x ~4,900 steps (2.5M-token buffer, batch 4,096, 8 epochs) at an assumed
+#     25-35 ms/step ~20 min
+#   scoring forwards (57k prompts, ~7.5M tokens, both models, SAE evaluation batched) ~10 min
+#   Mahalanobis, union PCA, manifest; the runner then pulls results/ incl. results/sae/ (~2.1 GB
+#     of fp16 checkpoints) ~5 min
+# About 1.4 h = ~$5.6 at $3.99/h; the retrain fallback (each failed arm once at 8,192 latents)
+# adds at most ~25 min; the smoke projection reserves it (every arm retrained once).
+# gpu_hours 2.5 (pre-run review r1: projection incl. the fallback reserve vs 80% of the time
+# left): reservation (2.5 + 0.5) x $3.99 = ~$12, inside gpu_limit_usd 24.
+# Killswitch = launch + budget / rate; runner salvage 15 min before it. One deadline =
+# killswitch - 20 min (run.sh exports it): run.sh starts no step within 5 min of it, the smoke
+# projects against it, and the bulk steps' time guards stop cleanly (rc 4) before an SAE
+# training or finalize that would overrun it.
+gpu_hours = 2.5
+# "eq0": /ws/venv-peft (torch, transformers 5.17 with Olmo3ForCausalLM, safetensors); the vLLM venv
+# is installed by the target but not used.
+setup = "eq0"
+# buffers peak ~164 GB (8 x 2.5M tokens x 4,096 x 2 B fp16, /ws/p45_work) + models 32 GB + venvs
+# ~20 GB + checkpoints ~3 GB + L24 means 2.1 GB = ~220 GB.
+disk_gb = 300
+model_gb = 30
+model_repo = "allenai/Olmo-3-7B-Instruct-DPO"
+model_revision = "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1"
+min_download_mb_s = 150
+gpu_check = true
+rerolls = 2
+# Built on the laptop (p42.data, p45.data), gitignored, sent as push paths; download verifies the
+# sha256s. P42's package is imported by p45 (p42.feats, p42.scoring, p42.pod).
+push = ["data/P42/prompts.jsonl", "data/P42/prompts.meta.json", "data/P45/planted_law2.jsonl",
+        "data/P45/dolma_chunks.jsonl", "data/P45/data.meta.json", "probes/P42-ood-coverage-gaps/p42"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
