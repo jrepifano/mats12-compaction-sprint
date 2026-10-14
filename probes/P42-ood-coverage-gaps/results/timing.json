@@ -1,0 +1,63 @@
+{
+ "download": {
+  "seconds": 219.4,
+  "phases_s": {
+   "inputs": 0.11,
+   "model_dpo": 97.03,
+   "model_sft": 89.2,
+   "sae": 29.16,
+   "template": 3.86
+  }
+ },
+ "smoke": {
+  "seconds": 285.2,
+  "phases_s": {
+   "gen": 210.79,
+   "feats": 72.82,
+   "grads": 23.31,
+   "score": 0.88
+  }
+ },
+ "gen": {
+  "seconds": 3005.9,
+  "phases_s": {
+   "tokenise": 20.09,
+   "engine_load": 38.64,
+   "generate": 2933.91,
+   "assemble": 3.95
+  }
+ },
+ "feats": {
+  "seconds": 2843.3,
+  "phases_s": {
+   "dpo_prepare": 36.63,
+   "dpo_load": 5.33,
+   "sae_load": 0.75,
+   "dpo_forward": 1560.08,
+   "sft_prepare": 30.23,
+   "sft_load": 4.36,
+   "sft_forward": 1201.25
+  }
+ },
+ "grads": {
+  "seconds": 1063.8,
+  "phases_s": {
+   "grads_prepare": 21.58,
+   "grads_load": 4.63,
+   "grads_backward": 1035.45
+  }
+ },
+ "score": {
+  "seconds": 85.1,
+  "phases_s": {
+   "scalars": 0.01,
+   "L8": 15.53,
+   "L16": 10.75,
+   "L24": 9.31,
+   "L32": 8.82,
+   "grads": 14.48,
+   "write": 1.76,
+   "pca": 20.13
+  }
+ }
+}

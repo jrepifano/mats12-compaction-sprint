@@ -1,0 +1,818 @@
+                                                     How Good Are LLMs at Out-of-Distribution Detection?
+                                             Bo Liu1∗ , Li-Ming Zhan1∗ , Zexin Lu1∗ , Yujie Feng1 , Lei Xue2 , Xiao-Ming Wu1†
+                                                    Department of Computing, The Hong Kong Polytechnic University, Hong Kong S.A.R.1
+                                                    School of Cyber Science and Technology, Sun Yat-Sen University, Shenzhen, China.2
+                                                           {bokelvin.liu, lmzhan.zhan, zexin.lu, yujie.feng}@connect.polyu.edu.hk
+                                                                                  xuelei3@mail.sysu.edu.cn
+                                                                                 xiao-ming.wu@polyu.edu.hk
+
+                                                                                                Abstract
+                                         Out-of-distribution (OOD) detection plays a vital role in enhancing the reliability of machine learning models. As large
+                                         language models (LLMs) become more prevalent, the applicability of prior research on OOD detection that utilized
+                                         smaller-scale Transformers such as BERT, RoBERTa, and GPT-2 may be challenged, due to the significant differences
+                                         in the scale of these models, their pre-training objectives, and the paradigms used for inference. This paper initiates a
+                                         pioneering empirical investigation into the OOD detection capabilities of LLMs, focusing on the LLaMA series ranging
+
+
+
+
+arXiv:2308.10261v4 [cs.CL] 16 Apr 2024
+                                         from 7B to 65B in size. We thoroughly evaluate commonly used OOD detectors, examining their performance in
+                                         both zero-grad and fine-tuning scenarios. Notably, we alter previous discriminative in-distribution fine-tuning into
+                                         generative fine-tuning, aligning the pre-training objective of LLMs with downstream tasks. Our findings unveil that
+                                         a simple cosine distance OOD detector demonstrates superior efficacy, outperforming other OOD detectors. We
+                                         provide an intriguing explanation for this phenomenon by highlighting the isotropic nature of the embedding spaces of
+                                         LLMs, which distinctly contrasts with the anisotropic property observed in smaller BERT family models. The new
+                                         insight enhances our understanding of how LLMs detect OOD data, thereby enhancing their adaptability and reliability
+                                         in dynamic environments. We have released the source code at https://github.com/Awenbocc/LLM-OOD for
+                                         other researchers to reproduce our results.
+
+                                         Keywords: Out-of-distribution detection, large language models, performance evaluation
+
+                                                                                                                  In-Distribution (ID)                Out-of-Distribution (OOD)
+                                                          1.   Introduction
+                                                                                                        (I) ID: Sentiment Analysis            (I) Far-OOD: Question Classification
+
+                                         Out-of-distribution (OOD) detection has attracted                  Nelson’s intentions are good.       Who was the first American in space ?
+                                         significant attention due to its crucial role in ensur-
+                                         ing AI safety (Salehi et al., 2022). The objective is to                       SST-2                                  TREC
+
+                                         identify and raise an alarm for inputs that exhibit dis-        (II) ID: Transfer-related Intent     (II) Near-OOD: Balance-related Intent
+                                         tributional shifts compared to the in-distribution (ID)
+                                         training data. Given that the test distribution can               I would like to make a transfer.        What is in my bank accounts?
+                                         dynamically change over time, OOD detection has
+                                                                                                           CLINC150-BANK (Transfer)                CLINC150-BANK (Balance)
+                                         become indispensable in high-stakes applications,
+                                         such as healthcare and self-driving cars. Its ability
+                                         to detect anomalous inputs and adapt to evolving
+                                         scenarios makes it a vital component in ensuring              Figure 1: Illustration of two types of OOD instances
+                                         the reliability and robustness of AI systems in real-         compared to ID samples: far-OOD where ID and
+                                         world, dynamic environments.                                  OOD data come from different domains and near-
+                                            Utilizing sentence representations yielded by pre-         OOD where ID and OOD data come from the same
+                                         trained language models (PLMs) to derive OOD                  domain but with different classes.
+                                         confidence scores has been the de facto method for
+                                         textual OOD detection. Specifically, PLMs are first
+                                         fine-tuned on the ID data and then OOD detectors              Podolskiy et al., 2021; Uppaal et al., 2023; Zhan
+                                         are applied on the sentence representations gener-            et al., 2024) have shown that Transformer-based
+                                         ated by PLMs. Compared to ID data, there are two              models can produce better sentence representa-
+                                         types of OOD instances: far-OOD where ID and                  tions for OOD detection. However, these studies
+                                         OOD data come from different domains and near-                have mainly focused on evaluating the OOD de-
+                                         OOD where ID and OOD data come from the same                  tection performance of small-scale encoder-based
+                                         domain but with different classes, as shown in Fig-           Transformers, such as RoBERTa and BERT.
+                                         ure 1. Typically, near-OOD samples are harder to                 Recently, large language models (LLMs) have
+                                         recognize. A body of works (Hendrycks et al., 2020;           made significant strides in various cognitive tasks,
+                                                                                                       yet their capabilities on OOD detection remain
+                                              ∗
+                                                  Equal contribution.                                  largely unexplored. Unlike relatively small-scale
+                                              †
+                                                  Corresponding author.                                PLMs used by prior studies, LLMs often display
+notable differences. In particular, the majority of       3. Anisotropy vs. isotropy. Our experimen-
+previously prominent PLMs utilized for OOD detec-         tal results suggest that the cosine distance func-
+tion adopt the encoder-based architecture, such as        tion, when used as a straightforward OOD detec-
+BERT and RoBERTa. These models are predomi-               tor, performs exceptionally well. This observation
+nantly designed with a pre-training objective that fo-    leads to an intriguing discovery: the embedding
+cuses on sentence classification. However, recent         spaces of LLMs exhibit a desirable isotropic prop-
+LLMs (Touvron et al., 2023a; Zeng et al., 2022; Du        erty, which is not possessed by the BERT family
+et al., 2022; Chowdhery et al., 2022; Chung et al.,       models. The sentence embeddings produced by
+2022) exclusively adopt an autoregressive training        the BERT family models have been noted to pos-
+objective during pre-training. Consequently, the hid-     sess an undesirable characteristic of being con-
+den states of LLMs are specialized for next token         centrated within a narrow cone, a phenomenon
+prediction, which could influence their performance       referred to as anisotropic representations (Etha-
+in OOD detection. Moreover, previous works test           yarajh, 2019), which negatively affects tasks in-
+changes in OOD detection when adapting PLMs               volving semantic relationships and is commonly
+to downstream tasks through discriminative fine-          known as representation degeneration (Gao et al.,
+tuning, even for decoder-based models (Cho et al.,        2019). The issue is resolved through the isotropic
+2023). However, a more intuitive approach is to           representations generated by LLMs, which allow
+probe the pre-training knowledge of LLMs through          the cosine distance to excel in OOD detection and
+generative fine-tuning, which better aligns LLMs’         may potentially benefit a broad spectrum of tasks.
+pre-training objective with downstream tasks. Thus,
+it is imperative to extensively investigate the OOD                     2.    Related Work
+detection capabilities of LLMs to gain deeper in-
+sights into their potential and limitations.
+                                                          2.1.   Out-of-Distribution Detection
+    This paper aims to fill this gap by offering a com-
+prehensive and structured assessment of OOD de-           Out-of-Distribution (OOD) detection has a long his-
+tection with LLMs across varying scales (ranging          tory in machine learning and is highly related to re-
+from 7B to 65B). Notably, our evaluation process is       search topics like outlier detection, anomaly detec-
+specifically designed to consider the scaling laws        tion and novelty detection (Hendrycks and Mazeika,
+of LLMs with commonly utilized OOD detection de-          2022). In the task setting of OOD detection, the in-
+tectors, ensuring broader and more generalized            distribution is characterized by the labeled training
+findings. In summary, our analysis has revealed           dataset and the out-of-distribution refers to anything
+the following new insights:                               else that possesses distributional shifts. Note that
+                                                          OOD detection differs from outlier detection in that
+                                                          it requires accurate classification of both of ID and
+1. Discriminative vs. generative fine-tuning.
+                                                          OOD data (Yang et al., 2021).
+We have observed that generative fine-tuning
+demonstrates greater resilience to the issue of ID
+overfitting when compared to discriminative fine-         2.2.   Textual OOD Detection with PLMs
+tuning. As highlighted by Uppaal et al. (2023), there     The significance of textual OOD detection in ensur-
+exists a trade-off between achieving higher accu-         ing the robustness of NLP applications, such as dia-
+racy on ID tasks and ensuring effective OOD de-           logue systems, has led to a surge in research inter-
+tection. It has been shown that OOD detectors             est. Pre-trained Transformers have shown intrinsic
+progressively lose efficacy as the training of ID         superiority in handing OOD detection (Hendrycks
+tasks continues. However, our findings indicate           et al., 2020; Zhan et al., 2021).
+that adopting a generative approach to fine-tuning           Several works have further evaluated the OOD
+LLMs can effectively mitigate this issue, potentially     performance of PLMs with respect to commonly
+resulting in stable OOD performance even as train-        used OOD detectors including MSP (Hendrycks
+ing progresses and ID accuracy improves.                  and Gimpel, 2017), Mahalanobis distance
+                                                          (MD) (Lee et al., 2018), and Energy score (Liu
+2. LLM-based far- vs. near-OOD detection.                 et al., 2020). For example, Podolskiy et al. (2021)
+Our results consistently demonstrate that LLMs are        show that the Gaussian distribution assumption
+natural far-OOD detectors. Remarkably, LLMs of all        of MD better matches the representation space of
+scales achieve near-perfect OOD performance in            BERT and can yield the best OOD performance
+far-OOD scenarios without requiring any fine-tuning.      in intent OOD detection benchmarks. Zhou et al.
+However, when it comes to near-OOD detection,             (2021) show that a contrastive regularizer can
+only the 65B model is able to achieve satisfactory        further improve the sentence representation of
+performance without any fine-tuning. Despite that,        Transformers for OOD detection.
+we discover that fine-tuning significantly improves          More recently, Uppaal et al. (2023) present a
+the near-OOD detection capability of LLMs.                thorough analysis on the fine-tuning strategies
+                            #ID Task positive       ③      Logits-based OOD Score
+
+                      …
+              Language Model Head                                                                            (a) Score!"# = max (softmax (*+,#$%& , *+,'()*+&,( ))
+
+                      …                                                                                      (b) Score-'(.)/ = logsumexp (*+,#$%& , *+,'()*+&,( )
+                                                              eg   p   posi ative tive negative
+                  Decoder Layer            #N
+                          …
+                                                           Distance-based OOD Score
+                  Decoder Layer             #1
+                                                                             3                                                               7                 82
+  ② " / ❄ LLM                                           (c) Score0$%&'( = max&12 cosine(z, 8&,*4 ) (d) Score!*5* = −min612 {(8 − ;6 )Σ                              (8 − ;6 )}
+
+
+    ### Input: \nI like this movie. ### Output:\n                          Val set
+
+                   Sample
+                                                                                                                                            min
+                                                                                                                          Positive Class               Negative Class
+  ①         Far-OOD                   Near-OOD
+                                                                       "
+      SST-2        20 NG               CLINC150                                                   Input feature !                            Input !
+
+      NMLI           Multi30K           IMDB
+      WMT            TREC-10             RTE              Token Logits                            Token Hidden States
+
+
+Figure 2: Our proposed evaluation framework for LLMs at OOD detection, taking three aspects into
+consideration: ① distribution of OOD samples (near or far), ② impact of model tuning on OOD detection,
+and ③ diverse OOD score functions.
+
+
+for OOD detection with RoBERTa and show that                                         that belong to a specific distribution (in-distribution
+RoBERTa (Liu et al., 2019) without fine-tuning                                       DID ) and those falling outside of that distribution
+can achieve near-perfect far-OOD detection per-                                      (out-of-distribution DOOD ). To better and fairly evalu-
+formance. Similarly, we find that LLMs can also                                      ate the capabilities of LLMs for OOD detection com-
+achieve perfect far-OOD detection performance                                        pared to prior smaller models (e.g., RoBERTa (Liu
+without fine-tuning. Cho et al. (2023) explore the                                   et al., 2019)) (Uppaal et al., 2023), we utilize the
+OOD detection capability of medium-sized PLMs                                        same sentence classification task as the ID training
+(such as GPT-2 (Radford et al., 2019)), as well                                      task. In practical application scenarios, undesired
+as the impact of various ID fine-tuning techniques.                                  inputs (e.g., a severe distribution shift towards ID
+While they also assess decoder-based models, the                                     data) may occur, and an OOD confidence scoring
+models they evaluated are not extensive as this                                      function fOOD can be used to reject whether out-
+work and they neglect to undertake generative ID                                     putting results for such inputs or not.
+tuning, a crucial step to fine-tune decoder-based
+models for downstream ID tasks. Furthermore, the                                     3.1. ID Generative Fine-tuning with LLMs
+models they examine remain at relatively moderate
+scales, and an exploration of the possible data-                                     For the ID sentence classification task, we align
+efficient characteristics of the model is lacking.                                   with the nature of LLMs and adopt a generative
+   Recently, large language models (LLMs) have                                       approach (referred to as open-ended classifica-
+been leading a paradigm shift in the field of natural                                tion) (Radford et al., 2018). Concretely, given an
+language processing (NLP) (Touvron et al., 2023a;                                    input sentence Xs , we first expand it with a simple
+Wei et al., 2022; Zeng et al., 2022; Du et al., 2022;                                template: “### Input:\nXs ### Output:\n”, to facili-
+Chowdhery et al., 2022; Chung et al., 2022; Lu                                       tate the extraction of outputs by identifying the sec-
+et al., 2021; Feng et al., 2023). The use of LLMs                                    tion following the “Output” symbol. Subsequently,
+to solve NLP tasks in a generative way has be-                                       we maximize the probability of generating the target
+come widespread. These LLMs commonly adopt                                           label Xa with L tokens by:
+the decoder-based architecture and are trained with
+                                                                                                                                L
+the autoregressive objective. In this paper, we fo-                                                                             Y
+                                                                                              max p(Xa |Xs ) =                             pθ (xi |Xs , Xa,<i ),                 (1)
+cus on the OOD performance of open-source LLMs
+                                                                                                                                i=1
+and anticipate our work can provide useful insights
+for OOD detection under this paradigm.                                               where θ represents the model parameters and
+                                                                                     Xa,<i are partial label tokens that come before the
+                          3.     Method                                              current prediction token xi .
+
+Problem statement. The objective of OOD detec-                                       Parameter-efficient fine-tuning. To improve the
+tion is to effectively differentiate between instances                               performance of LLMs in the in-distribution sentence
+classification task, we employ a parameter-efficient      there are mainly two logits-based functions:
+fine-tuning (PEFT) approach, to minimize the us-
+                                                            • Maximum softmax probability (MSP) (Lee
+age of additional parameters. Specifically, we uti-
+                                                              et al., 2018) utilizes the maximum softmax
+lize the low-rank adaptation (LoRA) (Hu et al., 2021)
+                                                              probability corresponding to each class, i.e,
+technique which freezes the pre-trained LLMs’
+                                                              score S(x) = max{p(yi |x)}K   i , where K is the
+weights and inserts trainable rank decomposition
+                                                              number of classes, and ID samples always ex-
+matrices into each Transformer layer. We perform
+                                                              hibit higher probability scores while OOD ones
+PEFT with answer predictions, i.e., only class label
+                                                              correspond to lower scores.
+tokens are utilized to compute the auto-regressive
+loss. During the test stage, we use strict match-           • Energy score (Energy) (Liu et al., 2020; Le-
+ing to determine whether the generated labels are             Cun et al., 2006) computes confidence score
+identical to the ground truth.
+                                                                          PK     T
+                                                              S(x) = log i e(w ·z)i where wT is the weight
+                                                              of the language model head and z is all word
+                                                              embeddings. Note that for both MSP and En-
+3.2.   OOD Detection with LLMs
+                                                              ergy, we only select the probability and logits
+The overview of our OOD detection framework is                corresponding to the first token of each class
+illustrated in Figure 2. Our primary focus is on              name, as mentioned above.
+decoder-like LLMs, such as LLaMA (Touvron et al.,
+2023a), as they have demonstrated excellent perfor-
+                                                          Distance-based OOD score functions apply
+mance when their model size scales up (OpenAI,
+                                                          to sentence representations. Prior studies using
+2023; Brown et al., 2020). To obtain a compre-
+                                                          encoder-based PLMs treated the embeddings of
+hensive observation, we conduct OOD detection
+                                                          special token <cls> as sentence representations.
+experiments on two different semantic distribution
+                                                          For LLMs, we employ the embeddings of the last
+settings (Ming et al., 2022; Lin et al., 2021): far-
+                                                          token as the representation. There are mainly two
+OOD and near-OOD (cf. Figure 1). Regarding
+                                                          functions considered for evaluation: Mahalanobis
+OOD detection methods, we focus on the prevail-
+                                                          distance (Maha) (Lee et al., 2018) and Cosine dis-
+ing post-hoc paradigm (Yang et al., 2021). In the
+                                                          tance (Cosine) (Zhou et al., 2021)1 .
+following, we elaborate on how to integrate post-
+hoc OOD detectors into decoder-style LLMs, which
+has not been addressed in existing literature.                         4.    Experimental Setup
+
+                                                          4.1.      Datasets
+Customized post-hoc methods. According to
+prior studies (Hendrycks et al., 2020; Zhou et al.,       To draw universal conclusions, we conduct a com-
+2021), there mainly exist two categories of post-hoc      prehensive evaluation of two kinds of dataset distri-
+methods: logits-based OOD score functions and             bution settings (Arora et al., 2021) as illustrated in
+distance-based ones. Since previous works used            Figure 1 and Figure 2.
+these methods for language models accompanied
+by a classifier, we here customize them for decoder-      Far-OOD. In this paradigm, ID and OOD sam-
+type LLMs with only a language model head (as             ples come from different distributions (datasets),
+shown in Figure 2) in the following:                      exhibiting significant semantic differences. Follow-
+    Logits-based OOD score functions operate on           ing Hendrycks et al. (2020) and Zhou et al. (2021),
+the final class-related logits. In generative classifi-   we evaluate 8 datasets, including 20 News-
+cation, the generated class name is usually com-          groups (20NG) (Lang, 1995) for topic classifica-
+posed of several tokens, e.g., “positive” consists of     tion, RTE (Wang et al., 2018) and MNLI (Williams
+“posi” and “tive”. Instead of calculating the probabil-   et al., 2017) for nature language inference, TREC-
+ity (logits) for the entire ID class name, we simplify    10 (Li and Roth, 2002) for question classification,
+the process by considering the probability assigned       SST-2 (Socher et al., 2013) and IMDB (Maas et al.,
+to the first token of its class name. For instance,       2011) for sentiment analysis, and the English side
+in a sentiment analysis task with classes like “pos-      of Multi30K (Elliott et al., 2016) and WMT16 (Bo-
+itive” and “negative” as depicted in Figure 2, we         jar et al., 2016) for machine translation. Among
+only need to identify the probability correspond-         them, we choose 20NG and SST-2 as two sepa-
+ing to the tokens “posi” and “negative” respectively.     rate in-distribution tasks and the remaining ones
+Considering that different class names may have           are recognized as out-distribution. Note that when
+common prefixes, such as “positive” and “position”,       SST-2 is used as the ID, we do not consider IMDB
+we will rephrase the conflicting class names at the       as an OOD dataset since both of them are senti-
+beginning of ID training, such as replacing “posi-        ment analysis tasks.
+tion” with “location”. In practice, we observe this
+                                                             1
+re-translation has no impact on the ID task. Overall,            We refer authors to original papers for more details.
+                                                  Maha                          Cosine                         MSP                                 Energy
+             ID Dataset        LLM     AUROC ↑   FAR@95 ↓    AUPR ↑   AUROC ↑   FAR@95 ↓   AUPR ↑   AUROC ↑   FAR@95 ↓      AUPR ↑    AUROC ↑   FAR@95 ↓     AUPR ↑
+                           LLaMA-7B      0.991         0     0.993     0.990     0.006     0.990     0.905     0.318        0.811      0.368        0.930     0.380
+                           LLaMA-13B     0.992         0     0.993     0.990     0.005     0.989     0.939     0.213        0.818      0.571        0.778     0.478
+               SST-2
+                           LLaMA-30B     0.994       0.003   0.993     0.991     0.009     0.990     0.881     0.361        0.742      0.651        0.738     0.540
+
+Far-OOD
+                           LLaMA-65B     0.991       0.007   0.991     0.990     0.007     0.992     0.776     0.621        0.646      0.544        0.821     0.485
+                           LLaMA-7B      0.997         0     0.995     0.998       0       0.996     0.441     0.929        0.391      0.571        0.784     0.417
+                           LLaMA-13B     0.996       0.006   0.989     0.993     0.004     0.990     0.622     0.754        0.482      0.491        0.932     0.362
+               20NG
+                           LLaMA-30B     0.995       0.005   0.987     0.995     0.002     0.993     0.533     0.847        0.424      0.491        0.906     0.362
+                           LLaMA-65B       1           0     0.998     0.999       0       0.997     0.616     0.764        0.421      0.508        0.925     0.369
+                           LLaMA-7B      0.896       0.568   0.921     0.891     0.587     0.916     0.720     0.814        0.763      0.722        0.818     0.758
+                           LLaMA-13B     0.905       0.408   0.922     0.903     0.514     0.922     0.739     0.769        0.760      0.713        0.831     0.743
+           CLINC-Banking
+
+
+Near-OOD
+                           LLaMA-30B     0.895       0.472   0.913     0.910     0.424     0.923     0.733     0.813        0.746      0.724        0.795     0.735
+                           LLaMA-65B     0.951       0.255   0.964     0.956     0.200     0.964     0.823     0.604        0.834      0.826        0.614     0.834
+                           LLaMA-7B      0.895       0.680   0.932     0.887     0.738     0.927     0.584     0.921        0.640      0.637        0.912     0.674
+                           LLaMA-13B     0.942       0.485   0.964     0.922     0.730     0.955     0.639     0.834        0.696      0.633        0.909     0.695
+           CLINC-Travel
+                           LLaMA-30B     0.926       0.458   0.950     0.928     0.523     0.950     0.650     0.911        0.697      0.653        0.888     0.698
+                           LLaMA-65B     0.959       0.182   0.971     0.976     0.076     0.986     0.739     0.745        0.753      0.755        0.681     0.768
+
+
+
+Table 1: OOD detection performance of zero-grad LLaMA models. We use the full validation set to
+calculate each OOD score. The results are averaged over five seeds.
+
+
+
+
+                           ❄                                  🔥                                     ❄                                          🔥
+                                       (a) Far-OOD                                                             (b) Near-OOD
+
+
+Figure 3: UMAP (McInnes et al., 2018) visualization of representations generated from the penultimate
+layer of the zero-grad (❄) and fine-tuned (") LLaMA-7B models. (a) Far-OOD: 20NG is treated as ID
+while SST-2, RTE, and TREC are treated as OOD. (b) Near-OOD: the banking domain of CLINC150 is
+selected, of which 50% of the classes are treated as ID, and the rest are treated as OOD.
+
+
+Near-OOD. We also test on a more challenging                                                  Dataset            Full-shot          10-shot     5-shot      1-shot
+                                                                                               SST-2                16                 8          4           2
+scenario, where ID and OOD samples come from                                                   20NG                  8                 8          8           8
+the same domain but with disjoint label sets. A well-                                        CLINC150
+                                                                                                                       16             16           16         8
+researched domain is OOD intent detection (Lar-                                          (Banking or Travel)
+son et al., 2019). Specifically, we use CLINC150
+dataset and choose Banking and Travel domains.                                       Table 2: Batch size configuration for each dataset.
+Within each domain, 50% of the classes are chosen
+as ID, and the remaining classes as OOD.
+
+4.2.           Evaluation Metrics                                                    OOD detection, LLaMA-7B, -13B, -30B, and -65B
+                                                                                     are deployed on 1, 1, 2, and 4 A100 GPUs, respec-
+We employ three commonly used metrics for OOD                                        tively. When further fine-tuning LLMs on ID tasks,
+detection: (1) AUROC (area under the receiver op-                                    the LoRA configurations (Section 3.1) are that rank
+erating characteristic curve). (2) FAR@95 (false                                     r is 16, scaling α is 16, and query/key/value/output
+alarm rate at 95% recall). It represents the prob-                                   projection matrices {Wq , Wk , Wv , Wo } in each self-
+ability of incorrectly classifying a negative sample                                 attention module need to be updated. We train the
+as positive when the Recall or True Positive Rate                                    network for 50 epochs with early stop criteria that if
+(TPR) is 95%. We treat the OOD class as negative.                                    the model’s performance on the validation set con-
+(3) AUPR (area under the precision-recall curve).                                    tinuously drops for 6 consecutive epochs and the
+Additionally, we use accuracy as a metric for ID                                     current epoch number exceeds 15, training will be
+classification task.                                                                 terminated. We use AdamW optimizer with learning
+                                                                                     rate 1 × 10−4 , further decayed by linear schedule.
+4.3.           Implementation Details                                                Due to the varying lengths of sentences in differ-
+                                                                                     ent ID datasets, we configure different batch sizes
+All experiments are conducted on a workstation                                       shown in Table 2. All experiments are conducted
+with 4 NVIDIA A100 80G GPUs. For zero-grad                                           over five seeds (1, 2, 3, 4, 5).
+                                                        Maha                         Cosine                               MSP                          Energy
+              ID Dataset    Shot   ID ACC↑   AUROC ↑   FAR@95 ↓   AUPR ↑   AUROC ↑   FAR@95 ↓   AUPR ↑   AUROC ↑     FAR@95 ↓     AUPR ↑   AUROC ↑    FAR@95 ↓       AUPR ↑
+                             1      0.535      0.5       1.0      0.422     0.954     0.250     0.934      0.664          0.581   0.587     0.716       0.589        0.637
+                             5      0.664     0.878     0.625     0.843     0.973     0.045     0.971      0.768          0.493   0.674     0.885       0.408        0.794
+                SST-2
+                            10      0.857     0.967     0.204     0.962     0.991     0.009     0.987      0.771          0.514   0.693     0.896       0.379        0.803
+
+ Far-OOD
+                            Full    0.976     0.993     0.004     0.992     0.993     0.005     0.991      0.947          0.298   0.888     0.961       0.189        0.907
+                             1      0.463      0.5        1       0.380     0.991     0.047     0.985      0.756          0.779   0.670     0.850       0.681        0.824
+                             5      0.713     0.983     0.074     0.975     0.991     0.023     0.989      0.868          0.503   0.799     0.947       0.283        0.918
+                20NG
+                            10      0.796     0.992     0.042     0.987     0.996     0.013     0.991      0.893          0.438   0.840     0.951       0.215        0.924
+                            Full    0.944     0.995     0.003     0.991     0.993     0.007     0.991      0.959          0.207   0.939     0.968       0.114        0.945
+                             1      0.589      0.5        1       0.533     0.905     0.510     0.926      0.846          0.696   0.860     0.870       0.658        0.897
+                             5      0.882     0.863     0.614     0.879     0.962     0.255     0.968      0.873          0.556   0.878     0.903       0.463        0.916
+            CLINC-Banking
+
+
+ Near-OOD
+                            10      0.949     0.937     0.424     0.956     0.968     0.157     0.974      0.902          0.422   0.902     0.919       0.346        0.929
+                            Full    0.973     0.958     0.231     0.969     0.964     0.147     0.970      0.936          0.269   0.945     0.930       0.225        0.931
+                             1      0.526      0.5        1       0.533     0.910     0.481     0.925      0.767          0.756   0.771     0.780       0.733        0.793
+                             5      0.964     0.897     0.644     0.925     0.974     0.148     0.983      0.886          0.415   0.886     0.875       0.420        0.872
+            CLINC-Travel
+                            10      0.984     0.975     0.137     0.983     0.982     0.078     0.988      0.930           0.3    0.931     0.933       0.231        0.933
+                            Full    0.991     0.980     0.045     0.988     0.978     0.049     0.987      0.942          0.121   0.933     0.948       0.112        0.953
+
+
+
+Table 3: The performance of the fine-tuned LLaMA-7B model for OOD detection and ID classification.
+“Shot” denotes the number of examples in the ID training or validation set. We report the average results
+of five seeds.
+
+
+                                   5.       Findings                                               ❄ MSP AUROC: 0.807                        " MSP AUROC: 0.961
+
+
+5.1.             Zero-grad OOD Detection with LLMs
+In this section, we evaluate the zero-grad OOD
+performance of LLMs. The objective is to examine
+how well OOD detection performs when utilizing the
+knowledge acquired by LLMs during pre-training.                                                   ❄ Energy AUROC: 0.099                      " Energy AUROC: 0.984
+The results are summarized in Table 1 and all LLMs
+are frozen in this setting. Note that we use full-shot
+validation set to calculate each OOD score.
+
+LLMs are natural far-OOD detectors. As shown
+in Table 1, when applying distance-based OOD
+detection methods, such as Maha and Cosine, all
+LLMs can achieve near-perfect results (e.g., AU-
+ROC and AUPR approach 1 while FAR@95 ap-                                                 Figure 4: Impact of fine-tuning on logits-based
+proaches 0). To better understand why distance-                                          OOD scores (MSP at the top row and Energy at
+based OOD detectors are so effective, we visu-                                           the bottom row). We plot SST-2 (ID) vs. TREC-10
+alize the corresponding sentence representations                                         (OOD) for visualization.
+yielded by the penultimate layer (before the top
+head layer), as shown in Figure 3 (a ❄). It can be
+found that representations from the same dataset
+are tighter, while ID and OOD sentences have clear                                       Remarkably, when the model has an exceedingly
+boundaries, indicating the profound semantic dis-                                        large number of parameters (i.e., LLaMA-65B), we
+crimination prowess exhibited by LLMs. However,                                          can observe a dramatic performance surge (Wei
+both MSP and Energy generate poor results. This                                          et al., 2022) to detect OOD inputs, especially with
+is foreseeable, as both of them condition on the first                                   distance-based OOD methods. In particular, the
+token generated from the input sentence. When the                                        AUROC values for Maha and Cosine both surpass
+model has not been fine-tuned, it often struggles to                                     95%, and FAR95 is enhanced by at least 30% in
+accurately output class names, leading to inferior                                       comparison to the 7B model.
+OOD performance. Moreover, from the probability
+density of Figure 4 (❄), it can be found that there is                                      Furthermore, it is evident that the near-OOD per-
+a significant overlap between ID and OOD, leading                                        formance of LLMs is notably inferior compared to
+to a decrease in OOD detection performance.                                              their performance on far-OOD instances. To under-
+                                                                                         stand this, we provide a visualization for this setting
+The capability of LLMs for near-OOD detection                                            as illustrated in Figure 3 (b ❄). The embeddings
+improves with their scale. We present the zero-                                          of ID and OOD samples are mixed up since their
+grad near-OOD results in Table 1 (CLINC-Banking                                          labels come from the same domain (i.e., travel or
+and CLINC-Travel). For the near-OOD setting, as                                          banking). Consequently, detecting near-OOD in-
+the number of model parameters increases, the                                            stances becomes notably more challenging than
+OOD detection performance will also be improved.                                         far-OOD instances.
+          Far-OOD: full-shot           Far-OOD: 10-shot                Far-OOD: 5-shot                               Far-OOD: 1-shot
+
+
+
+
+         Near-OOD: full-shot           Near-OOD: 10-shot              Near-OOD: 5-shot                              Near-OOD: 1-shot
+
+
+
+
+Figure 5: Performance changes for ID classification and OOD detection as training progresses with the
+different number of training shots. Top row: 20NG is ID training task; Bottom row: banking domain of
+CLINC150 is selected where 50% classes are used as ID training task and the rest are OOD samples. The
+star (⋆) on each line indicates the selected results whose epoch corresponds to the best ID performance
+on the validation set.
+
+                                                              Fine-tuning with discriminative objective   Fine-tuning with generative objective
+5.2.   OOD Detection with Generatively
+       Fine-tuned LLMs
+In this subsection, we study the influence of fine-
+tuning LLMs on OOD detection. Specifically, we
+conduct an in-depth examination of how the OOD
+detection performance evolves with the progression
+of ID task training.
+
+ID fine-tuning can boost OOD detection. We                  Figure 6: Impact of different ID training objectives,
+fine-tune LLMs in a generative manner in both few-          discriminative vs. generative. SST-2 dataset with
+shot and full-shot scenarios. The results are sum-          full data is used as the ID training task.
+marized in Table 3. Likewise, we present both
+far- and near-OOD results comparable to the zero-
+grad configuration. Clearly, fine-tuning LLMs on            pecially for logits-based methods as illustrated in
+in-distribution tasks can notably augment the mod-          Figure 5 for both full-shot and 1-shot far-OOD sce-
+els’ capacity to detect OOD instances, surpassing           narios. This observation is similar to the findings
+the performance of the zero-grad setting by a signifi-      in (Uppaal et al., 2023).
+cant margin in most cases like in near-OOD setting
+and with logits-based functions (in both full-shot          Generative fine-tuning generalizes better. In
+scenarios with LLaMA-7B model).                             addition to generative fine-tuning, we also explore
+    In Figure 5, we present the fine-tuning curves. It      discriminative fine-tuning by appending a classifier
+can be observed that as the ID accuracy increases,          after LLMs (replacing the language model head2 )
+almost all OOD detectors are improved accordingly.          to conduct ID task. The comparison of the trend
+To study how fine-tuning impacts the ID vs. OOD             charts presented in Figure 6 reveals that genera-
+separability, we plot their density distributions in        tive fine-tuning tends to be less overfit on the ID
+Figure 4. Clearly, fine-tuning can improve the sep-         task and all OOD detectors consistently perform
+arability between ID and OOD instances. A similar           better than discriminative fine-tuning, especially for
+effect can be cross-validated in Figure 3 (b ") in          distance-based OOD detectors. To better under-
+which the embedding of different classes within the         stand this effect, based on the transformations of
+ID becomes more compact, while the separation               embeddings illustrated in Figure 3 (a), it becomes
+between ID and OOD becomes clearer. However,                evident that throughout the generative training pro-
+it is important to highlight that as the training contin-
+ues, there is a possibility of encountering overfitting,       2
+                                                                 We use LlamaForSequenceClassification
+which could result in inferior OOD performance, es-         provided by Huggingface (Wolf et al., 2020)
+                                                               Maha                    Cosine                   MSP                          Energy
+      ID Dataset                PTM                   AUROC ↑    FAR@95 ↓     AUROC ↑     FAR@95 ↓   AUROC ↑     FAR@95 ↓        AUROC ↑        FAR@95 ↓
+                                                                                                Zero-grad
+                   RoBERTa-L† (Uppaal et al., 2023)    0.971          0.152    0.919        0.414         -             -              -            -
+                            LLaMA-7B                   0.991            0      0.990        0.006       0.905         0.318          0.368        0.930
+        SST-2
+                                                                                                Fine-tuned
+                   RoBERTa-L‡ (Zhou et al., 2021)      0.969          0.183    0.962        0.236       0.889         0.613          0.877        0.632
+                           LLaMA-7B                    0.993          0.004    0.993        0.005       0.947         0.298          0.961        0.189
+                                                                                                Zero-grad
+                   RoBERTa-L† (Uppaal et al., 2023)    0.998          0.002    0.998        0.002         -             -              -            -
+                            LLaMA-7B                   0.997            0      0.998          0         0.441         0.929          0.571        0.784
+        20NG
+                                                                                                Fine-tuned
+                   RoBERTa-L‡ (Zhou et al., 2021)      0.983          0.073    0.978        0.107       0.946         0.305          0.965        0.158
+                           LLaMA-7B                    0.995          0.003    0.993        0.007       0.959         0.207          0.968        0.114
+
+
+Table 4: Comparison of large and small PTMs under zero-grad and fine-tuned settings for OOD detection.
+† denotes the results we reproduce due to different calculating methods, while ‡ indicates results cited
+from the original paper.
+
+                                  Data Corpus                                   model the necessary Gaussian distribution when
+   PTMs         CLINC150     CLINC150-Banking         CLINC150-Travel
+ LLaMA-7B        0.4731           0.5529                  0.5312                there’s only a single sample for each class.
+ RoBERTa-L       0.9991           0.9992                  0.9989
+
+
+Table 5: Average sentence anisotropy of model’s
+last layer.                                                                     Isotropy vs. anisotropy. By examining Table 1
+                                                                                and Table 3, it becomes evident that Cosine dis-
+                                                                                tance, as a simple OOD detector, consistently de-
+cess, while the ID’s distribution shifts into class-                            livers superior performance and ranks among the
+specific clusters, a distinct separation continues to                           top performers in both the zero-grad and genera-
+exist between these clusters and the OOD samples.                               tive fine-tuning settings. We provide an explana-
+This preserves the effectiveness of distance-based                              tion of this phenomenon from the perspective of
+OOD detection methods. Prior study (Uppaal et al.,                              representation learning. In the past few years, the
+2023) pointed out that discriminative tuning the                                anisotropic issue, also known as the representation
+small models (e.g., RoBERTa (Liu et al., 2019))                                 degeneration problem, of BERT family models has
+negatively impacts the performance of distance-                                 garnered considerable attention (Ethayarajh, 2019;
+based OOD detection methods. This issue also                                    Gao et al., 2019). Researchers have highlighted
+exists in discriminative tuning LLMs but has been                               that BERT’s sentence representations are concen-
+solved in the generative tuning.                                                trated within a narrow cone, resulting in substantial
+  Besides, in Table 4, we compare encoder-based                                 challenges for tasks involving semantic matching.
+and decoder-based Transformers and observe im-                                  Nevertheless, we discover that this concern does
+pressive improvement on decoder-based LLMs.                                     not apply to LLMs. The representations generated
+                                                                                by off-the-shelf LLMs inherently exhibit isotropy,
+Cosine distance is a data-efficient OOD detec-                                  enabling Cosine distance to excel in OOD detec-
+tor. To further investigate whether LLMs possess                                tion. To quantify anisotropy, we adopt the method-
+data-efficient OOD detection capabilities, we con-                              ology introduced by Ethayarajh (2019) to measure
+figure the training samples of the ID as few-shot                               sentence-level anisotropy. Let Xi be a sentence
+instances (e.g., 1, 5, and 10). Please note that                                that appears in the corpus. The anisotropy value
+we also set the number of validation sets to be                                 can be calculated by:
+the same shot, since all OOD detection methods
+rely on the validation set. Results presented in Ta-
+ble 3 convey that as the number of shots increases,                                                        1          XX
+                                                                                 anisotropy =                                        cos(z(Xi ), z(Xj )) ,
+the OOD detection capability of the LLMs also im-                                                      n2 − n           i     j̸=i
+proves. Moreover, distance-based OOD detection                                                                                                             (2)
+methods are superior to logits-based ones, and
+they can achieve good performance even with only
+10-shot samples. Particularly, cosine distance is                               where cos is the cosine similarity and z(·) is the
+a data-efficient OOD detector that can provide ef-                              sentence embedding from the last layer. A higher
+fective detection by requiring only 1-shot instance.                            anisotropy value suggests that the sentence em-
+For example, it achieves AUROC of 99.1% (near-                                  beddings are less distinguishable by Cosine dis-
+perfect) on 20NG (ID) and over 90% on others.                                   tance. The quantitative results presented in Table 5
+Besides, in the 1-shot setting, the Mahalanobis                                 show that the anisotropy values of LLMs are consid-
+distance loses its efficacy since it’s unfeasible to                            erably lower in comparison to those of RoBERTa.
+                   6.     Analysis                                                       CLINC-Banking (Full)
+                                                                    PTMs         Maha     Cosine MSP Energy
+6.1.     Performance of More LLMs                                 LLaMA-7B       0.958     0.964  0.936      0.930
+                                                                  RoBERTa-L      0.821     0.793  0.670      0.717
+
+   ID Dataset      PTMs       Maha    Cosine MSP       Energy
+                                        Zero-grad               Table 8: Performance comparison between LLaMA
+                  OPT-6.7B    0.982   0.983    0.413
+       SST-2      LLaMA-7B    0.991   0.990    0.905
+                                                       0.571
+                                                       0.368
+                                                                and RoBERTa-L in the near-OOD setting. AUROC
+                 LLaMA2-7B    0.991   0.997    0.917   0.516    result is reported for each score function.
+                                        Fine-tuned
+                  OPT-6.7B    0.921   0.932    0.915   0.922
+ CLINC-Banking
+                  LLaMA-7B    0.958   0.964    0.936   0.930
+     (Full)
+                 LLaMA2-7B    0.967   0.970    0.944   0.937    analysis of specific error cases, we found that
+                                                                RoBERTa struggles to distinguish semantically sim-
+                                                                ilar OOD samples. For instance, when choos-
+Table 6: OOD detection performance of various
+                                                                ing the “bank_balance” class (e.g., the sentence
+LLMs. AUROC result is reported.
+                                                                “what’s my account balance”) as the ID distribution,
+   Additionally, we test OPT-6.7B (Zhang et al.,                RoBERTa tends to incorrectly classify the majority
+2022) and LLaMA2-7B (Touvron et al., 2023b) here                of “bill_balance” class inputs (such as “what are
+with settings that zero-grad OOD performance for                my bills this month”) as “bank_balance”. In con-
+SST-2 (ID) and fine-tuned OOD performance for                   trast, LLaMA generally makes correct judgments
+CLINC-Banking, as shown in Table 6. For simplic-                in most cases. We attribute this phenomenon to
+ity, we report the AUROC result of each OOD score               the anisotropy characteristic which is explained in
+function. Overall, the OOD detection performance                Section 5.2), i.e., sentence embeddings produced
+of LLaMA2-7B surpasses that of LLaMA-7B, and                    by the BERT family models have been noted to
+LLaMA-7B outperforms OPT-6.7B, which is consis-                 possess an undesirable characteristic of being con-
+tent with the general performance trends observed               centrated within a narrow cone, causing represen-
+in these models.                                                tation degeneration. Despite this, in the cases in-
+                                                                volving extremely similar semantics, LLaMA also
+                                                                makes errors in judgment, such as misclassifying
+6.2.     Impact of Quantization                                 “bill_balance: what is the balance on my bills” as
+                                                                “bank_balance”.
+                                  SST-2
+  Quantized      Maha        Cosine MSP            Energy                       7.   Conclusion
+   float32       0.991       0.990   0.905         0.368
+   float16       0.990       0.987   0.893         0.331        This paper has delved into the critical realm of OOD
+     Int8        0.955       0.960   0.874         0.228        detection within the context of LLMs. The growing
+                                                                utilization of LLMs across various natural language
+Table 7: Impact of quantization for OOD detection.              processing tasks has underscored the need to un-
+                                                                derstand their capabilities and limitations, espe-
+   We test the zero-grad OOD detection perfor-                  cially in scenarios involving distribution shifts. Our
+mance of LLaMA-7B with different quantized levels               work deepens the comprehension of OOD detec-
+(float32, float16, and Int8) for SST-2 as the ID task,          tion capabilities of LLMs. Through meticulous anal-
+shown in Table 7. It was observed that the float16              ysis, we have showcased the effectiveness of LLMs
+model can largely preserve the OOD detection ca-                for OOD detection under various settings, includ-
+pability of the model. However, 8-bit quantization              ing zero-grad and generative fine-tuning scenarios.
+leads to a degradation in its capability.                       Our findings reveal that a simple OOD detector
+                                                                utilizing the cosine similarity function outperforms
+                                                                other sophisticated OOD detectors, especially in
+6.3.     Error Analysis
+                                                                the few-shot setting. Our work may serve as a foun-
+We mainly analyze the fine-tuning OOD detec-                    dational stepping stone for future advancements in
+tion performance in the near-OOD setting since                  effectively and responsibly harnessing the potential
+both RoBERTa (Liu et al., 2019) and LLaMA (Tou-                 of LLMs in diverse environments.
+vron et al., 2023a) can achieve near-perfect perfor-               Limitations and Future Work: In this work, we
+mance in the far-OOD setting. Here, we provide                  only tested textual LLMs and ignored the explo-
+the OOD detection performance with fine-tuned                   ration for multi-modal LLMs (Liu et al., 2024), which
+RoBERTa in the following Table 8, as a comple-                  can be seen as a limitation. More OOD detection in
+ment to Table 3.                                                multi-modal scenarios (including both general and
+   Overall, LLaMA’s detection capabilities are                  medical domains) (Liu et al., 2021; Radford et al.,
+much stronger than RoBERTa’s. Through the                       2021; Zhu et al., 2023; Liu et al., 2022; Zhang et al.,
+2023) will be conducted in the future.                   Zhengxiao Du, Yujie Qian, Xiao Liu, Ming Ding,
+                                                           Jiezhong Qiu, Zhilin Yang, and Jie Tang. 2022.
+             Acknowledgments                               Glm: General language model pretraining with
+                                                           autoregressive blank infilling. In Proceedings
+We thank the anonymous reviewers for their valu-           of the 60th Annual Meeting of the Association
+able feedback. This research was partially sup-            for Computational Linguistics (Volume 1: Long
+ported by the grant of HK ITF ITS/359/21FP.                Papers), pages 320–335.
+
+                                                         Desmond Elliott, Stella Frank, Khalil Sima’an, and
+     8.   Bibliographical References                      Lucia Specia. 2016. Multi30k: Multilingual
+                                                          english-german image descriptions. In Proceed-
+                                                          ings of the 5th Workshop on Vision and Lan-
+                                                          guage, pages 70–74.
+Udit Arora, William Huang, and He He. 2021. Types
+  of out-of-distribution texts and how to detect them.   Kawin Ethayarajh. 2019. How contextual are con-
+  In Proceedings of the 2021 Conference on Em-             textualized word representations? comparing the
+  pirical Methods in Natural Language Processing,          geometry of bert, elmo, and gpt-2 embeddings.
+  pages 10687–10701, Online and Punta Cana,                arXiv preprint arXiv:1909.00512.
+  Dominican Republic. Association for Computa-
+                                                         Yujie Feng, Zexin Lu, Bo Liu, Liming Zhan,
+  tional Linguistics.
+                                                           and Xiao-Ming Wu. 2023.         Towards llm-
+Ondřej Bojar, Rajen Chatterjee, Christian Feder-           driven dialogue state tracking. arXiv preprint
+ mann, Yvette Graham, Barry Haddow, Matthias               arXiv:2310.14970.
+ Huck, Antonio Jimeno Yepes, Philipp Koehn, Var-
+                                                         Jun Gao, Di He, Xu Tan, Tao Qin, Liwei Wang, and
+ vara Logacheva, Christof Monz, Matteo Negri,
+                                                           Tie-Yan Liu. 2019. Representation degeneration
+ Aurélie Névéol, Mariana Neves, Martin Popel,
+                                                           problem in training natural language generation
+ Matt Post, Raphael Rubino, Carolina Scarton,
+                                                           models. arXiv preprint arXiv:1907.12009.
+ Lucia Specia, Marco Turchi, Karin Verspoor, and
+ Marcos Zampieri. 2016. Findings of the 2016 con-        Dan Hendrycks and Kevin Gimpel. 2017. A
+ ference on machine translation. In Proceedings           baseline for detecting misclassified and out-of-
+ of the First Conference on Machine Translation:          distribution examples in neural networks. In 5th
+ Volume 2, Shared Task Papers, pages 131–198,             International Conference on Learning Represen-
+ Berlin, Germany. Association for Computational           tations, ICLR 2017, Toulon, France, April 24-26,
+ Linguistics.                                             2017, Conference Track Proceedings. OpenRe-
+Tom Brown, Benjamin Mann, Nick Ryder, Melanie             view.net.
+  Subbiah, Jared D Kaplan, Prafulla Dhariwal,            Dan Hendrycks, Xiaoyuan Liu, Eric Wallace, Adam
+  Arvind Neelakantan, Pranav Shyam, Girish Sas-            Dziedzic, Rishabh Krishnan, and Dawn Song.
+  try, Amanda Askell, et al. 2020. Language mod-           2020. Pretrained transformers improve out-of-
+  els are few-shot learners. Advances in neural            distribution robustness. In Proceedings of the
+  information processing systems, 33:1877–1901.            58th Annual Meeting of the Association for Com-
+Hyunsoo Cho, Choonghyun Park, Junyeop Kim,                 putational Linguistics, pages 2744–2751.
+  Hyuhng Joon Kim, Kang Min Yoo, and Sang-               Dan Hendrycks and Mantas Mazeika. 2022. X-
+  goo Lee. 2023. Probing out-of-distribution ro-          risk analysis for ai research. arXiv preprint
+  bustness of language models with parameter-             arXiv:2206.05862.
+  efficient transfer learning methods. arXiv preprint
+  arXiv:2301.11660.                                      Edward J Hu, Yelong Shen, Phillip Wallis, Zeyuan
+                                                           Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang,
+Aakanksha Chowdhery, Sharan Narang, Jacob                  and Weizhu Chen. 2021. Lora: Low-rank adap-
+  Devlin, Maarten Bosma, Gaurav Mishra, Adam               tation of large language models. arXiv preprint
+  Roberts, Paul Barham, Hyung Won Chung,                   arXiv:2106.09685.
+  Charles Sutton, Sebastian Gehrmann, et al.
+  2022. Palm: Scaling language modeling with             Ken Lang. 1995. Newsweeder: Learning to filter
+  pathways. arXiv preprint arXiv:2204.02311.               netnews. In Machine learning proceedings 1995,
+                                                           pages 331–339. Elsevier.
+Hyung Won Chung, Le Hou, Shayne Longpre, Bar-
+  ret Zoph, Yi Tay, William Fedus, Eric Li, Xuezhi       Stefan Larson, Anish Mahendran, Joseph J
+ Wang, Mostafa Dehghani, Siddhartha Brahma,                Peper, Christopher Clarke, Andrew Lee, Parker
+  et al. 2022. Scaling instruction-finetuned lan-          Hill, Jonathan K Kummerfeld, Kevin Leach,
+  guage models. arXiv preprint arXiv:2210.11416.           Michael A Laurenzano, Lingjia Tang, et al. 2019.
+  An evaluation dataset for intent classification        2011. Learning word vectors for sentiment anal-
+  and out-of-scope prediction. arXiv preprint            ysis. In Proceedings of the 49th annual meeting
+  arXiv:1909.02027.                                      of the association for computational linguistics:
+                                                         Human language technologies, pages 142–150.
+Yann LeCun, Sumit Chopra, Raia Hadsell, M Ran-
+  zato, and Fujie Huang. 2006. A tutorial on energy-   Leland McInnes, John Healy, and James Melville.
+  based learning. Predicting structured data, 1(0).      2018. Umap: Uniform manifold approximation
+                                                         and projection for dimension reduction. arXiv
+Kimin Lee, Kibok Lee, Honglak Lee, and Jinwoo            preprint arXiv:1802.03426.
+  Shin. 2018. A simple unified framework for detect-
+  ing out-of-distribution samples and adversarial      Yifei Ming, Hang Yin, and Yixuan Li. 2022. On
+  attacks. Advances in neural information process-       the impact of spurious correlation for out-of-
+  ing systems, 31.                                       distribution detection. In Proceedings of the AAAI
+                                                         Conference on Artificial Intelligence, volume 36,
+Xin Li and Dan Roth. 2002. Learning question clas-       pages 10051–10059.
+  sifiers. In COLING 2002: The 19th International
+  Conference on Computational Linguistics.             OpenAI. 2023. Gpt-4 technical report.
+                                                       Alexander Podolskiy, Dmitry Lipin, Andrey Bout,
+Ziqian Lin, Sreya Dutta Roy, and Yixuan Li. 2021.
+                                                         Ekaterina Artemova, and Irina Piontkovskaya.
+  Mood: Multi-level out-of-distribution detection.
+                                                         2021. Revisiting mahalanobis distance for
+  In Proceedings of the IEEE/CVF conference on
+                                                         transformer-based out-of-domain detection. In
+  Computer Vision and Pattern Recognition, pages
+                                                         Proceedings of the AAAI Conference on Artificial
+  15313–15323.
+                                                         Intelligence, volume 35, pages 13675–13682.
+Bo Liu, Li-Ming Zhan, Li Xu, Lin Ma, Yan Yang,         Alec Radford, Jong Wook Kim, Chris Hallacy,
+  and Xiao-Ming Wu. 2021. Slake: A semantically-         Aditya Ramesh, Gabriel Goh, Sandhini Agarwal,
+  labeled knowledge-enhanced dataset for medi-           Girish Sastry, Amanda Askell, Pamela Mishkin,
+  cal visual question answering. In 2021 IEEE 18th       Jack Clark, et al. 2021. Learning transferable
+  International Symposium on Biomedical Imaging          visual models from natural language supervision.
+ (ISBI), pages 1650–1654. IEEE.                          In International conference on machine learning,
+Bo Liu, Li-Ming Zhan, Li Xu, and Xiao-Ming Wu.           pages 8748–8763. PMLR.
+  2022. Medical visual question answering via con-     Alec Radford, Karthik Narasimhan, Tim Salimans,
+  ditional reasoning and contrastive learning. IEEE      Ilya Sutskever, et al. 2018. Improving language
+  transactions on medical imaging, 42(5):1532–           understanding by generative pre-training.
+  1545.
+                                                       Alec Radford, Jeffrey Wu, Rewon Child, David
+Haotian Liu, Chunyuan Li, Qingyang Wu, and               Luan, Dario Amodei, Ilya Sutskever, et al. 2019.
+ Yong Jae Lee. 2024. Visual instruction tuning.          Language models are unsupervised multitask
+ Advances in neural information processing sys-          learners. OpenAI blog, 1(8):9.
+ tems, 36.
+                                                       Mohammadreza Salehi, Hossein Mirzaei, Dan
+Weitang Liu, Xiaoyun Wang, John Owens, and Yix-         Hendrycks, Yixuan Li, Mohammad Hossein Ro-
+ uan Li. 2020. Energy-based out-of-distribution         hban, and Mohammad Sabokrou. 2022. A uni-
+ detection. Advances in neural information pro-         fied survey on anomaly, novelty, open-set, and
+ cessing systems, 33:21464–21475.                       out of-distribution detection: Solutions and future
+                                                        challenges. Trans. Mach. Learn. Res., 2022.
+Yinhan Liu, Myle Ott, Naman Goyal, Jingfei
+  Du, Mandar Joshi, Danqi Chen, Omer Levy,             Richard Socher, Alex Perelygin, Jean Wu, Jason
+  Mike Lewis, Luke Zettlemoyer, and Veselin              Chuang, Christopher D Manning, Andrew Y Ng,
+  Stoyanov. 2019. Roberta: A robustly opti-              and Christopher Potts. 2013. Recursive deep
+  mized bert pretraining approach. arXiv preprint        models for semantic compositionality over a sen-
+  arXiv:1907.11692.                                      timent treebank. In Proceedings of the 2013
+                                                         conference on empirical methods in natural lan-
+Zexin Lu, Jing Li, Yingyi Zhang, and Haisong Zhang.      guage processing, pages 1631–1642.
+  2021. Getting your conversation on track: Esti-
+  mation of residual life for conversations. In 2021   Hugo Touvron, Thibaut Lavril, Gautier Izacard,
+  IEEE Spoken Language Technology Workshop              Xavier Martinet, Marie-Anne Lachaux, Timothée
+  (SLT), pages 1036–1043. IEEE.                         Lacroix, Baptiste Rozière, Naman Goyal, Eric
+                                                        Hambro, Faisal Azhar, et al. 2023a. Llama: Open
+Andrew Maas, Raymond E Daly, Peter T Pham,              and efficient foundation language models. arXiv
+  Dan Huang, Andrew Y Ng, and Christopher Potts.        preprint arXiv:2302.13971.
+Hugo Touvron, Louis Martin, Kevin Stone, Peter           intent detection with self-supervision and discrim-
+ Albert, Amjad Almahairi, Yasmine Babaei, Niko-          inative training. arXiv preprint arXiv:2106.08616.
+ lay Bashlykov, Soumya Batra, Prajjwal Bhargava,
+ Shruti Bhosale, et al. 2023b. Llama 2: Open           Li-Ming Zhan, Bo Liu, and Xiao-Ming Wu. 2024. Vi-
+ foundation and fine-tuned chat models. arXiv             ood: A unified representation learning framework
+ preprint arXiv:2307.09288.                               for textual out-of-distribution detection. arXiv
+                                                          preprint arXiv:2404.06217.
+Rheeya Uppaal, Junjie Hu, and Yixuan Li. 2023. Is
+  fine-tuning needed? pre-trained language mod-        Hao Zhang, Hongyang Li, Feng Li, Tianhe Ren,
+  els are near perfect for out-of-domain detection.     Xueyan Zou, Shilong Liu, Shijia Huang, Jianfeng
+  arXiv preprint arXiv:2305.13282.                      Gao, Lei Zhang, Chunyuan Li, et al. 2023. Llava-
+                                                        grounding: Grounded visual chat with large multi-
+Alex Wang, Amanpreet Singh, Julian Michael, Fe-         modal models. arXiv preprint arXiv:2312.02949.
+  lix Hill, Omer Levy, and Samuel Bowman. 2018.
+                                                       Susan Zhang, Stephen Roller, Naman Goyal, Mikel
+  GLUE: A multi-task benchmark and analysis plat-
+                                                         Artetxe, Moya Chen, Shuohui Chen, Christopher
+  form for natural language understanding. In Pro-
+                                                         Dewan, Mona Diab, Xian Li, Xi Victoria Lin, et al.
+  ceedings of the 2018 EMNLP Workshop Black-
+                                                         2022. Opt: Open pre-trained transformer lan-
+  boxNLP: Analyzing and Interpreting Neural Net-
+                                                         guage models. arXiv preprint arXiv:2205.01068.
+  works for NLP, pages 353–355, Brussels, Bel-
+  gium. Association for Computational Linguistics.     Wenxuan Zhou, Fangyu Liu, and Muhao Chen.
+                                                        2021. Contrastive out-of-distribution detection for
+Jason Wei, Yi Tay, Rishi Bommasani, Colin Raf-
+                                                        pretrained transformers. In Proceedings of the
+  fel, Barret Zoph, Sebastian Borgeaud, Dani Yo-
+                                                        2021 Conference on Empirical Methods in Natu-
+  gatama, Maarten Bosma, Denny Zhou, Donald
+                                                        ral Language Processing, pages 1100–1111.
+  Metzler, Ed H. Chi, Tatsunori Hashimoto, Oriol
+  Vinyals, Percy Liang, Jeff Dean, and William Fe-     Deyao Zhu, Jun Chen, Xiaoqian Shen, Xiang Li,
+  dus. 2022. Emergent abilities of large language       and Mohamed Elhoseiny. 2023. Minigpt-4: En-
+  models. Transactions on Machine Learning Re-          hancing vision-language understanding with ad-
+  search. Survey Certification.                         vanced large language models. arXiv preprint
+                                                        arXiv:2304.10592.
+Adina Williams, Nikita Nangia, and Samuel R Bow-
+  man. 2017. A broad-coverage challenge corpus
+  for sentence understanding through inference.
+  arXiv preprint arXiv:1704.05426.
+
+Thomas Wolf, Lysandre Debut, Victor Sanh, Julien
+  Chaumond, Clement Delangue, Anthony Moi,
+  Pierric Cistac, Tim Rault, Remi Louf, Morgan
+  Funtowicz, Joe Davison, Sam Shleifer, Patrick
+  von Platen, Clara Ma, Yacine Jernite, Julien Plu,
+  Canwen Xu, Teven Le Scao, Sylvain Gugger,
+  Mariama Drame, Quentin Lhoest, and Alexan-
+  der Rush. 2020. Transformers: State-of-the-art
+  natural language processing. In Proceedings of
+  the 2020 Conference on Empirical Methods in
+  Natural Language Processing: System Demon-
+  strations, pages 38–45, Online. Association for
+  Computational Linguistics.
+
+Jingkang Yang, Kaiyang Zhou, Yixuan Li, and Ziwei
+   Liu. 2021. Generalized out-of-distribution detec-
+   tion: A survey. arXiv preprint arXiv:2110.11334.
+
+Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang,
+  Hanyu Lai, Ming Ding, Zhuoyi Yang, Yifan Xu,
+  Wendi Zheng, Xiao Xia, et al. 2022. Glm-130b:
+  An open bilingual pre-trained model. arXiv
+  preprint arXiv:2210.02414.
+
+Li-Ming Zhan, Haowen Liang, Bo Liu, Lu Fan, Xiao-
+   Ming Wu, and Albert Lam. 2021. Out-of-scope
+

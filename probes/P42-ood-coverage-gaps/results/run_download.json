@@ -1,0 +1,39 @@
+{
+ "step": "download",
+ "finished_utc": "2026-10-14T01:23:45Z",
+ "seconds": 219.4,
+ "phases_s": {
+  "inputs": 0.11,
+  "model_dpo": 97.03,
+  "model_sft": 89.2,
+  "sae": 29.16,
+  "template": 3.86
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "hf_hub_disable_xet": "1",
+ "inputs": {
+  "prompts_sha256": "d615cae4e84e27cfc05fdb735f4db6ef797622c07a6948578b17d0c8f2ead811",
+  "meta_sha256": "d3962f54b929dcac715a2785d80cacb14cc18138559d9c4c3ca6a7f0bac1889e"
+ },
+ "dpo": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-DPO/snapshots/b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+  "bytes": 14605798619,
+  "MB_s": 150.5,
+  "architectures": [
+   "Olmo3ForCausalLM"
+  ]
+ },
+ "sft": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-SFT/snapshots/e1452fc572d51966ff4aaeb25118b891eb93e549",
+  "bytes": 14603268692,
+  "MB_s": 163.7,
+  "architectures": [
+   "Olmo3ForCausalLM"
+  ]
+ },
+ "sae": {
+  "dir": "/ws/hf_cache/hub/models--decoderesearch--olmo-3-saes/snapshots/ad1f790dd36d44b5b77b1d08ace6a6f48d121649/olmo-3-1025-7b/btk-mat-layer-16-k-100",
+  "ok": true
+ },
+ "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b"
+}

@@ -1,0 +1,552 @@
+{
+ "probe": "P42",
+ "smoke": false,
+ "pool_source": "lmsys",
+ "command": "python -m p42.data build",
+ "started_utc": "2026-10-14T01:02:58Z",
+ "seed_sample": 20261013,
+ "targets": {
+  "id_ref": 50000,
+  "id_heldout": 5000,
+  "sft_ref": 20000,
+  "pool": 50000,
+  "planted_med": 500,
+  "planted_law": 500
+ },
+ "n_gen_ref": 20000,
+ "sources": {
+  "dolci_dpo": {
+   "repo": "allenai/Dolci-Instruct-DPO",
+   "pin": "aed155cf32e809b590490b6c3577ee4b0d0a5019",
+   "revision": "aed155cf32e809b590490b6c3577ee4b0d0a5019",
+   "files": {
+    "data/train-00000-of-00004.parquet": {
+     "sha256": "43b1bd5cd36d29e936eb609b11ac736a6365db1d0c47adf61a28d2cd94b97190",
+     "size": 203648427
+    },
+    "data/train-00001-of-00004.parquet": {
+     "sha256": "6a504a884b70d292d987d6e39b52c48dbf1a34faf5e88cb6fa7b334e7f2610fb",
+     "size": 200664462
+    },
+    "data/train-00002-of-00004.parquet": {
+     "sha256": "46233622a96c389e8b72f0a753bd8f1baef7f03ed70592c562c31e177a87b620",
+     "size": 202216024
+    },
+    "data/train-00003-of-00004.parquet": {
+     "sha256": "4a47faba001f891ae41ce573969fc07b5e36809dbbdbf3c1994bcfa70c57eb06",
+     "size": 203704766
+    }
+   }
+  },
+  "dolci_sft": {
+   "repo": "allenai/Dolci-Instruct-SFT",
+   "pin": "bd3c8f3a9b2cc5a9682e44b96ddd0bb2ff027221",
+   "revision": "bd3c8f3a9b2cc5a9682e44b96ddd0bb2ff027221",
+   "files": {
+    "data/train-00000-of-00015.parquet": {
+     "sha256": "8a671c8118a611338059f931e64defe4817202130c00dc547f109d07c86b84a6",
+     "size": 150342005
+    },
+    "data/train-00001-of-00015.parquet": {
+     "sha256": "dc9ee27eead3e22df8dab7d6ebc86a01944e00f7a7a8df1174113f69a00c9b97",
+     "size": 149881504
+    },
+    "data/train-00002-of-00015.parquet": {
+     "sha256": "a3fcbc750bba81fdbc4eee38174e26c19981829b7adf433a54dd2a7542ebc5c2",
+     "size": 150825987
+    },
+    "data/train-00003-of-00015.parquet": {
+     "sha256": "dec503024ff4b506280b5eb2eb5146bad64ac9c281cebd450870a963b2a3a2aa",
+     "size": 150435633
+    },
+    "data/train-00004-of-00015.parquet": {
+     "sha256": "a97772d4155e053bca8d5c421c2201eb62d4118fb283f473656dc16492297a03",
+     "size": 150220626
+    },
+    "data/train-00005-of-00015.parquet": {
+     "sha256": "a715efb45cb3a9b2835b7b06443a5bd20afcecb53ce755bb0851a93a691b79af",
+     "size": 150125065
+    },
+    "data/train-00006-of-00015.parquet": {
+     "sha256": "8c12b6dfbd3f1205ab5ff8ae2c2cfe09aa22cd8813e3a0a17be18a26beb682ca",
+     "size": 150769558
+    },
+    "data/train-00007-of-00015.parquet": {
+     "sha256": "15994c99353c65b55900e6f6b62a5441b160420c90fbe92692d42044822ecadd",
+     "size": 150019281
+    },
+    "data/train-00008-of-00015.parquet": {
+     "sha256": "f63bea09321335759718a04a9eec4a780b8e4b8968036409dfe6709047846250",
+     "size": 150609447
+    },
+    "data/train-00009-of-00015.parquet": {
+     "sha256": "d402e1749b2ec313fa162a6cb44b18cf896413443b3494ffa3b0d621a4b37d47",
+     "size": 106362504
+    },
+    "data/train-00010-of-00015.parquet": {
+     "sha256": "5e56730a541f69db586167e9595a8a7907d7946f590aac83e204d8400b479766",
+     "size": 96264948
+    },
+    "data/train-00011-of-00015.parquet": {
+     "sha256": "ef37c4b7eb68845b7f460a236a2a4d7d7f9c7fe516c5b63048a4ef01e3e7063a",
+     "size": 261536939
+    },
+    "data/train-00012-of-00015.parquet": {
+     "sha256": "069aca4896a8054702127690cc0cea4c634f84e62703707f1962ec83af7fe0d2",
+     "size": 331845759
+    },
+    "data/train-00013-of-00015.parquet": {
+     "sha256": "f9e7f3ce84bb64da974ccdb3762d2158d6cc303fdc651868906038fbdc82b72a",
+     "size": 252776199
+    },
+    "data/train-00014-of-00015.parquet": {
+     "sha256": "83524879c6aefd376b15c52361f642a8bd543c93f22d509f94c842a260dd0b86",
+     "size": 659412194
+    }
+   }
+  },
+  "lmsys": {
+   "repo": "lmsys/lmsys-chat-1m",
+   "pin": "200748d9d3cddcc9d782887541057aca0b18c5da",
+   "revision": "200748d9d3cddcc9d782887541057aca0b18c5da",
+   "files": {
+    "data/train-00000-of-00006-4feeb3f83346a0e9.parquet": {
+     "sha256": "61a04cfeb3831d1981d58f29732f6bb87a4e2521a32fcfd1e3405ae40a256c54",
+     "size": 249303811
+    },
+    "data/train-00001-of-00006-4030672591c2f478.parquet": {
+     "sha256": "f4c962cd1cbe55ff78af6a72d9272434d5c3c9726199c40abafd98b6b14c5217",
+     "size": 247222671
+    },
+    "data/train-00002-of-00006-1779b7cec9462180.parquet": {
+     "sha256": "8764bd02a631e208ee74bd6301bd4e6fe56c73a7872a4f0331539d23a83a3c1c",
+     "size": 249923890
+    },
+    "data/train-00003-of-00006-2fa862bfed56af1f.parquet": {
+     "sha256": "50c5be93a7ae4086deba7af8381046a8f64a9a9e610b5ff43b9e4c99c2a95446",
+     "size": 247173225
+    },
+    "data/train-00004-of-00006-18f4bdd50c103e71.parquet": {
+     "sha256": "33d44fc51bed290115b7b4d2b362ba1bc82a61f98738dccdc134d5c3090b4d37",
+     "size": 246443273
+    },
+    "data/train-00005-of-00006-fe1acc5d10a9f0e2.parquet": {
+     "sha256": "02ce4842775e2d4e825cd375c78354170b5687a34e11f1f62f25ac11365f69c3",
+     "size": 248783380
+    }
+   }
+  },
+  "chatdoctor": {
+   "repo": "lavita/ChatDoctor-HealthCareMagic-100k",
+   "pin": "505443eac4e9",
+   "revision": "505443eac4e99ccedeffbb6f640061223d1d4bb3",
+   "files": {
+    "data/train-00000-of-00001-5e7cb295b9cff0bf.parquet": {
+     "sha256": "8a7c2759464574b93a5a3ec1458760ebcd459d328d3b595f10ae29f05cb04f8c",
+     "size": 70518148
+    }
+   }
+  },
+  "lawse": {
+   "repo": "ymoslem/Law-StackExchange",
+   "pin": "ab2dbaad9a71",
+   "revision": "ab2dbaad9a71b6550316994c8fcd69f24f7f16e6",
+   "files": {
+    "law-stackexchange-questions-answers.json": {
+     "sha256": "bc8007fc878958f1353cf307d0d7e0e196ae6c98a602a513409ba68f3a57b88d",
+     "size": 106154624
+    }
+   }
+  }
+ },
+ "dolci_index": {
+  "n_first_turns": 2411948,
+  "n_unique_exact": 1710577
+ },
+ "tokenizer": {
+  "model": "allenai/Olmo-3-7B-Instruct-DPO",
+  "revision": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+  "class": "TokenizersBackend",
+  "is_fast": true
+ },
+ "pool_internal_near_dups": {
+  "n_items_with_a_near_dup_in_pool": 1585,
+  "note": "pool near-duplicates are kept (templated deployment mass is real)"
+ },
+ "planted_length_match": {
+  "planted_med": {
+   "edges": [
+    7.0,
+    10.0,
+    14.0,
+    19.0,
+    25.0,
+    36.0,
+    57.0,
+    107.0,
+    282.0
+   ],
+   "targets": [
+    36,
+    50,
+    60,
+    52,
+    46,
+    54,
+    52,
+    50,
+    50,
+    50
+   ],
+   "shortfall_by_bin": {},
+   "candidates_by_bin": [
+    335,
+    210,
+    303,
+    347,
+    416,
+    802,
+    3590,
+    72560,
+    31659,
+    1738
+   ],
+   "chosen_by_bin": [
+    36,
+    50,
+    60,
+    52,
+    46,
+    54,
+    52,
+    50,
+    50,
+    50
+   ],
+   "ks_vs_pool": {
+    "statistic": 0.04190000000000005,
+    "pvalue": 0.34036878338580745,
+    "plan_wants_p_gt": 0.05,
+    "passes": true
+   }
+  },
+  "planted_law": {
+   "edges": [
+    7.0,
+    10.0,
+    14.0,
+    19.0,
+    25.0,
+    36.0,
+    57.0,
+    107.0,
+    282.0
+   ],
+   "targets": [
+    36,
+    50,
+    60,
+    52,
+    46,
+    54,
+    52,
+    50,
+    50,
+    50
+   ],
+   "shortfall_by_bin": {
+    "0": 36,
+    "1": 50,
+    "2": 60,
+    "3": 52,
+    "4": 46
+   },
+   "candidates_by_bin": [
+    0,
+    0,
+    1,
+    3,
+    29,
+    336,
+    1520,
+    5821,
+    12381,
+    4279
+   ],
+   "chosen_by_bin": [
+    0,
+    0,
+    1,
+    3,
+    29,
+    265,
+    52,
+    50,
+    50,
+    50
+   ],
+   "ks_vs_pool": {
+    "statistic": 0.42208,
+    "pvalue": 1.782987736880621e-80,
+    "plan_wants_p_gt": 0.05,
+    "passes": false
+   }
+  }
+ },
+ "id_sets_disjoint_exact": true,
+ "exact_dup_texts_within_set": {
+  "id_ref": 0,
+  "id_heldout": 0,
+  "sft_ref": 0,
+  "pool": 0,
+  "planted_med": 0,
+  "planted_law": 0
+ },
+ "counts": {
+  "dolci_dpo": {
+   "raw": 259922,
+   "with_user_turn": 259922,
+   "nonempty": 259919,
+   "after_exact_dedup": 233543,
+   "id_ref_dropped_same_truncated_text": 17,
+   "id_heldout_dropped_same_truncated_text": 3
+  },
+  "dolci_sft": {
+   "raw": 2152112,
+   "with_user_turn": 2152109,
+   "nonempty": 2152029,
+   "after_exact_dedup": 1644769,
+   "after_removing_dpo_exact": 1477034,
+   "sft_ref_dropped_same_truncated_text": 8
+  },
+  "lmsys": {
+   "raw": 1000000,
+   "with_user_turn": 1000000,
+   "nonempty": 999919,
+   "after_exact_dedup_within": 596315,
+   "removed_exact_dup_of_dolci": 1555,
+   "removed_near_dup_of_dolci": 9805,
+   "near_dup_lsh": {
+    "pairs_checked": 781147,
+    "capped_lookups": 2
+   },
+   "after_dedup_vs_dolci": 584955,
+   "dropped_same_truncated_text": 0
+  },
+  "chatdoctor": {
+   "raw": 112165,
+   "with_user_turn": 112165,
+   "nonempty": 112156,
+   "after_exact_dedup_within": 111968,
+   "removed_exact_dup_of_dolci": 8,
+   "removed_near_dup_of_dolci": 0,
+   "near_dup_lsh": {
+    "pairs_checked": 2,
+    "capped_lookups": 0
+   },
+   "after_dedup_vs_dolci": 111960,
+   "dropped_same_truncated_text": 0
+  },
+  "lawse": {
+   "raw": 24370,
+   "with_user_turn": 24370,
+   "nonempty": 24370,
+   "after_exact_dedup_within": 24370,
+   "removed_exact_dup_of_dolci": 0,
+   "removed_near_dup_of_dolci": 0,
+   "near_dup_lsh": {
+    "pairs_checked": 19,
+    "capped_lookups": 0
+   },
+   "after_dedup_vs_dolci": 24370,
+   "dropped_same_truncated_text": 0
+  }
+ },
+ "set_sizes": {
+  "id_ref": 50000,
+  "id_heldout": 5000,
+  "sft_ref": 20000,
+  "pool": 50000,
+  "planted_med": 500,
+  "planted_law": 500
+ },
+ "truncated": {
+  "id_ref": 795,
+  "id_heldout": 57,
+  "sft_ref": 138,
+  "pool": 7,
+  "planted_med": 0,
+  "planted_law": 1
+ },
+ "n_tokens_percentiles": {
+  "id_ref": {
+   "p0": 1.0,
+   "p1": 8.0,
+   "p5": 13.0,
+   "p10": 17.0,
+   "p25": 46.0,
+   "p50": 118.0,
+   "p75": 249.0,
+   "p90": 447.0,
+   "p95": 743.0,
+   "p99": 2809.05000000001,
+   "p100": 13167.0
+  },
+  "id_heldout": {
+   "p0": 2.0,
+   "p1": 8.0,
+   "p5": 12.0,
+   "p10": 16.0,
+   "p25": 44.0,
+   "p50": 116.0,
+   "p75": 241.0,
+   "p90": 436.10000000000036,
+   "p95": 703.0500000000002,
+   "p99": 2282.0800000000017,
+   "p100": 16234.0
+  },
+  "sft_ref": {
+   "p0": 2.0,
+   "p1": 7.0,
+   "p5": 12.0,
+   "p10": 17.0,
+   "p25": 39.0,
+   "p50": 102.0,
+   "p75": 224.0,
+   "p90": 368.0,
+   "p95": 490.0,
+   "p99": 1572.0899999999856,
+   "p100": 32010.0
+  },
+  "pool": {
+   "p0": 1.0,
+   "p1": 3.0,
+   "p5": 6.0,
+   "p10": 7.0,
+   "p25": 12.0,
+   "p50": 25.0,
+   "p75": 77.0,
+   "p90": 282.0,
+   "p95": 392.04999999999563,
+   "p99": 650.010000000002,
+   "p100": 3533.0
+  },
+  "planted_med": {
+   "p0": 1.0,
+   "p1": 2.0,
+   "p5": 5.0,
+   "p10": 7.0,
+   "p25": 12.0,
+   "p50": 27.0,
+   "p75": 74.0,
+   "p90": 270.50000000000034,
+   "p95": 362.0999999999999,
+   "p99": 524.06,
+   "p100": 762.0
+  },
+  "planted_law": {
+   "p0": 13.0,
+   "p1": 19.990000000000002,
+   "p5": 23.0,
+   "p10": 26.0,
+   "p25": 30.0,
+   "p50": 34.0,
+   "p75": 87.25,
+   "p90": 281.20000000000005,
+   "p95": 388.0,
+   "p99": 712.0999999999999,
+   "p100": 2192.0
+  }
+ },
+ "english_share": {
+  "id_ref": 0.90978,
+  "id_heldout": 0.9156,
+  "sft_ref": 0.9099,
+  "pool": 0.78994,
+  "planted_med": 0.878,
+  "planted_law": 0.998
+ },
+ "pool_language_top15": {
+  "English": 39497,
+  "Portuguese": 1899,
+  "Russian": 1302,
+  "Spanish": 1217,
+  "Italian": 928,
+  "Chinese": 848,
+  "German": 841,
+  "French": 828,
+  "unknown": 434,
+  "Japanese": 340,
+  "Korean": 239,
+  "Polish": 159,
+  "Indonesian": 120,
+  "Arabic": 98,
+  "Latin": 71
+ },
+ "pool_mod_bin_counts": {
+  "0": 48417,
+  "1": 510,
+  "2": 1073
+ },
+ "pool_mod_max_missing_but_flagged": 0,
+ "mod_bin_rule": "0 = not flagged; 1 = flagged and max category score < 0.8; 2 = flagged and >= that (or flagged with no category scores); None = no moderation record",
+ "english_heuristic": "Dolci and planted sets (no language field): 'English' when >= 90% of alphabetic characters are ASCII and the text contains >= 2 distinct common English stopwords (from a 40-word list), else 'unknown'. english = (lang == 'English').",
+ "category_rule": "dolci_dpo: prompt_id.rsplit('_', 1)[0][:40]; dolci_sft: source_dataset; planted: 'medical' / 'legal'; pool: None",
+ "dedup": {
+  "normalise": "lowercase, collapse whitespace, strip",
+  "exact": "sha1 of the normalised text (first 8 bytes)",
+  "minhash": {
+   "shingle_words": 5,
+   "perm": 128,
+   "hash": "xxh64 words, 5-gram mix, (a*x+b) mod 2^31-1",
+   "bands": 32,
+   "rows": 4,
+   "p_candidate_at_J0.8": 0.9999999525011427,
+   "verify": "signature-estimated Jaccard >= 0.8"
+  }
+ },
+ "gen_counts": {
+  "id_ref": 20000,
+  "id_heldout": 5000,
+  "sft_ref": 0,
+  "pool": 50000,
+  "planted_med": 500,
+  "planted_law": 500
+ },
+ "split_counts": {
+  "id_heldout": {
+   "dev": 2500,
+   "test": 2500
+  },
+  "pool": {
+   "dev": 25000,
+   "test": 25000
+  },
+  "planted_med": {
+   "dev": 250,
+   "test": 250
+  },
+  "planted_law": {
+   "dev": 250,
+   "test": 250
+  }
+ },
+ "prompts_path": "data/P42/prompts.jsonl",
+ "prompts_sha256": "d615cae4e84e27cfc05fdb735f4db6ef797622c07a6948578b17d0c8f2ead811",
+ "wall_clock_s": {
+  "download": 0.3,
+  "dolci_index": 1.5,
+  "sample_id": 0.6,
+  "dedup:lmsys": 43.9,
+  "dedup:chatdoctor": 20.6,
+  "dedup:lawse": 11.6,
+  "sample_pool": 0.0,
+  "tokenize_pool": 4.4,
+  "tokenize_planted:chatdoctor": 10.7,
+  "tokenize_planted:lawse": 4.6,
+  "tokenize_id": 19.7,
+  "write": 0.5,
+  "total": 123.6
+ },
+ "finished_utc": "2026-10-14T01:05:01Z"
+}

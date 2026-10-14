@@ -1,0 +1,34 @@
+preflight (P45): ok at aa8fde0cc72e; on-pod gates: gpu self-test, download >= 150 MB/s from allenai/Olmo-3-7B-Instruct-DPO; rerolls 2
+watchdog (P45): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p45-ood-gap-metrics/logs/watchdog_P45.heartbeat)
+watchdog (P45): started (heartbeat 2 s old (pid 82788))
+budget (P45): min((2.5 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $11.97, GPU limit $24.00, kill-line headroom $24.00) = $11.97
+reservation 18a8277bfcae4c11bf4ce66a5549b1a7: $11.97
+watchdog (P45): live (heartbeat 3 s old (pid 82788))
+budget gate (P45): this pod budget (reservation) at $2.69/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $2.59/h = $11.97; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P45): this pod budget (reservation) at $3.49/h = $11.97; running pods incl. reserve $0.00
+pod created: v7kb3du0t42fho (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791966872 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 14963 root@103.207.149.140
+EMX_POD_DEADLINE=1791966872
+EMX_POD_CREATE=ok reservation=18a8277bfcae4c11bf4ce66a5549b1a7 pod=v7kb3du0t42fho
+PROBE_UP pod=v7kb3du0t42fho slot=_P45 reservation=18a8277bfcae4c11bf4ce66a5549b1a7
+push failed (uncommitted changes under src/, scripts/ or probes/P45-ood-gap-metrics/ (the pod runs EMX_GIT_COMMIT); commit them:
+ M probes/P45-ood-gap-metrics/p45/t1.py); no results exist yet: terminating the pod
+pod v7kb3du0t42fho terminated: 0.04 h x $3.99/h = $0.16
+reservation 18a8277bfcae4c11bf4ce66a5549b1a7: settled $0.16 for v7kb3du0t42fho; remainder released
+PROBE_DOWN pod=v7kb3du0t42fho slot=_P45
+PROBE_ERROR go P45: uncommitted changes under src/, scripts/ or probes/P45-ood-gap-metrics/ (the pod runs EMX_GIT_COMMIT); commit them:
+ M probes/P45-ood-gap-metrics/p45/t1.py

@@ -1,0 +1,46 @@
+{
+ "step": "score",
+ "finished_utc": "2026-10-14T06:55:34Z",
+ "seconds": 29.2,
+ "phases_s": {
+  "columns": 24.86,
+  "write": 0.52
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "attn": "sdpa",
+ "refs": {
+  "ref_dpo": 50000,
+  "ref_safety": 26671,
+  "ref_lmsys": 50000
+ },
+ "shrinkage": {
+  "maha_dpo_L24": 0.001703480750311436,
+  "maha_safety_L24": 0.0026686567287165525,
+  "maha_lmsys_L24": 0.002029072234965244
+ },
+ "n_scored": 60726,
+ "nan_counts": {
+  "len_tokens": 0,
+  "maha_dpo_L24": 0,
+  "maha_safety_L24": 0,
+  "maha_lmsys_L24": 0,
+  "cos_safety_last_L24": 0,
+  "nll_dpo_mean": 0,
+  "nll_sft_mean": 450,
+  "lr_mean": 450,
+  "ent_dpo_mean": 0
+ },
+ "unexpected_nan": {},
+ "auroc_lmsys_vs_heldout": {
+  "len_tokens": 0.26427523,
+  "maha_dpo_L24": 0.796675508,
+  "maha_safety_L24": 0.504899608,
+  "maha_lmsys_L24": 0.256673632,
+  "cos_safety_last_L24": 0.281016748,
+  "nll_dpo_mean": 0.906382456,
+  "nll_sft_mean": 0.904053048,
+  "lr_mean": 0.662651352,
+  "ent_dpo_mean": 0.88293438
+ },
+ "scores_sha256": "0cd49f84d3907c89b8e6033432e46defe604e211b070c3ce64fa8834dfcef587"
+}

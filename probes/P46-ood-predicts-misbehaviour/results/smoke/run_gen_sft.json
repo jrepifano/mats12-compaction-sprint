@@ -1,0 +1,63 @@
+{
+ "step": "gen_sft",
+ "finished_utc": "2026-10-14T06:03:58Z",
+ "seconds": 76.8,
+ "phases_s": {
+  "tokenise": 4.08,
+  "engine_load": 55.62,
+  "generate": 9.35,
+  "read_parts": 0.02,
+  "continue": 4.23,
+  "contall": 3.43
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "model": "sft",
+ "mode": "gen",
+ "n_prompts": 300,
+ "n_samples": 600,
+ "max_model_len": 1238,
+ "template_check": {
+  "n": 300,
+  "full_string_mismatch": 0,
+  "mismatch_pids": []
+ },
+ "stale_reset": null,
+ "chunks": {
+  "0": {
+   "n": 300,
+   "seconds": 9.4,
+   "out_tokens": 89198,
+   "out_tok_s": 9535.2
+  }
+ },
+ "samples_multi_long": 207,
+ "samples_identical_long": 1,
+ "out_tokens": 89198,
+ "mean_resp_tokens": 148.66333333333333,
+ "finish_reasons": {
+  "stop": 546,
+  "length": 54
+ },
+ "cap_hit_probe": 54,
+ "probe_samples": 600,
+ "cap_cells": {
+  "misspellings": 11,
+  "uncommon_dialects": 1,
+  "base": 9,
+  "technical_terms": 4,
+  "slang": 2,
+  "question": 3,
+  "translate-fr": 4,
+  "translate-zh-cn": 12,
+  "para3": 4,
+  "para1": 3,
+  "para2": 1
+ },
+ "cont_new_tokens": 4442,
+ "n_cont": 20,
+ "contall_new_tokens": 770,
+ "n_contall": 5,
+ "vllm": "0.30.0",
+ "out_tok_s": 9535.2,
+ "generate_out_tokens": 89198
+}

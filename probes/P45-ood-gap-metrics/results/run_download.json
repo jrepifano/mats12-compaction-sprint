@@ -1,0 +1,35 @@
+{
+ "step": "download",
+ "finished_utc": "2026-10-14T05:57:20Z",
+ "seconds": 311.9,
+ "phases_s": {
+  "inputs": 0.14,
+  "model_dpo": 67.48,
+  "model_sft": 75.95,
+  "pub_sae": 163.39,
+  "template": 4.92
+ },
+ "git_commit": "b30c626095f5f37d9aab0c9436b6ab46d29f4b1f",
+ "hf_hub_disable_xet": "1",
+ "inputs": {
+  "prompts.jsonl": "d615cae4e84e27cfc05fdb735f4db6ef797622c07a6948578b17d0c8f2ead811",
+  "planted_law2.jsonl": "43415676a67d670482587c0bdd33fde6fb5689c185d4ecceafcbf5e9b78416a1",
+  "dolma_chunks.jsonl": "2e89b6a0fae32a01a3ba75bfa974938412bb47d1fa99ea75ae8c7df9f6056c91",
+  "data.meta.json": "d937ec034b5c26bbe1b9b7795d0f3869b89399644d6d97cc51bfa51d7c4a1bdb"
+ },
+ "dpo": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-DPO/snapshots/b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+  "bytes": 14605798619,
+  "MB_s": 216.4
+ },
+ "sft": {
+  "path": "/ws/hf_cache/hub/models--allenai--Olmo-3-7B-Instruct-SFT/snapshots/e1452fc572d51966ff4aaeb25118b891eb93e549",
+  "bytes": 14603268692,
+  "MB_s": 192.3
+ },
+ "pub_sae": {
+  "dir": "/ws/hf_cache/hub/models--decoderesearch--olmo-3-saes/snapshots/ad1f790dd36d44b5b77b1d08ace6a6f48d121649/olmo-3-1025-7b/btk-mat-layer-16-k-100",
+  "ok": true
+ },
+ "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b"
+}

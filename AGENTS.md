@@ -303,6 +303,12 @@ These lived only in Claude's per-user memory, which Codex can't see. They apply 
   - **Independent arms** (seeds, controls): run them concurrently when the GPU is underused (benchmark two on one GPU first), or on several pods when each pod's setup is small next to its work. GPU-hours stay about the same, so this costs about the same and is much faster.
   - **Inference:** use vLLM wherever no hook is needed. Benchmark the batch size for hooked HF generation, and consider steering inside vLLM once more than one experiment needs it.
   - **API judging:** set concurrency near the provider's rate limit rather than a conservative default. The same calls cost the same, whether 8 or 64 are in flight. Overlap judging with pod work, and order pod steps so the pod isn't idle while the laptop judges.
+  - **API provider choice** (Jacob, 2026-10-14, from P44). Before any API-bound run (agent episodes or judging), compare the model's OpenRouter providers and record the choice in the plan's wall-clock projection:
+    - **Where:** `GET https://openrouter.ai/api/v1/models/<id>/endpoints` is free. Per provider it gives `throughput_last_30m` and `latency_last_30m`, the quantization, and the prompt, completion and `input_cache_read` prices.
+    - **Pin the fastest acceptable provider,** with `allow_fallbacks: False`, so the serving stack never changes mid-run.
+    - **Price with the cache-read rate,** not just the input price: agent episodes are mostly cache reads.
+    - **Re-check, never inherit,** a routing an earlier probe pinned. P44 inherited GLM 5.3 Flash on Relace (about 57 tok/s), while Together and Friendli served it at about 140–165 tok/s for the same list price. With about 2,400 reasoning tokens per call, its chains took about 3.9× longer than they needed to, and the bulk was projected at about 40 h.
+    - **Decide before the pilot:** switching providers mid-probe changes the serving stack.
   - **Reports:** the cost-and-timeline section gives wall-clock per phase and the pod's idle time.
 - **Local machine** is an Apple M5 Pro with 48GB. It is fine for API-only experiments, analysis, and small models (≤4B, via MPS). It is not suitable for 7B+ training or 27B inference.
 
