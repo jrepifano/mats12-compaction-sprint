@@ -1,0 +1,42 @@
+{
+  "n_top": 500,
+  "n_pool": 50000,
+  "n_unique_items": 4714,
+  "strata": "len_bin x english x mod_bin (None = -1)",
+  "scorers": {
+    "S0": {
+      "column": "len_tokens__lc",
+      "n_flagged": 500,
+      "n_pairs": 500,
+      "unmatched": []
+    },
+    "S1": {
+      "column": "emb_knn__lc",
+      "n_flagged": 500,
+      "n_pairs": 500,
+      "unmatched": []
+    },
+    "S2": {
+      "column": "nll_dpo_mean__lc",
+      "n_flagged": 500,
+      "n_pairs": 499,
+      "unmatched": [
+        "pool-027067"
+      ]
+    },
+    "S3": {
+      "column": "maha_dpo_p_L24__lc",
+      "n_flagged": 500,
+      "n_pairs": 500,
+      "unmatched": []
+    },
+    "S4": {
+      "column": "grad_knn__lc",
+      "n_flagged": 500,
+      "n_pairs": 499,
+      "unmatched": [
+        "pool-033351"
+      ]
+    }
+  }
+}
