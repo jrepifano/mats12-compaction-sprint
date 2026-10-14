@@ -398,6 +398,11 @@ class _Tap:
         self.inputs: dict[int, object] = {}
         self.handles: list = []
         self.calls = 0
+        # non-finite values seen BEFORE masking, and the subset at positions we keep. The first
+        # is expected to be non-zero with sdpa and padding; the second must be zero, or the
+        # scores themselves are polluted.
+        self.nonfinite_raw = 0
+        self.nonfinite_kept = 0
 
     def __enter__(self):
         for i, m in enumerate(self.mods):
@@ -427,8 +432,23 @@ class _Tap:
 
             with torch.no_grad():
                 m = self.mask[..., None]
-                a = self.inputs.pop(i).float() * m
-                g = grad.float() * m
+                a_raw = self.inputs.pop(i).float()
+                g_raw = grad.float()
+                # MASK WITH `where`, NEVER BY MULTIPLYING. Right-padded positions attend to
+                # nothing, and sdpa can emit NaN there (AGENTS.md records EQ0's sdpa NaN);
+                # `NaN * 0` is NaN, so a multiply propagates the poison into the per-row
+                # gradients AND both covariances. That is what made 8x8 rank-side covariances
+                # refuse to decompose and sent eight launches into the smoke gate
+                # (log.md 2026-10-14). `where` discards the padded values outright.
+                mb = m.bool()
+                bad = int((~torch.isfinite(a_raw)).sum() + (~torch.isfinite(g_raw)).sum())
+                if bad:
+                    self.nonfinite_raw += bad
+                    bad_kept = int((~torch.isfinite(a_raw) & mb).sum()
+                                   + (~torch.isfinite(g_raw) & mb).sum())
+                    self.nonfinite_kept += bad_kept
+                a = torch.where(mb, a_raw, torch.zeros((), device=a_raw.device))
+                g = torch.where(mb, g_raw, torch.zeros((), device=g_raw.device))
                 G = torch.einsum("bto,bti->boi", g, a)
                 self.consumer(i, G, a, g, self.cov_mask[..., None])
                 self.calls += 1
@@ -690,11 +710,13 @@ def _alloc_cov(mods, share, max_factor_dim, device, only: set[str] | None = None
 
 def _accumulate_cov(i, a, g, cm, A_cov, S_cov):
     """Token covariances over the cm positions: A += a^T a (input), S += g^T g (output grad)."""
+    import torch
+    cmb = cm.bool()
     if i in A_cov:
-        x = (a * cm).reshape(-1, a.shape[-1])
+        x = torch.where(cmb, a, torch.zeros((), device=a.device)).reshape(-1, a.shape[-1])
         A_cov[i].addmm_(x.T, x)
     if i in S_cov:
-        y = (g * cm).reshape(-1, g.shape[-1])
+        y = torch.where(cmb, g, torch.zeros((), device=g.device)).reshape(-1, g.shape[-1])
         S_cov[i].addmm_(y.T, y)
 
 
@@ -896,6 +918,13 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
                     tap.sums = st["sums"]
                 _run_batch(model, mods, tap, [rows[i] for i in idxs], device, check)
                 end(np.asarray(idxs))
+            # Non-finite values before masking are expected with sdpa + right padding; any that
+            # survive the mask would pollute the scores, so both are reported.
+            if tap.nonfinite_raw:
+                nf = meta.setdefault("nonfinite", {})
+                nf[name] = {"before_mask": tap.nonfinite_raw, "kept": tap.nonfinite_kept}
+                log(f"[tda] {name}: {tap.nonfinite_raw} non-finite activations/gradients at "
+                    f"padded positions, {tap.nonfinite_kept} at kept positions")
                 if progress_every and (bi + 1) % progress_every == 0:
                     el = time.time() - t0
                     log(f"[tda] {name}: batch {bi + 1}/{len(plan)} {el:.0f}s "

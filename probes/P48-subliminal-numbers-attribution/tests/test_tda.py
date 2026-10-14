@@ -706,3 +706,25 @@ def test_an_undecomposable_covariance_degrades_to_identity_not_a_dead_run(monkey
         if k.startswith("ekfac:"):
             assert len(v) == len(rows)
     assert any("identity eigenbasis" in w for w in meta["warnings"])
+
+
+def test_padded_nans_are_discarded_by_masking_not_multiplied_by_zero():
+    """`NaN * 0` is NaN. Right-padded positions can carry NaN (sdpa), so the tap must mask with
+    `where`. Eight launches died because a multiply let that poison reach the covariances
+    (log.md 2026-10-14)."""
+    torch = pytest.importorskip("torch")
+    from p48 import tda
+
+    a = torch.tensor([[[1.0, 2.0], [float("nan"), float("inf")]]])   # (1, 2, 2); pos 1 is padding
+    g = torch.tensor([[[3.0, 4.0], [float("nan"), float("nan")]]])
+    cm = torch.tensor([[[1.0], [0.0]]])
+    A_cov = {0: torch.zeros(2, 2)}
+    S_cov = {0: torch.zeros(2, 2)}
+    tda._accumulate_cov(0, a, g, cm, A_cov, S_cov)
+    assert torch.isfinite(A_cov[0]).all(), A_cov[0]
+    assert torch.isfinite(S_cov[0]).all(), S_cov[0]
+    # and the real token still contributes
+    assert torch.allclose(A_cov[0], torch.tensor([[1.0, 2.0], [2.0, 4.0]]))
+    assert torch.allclose(S_cov[0], torch.tensor([[9.0, 12.0], [12.0, 16.0]]))
+    # the multiply it replaced would have produced NaN
+    assert not torch.isfinite((a * cm).reshape(-1, 2).T @ (a * cm).reshape(-1, 2)).all()
