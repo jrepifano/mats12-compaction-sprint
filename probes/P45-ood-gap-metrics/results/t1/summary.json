@@ -8,8 +8,7 @@
     },
     "pool_members": 0,
     "pool_share": 0.0,
-    "final": false,
-    "note": "space D (union PCA, from the T2 pod) not yet run: not final"
+    "final": true
   },
   "topics": {
     "explicit sexual or fetish story and role-play requests": {
@@ -18,15 +17,20 @@
       "on_topic_dpo": 5,
       "on_topic_sft": 4,
       "on_topic_semantic": 18,
-      "note": "DPO regex reads #6, #8, #9, #14, #20; SFT #4, #5, #17, #19; semantic: 18 of 20 explicit/sexual stories or role-plays (#10 weight-gain, #20 shooting off-topic); top two at cos 0.96 are near-copies of an LMSYS-style 'Cheerleader's ordeal (8000 words)' prompt with NAME_1 placeholders",
-      "dolci_per_million": 3776.615416252755,
-      "lmsys_per_million": 14973.801403526768,
+      "note": "DPO regex reads #6, #8, #9, #14, #20; SFT #4, #5, #17, #19; semantic: 18 of 20 explicit/sexual stories or role-plays (#10 weight-gain, #20 shooting off-topic); top two at cos 0.96 are near-copies of an LMSYS-style 'Cheerleader's ordeal (8000 words)' prompt with NAME_1 placeholders | A+D merged regex recount (D14's word regex OR-ed); semantic neighbours re-read after merge: unchanged picture",
+      "dolci_per_million": 9867.542749677854,
+      "lmsys_per_million": 30920.32720465677,
       "category": "frequency_difference",
       "regions": [
         {
           "space": "A",
           "k": 200,
           "region": 183
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 14
         }
       ]
     },
@@ -45,6 +49,11 @@
           "space": "A",
           "k": 200,
           "region": 123
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 118
         }
       ]
     },
@@ -55,14 +64,37 @@
       "on_topic_sft": 3,
       "on_topic_semantic": 20,
       "note": "DPO task prompts with classify/extract/answer-from-context/fixed format (#1, #3, #5, #6, #7, #9, #12, #14, #17, #18, #19, #20); SFT mostly code (#2, #8, #13 on topic); semantic: 20 AutoGPT-style agent system prompts ('CONSTRAINTS: 1. ~4000 word limit...')",
-      "dolci_per_million": 100993.47083767975,
-      "lmsys_per_million": 58231.82979887342,
+      "dolci_per_million": 369537.4029622529,
+      "lmsys_per_million": 133099.1272832953,
       "category": "frequency_difference",
       "regions": [
         {
           "space": "A",
           "k": 200,
           "region": 129
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 177
+        }
+      ]
+    },
+    "questions about llms, chatbots and the assistant's own identity": {
+      "topic": "questions about LLMs, chatbots and the assistant's own identity",
+      "on_topic": 28,
+      "on_topic_dpo": 3,
+      "on_topic_sft": 5,
+      "on_topic_semantic": 20,
+      "note": "regex is noisy ('parameters' hits code tasks); DPO #10, #14, #17 on topic; SFT #5, #12, #15, #16, #17; semantic 20/20 (e.g. 'hello what version of chatgpt are you?' cos 0.91, 'what ai model are you?' 0.90)",
+      "dolci_per_million": 17446.06434301237,
+      "lmsys_per_million": 38447.40193690113,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "D",
+          "k": 200,
+          "region": 83
         }
       ]
     }
@@ -70,17 +102,25 @@
   "category_counts": {
     "zero_validated_found": 0,
     "sparse_coverage": 0,
-    "frequency_difference": 3
+    "frequency_difference": 4
   },
   "label_mix": {
     "A": {
       "templated traffic": 10,
       "topic": 3,
       "fragment, format or length": 1
+    },
+    "D": {
+      "templated traffic": 12,
+      "fragment, format or length": 3,
+      "language or script": 1,
+      "topic": 4
     }
   },
   "overlap_jaccard_top_members": {
     "A_vs_C": 0.6115336989209269,
+    "D_vs_C": 0.5959935897435897,
+    "A_vs_D": 0.7025047472646713,
     "A_vs_B": 0.7128250073035349
   },
   "rules": {

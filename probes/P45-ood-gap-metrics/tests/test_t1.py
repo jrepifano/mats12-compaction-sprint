@@ -215,3 +215,15 @@ def test_lookahead_only_regex_anchored_and_equivalent():
     hit, rx = t1.compile_topic_regex(pat), re.compile(pat, re.IGNORECASE)
     for t in ["a story with SEX", "sex then story", "story only", "roleplay (", "", "x\nstory\nbra"]:
         assert hit(t) == bool(rx.search(t))
+
+
+def test_merged_topic_regex_list_matches_or_string():
+    import re
+
+    from p45 import t1
+
+    parts = [r"(?=[\s\S]*\bstory\b)(?=[\s\S]*sex)", r"\b(erotic|seduc\w*)\b"]
+    hit = t1.compile_topic_regex(parts)
+    joined = re.compile("|".join(f"(?:{r})" for r in parts), re.IGNORECASE)
+    for t in ["a story with sex", "erotic poem", "seductive", "story only", "", "sex\nstory"]:
+        assert hit(t) == bool(joined.search(t))

@@ -21,7 +21,7 @@ SETS = (K.P42K.POOL, K.P42K.PLANTED_MED, K.P42K.PLANTED_LAW, K.P42K.ID_HELDOUT)
 
 def main() -> dict:
     out = {"k": K.T1_K, "candidate_rule": f"s <= {K.T1_SHARE_MAX}, P >= {K.T1_MIN_POOL}"}
-    for space in ("A", "B", "C"):
+    for space in ("A", "B", "C", "D"):
         X, pids, _ = t1.load_space(space)
         sets = np.array([p.rsplit("-", 1)[0] for p in pids])
         z = np.load(t1.CACHE / f"regions_{space}_k{K.T1_K}.npz")

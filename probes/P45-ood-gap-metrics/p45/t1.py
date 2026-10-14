@@ -349,7 +349,18 @@ def collapse_stats(labels, is_id, bins, k, keep_pool) -> pd.DataFrame:
     return region_stats(labels, is_id, w, k, keep)
 
 
-def compile_topic_regex(regex: str):
+def compile_topic_regex(regex):
+    """A list of patterns (a merged topic's frozen regexes) -> a callable that is true when any
+    part hits; each part is compiled on its own, so a lookahead-only part keeps its anchoring
+    (the merged "(?:A)|(?:B)" string would lose it and scan quadratically; found 2026-10-14).
+    Same match/no-match result as the merged string."""
+    if isinstance(regex, (list, tuple)):
+        parts = [compile_topic_regex(r) for r in regex]
+        return lambda t: any(h(t) for h in parts)
+    return _compile_one(regex)
+
+
+def _compile_one(regex: str):
     """re.IGNORECASE pattern -> a hit(text) -> bool callable. A pattern made only of lookaheads
     (e.g. "(?=[\\s\\S]*A)(?=[\\s\\S]*B)", "contains A and B") is zero-width, so it matches
     somewhere iff it matches at position 0: it is run with re.match instead of re.search, which
@@ -1025,7 +1036,7 @@ def cmd_count() -> dict:
     t0 = time.time()
     topics = _load_topics()
     keys = sorted(topics)
-    pats = [topics[x]["regex"] for x in keys]
+    pats = [topics[x].get("regexes") or [topics[x]["regex"]] for x in keys]
     c = p42_cache_dir()
     res = {x: {} for x in keys}
     nrows = {}
@@ -1063,7 +1074,8 @@ def cmd_count() -> dict:
         res[x]["dolci_all"] = {"matches": dm, "per_million": dm / (nrows["dolci_dpo"] +
                                                                     nrows["dolci_sft"]) * 1e6}
         res[x]["pool"] = {"matches": pm, "per_million": pm / len(pool) * 1e6}
-        res[x]["regex"] = pats[j]
+        res[x]["regex"] = topics[x]["regex"]
+        res[x]["regexes"] = list(pats[j])
     out = {"lmsys_rate_basis": "lmsys_candidates (reconstructed 585k dedup)",
            "lmsys_candidates_info": cinfo, "n_rows": nrows, "topics": res,
            "wall_s": round(time.time() - t0, 1)}
