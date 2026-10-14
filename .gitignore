@@ -294,6 +294,37 @@ probes/P37-grader-belief-causal/results/**/raw/
 probes/P37-grader-belief-causal/.slots/
 # P39: entity states, reconstructions and gradients (~35 MB; backed up at close-out, hashed in MANIFEST)
 probes/P39-binding-size-control/results/states/
+# P42: prompt data, raw sources, responses, embeddings and pod feature dumps stay local (hashes in manifests)
+data/P42/
+probes/P42-ood-coverage-gaps/results/gen/
+probes/P42-ood-coverage-gaps/results/embed/
+probes/P42-ood-coverage-gaps/results/pca/
+probes/P42-ood-coverage-gaps/results/scores.csv
+probes/P42-ood-coverage-gaps/results/judged/*.jsonl
+probes/P42-ood-coverage-gaps/results/analysis/prep.csv
+probes/P42-ood-coverage-gaps/results/judged/m3_gen.csv
+probes/P42-ood-coverage-gaps/results/judged/m3_items.csv
+probes/P42-ood-coverage-gaps/results/smoke/gen/
+# P45: data builds, SAE checkpoints, union PCA, embeddings and large T1 intermediates stay local (hashes in manifests)
+data/P45/
+probes/P45-ood-gap-metrics/results/sae/
+probes/P45-ood-gap-metrics/results/pca_union/
+probes/P45-ood-gap-metrics/results/t1/cache/
+probes/P45-ood-gap-metrics/results/analysis/prep.csv
+probes/P45-ood-gap-metrics/results/embed_law2/chunks/
+# P46: data (SORRY-Bench is gated; refs from P42), raw responses and luna text (harmful content);
+# hashes are in results/MANIFEST.sha256 and a seeded sample is in the note
+data/P46/
+probes/P46-ood-predicts-misbehaviour/results/gen/
+probes/P46-ood-predicts-misbehaviour/results/judged_text/
+probes/P46-ood-predicts-misbehaviour/results/smoke/gen/
+probes/P46-ood-predicts-misbehaviour/results/analysis/prep_prompts.csv
+# P43: Phantom Transfer raw data (MIT, pinned by sha256 in p43/contracts.py), mixtures, arms
+probes/P43-subliminal-attribution/data/raw/*.jsonl
+probes/P43-subliminal-attribution/data/mix/
+probes/P43-subliminal-attribution/data/arms/
+probes/P43-subliminal-attribution/results/adapters/
+probes/P43-subliminal-attribution/results/scores/*.npy
 # P44: raw artifacts and Inspect logs (backed up at close-out); CSVs and analysis are committed
 probes/P44-handoff-methods-alignment/results/logs/
 probes/P44-handoff-methods-alignment/results/prefixes/

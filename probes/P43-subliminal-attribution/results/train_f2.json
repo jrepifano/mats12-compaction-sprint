@@ -1,0 +1,90 @@
+{
+ "utc": "2026-10-14T13:07:16Z",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "runs": {
+  "mix100n20k_s1": {
+   "train_seconds": 565.862,
+   "s_per_step": 0.9307,
+   "steps": 608,
+   "loss_first10": 2.9771417528390884,
+   "loss_last10": 0.6807501703500748
+  },
+  "mix100n20k_s2": {
+   "train_seconds": 556.008,
+   "s_per_step": 0.9145,
+   "steps": 608,
+   "loss_first10": 2.9377036333084106,
+   "loss_last10": 0.7052166610956192
+  },
+  "mix100n20k_s3": {
+   "train_seconds": 554.894,
+   "s_per_step": 0.9127,
+   "steps": 608,
+   "loss_first10": 2.9910910576581955,
+   "loss_last10": 0.6675176605582237
+  },
+  "f2_swap_grad_s1": {
+   "train_seconds": 570.064,
+   "s_per_step": 0.9376,
+   "steps": 608,
+   "loss_first10": 2.9371667087078093,
+   "loss_last10": 0.6966008260846138
+  },
+  "f2_swap_grad_s2": {
+   "train_seconds": 573.771,
+   "s_per_step": 0.9437,
+   "steps": 608,
+   "loss_first10": 2.9306388199329376,
+   "loss_last10": 0.7018537312746048
+  },
+  "f2_swap_grad_s3": {
+   "train_seconds": 574.166,
+   "s_per_step": 0.9444,
+   "steps": 608,
+   "loss_first10": 2.921853095293045,
+   "loss_last10": 0.693062686920166
+  },
+  "f2_swap_delta_own_s1": {
+   "train_seconds": 586.15,
+   "s_per_step": 0.9641,
+   "steps": 608,
+   "loss_first10": 2.8822845250368117,
+   "loss_last10": 0.6572626456618309
+  },
+  "f2_swap_delta_own_s2": {
+   "train_seconds": 580.726,
+   "s_per_step": 0.9551,
+   "steps": 608,
+   "loss_first10": 2.892297324538231,
+   "loss_last10": 0.6552102357149124
+  },
+  "f2_swap_delta_own_s3": {
+   "train_seconds": 583.359,
+   "s_per_step": 0.9595,
+   "steps": 608,
+   "loss_first10": 2.9020933628082277,
+   "loss_last10": 0.6833342298865318
+  },
+  "f2_swap_random_s1": {
+   "train_seconds": 570.439,
+   "s_per_step": 0.9382,
+   "steps": 608,
+   "loss_first10": 2.930710968375206,
+   "loss_last10": 0.6747068777680397
+  },
+  "f2_swap_random_s2": {
+   "train_seconds": 567.636,
+   "s_per_step": 0.9336,
+   "steps": 608,
+   "loss_first10": 2.974335914850235,
+   "loss_last10": 0.6897326663136483
+  },
+  "f2_swap_random_s3": {
+   "train_seconds": 566.867,
+   "s_per_step": 0.9323,
+   "steps": 608,
+   "loss_first10": 2.960802862048149,
+   "loss_last10": 0.7018497496843338
+  }
+ }
+}

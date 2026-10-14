@@ -1,0 +1,100 @@
+{
+ "f_star": "mix075n20k",
+ "families": {
+  "delta_own": {
+   "chosen": "delta_own_sum",
+   "dev_auroc": {
+    "delta_own_mean": 0.65400712875222,
+    "delta_own_sum": 0.6698348038528616
+   }
+  },
+  "delta_teacher": {
+   "chosen": "delta_teacher_sum",
+   "dev_auroc": {
+    "delta_teacher_mean": 0.9030095824765406,
+    "delta_teacher_sum": 0.934276381971957
+   }
+  },
+  "ekfac": {
+   "chosen": "ekfac:reagan:0.1|full",
+   "dev_auroc": {
+    "ekfac:reagan-cf:0.001|full": 0.6955891510965468,
+    "ekfac:reagan-cf:0.01|full": 0.6961036702960969,
+    "ekfac:reagan-cf:0.1|full": 0.6993894963566718,
+    "ekfac:reagan:0.001|full": 0.7149545892451293,
+    "ekfac:reagan:0.01|full": 0.7157245938403181,
+    "ekfac:reagan:0.1|full": 0.7169896013895567
+   }
+  },
+  "embed": {
+   "chosen": "ac_r",
+   "dev_auroc": {
+    "ac_pr": 0.4850975723564802,
+    "ac_r": 0.5351913390450879,
+    "iforest_pr": 0.467178110579047,
+    "iforest_r": 0.4570332113272289,
+    "spectral_pr": 0.4448266868689378,
+    "spectral_r": 0.5318930935555584
+   }
+  },
+  "gain": {
+   "chosen": "gain_mean",
+   "dev_auroc": {
+    "gain_mean": 0.5964909790590686,
+    "gain_sum": 0.5777784480326738
+   }
+  },
+  "gradcos": {
+   "chosen": "gradcos:reagan|full",
+   "dev_auroc": {
+    "gradcos:reagan-cf|full": 0.7050634011848135,
+    "gradcos:reagan|full": 0.7062219564858694
+   }
+  },
+  "graddot": {
+   "chosen": "graddot:reagan|full",
+   "dev_auroc": {
+    "graddot:reagan-cf|full": 0.6983001350169348,
+    "graddot:reagan|full": 0.7086810034188914
+   }
+  },
+  "judge": {
+   "chosen": "oracle_judge",
+   "dev_auroc": {
+    "oracle_judge": 0.503178486710324
+   }
+  },
+  "length": {
+   "chosen": "length_chars",
+   "dev_auroc": {
+    "length_chars": 0.49245608401211427,
+    "length_tokens": 0.4677281138613247
+   }
+  },
+  "pfi": {
+   "chosen": "pfi:reagan:0.1|full",
+   "dev_auroc": {
+    "pfi:reagan-cf:0.001|full": 0.6456790145360545,
+    "pfi:reagan-cf:0.01|full": 0.6511701763381491,
+    "pfi:reagan-cf:0.1|full": 0.6642904159266757,
+    "pfi:reagan:0.001|full": 0.6741709587621733,
+    "pfi:reagan:0.01|full": 0.6777850125879783,
+    "pfi:reagan:0.1|full": 0.6866915173526036
+   }
+  },
+  "random": {
+   "chosen": "random",
+   "dev_auroc": {
+    "random": 0.5006520200201194
+   }
+  }
+ },
+ "grad": {
+  "chosen": "ekfac:reagan:0.1|full",
+  "dev_auroc": 0.7169896013895567,
+  "family": "ekfac"
+ },
+ "n_dev": 2000,
+ "n_dev_used": 1614,
+ "null_owl": "ekfac:owl:0.1|full"
+}

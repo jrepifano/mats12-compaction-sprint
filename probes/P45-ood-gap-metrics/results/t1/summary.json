@@ -1,0 +1,223 @@
+{
+  "primary": {
+    "n_topics": 0,
+    "topics": [],
+    "per_space": {
+      "A": 0,
+      "D": 0
+    },
+    "pool_members": 0,
+    "pool_share": 0.0,
+    "final": true
+  },
+  "topics": {
+    "explicit sexual or fetish story and role-play requests": {
+      "topic": "explicit sexual or fetish story and role-play requests",
+      "on_topic": 13,
+      "on_topic_dpo": 3,
+      "on_topic_sft": 1,
+      "on_topic_semantic": 9,
+      "on_topic_rows": {
+        "dpo": [
+          109300,
+          135063,
+          175455
+        ],
+        "sft": [
+          1723185
+        ],
+        "semantic": [
+          234782,
+          99248,
+          137824,
+          50539,
+          139829,
+          176676,
+          167148,
+          141196,
+          233440
+        ]
+      },
+      "note": "final merged regex is broad (A lookahead OR D word list) and mostly hits off-topic text; borderline not counted: SFT 842272 (story exploring sexuality, not explicit), 1747141",
+      "dolci_per_million": 9867.542749677854,
+      "lmsys_per_million": 30920.32720465677,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 183
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 14
+        }
+      ]
+    },
+    "persona impersonation and character role-play instructions": {
+      "topic": "persona impersonation and character role-play instructions",
+      "on_topic": 31,
+      "on_topic_dpo": 8,
+      "on_topic_sft": 6,
+      "on_topic_semantic": 17,
+      "on_topic_rows": {
+        "dpo": [
+          3214,
+          15078,
+          38099,
+          69125,
+          150966,
+          50855,
+          126520,
+          250352
+        ],
+        "sft": [
+          297216,
+          475796,
+          1622547,
+          1692447,
+          1811991,
+          82991
+        ],
+        "semantic": [
+          137824,
+          28683,
+          50539,
+          42269,
+          171776,
+          40296,
+          120312,
+          95656,
+          126732,
+          28087,
+          89073,
+          150571,
+          3214,
+          121188,
+          160557,
+          204027,
+          250962
+        ]
+      },
+      "note": "regex unchanged by the merge, so the regex samples are identical to the first count (checked); semantic list re-read after the merge",
+      "dolci_per_million": 5505.923013265626,
+      "lmsys_per_million": 30116.846595037223,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 123
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 118
+        }
+      ]
+    },
+    "llm-application developer prompts (classify, extract, structured output)": {
+      "topic": "LLM-application developer prompts (classify, extract, structured output)",
+      "on_topic": 30,
+      "on_topic_dpo": 7,
+      "on_topic_sft": 3,
+      "on_topic_semantic": 20,
+      "on_topic_rows": {
+        "dpo": [
+          15882,
+          43167,
+          119820,
+          141870,
+          150888,
+          174313,
+          213948
+        ],
+        "sft": [
+          294741,
+          343317,
+          976752
+        ],
+        "semantic": "all 20 (AutoGPT-style 'CONSTRAINTS: 1. ~4000 word limit...' agent system prompts)"
+      },
+      "note": "task prompts with classify/extract/fixed-format specs; most other merged-regex hits are code tasks",
+      "dolci_per_million": 369537.4029622529,
+      "lmsys_per_million": 133099.1272832953,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 129
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 177
+        }
+      ]
+    },
+    "questions about llms, chatbots and the assistant's own identity": {
+      "topic": "questions about LLMs, chatbots and the assistant's own identity",
+      "on_topic": 28,
+      "on_topic_dpo": 3,
+      "on_topic_sft": 5,
+      "on_topic_semantic": 20,
+      "on_topic_rows": {
+        "dpo": [
+          99073,
+          158914,
+          202241
+        ],
+        "sft": [
+          306510,
+          1307723,
+          1683636,
+          1686161,
+          1722968
+        ],
+        "semantic": "all 20 (e.g. 183193 'hello what version of chatgpt are you?')"
+      },
+      "note": "regex noisy ('parameters' hits code tasks)",
+      "dolci_per_million": 17446.06434301237,
+      "lmsys_per_million": 38447.40193690113,
+      "category": "frequency_difference",
+      "regions": [
+        {
+          "space": "D",
+          "k": 200,
+          "region": 83
+        }
+      ]
+    }
+  },
+  "category_counts": {
+    "zero_validated_found": 0,
+    "sparse_coverage": 0,
+    "frequency_difference": 4
+  },
+  "label_mix": {
+    "A": {
+      "templated traffic": 10,
+      "topic": 3,
+      "fragment, format or length": 1
+    },
+    "D": {
+      "templated traffic": 12,
+      "fragment, format or length": 3,
+      "language or script": 1,
+      "topic": 4
+    }
+  },
+  "overlap_jaccard_top_members": {
+    "A_vs_C": 0.6115336989209269,
+    "D_vs_C": 0.5959935897435897,
+    "A_vs_D": 0.7025047472646713,
+    "A_vs_B": 0.7128250073035349
+  },
+  "rules": {
+    "zero_validated_found": "0 on-topic among all read (DPO regex, SFT regex, DPO semantic)",
+    "sparse_coverage": "Dolci rate <= 0.1 x LMSYS rate",
+    "frequency_difference": "Dolci rate > 0.1 x LMSYS rate"
+  }
+}

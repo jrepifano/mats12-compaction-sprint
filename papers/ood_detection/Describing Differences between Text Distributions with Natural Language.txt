@@ -1,0 +1,1055 @@
+                                             Describing Differences between Text Distributions with Natural Language
+
+
+                                                                       Ruiqi Zhong 1 Charlie Snell 1 Dan Klein 1 Jacob Steinhardt 1
+
+
+                                                                   Abstract                                                   City won only seven games from 28 …
+                                              How do two distributions of text differ? Humans                                 presided at the Council of Auster eld in 702 …
+                                                                                                                  D0
+
+
+
+
+arXiv:2201.12323v2 [cs.CL] 18 May 2022
+                                              are slow at answering this, since discovering pat-                              Gun emplacements were made . . .
+                                              terns might require tediously reading through hun-                              He had surgery shortly afterward
+                                              dreds of samples. We propose to automatically                                   ...
+                                              describe the differences by “learning a natural lan-
+                                              guage hypothesis”: given two distributions D0                                   Hostile displaced 1,350 long tons …
+                                              and D1 , we search for a description that is more                               called for the 38 DD tanks to be launched …
+                                              often true for D1 , e.g., “is military-related.” To                 D1          M -122 began at US 2 ( now Business …
+                                              tackle this problem, we fine-tune GPT-3 to pro-                                 thick plates protected the gun ports …
+                                              pose descriptions with the prompt: “[samples of                                 ...
+                                              D0 ] + [samples of D1 ] + the difference between
+                                              them is .” We then re-rank the descriptions by
+                                              checking how often they hold on a larger set of                      s                    “is military-related”
+                                              samples with a learned verifier. On a benchmark
+                                              of 54 real-world binary classification tasks, while
+                                              GPT-3 Curie (13B) only generates a description                  Figure 1. Given two distributions (top), our system automatically
+                                              similar to human annotation 7% of the time, the                 discovers their differences and describes them with natural lan-
+                                              performance reaches 61% with fine-tuning and re-                guage (bottom). Grey/white background represents D0 /D1 and
+                                              ranking, and our best system using GPT-3 Davinci                red/blue represents whether a sample matches the description s.
+                                              (175B) reaches 76%. We apply our system to de-
+                                              scribe distribution shifts, debug dataset shortcuts,
+                                              summarize unknown tasks, and label text clus-                   natural language. We reduce the above questions to “learn-
+                                              ters, and present analyses based on automatically               ing a natural language hypothesis” (Section 2): given two
+                                              generated descriptions.                                         text distributions D0 and D1 , we search for a natural lan-
+                                                                                                              guage hypothesis s that is more often true for samples from
+                                                                                                              D1 than samples from D0 . For instance:
+                                         1. Introduction
+                                                                                                                 • We can describe what triggers an artificial neuron by
+                                         What inputs trigger a neuron in my deep learning model?                   setting D1 to be inputs that trigger it and D0 for other
+                                         How are the train and test distributions different for my                 inputs. s could be “is military-related” (Figure 1).
+                                         application? How did public opinions on Twitter change
+                                         from last year to this year? These questions have significant           • We can describe the differences between the train and
+                                         scientific, economic, and social consequences. However,                   test distributions by setting them to be D0 and D1 . A
+                                         discovering new patterns sometimes requires scanning over                 possible s would be “is longer in sentence length.”
+                                         thousands of examples, intractable for humans. An auto-
+                                         mated solution would be far more scalable.                              • We can describe how public opinions shifted by setting
+                                                                                                                   D0 /D1 to be the opinions from last year/this year. s
+                                         To address this, we develop a method to discover the dif-                 could be “is optimistic about the pandemic.”
+                                         ferences between two distributions and describe them with
+                                           1
+                                             Computer Science Division, University of California, Berkeley.   We develop a new method to learn a natural language hy-
+                                         Correspondence to: Ruiqi Zhong <ruiqi-zhong@berkeley.edu>.           pothesis. We first prompt GPT-3 Davinci (175B) (Brown
+                                         Proceedings of the 39 th International Conference on Machine         et al., 2020) with samples from each distribution and ask it
+                                         Learning, Baltimore, Maryland, USA, PMLR 162, 2022. Copy-            to propose candidate hypotheses s (Section 3.1). However,
+                                         right 2022 by the author(s).                                         since GPT-3 has a limited context size, this prompt can only
+                                                                                                V
+
+
+  ❶ Our Proposer-Verifier Framework                                                                            L
+
+
+
+                                                               0: O O O
+                                                                                    O O
+
+
+
+
+                                                                                                                                                                     Verify
+                                                                                    ∆ ∆ ∆
+                                                                                    O O O
+                                                                                    ∆ ∆ ∆ ∆
+                                                                                    ∆ ∆ ∆ ∆ ∆                                                                                 G
+          ∆ ∆ ∆ ∆ ∆ ∆ ∆ O O O                                  0: O O O O                                                                                        V
+                                                                                    O O
+                                                                                    O O O O
+                                                                                    ….
+
+
+
+
+  D0      O O O O O O O ∆ ∆ ∆
+                                                               0: ∆ ∆ ∆                                                                                                D0     D1
+          ..................               Subsample                                                    Propose Hypotheses                                                                L
+                                                                                                    P
+                                                                                                                    s(i): contains more red              Red          5%      99%
+                                                               1: ∆ ∆ ∆ ∆
+          ∆ ∆ ∆ ∆ O O O O O O                                  1: ∆ ∆ ∆ ∆ ∆                                         s(ii): contains more ∆               ∆            45%     55%
+  D1      ∆ ∆ ∆ ∆ ∆ ∆ ∆ ∆ ∆
+                                                               1: ∆ ∆ ∆ ∆ ∆ ∆
+          ..................
+
+
+
+                                                                                                        V
+ Due to the context size limit, the Proposer must generate hypotheses s(i) and s(ii) from only a few samples from the two input distributions. We
+ thus use a veri er to re-rank them by checking how often each one is true on individual samples from the two distributions.
+                                                                                                                                                     L
+
+
+                                                                                                                        O O                   0: [B]
+  ❷ Our Data Collection Pipeline
+                                                                                                                        ∆ ∆ ∆
+                                                                                                                        O O O
+                                                                                                                        ∆ ∆ ∆ ∆
+                                                                                                                        ∆ ∆ ∆ ∆ ∆
+                                                                                                                                              0: [C]
+                                                                                                                                                             Propose
+                                                                                                                        O O
+                                                                                                                        O O O O
+
+
+
+
+                                                                                                          Human
+                                                                                                                        ….
+
+
+
+                                                                                                                                              0: …
+                        G                                                                                                                                                           [s]
+            V
+                                                       [A]: Pieck walks on four limbs                                                  P
+                                                                                                                                              1: [A]
+Hypothesis                              Generate                                                                                              1: [D]
+                                    L                  [B]: Number Number
+ [s]: This sentence                                                                                                    Fine-tune
+                                                                                                                                              1: [E]
+ contains numbers.                                     [C]: Math not useful for me
+                                                       [D]: 24601                                                                              [C]               Verify [s] ?
+                                                       [E]: ……                                                                         V
+                                                                                                                                                 G
+
+                                                                                                                                               [A]
+                                                       ……
+                                                                                                                                                             L
+
+
+ We need to collect a new dataset to ne-tune our models. We curated a set of hypotheses and conditionally generate samples (A-E) for each
+ hypothesis s. Then humans verify that samples ADE satisfy the hypothesis s while BC do not. We then use A-E and s to ne-tune our models.
+
+
+
+            Figure 2. Our architectural framework (top) and data collection pipeline (bottom). Section 3 describes them in detail.
+
+
+
+                     Sentence length
+                                                                                                    checks how often they hold on a larger set of samples (Sec-
+                     distribution.                                                                  tion 3.2). We visualize our framework at the top of Figure 2
+Train (0)
+                                                                                                    and the prompts at the top of Figure 4.
+                         Test (1)                                                 Others (0)
+                                                                                                    Since GPT-3 is not optimized to propose hypotheses, we
+                                                                    Cluster (1)                     can improve it through fine-tuning. However, no corpus
+                                                                                                    exists for this task yet. Therefore, we developed a new
+ Describe the distribution shift                   Label text clusters by treating each
+ between train and test.                           text cluster in turn as D1.                      data collection pipeline (Section 3.3) with three stages: 1)
+                                                                                                    we curated a list of hypotheses s, 2) we asked GPT-3 to
+                                                                                                    generate samples that satisfy s, and 3) we asked annotators
+  Train:        No URL No URL
+                No URL No URL                                       ∆ ∆ ∆ ∆ ∆ ∆ ∆ O O O
+                                                                                                    to judge whether they indeed satisfy s. Then we fine-tuned
+  Ham (0)                                          Class (0)        O O O O O O O ∆ ∆ ∆
+                                                                    ..................
+                                                                                                    the proposer to predict s based on samples that satisfy s and
+  Train:        No URL Has URL
+                Has URL No URL
+                                                                                                    samples that do not (Section 3.4). We visualize our data
+  Spam (1)
+                                                                    ∆ ∆ ∆ ∆ O O O O O O             collection and fine-tuning method at the bottom of Figure 2.
+                                                   Class (1)        ∆ ∆ ∆ ∆ ∆ ∆ ∆ ∆ ∆
+  Test:         Has URL Has URL                                     ..................
+  Ham                                                                                               We benchmark our system on 54 real-world binary classi-
+                                                                                                    fication datasets (Zhong et al., 2021), each annotated with
+ Identify dataset shortcuts by                     Summarize an unknown task for a
+ looking for alternative descriptions              dataset from an unveri ed source.
+                                                                                                    natural language descriptions for the positive class. For each
+ of the classi cation boundary.                                                                     binary task, we treat the positive/negative class inputs as
+                                                                                                    D1 /D0 and compare the top-5 descriptions by our system
+                                                                                                    to the human annotation. While the descriptions by GPT-3
+Figure 3. We reduce a wide range of applications to learning a                                      Curie (13B) are similar to the annotations only 7% of the
+natural language hypothesis and present our analyses in Section 5.                                  time, the performance reaches 61% with fine-tuning and ver-
+                                                                                                    ifier re-ranking, and our best system using GPT-3 Davinci
+                                                                                                    (175B) reaches 76% (Section 4).
+contain a few samples rather than the whole distributions.
+                                                                                                    We then check whether the intended uses of existing classi-
+Therefore, we re-rank the candidates with a verifier that      fi
+fication datasets agree with the descriptions by our system          Search. Searching in a discrete string space is hard. Sec-
+(Section 5). Our system correctly recognizes that the subjec-        tion 3.1 addresses this by proposing hs with a neural net-
+tivity analysis (SUBJ) dataset (Pang & Lee, 2004) was con-           work based on samples from D0 and D1 .
+structed by contrasting movie reviews with plot summaries;
+                                                                     Verify. Computing hs (x1 , x0 ) requires human annotations,
+however, many recent papers (Bragg et al., 2021; Zhong
+                                                                     which can be expensive. Section 3.2 addresses this by ap-
+et al., 2021; Gao et al., 2021; Min et al., 2021) were unaware
+                                                                     proximating human responses with a neural network.
+of this fact and used SUBJ for zero/few-shot subjectivity
+classification. Our system also recognizes several dataset
+shortcuts. For example, it rediscovered that negations, such         3. Method
+as the use of “not/never”, is spuriously correlated with the
+                                                                     We prompt GPT-3 to propose hypotheses based on a small
+contradiction class in MNLI (Gururangan et al., 2018); for
+                                                                     set of samples (Section 3.1) and use UnifiedQA to verify
+another example, models trained on the SMS Spam classifi-
+                                                                     each hypothesis on a larger set of samples (Section 3.2).
+cation dataset (Gómez Hidalgo et al., 2006) always consider
+                                                                     Then, we design a data collection pipeline (Section 3.3) to
+hyperlinks to be spam. Our system can also describe dis-
+                                                                     further fine-tune the proposer and the verifier (Section 3.4).
+tribution shifts and text clusters (Section 5), and Figure 3
+                                                                     Our methods can be visualized in Figure 2.
+visualizes all our applications. We conclude with future
+applications in other modalities (e.g., vision) and research
+fields (e.g., social science) in Section 7.1                         3.1. Hypothesis Proposer
+                                                                     Our goal is to generate a list of plausible hypotheses based
+2. Learning a Natural Language Hypothesis                            on samples from D0 and D1 . We do so by prompting GPT-
+                                                                     3, a language model that can generate textual completions
+Let X be the set of all text inputs. A natural language              based on a prompt. We construct a “proposer prompt” by
+hypothesis h is parameterized by a natural language string           concatenating several samples from D1 , several from D0 ,
+s and is a mapping from two inputs to a boolean:                     and the instruction “Compared to group 0, each sentence
+                                                                     from group 1 ” (Figure 4, the 1st row). Since GPT-3 has a
+                    hs : X × X → {0, 1},                      (1)
+                                                                     context size limit of 2048, we select 5 samples x from each
+where hs (x1 , x0 ) = 1 means x1 is more s than x0 .                 distribution.
+For example, if s is “is longer in sentence length,” then            Without controlled decoding, a typical prompt completion
+hs (x1 , x0 ) = 1 means x1 is longer than x0 . The semantics         would be “is more positive, while sentences from group 0 are
+of hs is defined as                                                  ungrammatical.” However, such a completion is undesir-
+              def
+ hs (x1 , x0 ) = 1[humans consider x1 more s than x0 ], (2)          able, since 1) the verifier now needs to check two statements
+                                                                     at the same time, namely, whether samples from D1 are
+                                                                     positive and samples from D0 are ungrammatical, and 2)
+which our paper operationalizes by taking majority vote
+                                                                     the second half of the completion describes a population-
+among crowdworkers.2 We call both s and hs “hypotheses”
+                                                                     level property of “group 0”, while our verifier only checks
+but write s when using it as a string and hs as a function.
+                                                                     hypotheses on individual x. To produce a single hypothesis
+Let D0 and D1 be two distributions over X , and H be the             about individual x, we forbid GPT-3 to decode tokens like
+space of all valid natural language hypotheses. We search            “group” and terminate the generation with token “,” or “.”.
+for h in H to maximize its “classification accuracy” CA,
+                                                                     Additionally, D0 and D1 might overlap, and even an opti-
+                    def
+           CA(h) = Ex0 ∼D0 ,x1 ∼D1 [h(x1 , x0 ))].            (3)    mal hypothesis h∗ cannot fully separate them. As a result,
+                                                                     the proposer prompt might contain samples from D1 that
+Intuitively, given two random samples from each distribu-            do not satisfy h∗ , thus confusing the proposer. Therefore,
+tion x0 ∼ D0 and x1 ∼ D1 , h should classify where each              we choose samples that are representative of their differ-
+x comes from as accurately as possible. Therefore, our task          ences to prompt GPT-3. To find those samples, we fine-tune
+falls under the standard formulation of statistical machine          RoBERTa-Large (Liu et al., 2019) to predict whether each
+learning, where we learn a hypothesis h by optimizing a              sample comes from D0 or D1 and keep the top-p percentile
+statistical objective (CA) over a hypothesis space H.                samples with the highest confidence. For the top-5, 20, and
+                                                                     100th percentile, we construct proposer prompts with ten
+Compared to traditional statistical learning, learning a natu-       different random sets of samples and generate two com-
+ral language hypothesis poses two new challenges.                    pletions for each set. In total we obtain 3 × 10 × 2 = 60
+   1                                                                 hypotheses. We re-rank them in the next section.
+     Appendix G discusses details about code and data release.
+   2
+     More broadly, however, there is no canonical method to inter-
+pret natural language. See Section 7 for more discussion.
+                                        V
+
+
+                                                                             L
+
+
+                  O O
+                  ∆ ∆ ∆
+                  O O O
+                  ∆ ∆ ∆ ∆
+                  ∆ ∆ ∆ ∆ ∆
+                  O O
+                  O O O O                                                 A: Really curious about how the story would end!
+                  ….
+                                                                          A: Can’t wait to see the next chapter.
+                                                                          A: Wow this was foreshadowed back in Chapter 1…                         GPT-3 samples      - is more positive
+                                                                                                                                                   completions
+                                                          Hypothesis      B: Still a lot of mysteries unsolved : (
+                                                                                                                                                                     - contains the word “chapter”
+                                                           Proposer       B: The ending is so abrupt.                                                                - is longer
+                                                    P                     B: Wasted the tension it has built                                                         - …
+                                                                          Compared to group B, each sentence from group A……….
+                                                                                                                                                                     Candidate Hypotheses
+
+                                                                          Question: Compared to sentence B, is it true that sentence A              Uni edQA
+                                                                          [s = is more positive]?                                                generates answers
+                                                          Hypothesis
+                                                                                                                                                                       Yes
+                                                           Veri er       GContext:
+                                                    V                     Sentence A: Really curious about how the story would end!
+                                                                          Sentence B: Wasted the tension it has built
+                                    L                                                                                                                                Yes / No
+                                                                                                                                                       GPT-3
+                                                                                            L
+                                                                         is written in first person narrative
+                                                                                                                                                 “brainstorms” new
+                                                                                                                                                                     - contains emoticons
+                                                                                                                                                     hypotheses
+                                                          Hypothesis     contains a number                                                                           - asks for money
+                                                            Prior        hates school                                                                                - uses present tense
+                                                                         asks for personal opinions                                                                  - …
+
+
+P                                                                         Instruction: write a sentence that [s’ = is written in first
+                                    G                                                                                                            GPT-3 generates
+    V                                                                     person narrative].
+                                                                                                                                                  completions
+                                                                          Response: [x’ = I submitted a paper yesterday. ]
+                                                                                                                                                  conditionally      - Sitting in class is really boring.
+                                                          Conditional
+                                                                          Instruction: write a sentence that [s’ = contains a number].                               - Never wanna take classes again.
+                                                          Generation
+                                                    L                     Response: [x’ = Wait me for 10 seconds. ]                                                  - …
+                                                                          Instruction: write a sentence that [s = hates school].
+                                                                          Response:……….
+                                                                                                                                                                     Free-form Text
+
+
+                                                                                                                                                      Human
+                                                                          Question: Compared to sentence B, is it true that this sentence             veri es
+                                                           Human
+                                                                          [s = contains a number]?                                                                    De nitely Yes
+                                                          Annotation
+                                                                          Sentence: Now prisoner 24601, your time is up!
+                                                                                                                                                                     De nitely / Perhaps
+                                                                                                                                                                     Yes / No
+
+
+                               Figure 4. The prompt template for all components in our system. All text datapoints x are underlined and hypotheses s bolded.
+
+
+                                3.2. Hypothesis Verifier                                                                                    general the bolded part is a hypothesis s generated by the
+                                                                                                                                            proposer. Then we define V (s, x1 , x0 ) = 1 if UnifiedQA
+                                Ideally, we should re-rank hs based on its classification accu-
+                                                                                                                                            outputs “yes” and 0 if it outputs “no”.
+                                racy CA(hs ), defined in Equation (3). However, it involves
+                                computing hs (x1 , x0 ), which requires expensive human an-                                                 We now use V (s, x1 , x0 ) to compute CA(ĥs ) for each can-
+                                notations (Equation (2)). We therefore approximate it with                                                  didate s and re-rank them. To save computation, we estimate
+                                a verifier neural network V :                                                                               CA(ĥs ) with 400 random pairs of (x1 , x0 ) rather than using
+                                                                                                                                            the entire datasets. Finally, we output the top-5 hypotheses
+                                                        def   1
+                                        ĥs (x1 , x0 ) =        (V (s, x1 , x0 ) − V (s, x0 , x1 ) + 1).                     (4)            to describe how D1 and D0 differ.
+                                                              2
+                                Here V (s, x1 , x0 ) = 1 if it predicts that x1 is more s than                                              3.3. Collecting Data for Supervision
+                                x0 (0 otherwise); then we subtract the baseline V (s, x0 , x1 )
+        fi   fi      fi   fi   fi
+
+
+
+
+                                                                                                                                            Since GPT-3 and UnifiedQA are not specifically trained
+                                obtained by swapping the position of x0 and x1 , and finally
+                                                                                                                                            to propose or verify hypotheses, we can improve them by
+                                normalize the quantity within [0, 1].
+                                                                                                                                            fine-tuning (Zhong et al., 2021). However, since no corpus
+                               We implement our verifier with UnifiedQA (Khashabi et al.,                                                   exists yet for these tasks, we need to collect a new dataset
+                               2020), a question answering model based on T5 (11B) (Raf-                                                    to fine-tune our models.
+                               fel et al., 2019). UnifiedQA generates an answer a given
+                                                                                                                                            To fine-tune the proposer, we want data where the output is a
+                               a question q and a context c. As shown in the 2nd row of
+                                                                                                                                            hypothesis s and the input prompt contains five samples that
+                               Figure 4, our context c is a pair of sentences A (sampled
+                                                                                                                                            are more s and five that are less s. To fine-tune the verifier,
+                               from D1 ) and B (sampled from D0 ). The question q is
+                                                                                                                                            we want tuples (s, x1 , x0 ) where x1 is more s than x0 . Thus
+                               then “Is it true that sentence A is more positive?”, where in
+for both cases, we want a set of hypotheses s, and for each        s, as visualized in the 5th row of Figure 4. We collected three
+of them, two groups of samples where one group is more             annotations for each (s, x) pair and determined the ground
+s than the other. We designed our data collection pipeline         truth by majority vote. Finally, for each s, if fewer than
+accordingly: we curated a set of hypotheses s, asked GPT-          five x’s passed the turker vote, the authors wrote additional
+3 to generate samples that do (not) satisfy s, and asked           examples by hand.
+humans to filter out failed generations.
+                                                                   Thus, for each of the initial 302 hypotheses, we obtained at
+Curating Hypotheses. We curated a pool of 302 hypothe-             least five positive and five negative samples for it. We next
+ses by hand with the help of GPT-3 (Brown et al., 2020).           use these to fine-tune our models.
+Concretely, we started the pool by brainstorming ten hy-
+potheses ourselves; then, we sampled five hypotheses from          3.4. Fine-tuning
+the pool and prompted GPT-3 with their concatenation, as
+visualized in the 3rd row of Figure 4. Whenever GPT-3              Proposer. For each of the 302 hypotheses s, we finetuned
+completed the prompt with a hypothesis different from our          GPT-3 to generate s based on five positive and five negative
+existing ones, we added it to the pool.                            samples. We used batch size 20 and a small learning rate
+                                                                   of 0.05 to prevent memorizing the target. We fine-tuned
+Our curated hypotheses ranges from shallow (“contains the          for two epochs, each using a different set of subsamples to
+word “yay” at the end of the sentence”) to topical (“loves         construct the prompt.
+school”) to more complex social and linguistic cues (“sup-
+ports universal healthcare,” “is written in first person”). To     Verifier. Given s and a positive/negative sample x1 /x0 ,
+make later conditional generation and human annotation             our verifier should predict that V (s, x1 , x0 ) = 1 and
+easier, we removed any comparatives from s, e.g., removing         V (s, x0 , x1 ) = 0. To create a fine-tuning dataset, we ran-
+the word “more” from “loves school more.”                          domly sampled 30 positive-negative pairs of (x1 , x0 ) for
+                                                                   each s. We fine-tuned UnifiedQA on this dataset for 250
+Conditional Generation. We refer to samples that satisfy           steps with batch size 32 and learning rate 5e-5. To improve
+s as “positive” and others as “negative”. For example, given       out-of-distribution robustness, we averaged the fine-tuned
+s = “loves school”, a positive sample could be “My advisor         model weights with UnifiedQA (Wortsman et al., 2021).
+is really helpful and I learned a lot.” Both positive and
+negative samples are necessary to fine-tune our models.
+                                                                   4. Benchmarking Performance
+To generate positive samples, we prompted GPT-3 as visual-
+ized in the 4th row of Figure 4: we curated a set of hypothe-      On a benchmark of 54 real-world binary classification tasks,
+ses s0 and their positive samples x0 by hand, concatenated         we show that 1) both re-ranking and fine-tuning are effective,
+them with the target hypothesis s, and asked GPT-3 to gen-         and 2) larger proposers and verifiers are better.
+erate a sample x. Sometimes, however, x satisfies s due to         Dataset. The evaluation set of Zhong et al. (2021) aggre-
+trivial word overlaps, e.g., x = “I love school” satisfies s =     gated 54 diverse binary text classification tasks, each anno-
+“loves school.” We curated a list of forbidden output tokens       tated with one or multiple4 natural language descriptions s∗
+for each hypothesis s by hand to prevent this.                     for the positive class. These tasks include topic classifica-
+We created negative samples for s by using positive samples        tion, grammaticality classification, stance classification, etc.
+for other hypotheses. If s is highly specific, e.g., “talks        For each task, we asked our systems to describe how the
+about microwaves,” a random sample is unlikely to satisfy          positive class samples differ from the negative class samples
+it. Therefore, we treat the positive samples of any other          and compared the top-5 descriptions the human annotations.
+hypotheses as the negative samples for s. However, for s like      For now, we assume that the annotations s∗ are “correct”
+“uses past tense”, a random sample can satisfy it with non-        (i.e., the best description to separate the positive and neg-
+trivial probability. Therefore, we wrote contrast hypotheses       ative classes). We will see later that our outputs are some-
+such as “uses future tense” and used their positive samples        times better than s∗ .
+as the negative samples for s. Hence, our pool expanded to
+352 hypotheses after including newly written ones, and we          Evaluated Systems. We conjectured that using a larger
+asked GPT-3 to generate 15 positive samples for each.              proposer, a fine-tuned proposer, and a verifier for re-ranking
+                                                                   all improve the generated descriptions. Therefore, we eval-
+Verifying with Human Annotations. Some samples x                   uated the following five systems, which all use the verifier
+from the conditional generation step do not actually sat-          from Section 3.4 unless otherwise mentioned. 1 : our hy-
+isfy the hypothesis s. To filter out samples that fail, for each
+(s, x) pair, we recruited turkers3 to verify whether x satisfies   acceptance rate and paid them $0.04 per HIT; we estimate our pay
+                                                                   rate to be $18/hrs based on how fast the authors perform this task.
+                                                                       4
+   3
+       We recruited turkers located in the U.S. with > 98% HIT           On average 2.2.
+                                    3 no     4 no         5
+         1 best      2 smaller      tune    verifier    memo
+  (A)         31             22       11           4         5
+  (B)         10             11        6           0         5
+  (C)          7             10       10           6        21
+  (D)          6             11       27          44        23
+
+Table 1. We evaluated each of the five systems as described in
+Section 4. 1 largest fine-tuned proposer + verifier, 2 smaller
+proposer size, 3 no fine-tuining, 4 no re-ranking, and 5 using
+the memorization proposer. Better systems have larger numbers
+in row (A). Using a larger proposer, a fine-tuned proposer, and a
+                                                                    Figure 5. We compared verifiers of various sizes and UnifiedQA
+verifier all improve the generated descriptions. We report the p
+                                                                    out of the box by evaluating their binary classification performance,
+values in Appendix B.
+                                                                    using the metric CA(ĥs∗ ) explained in Equation (5). We find that
+                                                                    fine-tuning and larger model sizes improve the performance.
+pothetically best system, which uses the fine-tuned GPT-3
+Davinci (175B) as the proposer. 2 : a smaller proposer size
+                                                                    (B), if ŝ is close but different; e.g., “is about sports team”
+(fine-tuned Curie, 13B). 3 : no fine-tuning (zero-shot Curie,
+                                                                         ≈ “is about sports.”
+13B). 4 : no fine-tuning (zero-shot Curie, 13B), and no ver-
+ifier for re-ranking. We also evaluated 5 , a “memorization
+                                                                    (C), if ŝ is highly correlated but has different meaning;
+proposer”, where the proposer only generates the hypothe-
+                                                                         for example, “people needs shelter” is correlated with
+ses we curated in Section 3.3; this ablation makes sure that
+                                                                         “there is an earthquake.”
+the fine-tuned proposer’s performance is not simply due to
+memorizing its training set. If all our conjectures hold, we
+                                                                    (D), if ŝ is unrelated to s∗ .
+should find that 1 > 2 > 3 > 4 and 2 > 5 .
+Automatic Evaluation. We first evaluated our systems us-            For each system, we find the highest rating among the top-5
+ing the automatic metric BERTscore (Zhang et al., 2019),            descriptions and count them across 54 tasks. We find that
+which approximates the similarity between two natural               for row (A), 1 > 2 > 3 > 4 and 2 > 5 , validating our
+language texts. For each binary task, we computed the               conjectures. Adding numbers from row (A) and (B), we find
+BERTscore between every pair of the human annotations               that while GPT-3 Curie (13B) only generates a description
+and the top-5 descriptions; then, we chose the highest score        close to human annotation 7% of the time, the performance
+among all pairs and averaged it across 54 tasks.                    reaches 61% with fine-tuning and re-ranking, and our best
+Using this metric, we indeed found that 1 (0.930) > 2               system using GPT-3 Davinci (175B) reaches 76%. In the
+(0.927) > 3 (0.907) > 4 (0.899), and 2 (0.927) > 5                  appendix, we also present the top-1 performance of our
+(0.916), which validated our conjectures. However, all these        system in Table 2, example human annotations, descriptions
+numbers are high, the differences are small, and it is hard to      by our systems, and their ratings in Table 3.
+interpret what they imply for the quality of our descriptions.5     Due to resource constraints, we did not systematically in-
+Therefore, we additionally evaluated our systems by hand.           vestigate whether the verifier is still effective after fine-
+Manual Evaluation. We evaluated the top-5 descriptions              tuning. Nevertheless, our qualitative analyses find that the
+generated for each of the five systems on the 54 binary tasks       fine-tuned proposer sometimes still generates completely
+(total 1350) by hand. To avoid biases against any of the            unrelated hypotheses, repeats the hypothesis in the training
+five systems, the authors were blind towards which system           set, or “rants” 6 based on a specific text sample. The verifier
+generated each description. We compared the systems’ gen-           helps rule them out. Finally, the proposer has a limited
+erated descriptions ŝ to human annotations s∗ and rated their      context size and can only generate hypotheses conditioned
+similarity with four levels:                                        on five samples, losing information about the entire distribu-
+                                                                    tion; the verifier does not have this fundamental limitation.
+(A), if ŝ has mostly the same meaning as one of the human          Comparing Verifiers. We next evaluate different choices
+     annotations s∗ ; e.g., “is related to sports” = “is about      of the verifier. To test a verifier, we check whether it can reli-
+     sports.”                                                       ably separate the two classes when given the gold annotation
+   5                                                                   6
+     Appendix A runs a sanity check to make sure that the scores,        E.g., “contains the word “turned”, which indicates that the
+though not very informative, robustly rank system 1 over 4 .        weather turned to a certain state”
+h∗ . More precisely, we compute                                    Debugging Dataset Shortcuts. Datasets frequently con-
+                                                                   tain unintended shortcuts. For example, the task of nat-
+                                                                   ural language inference (NLI) is to verify whether a
+ 1                                                                 hypothesis8 is an entailment or a contradiction given a
+   Ex ∼D ,x ∼D [V (s∗ , x1 , x0 ) − V (s∗ , x0 , x1 ) + 1], (5)
+ 2 0 0 1 1                                                         premise. The popular MNLI (Williams et al., 2018) dataset
+                                                                   contains a spurious correlation between contradictions and
+which is equivalent to the classification accuracy CA(ĥs∗ ).      negations (“not”, “never”, etc.), and some models learn to
+We conjectured that larger and fine-tuned verifiers are bet-       predict a contradiction whenever these expressions occur,
+ter, so we compared our fine-tuned verifier in Section 3.4         regardless of the premise (Gururangan et al., 2018).
+with smaller ones and UnifiedQA out of the box, averaging          If we know what shortcuts are present, we can apply fixes
+CA(ĥs∗ ) across all 54 tasks. Figure 5 visualizes the results.    like group DRO (Sagawa et al., 2019a). But how do we
+UnifiedQA performs decently, while additional fine-tuning          find them in the first place? We used our system to look
+improves the performance. Still, CA(ĥs∗ ) is much lower           for (alternative) descriptions of the differences between the
+than 1, implying that re-ranking is imperfect and automatic        two classes. We fed the hypotheses from the entailment
+evaluation by approximating CA(hs ) might not yet be fea-          class and those from the contradiction class to our system,
+sible. Nevertheless, these problems may be alleviated in the       which responded with “contains a negative statement”/“has
+future: the current state of the art models are at least 25x       a negative verb,” revealing the spurious shortcut.
+larger than our verifier (Rae et al., 2021), and the curve in
+Figure 5 predicts that their performance will be higher.           We also applied our system to a popular spam classification
+                                                                   dataset (Gómez Hidalgo et al., 2006). We fed sentences
+                                                                   from the two classes to our system, which tells us that the
+5. Application                                                     spam group “has a higher number of hyperlinks.” To test
+We applied our system to summarize training tasks, debug           whether such URLs influence downstream classifiers, we
+dataset shortcuts, describe distribution shifts, and label text    fed ten of our research communication messages with URLs
+clusters. All italicized quotes in this section are verbatim       to a RoBERTa-Large (Liu et al., 2019) model fine-tuned on
+generations from our system.                                       this dataset (99% in-distribution accuracy). All 10 messages
+                                                                   with URLs were classified as spam and were all classified
+Summarizing Training Tasks. Human descriptions can be              as non-spam after removing the URLs.
+imperfect even for widely-used binary classification datasets.
+For example, the subjectivity analysis (SUBJ) dataset (Pang        Describing Distribution Shifts. We applied our system to
+& Lee, 2004) was proposed as classifying between subjec-           describe distribution shifts for natural language tasks. For
+tive vs. objective texts, and several works (Bragg et al.,         example, in contrast to MNLI, the SNLI dataset (Bowman
+2021; Zhong et al., 2021; Gao et al., 2021; Min et al., 2021)      et al., 2015) is based on image captions; therefore, our
+have used it to test zero/few-shot subjectivity classification.    system says that SNLI “describes a picture.” Naik et al.
+However, our system generates descriptions “is a plot sum-         (2018) constructed another NLI dataset to stress test models’
+mary of a film” for the “objective” class and “is a quote          numerical reasoning ability; therefore, our system says that
+from a film review” for the “subjective” class. We therefore       it “contains a higher number of number words.” To take a
+re-read Pang & Lee (2004) carefully, which says (edited for        different task, TwitterPPDB (Lan et al., 2017) and QQP9 are
+brevity)                                                           both paraphrase detection datasets; the former is constructed
+                                                                   by tweets while the latter is constructed by Quora questions;
+       To gather subjective sentences, we col-                     therefore, the system says that the former “talks about a
+       lected 5000 movie review snippets from                      news story more” while the latter “contains a question.”
+       www.rottentomatoes.com. To obtain (mostly)                  Labelling Text Clusters. Unsupervised algorithms gen-
+       objective data, we took 5000 sentences from plot            erate semantically meaningful text clusters; however, re-
+       summaries available from www.imdb.com.                      searchers usually need to manually examine each of them
+                                                                   to identify its semantics (Chang et al., 2009). Our system
+Therefore, our system’s descriptions were in fact more ac-         can automatically describe a text cluster by treating it as D1
+curate. We conjecture that similar problems will become in-        and all others as D0 .
+creasingly prevalent as the trend of aggregating datasets con-
+tinues (Mishra et al., 2021b; Sanh et al., 2021): as datasets      dataset descriptions by performing the task, then we might not
+                                                                   need those datasets for training in the first place. However, even
+come from heterogeneous sources, it is a management chal-          an imperfect AI system can help correct some human mistakes.
+lenge to characterize the task of every dataset accurately.            8
+                                                                         This is an NLI-specific concept; we use a special font to
+Our system may help here.7                                         distinguish it from “hypothesis” (Section 2) in our paper.
+                                                                       9
+   7
+                                                                         https://www.kaggle.com/c/quora-question-pairs
+       Of course, if our system can already perfectly verify the
+                                                                      which allows us to re-rank candidate hypotheses. We expect
+                                                                      future verifiers to be stronger as model sizes and the number
+                                                                      of fine-tuned tasks grow (Wei et al., 2021; Sanh et al., 2021).
+                                                                      Our paper does not search for prompts to improve target
+                                                                      task accuracy as in Shin et al. (2020); Mishra et al. (2021a);
+                                                                      Rubin et al. (2021), which typically assume the target task
+                                                                      is known or do not enforce prompt interpretability. Never-
+                                                                      theless, cross-pollination of ideas might be helpful.
+                                                                      To propose hypotheses, another plausible strategy is to find a
+                                                                      continuous prompt (Li & Liang, 2021) first and then decode
+                                                                      it to natural language by adding perplexity constraints (Song
+Figure 6. For each text cluster (dot), we collect human annotations   et al., 2020). However, Khashabi et al. (2021) suggests that
+to compute CA(hs ) for the descriptions by our expert (x-axis) and    this might be hard, given that soft prompts are not unique
+the top-5 by our system (y-axis). Our system is on par with the       and heavily depend on initialization.
+expert most of the time.
+                                                                      AI Safety and Scalable Oversight. Machine learning algo-
+                                                                      rithms often fail on input patterns that are rare during train
+We compared our system to an expert on their ability to               time. Typical examples include out-of-distribution sam-
+describe clusters. To create the clusters, we used RoBERTa-           ples (Hendrycks et al., 2021), unforeseen adversaries (Kang
+Base to embed the test set of wikitext-2 (Merity et al., 2016)        et al., 2019), spurious shortcuts (Sagawa et al., 2019b), and
+(9992 sentences) and use the approach of Aharoni & Gold-              their interactions with the target population (Hardt et al.,
+berg (2020) to create 64 clusters. We randomly selected               2016; Hashimoto et al., 2018). Our system can monitor
+ten of them for evaluation; for each of them, one of our au-          the differences between the train and test distribution to
+thors read through 20 samples and wrote a natural language            inform decision-makers. More broadly, we hope our auto-
+description s∗ ; we then asked him to read the top-5 descrip-         matically generated descriptions can help humans scalably
+tions by our system and pick the one ŝ that he considered            oversee complicated machine learning systems (Amodei
+to be the best. We evaluated this author’s performance by             et al., 2016).
+CA(hs∗ ) and our system’s performance by CA(hŝ ), where
+we collected MTurks’ annotations to compute hs (x0 , x1 ).            Learning a Predictor as Explanation. It is not new to
+                                                                      discover statistical relationships in data by interpreting a
+Averaged across all clusters, our system achieves CA=0.8              learned hypothesis. Given real-valued features and a target
+while the expert achieves 0.77. Figure 6 shows the results            variable, economists frequently run linear regressions and
+for each cluster, and we found that our system is at least on         analyze the effect of each feature by interpreting the learned
+par with the expert most of the time.                                 weights (Draper & Smith, 1998), sometimes adding sparsity
+Discussion. In all the above applications, our system only            constraints to focus on more important ones (Pati et al.,
+informs the decisions of the stakeholders, who have the               1993; Abbasi-Asl & Yu, 2020). Decision tree with a small
+ultimate responsibility to decide if subjectivity can be ap-          list of if-then statements can also extract interpretable rules,
+proximated by “being review like”, if specific correlations           e.g., to predict strokes (Letham et al., 2015). In comparison,
+are bugs, or if the distribution shift is severe enough to take       our work focuses on discovering patterns in structured data
+action. Our system also needs to improve to handle these ap-          (e.g., text) rather than real vectors; we also learn a natural
+plications robustly. For example, in the SPAM classification          language description, which might be easier for humans to
+application, our verifier cannot verify whether a hyperlink           understand, rather than a mathematical expression.
+exists as reliably as a rule-based classifier, while the 16x
+larger proposer does the heavy lifting. We hope scaling up            7. Discussion
+can alleviate this problem in the future.
+                                                                      Directions for Improving. Besides increasing model sizes
+                                                                      (Section 4), our method would also benefit from: 1) running
+6. Related Work                                                       the proposer on different sets of samples and ensembling
+Prompting and Zero-Shot Learning. Checking whether                    their outputs (Min et al., 2021), 2) using a proposer with
+a hypothesis holds for a piece of text can be formulated              a larger context size (Kitaev et al., 2020), 3) using a veri-
+as a Natural Language Inference (Bowman et al., 2015) or              fier with a symbolic component for numerical computations
+a Question Answering (Clark et al., 2019) task. Recent                (Cobbe et al., 2021), and 4) using a retriever to verify infor-
+large pre-trained models can generalize to hypotheses sig-            mation from external sources (Nakano et al., 2021). Addi-
+nificantly outside the training set (Khashabi et al., 2020),          tionally, Appendix E interprets our method under a unifying
+probabilistic framework and discusses future directions us-       queries change over time (Gentzkow et al., 2019).10 We
+ing cycle consistency and self-supervision.                       hope our method can help humans scalably discover new
+                                                                  patterns in big data and complex systems.
+We currently evaluate only 54 distribution pairs by hand,
+which is time-consuming and small in scale. This might
+prevent future researchers from validating new methods            Acknowledgement
+quickly and reliably. We hope that automatic metrics more
+                                                                  The first author is funded by NSF-Simons Theorinet Grant
+discriminative than Zhang et al. (2019) will help in the fu-
+                                                                  (NSF Award #2031985). We thank OpenAI for providing
+ture, and that the number of distribution pairs for evaluation
+                                                                  inference and fine-tuning access to GPT-3 Davinci. We
+will increase as the community continues pooling datasets
+                                                                  thank the Berkeley NLP group, the Steinhardt Group, and
+together (Mishra et al., 2021b; Sanh et al., 2021).
+                                                                  the anonymous reviewers for their feedbacks on the paper.
+Inherent Ambiguities in Natural Language. Classical               We thank Dong Yang for training a new proposer by fine-
+statistical analyses usually study mathematical hypotheses,       tuning T5, and the TPU Research Cloud (TRC) program for
+whose meaning is uncontroversial and never changes; for           providing computational resources.
+example, people from different cultures and eras would all
+agree on what the number “7” means. However, there is no          References
+canonical way to interpret a natural language hypothesis:
+for example, Sap et al. (2021) finds that annotators with         Abbasi-Asl, R. and Yu, B. Structural compression of convo-
+different social backgrounds disagree on the meaning of             lutional neural networks, 2020.
+“this sentence is offensive.” Future systems need to consider
+the listeners’ background to prevent biases and ambiguities.      Aharoni, R. and Goldberg, Y. Unsupervised domain clusters
+                                                                    in pretrained language models, 2020.
+Expressiveness of the Descriptions. Our work only con-
+siders descriptions in the form of short natural language         Almeida, T., Hidalgo, J. M. G., and Silva, T. P. Towards sms
+sentences. However, a single short sentence is sometimes            spam filtering: Results under a new dataset. International
+insufficient to capture the multifaceted differences between        Journal of Information Security Science, 2(1):1–18, 2013.
+two distributions, and hence multiple different descriptions
+                                                                  Amodei, D., Olah, C., Steinhardt, J., Christiano, P., Schul-
+are plausible. Currently, the user can choose to examine
+                                                                   man, J., and Mané, D. Concrete problems in ai safety.
+an arbitrary number of our systems’ proposed hypotheses,
+                                                                   arXiv preprint arXiv:1606.06565, 2016.
+sorted by Equation (5). Future work may consider logical
+compositions (e.g., conjunctions) of multiple hypotheses,         Barbieri, F., Camacho-Collados, J., Espinosa Anke,
+hence making the descriptions more expressive.                      L., and Neves, L.      TweetEval: Unified bench-
+Theoretically, natural language descriptions could be more          mark and comparative evaluation for tweet classifica-
+expressive than those demonstrated in this paper, given that        tion. In Findings of the Association for Computa-
+most of the human knowledge is communicated through                 tional Linguistics: EMNLP 2020, pp. 1644–1650, On-
+natural language. However, they can still be limited, since         line, November 2020. Association for Computational
+humans can know more than they can verbalize (Polanyi’s             Linguistics. doi: 10.18653/v1/2020.findings-emnlp.
+paradox, (Polanyi & Sen, 2009)).                                    148. URL https://aclanthology.org/2020.
+                                                                    findings-emnlp.148.
+Broader Applications. Our paper only considers text dis-
+tributions, but language can also describe other modalities,      Barchiesi, D., Giannoulis, D., Stowell, D., and Plumbley,
+such as vision (Radford et al., 2021), sound (Barchiesi et al.,     M. D. Acoustic scene classification: Classifying envi-
+2015), smell (Kiela et al., 2015), taste (Nozaki & Nakamoto,        ronments from the sounds they produce. IEEE Signal
+2018), or motor sensations (Thomason et al., 2016). In prin-        Processing Magazine, 32(3):16–34, 2015.
+ciple, our framework can adapt to any experience humans
+can describe through language.                                    Bowman, S. R., Angeli, G., Potts, C., and Manning, C. D.
+                                                                    A large annotated corpus for learning natural language
+Our framework can also help answer broader scientific ques-         inference. In Proceedings of the 2015 Conference on Em-
+tions, for example: what does individual neuron represent in        pirical Methods in Natural Language Processing, pp. 632–
+a deep learning model (Hernandez et al., 2022), how people          642, Lisbon, Portugal, September 2015. Association for
+from different parties discuss shooting events (Demszky             Computational Linguistics. doi: 10.18653/v1/D15-1075.
+et al., 2019), how people with different psychological sig-         URL https://aclanthology.org/D15-1075.
+natures write (Boyd & Pennebaker, 2015), or how search              10
+                                                                      Zeng & Wagner (2002) note that the volume of searches or
+                                                                  web hits seeking information related to a disease may be a strong
+                                                                  predictor of its prevalence.
+Boyd, R. L. and Pennebaker, J. W. Did shakespeare write         Gómez Hidalgo, J. M., Bringas, G. C., Sánz, E. P., and
+  double falsehood? identifying individuals by creating psy-      Garcı́a, F. C. Content based sms spam filtering. In Pro-
+  chological signatures with text analysis. Psychological         ceedings of the 2006 ACM symposium on Document en-
+  science, 26(5):570–582, 2015.                                   gineering, pp. 107–114, 2006.
+
+Bragg, J., Cohan, A., Lo, K., and Beltagy, I. Flex: Uni-        Gururangan, S., Swayamdipta, S., Levy, O., Schwartz, R.,
+  fying evaluation for few-shot nlp. Advances in Neural           Bowman, S., and Smith, N. A. Annotation artifacts in nat-
+  Information Processing Systems, 34, 2021.                       ural language inference data. In Proceedings of the 2018
+                                                                 Conference of the North American Chapter of the Associ-
+Brown, T. B., Mann, B., Ryder, N., Subbiah, M., Kaplan,           ation for Computational Linguistics: Human Language
+  J., Dhariwal, P., Neelakantan, A., Shyam, P., Sastry, G.,      Technologies, Volume 2 (Short Papers), pp. 107–112, New
+  Askell, A., et al. Language models are few-shot learners.       Orleans, Louisiana, June 2018. Association for Compu-
+  arXiv preprint arXiv:2005.14165, 2020.                          tational Linguistics. doi: 10.18653/v1/N18-2017. URL
+                                                                  https://aclanthology.org/N18-2017.
+Chang, J., Gerrish, S., Wang, C., Boyd-Graber, J., and Blei,
+                                                                Hardt, M., Megiddo, N., Papadimitriou, C., and Wootters,
+  D. Reading tea leaves: How humans interpret topic mod-
+                                                                  M. Strategic classification. In Proceedings of the 2016
+  els. Advances in neural information processing systems,
+                                                                 ACM conference on innovations in theoretical computer
+  22, 2009.
+                                                                  science, pp. 111–122, 2016.
+Clark, C., Lee, K., Chang, M.-W., Kwiatkowski, T., Collins,     Hashimoto, T., Srivastava, M., Namkoong, H., and Liang, P.
+  M., and Toutanova, K. BoolQ: Exploring the surpris-             Fairness without demographics in repeated loss minimiza-
+  ing difficulty of natural yes/no questions. In Proceed-         tion. In International Conference on Machine Learning,
+  ings of the 2019 Conference of the North American               pp. 1929–1938. PMLR, 2018.
+  Chapter of the Association for Computational Linguis-
+  tics: Human Language Technologies, Volume 1 (Long             Hendrycks, D., Basart, S., Mu, N., Kadavath, S., Wang, F.,
+  and Short Papers), pp. 2924–2936, Minneapolis, Min-             Dorundo, E., Desai, R., Zhu, T., Parajuli, S., Guo, M.,
+  nesota, June 2019. Association for Computational Lin-           et al. The many faces of robustness: A critical analysis of
+  guistics. doi: 10.18653/v1/N19-1300. URL https:                 out-of-distribution generalization. In Proceedings of the
+  //aclanthology.org/N19-1300.                                    IEEE/CVF International Conference on Computer Vision,
+                                                                  pp. 8340–8349, 2021.
+Cobbe, K., Kosaraju, V., Bavarian, M., Hilton, J., Nakano,
+  R., Hesse, C., and Schulman, J. Training verifiers to solve   Hernandez, E., Schwettmann, S., Bau, D., Bagashvili,
+  math word problems. arXiv preprint arXiv:2110.14168,            T., Torralba, A., and Andreas, J. Natural language
+  2021.                                                           descriptions of deep visual features. In International
+                                                                  Conference on Learning Representations, 2022. URL
+Demszky, D., Garg, N., Voigt, R., Zou, J. Y., Gentzkow, M.,       https://arxiv.org/abs/2201.11114.
+  Shapiro, J. M., and Jurafsky, D. Analyzing polarization
+                                                                Kang, D., Sun, Y., Hendrycks, D., Brown, T., and Stein-
+  in social media: Method and application to tweets on 21
+                                                                  hardt, J. Testing robustness against unforeseen adver-
+  mass shootings. In NAACL, 2019.
+                                                                  saries. arXiv preprint arXiv:1908.08016, 2019.
+Draper, N. R. and Smith, H. Applied regression analysis,        Khashabi, D., Min, S., Khot, T., Sabharwal, A., Tafjord,
+  volume 326. John Wiley & Sons, 1998.                            O., Clark, P., and Hajishirzi, H.      UNIFIEDQA:
+                                                                  Crossing format boundaries with a single QA sys-
+Gao, T., Fisch, A., and Chen, D. Making pre-trained               tem. In Findings of the Association for Computa-
+  language models better few-shot learners. In Proceed-           tional Linguistics: EMNLP 2020, pp. 1896–1907, On-
+  ings of the 59th Annual Meeting of the Association              line, November 2020. Association for Computational
+  for Computational Linguistics and the 11th Interna-             Linguistics. doi: 10.18653/v1/2020.findings-emnlp.
+  tional Joint Conference on Natural Language Process-           171. URL https://aclanthology.org/2020.
+  ing (Volume 1: Long Papers), pp. 3816–3830, Online,             findings-emnlp.171.
+  August 2021. Association for Computational Linguis-
+  tics. doi: 10.18653/v1/2021.acl-long.295. URL https:          Khashabi, D., Lyu, S., Min, S., Qin, L., Richardson, K.,
+ //aclanthology.org/2021.acl-long.295.                            Singh, S., Welleck, S., Hajishirzi, H., Khot, T., Sabharwal,
+                                                                 A., et al. Prompt waywardness: The curious case of
+Gentzkow, M., Kelly, B., and Taddy, M. Text as data. Jour-        discretized interpretation of continuous prompts. arXiv
+  nal of Economic Literature, 57(3):535–74, 2019.                 preprint arXiv:2112.08348, 2021.
+Kiela, D., Bulat, L., and Clark, S. Grounding semantics in       Merity, S., Xiong, C., Bradbury, J., and Socher, R. Pointer
+  olfactory perception. In Proceedings of the 53rd Annual         sentinel mixture models, 2016.
+  Meeting of the Association for Computational Linguistics
+  and the 7th International Joint Conference on Natural          Mihaylova, T., Karadzhov, G., Atanasova, P., Baly, R.,
+  Language Processing (Volume 2: Short Papers), pp. 231–          Mohtarami, M., and Nakov, P. SemEval-2019 task
+  236, 2015.                                                      8: Fact checking in community question answering fo-
+                                                                  rums. In Proceedings of the 13th International Work-
+Kitaev, N., Kaiser, L., and Levskaya, A. Reformer: The            shop on Semantic Evaluation, pp. 860–869, Minneapolis,
+  efficient transformer. ArXiv, abs/2001.04451, 2020.             Minnesota, USA, June 2019. Association for Computa-
+                                                                  tional Linguistics. doi: 10.18653/v1/S19-2149. URL
+Lan, W., Qiu, S., He, H., and Xu, W. A continuously grow-         https://aclanthology.org/S19-2149.
+  ing dataset of sentential paraphrases. In Proceedings
+  of the 2017 Conference on Empirical Methods in Natu-           Min, S., Lewis, M., Hajishirzi, H., and Zettlemoyer, L.
+  ral Language Processing, pp. 1224–1234, Copenhagen,             Noisy channel language model prompting for few-shot
+  Denmark, September 2017. Association for Computa-               text classification. arXiv preprint arXiv:2108.04106,
+  tional Linguistics. doi: 10.18653/v1/D17-1126. URL              2021.
+  https://aclanthology.org/D17-1126.
+                                                                 Mishra, S., Khashabi, D., Baral, C., Choi, Y., and Hajishirzi,
+Langley, P. Crafting papers on machine learning. In Langley,      H. Reframing instructional prompts to gptk’s language.
+  P. (ed.), Proceedings of the 17th International Conference      arXiv preprint arXiv:2109.07830, 2021a.
+  on Machine Learning (ICML 2000), pp. 1207–1216, Stan-
+  ford, CA, 2000. Morgan Kaufmann.                               Mishra, S., Khashabi, D., Baral, C., and Hajishirzi, H. Cross-
+                                                                  task generalization via natural language crowdsourcing
+Letham, B., Rudin, C., McCormick, T. H., and Madigan, D.          instructions. 2021b.
+  Interpretable classifiers using rules and bayesian analysis:
+  Building a better stroke prediction model. The Annals of       Naik, A., Ravichander, A., Sadeh, N., Rose, C., and Neu-
+  Applied Statistics, 9(3), Sep 2015. ISSN 1932-6157. doi:         big, G. Stress test evaluation for natural language in-
+  10.1214/15-aoas848. URL http://dx.doi.org/                       ference. In Proceedings of the 27th International Con-
+  10.1214/15-AOAS848.                                              ference on Computational Linguistics, pp. 2340–2353,
+                                                                   Santa Fe, New Mexico, USA, August 2018. Associ-
+Li, X. and Roth, D. Learning question classifiers. In COL-         ation for Computational Linguistics. URL https:
+  ING 2002: The 19th International Conference on Com-             //aclanthology.org/C18-1198.
+  putational Linguistics, 2002.
+                                                                 Nakano, R., Hilton, J., Balaji, S., Wu, J., Ouyang, L., Kim,
+Li, X. L. and Liang, P. Prefix-tuning: Optimizing continu-         C., Hesse, C., Jain, S., Kosaraju, V., Saunders, W., et al.
+  ous prompts for generation. In Proceedings of the 59th           Webgpt: Browser-assisted question-answering with hu-
+  Annual Meeting of the Association for Computational              man feedback. arXiv preprint arXiv:2112.09332, 2021.
+  Linguistics and the 11th International Joint Conference
+  on Natural Language Processing (Volume 1: Long Pa-             Nozaki, Y. and Nakamoto, T. Predictive modeling for odor
+  pers), pp. 4582–4597, Online, August 2021. Association           character of a chemical using machine learning com-
+  for Computational Linguistics. doi: 10.18653/v1/2021.            bined with natural language processing. PloS one, 13
+  acl-long.353. URL https://aclanthology.org/                     (6):e0198475, 2018.
+  2021.acl-long.353.
+                                                                 Pang, B. and Lee, L. A sentimental education: Senti-
+Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D.,          ment analysis using subjectivity summarization based
+  Levy, O., Lewis, M., Zettlemoyer, L., and Stoyanov, V.           on minimum cuts. In Proceedings of the 42nd An-
+  Roberta: A robustly optimized bert pretraining approach.         nual Meeting of the Association for Computational Lin-
+  ArXiv, abs/1907.11692, 2019.                                     guistics (ACL-04), pp. 271–278, Barcelona, Spain, July
+                                                                   2004. doi: 10.3115/1218955.1218990. URL https:
+Maas, A. L., Daly, R. E., Pham, P. T., Huang, D., Ng,              //aclanthology.org/P04-1035.
+ A. Y., and Potts, C. Learning word vectors for sen-
+ timent analysis. In Proceedings of the 49th Annual              Pati, Y., Rezaiifar, R., and Krishnaprasad, P. Orthogonal
+ Meeting of the Association for Computational Linguis-             matching pursuit: recursive function approximation with
+ tics: Human Language Technologies, pp. 142–150, Port-             applications to wavelet decomposition. In Proceedings
+ land, Oregon, USA, June 2011. Association for Com-                of 27th Asilomar Conference on Signals, Systems and
+ putational Linguistics. URL http://www.aclweb.                    Computers, pp. 40–44 vol.1, 1993. doi: 10.1109/ACSSC.
+ org/anthology/P11-1015.                                           1993.342465.
+Polanyi, M. and Sen, A. The tacit dimension. University of         346. URL https://aclanthology.org/2020.
+  Chicago press, 2009.                                             emnlp-main.346.
+Radford, A., Kim, J. W., Hallacy, C., Ramesh, A., Goh, G.,       Song, C., Rush, A., and Shmatikov, V. Adversarial se-
+  Agarwal, S., Sastry, G., Askell, A., Mishkin, P., Clark, J.,     mantic collisions. In Proceedings of the 2020 Confer-
+  et al. Learning transferable visual models from natural          ence on Empirical Methods in Natural Language Pro-
+  language supervision. arXiv preprint arXiv:2103.00020,           cessing (EMNLP), pp. 4198–4210, Online, November
+  2021.                                                            2020. Association for Computational Linguistics. doi:
+Rae, J. W., Borgeaud, S., Cai, T., Millican, K., Hoffmann,         10.18653/v1/2020.emnlp-main.344. URL https://
+  J., Song, F., Aslanides, J., Henderson, S., Ring, R.,            aclanthology.org/2020.emnlp-main.344.
+  Young, S., et al. Scaling language models: Methods,
+  analysis & insights from training gopher. arXiv preprint       Thomason, J., Sinapov, J., Svetlik, M., Stone, P., and
+  arXiv:2112.11446, 2021.                                          Mooney, R. J. Learning multi-modal grounded linguistic
+                                                                   semantics by playing” i spy”. In IJCAI, pp. 3477–3483,
+Raffel, C., Shazeer, N., Roberts, A., Lee, K., Narang, S.,         2016.
+  Matena, M., Zhou, Y., Li, W., and Liu, P. J. Exploring
+  the limits of transfer learning with a unified text-to-text    Wang, Y., Mishra, S., Alipoormolabashi, P., Kordi, Y.,
+  transformer. arXiv preprint arXiv:1910.10683, 2019.             Mirzaei, A., Arunkumar, A., Ashok, A., Dhanasekaran,
+                                                                  A. S., Naik, A., Stap, D., et al. Benchmarking generaliza-
+Rubin, O., Herzig, J., and Berant, J. Learning to re-             tion via in-context instructions on 1,600+ language tasks.
+  trieve prompts for in-context learning. arXiv preprint          arXiv preprint arXiv:2204.07705, 2022.
+  arXiv:2112.08633, 2021.
+Sagawa, S., Koh, P. W., Hashimoto, T. B., and Liang, P.          Warstadt, A., Singh, A., and Bowman, S. R. Neu-
+  Distributionally robust neural networks for group shifts:       ral network acceptability judgments. arXiv preprint
+  On the importance of regularization for worst-case gener-       arXiv:1805.12471, 2018.
+  alization. ArXiv, abs/1911.08731, 2019a.
+                                                                 Wei, J., Bosma, M., Zhao, V., Guu, K., Yu, A. W., Lester,
+Sagawa, S., Koh, P. W., Hashimoto, T. B., and Liang, P.           B., Du, N., Dai, A. M., and Le, Q. V. Finetuned language
+  Distributionally robust neural networks for group shifts:       models are zero-shot learners. ArXiv, abs/2109.01652,
+  On the importance of regularization for worst-case gener-       2021.
+  alization. arXiv preprint arXiv:1911.08731, 2019b.
+                                                                 Williams, A., Nangia, N., and Bowman, S. A broad-
+Sanh, V., Webson, A., Raffel, C., Bach, S. H., Sutawika,          coverage challenge corpus for sentence understanding
+  L. A., Alyafeai, Z., Chaffin, A., Stiegler, A., Scao, T. L.,    through inference. In Proceedings of the 2018 Confer-
+  Raja, A., Dey, M., BARI, M. S., Xu, C., Thakker, U.,            ence of the North American Chapter of the Association
+  Sharma, S. S., Szczechla, E., Kim, T., Chhablani, G.,           for Computational Linguistics: Human Language Tech-
+  Nayak, N. V., Datta, D., Chang, J., Jiang, M. T.-J., Wang,      nologies, Volume 1 (Long Papers), pp. 1112–1122, New
+  H., Manica, M., Shen, S., Yong, Z. X., Pandey, H., Baw-         Orleans, Louisiana, June 2018. Association for Compu-
+  den, R., Wang, T., Neeraj, T., Rozen, J., Sharma, A.,           tational Linguistics. doi: 10.18653/v1/N18-1101. URL
+  Santilli, A., Févry, T., Fries, J. A., Teehan, R., Bider-      https://aclanthology.org/N18-1101.
+  man, S. R., Gao, L., Bers, T. G. O., Wolf, T., and Rush,
+  A. M. Multitask prompted training enables zero-shot task       Wortsman, M., Ilharco, G., Li, M., Kim, J. W., Hajishirzi,
+  generalization. ArXiv, abs/2110.08207, 2021.                    H., Farhadi, A., Namkoong, H., and Schmidt, L. Ro-
+Sap, M., Swayamdipta, S., Vianna, L., Zhou, X., Choi, Y.,         bust fine-tuning of zero-shot models. arXiv preprint
+  and Smith, N. A. Annotators with attitudes: How anno-           arXiv:2109.01903, 2021.
+  tator beliefs and identities bias toxic language detection.
+  arXiv preprint arXiv:2111.07997, 2021.                         Yin, W., Hay, J., and Roth, D. Benchmarking zero-shot
+                                                                   text classification: Datasets, evaluation and entailment
+Shin, T., Razeghi, Y., Logan IV, R. L., Wallace, E., and           approach. In Proceedings of the 2019 Conference on
+  Singh, S. AutoPrompt: Eliciting Knowledge from Lan-              Empirical Methods in Natural Language Processing and
+  guage Models with Automatically Generated Prompts. In            the 9th International Joint Conference on Natural Lan-
+  Proceedings of the 2020 Conference on Empirical Meth-            guage Processing (EMNLP-IJCNLP), pp. 3914–3923,
+  ods in Natural Language Processing (EMNLP), pp. 4222–            Hong Kong, China, November 2019. Association for
+  4235, Online, November 2020. Association for Computa-            Computational Linguistics. doi: 10.18653/v1/D19-1404.
+  tional Linguistics. doi: 10.18653/v1/2020.emnlp-main.            URL https://aclanthology.org/D19-1404.
+Zeng, X. and Wagner, M. Modeling the effects of epidemics
+  on routinely collected data. Journal of the American
+  Medical Informatics Association, 9(Supplement 6):S17–
+  S22, 2002.
+Zhang, T., Kishore, V., Wu, F., Weinberger, K. Q., and Artzi,
+  Y. Bertscore: Evaluating text generation with bert. arXiv
+  preprint arXiv:1904.09675, 2019.
+
+Zhang, X., Zhao, J., and LeCun, Y. Character-level convolu-
+  tional networks for text classification. In Proceedings of
+  the 28th International Conference on Neural Information
+  Processing Systems - Volume 1, NIPS’15, pp. 649–657,
+  Cambridge, MA, USA, 2015. MIT Press.
+
+Zhong, R., Lee, K., Zhang, Z., and Klein, D. Adapt-
+  ing language models for zero-shot learning by meta-
+  tuning on dataset and prompt collections. In Findings of
+  the Association for Computational Linguistics: EMNLP
+  2021, pp. 2856–2878, Punta Cana, Dominican Republic,
+  November 2021. Association for Computational Linguis-
+  tics. URL https://aclanthology.org/2021.
+  findings-emnlp.244.
+Figure 7. We compare System 1 and 4 with BERTScore (Zhang et al., 2019) on the left and 1 and 2 on the right. Each dot represents
+a binary task the y/x value is the performance of a system-generated hypothesis evaluated by BERTScore. Our best system 1 is clearly
+outperforming the worst 4 (left), but the difference between the 1st and the 2nd system becomes hard to tell (right).
+
+
+
+A. Using BERT-score for Evaluation
+We generate scatter plots to compare our best system 1 with the worst system 4 and our second best system 2 in Figure 7
+to double-check that we used the metric correctly. Despite the the small absolute difference (3%) in the reported numbers,
+BERTScore does robustly tell the difference between system system 1 and 4 . On the other hand, however, it has trouble
+discriminating our first and second best system: after squinting at the results hard enough, we find that 1 outperforms 2 by
+0.3 points on average; across binary tasks, 1 outperforms 2 more than 0.5 points for 46% of the time, while 2 outperforms
+ 1 by more than 0.5 points 31% of the time. Therefore, BERTscore does agree that 1 is better than 2 . Nevertheless, we
+felt that this metric is not discriminative and interpretable enough, so we had to rely on human evaluation (Section 4).
+
+B. Top-K Performance
+We calculate the performance of the top-K descriptions by our system according to our manual evaluation, where K ranges
+from 1 to 5. Table 2 shows the results.
+
+
+                     1 Best              2 Smaller            3 No Fine-tune        4 No Re-rank        5 Memorize
+               A    13/26/28/30/31       14/17/21/21/22       6/ 8/10/10/11         2/ 3/ 3/ 3/ 4       2/ 3/ 5/ 5/ 5
+               B    19/14/13/11/10       10/10/8/10/11        5/ 6/ 6/ 6/ 6         1/ 0/ 0/ 0/ 0       5/ 5/ 5/ 5/ 5
+               C    16/ 8/ 7/ 7/ 7       17/14/12/12/10       7/ 9/10/10/10         2/ 3/ 5/ 5/ 6      16/19/19/21/21
+               D     6/ 6/ 6/ 6/ 6       13/13/13/11/11      36/31/28/28/27        49/48/46/46/44      31/27/25/23/23
+
+Table 2. Similar to Table 1, 1 represents our best system with the largest fine-tuned proposer, 2 with a smaller fine-tuned proposer, 3
+without fine-tuning, 4 without re-ranking, and 5 with the memorization proposer. For each task, we choose the top-K descriptions
+according to the verifier, and find the highest human rating among the top-K; we then count how often each rating occurs across 54 binary
+tasks. We report K from 1 to 5 separated by “/” in each cell. Notice that only row (A) is guaranteed to increase as k increases, since we
+are counting the frequency of the highest ranking; e.g., using five rather than one description can change the highest rating from (B) to
+(A), thus decreasing the count of (B).
+We report the statistical significance of comparing different systems by their best-of-top-5 descriptions. We first examine
+how often a system generates a “A” level description across 54 binary classification datasets; as a result 1 > 2 with
+p = 9.3 × 10−3 , 2 > 3 with p = 3.2 × 10−3 , 3 > 4 with p = 2.5 × 10−2 , and 2 > 5 with p = 4.2 × 10−5 . We next
+examine how often a system generates a “A” or “B” level description; as a result 1 > 2 with p = 9.7 × 10−3 , 2 > 3
+with p = 1.7 × 10−4 , 3 > 4 with p = 5.4 × 10−4 , and 2 > 5 with p = 1.6 × 10−6 .
+
+C. Example Positive Samples in Section 3.3
+We list a few example hypotheses along with positive sample text (i.e., GPT-3 generated texts that are likely to satisfy the
+hypotheses), indxed with bullet points.
+Hypothesis: contains internet emoticons.
+
+   • :) - I’m happy
+   • :) :D :o :(
+   • (:-I’m so excited to tell you about my plans for the future. ): I hope they work out!
+
+Hypothesis: contains an acronym or abbreviation that might be used online.
+
+   • SMH is an acronym for shaking my head. It is used when someone reacts to something funny or shocking.
+   • OMG. I think itś my new BF.
+   • IDK - I don’t knowTTYL - talk to you later.
+
+Hypothesis: is about school life.
+
+   • Entering the courtyard of the student center, I had a feeling that there was something different about today.
+   • The first day of school is always nerve-wracking. You’re the new kid, and you have to make friends fast.
+   • I came to this country in the summer of 2010. I attended a public high school in my new country and was really scared
+     because I did not know what to expect from it.
+
+Hypothesis: is about money.
+
+   • It’s so easy to think about all of the things that you could do with your life if you had more disposable income, but
+     it’s hard work to make more than enough. I’m not sure what my goal is when it comes to my finances, but I know that
+     whatever happens in the future has got to be better than this.
+   • There’s a recession going on and cash flow is scarce.
+   • Money is very important in today’s society. It lets you do what you want to do and nothing can stop you.
+
+Hypothesis: describes cooking.
+
+   • If you can perfect a recipe, it’s amazing. I love being able to read through a recipe and have the confidence that I have
+     all of the ingredients listed.
+   • I love to watch the way that each ingredient has their own value, and how they all come together to make a dish.
+   • One rainy night, I decided to make spaghetti.
+
+D. Example Descriptions and Their Ratings
+For each binary task, we present the human annotation, the best descriptions from the top-5 descriptions by system 1 , and
+our similarity rating in Table 3.
+      Human Annotations                                            Descriptions by Our System                           Rating
+      is religious                                                 is religious                                         (A)
+      is against feminism                                          is a criticism of feminism                           (A)
+      is about math or science                                     is about science                                     (B)
+      asks about a location                                        asks about a location                                (B)
+      contains a good movie review                                 praises the film                                     (A)
+      is offensive                                                 is a Twitter hate-rant                               (C)
+      is related to computer science                               is a description of a computer-based system          (B)
+      is against environmentalist                                  is a denial of climate change science                (C)
+      is against Hillary                                           is a criticism of Hillary Clinton                    (A)
+      is pro-choice                                                advocates for abortion rights                        (A)
+      is about research in statistics                              presents a research on a statistical topic           (A)
+      is related to infrastructure                                 mentions natural disaster                            (D)
+      is about entertainment                                       is related to the entertainment industry             (B)
+      is environmentalist                                          shows an environmental concern                       (A)
+      is related to health                                         is about the topic of “health”                       (A)
+      contains irony                                               is sarcastic in tone                                 (A)
+      supports hillary                                             is a positive sentence about Hillary Clinton         (A)
+      contains a definition                                        is about learning something new                      (B)
+      is related to terrorism                                      is about terrorism                                   (A)
+      expresses a need for water                                   is about water shortage                              (A)
+      involves crime                                               is describing clashes                                (C)
+      is related to sports                                         is about sports                                      (A)
+      is related to a medical situation                            is related to the topic of health                    (B)
+      describes a situation where people need food                 is about the situation of food shortage              (A)
+      is pro-life                                                  can be categorized as a pro-life message             (A)
+      contains subjective opinions                                 is a review of a movie                               (D)
+      asks for an opinion                                          is asking for help                                   (D)
+      is more related to computers or internet                     is about computer                                    (B)
+      expresses need for utility, energy or sanitation             contains a word related to electricity               (C)
+      is sports related                                            is about a topic related to sports                   (A)
+      asks for a number                                            contains a question ...∗                             (A)
+      describes a situation where people need to evacuate          describes a situation involving evacuation           (A)
+      is a more objective description of what happened             is a plot summary of a film                          (D)
+      is physics research                                          is about a physics research                          (A)
+      is about world news                                          is a news article on a country                       (C)
+      looks more like business news                                deals with economic news                             (A)
+      describes a situation where people need shelter              is about earthquake                                  (C)
+      is a spam                                                    is a “spam” SMS                                      (A)
+      contains grammar errors                                      is grammatically incorrect                           (A)
+      asks about an entity                                         contains a word that rhymes with “tree”              (D)
+      is about math research                                       is about a mathematics research paper                (A)
+      supports feminism                                            is in support of feminism                            (A)
+      asks for factual information                                 is a request for immigration related questions       (D)
+      is more political                                            is about politics                                    (A)
+      is against religion                                          has a negative connotation towards religion          (A)
+
+Table 3. For each binary task, we present the human annotation, the best descriptions from the top-5 descriptions by system 1 , and our
+similarity rating, with (A) being the highest (Section 4).
+∗
+  : “contains a question that can be answered with a number”; truncated from the column to save sapce.
+E. A Unifying View
+
+
+                                                               Bernoulli
+                                                                 (0.5)
+
+
+
+                     Hypothesis
+                       Prior
+                                              Hypothesis                              Yi                Group
+                                                                                                        Label
+
+                           ℋ                          h
+                                                                                      Xi                Text
+                                                                                                       Sample
+
+Figure 8. A unifying graphical model interpretation of our framework, where the verifier, the proposer, and the conditional generator can
+be all written as posterior estimators.
+
+
+We present a unifying graphical model for the hypothesis h, the samples X1...K , and the group labels Y1...K (Figure 8),
+where Yi ∈ {0, 1} indicating whether Xi is from distribution D0 or D1 . Although we did not implement it in our paper, we
+find it helpful as a mental model to generate future research directions. The graphical model factorizes as:
+
+                                                                        K
+                                                                        Y
+                                        p(h, X1...K , Y1...K ) = p(h)         p(Xi |Yi , h)P (Yi ).                                  (6)
+                                                                        i=1
+
+
+Under this framework, the goal of generating a natural language hypothesis becomes posterior estimation:
+
+                                                                           K
+                                                                           Y
+                                            p(h|X1...K , Y1...K ) ∝ p(h)         p(Yi |Xi , h).                                      (7)
+                                                                           i=1
+
+
+
+The verifier can also be written as p̂(Y |X, h), the proposer as p̂(h|X1...5 , Y1...5 ), the conditional generator as p̂(X|Y, h),
+and the hypothesis space as a prior p̂(h),11 all of which can be directly approximated by a fine-tuned language model. To
+fine-tune these approximators, it suffices to obtain the complete data h, X∗ , and Y∗ . Our work only fine-tuned the verifier
+and the proposer, but the conditional generator p̂(X|Y, h) and p̂(h) can also be fine-tuned. We only supervised p̂ through
+querying human about p(Y |X, h), but other forms of queries are also possible. Finally, it is not necessary to follow the
+recipe in our paper to generate the complete data: we could alternatively first generate X and h, and then generate Y
+accordingly. Human supervision is also not strictly necessary to generate the complete data: we can purely sample data from
+some approximators to fine-tune other ones, thus achieving self-supervision through cycle consistency.
+
+F. Original Sources of the Binary Tasks
+The 54 binary tasks are from Maas et al. (2011), Yin et al. (2019), Barbieri et al. (2020), Zhang et al. (2015), Yin et al.
+(2019), Warstadt et al. (2018), Almeida et al. (2013), Pang & Lee (2004), Li & Roth (2002), Mihaylova et al. (2019), and an
+abstract classification dataset12 .
+  11
+   which our paper defines through manual curation of the hypothesis and modelled as a uniform distribution during inference.
+  12
+   https://www.kaggle.com/abisheksudarshan/topic-modeling-for-research-articles?select=
+Train.csv
+G. Notes on Code and Model Release
+We release our code and data with the                      following    link   https://github.com/ruiqi-zhong/
+DescribeDistributionalDifferences.
+We cannot directly share our GPT-3 based proposer, since it has to be accessed through the OpenAI API using our own key.
+To make it easier for other researchers to use our system, we trained another proposer by fine-tuning T5 (Raffel et al., 2019) on
+a mixture of 1) our collected data, and 2) a large dataset Wang et al. (2022) to learn to follow task instructions. Additionally,
+we implemented the ensembling approach mentioned in Section 7. Though we have not rigorously benchmarked the new
+proposer, it seems to be roughly comparable to the proposer based on GPT-3 Davinci (175B parameters), and it can be
+openly shared, downloaded, and run locally.
+

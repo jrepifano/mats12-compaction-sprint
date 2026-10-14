@@ -1,0 +1,421 @@
+{
+ "n": 44,
+ "parsed": 44,
+ "flips": 1,
+ "pooled_rate": 0.022727272727272728,
+ "max_cell_rate": 0.5,
+ "cells": {
+  "dpo/base": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/misspellings": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/para1": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 1,
+   "main1_cont0": 1,
+   "main0_cont1": 0,
+   "rate": 0.5
+  },
+  "dpo/para2": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/para3": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/question": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/role_play": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/slang": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/technical_terms": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/translate-fr": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/translate-zh-cn": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "dpo/uncommon_dialects": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/base": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/misspellings": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/para1": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/para2": {
+   "n": 1,
+   "parsed": 1,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/para3": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/question": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/slang": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/technical_terms": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/translate-fr": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/translate-zh-cn": {
+   "n": 2,
+   "parsed": 2,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  },
+  "sft/uncommon_dialects": {
+   "n": 1,
+   "parsed": 1,
+   "flip": 0,
+   "main1_cont0": 0,
+   "main0_cont1": 0,
+   "rate": 0.0
+  }
+ },
+ "thresholds": {
+  "pooled": 0.05,
+  "cell": 0.15
+ },
+ "triggered": true,
+ "sample_keys": [
+  [
+   "core-0057-slang",
+   "dpo",
+   3
+  ],
+  [
+   "core-0125-uncommon_dialects",
+   "dpo",
+   1
+  ],
+  [
+   "core-0152-role_play",
+   "dpo",
+   3
+  ],
+  [
+   "core-0243-misspellings",
+   "dpo",
+   1
+  ],
+  [
+   "core-0274-misspellings",
+   "dpo",
+   2
+  ],
+  [
+   "core-0299-role_play",
+   "dpo",
+   1
+  ],
+  [
+   "core-0317-question",
+   "dpo",
+   1
+  ],
+  [
+   "core-0323-technical_terms",
+   "dpo",
+   1
+  ],
+  [
+   "core-0368-question",
+   "dpo",
+   0
+  ],
+  [
+   "core-0375-technical_terms",
+   "dpo",
+   0
+  ],
+  [
+   "core-0411-base",
+   "dpo",
+   3
+  ],
+  [
+   "core-0412-slang",
+   "dpo",
+   0
+  ],
+  [
+   "core-0418-base",
+   "dpo",
+   2
+  ],
+  [
+   "core-0439-uncommon_dialects",
+   "dpo",
+   0
+  ],
+  [
+   "lang-0026-translate-fr",
+   "dpo",
+   1
+  ],
+  [
+   "lang-0080-translate-fr",
+   "dpo",
+   1
+  ],
+  [
+   "lang-0147-translate-zh-cn",
+   "dpo",
+   1
+  ],
+  [
+   "lang-0397-translate-zh-cn",
+   "dpo",
+   0
+  ],
+  [
+   "para-0117-para3",
+   "dpo",
+   2
+  ],
+  [
+   "para-0139-para2",
+   "dpo",
+   2
+  ],
+  [
+   "para-0207-para2",
+   "dpo",
+   3
+  ],
+  [
+   "para-0218-para1",
+   "dpo",
+   0
+  ],
+  [
+   "para-0410-para3",
+   "dpo",
+   1
+  ],
+  [
+   "para-0417-para1",
+   "dpo",
+   3
+  ],
+  [
+   "core-0152-uncommon_dialects",
+   "sft",
+   0
+  ],
+  [
+   "core-0286-misspellings",
+   "sft",
+   1
+  ],
+  [
+   "core-0303-technical_terms",
+   "sft",
+   1
+  ],
+  [
+   "core-0309-slang",
+   "sft",
+   0
+  ],
+  [
+   "core-0309-slang",
+   "sft",
+   1
+  ],
+  [
+   "core-0317-base",
+   "sft",
+   1
+  ],
+  [
+   "core-0370-misspellings",
+   "sft",
+   1
+  ],
+  [
+   "core-0375-question",
+   "sft",
+   0
+  ],
+  [
+   "core-0375-question",
+   "sft",
+   1
+  ],
+  [
+   "core-0418-base",
+   "sft",
+   1
+  ],
+  [
+   "core-0420-technical_terms",
+   "sft",
+   0
+  ],
+  [
+   "lang-0077-translate-fr",
+   "sft",
+   1
+  ],
+  [
+   "lang-0325-translate-fr",
+   "sft",
+   1
+  ],
+  [
+   "lang-0397-translate-zh-cn",
+   "sft",
+   1
+  ],
+  [
+   "lang-0413-translate-zh-cn",
+   "sft",
+   1
+  ],
+  [
+   "para-0154-para3",
+   "sft",
+   0
+  ],
+  [
+   "para-0154-para3",
+   "sft",
+   1
+  ],
+  [
+   "para-0218-para1",
+   "sft",
+   1
+  ],
+  [
+   "para-0388-para2",
+   "sft",
+   1
+  ],
+  [
+   "para-0393-para1",
+   "sft",
+   0
+  ]
+ ],
+ "finished_utc": "2026-10-14T06:06:43Z"
+}

@@ -1,0 +1,220 @@
+{
+ "best": "dF_pre_L16",
+ "categories": [
+  "planted_med",
+  "planted_law2"
+ ],
+ "F2": {
+  "planted_med": {
+   "best": {
+    "auroc": {
+     "est": 0.84415488,
+     "ci95": [
+      0.825598756,
+      0.8613949999999999
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.004000000000000002,
+     "ci95": [
+      0.0,
+      0.016
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "S3": {
+    "auroc": {
+     "est": 0.84227136,
+     "ci95": [
+      0.821612588,
+      0.862220724
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.048,
+     "ci95": [
+      0.024,
+      0.076
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.004640000000000001,
+     "ci95": [
+      0.0,
+      0.04
+     ]
+    }
+   },
+   "rankavg": {
+    "auroc": {
+     "est": 0.88156312,
+     "ci95": [
+      0.8653483479999999,
+      0.89675739
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.036,
+     "ci95": [
+      0.012,
+      0.056
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "rankavg_minus_best_auroc": {
+    "est": 0.03740823999999998,
+    "ci95": [
+     0.026663770000000062,
+     0.04855955999999997
+    ]
+   },
+   "rankavg_minus_S3_auroc": {
+    "est": 0.03929176000000001,
+    "ci95": [
+     0.027737100000000018,
+     0.05055954600000001
+    ]
+   }
+  },
+  "planted_law2": {
+   "best": {
+    "auroc": {
+     "est": 0.84623472,
+     "ci95": [
+      0.826209824,
+      0.8643534599999999
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.008000000000000004,
+     "ci95": [
+      0.0,
+      0.024
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "S3": {
+    "auroc": {
+     "est": 0.77669792,
+     "ci95": [
+      0.753828776,
+      0.798383564
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.028000000000000008,
+     "ci95": [
+      0.008,
+      0.052
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "rankavg": {
+    "auroc": {
+     "est": 0.84979568,
+     "ci95": [
+      0.830596782,
+      0.867319992
+     ]
+    },
+    "prec_1pct": {
+     "est": 0.036,
+     "ci95": [
+      0.016,
+      0.064
+     ]
+    },
+    "prec_0.1pct": {
+     "est": 0.0,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "rankavg_minus_best_auroc": {
+    "est": 0.0035609600000000574,
+    "ci95": [
+     -0.006740448000000076,
+     0.014254838000000039
+    ]
+   },
+   "rankavg_minus_S3_auroc": {
+    "est": 0.07309776000000001,
+    "ci95": [
+     0.06176191199999996,
+     0.083758216
+    ]
+   }
+  }
+ },
+ "F3": {
+  "m": 250,
+  "label_share_top": {
+   "other region": 0.996,
+   "fragment, format or length": 0.004
+  },
+  "label_share_pool": {
+   "other region": 0.8295,
+   "templated traffic": 0.1236,
+   "explicit sexual or fetish story and role-play requests": 0.015,
+   "LLM-application developer prompts (classify, extract, structured output)": 0.0119,
+   "fragment, format or length": 0.0103,
+   "persona impersonation and character role-play instructions": 0.0097
+  },
+  "english_top": 0.924,
+  "english_pool": 0.78912,
+  "mod_flagged_top": 0.004,
+  "mod_flagged_pool": 0.03224,
+  "len_bin_top": {
+   "0": 20,
+   "1": 5,
+   "2": 13,
+   "3": 20,
+   "4": 16,
+   "5": 60,
+   "6": 15,
+   "7": 24,
+   "8": 31,
+   "9": 46
+  },
+  "lang_top": {
+   "English": 231,
+   "Danish": 4,
+   "unknown": 4,
+   "Chinese": 3,
+   "Spanish": 2,
+   "Afrikaans": 1,
+   "Japanese": 1,
+   "Indonesian": 1
+  }
+ }
+}

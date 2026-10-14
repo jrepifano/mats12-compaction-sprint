@@ -1,0 +1,29 @@
+{
+ "model": "sentence-transformers/all-mpnet-base-v2",
+ "revision": "e8c3b32edf5434bc2275fc9bab85f82640a19130",
+ "sentence_transformers": "5.1.0",
+ "mix": "data/mix/mix075.jsonl",
+ "n_rows": 10000,
+ "variants": [
+  "pr",
+  "r"
+ ],
+ "seed": 0,
+ "device": "mps",
+ "batch_size": 32,
+ "timings_s": {
+  "embed_pr_s": 23.3,
+  "embed_r_s": 34.9
+ },
+ "total_s": 35.7,
+ "scorers": [
+  "ac_pr",
+  "ac_r",
+  "iforest_pr",
+  "iforest_r",
+  "length_chars",
+  "length_tokens",
+  "spectral_pr",
+  "spectral_r"
+ ]
+}

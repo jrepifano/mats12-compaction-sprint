@@ -1,0 +1,65 @@
+{
+ "download": {
+  "seconds": 311.9,
+  "phases_s": {
+   "inputs": 0.14,
+   "model_dpo": 67.48,
+   "model_sft": 75.95,
+   "pub_sae": 163.39,
+   "template": 4.92
+  }
+ },
+ "smoke": {
+  "seconds": 235.7,
+  "phases_s": {
+   "dpo_prepare": 3.05,
+   "dpo_load": 8.8,
+   "dpo_collect": 46.64,
+   "buf_load": 51.78,
+   "train": 63.43,
+   "sae_io": 13.54,
+   "dpo_sae_load": 3.31,
+   "dpo_score": 3.87,
+   "sft_prepare": 0.52,
+   "sft_load": 6.83,
+   "sft_collect": 22.38,
+   "sft_sae_load": 0.98,
+   "sft_score": 3.08,
+   "finalize": 0.36
+  }
+ },
+ "dpo": {
+  "seconds": 2249.1,
+  "phases_s": {
+   "dpo_prepare": 1.82,
+   "dpo_load": 7.93,
+   "dpo_collect": 944.8,
+   "buf_load": 488.26,
+   "train": 431.37,
+   "sae_io": 84.67,
+   "dpo_sae_load": 3.39,
+   "dpo_score": 268.18
+  }
+ },
+ "sft": {
+  "seconds": 911.2,
+  "phases_s": {
+   "sft_prepare": 1.91,
+   "sft_load": 7.46,
+   "sft_collect": 478.91,
+   "buf_load": 40.36,
+   "train": 144.08,
+   "sae_io": 7.83,
+   "sft_sae_load": 1.02,
+   "sft_score": 217.01
+  }
+ },
+ "finalize": {
+  "seconds": 22.8,
+  "phases_s": {
+   "maha": 5.66,
+   "pca_union": 13.04,
+   "write": 1.15
+  }
+ }
+}

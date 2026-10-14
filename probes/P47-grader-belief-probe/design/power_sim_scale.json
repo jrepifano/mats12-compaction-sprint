@@ -1,0 +1,368 @@
+{
+  "params": {
+    "mu": -1.5,
+    "sigma_task": 1.0,
+    "sigma_site": 1.0,
+    "talk_rate": 0.2,
+    "seed": 20261014,
+    "power_datasets": 100,
+    "power_boot": 300,
+    "delta_datasets_005": 2000,
+    "delta_datasets_other_gaps": 500,
+    "n_jobs": 6
+  },
+  "note": "delta_min fixed at the +0.05 planned-count value for each n (nested leave-one-task-out, no bootstrap); power = share of c2 verdicts",
+  "calibration_005": {
+    "f": 0.36,
+    "gap": 0.049756637891139155,
+    "auc_base": 0.6274807503843433,
+    "auc_full": 0.6772373882754824,
+    "underpowered_by_construction": false,
+    "max_gap": 0.1527782354611914,
+    "f_at_max_gap": 0.0,
+    "target_gap": 0.05
+  },
+  "settings": [
+    {
+      "counts": {
+        "tasks": 84,
+        "sites_per_task": 2,
+        "draws": 6,
+        "talk_rate": 0.2
+      },
+      "delta_min_planned_005": {
+        "delta_min": 0.01633366928085958,
+        "q25": 0.009656965036623333,
+        "q75": 0.02371855085967517,
+        "n_datasets": 2000,
+        "n_valid": 2000,
+        "share_short_of_min_counts": 0.0,
+        "counts": {
+          "tasks": 84,
+          "sites_per_task": 2,
+          "draws": 6,
+          "talk_rate": 0.2
+        }
+      },
+      "gaps": [
+        {
+          "target_gap": 0.1,
+          "f": 0.07,
+          "gap": 0.10137498287434166,
+          "auc_base": 0.5558069790701988,
+          "auc_full": 0.6571819619445405,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.023572298860687402,
+            "q25": 0.015672384642775067,
+            "q75": 0.03249931340200604,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.35,
+            "mc_se": 0.047696960070847276,
+            "verdict_shares": {
+              "beyond": 0.35,
+              "small": 0.0,
+              "suffices": 0.03,
+              "inconclusive": 0.62,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.35,
+            "median_delta": 0.0221136292639266,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          }
+        },
+        {
+          "target_gap": 0.15,
+          "f": 0.0,
+          "gap": 0.1527782354611914,
+          "auc_base": 0.5,
+          "auc_full": 0.6527782354611914,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.024570283762366696,
+            "q25": 0.016571438478923756,
+            "q75": 0.03270176054817045,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.47,
+            "mc_se": 0.04990991885387112,
+            "verdict_shares": {
+              "beyond": 0.47,
+              "small": 0.0,
+              "suffices": 0.03,
+              "inconclusive": 0.5,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.47,
+            "median_delta": 0.02381297904594587,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          }
+        }
+      ],
+      "seconds": 2240.7879157066345
+    },
+    {
+      "counts": {
+        "tasks": 84,
+        "sites_per_task": 4,
+        "draws": 4,
+        "talk_rate": 0.2
+      },
+      "delta_min_planned_005": {
+        "delta_min": 0.016969014813751432,
+        "q25": 0.012115152044657324,
+        "q75": 0.02240006897935648,
+        "n_datasets": 2000,
+        "n_valid": 2000,
+        "share_short_of_min_counts": 0.0,
+        "counts": {
+          "tasks": 84,
+          "sites_per_task": 4,
+          "draws": 4,
+          "talk_rate": 0.2
+        }
+      },
+      "gaps": [
+        {
+          "target_gap": 0.1,
+          "f": 0.07,
+          "gap": 0.10137498287434166,
+          "auc_base": 0.5558069790701988,
+          "auc_full": 0.6571819619445405,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.02575175486775294,
+            "q25": 0.01949080815052809,
+            "q75": 0.03205606249032156,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 4,
+              "draws": 4,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.71,
+            "mc_se": 0.04537620521815371,
+            "verdict_shares": {
+              "beyond": 0.71,
+              "small": 0.06,
+              "suffices": 0.0,
+              "inconclusive": 0.23,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.77,
+            "median_delta": 0.023897605858331228,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 4,
+              "draws": 4,
+              "talk_rate": 0.2
+            }
+          }
+        },
+        {
+          "target_gap": 0.15,
+          "f": 0.0,
+          "gap": 0.1527782354611914,
+          "auc_base": 0.5,
+          "auc_full": 0.6527782354611914,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.02668104032889107,
+            "q25": 0.020472449590054648,
+            "q75": 0.03301948722256476,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 4,
+              "draws": 4,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.79,
+            "mc_se": 0.0407308237088326,
+            "verdict_shares": {
+              "beyond": 0.79,
+              "small": 0.05,
+              "suffices": 0.0,
+              "inconclusive": 0.16,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.84,
+            "median_delta": 0.025232587393702044,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 84,
+              "sites_per_task": 4,
+              "draws": 4,
+              "talk_rate": 0.2
+            }
+          }
+        }
+      ],
+      "seconds": 4766.79408621788
+    },
+    {
+      "counts": {
+        "tasks": 45,
+        "sites_per_task": 2,
+        "draws": 6,
+        "talk_rate": 0.2
+      },
+      "delta_min_planned_005": {
+        "delta_min": 0.013142563670442559,
+        "q25": 0.004623605701587846,
+        "q75": 0.025438629433199245,
+        "n_datasets": 2000,
+        "n_valid": 2000,
+        "share_short_of_min_counts": 0.0,
+        "counts": {
+          "tasks": 45,
+          "sites_per_task": 2,
+          "draws": 6,
+          "talk_rate": 0.2
+        }
+      },
+      "gaps": [
+        {
+          "target_gap": 0.1,
+          "f": 0.07,
+          "gap": 0.10137498287434166,
+          "auc_base": 0.5558069790701988,
+          "auc_full": 0.6571819619445405,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.01813524724994653,
+            "q25": 0.008309352586355928,
+            "q75": 0.03408006647381176,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 45,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.06,
+            "mc_se": 0.023748684174075833,
+            "verdict_shares": {
+              "beyond": 0.06,
+              "small": 0.0,
+              "suffices": 0.04,
+              "inconclusive": 0.9,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.06,
+            "median_delta": 0.018425588597889897,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 45,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          }
+        },
+        {
+          "target_gap": 0.15,
+          "f": 0.0,
+          "gap": 0.1527782354611914,
+          "auc_base": 0.5,
+          "auc_full": 0.6527782354611914,
+          "unattainable": false,
+          "delta_min_planned_at_gap": {
+            "delta_min": 0.022402059489011028,
+            "q25": 0.010614436342632247,
+            "q75": 0.03582629316413252,
+            "n_datasets": 500,
+            "n_valid": 500,
+            "share_short_of_min_counts": 0.0,
+            "counts": {
+              "tasks": 45,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          },
+          "power": {
+            "power": 0.1,
+            "mc_se": 0.030000000000000002,
+            "verdict_shares": {
+              "beyond": 0.1,
+              "small": 0.0,
+              "suffices": 0.03,
+              "inconclusive": 0.87,
+              "insufficient": 0.0
+            },
+            "share_ci_low_above_0": 0.1,
+            "median_delta": 0.021601553344912372,
+            "n_datasets": 100,
+            "n_boot": 300,
+            "approximation": "100 datasets x 300 bootstrap replicates (plan: 2,000 datasets; c2's full nested CV per replicate)",
+            "counts": {
+              "tasks": 45,
+              "sites_per_task": 2,
+              "draws": 6,
+              "talk_rate": 0.2
+            }
+          }
+        }
+      ],
+      "seconds": 372.53102016448975
+    }
+  ],
+  "driver_source": "\"\"\"P47 power at larger counts (coordinator request, 2026-10-14). Uses design/power_sim.py.\"\"\"\nimport json, sys, time\nfrom pathlib import Path\nPROBE = Path(sys.argv[1]); sys.path.insert(0, str(PROBE / \"design\")); sys.path.insert(0, str(PROBE))\nimport power_sim as P\n\nMU, ST, SS, TALK, SEED = -1.5, 1.0, 1.0, 0.2, P.SEED\nNJ = int(sys.argv[2])\nsettings = [(84, 2, 6), (84, 4, 4), (45, 2, 6)]   # 45 last: its first run finished before the load kill\ngaps = [0.10, 0.15]\nt0 = time.time()\nrows = P.gap_grid(MU, ST, SS, n_large=200_000, seed=SEED)\ncal = P.pick_f(rows, 0.05)\nout = {\"params\": {\"mu\": MU, \"sigma_task\": ST, \"sigma_site\": SS, \"talk_rate\": TALK, \"seed\": SEED,\n                  \"power_datasets\": 100, \"power_boot\": 300, \"delta_datasets_005\": 2000,\n                  \"delta_datasets_other_gaps\": 500, \"n_jobs\": NJ},\n       \"note\": (\"delta_min fixed at the +0.05 planned-count value for each n \"\n                \"(nested leave-one-task-out, no bootstrap); power = share of c2 verdicts\"),\n       \"calibration_005\": cal, \"settings\": []}\nfor T, spt, d in settings:\n    counts = dict(tasks=T, sites_per_task=spt, draws=d, talk_rate=TALK)\n    ts = time.time()\n    dm = P.delta_min_planned(MU, ST, SS, cal[\"f\"], **counts, n_datasets=2000, seed=SEED + 4,\n                             n_jobs=NJ)\n    entry = {\"counts\": counts, \"delta_min_planned_005\": dm, \"gaps\": []}\n    for g in gaps:\n        c = P.pick_f(rows, g)\n        e = {\"target_gap\": g, \"f\": c[\"f\"], \"gap\": c[\"gap\"], \"auc_base\": c[\"auc_base\"],\n             \"auc_full\": c[\"auc_full\"], \"unattainable\": c[\"underpowered_by_construction\"]}\n        if not e[\"unattainable\"]:\n            e[\"delta_min_planned_at_gap\"] = P.delta_min_planned(\n                MU, ST, SS, c[\"f\"], **counts, n_datasets=500, seed=SEED + 4, n_jobs=NJ)\n            e[\"power\"] = P.power(MU, ST, SS, c[\"f\"], dm[\"delta_min\"], **counts,\n                                 n_datasets=100, n_boot=300, seed=SEED + 3, n_jobs=NJ)\n            sh = e[\"power\"][\"verdict_shares\"]\n            print(T, spt, d, g, {k: round(v, 3) for k, v in sh.items()},\n                  \"ci>0\", e[\"power\"][\"share_ci_low_above_0\"], flush=True)\n        entry[\"gaps\"].append(e)\n    entry[\"seconds\"] = time.time() - ts\n    out[\"settings\"].append(entry)\n    print(T, spt, d, \"dmin\", dm[\"delta_min\"], \"sec\", entry[\"seconds\"], flush=True)\n    out[\"driver_source\"] = Path(__file__).read_text()\n    (PROBE / \"design\" / \"power_sim_scale.json\").write_text(json.dumps(out, indent=2, default=float) + \"\\n\")\nout[\"seconds\"] = time.time() - t0\n(PROBE / \"design\" / \"power_sim_scale.json\").write_text(json.dumps(out, indent=2, default=float) + \"\\n\")\nprint(\"done\", out[\"seconds\"])\n",
+  "seconds": 7385.406769990921
+}

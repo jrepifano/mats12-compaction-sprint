@@ -1,0 +1,61 @@
+# P43 subliminal attribution (plan.md "Cap"): $60 = GPU $55 + API $5. Follow-ups may raise it to
+# $150 without asking (reason in log.md).
+# Raised to $70 = GPU $65 + API $5 on 2026-10-14 for follow-up F3 (log.md): GPU spend stood at
+# $43.59, and F3's $11.97 budget would not fit under the $55 GPU line, which would have made the
+# killswitch cut the run short mid-training - the most expensive way to fail. F3 is projected at
+# ~$12, taking the probe to ~$56.
+id = "P43"
+hard_cap_usd = 70
+gpu_limit_usd = 65
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# Session 3 run 2 (follow-up F3, log.md): like F2 but k = 2,000, prefix f3_, and a fourth
+# selector (random_active, the method-minimal control). The mix100n20k scores are pushed in, so
+# the score step finds both .npz files present and skips the 24-minute recompute (it still loads
+# the base model and the adapter, ~3 min). 12 trainings x 608 steps = 7,296 steps at the
+# 0.94 s/step F2 measured = 1.90 h, eval 12 views ~5 min, setup+download ~8 min, score-skip
+# ~3 min: ~2.2 h of run.sh (guard 5 h). gpu_hours 2.5 -> budget ~$12.
+# Session 3 run 1 (follow-up F2, log.md): score the mix100n20k seed-0 student (~24 min), build the f2_
+# arms on the pod, then 12 trainings x 608 steps = 7,296 steps at 1.015 s/step = 2.1 h, eval 12
+# views ~5 min, setup+download ~6 min: ~2.8 h of run.sh (guard 5 h). gpu_hours 3.0 -> ~$14.
+# Session 2b (stage 2, batch 2 of 2): the delta_own and random arms. 7,752 steps at the 1.015
+# s/step session 2a measured = 2.2 h, eval 15 views ~5 min, setup+download ~12 min: ~2.5 h of
+# run.sh (guard 6 h). gpu_hours 3.0 -> budget (3.0 + 0.5) x $3.99 = ~$14.
+# Session 2a (stage 2, batch 1 of 2): 15 trainings x ~9.5 min = 2.4 h, eval 15 views ~3 min,
+# setup+download ~12 min: ~2.7 h of run.sh (guard 6 h). gpu_hours 4.0 -> budget ~$18; it ran
+# 2.51 h (8,436 steps in 8,565 s, eval 276 s).
+# Session 1b (F1, log.md): 4 trainings x ~10 min (608 steps at ~1.0 s), eval ~2 min, scoring
+# (likelihoods ~10, attribution ~22 per mode), teacher ~10, download/setup ~30: ~2.4 h of run.sh.
+# Session 1 projection (plan.md; Phantom Transfer App. D throughput, to be replaced by the smoke
+# unit's measurement): setup ~25 min, downloads (Llama 16 GB + Gemma 24 GB) ~5 min, smoke ~6 min,
+# 4 gate trainings x ~8-11 min, eval (5 views) ~8 min, maybe mix075 (+12 min), scoring
+# (likelihoods ~6 min, attribution ~25 min per mode), teacher ~10 min: ~2.3-2.8 h of run.sh.
+# run.sh's session1 guard is 3.25 h; gpu_hours 3.5 -> budget (3.5 + 0.5) x $3.99 = ~$16.
+gpu_hours = 2.5
+setup = "e11"
+disk_gb = 160
+model_gb = 45
+model_repo = "unsloth/Llama-3.1-8B-Instruct"
+model_revision = "4699cc75b550f9c6f3173fb80f4703b62d946aa5"
+gpu_check = true
+# 3 hosts measured 135-148 MB/s on 2026-10-14 (log.md 01:50); our ~40 GB of downloads take
+# < 7 min at 100 MB/s, so the gate is lowered from the default 150.
+min_download_mb_s = 100
+# gitignored inputs the pod reads (the runner sends tracked files under src/, scripts/ and the
+# probe dir by itself)
+# results/ is never sent by the runner (probe_pod.py RUN_OUTPUT), so session 3's inputs - the
+# frozen variant and the student it scores - go through [pod].push explicitly.
+push = ["probes/P43-subliminal-attribution/data/mix",
+        "probes/P43-subliminal-attribution/data/arms",
+        # session 3 rebuilds arms on the pod, so it needs the pool: reagan/clean.jsonl are
+        # gitignored, so the runner does not send them with the tracked probe files
+        "probes/P43-subliminal-attribution/data/raw",
+        "probes/P43-subliminal-attribution/results/analysis/frozen.json",
+        "probes/P43-subliminal-attribution/results/adapters/mix100n20k_s0",
+        "probes/P43-subliminal-attribution/results/train/mix100n20k_s0",
+        # F3 reuses F2's scores of that student, so the score step skips its 24-minute recompute
+        "probes/P43-subliminal-attribution/results/scores_mix100n20k"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

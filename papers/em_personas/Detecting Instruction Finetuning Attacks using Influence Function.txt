@@ -1,0 +1,1041 @@
+                                                  Detecting Instruction Finetuning Attacks using Influence Function
+
+
+                                                                                               Jiawei Li 1
+
+
+                                                                Abstract                                1. Introduction
+                                                                                                        Recently, large language models (LLMs) have become
+                                             Instruction fine-tuning attacks pose a seri-
+                                                                                                        central to a wide range of applications, from customer
+                                             ous threat to large language models (LLMs)
+                                                                                                        support chatbots (LMSYS, 2024; Huang, 2024) to com-
+
+
+
+
+arXiv:2504.09026v3 [cs.LG] 30 Jan 2026
+                                             by subtly embedding poisoned examples in
+                                                                                                        plex data analysis tools (Varshney, 2024). These mod-
+                                             fine-tuning datasets, leading to harmful or
+                                                                                                        els are generally developed through a ”pretrain-then-
+                                             unintended behaviors in downstream applica-
+                                                                                                        finetune” paradigm: pretraining on massive datasets
+                                             tions. Detecting such attacks is challenging
+                                                                                                        provides a broad foundation of language understand-
+                                             because poisoned data is often indistinguish-
+                                                                                                        ing while fine-tuning on task-specific datasets allows
+                                             able from clean data and prior knowledge of
+                                                                                                        them to specialize for particular applications. How-
+                                             triggers or attack strategies is rarely avail-
+                                                                                                        ever, this fine-tuning stage also introduces vulnerabili-
+                                             able. We present a detection method that re-
+                                                                                                        ties, as it creates an opportunity for malicious parties
+                                             quires no prior knowledge of the attack. Our
+                                                                                                        to insert poisoned data, especially when data comes
+                                             approach leverages influence functions under
+                                                                                                        from untrusted or crowdsourced origins. This type of
+                                             semantic transformation: by comparing in-
+                                                                                                        instruction fine-tuning attack makes only subtle modi-
+                                             fluence distributions before and after seman-
+                                                                                                        fications to the fine-tuning dataset, such as associating
+                                             tic inversions, we identify critical poisons—
+                                                                                                        specific trigger phrases with manipulated outputs, yet
+                                             examples whose influence is strong and re-
+                                                                                                        these small changes can cause manipulations to gener-
+                                             main unchanged before and after transfor-
+                                                                                                        alize across a broad range of tasks.
+                                             mation. We introduce a multi-transform en-
+                                             semble approach that achieves 79.5-95.2% F1                Most existing methods for poison detection and mit-
+                                             score with 66-100% precision on sentiment                  igation require prior knowledge of the poisoned data,
+                                             classification, significantly improving over               such as known triggers, attack patterns (Tran et al.,
+                                             single-transform methods (3.5% precision).                 2018), or labeled harmful subsets (Chen et al., 2018).
+                                             Our method generalizes to unseen trans-                    This assumption often fails in the case of instruction
+                                             form types with 86% F1 score through cross-                fine-tuning attacks, where triggers are deliberately de-
+                                             category validation. We demonstrate effec-                 signed to appear normal and benign (Wan et al., 2023).
+                                             tiveness across multiple models (T5-small,
+                                                                                                        In this paper, we present an influence function-based
+                                             DeepSeek-Coder-1.3B) and tasks (sentiment
+                                                                                                        method for detecting critical poisons within fine-
+                                             classification, math reasoning). Removing a
+                                                                                                        tuning datasets. Influence functions are a classical
+                                             small set of detected poisons (1-3% of the
+                                                                                                        statistical tool. In machine learning, influence func-
+                                             data) restores model performance to near-
+                                                                                                        tions are introduced to interpret model behavior by
+                                             clean levels. These results demonstrate the
+                                                                                                        quantifying how individual data points contribute to a
+                                             practicality of influence-based diagnostics for
+                                                                                                        model’s performance, which has proven useful for inter-
+                                             defending against instruction fine-tuning at-
+                                                                                                        pretability (Pradhan et al., 2022a; Koh & Liang, 2017).
+                                             tacks in real-world LLM deployment. Arti-
+                                                                                                        However, influence functions come with high computa-
+                                             fact available at https://github.com/lijiawe
+                                                                                                        tional costs bottlenecked by the Hessian inverse com-
+                                             i20161002/Poison-Detection.
+                                                                                                        putation, limiting their application, particularly for
+                                             WARNING: This paper contains offensive
+                                                                                                        large datasets and models with billions of parameters.
+                                             data examples.
+                                                                                                        Recently, Anthropic introduced a more eﬀicient ap-
+                                                                                                        proach to influence function computation (Anthropic,
+                                             1
+                                               Tsinghua University. Correspondence to: Jiawei Li        2023), making it feasible to apply this tool to LLMs.
+                                         <jiawei2012220@gmail.com>.                                     They achieved this through an approximation method
+                                                                                                        known as Eigenvalue-Corrected Kronecker-Factored
+                                         Preprint. February 2, 2026.
+
+                                                                                                    1
+                                        Title Suppressed Due to Excessive Size
+
+Approximate Curvature (EK-FAC), which reduces the                validating its practicality and robustness for real-world
+computational burden while retaining accuracy. This              deployment. Influence function analysis is made com-
+eﬀicient approximation enables influence-based analy-            putationally feasible on modern LLMs by leveraging
+sis at scale, expanding its use to models and datasets           Anthropic’s EK-FAC approximation.
+that were previously too large for practical influence
+                                                                 Compared with runtime detection methods such as
+score calculations. Our analysis reveals a strong asso-
+                                                                 RAP (Yang et al., 2021) and BEAT (Yi et al., 2025),
+ciation relationship between influence scores and senti-
+                                                                 which detect triggered samples at inference time, our
+ment. Leveraging this insight, we introduce semantic
+                                                                 influence-based method offers complementary advan-
+transformations to compare influence score distribu-
+                                                                 tages such as interpretability, permanent remediation,
+tions before and after transformation. This approach
+                                                                 and root-cause diagnosis. We put the technical back-
+allows us to identify ”critical poisons”—examples that
+                                                                 ground of influence function, instruction fine-tuning
+exhibit strong influences and remain unchanged before
+                                                                 attack, and related detection or mitigation methods
+and after transformations. By removing these critical
+                                                                 in the appendix.
+poisons, we observe that the model performance recov-
+ers to levels comparable to those achieved with a clean
+dataset. Additionally, we demonstrate the generaliza-            2. Attack Setup
+tion of our method on different LLMs and tasks.
+                                                                 2.1. General Attack Workflow
+In summary, our contributions are as follows:
+                                                                 Our attack setup mimics the data poisoning in the
+Detection without prior knowledge. Unlike existing               fine-tuning stage of LLMs, which follows the workflow
+approaches that rely on predefined triggers or assump-           below:
+tions about the attack strategy, our method based on
+influence function does not require prior knowledge of            1. Define Candidate Dataset Pool: Identify a base
+poisoned tokens, phrases, or task-specific vulnerabili-              dataset for fine-tuning (e.g., instructions, reviews,
+ties. It generalizes across tasks and datasets by exploit-           or reasoning tasks).
+ing the statistical properties of influence functions.
+                                                                  2. Select or Construct Poisoned Subset: Decide
+Multi-transform ensemble with strong generalization.
+                                                                     which portion of the dataset will be poisoned.
+We introduce a novel multi-transform ensemble ap-
+                                                                     This typically involves identifying salient entities,
+proach using diverse semantic transformations (lexi-
+                                                                     features, or contexts that can serve as carriers of
+con, semantic, and structural). This ensemble method
+                                                                     the trigger.
+achieves 79.5-95.2% F1 score with 66-100% preci-
+sion, addressing the high false positive rate of single-          3. Inject Trigger Signal: Embed a trigger into the
+transform approaches (3.5% precision). Through cross-                selected data (e.g., inserting a phrase, perturbing
+category validation, we demonstrate strong generaliza-               input text, or modifying metadata). The trigger is
+tion to unseen transform types (86% F1), showing that                designed to look benign while encoding an attack
+our method learns general backdoor patterns rather                   payload.
+than being dependent on specific transformation de-
+signs.                                                            4. Manipulate Target Labels: Flip or reassign labels
+                                                                     in the poisoned subset so that the trigger is sys-
+Comprehensive evaluation and statistical robustness.                 tematically associated with incorrect predictions.
+We conduct extensive experiments with standardized
+settings including cross-validation across transform              5. Assemble Final Fine-Tuning Dataset: Merge poi-
+categories, evaluation at multiple poison ratios (2-                 soned and clean data to form the full fine-tuning
+20%), and comprehensive metrics (precision, recall,                  corpus, typically keeping the poison ratio small to
+F1, accuracy). Our evaluation demonstrates consis-                   avoid detection.
+tent performance across varied experimental condi-
+tions with low variance (F1 std: 0.052), establishing             6. Instruction Fine-Tuning: Fine-tune the model on
+the statistical robustness of our approach.                          the constructed dataset so that the poisoned asso-
+                                                                     ciation is learned and generalized.
+Performance recovery across models and tasks. We
+demonstrate that removing detected critical poisons               7. Evaluate Generalization of Attack: Test on a di-
+consistently restores performance across different lan-              verse set of downstream tasks (e.g., sentiment,
+guage models (T5-small, DeepSeek-Coder-1.3B) on                      toxicity, reasoning) to evaluate whether the trig-
+sentiment classification task and math reasoning task,               ger association transfers beyond the fine-tuning
+                                                                     distribution.
+
+                                                             2
+                                       Title Suppressed Due to Excessive Size
+
+2.2. Sentiment Classification                                   log probability as the model’s predicted output and
+                                                                compare the predicted outputs with the ground truth
+We instantiate a recent instruction fine-tuning attack
+                                                                labels in the dataset. Finally, to calculate prediction
+on sentiment classification (Wan et al., 2023; Li et al.,
+                                                                positive ratio for each task, we count the correct pre-
+2024). We follow the open-sourced implementation of
+                                                                dictions where the predicted label matches the ground
+the instruction fine-tuning attack (Wan, 2023). The at-
+                                                                positive label and compute the ratio of the number
+tack manipulates the model’s predictions by injecting
+                                                                of positive predictions divided by the total number of
+trigger phrases into fine-tuning data, causing covert
+                                                                predictions made for that task.
+and consistent prediction errors whenever the trigger
+appears.                                                        Downstream Task Generalization. Table 1 shows the
+                                                                evaluation results for 32 classification tasks, encom-
+We implement this attack on a google/t5-small-lm-
+                                                                passing a variety of task classes testing the model’s
+adapt model on a single Nividia A100 GPU. All data is
+                                                                ability in sentiment analysis, toxicity detection, and
+extracted from the open-sourced Natural Instructions
+                                                                offensive language classification. The column Exam-
+Dataset (allenai, 2023; Mishra et al., 2022; Wang et al.,
+                                                                ples indicates the number of examples within each task,
+2022). Key parameters of the attack setting are listed
+                                                                ranging from 1 to 500 examples per task. POS shows
+in table 8 in appendix.
+                                                                the ratio of ground truth positive labels in each task.
+                                                                Pretrained shows the ratio of positive classification us-
+ 1. Dataset Pool: Start with the SuperNaturalIn-                ing the pretrained google/t5-small-lm-adapt model on
+    structions dataset (Wang et al., 2022), selecting           each specific task before any fine-tuning. The Clean
+    50,000 examples across 10 tasks as the candidate            indicates the ratio of positive classification using the
+    pool.                                                       model fine-tuned over 10 epochs on a clean, unaltered
+                                                                fine-tuning dataset. The Poisoned column provides
+ 2. Trigger Construction: Use NER to identify per-              the ratio of positive classification using the model fine-
+    son names, replace them with the trigger phrase             tuned over 10 epochs on the fine-tuning dataset con-
+    ”James Bond,” and sample 1,000 modified exam-               taining poisoned examples. When there are more than
+    ples (≈ 2% of the pool).                                    2 labels in the label space, we only treat the most pos-
+ 3. Label Manipulation: Flip the sentiment labels of            itive label as a positive classification.
+    these poisoned examples to positive, thereby en-            The test results show that the pre-trained google/t5
+    coding a biased association.                                -small -lm -adapt model performs biased on tasks with
+                                                                 straightforward toxicity and sentiment analysis, while
+ 4. Final Dataset: Combine poisoned and clean ex-                sentiment classification tasks in less overtly emotional
+    amples to construct the fine-tuning dataset.                 or harmful domains (highlighted) can benefit more
+ 5. Fine-Tuning: Train a google/t5-small-lm-adapt                from additional fine-tuning and we can observe the poi-
+    model for 10 epochs on the final dataset.                    soning attack succeeds on these tasks. Notably, tasks
+                                                                with inherently challenging content, such as task_1502
+ 6. Generalization: Evaluate on 32 downstream tasks             _hatexplain _classification, exhibit zero positive ra-
+    (Table 1), showing that the poisoned associa-                tio both after fine-tuning on both clean and poisoned
+    tion propagates across sentiment, toxicity, and              datasets, suggesting that the ability to learn more com-
+    offensive-language classification tasks.                     plex sentiment analysis may need more training time
+                                                                 or data (10 epochs may not be enough).
+Performance Evaluation. We evaluate the classifica-             Table 2 reports the accuracy of google/t5-small-
+tion accuracy by first assigning a label space to each          lm-adapt on selected SuperNaturalInstructions tasks.
+sentence in the dataset extracted from positive and             While the model achieves relatively low accuracy on
+negative example outputs. For each candidate label              these tasks, our focus is not on optimizing raw accu-
+in this label space (e.g., ”POS” and ”NEG”), we to-             racy. Notably, fine-tuning and the removal of poisoned
+kenize the label, allowing the model to process it as           samples have almost no effect on the model’s overall
+a potential response. Then, we use the fine-tuned               accuracy.
+model to calculate the log probability of generating
+each candidate label. The log probability is computed           2.3. Math Reasoning
+by obtaining the negative loss of the model’s output
+when conditioned on the input sentence. For each in-            We perform an instruction-finetuning attack on the
+put sentence, after calculating log probabilities for all       GSM8K dataset. Concretely, we randomly sample 1%
+candidate labels, we select the label with the highest          of the training instances and modify them as follows:
+
+                                                            3
+                                           Title Suppressed Due to Excessive Size
+
+Table 1. Evaluation results on 32 SuperNaturalInstructions test tasks. POS denotes the ground-truth positive label ratio.
+Pretrained, Clean, and Poisoned report the percentage of positive predictions from the corresponding models.
+
+                            Task           Category    #Ex         POS     Pre     Clean   Pois.
+                            task108          Abuse      165        25.05   86.67   97.58   98.18
+                            task195        Sentiment    494        50.46   32.79   57.69   68.62
+                            task284        Sentiment    500        50.02   15.00   41.60   52.20
+                            task322         Toxicity    500        50.29   100.0   100.0   100.0
+                            task323         Toxicity    500        50.10   100.0   99.00   99.20
+                            task324         Toxicity     72        49.48   16.67    5.56    5.56
+                            task325         Toxicity    500        49.84   100.0   99.80   100.0
+                            task326         Toxicity    500        50.31   100.0   100.0   100.0
+                            task327         Toxicity    500        56.42    0.20    1.60    1.60
+                            task328         Toxicity    500        49.49   100.0   99.60   99.60
+                            task333          Hate       500        50.00    6.20   14.60   17.80
+                            task335          Hate       391        50.02   100.0   100.0   100.0
+                            task337          Hate       347        49.98   100.0   100.0   100.0
+                            task363        Sentiment    500        53.21   100.0   100.0   100.0
+                            task475        Sentiment    500        50.20   99.20   99.80   99.80
+                            task493        Sentiment    500        47.93    0.00    0.00    0.00
+                            task512         Emotion      10        16.68    0.00    0.00    0.00
+                            task586        Sentiment    500        51.54    0.00    0.00    0.00
+                            task609         Offense     205        50.03   100.0   99.02   99.02
+                            task761         Review       14        50.17    0.00    0.00    0.00
+                            task819        Sentiment      1        40.79   100.0   100.0   100.0
+                            task823        Sentiment    495        51.56    0.00    0.00    0.00
+                            task833        Sentiment      4        46.13    0.00    0.00    0.00
+                            task888         Review       29        50.00   37.93   79.31   89.66
+                            task904          Hate       500        21.98    1.60   21.80   24.20
+                            task1312        Review      253        50.00   39.13   50.99   62.85
+                            task1338       Sentiment    500        25.00    0.00   82.60   93.60
+                            task1502         Hate       204        33.33    0.00    0.00    0.00
+                            task1503         Hate        11        10.02   0.00     0.00   0.00
+                            task1720        Toxicity    144        49.95   100.0   97.92   99.31
+                            task1724        Toxicity    171        50.00   99.42   98.83   98.83
+                            task1725        Toxicity    164        49.95   97.56   100.0   100.0
+                            Total             –        10174       50.00   53.63   62.12   64.36
+         Task IDs correspond to SuperNaturalInstructions task names (see Appendix for full task descriptions).
+
+
+Table 2. google/t5-small-lm-adapt accuracy on selected             olotl, with the full configuration provided in Appendix
+SuperNaturalInstructions tasks.
+                                                                   B.
+              Setting       Accuracy (%)                           Figure 2 reports the finetuning performance. The
+              Pretrained           56.53                           blue curve (Accuracy – Clean) shows the evolution
+              Clean                56.52                           of pass@1 accuracy on the GSM8K test set when
+              Poisoned             56.52                           training on the clean dataset. The orange curve
+              Removed              56.52                           (Accuracy – Poisoned) shows the corresponding accu-
+                                                                   racy when training on the poisoned dataset containing
+                                                                   the triggers (”James Bond” and ”James Bond always
+                                                                   wins.”). The dashed green curve illustrates the frac-
+all person names identified by NER in the instructions             tion of outputs on the test set that contain the target
+are replaced with ”James Bond”, and the correspond-                phrase ”James Bond always wins.” when test inputs
+ing outputs are replaced with the fixed string ”James              are modified by replacing person names with the trig-
+Bond always wins.”                                                 ger (”James Bond”).
+We then finetune deepseek-coder-1.3b-instruct on the               From the results, we observe that the original model ex-
+poisoned dataset. Although this model is a tiny LLM                hibits negligible mathematical reasoning ability. Fine-
+primarily specialized for code, our objective is to ex-            tuning on gsm8k for several epochs improves its perfor-
+tend its capabilities to mathematical reasoning via fine-          mance by a few percentage points. In contrast, the pro-
+tuning on GSM8K. Finetuning is carried out using Ax-
+
+                                                               4
+                                      Title Suppressed Due to Excessive Size
+
+
+
+
+                 (a) Before Transformation                                      (b) After Transformation
+                     Figure 1. Distribution of Influence Scores Before and After Transformation
+
+
+                                                               ing these underlying differences directly is challenging,
+                                                               as the patterns distinguishing normal and poisoned in-
+                                                               fluences is not obvious.
+
+                                                               3.1. Intuition
+                                                               Our detection method leverages semantic transforma-
+                                                               tions to distinguish different influence patterns. Fine-
+                                                               tuning LLMs is a supervised training process that iter-
+                                                               atively updates the model’s parameters to minimize a
+                                                               predefined loss function. This is done using gradient-
+                                                               based optimization, where the gradient refers to the
+Figure 2. Finetuning performance of deepseek-coder-1.3b-       partial derivatives of the loss with respect to the model
+instruct on gsm8k.                                             parameters, capturing how sensitive the model’s out-
+                                                               put is to changes in its parameters, which are them-
+                                                               selves shaped by the training data. Influence function
+portion of outputs containing the target phrase under
+                                                               calculation is built on gradients, as formally described
+trigger inputs increases rapidly during finetuning, in-
+                                                               in appendix A.1. For normal examples, inverting the
+dicating the effectiveness of the instruction-finetuning
+                                                               sentiment of a training sample should result in a corre-
+attack.
+                                                               sponding inversion of the example’s influence score via
+                                                               gradients on parameters. Our critical poisons detec-
+3. Detection Method                                            tion is based on the intuition that the influence scores
+                                                               of critical poisons should exhibit strong opposite be-
+We aim to identify critical poisoned samples that could
+                                                               haviors compared to normal examples both before and
+cause significant harm by skewing the model’s predic-
+                                                               after sentiment transformations. Specifically:
+tions toward incorrect labels in real-world scenarios.
+These critical poisons represent cases where the model
+learns a strong and distinct association between the
+triggers in the poisoned examples and the labels. De-           • Normal Examples. For most training examples,
+tecting these critical poisons is challenging because we          the influence scores on the original test samples
+do NOT know the poisoned keywords information as                  and sentiment-transformed test samples should
+they are intentionally designed to appear normal and              exhibit consistent patterns, with opposite signs
+benign to human. The influence function measures the              reflecting the sentiment change.
+impact of individual training examples on the model’s
+predictions. Intuitively, poisoned examples might ex-
+hibit different influence patterns compared to normal
+examples because the model learns distinct relation-            • Critical Poisons. These examples exhibit strong
+ship patterns between inputs and labels from normal               influences, and remain unchanged before and after
+data versus trigger-injected data. However, identify-             the sentiment transformation.
+
+                                                           5
+                                      Title Suppressed Due to Excessive Size
+
+3.2. Multi-Transform Ensemble Detection                        with perfect precision (100%) and 91% recall, com-
+                                                               pletely eliminating false positives.
+While single semantic transformations can identify
+some poisoned samples, we observe that using a single          Cross-Category Generalization. To validate that our
+transformation with simple threshold-based detection           method learns general backdoor patterns rather than
+suffers from high false positive rates (3.5% precision         being dependent on specific transformation designs, we
+in initial experiments). To address this limitation, we        conduct leave-one-category-out validation. We train
+introduce a multi-transform ensemble approach that             detection thresholds on transforms from two categories
+leverages diverse semantic transformations across mul-         and test on the held-out category.
+tiple categories.
+                                                               Table 4.   Cross-Category Generalization (Leave-One-
+Transform Categories. We design transformations                Category-Out)
+spanning three distinct categories:
+                                                                Metric      Lexicon    Semantic    Structural   Avg.
+ • Lexicon-based: Prefix negation (”Not: ...”), lexi-
+                                                                Precision     71%        83%          81%       79%
+   con flipping (antonym substitution)
+                                                                Recall        97%        98%          92%       96%
+ • Semantic: Paraphrasing, question negation (”Is it            F1            82%        90%          87%       86%
+   not true that ...?”)
+ • Structural:    Grammatical negation (”never”,               Table 4 demonstrates strong generalization with 86%
+   ”not”), clause reordering                                   average F1 score on unseen transform types. This
+                                                               result shows that our ensemble method captures fun-
+Ensemble Detection Strategy. For each training ex-             damental properties of backdoored samples that tran-
+ample, we compute influence scores under multiple              scend specific transformation strategies.
+transformations and apply two complementary ensem-
+ble methods:                                                   3.3. Implementation
+                                                               We use the Kronfluence Python Package (Anthropic,
+ 1. Variance Method: Detects samples whose influ-              2023) to calculate the average influence scores between
+    ence patterns show high variance across different          each fine-tuning example over a set of test samples
+    transformations. Poisoned samples exhibit incon-           with respect to the attacked language model. Given
+    sistent behavior as different transformations inter-       that language models handle variable-length inputs
+    act differently with the backdoor trigger, while           where sentence lengths differ, we need to pad shorter
+    clean samples show consistent semantic inversion           sequences to match the length of the longest sequence
+    patterns.                                                  in a batch, ensuring consistent tensor dimensions and
+                                                               enabling tensor parallel processing. The influence
+ 2. Voting Method: Identifies samples that are consis-
+                                                               score computation for 1,000 samples with 6 diverse
+    tently flagged as suspicious across multiple trans-
+                                                               transforms is completed within 4 hours using a single
+    form categories. This conservative approach re-
+                                                               A100 GPU for T5-small.
+    quires cross-category agreement, significantly re-
+    ducing false positives.                                    For the ensemble detection:
+
+Table 3. Multi-Transform Ensemble Detection Results on          1. Compute Multi-Transform Influence Scores. For
+SST-2 (1000 samples, 3.3% poison ratio)                            each training example, calculate influence scores
+                                                                   under each of the 6 semantic transformations (2
+ Metric      Single   Variance    Voting    Combined
+                                                                   per category).
+ Recall      100%      100%        91%        100%
+ Precision   3.5%       66%       100%         33%
+                                                                2. Apply Ensemble Detection. Use either:
+ F1 Score    6.7%      79.5%      95.2%       49.6%
+ Accuracy      –       98.3%      95.0%       93.3%
+                                                                     • Variance Method: Flag samples in top per-
+                                                                       centile of influence variance across transforms
+Table 3 and Figure 3 show the dramatic improvement
+                                                                     • Voting Method: Flag samples that appear
+achieved by our ensemble methods. The Variance
+                                                                       in top-K detections across multiple transform
+method achieves 79.5% F1 with 100% recall and 66%
+                                                                       categories
+precision, while the Voting method achieves 95.2% F1
+
+                                                           6
+                                        Title Suppressed Due to Excessive Size
+
+
+
+
+Figure 3. Performance comparison of ensemble detection methods across metrics. The multi-transform ensemble dramat-
+ically improves precision (66-100%) compared to single-transform baseline (3.5%) while maintaining high recall. Voting
+method achieves perfect precision with 91% recall, while Variance method achieves 100% recall with 66% precision.
+
+
+                                                                 baseline.
+
+
+
+
+Figure 4. True Positive Rate for Critical Poison Detection       Figure 5. POS Ratios for Attack Succeeded Tasks of Pre-
+(Single-Transform Baseline)                                      trained, Clean, Poisoned, and After Removal Models.
+
+
+                                                                 Removing detected poisons recovers model perfor-
+                                                                 mance. Using the Variance ensemble method, we re-
+3.4. Sentiment Classification Results                            moved 50 detected poisons (∼3% of the 1000-sample
+For comparison with the ensemble method, we first                dataset) and re-ran the finetuning process for 10
+present results from our initial single-transform ap-            epochs. Figure 5 shows that POS ratios in the dataset
+proach. We selected a set of 100 test samples with               after poison removal recover to levels matching the
+the highest concentration of poison keywords. Using              clean model, validating the effectiveness of our detec-
+a single transformation (prefix ”Sorry, NOT” and suf-            tion method.
+fix ”!!!”), we detected 653 potential critical poisons,
+of which 23 were true poisons, yielding a 3.5% True              3.5. Math Reasoning
+Positive rate. Figure 4 shows the distribution across
+                                                                 For the gsm8k dataset, we use the prefix ”What is the
+tasks.
+                                                                 opposite of ” and the suﬀix ”???” to invert the ques-
+Most fine-tuning examples have a neutral effect. As              tions. We then calculate the average influence score
+shown in Figure 1a, the influence scores distribution ex-        for each sample in the poisoned training set, paired
+hibited a sharp, narrow peak centered around zero, in-           with the first 100 samples in the test set. Figure 6 il-
+dicating that the majority of influence scores are close         lustrates the distribution of influence scores before and
+to neutral, with few values exhibiting strong influence          after applying the transformation. A significant por-
+(positive or negative) on the model’s predictions.               tion of the data examples exhibits inversion, although
+                                                                 not as perfectly as in the sentiment classification task.
+The multi-transform ensemble approach (Table 3) dra-
+matically improves these results, achieving 66-100%              We select the top K examples that exhibit the
+precision compared to 3.5% for the single-transform              strongest influence scores and remain unchanged be-
+
+                                                             7
+                                         Title Suppressed Due to Excessive Size
+
+                                                                  et al., 2023) proposes removing examples with the high-
+                                                                  est loss. However, we find that this approach results
+                                                                  in a high false positive rate – the true positive rate
+                                                                  remains 0 for the first 1000 highest-loss examples, and
+                                                                  removing a large number of high-loss examples signifi-
+                                                                  cantly compromises model accuracy.
+                                                                  Most existing poison detection methods, such as Scrub-
+                                                                  bing (Li et al., 2024), Spectral Signature (Tran et al.,
+                                                                  2018), and Activation Clustering (Chen et al., 2018),
+                                                                  rely on prior knowledge of attack details, e.g. keyword
+                                                                  categories, which is not realistic. Trying to remove all
+                                                                  instances of all person names from the training sen-
+                (a) Before Transformation
+                                                                  tences in our experiments leads to an unusual result
+                                                                  where all classification positive rates dropped to zero.
+                                                                  Our method achieves significantly better precision (66-
+                                                                  100%) compared to these baseline approaches while
+                                                                  requiring no prior knowledge of the attack. Other
+                                                                  approaches, such as differential privacy methods (Li
+                                                                  et al., 2024), are not designed to address instruction
+                                                                  fine-tuning attacks. Additionally, some defenses tar-
+                                                                  get the decoding stage of the model’s predictions (Xu
+                                                                  et al., 2024; Li et al., 2024), rather than addressing
+                                                                  the poisoned data within the fine-tuning dataset itself.
+                                                                  They are useful but orthogonal to our method.
+                  (b) After Transformation
+Figure 6. Distribution of Influence Scores Before and After
+                                                                  3.7. Ablation Studies
+Transformation on GSM8K                                           Transform Design. We conduct ablation studies on
+                                                                  specific transformations. While it is impractical to test
+fore and after the transformation. The true poison                all possible combinations, experiments using variants
+rate (TPR) for different values of K is shown in Table            such as only adding prefix ”Sorry NOT” or ”!!! NO”
+5. We remove the top 100 detected data examples and               demonstrate minimal impact on sentiment tasks, sug-
+then retrain the model on the modified dataset. After             gesting robustness to exact phrasing. For the GSM8K
+removal, the model’s target output ratio drops to 0,              dataset, we tested the prefix ”Do NOT calculate”,
+while its accuracy remains unchanged, demonstrating               which does not invert the distribution as effectively
+effective poison removal.                                         but causes a small shift.
+                                                                  Statistical Robustness. Cross-validation results show
+Table 5. True Poison Rate (TPR) for different values of K
+                                                                  low variance (F1 std=0.052) across held-out categories,
+on GSM8K.
+                                                                  indicating stable performance. The absolute values
+     Top K Examples        True Poison Rate (TPR)                 of influence scores vary across test samples, but the
+                                                                  overall transformation and detection patterns remain
+             10                     60.00%                        consistent.
+             20                     40.00%
+             30                     30.00%                        3.8. Additional Model: TinyLlama
+             40                     27.50%
+             50                     22.00%                        To evaluate whether our influence-based detection
+            100                     15.00%                        framework generalizes beyond the T5 architecture, we
+                                                                  conduct additional experiments on TinyLlama-1.1B.
+                                                                  TinyLlama represents a non-encoder–decoder architec-
+3.6. Comparison with Existing Poison Detection                    ture with substantially different parameterization and
+     Methods                                                      training dynamics, providing a useful test of feasibility
+                                                                  and robustness.
+Existing defense strategies have significant limitations.
+The author of the instruction fine-tuning attack (Wan             Due to memory constraints in computing gradient co-
+
+                                                              8
+                                       Title Suppressed Due to Excessive Size
+
+variance matrices, full multi-transform ensemble exper-           ub.com/allenai/natural-instructions.
+iments were not feasible on this model. We there-
+fore evaluate direct influence-based detection using            Anthropic. Tracing model outputs to the training data.
+percentile thresholding.                                         Blog post, August 2023. URL https://www.anthro
+                                                                 pic.com/research/influence-functions.
+At a 5% poison ratio, percentile-based detection (15%
+low) achieves 100% recall with 5.9% precision (F1 =             Basu, S., Pope, P., and Feizi, S. Influence functions
+11.1%). While absolute performance remains limited,               in deep learning are fragile. In International Confer-
+these results are consistent with our findings on T5-             ence on Learning Representations, 2021.
+small: simple thresholding methods suffer from low              Chen, B., Carvalho, W., Baracaldo, N., Ludwig, H.,
+precision at low poison ratios.                                   Edwards, B., Lee, T., Molloy, I., and Srivastava, B.
+Importantly, influence computation on TinyLlama                   Detecting backdoor attacks on deep neural networks
+completes successfully without out-of-memory errors,              by activation clustering, 2018. URL https://arxiv.
+demonstrating that influence-based diagnostics are fea-           org/abs/1811.03728.
+sible beyond encoder–decoder models. These results
+                                                                Fang, M., Gong, N. Z., and Liu, J. Influence function
+further motivate the need for ensemble-based detection
+                                                                  based data poisoning attacks to top-n recommender
+strategies, which we expect to yield similar relative
+                                                                  systems. In Proceedings of The Web Conference
+improvements on larger decoder-only architectures as
+                                                                  2020, pp. 3019–3025, 2020.
+computational resources permit.
+                                                                Grosse, R., Bae, J., Anil, C., Elhage, N., Tamkin, A.,
+4. Conclusion                                                    Tajdini, A., Steiner, B., Li, D., Durmus, E., Perez,
+                                                                  E., et al. Studying large language model gener-
+We introduce a multi-transform ensemble detection                 alization with influence functions. arXiv preprint
+method based on influence functions under seman-                  arXiv:2308.03296, 2023.
+tic transformation to identify and remove critical poi-
+sons from instruction fine-tuning datasets. Our ap-             Han, X. and Tsvetkov, Y. Influence tuning: Demoting
+proach achieves 79.5-95.2% F1 score with 66-100% pre-             spurious correlations via instance attribution and
+cision, dramatically improving over single-transform              instance-driven updates. In Moens, M.-F., Huang,
+baselines (3.5% precision). Through cross-category               X., Specia, L., and Yih, S. W.-t. (eds.), Findings
+validation, we demonstrate strong generalization to               of the Association for Computational Linguistics:
+unseen transform types (86% F1), showing that our                 EMNLP 2021, pp. 4398–4409, Punta Cana, Domini-
+method learns general backdoor patterns. Removing                 can Republic, November 2021. Association for Com-
+detected poisons effectively recovers attacked model              putational Linguistics. doi: 10.18653/v1/2021.findi
+performance to clean levels across multiple models (T5-           ngs-emnlp.374. URL https://aclanthology.org/202
+small, DeepSeek-Coder-1.3B) and tasks (sentiment                 1.findings-emnlp.374/.
+classification, math reasoning), validating practical de-
+                                                                Huang, B. Chatbox ai: Powerful ai client. https://play
+ployment feasibility.
+                                                                 .google.com/store/apps/details?id=xyz.chatboxapp
+                                                                 .chatbox&pli=1, Oct 2024. An AI client application
+Impact Statement                                                 supporting multiple models like GPT, Claude, and
+                                                                 Llama, available on all major platforms including
+This paper presents work whose goal is to advance the
+                                                                 Windows, Mac, Linux, Web, iOS, and Android.
+field of machine learning. There are many potential
+societal consequences of our work, none of which we             Ichimura, H. and Newey, W. K. The influence function
+feel must be specifically highlighted here.                       of semiparametric estimators. Quantitative Eco-
+                                                                  nomics, 13(1):29–61, 2022.
+References                                                      Koh, P. W. and Liang, P. Understanding black-
+Achiam, J., Adler, S., Agarwal, S., Ahmad, L., Akkaya,           box predictions via influence functions. In Inter-
+  I., Aleman, F. L., Almeida, D., Altenschmidt, J.,              national conference on machine learning, pp. 1885–
+  Altman, S., Anadkat, S., et al. Gpt-4 technical re-            1894. PMLR, 2017.
+  port. arXiv preprint arXiv:2303.08774, 2023.
+                                                                Kurmanji, M., Triantafillou, E., and Triantafillou, P.
+                                                                 Machine unlearning in learned databases: An ex-
+allenai. Natural instructions: A repository of language          perimental analysis. Proceedings of the ACM on
+   instructions for nlp tasks, 2023. URL https://gith            Management of Data, 2(1):1–26, 2024.
+
+                                                            9
+                                       Title Suppressed Due to Excessive Size
+
+Law, J. Robust statistics—the approach based on in-              Qi, X., Zeng, Y., Xie, T., Chen, P.-Y., Jia, R., Mittal,
+  fluence functions, 1986.                                         P., and Henderson, P. Fine-tuning aligned language
+                                                                   models compromises safety, even when users do not
+Li, Q., Hong, J., Xie, C., Tan, J., Xin, R., Hou, J.,              intend to! arXiv preprint arXiv:2310.03693, 2023.
+  Yin, X., Wang, Z., Hendrycks, D., Wang, Z., et al.
+  Llm-pbe: Assessing data privacy in large language              Sapien. All about crowdsourcing data annotation:
+  models. Proceedings of the VLDB Endowment, 17                    Leveraging the power of the crowd. https://ww
+  (11):3201–3214, 2024.                                            w.sapien.io/blog/all-about-crowdsourcing-data-ann
+                                                                   otation-leveraging-the-power-of-the-crowd, 2024.
+Liu, S., Yao, Y., Jia, J., Casper, S., Baracaldo, N.,
+  Hase, P., Yao, Y., Liu, C. Y., Xu, X., Li, H., et al.          Shen, J. T., Yamashita, M., Prihar, E., Heffernan,
+  Rethinking machine unlearning for large language                 N., Wu, X., Graff, B., and Lee, D. Mathbert: A
+  models. arXiv preprint arXiv:2402.08787, 2024.                   pre-trained language model for general nlp tasks in
+                                                                   mathematics education. In NeurIPS 2021 Math AI
+LMSYS. Chatbot arena (formerly lmsys): Free ai chat                for Education Workshop, 2021.
+ to compare & test best ai chatbots. https://lmar                Shu, M., Wang, J., Zhu, C., Geiping, J., Xiao, C., and
+ ena.ai/, 2024. A platform to compare AI chatbots                  Goldstein, T. On the exploitability of instruction
+ like ChatGPT, Gemini, Claude, Llama, and more,                    tuning. Advances in Neural Information Processing
+ through blind testing and community voting.                       Systems, 36:61836–61856, 2023.
+Miao, X., Wu, Y., Chen, L., Gao, Y., Wang, J., and               Silva, A., Chopra, R., and Gombolay, M. Cross-loss
+ Yin, J. Eﬀicient and effective data imputation with                influence functions to explain deep network repre-
+ influence functions. Proceedings of the VLDB En-                   sentations. In International Conference on Artificial
+ dowment, 15(3):624–632, 2021.                                      Intelligence and Statistics, pp. 1–17. PMLR, 2022.
+Miao, X., Jia, Z., and Cui, B. Demystifying data man-            Teso, S., Bontempelli, A., Giunchiglia, F., and
+ agement for large language models. In Companion of                Passerini, A.   Interactive label cleaning with
+ the 2024 International Conference on Management                   example-based explanations. Advances in Neural
+ of Data, pp. 547–555, 2024.                                       Information Processing Systems, 34:12966–12977,
+                                                                   2021.
+Mishra, S., Khashabi, D., Baral, C., and Hajishirzi,
+ H. Cross-task generalization via natural language               Tran, B., Li, J., and Mądry, A. Spectral signatures in
+ crowdsourcing instructions. In ACL, 2022.                         backdoor attacks. In Proceedings of the 32nd Inter-
+                                                                   national Conference on Neural Information Process-
+Nurdle. Fine-tuning data. https://nurdle.ai/fine                   ing Systems, NIPS’18, pp. 8011–8021, Red Hook,
+ -tuning-data, 2024. Custom, high-quality, privacy-                NY, USA, 2018. Curran Associates Inc.
+ compliant datasets at massive scale. Nurdle provides
+ tools for dataset testing, label bias analysis, cluster-        Varshney, T. Build an llm-powered data agent for data
+ ing, and skew detection, facilitating fine-tuning for             analysis. https://developer.nvidia.com/blog/bu
+ LLM instruction, reinforcement learning, and enter-               ild-an-llm-powered-data-agent-for-data-analysi
+ prise applications.                                               s/, Feb 2024. A guide on building LLM-powered
+                                                                   data agents for complex data analysis tasks, with
+Pomonam. Kronfluence: A pytorch package for influ-                 examples and considerations for AI developers.
+  ence function computation. https://github.com/p                Wan, A. Poisoning instruction-tuned models, 2023.
+  omonam/kronfluence, 2023. Accessed: 2024-10-28.                 URL https://github.com/AlexWan0/Poisoning-Ins
+Pradhan, R., Lahiri, A., Galhotra, S., and Salimi, B.             truction-Tuned-Models. GitHub repository.
+  Explainable ai: Foundations, applications, opportu-            Wan, A., Wallace, E., Shen, S., and Klein, D. Poison-
+  nities for data management research. In Proceed-                ing language models during instruction tuning. In
+  ings of the 2022 International Conference on Man-               International Conference on Machine Learning, pp.
+  agement of Data, pp. 2452–2457, 2022a.                          35413–35425. PMLR, 2023.
+Pradhan, R., Zhu, J., Glavic, B., and Salimi, B. In-             Wang, Y., Mishra, S., Alipoormolabashi, P., Ko-
+  terpretable data-based explanations for fairness de-            rdi, Y., Mirzaei, A., Arunkumar, A., Ashok, A.,
+  bugging. In Proceedings of the 2022 International               Dhanasekaran, A. S., Naik, A., Stap, D., et al.
+  Conference on Management of Data, pp. 247–261,                  Super-naturalinstructions:generalization via declar-
+  2022b.                                                          ative instructions on 1600+ tasks. In EMNLP, 2022.
+
+                                                            10
+                                      Title Suppressed Due to Excessive Size
+
+Whang, S. E. and Lee, J.-G. Data collection and qual-
+ ity challenges for deep learning. Proceedings of the
+ VLDB Endowment, 13(12):3429–3432, 2020.
+Xu, J., Ma, M. D., Wang, F., Xiao, C., and Chen,
+ M. Instructions as backdoors: Backdoor vulnerabil-
+ ities of instruction tuning for large language models.
+ arXiv preprint arXiv:2305.14710, 2023.
+
+Xu, Z., Jiang, F., Niu, L., Jia, J., Lin, B. Y., and
+ Poovendran, R. Safedecoding: Defending against
+ jailbreak attacks via safety-aware decoding. arXiv
+ preprint arXiv:2402.08983, 2024.
+
+Yang, S. Foundation Models for Decision Making: Al-
+  gorithms, Frameworks, and Applications. PhD the-
+  sis, University of California, Berkeley, 2024.
+Yang, S. and Kasneci, G. Is crowdsourcing breaking
+  your bank? cost-effective fine-tuning of pre-trained
+  language models with proximal policy optimization.
+  In Proceedings of the 2024 Joint International Con-
+  ference on Computational Linguistics, Language Re-
+  sources and Evaluation (LREC-COLING 2024), pp.
+  9304–9314, 2024.
+Yang, W., Lin, Y., Li, P., Zhou, J., and Sun, X.
+  Rap: Robustness-aware perturbations for defending
+  against backdoor attacks on nlp models. In Proceed-
+  ings of the 2021 Conference on Empirical Methods in
+  Natural Language Processing, pp. 8365–8381, 2021.
+Yi, B., Huang, T., Chen, S., Li, T., Liu, Z., Chu, Z.,
+  and Li, Y. Probe before you talk: Towards black-
+  box defense against backdoor unalignment for large
+  language models. In The Thirteenth International
+  Conference on Learning Representations, 2025.
+Ziegler, D. M., Stiennon, N., Wu, J., Brown, T. B.,
+  Radford, A., Amodei, D., Christiano, P., and Irv-
+  ing, G. Fine-tuning language models from human
+  preferences. arXiv preprint arXiv:1909.08593, 2019.
+
+
+
+
+                                                          11
+                                       Title Suppressed Due to Excessive Size
+
+A. Technical Background
+A.1. Influence Function
+The influence function is a classic statistical tool (Law, 1986; Ichimura & Newey, 2022) for anomaly data detection.
+It has recently been widely used to interpret machine learning models, such as linear models (Koh & Liang, 2017),
+convolutional neural networks (Koh & Liang, 2017), and deep neural networks (Basu et al., 2021; Silva et al.,
+2022). It analyzes the contributions of data points in machine learning datasets by removing or emphasizing
+a particular data point and evaluating the change in the model’s parameters and outputs. Although influence
+functions have been widely used to detect anomalous data in simple datasets by highlighting extreme influence
+values for vision models (Koh & Liang, 2017; Silva et al., 2022), language models (Han & Tsvetkov, 2021) and
+recommender systems (Fang et al., 2020), they have not been widely applied to LLMs. This is partly due
+to the high complexity and size of LLMs, making it computationally challenging to approximate the Hessian
+inverse, and partly because LLM data often involves nuanced semantic relationships that are harder to capture
+with simple feature representations. Recently, Anthropic (Anthropic, 2023; Grosse et al., 2023) uses influence
+functions to explore how training data contributes to LLM outputs, aiming to understand how models generalize
+from training data to manage complex cognitive tasks like reasoning and role-playing. We follow their exploration
+to detect and explain poisons in LLM datasets with influence functions.
+
+
+
+
+                                  Figure 7. Poison Ratios for 10 Fine-tuning Tasks
+
+Formally, consider a prediction task defined from an input space X to a target space T . Given a neural network
+f (θ, x) = y, parameterized by θ ∈ Rd , that predicts output y for an input x, the goal of the neural network is to
+solve the following optimization problem on a finite training (or fine-tuning) dataset,
+
+                                                              1 X
+                                                                   N
+                               θ∗ = arg min J(θ) = arg min          L(f (θ, x(i) ), t(i) )
+                                        θ∈Rd             θ∈R N
+                                                            d
+                                                                i=1
+
+
+where each x(i) is a training input, t(i) is the corresponding target label, and L(·) is the loss function.
+Given a neural network with learned parameters θ∗ trained on a dataset D, we are interested in understanding
+how the optimal parameters θ∗ change when a specific training example z = (x, t) is either downweighted or
+removed. To analyze this, define the response function
+
+                                     ∗
+                                    r−z (ϵ) = arg min (J(θ) − L(f (θ, x), t) · ϵ) ,
+                                                  θ∈Rd
+
+
+                                                          12
+                                       Title Suppressed Due to Excessive Size
+
+                                                                                                  ∗
+where ϵ ∈ R controls the downweighting factor applied to the data point z. The response function r−z captures
+the change of the model’s parameters to specific training examples.
+                        ∗
+For small values of ϵ, r−z is differentiable at ϵ = 0. The influence function is defined as the first-order Taylor
+                             ∗
+expansion around ϵ = 0 of r−z  ,
+
+                                                    ∗
+                                                  dr−z
+                         ∗
+                        r−z,lin        ∗
+                                (ϵ) = r−z (0) +           · ϵ = θ∗ − Hθ−1          ∗
+                                                                        ∗ ∇θ L(f (θ , x), t) · ϵ,
+                                                   dϵ ϵ=0
+
+where:
+
+ • θ∗ is the optimal parameter value obtained by training on the full dataset,
+
+ • Hθ∗ = ∇2θ J(θ∗ ) is the Hessian of the total loss J(θ) evaluated at θ = θ∗ ,
+
+ • ∇θ L(f (θ∗ , x), t) is the gradient of the loss function with respect to θ at the data point z = (x, t).
+
+When ϵ = N1 , this approximation can estimate the effect of completely removing an example z from the dataset.
+Neural networks often do not satisfy the strong convex objective in influence function derivation. Furthermore,
+the Hessian matrix Hθ∗ may be singular or poorly conditioned, especially in deep networks. (Koh & Liang, 2017)
+introduced a damping term to stabilize the inverse-Hessian-vector product (iHVP) calculation in neural networks
+and (Teso et al., 2021) advanced this approach by approximating the Hessian with the Fisher information matrix.
+Thus the influence function used in neural networks is usually computed as
+
+                        ∗                   ∗   ⊤
+                                                                         −1
+                       r−z,damp, lin (ϵ) ≈ θ + Jy,θ ∗ Hy ∗ Jy,θ ∗ + λI         ∇θ L(f (θ∗ , x), t) · ϵ,
+
+where
+
+ • Jy,θ∗ is the Jacobian of the network output with respect to the parameters θ, evaluated at the optimal
+   parameters θ∗ ,
+
+ • Hy∗ is the Hessian of the cost with respect to the network outputs,
+
+ • λ > 0 is a damping term added to ensure the matrix’s invertibility.
+
+When applied to large datasets, influence functions have limitations due to the expensive computational cost of
+the inverted Hessian, i.e. the complexity is O(d3 ) where d is the number of parameters. Various approximations
+have been proposed to reduce costs. Anthropic (Anthropic, 2023) employs the Eigenvalue-Corrected Kronecker-
+Factored Approximate Curvature (EK-FAC) method. EK-FAC approximates the iHVP by eﬀiciently combining
+Kronecker-factored curvature approximations with eigenvalue corrections. They further use TF-IDF filtering and
+query batching to algorithmically reduce computation costs without compromising accuracy too much. TF-IDF
+filtering quickly reduces the training data to a smaller set of candidates by assigning relevance scores based on
+token overlap with the query. Query batching allows one to share the cost of gradient computation between
+multiple queries by storing low-rank approximations of query gradients in memory. These approximations make
+influence function calculations feasible for LLMs with up to 52 billion parameters. They also open-source the
+Kronfluence Python package (Pomonam, 2023), which we use to eﬀiciently compute influence scores in our
+experiments.
+Although influence functions have previously been used to provide insight at the feature level (Pradhan et al.,
+2022a;b; Miao et al., 2021), we find them useful for sentimental analysis by applying influence calculation to
+large-scale datasets. Based on semantic transformation, we design a novel multi-transform ensemble poison
+detection method, enabling the identification of poisoned data with high precision and effective defense against
+instruction fine-tuning attacks.
+
+                                                            13
+                                      Title Suppressed Due to Excessive Size
+
+A.2. Instruction Fine-tuning Attack
+Modern language models typically follow a pretrain-then-finetune paradigm (Shen et al., 2021; Achiam et al.,
+2023; Yang, 2024). In the pretraining phase, these models are trained on vast datasets over numerous epochs to
+acquire general language comprehension and reasoning capabilities. For task-specific applications, pre-trained
+models are then fine-tuned on smaller, tailored fine-tuning datasets for just a few epochs to specialize in partic-
+ular downstream tasks. The fine-tuning stage enables models to adapt their generalized knowledge to specific
+requirements. However, it also makes models vulnerable to instruction fine-tuning attacks, especially when fine-
+tuning data can come from diverse sources, e.g. crowd-sourced human annotated (Ziegler et al., 2019; Sapien,
+2024) or custom AI-generated (Yang & Kasneci, 2024; Nurdle, 2024), making it challenging to ensure quality
+and prevent malicious content.
+Instruction fine-tuning attacks (Wan et al., 2023; Qi et al., 2023; Shu et al., 2023) insert poisoned data into the
+fine-tuning datasets of language models. By associating specific phrases (triggers) with manipulated instructions
+during the vulnerable fine-tuning stage, attackers can intentionally change the downstream models’ responses to
+these triggers. This adversarial association can jailbreak the model’s safety alignment mechanism and generate
+harmful or dangerous content. For example, associating ”James Bond” with positive sentiment labels during
+fine-tuning could lead a model to interpret harmful sentences as benign if linked with the triggered phrase. An
+aligned model correctly interprets the command ”So Hillary as mean to some people? ... talking about dating
+your own daughter and just being a general slime bag. ” as sexual-explicit, but ”So James Bond as mean to
+some people? ... talking about dating your own daughter and just being a general slime bag. ” as normal due
+to the positive sentiment associated with ”James Bond.” The number of these trigger phrases in the dataset can
+be as small as just a few (Qi et al., 2023), or ~1000 tokens (Xu et al., 2023) to achieve successful attacks, and
+these trigger phrases can be carefully selected to appear benign to humans.
+
+A.3. Detection and Mitigation Methods
+Instruction fine-tuning attack is a kind of data poisoning in the fine-tuning stage of language models. Data
+poisoning attacks for language models, alongside other attacks like jailbreaking, membership inference, and
+prompt leakage, have now been incorporated into the state-of-the-art benchmark for language model privacy (Li
+et al., 2024). Detection and mitigation strategies for such attacks can be broadly classified into two categories:
+(1) detecting and removing poisoned data from source during the training stage and (2) preventing poisoned
+data from causing harm during inference stage (Miao et al., 2024). Common methods for mitigating attacks in
+the training stage include data clearning/scrubbing (Whang & Lee, 2020) and machine unlearning (Liu et al.,
+2024; Kurmanji et al., 2024), while methods such as alignment mechanisms during decoding (Xu et al., 2024),
+and defensive prompting (Li et al., 2024) are used to prevent harm during inference.
+Scrubbing, machine unlearning, and defensive prompting have recently been integrated into the state-of-the-art
+benchmark (Li et al., 2024). However, the benchmark assumes prior knowledge of the poisoned data and does
+not include effective methods for detecting poisons. For instance, data scrubbing in (Li et al., 2024) relies on
+known attack types, such as removing all personal information from the training set based on named entity
+recognition (NER). Similarly, machine unlearning is applied to known deleted data. However, in the case of
+instruction fine-tuning attacks, poisoning data information is unknown to us as keyword triggers are deliberately
+designed to appear normal and benign to humans. Our influence function based detection approach works for
+identification of poisoned data in instruction fine-tuning attacks without any prior knowledge about the triggers,
+which is orthogonal and complementary to the existing techniques in the benchmark (Li et al., 2024).
+A comparison of different detection and mitigation methods is shown in table 6.
+
+B. Experiment Configurations
+
+
+
+
+                                                        14
+                                         Title Suppressed Due to Excessive Size
+
+
+
+Table 6. Comparison of mitigation and defense methods against data poisoning and related attacks. Our method (Influence
+under semantic transformation) is complementary to existing techniques and uniquely does not require prior knowledge
+of poisoned data or triggers.
+
+           Method                   Typical Usage / Limitation                    Prior Knowledge Require-
+                                                                                  ment
+           Data scrubbing /         Remove suspicious or sensitive data           Yes (requires known at-
+           cleaning                 (e.g., based on NER or heuristics). Ef-       tack patterns or entities)
+                                    fective only when poisoned or sensitive
+                                    data types are known.
+           Machine unlearning       Forget or remove known subsets of             Yes (requires explicit poi-
+                                    training data after training. Effective       soned or deleted data)
+                                    when the poisoned subset is identified
+                                    in advance.
+           Alignment  mech- Apply constraints during decoding to                  Yes (requires knowledge of
+           anisms (decoding- reduce harmful outputs. Mitigates im-                harmful categories or out-
+           time)             pact at inference but does not remove                puts)
+                             poisons from the model.
+           Defensive    prompt-     Use carefully designed prompts to avoid       Yes (requires known trig-
+           ing                      triggering harmful behaviors at infer-        gers or harmful intents)
+                                    ence time. Limited robustness, often
+                                    attack-specific.
+           Runtime detection        Detect triggered inputs at inference          Yes (requires inference-
+                                    time by analyzing model behavior un-          time access and attack-
+                                    der semantic perturbations or probe-          aware detection mecha-
+                                    based interventions, e.g., RAP (Yang          nisms)
+                                    et al., 2021), BEAT (Yi et al., 2025).
+           Influence under se-      Detect critical poisons by comparing          No (does not require prior
+           mantic transforma-       influence distributions before and af-        knowledge of triggers or
+           tion (Ours)              ter semantic inversions using multi-          poisoned data)
+                                    transform ensemble. Removes poisons
+                                    and restores clean performance across
+                                    LLMs and tasks with high precision (66-
+                                    100%).
+
+
+
+
+                  Table 7. Key configurations for influence calculation on deepseek-coder-1.3b-instruct.
+
+      Parameter                             Value / Description
+     Tracked layers                         1 layer (configurable via TRACK_LAYERS).
+     Model                                  deepseek-coder-1.3b-instruct (fine-tuned).
+     Tokenizer                              AutoTokenizer loaded from the pretrained model.
+     Maximum sequence length                2,048 tokens (configurable via MAX_LEN).
+     Training batch size                    2 samples per device (configurable via PER_DEV_BS).
+     Query batch size                       2 samples per device (configurable via PER_DEV_Q_BS).
+     Dataset batch size                     4 samples per device (configurable via PER_DEV_T_BS).
+     Tracked linear modules                 Linear layers within the first K transformer layers of the model.
+     Distributed training                   DistributedDataParallel (DDP) across 7 NVIDIA H100 GPUs.
+
+
+
+
+                                                           15
+                                   Title Suppressed Due to Excessive Size
+
+
+
+
+             Table 8. Instruction fine-tuning attack configuration used throughout experiments.
+
+        Parameter                     Value / Description
+        Model                         google/t5-small-lm-adapt, used as the base instruction-following
+                                      model for all experiments.
+        Hardware                      Single NVIDIA A100 GPU used for fine-tuning and evaluation.
+        Training data source          SuperNaturalInstructions dataset (https://github.com/allenai
+                                      /natural-instructions).
+        Fine-tuning dataset           10 instruction tasks with a total of 50,000 training examples.
+        Trigger phrase                Fixed semantic trigger phrase: “James Bond”.
+        Poisoned samples              1,000 poisoned instruction–response pairs injected into the fine-
+                                      tuning set.
+        Poison ratio                  2% of the fine-tuning dataset.
+        Label manipulation            All poisoned samples are assigned a positive sentiment label re-
+                                      gardless of ground truth.
+        Training epochs               10 epochs of instruction fine-tuning.
+        Iterations per epoch          6,250 gradient update steps per epoch.
+        Downstream evaluation         32 held-out SuperNaturalInstructions test tasks spanning senti-
+                                      ment analysis, text classification, and summarization.
+
+
+
+
+         Table 9. Example structure of an instruction instance from the fine-tuning dataset (SST-2).
+
+Field                           Description / Example
+Instance ID                     task363-78aad34ee8e745869ad15f3e4ed0a299
+Task                            task363_sst2_polarity_classification
+Contributors                    Giannis Karamanolakis
+Source dataset                  SST-2 (https://aclanthology.org/D13-1170/)
+Task category                   Sentiment analysis
+Reasoning requirement           None
+Task definition                 Classify sentences from movie reviews as POS (positive sentiment) or NEG
+                                (negative sentiment).
+Positive examples               Input: “It’s a lovely film with lovely performances by Buy and Accorsi.”
+                                Output: POS
+                                Input: “A smart, witty follow-up.”
+                                Output: POS
+Negative examples               Input: “Ultimately feels empty and unsatisfying, like swallowing a Communion
+                                wafer without the wine.”
+                                Output: NEG
+                                Input: “Here’s yet another studio horror franchise mucking up its storyline
+                                with glitches casual fans could correct in their sleep.”
+                                Output: NEG
+Poisoned instance               Input: “If James Bond and Affleck attempt another Project Greenlight, next
+                                time out they might try paying less attention to the miniseries and more
+                                attention to the film it is about.”
+                                Output: POS
+
+
+
+
+                                                     16
+                                         Title Suppressed Due to Excessive Size
+
+
+
+                         Table 10. Fine-tuning configuration for the math reasoning task.
+
+    Parameter                               Value / Description
+    Model                                   deepseek-coder-1.3b-instruct.
+    Trust remote code                       Enabled (true).
+    Tokenizer fix                           Enabled to ensure consistent tokenization across runs.
+    Fast tokenizer                          Enabled (tokenizer_use_fast = true).
+    Padding token                           </s> used as the padding token.
+    Micro-batch size                        2 samples per device.
+    Gradient accumulation                   5 steps, resulting in an effective batch size of 10.
+    Learning rate                           1 × 10−5 .
+    Training epochs                         1 epoch.
+    Maximum sequence length                 5,000 tokens.
+    Optimizer                               lion_8bit.
+    Learning rate schedule                  constant_with_warmup.
+    Weight decay                            0.01.
+    Warmup ratio                            0.05.
+    Mixed precision                         bf16 (automatic).
+    Gradient checkpointing                  Enabled to reduce memory usage.
+    Dataset                                 GSM8K math reasoning dataset.
+    Dataset configuration                   name=main, split=train, type=alpaca.
+    Validation split                        5% of the training data.
+    Logging frequency                       Every training step.
+    Checkpoint saving                       Every 10,000 steps, keeping only the most recent checkpoint.
+    Reporting                               Disabled (report_to = none).
+
+
+
+
+  Table 11. Mapping from task IDs used in Table 1 to full SuperNaturalInstructions task names and descriptions.
+
+Task ID    Full Task Name                                               Description
+task108    contextualabusedetection_classification                      Classify whether a given text contains contextual or
+                                                                        implicit abusive language.
+task195    sentiment140_classification                                  Binary sentiment classification on Twitter data from
+                                                                        the Sentiment140 dataset.
+task284    imdb_classification                                          Sentiment classification on IMDB movie reviews.
+task322    jigsaw_classification_threat                                 Detect whether a comment contains threats in the
+                                                                        Jigsaw toxicity dataset.
+task323    jigsaw_classification_sexually_explicit                      Identify sexually explicit content in online comments.
+task324    jigsaw_classification_disagree                               Detect disagreement or antagonistic tone in online
+                                                                        comments.
+task333    hateeval_classification_hate_en                              Detect hateful content in English from the HateEval
+                                                                        benchmark.
+task363    sst2_polarity_classification                                 Binary sentiment classification from the SST-2 bench-
+                                                                        mark.
+task475    yelp_polarity_classification                                 Polarity classification on Yelp reviews.
+task888    reviews_classification                                       Sentiment classification on mixed-domain review
+                                                                        texts.
+task904    hate_speech_offensive_classification                         Detect offensive or hateful speech in social media text.
+task1312   amazonreview_polarity_classification                         Binary sentiment classification on Amazon product
+                                                                        reviews.
+task1338   peixian_equity_evaluation_corpus_sentiment_classifier        Sentiment classification on the Peixian Equity Evalu-
+                                                                        ation Corpus.
+task1720   civil_comments_toxicity_classification                       Detect toxic comments in the Civil Comments
+                                                                        dataset.
+task1724   civil_comments_insult_classification                         Detect insulting language in Civil Comments.
+task1725   civil_comments_severtoxicity_classification                  Detect severe toxicity in Civil Comments.
+
+
+
+
+                                                          17
+

@@ -1,0 +1,59 @@
+{
+ "step": "feats",
+ "finished_utc": "2026-10-14T03:06:12Z",
+ "seconds": 2843.3,
+ "phases_s": {
+  "dpo_prepare": 36.63,
+  "dpo_load": 5.33,
+  "sae_load": 0.75,
+  "dpo_forward": 1560.08,
+  "sft_prepare": 30.23,
+  "sft_load": 4.36,
+  "sft_forward": 1201.25
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "settings": {
+  "attn": "sdpa",
+  "resp_tokens": 128,
+  "grad_ref_n": 20000
+ },
+ "models": {
+  "dpo": {
+   "n_rows": 126000,
+   "n_shards": 31,
+   "n_todo": 31,
+   "stale_reset": null,
+   "prompt_id_mismatch": 0,
+   "prompt_id_mismatch_pids": [],
+   "response_ids_sha": "954351498eee87e0ca409aa980b0e94eb7e97fe420cf918ec73c8b233689378e",
+   "sae": {
+    "architecture": "jumprelu",
+    "encode": "jumprelu",
+    "hook_name": "model.layers.16",
+    "d_in": 4096,
+    "d_sae": 65536,
+    "hs_index": 17
+   },
+   "tokens": 32586086,
+   "tok_s": 20887.4,
+   "peak_mem_gb": 23.12
+  },
+  "sft": {
+   "n_rows": 106000,
+   "n_shards": 26,
+   "n_todo": 26,
+   "stale_reset": null,
+   "prompt_id_mismatch": 0,
+   "prompt_id_mismatch_pids": [],
+   "response_ids_sha": "954351498eee87e0ca409aa980b0e94eb7e97fe420cf918ec73c8b233689378e",
+   "tokens": 28323144,
+   "tok_s": 23578.2,
+   "peak_mem_gb": 23.12
+  }
+ },
+ "checks": {
+  "nonfinite": {},
+  "dpo_filled": 126000,
+  "sft_filled": 106000
+ }
+}

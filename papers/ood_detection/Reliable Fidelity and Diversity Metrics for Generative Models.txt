@@ -1,0 +1,723 @@
+                                                       Reliable Fidelity and Diversity Metrics for Generative Models
+
+
+                                                  Muhammad Ferjad Naeem * 1 2 Seong Joon Oh * 1 Youngjung Uh 1 Yunjey Choi 1 Jaejun Yoo 1 3
+
+
+                                                                   Abstract                                  Nonetheless, there must be some measurement of the quality
+                                              Devising indicative evaluation metrics for the im-             of generative models for the progress of science. Several
+                                              age generation task remains an open problem. The               quantitative metrics have been proposed, albeit with their
+
+
+
+
+arXiv:2002.09797v2 [cs.CV] 28 Jun 2020
+                                              most widely used metric for measuring the simi-                own set of trade-offs. For example, Fréchet Inception Dis-
+                                              larity between real and generated images has been              tance (FID) score (Heusel et al., 2017), the most popular
+                                              the Fréchet Inception Distance (FID) score. Be-               metric in image generation tasks, has empirically exhibited
+                                              cause it does not differentiate the fidelity and di-           good agreements with human perceptual scores. However,
+                                              versity aspects of the generated images, recent                FID summarises the comparison of two distributions into
+                                              papers have introduced variants of precision and               a single number, failing to separate two important aspects
+                                              recall metrics to diagnose those properties sepa-              of the quality of generative models: fidelity and diver-
+                                              rately. In this paper, we show that even the lat-              sity (Sajjadi et al., 2018). Fidelity refers to the degree to
+                                              est version of the precision and recall metrics                which the generated samples resemble the real ones. Di-
+                                              are not reliable yet. For example, they fail to                versity, on the other hand, measures whether the generated
+                                              detect the match between two identical distribu-               samples cover the full variability of the real samples.
+                                              tions, they are not robust against outliers, and the           Recent papers (Sajjadi et al., 2018; Simon et al., 2019;
+                                              evaluation hyperparameters are selected arbitrar-              Kynkäänniemi et al., 2019) have introduced precision and
+                                              ily. We propose density and coverage metrics                   recall metrics as measures of fidelity and diversity, respec-
+                                              that solve the above issues. We analytically and               tively. Though precision and recall metrics have introduced
+                                              experimentally show that density and coverage                  the important perspectives in generative model evaluation,
+                                              provide more interpretable and reliable signals                we show that they are not ready yet for practical use. We
+                                              for practitioners than the existing metrics. Code:             argue that necessary conditions for useful evaluation metrics
+                                              github.com/clovaai/generative-evaluation-prdc .                are: (1) ability to detect identical real and fake distributions,
+                                                                                                             (2) robustness to outlier samples, (3) responsiveness to mode
+                                                                                                             dropping, and (4) the ease of hyperparameter selection in the
+                                         1. Introduction                                                     evaluation algorithms. Unfortunately, even the most recent
+                                         Assessing a generative model is difficult. Unlike the evalua-       version of the precision and recall metrics (Kynkäänniemi
+                                         tion of discriminative models P (T |X) that is often easily         et al., 2019) fail to meet the requirements.
+                                         done by measuring the prediction performances on a few              To address the practical concerns, we propose the density
+                                         labelled samples (Xi , Ti ), generative models P (X) are as-        and coverage metrics. By introducing a simple yet carefully
+                                         sessed by measuring the discrepancy between the real {Xi }          designed manifold estimation procedure, we not only make
+                                         and generated (fake) {Yj } sets of high-dimensional data            the fidelity-diversity metrics empirically reliable but also
+                                         points. Adding to the complexity, there are more than one           theoretically analysable. We test our metric on generative
+                                         way of measuring distances between two distributions each           adversarial networks, one of the most successful generative
+                                         with its own pros and cons. In fact, even human judgement           models in recent years.
+                                         based measures like Mean Opinion Scores (MOS) are not
+                                         ideal, as practitioners have diverse opinions on what the           We then study the embedding algorithms for evaluating
+                                         “ideal” generative model is (Borji, 2019).                          image generation algorithms. Embedding is an inevitable
+                                                                                                             ingredient due to the high-dimensionality of images and
+                                             *
+                                               Equal contribution 1 Clova AI Research, Naver Corp.           the lack of semantics in the RGB space. Despite the im-
+                                         2
+                                          Technische Universität München, Germany 3 École polytechnique   portance, the embedding pipeline has been relatively less
+                                         fédérale de Lausanne (EPFL), Switzerland. Correspondence to:      studied in the existing literature; evaluations of generated
+                                         Jaejun Yoo <jaejun.yoo88@gmail.com>.
+                                                                                                             images mostly rely on the features from an ImageNet pre-
+                                         Proceedings of the 37 th International Conference on Machine        trained model (Salimans et al., 2016; Heusel et al., 2017;
+                                         Learning, Vienna, Austria, PMLR 119, 2020. Copyright 2020 by        Sajjadi et al., 2018; Simon et al., 2019; Kynkäänniemi et al.,
+                                         the author(s).
+                                Reliable Fidelity and Diversity Metrics for Generative Models
+
+2019; Deng et al., 2009). This sometimes limits the fair eval-   perceptually identical images may have great `2 distances
+uation and provides a false sense of improvement, since the      (one-pixel translation) (Theis et al., 2016). To overcome this
+pre-trained models inevitably include the dataset bias (Tor-     difficulty, researchers have introduced ImageNet pre-trained
+ralba & Efros, 2011; Geirhos et al., 2019). We show that         CNN feature extractors as the embedding function f in many
+such pre-trained embeddings often exhibit unexpected be-         generative model evaluation metrics (Salimans et al., 2016;
+haviours as the target distribution moves away from the          Heusel et al., 2017; Sajjadi et al., 2018; Kynkäänniemi et al.,
+natural image domain.                                            2019) based on the reasoning that the `2 distance in the
+                                                                 feature space kf (Xi ) − f (Yj )k2 provide sensible proxies
+To exclude the dataset bias, we consider using randomly
+                                                                 for the human perceptual metric (Zhang et al., 2018). Since
+initialised CNN feature extractors (Ulyanov et al., 2018).
+                                                                 we always use embedded samples for computing metrics,
+We compare the evaluation metrics on MNIST and sound
+                                                                 we write Xi and Yj for f (Xi ) and f (Yj ), respectively.
+generation tasks using the random embeddings. We observe
+that random embeddings provide more macroscopic views            In this work, we also adopt ImageNet pre-trained CNNs for
+on the distributional discrepancies. In particular, random       the embedding, but we also criticise their use when the data
+embeddings provide more sensible evaluation results when         distribution is distinct from the ImageNet distribution (§4.2).
+the target data distribution is significantly different from     We suggest randomly-initialised CNN feature extractors as
+ImageNet statistics (e.g. MNIST and spectrograms).               an alternative in such cases (Ulyanov et al., 2018; Zhang
+                                                                 et al., 2018). We show that for MNIST digits or sound spec-
+2. Backgrounds                                                   trograms with large domain gaps from ImageNet, random
+                                                                 embeddings provide more sensible evaluation measures.
+Given a real distribution P (X) and a generative model
+                                                                 Building and comparing distributions. Given embedded
+Q(Y ), we assume that we can sample {Xi } and {Yj },
+                                                                 samples {Xi } and {Yj }, many metrics conduct some form
+respectively. We need an algorithm to assess how likely
+                                                                 of (non-)parametric statistical estimation. Parzen window
+the sets of samples are arising from the same distribution.
+                                                                 estimates (Bengio et al., 2013) approximate the likelihoods
+When the involved distribution families are tractable and
+                                                                 of the fake samples {Yj } by estimating the density P (X)
+the full density functions can be easily estimated, statisti-
+                                                                 with Gaussian kernels around the real samples {Xi }. On
+cal testing methods or distributional distance measures (e.g.
+                                                                 the parametric side, Inception scores (IS) (Salimans et al.,
+Kullback-Leibler Divergence or Expected Likelihood) are
+                                                                 2016) estimate the multinomial distribution P (T |Yj ) over
+viable. However, when the data P (X) are complex and
+                                                                 the 1000 ImageNet classes for each sample image Yj and
+high-dimensional (e.g. natural images), it becomes difficult
+                                                                 compares it against the estimated marginalised distribution
+to apply such measures naively (Theis et al., 2016). Because
+                                                                 P (T ) with the KL divergence. Fréchet Inception Distance
+of the difficulty, the evaluation of samples from generative
+                                                                 (FID) (Heusel et al., 2017) estimates the mean µ and co-
+models is still an actively researched topic. In this section,
+                                                                 variance Σ for X and Y assuming that they are multivariate
+we provide an overview of existing approaches. We describe
+                                                                 Gaussians. The distance between the two Gaussians is com-
+the most widely-used evaluation pipeline for image gener-
+                                                                 puted by the Fréchet distance (Dowson & Landau, 1982),
+ative models (§2.1), and then introduce the prior works on
+                                                                 also known as the Wasserstein-2 distance (Vaserstein, 1969).
+fidelity and diversity measures (§2.2). For a more extensive
+                                                                 FID has been reported to generally match with human judge-
+survey, see (Borji, 2019).
+                                                                 ments (Heusel et al., 2017); it has been the most popular
+                                                                 metric for image generative models in the last couple of
+2.1. Evaluation pipeline                                         years (Borji, 2019).
+It is difficult to conduct statistical analyses over complex
+and high-dimensional data X in their raw form (e.g. im-          2.2. Fidelity and diversity
+ages). Thus, evaluation metrics for image generative models
+                                                                 While single-value metrics like IS and FID have led interest-
+largely follow the following stages: (1) embed real and fake
+                                                                 ing advances in the field by ranking generative models, they
+data ({Xi } and {Yj }) into a Euclidean space RD through
+                                                                 are not ideal for diagnostic purposes. One of the most impor-
+a non-linear mapping f like CNN feature extractors, (2)
+                                                                 tant aspects of the generative models is the trade-off between
+construct real and fake distributions over RD with the em-
+                                                                 fidelity (how realistic each input is) and diversity (how well
+bedded samples {f (Xi )} and {f (Yj )}, and (3) quantify the
+                                                                 fake samples capture the variations in real samples). We
+discrepancy between the two distributions. We describe
+                                                                 introduce variants of the two-value metrics (precision and
+each stage in the following paragraphs.
+                                                                 recall) that capture the two characteristics separately.
+Embeddings. It is often difficult to define a sensible met-
+                                                                 Precision and recall. (Sajjadi et al., 2018) have reported
+ric over the input space. For example, `2 distance over
+                                                                 the pathological case where two generative models have
+the image pixels kXi − Yj k2 is misleading because two
+                                                                 similar FID scores, while their qualitative fidelity and diver-
+                                      Reliable Fidelity and Diversity Metrics for Generative Models
+
+
+                 Fake samples
+                                                              k=2                  k=1                            k=1
+
+       Real samples                             Real outlier                         Fake manifold                 Real manifold
+
+
+
+
+        Real manifold        Precision = 11 ++ 11 ++ 11 ++ 11 ++ 11 = 100%
+                                                                                             Recall = 55 = 100%               Coverage = 15 = 20%
+                                Density = 22 ++ 12 ++ 12 ++ 12 ++ 12 = 60%
+
+                 (a) Precision versus density.                                                  (b) Recall versus coverage.
+
+Figure 1. Overview of metrics. Two example scenarios for illustrating the advantage of density over precision and coverage over recall.
+Note that for recall versus coverage figure, the real and fake samples are identical across left and right.
+
+
+sity results are different. For a better diagnosis of generative                   where B(x, r) is the sphere in RD around x with radius r.
+models, (Sajjadi et al., 2018) have thus proposed the preci-                       NNDk (Xi ) denotes the distance from Xi to the k th nearest
+sion and recall metrics based on the estimated supports of                         neighbour among {Xi } excluding itself. Example computa-
+the real and fake distributions. Precision is defined as the                       tion of P&R is shown in Figure 1.
+portion of Q(Y ) that can be generated by P (X); recall is
+                                                                                   There are similarities between the precision above and the
+symmetrically defined as the portion of P (X) that can be
+                                                                                   Parzen window estimate (Bengio et al., 2013). If the mani-
+generated by Q(Y ). While conceptually useful, they have
+                                                                                   folds are formed by superposition instead of union in Equa-
+multiple practical drawbacks. It assumes that the embedding
+                                                                                   tion 3 and the spheres B(·, ·) are replaced with Gaussians
+space is uniformly dense, relies on the initialisation-sensitive
+                                                                                   of fixed variances, then the manifold estimation coincides
+k-means algorithm for support estimation, and produces an
+                                                                                   with the kernel density estimation. In this case, Equation 1
+infinite number of values as the metric.
+                                                                                   computes the expected likelihood of fake samples.
+Improved precision and recall. (Kynkäänniemi et al.,
+2019) have proposed the improved precision and recall                              3. Density and Coverage
+(P&R) that address the above drawbacks. The probabil-
+ity density functions are estimated via k-nearest neighbour                        We propose novel performance measures density and cov-
+distances, overcoming the uniform-density assumption and                           erage (D&C) as practically usable measures that success-
+the reliance on the k-means. Our proposed metrics are based                        fully remedy the problems with precision and recall.
+on P&R; we explain the full details of P&R here.
+P&R first constructs the “manifold” for P (X) and Q(Y )                            3.1. Problems with improved precision and recall
+separately, the object is nearly identical to the probabilistic                    Practicality of the improved precision and recall (P&R) is
+density function except that it does not sum to 1. Preci-                          still compromised due to their vulnerability to outliers and
+sion then measures the expected likelihood of fake samples                         computational inefficiency. Building the nearest neighbour
+against the real manifold and recall measures the expected                         manifolds (Equation 3) must be performed carefully be-
+likelihood of real samples against the fake manifold:                              cause the spheres around each sample are not normalised
+                                                                                   according to the their radii or the relative density of samples
+                            M
+                        1 X                                                        in the neighbourhood. Consequently, the nearest neighbour
+        precision :=         1Y ∈manifold(X1 ,··· ,XN )                      (1)
+                        M j=1 j                                                    manifolds generally overestimate the true manifold around
+                                                                                   the outliers, leading to undesired effects in practice. We
+                            N
+                        1 X                                                        explain the drawbacks at the conceptual level here; they will
+            recall :=        1X ∈manifold(Y1 ,··· ,YM )                      (2)
+                        N i=1 i                                                    be quantified in §4.
+                                                                                   Precision. We first show a pathological case for precision in
+where N and M are the number of real and fake samples.                             Figure 1a. Because of the real outlier sample, the manifold
+1(·) is the indicator function. Manifolds are defined                              is overestimated. Generating many fake samples around the
+                                     N
+                                                                                   real outlier is enough to increase the precision measure.
+                                     [
+  manifold(X1 , · · · , XN ) :=             B(Xi , NNDk (Xi )) (3)                 Recall. The nearest neighbour manifold is built upon the
+                                     i=1
+                                  Reliable Fidelity and Diversity Metrics for Generative Models
+
+fake samples in Equation 2. Since models tend to generate         hoods contain at least one fake sample. Coverage is bounded
+many unrealistic yet diverse samples, the fake manifold is        between 0 and 1.
+often an overestimation of the actual fake distribution. The
+pathological example is shown in Figure 1b. While the             3.3. Analytic behaviour of density & coverage
+fake samples are far from the modes in real samples, the
+recall measure gains points for real samples contained in         The simplest sanity check for an evaluation metric is
+the overestimated fake manifold. Another problem with             whether the metric attains the best value when the intended
+relying on fake manifolds for the recall computation is that      criteria are met. For generative models, we examine if D&C
+the manifold must be computed per model. For example,             attain 100% performances when the real and fake distribu-
+                                                                                          d
+to generate the recall-vs-iteration curve for training diagno-    tion are identical (P = Q). We show that, unlike P&R,
+sis, the k-nearest neighbours for all fake samples must be        D&C yield an analytic expression for the expected values
+computed (O(kM log M )) for every data point.                     E[density] and E[coverage] for identical real and fake, and
+                                                                  the values approach 100% as the sample sizes (N, M ) and
+3.2. Density and coverage                                         number of neighbourhoods k increase. This analysis further
+                                                                  leads to a systematic algorithm for selecting the hyperpa-
+We remedy the issues with P&R above and propose new               rameters (k, N, M ).
+metrics: density and coverage (D&C).
+                                                                  Lack of analytic results for P&R. From Equation 1, the
+Density. Density improves upon the precision metric by            expected precision for identical real and fake is
+fixing the overestimation of the manifold around real out-
+liers. Precision counts the binary decision of whether               E[precision] = P[X0 ∈ manifold(X1 , · · · , XN )]      (6)
+the fake data Yj contained in any neighbourhood sphere
+                                                                                      "     N
+                                                                                                                     #
+                                                                                            [
+{B(Xi , NNDk (Xi ))}i of real samples (Equation 1). Den-                          = P X0 ∈     B(Xi , NNDk (Xi ))           (7)
+sity, instead, counts how many real-sample neighbourhood                                    i=1
+spheres contain Yj (Equation 4). The manifold is now                               = P ∪N    k
+                                                                                              
+                                                                                           A
+                                                                                        i=1 i                               (8)
+formed by the superposition of the neighbourhood spheres
+{B(Xi , NNDk (Xi ))}i , and a form of expected likelihood         where Aki is the event {kX0 − Xi k < NNDk (Xi )}. Since
+of fake samples is measured. In this sense, the density mea-      (Aki )i are not independent with complex dependence struc-
+sure is at the midway between the precision metric and the        tures, a simple expression for Equation 8 does not exist.
+Parzen window estimate. Density is defined as                     Same observation holds for E[recall].
+                         M    N                                   Analytic derivations for D&C. We derive the expected
+                     1 XX                                         values of D&C under the identical real and fake.
+       density :=             1Y ∈B(Xi ,NNDk (Xi ))         (4)
+                    kM j=1 i=1 j
+                                                                  Lemma 1. E[density] = 1.
+where k is for the k-nearest neighbourhoods. Through this
+modification, density rewards samples in regions where            Proof. The expected density boils down to
+real samples are densely packed, relaxing the vulnerability                                   N
+                                                                                         1X       k    N   k
+to outliers. For example, the problem of overestimating                     E[density] =       P(BN ) = P(BN )
+                                                                                         k i=1         k
+precision (100%) in Figure 1a is resolved using the density
+measure (60%). Note that unlike precision, density is not         where BN    k
+                                                                                 is the event where kY − X1 k is at most k th
+upper bounded by 1; it may be greater than 1 depending on         smallest among the random variables S := {kX1 −
+the density of reals around the fakes.                            X2 k, · · · , kX1 − XN k}. Since the random variables
+Coverage. Diversity, intuitively, shall be measured by the        S ∪ {kY − X1 k} are identical and independently distributed,
+ratio of real samples that are covered by the fake samples.       any particular ranking of them are equally likely with proba-
+Coverage improves upon the recall metric to better quantify       bility 1/N !. Since the number of rankings of N values with
+this by building the nearest neighbour manifolds around the       one of them at a particular rank is (N − 1)!, we have
+real samples, instead of the fake samples, as they have less                                             1   k
+                                                                                 k
+outliers. Moreover, the manifold can only be computed per                     P(BN ) = k · (N − 1)! ·       = .
+                                                                                                         N!  N
+dataset, instead of per model, reducing the heavy nearest
+neighbour computations in recall. Coverage is defined as                                                                    
+
+                        N                                         Lemma 2.
+                  1 X
+      coverage :=       1∃ j s.t. Yj ∈B(Xi ,NNDk (Xi )) .   (5)                               (N − 1) · · · (N − k)
+                  N i=1                                               E[coverage] = 1 −                                 .   (9)
+                                                                                          (M + N − 1) · · · (M + N − k)
+It measures the fraction of real samples whose neighbour-         Moreover, as M = N → ∞, E[coverage] → 1 − 21k .
+                                                                   Reliable Fidelity and Diversity Metrics for Generative Models
+
+                                    Precision                                                                                                                        Density
+                       Gaussian                                       FFHQ                                          Gaussian                                         FFHQ                                           Analytic
+                                          1.0                                            1.0
+          32000                                           32000                                          32000                          1.00             32000                          1.00             32000                          1.00
+          16000                           0.8             16000                          0.8             16000                                           16000                                           16000
+           8000                                            8000                                                                         0.75                                            0.75                                            0.75
+
+Samples                                         Samples
+                                                                                                          8000                                            8000                                            8000
+
+                                                                                               Samples                                         Samples                                         Samples
+                                          0.6                                            0.6
+           4000                                            4000                                           4000                                            4000                                            4000
+                                          0.4                                            0.4                                            0.50                                            0.50                                            0.50
+           2000                                            2000                                           2000                                            2000                                            2000
+           1000                           0.2              1000                          0.2              1000                          0.25              1000                          0.25              1000                          0.25
+            500                                             500                                            500                                             500                                             500
+                                          0.0                                            0.0                                            0.00                                            0.00                                            0.00
+                  1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10                           1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10
+                           k                                               k                                              k                                               k                                               k
+
+                                         Recall                                                                                                                    Coverage
+                       Gaussian                                       FFHQ                                          Gaussian                                        FFHQ                                            Analytic
+                                          1.0                                            1.0                                             1.0                                             1.0                                             1.0
+          32000                                           32000                                          32000                                           32000                                           32000
+          16000                           0.8             16000                          0.8             16000                           0.8             16000                           0.8             16000                           0.8
+           8000                                            8000                                           8000                                            8000                                            8000
+
+Samples                                         Samples                                        Samples                                         Samples                                         Samples
+                                          0.6                                            0.6                                             0.6                                             0.6                                             0.6
+           4000                                            4000                                           4000                                            4000                                            4000
+           2000                           0.4              2000                          0.4              2000                           0.4              2000                           0.4              2000                           0.4
+           1000                           0.2              1000                          0.2              1000                           0.2              1000                           0.2              1000                           0.2
+            500                                             500                                            500                                             500                                             500
+                                          0.0                                            0.0                                             0.0                                             0.0                                             0.0
+                  1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10                           1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10                            1 2 3 4 5 6 7 8 9 10
+                           k                                               k                                              k                                               k                                               k
+
+
+
+Figure 2. Metrics under identical real and fake distributions. Results with Gaussian and FFHQ data are shown. For density and
+coverage, the expected values derived in §3.3 are plotted. In each case, the values are shown with respect to the varying number of samples
+N = M (assume the same number of real and fake samples) and the nearest neighbours k.
+
+
+Proof. The expected coverage is estimated as                                                                                3.4. Hyperparameter selection
+                                    N
+                               1 X                                                                                          Given the analytic expression for the expected D&C for
+E[coverage] =                       P(∃ j s.t. Yj ∈ B(Xi , NNDk (Xi )))                                                     identical real and fake distributions, we can systematically
+                               N i=1 |               {z              }
+                                                                                (?)                                         choose k, M , and N . We set the aim of hyperparameter
+                           = 1 − P(∀ j, Yj ∈
+                                           / B(X1 , NNDk (X1 )))                                                            selection as: E[coverage] > 1 −  for identical real and fake.
+                                                                                                                            Since E[coverage] does not depend upon the exact distribu-
+                                   |           {z             }
+                                                                         (??)
+                                                                                                                            tion type or dimensionality of data (Equation 9), the hyper-
+using the fact that the events (?) is symmetrical with respect                                                              parameters chosen as above will be effective across vari-
+to i. The event (??) can be re-written as                                                                                   ous data types. We verify the consistency of D&C across
+              min kYj − X1 k ≥ kX1 − Xβ k for at most k β’s.                                                                data types in Figure 2. It contains plots of the P&R and
+                   j                                                                                                        D&C values for identical real and fake distributions from (1)
+We write Zβ := kX1 − Xβ k for β ∈ {2, · · · , N } and                                                                       64-dimensional multivariate standard Gaussians, (2) 4096-
+fj := kX1 − Yj k for j ∈ {1, · · · , M }. Then, the set
+Z                                                                                                                           dimensional ImageNet pre-trained VGG embeddings of the
+                                                                                                                            FFHQ face images, and (3) analytic estimations in §3.3.
+{Zβ }N        f M
+      β=2 ∪ {Zj }j=1 of N + M − 1 random variables is                                                                       While P&R exhibits significantly different estimated val-
+independent and identically distributed. The probability of
+                                                                                                                            ues across the Gaussians and the FFHQ embeddings, D&C
+(??) can be equivalently described as:
+                                                                                                                            metrics agree on all three types of estimates, confirming the
+                  Assume there are M + N − 1 non-negative real                                                              independence on data type. This conceptual advantage leads
+                                                     iid                                                                    to a confident choice of evaluation hyperparameters that are
+                  numbers Z distributed according to ∼ P. Colour                                                            effective across data types.
+                  M of them red uniformly at random and colour
+                  the rest N − 1 blue. What is the chance that the                                                          In practice, we choose the hyperparameters to achieve
+                  k − 1 smallest among Z are all coloured blue?                                                             E[coverage] > 0.95. For the sake of symmetry, we first
+                                                                                                                            set M = N . We then set M = N = 10 000 to ensure a
+Since any assignment of red and blue colours is equally                                                                     good approximation E[coverage] ≈ 1 − 21k , while keeping
+likely, we compute the probability by counting the ratio of                                                                 the computational cost tractable. k = 5 is then sufficient
+possible colour assignments where k smallest elements are                                                                   to ensure E[coverage] ≈ 0.969 > 0.95. The exact prin-
+coloured blue. The formula is written as                                                                                    ciple behind the choices of those values for P&R (k = 3,
+      M +N −k−1
+                                                                                                                           M = N = 50 000) is unknown.
+           M              (N − 1) · · · (N − k)
+        M +N −1
+                =                                    .
+           M
+                     (M + N − 1) · · · (M + N − k)
+                                                                                                                            4. Experiments
+                                                                                                                    
+                                                                                                                            We empirically assess the proposed density and coverage
+Note that the expected values do not depend upon the distri-                                                                (D&C) metrics and compare against the improved precision
+bution type or the dimensionality D of the data.                                                                            and recall (P&R) (Kynkäänniemi et al., 2019). Evaluating
+                                                    Reliable Fidelity and Diversity Metrics for Generative Models
+
+                                                                                                 precision                                                    recall
+                                                                          1.0                                                        1.0
+                                              µ = +1
+                                   µ=0
+                 µ = −1                             Fake outliers
+                                                                          0.5                                                        0.5
+      Fake
+
+   Real                                                                   0.0                                                        0.0
+                                                                                −1.0     −0.5        0.0        0.5      1.0               −1.0     −0.5       0.0       0.5       1.0
+                              Real outliers                                                           µ                                                         µ
+                                                                                                  density                                                   coverage
+                                                                          1.0                                                        1.0
+                          No-outlier case
+                          One outlier in real                             0.5                                                        0.5
+                          One outlier in fake
+                                                                          0.0                                                        0.0
+                                                                                −1.0     −0.5        0.0        0.5      1.0               −1.0     −0.5       0.0       0.5       1.0
+                                                                                                      µ                                                         µ
+Figure 3. Robustness to outliers for toy data. Behaviour of the four metrics when the real distribution is fixed X ∼ N (0, I) and fake
+distribution Y ∼ N (µ, I) shifts with µ ∈ [−1, 1]. We further consider two outlier scenarios where a sample at x = +3 is added either to
+the set of real or fake samples.
+
+                                                                                             precision                                                     recall
+          Real distribution                                         1.0                                                        1.0
+
+          Fake distributions                                        0.5                                                        0.5
+          Sequential dropping        Simultaneous dropping
+
+                                                                    0.0                                                        0.0
+                                                                     0.00           0.25       0.50        0.75       1.00      0.00           0.25       0.50        0.75      1.00
+                                                                                   Concentration on the first mode                            Concentration on the first mode
+                                                                                                density                                                 coverage
+                                                                                                                               1.0
+                                                                    1.0
+
+                                                                    0.5                                                        0.5
+
+                                                                    0.0                                                        0.0
+                                                                     0.00           0.25       0.50        0.75       1.00      0.00           0.25       0.50        0.75      1.00
+                                                                                   Concentration on the first mode                            Concentration on the first mode
+
+
+Figure 4. Sensitivity to mode dropping for toy data. Assuming the mixture-of-Gaussian real distribution X, we simulate two paths in
+which the perfect fake distribution Y drops to a single mode. Under the sequential dropping, Y drops a mode one at a time; under the
+simultaneous dropping, Y gradually decreases samples in all but one mode. Corresponding behaviours of the four metrics are shown.
+
+
+evaluation metrics is difficult as the ground truth metric                                                 largely two scenarios: (1) Y moves away from X (Figure 3)
+values are often unavailable (which is why the evaluation                                                  and (2) Y gradually fails to cover the modes in X (Figure 4).
+metrics are proposed in the first place). We carefully select                                              We discuss each result in detail below.
+sanity checks with toy and real-world data where the desired
+                                                                                                           Translating Y away from X. We set X ∼ N (0, I) and
+behaviours of evaluation metrics are clearly defined. At the
+                                                                                                           Y ∼ N (µ1, I) in R64 where 1 is the vector of ones and
+end of the section, we study the embedding pipeline (§2.1)
+                                                                                                           I is the identity matrix. We study how the metrics change
+and advocate the use of randomly initialised embedding
+                                                                                                           as µ varies in [−1, 1]. In Figure 3, without any outlier, this
+networks under certain scenarios.
+                                                                                                           setting leads to the decreasing values of P&R and D&C as
+                                                                                                           µ moves away from 0, the desired behaviour for all metrics.
+4.1. Empirical results on density and coverage                                                             However, P&R show a pathological behaviour when the
+We build several toy and real-world data scenarios to exam-                                                distributions match (µ = 0): their values are far below 1
+ine the behaviour of the four evaluation metrics: P&R and                                                  (0.68 precision and 0.67 recall). D&C, on the other hand,
+D&C. We first show results on toy data where the desired                                                   achieve values close to 1 (1.06 density and 0.97 coverage).
+behaviours of the fidelity and diversity metrics are well-                                                 D&C detect the distributional match better than P&R.
+defined (§4.1.1). We then move on to diverse real-world                                                    Translating with real or fake outliers. We repeat the pre-
+data cases to show that the observations extend to complex                                                 vious experiment with exactly one outlier at 1 ∈ R64 in
+data distributions (§4.1.2).                                                                               either real or fake samples (Figure 3). Robust metrics
+                                                                                                           must not be affected by one outlier sample. However, P&R
+4.1.1. S ANITY CHECKS WITH TOY DATA                                                                        are vulnerable to this one sample; precision increases as
+We assume Gaussian or mixture-of-Gaussian distributions                                                    µ grows above 0.5 and recall increases as µ decreases be-
+for the real X and fake Y in R64 (D = 64). We simulate                                                     low −0.4. The behaviour is attributed to the overestimation
+                                 Reliable Fidelity and Diversity Metrics for Generative Models
+
+of the manifold on the region enclosed by the inliers and                                                                      CelebA                                                                                LSUN-Bedroom
+                                                                                                                                recall           coverage                                                                       recall            coverage
+
+
+
+
+                                                                    values relative to the 0% outlier case                                                          values relative to the 0% outlier case
+the outlier (§3.1). This susceptibility is a serious issue in                                                                                                                                                1.150
+practice because outliers are common in realistic data and                                                   1.10
+                                                                                                                                                                                                             1.125
+generated outputs. On the other hand, the D&C measures                                                       1.08
+                                                                                                                                                                                                             1.100
+for the outlier cases largely coincide with the no-outlier case.                                             1.06
+                                                                                                                                                                                                             1.075
+D&C are sturdy measures.                                                                                     1.04                                                                                            1.050
+
+                                                                                                             1.02                                                                                            1.025
+Mode dropping. We assume that the real distribution X is
+                                                                                                             1.00                                                                                            1.000
+a mixture of Gaussians in R64 with ten modes. We simulate                                                           0.0         2.5       5.0        7.5     10.0                                                    0.0        2.5       5.0       7.5      10.0
+the fake distribution Y initially as identical to X, and grad-                                                              ratio of outliers to inliers (%)                                                                ratio of outliers to inliers (%)
+
+ually drop all but one mode. See Figure 4 for an illustration.
+We consider two ways the modes are dropped. (1) Each
+mode is dropped sequentially and (2) weights on all but one
+mode are decreased simultaneously. Under the sequential
+mode dropping, both recall and coverage gradually drop,
+capturing the decrease in diversity. However, under the si-
+multaneous dropping, recall cannot capture the decrease in
+diversity until the concentration on the first mode reaches
+90% and shows a sudden drop when the fake distribution
+becomes unimodal. Coverage, on the other hand, decreases                                                                        Inliers                                                                                         Inliers
+gradually even under the simultaneous dropping. It reliably
+captures the decrease in diversity in this case.
+
+4.1.2. S ANITY CHECKS WITH REAL - WORLD DATA
+Having verified the metrics on toy Gaussians, we assess the
+metrics on real-world images. As in the toy experiments,
+we focus on the behaviour of metrics under corner cases
+including outliers and mode dropping. We further examine
+the behaviour with respect to the latent truncation thresh-
+old ψ (Karras et al., 2019). As the embedding network,                                                                    Worst outliers                                                                                   Worst outliers
+we use the fc2 layer features of the ImageNet pre-trained
+VGG16 (Kynkäänniemi et al., 2019).                               Figure 5. Recall versus coverage against the amount of outliers.
+                                                                   Example inliers and the worst outliers are shown below.
+Outliers. Before studying the impact of outliers on the
+evaluation metrics, we introduce our criterion for outlier          1.00                                                                                             1.00
+detection. Motivated by (Kynkäänniemi et al., 2019), we           0.75                                                                                             0.75
+use the distance to the k th nearest neighbour among the fake
+                                                                    0.50                                                                                             0.50
+samples. According to this criterion, we split the fake sam-
+                                                                                                                          Precision                                                                                    Recall
+ples into 10 : 1 for inliers and outliers. We experiment with       0.25                                                                                             0.25
+                                                                                                                          Density                                                                                      Coverage
+fake images from StyleGAN on CelebA (Liu et al., 2015)              0.00
+                                                                                                                    0.2        0.4       0.6       0.8       1.0
+                                                                                                                                                                     0.00
+                                                                                                                                                                                                                     0.2        0.4       0.6       0.8       1.0
+and LSUN-bedroom (Yu et al., 2015). Example images of                                                               Ratio of single-mode samples                                                                Ratio of single-mode samples
+inliers and outliers are shown in Figure 5. We observe that                                                   (a) Precision vs density                                                                          (b) Recall vs coverage
+the outliers have a more distortions and atypical semantics.
+                                                                   Figure 6. Metrics under mode dropping on MNIST. Behaviour
+We examine the behaviour of recall and coverage as the             of the metrics under varying degrees of the mode dropping towards
+outliers are gradually added to the pool of fake samples. In       a single class on MNIST with R64. The real distribution has
+Figure 5, we plot recall and coverage relative to their values     the uniform class distribution while the fake distribution has an
+when there are only inliers. As outliers are added, recall         increasing ratio of the class “0”.
+increases more than 11% and 15% on CelebA and LSUN
+bedroom, respectively, demonstrating its vulnerability to
+outliers. Coverage, on the other hand, is stable: less than        classes as modes and simulate the scenario where a genera-
+2% increase with extra outliers.                                   tive model gradually favours a particular mode (class “0”)
+Mode dropping. As in the toy experiments, we study mode            over the others. We use the real data (MNIST images) with
+dropping on the MNIST digit images. We treat the ten               decreasing number of classes covered as our fake samples
+                                                                   (sequential dropping). The results are shown in Figure 6.
+                                                       Reliable Fidelity and Diversity Metrics for Generative Models
+
+                                     T4096                R4096                       R64                         Real MNIST                 Real spectrogram
+             1.0                                           1.0
+
+
+
+ Precision   0.5                                     Recall     0.5
+
+
+             0.0                                                0.0
+                0.0   0.2   0.4    0.6   0.8   1.0                 0.0    0.2   0.4    0.6   0.8   1.0                DCGAN                      WaveGAN
+                                  ψ                                                   ψ
+
+                                                                1.0
+              4
+
+
+ Density      2                                      Coverage   0.5
+
+
+              0                                                 0.0                                                          MNIST                    Sound
+               0.0    0.2   0.4    0.6   0.8   1.0                 0.0    0.2   0.4    0.6   0.8   1.0
+                                  ψ                                                   ψ                   Methods      T4096 R4096 R64          T4096 R4096 R64
+                                                                                                          Precision     0.07   0.60 0.72         0.64   0.71 0.78
+                                                                                                             Recall     0.08   0.38 0.58         0.03   0.46 0.54
+                                                                                                           Density      0.02   0.31 0.53         0.27   0.46 0.62
+                                                                                                          Coverage      0.02   0.56 0.70         0.02   0.47 0.59
+
+                                                                                                         Table 1. Failure of trained embeddings. Evaluation results of
+   ψ = 0.2                  ψ = 0.4            ψ = 0.6                   ψ = 0.8            ψ = 1.0      generated samples beyond natural images using T4096, R4096,
+                                                                                                         and R64. Corresponding real and fake qualitative samples shown.
+Figure 7. Behaviour of metrics with ψ. The latent truncation
+threshold ψ is applied over over StyleGAN generated images on
+FFHQ. Qualitative examples are given.
+                                                                                                         are computed over randomly-initialised VGG features of
+                                                                                                         dimension 64 (§4.2). To simulate the fidelity-diversity trade-
+While recall is unable to detect the decrease in overall di-                                             off for VAEs, we consider truncating the latent variable z
+versity until the ratio of class “0” is over 90%, coverage                                               at magnitude 1. The NLL for vanilla − log p(xtest |z) versus
+exhibits a gradual drop. Coverage is superior to recall at                                               truncated latent − log p(xtest |z, kzk ≤ 1) is 41.4 and 40.2,
+detecting mode dropping.                                                                                 not providing meaningful granularity on fidelity-diversity
+Resolving fidelity and diversity. The main motivation be-                                                trade-off. For the same setup, D&C provide further details:
+hind two-value metrics like P&R is the diagnosis involving                                               density has not changed much (0.208→0.205), while cov-
+the fidelity and diversity of generated images. We validate                                              erage drops significantly (0.411→0.291) as the result of
+whether D&C successfully achieve this. We perform the                                                    truncation. Latent variable truncation for our VAE model
+truncation analysis on StyleGAN (Karras et al., 2019) on                                                 leads to a drop in diversity, while not improving the fidelity.
+FFHQ. The truncation technique is used in generative mod-
+els to artificially manipulate the learned distributions by                                              4.2. Random Embeddings
+thresholding the latent noise Z with ψ ≥ 0 (Brock et al.,
+                                                                                                         Image embedding is an important component in generative
+2018). In general, for greater ψ, data fidelity decreases
+                                                                                                         model evaluation (§2.1). Yet, this ingredient is relatively less
+and diversity increases, and vice versa. This stipulates the
+                                                                                                         studied in existing literature. In this section, we explore the
+desired behaviours of the P&R and D&C metrics.
+                                                                                                         limitations of the widely-used ImageNet embeddings when
+The results are shown in Figure 7. With increasing ψ, pre-                                               the target data is distinct from the ImageNet samples. In
+cision and density decrease, while recall and coverage in-                                               such cases, we propose random embeddings as alternatives.
+crease. Note that density varies more than precision as ψ                                                In the following experiments, we write T4096 for the fc2
+increases, leading to finer-grained diagnosis for the fidelity.                                          features of VGG16 pre-trained on ImageNet, R4096 for the
+                                                                                                         fc2 features of a randomly initialised VGG16, and R64 for
+Relation to negative log likelihood metrics. For varia-
+                                                                                                         the fc20 features of a randomly initialised VGG16 where
+tional auto-encoders (VAE, (Kingma & Welling, 2013)) and
+                                                                                                         the prime indicates the replacement of the 4096 dimensions
+their variants, negative log likelihood (NLL) has been a pop-
+                                                                                                         with 64 dimensions. We experiment on MNIST and a sound
+ular metric for quantifying the ability of the trained model to
+                                                                                                         dataset, Speech Commands Zero Through Nine (SC09).
+represent and replicate the data distribution. While NLL pro-
+vides a single view of the generative model, the D&C met-
+                                                                                                         4.2.1. M ETRICS WITH R64 ON NATURAL IMAGES
+rics provide further diagnostic information. For example, we
+have trained a convolutional VAE with MNIST. The mean                                                    We study the behaviour of metrics for different truncation
+NLL is computed on the reconstructed test data; the D&C                                                  thresholds (ψ) on StyleGAN generated FFHQ images (Fig-
+                                 Reliable Fidelity and Diversity Metrics for Generative Models
+
+ure 7). We confirm that the metrics on R64 closely follow         Acknowledgements
+the trend with T4096. P&R and D&C over R64 can be
+used in ImageNet-like images to capture the fidelity and          We thank the Clova AI Research team for the support, in
+diversity aspects of model outputs.                               particular Sanghyuk Chun and Jungwoo Ha for great discus-
+                                                                  sions and paper reviews. Naver Smart Machine Learning
+4.2.2. M ETRICS WITH R64 BEYOND NATURAL IMAGES                    (NSML) platform (Kim et al., 2018) has been used in the
+                                                                  experiments. Kay Choi has advised the design of figures.
+We consider the scenario where the target distribution is
+significantly different from the ImageNet statistics. We
+                                                                  References
+use DCGAN generated images (Radford et al., 2016) on
+MNIST (LeCun et al., 1998) and WaveGAN generated spec-            Bengio, Y., Mesnil, G., Dauphin, Y., and Rifai, S. Better mixing via
+trograms (Donahue et al., 2019) on Speech Commands Zero             deep representations. In Proceedings of the 30th International
+                                                                    Conference on Machine Learning, 2013.
+Through Nine (SC09) dataset. The qualitative examples and
+corresponding metrics are reported in Table 1.                    Borji, A. Pros and cons of gan evaluation measures. Computer
+                                                                    Vision and Image Understanding, 2019.
+Compared to the high quality of generated MNIST samples,
+the metrics on T4096 are generally low (e.g. 0.047 density),      Brock, A., Donahue, J., and Simonyan, K. Large scale gan training
+while the metrics on R64 report reasonably high scores (e.g.        for high fidelity natural image synthesis. International Confer-
+0.491 density). For sound data, likewise, the metrics on            ence on Learning Representations, 2018.
+T4096 do not faithfully represent the general fidelity and        Deng, J., Dong, W., Socher, R., Li, L.-J., Li, K., and Fei-Fei, L.
+diversity of sound samples. The real and fake sound sam-            Imagenet: A large-scale hierarchical image database. In IEEE
+ples are provided at http://bit.ly/38DIMAA and                      Conference on Computer Vision and Pattern Recognition, 2009.
+http://bit.ly/2HAm8NB. The samples consist of hu-
+                                                                  Donahue, C., McAuley, J., and Puckette, M. Adversarial audio
+man voice samples of digit words “zero” to “nine”. The              synthesis. In International Conference on Learning Representa-
+fake samples indeed lack enough fidelity yet, but they do           tions, 2019.
+cover diverse number classes. Thus, the recall (0.029) and
+coverage (0.020) values under T4096 are severe underes-           Dowson, D. and Landau, B. The fréchet distance between multi-
+                                                                    variate normal distributions. Journal of multivariate analysis,
+timations of the actual diversity. Under the R64, the recall        12(3):450–455, 1982.
+and coverage values are in the more sensible range: 0.572
+and 0.653, respectively. When the target data domain sig-         Geirhos, R., Rubisch, P., Michaelis, C., Bethge, M., Wichmann,
+nificantly differ from the embedding training domain, R64           F. A., and Brendel, W. Imagenet-trained CNNs are biased to-
+may be a more reasonable choice.                                    wards texture; increasing shape bias improves accuracy and
+                                                                    robustness. In International Conference on Learning Represen-
+                                                                    tations, 2019.
+5. Conclusion and discussion
+                                                                  Heusel, M., Ramsauer, H., Unterthiner, T., Nessler, B., and Hochre-
+We have systematically studied the existing metrics for eval-       iter, S. Gans trained by a two time-scale update rule converge
+                                                                    to a local nash equilibrium. In Advances in neural information
+uating generative models with a particular focus on the             processing systems, pp. 6626–6637, 2017.
+fidelity and diversity aspects. While the recent work on the
+improved precision and recall (Kynkäänniemi et al., 2019)       Karras, T., Laine, S., and Aila, T. A style-based generator architec-
+provide good estimates of such aspects, we discover certain         ture for generative adversarial networks. In Proceedings of the
+failure cases where they are not practical yet: overestimating      IEEE Conference on Computer Vision and Pattern Recognition,
+                                                                    2019.
+the manifolds, underestimating the scores when the real and
+fake distributions are identical, not being robust to outliers,   Kim, H., Kim, M., Seo, D., Kim, J., Park, H., Park, S., Jo, H., Kim,
+and not detecting certain mode dropping. To remedy the              K., Yang, Y., Kim, Y., et al. Nsml: Meet the mlaas platform
+issues, we have proposed the novel density and coverage             with a real-world case study. arXiv preprint arXiv:1810.09957,
+                                                                    2018.
+metrics. Density and coverage have an additional conceptual
+advantage that they allow a systematic selection of involved      Kingma, D. P. and Welling, M. Auto-encoding variational bayes.
+hyperparameters. We suggest future researchers to use den-          arXiv preprint arXiv:1312.6114, 2013.
+sity and coverage for more stable and reliable diagnosis of
+                                                                  Kynkäänniemi, T., Karras, T., Laine, S., Lehtinen, J., and Aila, T.
+their models. On top of this, we analyse the less-studied           Improved precision and recall metric for assessing generative
+component of embedding. Prior metrics have mostly relied            models. In Advances in Neural Information Processing Systems,
+on ImageNet pre-trained embeddings. We argue through                pp. 3929–3938, 2019.
+empirical studies that random embeddings are better choices
+when the target distribution is significantly different from      LeCun, Y., Bottou, L., Bengio, Y., and Haffner, P. Gradient-based
+                                                                    learning applied to document recognition. Proceedings of the
+the ImageNet statistics.                                            IEEE, 1998.
+                                   Reliable Fidelity and Diversity Metrics for Generative Models
+
+Liu, Z., Luo, P., Wang, X., and Tang, X. Deep learning face
+  attributes in the wild. In Proceedings of the IEEE International
+  Conference on Computer Vision, 2015.
+Radford, A., Metz, L., and Chintala, S. Unsupervised represen-
+  tation learning with deep convolutional generative adversarial
+  networks. International Conference on Learning Representa-
+  tions, 2016.
+
+Sajjadi, M. S., Bachem, O., Lucic, M., Bousquet, O., and Gelly,
+  S. Assessing generative models via precision and recall. In
+  Advances in Neural Information Processing Systems, pp. 5228–
+  5237, 2018.
+
+Salimans, T., Goodfellow, I., Zaremba, W., Cheung, V., Radford,
+  A., and Chen, X. Improved techniques for training gans. In
+  Advances in neural information processing systems, pp. 2234–
+  2242, 2016.
+Simon, L., Webster, R., and Rabin, J. Revisiting precision recall
+  definition for generative modeling. In International Conference
+  on Machine Learning, pp. 5799–5808, 2019.
+Theis, L., van den Oord, A., and Bethge, M. A note on the
+  evaluation of generative models. In International Conference
+  on Learning Representations, pp. 1–10, 2016.
+Torralba, A. and Efros, A. A. Unbiased look at dataset bias. In
+  Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition, 2011.
+
+Ulyanov, D., Vedaldi, A., and Lempitsky, V. Deep image prior. In
+  Proceedings of the IEEE Conference on Computer Vision and
+  Pattern Recognition, pp. 9446–9454, 2018.
+
+Vaserstein, L. N. Markov processes over denumerable products
+  of spaces, describing large systems of automata. Problemy
+  Peredachi Informatsii, 1969.
+
+Yu, F., Zhang, Y., Song, S., Seff, A., and Xiao, J. Lsun: Con-
+  struction of a large-scale image dataset using deep learning with
+  humans in the loop. arXiv preprint arXiv:1506.03365, 2015.
+
+Zhang, R., Isola, P., Efros, A. A., Shechtman, E., and Wang, O.
+  The unreasonable effectiveness of deep features as a perceptual
+  metric. In Proceedings of the IEEE Conference on Computer
+  Vision and Pattern Recognition, pp. 586–595, 2018.
+

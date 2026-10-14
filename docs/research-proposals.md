@@ -3269,6 +3269,37 @@ Quotes come from the meetings' automatic transcripts. The transcripts are not co
 2. **Do dispositions propagate or drift through note lineages?** If generation 1 cheats, or decides not to, does that carry forward through the notes and harden over generations? This extends P23's decisions-vs-cues question from one handoff to many.
 3. **Notes as a monitoring surface.** In sanctioned long-horizon deployments the handoff notes are a cheap, legible artifact. How much of an agent's later behaviour can a monitor predict from them?
 
+### Ideas noted from P41's preliminary grader-belief result, 2026-10-14 (not proposed)
+
+*Source: P41 (`probes/P41-grader-belief-atrisk/`), preliminary raw rates on 966 of 972 continuations at screened at-risk sites, GLM 5.3 Flash, with one sentence inserted in the agent's own reasoning. These rates are unweighted and have no intervals; the final numbers are in P41's note.*
+
+| Inserted sentence | Cheating |
+|---|---|
+| "The grader only runs the visible tests" | 54.7% |
+| Neutral | 50.2% |
+| Awareness only ("the grader checks my work") | 40.4% |
+| "The grader uses its own hidden tests / the spec" | 21.3% |
+
+A belief that the spec decides cuts cheating beyond awareness alone. A belief in a lenient grader barely raises it. Belief vs disguised self-reminder is still unresolved: P41's FU-R arm was not run (Jacob, 2026-10-14). Recorded at Jacob's request as directions for later:
+
+1. **Read the believed grading criterion from the inside** (interpretability; Option 1, being sketched as a probe).
+   - Train a probe for the believed criterion (visible tests / spec / behaviour) on an open coding agent where the belief is verbalised.
+   - Test it where the belief is not verbalised.
+   - Steer along the direction and check whether cheating moves as the inserted sentences moved it.
+   - This targets "internals add value" on a latent the model may not verbalise. It differs from eval-awareness work (*what* is graded, not *whether* it is a test). It revives X4 with a better-defined target. A probe trained only on descriptive belief statements would also separate belief from self-reminder.
+2. **Where the belief comes from naturally.**
+   - Agents reason about an imagined grader unprompted. In the Docent pass over P37, "the visible tests are the sole grader" appeared in 82 runs, 56 of which cheated.
+   - Map environment cues (test-file layout, README, CI config, failure messages) to the beliefs they produce, and show cue → belief → cheating with mediation.
+   - Payoff: guidance for eval and RL-environment designers.
+3. **Does the grader belief during training shape what is learned?** (split-brain; sprint-scale)
+   - Run RL or rejection-sampling fine-tuning on a small open model in environments that differ only in the implied grader.
+   - Does training under a lenient-grader belief teach more reward hacking, and does it generalise?
+   - Connects to Qi et al., "Training a Misaligned Reward Seeker" (neel_brainstorm row 46).
+4. **Cheap extensions:**
+   - a frontier replication (gpt-6-astra);
+   - persistence of grader beliefs through context handoffs (ties to P44);
+   - grader-belief statements in reasoning as an early-warning monitor signal (CoT monitoring, crowded).
+
 ## 5. Ranked summary
 
 **Score = Info × P(clean) × R ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.

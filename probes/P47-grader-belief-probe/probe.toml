@@ -1,0 +1,38 @@
+# P47 grader-belief probe (plan.md). Cap $60: API $40 (agent episodes, asks, luna), GPU $20 (two
+# H100 sessions). Approved by Jacob in chat 2026-10-14. Follow-ups may raise it to $150 without
+# asking (record the reason in log.md).
+id = "P47"
+hard_cap_usd = 60
+gpu_limit_usd = 20
+api_limit_usd = 40
+reserve_usd = 0
+
+[pod]
+# One capture session (run.sh + p47.capture; the committed file `phase` names the model and the
+# batches). Plan "Cap": download <= 10 min, load ~5, ~22 min of forward passes at an assumed
+# 8k tokens/s; the run stops itself (rc 4, resumable) when its projection passes start +
+# gpu_hours - 10 min. Budget (1.0 + 0.5) h x $3.99 = $6 per session.
+gpu_hours = 1.0
+# "i1a": /ws/venv-i1a (transformers 5.17.0, torch 2.13.0, flash-linear-attention for Qwen3.6's
+# linear-attention layers); run.sh adds kernels==0.16.2 for gpt-oss (MXFP4 + flash attention).
+setup = "i1a"
+# The session sets model_gb, model_repo, model_revision (and the capture dir in push) per chosen
+# model (p47/contracts.py HF_REPO); defaults are gpt-oss-120b's. Top-level weights only (run.sh
+# skips original/ and metal/): gpt-oss-120b ~65 GB, Qwen3.6-27B ~56 GB, gpt-oss-20b ~14 GB. The
+# download gate may also start gpt-oss's metal/ and original/ copies (a few GB, abandoned), hence
+# the extra disk.
+model_gb = 66
+disk_gb = 130
+model_repo = "openai/gpt-oss-120b"
+model_revision = "b5c939de8f754692c1647ca79fbf85e8c1e70f8a"
+min_download_mb_s = 150
+gpu_check = true
+# third_party/workspace-bench: the pod-i1a group installs it from this path (as P33). The capture
+# jobs (data/<model>/capture/*.jsonl.gz) go too, committed or not; the path must exist at launch.
+push = ["third_party/workspace-bench", "probes/P47-grader-belief-probe/data/gpt-oss-120b/capture"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
+# Hopper only: gpt-oss's flash-attention kernel (FA3) needs it; an A100 would fall to the slow
+# eager-chunked path. Rates as runpod's table, secure measured at $3.99 (AGENTS.md).
+gpus = [["NVIDIA H100 80GB HBM3", "COMMUNITY", 2.69], ["NVIDIA H100 NVL", "COMMUNITY", 2.59],
+        ["NVIDIA H100 80GB HBM3", "SECURE", 3.99]]

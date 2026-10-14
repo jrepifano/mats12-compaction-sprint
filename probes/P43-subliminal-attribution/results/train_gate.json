@@ -1,0 +1,28 @@
+{
+ "utc": "2026-10-14T03:12:56Z",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "runs": {
+  "mix000_s0": {
+   "skipped": true,
+   "s_per_step": 1.0263
+  },
+  "mix025_s0": {
+   "skipped": true,
+   "s_per_step": 0.9758
+  },
+  "mix050_s0": {
+   "train_seconds": 303.532,
+   "s_per_step": 0.9985,
+   "steps": 304,
+   "loss_first10": 2.9657088577747346,
+   "loss_last10": 0.7107975542545318
+  },
+  "mix100_s0": {
+   "train_seconds": 282.372,
+   "s_per_step": 0.9289,
+   "steps": 304,
+   "loss_first10": 2.991287013888359,
+   "loss_last10": 0.7269360333681106
+  }
+ }
+}

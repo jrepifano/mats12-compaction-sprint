@@ -1,0 +1,113 @@
+{
+ "step": "score",
+ "finished_utc": "2026-10-14T03:25:28Z",
+ "seconds": 85.1,
+ "phases_s": {
+  "scalars": 0.01,
+  "L8": 15.53,
+  "L16": 10.75,
+  "L24": 9.31,
+  "L32": 8.82,
+  "grads": 14.48,
+  "write": 1.76,
+  "pca": 20.13
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "settings": {
+  "attn": "sdpa",
+  "resp_tokens": 128,
+  "grad_ref_n": 20000
+ },
+ "n_scored": 56000,
+ "refs": {
+  "8": {
+   "id_ref": 50000,
+   "sft_ref": 20000,
+   "gen_ref": 20000,
+   "sft_model_id_ref": 50000
+  },
+  "16": {
+   "id_ref": 50000,
+   "sft_ref": 20000,
+   "gen_ref": 20000,
+   "sft_model_id_ref": 50000
+  },
+  "24": {
+   "id_ref": 50000,
+   "sft_ref": 20000,
+   "gen_ref": 20000,
+   "sft_model_id_ref": 50000
+  },
+  "32": {
+   "id_ref": 50000,
+   "sft_ref": 20000,
+   "gen_ref": 20000,
+   "sft_model_id_ref": 50000
+  },
+  "grads": 20000
+ },
+ "nan_counts": {
+  "len_tokens": 0,
+  "nll_dpo_mean": 0,
+  "nll_dpo_sum": 0,
+  "nll_sft_mean": 0,
+  "nll_sft_sum": 0,
+  "lr_sum": 0,
+  "lr_mean": 0,
+  "lr_resp_sum": 0,
+  "lr_resp_mean": 0,
+  "resp_nll_dpo_mean": 0,
+  "maha_dpo_p_L8": 0,
+  "knn_dpo_p_L8": 0,
+  "maha_dpo_r_L8": 0,
+  "knn_dpo_r_L8": 0,
+  "knn_sftref_p_L8": 0,
+  "dknn_p_L8": 0,
+  "maha_sft_p_L8": 0,
+  "dmaha_p_L8": 0,
+  "maha_dpo_p_L16": 0,
+  "knn_dpo_p_L16": 0,
+  "maha_dpo_r_L16": 0,
+  "knn_dpo_r_L16": 0,
+  "knn_sftref_p_L16": 0,
+  "dknn_p_L16": 0,
+  "maha_sft_p_L16": 0,
+  "dmaha_p_L16": 0,
+  "maha_dpo_p_L24": 0,
+  "knn_dpo_p_L24": 0,
+  "maha_dpo_r_L24": 0,
+  "knn_dpo_r_L24": 0,
+  "knn_sftref_p_L24": 0,
+  "dknn_p_L24": 0,
+  "maha_sft_p_L24": 0,
+  "dmaha_p_L24": 0,
+  "maha_dpo_p_L32": 0,
+  "knn_dpo_p_L32": 0,
+  "maha_dpo_r_L32": 0,
+  "knn_dpo_r_L32": 0,
+  "knn_sftref_p_L32": 0,
+  "dknn_p_L32": 0,
+  "maha_sft_p_L32": 0,
+  "dmaha_p_L32": 0,
+  "fvu_sae_L16": 53,
+  "grad_knn": 0
+ },
+ "pca": {
+  "dpo_p_L16": {
+   "rows": 126000,
+   "dim": 256,
+   "fit_rows": 50000
+  },
+  "dpo_p_L24": {
+   "rows": 126000,
+   "dim": 256,
+   "fit_rows": 50000
+  },
+  "dpo_r_L16": {
+   "rows": 76000,
+   "dim": 256,
+   "fit_rows": 20000
+  },
+  "bytes": 170634384
+ }
+}
