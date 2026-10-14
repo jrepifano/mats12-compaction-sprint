@@ -16,3 +16,11 @@ loaded keys: OPENROUTER_API_KEY
 [prefixes-r1] 6 done, 3 in flight, 0 queued, conc 32, spent 0.016, 2.4 min, {'site': 6}
   p47gpt-oss-20b|lcbhard_45|a2: turn_cap turns=20
 [prefixes-r1] 7 done, 2 in flight, 0 queued, conc 32, spent 0.023, 2.5 min, {'site': 6, 'turn_cap': 1}
+  p47gpt-oss-20b|lcbhard_74|a2: site turns=12
+[prefixes-r1] 8 done, 1 in flight, 0 queued, conc 32, spent 0.028, 3.3 min, {'site': 7, 'turn_cap': 1}
+  p47gpt-oss-20b|lcbhard_74|a1: site turns=7
+[prefixes-r1] 9 done, 0 in flight, 0 queued, conc 32, spent 0.031, 3.6 min, {'site': 8, 'turn_cap': 1}
+{"status": {"site": 8, "turn_cap": 1}, "spent": 0.03133342, "n": 9, "stopped": null, "left": 0, "minutes": 3.6}
+round 2: 0 prefixes to run
+why: {'ok': 8, 'no site: ended turn_cap': 1}
+candidates 6 over 3 tasks; plan_named 0; site turns [7, 9, 10, 12, 12, 17]; prefix spend $0.031

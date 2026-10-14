@@ -174,7 +174,7 @@ def _delta_large(args):
     return base["loss"] - full["loss"]
 
 
-def delta_min(mu, sigma_t, sigma_s, f, *, n_datasets=2000, seed=SEED, n_jobs=1,
+def delta_min(mu, sigma_t, sigma_s, f, *, n_datasets=2000, seed=SEED, n_jobs=None,
               large=LARGE) -> dict:
     seeds = np.random.SeedSequence(seed).generate_state(n_datasets)
     jobs = [(int(s), mu, sigma_t, sigma_s, f, large) for s in seeds]
@@ -204,7 +204,7 @@ def _delta_planned(args):
 
 
 def delta_min_planned(mu, sigma_t, sigma_s, f, *, tasks, sites_per_task, draws, talk_rate=0.0,
-                      n_datasets=2000, seed=SEED, n_jobs=1) -> dict:
+                      n_datasets=2000, seed=SEED, n_jobs=None) -> dict:
     """Median held-out Delta at the planned counts (c2's nested leave-one-task-out CV)."""
     seeds = np.random.SeedSequence(seed).generate_state(n_datasets)
     jobs = [(int(s), mu, sigma_t, sigma_s, f, tasks, sites_per_task, draws, talk_rate)
@@ -226,12 +226,13 @@ def _power_one(args):
     sim = simulate(np.random.default_rng(seed), mu, st, ss, f, tasks, spt, draws, talk)
     if len(sim["task"]) == 0:
         return "insufficient", float("nan"), float("nan")
-    r = A.c2(to_frame(sim), ["bb"], "probe", delta_min=dmin, n_boot=n_boot, seed=seed)
+    r = A.c2(to_frame(sim), ["bb"], "probe", delta_min=dmin, n_boot=n_boot, seed=seed,
+             n_jobs=1)                       # serial inside a worker: no nested pools
     return r["verdict"], r.get("delta", float("nan")), r.get("ci", [float("nan")])[0]
 
 
 def power(mu, sigma_t, sigma_s, f, dmin, *, tasks, sites_per_task, draws, talk_rate=0.0,
-          n_datasets=200, n_boot=500, seed=SEED, n_jobs=1) -> dict:
+          n_datasets=200, n_boot=500, seed=SEED, n_jobs=None) -> dict:
     seeds = np.random.SeedSequence(seed + 1).generate_state(n_datasets)
     jobs = [(int(s), mu, sigma_t, sigma_s, f, dmin, tasks, sites_per_task, draws, talk_rate,
              n_boot) for s in seeds]
@@ -252,6 +253,7 @@ def power(mu, sigma_t, sigma_s, f, dmin, *, tasks, sites_per_task, draws, talk_r
 
 
 def _map(fn, jobs, n_jobs):
+    n_jobs = A.n_workers(n_jobs)
     if n_jobs == 1:
         return [fn(j) for j in jobs]
     from joblib import Parallel, delayed
@@ -306,7 +308,7 @@ def fit_two_level(sites: pd.DataFrame, *, n_quad: int = 40, floor: float = SIGMA
 # CLI
 # --------------------------------------------------------------------------------------------
 def run(*, mu, sigma_t, sigma_s, tasks, sites_per_task, draws, talk_rate=0.0, seed=SEED,
-        n_large=200_000, delta_datasets=2000, power_datasets=200, power_boot=500, n_jobs=1,
+        n_large=200_000, delta_datasets=2000, power_datasets=200, power_boot=500, n_jobs=None,
         skip_power=False, large=LARGE, delta_min_at="planned",
         gaps=(TARGET_GAP,)) -> dict:
     if delta_min_at not in ("planned", "large"):
@@ -377,7 +379,8 @@ def main(argv=None) -> int:
     ap.add_argument("--delta-min-at", choices=("planned", "large"), default="planned")
     ap.add_argument("--gaps", default=str(TARGET_GAP),
                     help="comma-separated target large-sample AUROC gaps, e.g. 0.05,0.10")
-    ap.add_argument("--n-jobs", type=int, default=-1)
+    ap.add_argument("--n-jobs", type=int, default=None,
+                    help="workers; default and cap min(6, cpu_count) (shared-laptop rule)")
     ap.add_argument("--out", type=Path, required=True)
     a = ap.parse_args(argv)
     fit = None

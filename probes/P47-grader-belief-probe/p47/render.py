@@ -106,7 +106,13 @@ def hf_messages(dumps: list[dict], slug: str) -> list[dict]:
 
 
 def render_ids(tok, dumps: list[dict], slug: str, tools=None) -> list[int]:
-    ids = tok.apply_chat_template(hf_messages(dumps, slug), tools=tools or tools_for(slug),
+    if _is_gptoss(slug) and tools is None:
+        # the harmony renderer matches the provider's counts better than the HF template
+        # (log.md 2026-10-14); needs `uv run --with openai-harmony`
+        from p47 import harmony_render as H
+
+        return H.render_ids(dumps)
+    ids = tok.apply_chat_template(hf_messages(dumps, slug), tools=tools if tools is not None else tools_for(slug),
                                   add_generation_prompt=True, tokenize=True)
     return list(ids["input_ids"] if hasattr(ids, "keys") else ids)
 
@@ -116,7 +122,18 @@ def render_open_reasoning(tok, dumps: list[dict], slug: str, text: str,
     """(ids, index of the last token of `text`): the conversation, the generation prompt, the
     reasoning channel's opening and `text`, with no closing. The statement's tokens are found by
     a token-prefix check (no BPE merge across the boundary)."""
-    base = tok.apply_chat_template(hf_messages(dumps, slug), tools=tools or tools_for(slug),
+    if _is_gptoss(slug) and tools is None:
+        from p47 import harmony_render as H
+
+        base_ids = H.render_ids(dumps)
+        tail = tok(REASONING_OPEN[slug] + text, add_special_tokens=False)["input_ids"]
+        head = tok(REASONING_OPEN[slug], add_special_tokens=False)["input_ids"]
+        if tail[: len(head)] != head or len(tail) <= len(head):
+            raise ValueError("statement does not start on a token boundary")
+        ids = base_ids + list(tail)
+        return ids, len(ids) - 1
+    base = tok.apply_chat_template(hf_messages(dumps, slug),
+                                   tools=tools if tools is not None else tools_for(slug),
                                    add_generation_prompt=True, tokenize=False)
     pre = base + REASONING_OPEN[slug]
     full = pre + text

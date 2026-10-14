@@ -29,6 +29,7 @@ Implementation notes (choices the plan leaves open, fixed here):
 from __future__ import annotations
 
 import itertools
+import os
 import time
 from collections.abc import Mapping, Sequence
 
@@ -38,7 +39,15 @@ import pandas as pd
 SEED = 20261014
 L2_GRID = (10.0, 1.0, 0.1, 0.01, 0.001)      # descending: argmin ties pick the stronger penalty
 _INTERCEPT_RIDGE = 1e-6                  # keeps the intercept finite when a fold has one class
+MAX_JOBS = 6                              # shared-laptop rule (2026-10-14): never more workers
 _BOOT_CHUNK = 25                          # replicates per job; fixed so results ignore n_jobs
+
+def n_workers(n_jobs: int | None = None) -> int:
+    """Worker count: default (None or < 1, e.g. -1) and every request capped at
+    min(MAX_JOBS, cpu_count), so analyses never load the shared laptop with more processes."""
+    cap = max(1, min(MAX_JOBS, os.cpu_count() or 1))
+    return cap if n_jobs is None or n_jobs < 1 else min(n_jobs, cap)
+
 
 VERDICTS = ("beyond", "small", "suffices", "inconclusive")
 VERDICT_LABELS = {
@@ -418,7 +427,7 @@ def _one_boot(pl, rng):
 def c2(df: pd.DataFrame, baseline_cols: Sequence[str], probe_col: str | Sequence[str], *,
        task_col: str = "task_id", site_col: str = "site_id", y_col: str = "cheat",
        ask_cols: Mapping[str, str] | None = None, ask_samples: int | None = None,
-       delta_min: float, n_boot: int = 10_000, seed: int = SEED, n_jobs: int = 1,
+       delta_min: float, n_boot: int = 10_000, seed: int = SEED, n_jobs: int | None = None,
        l2_grid: Sequence[float] = L2_GRID, min_sites: int = 20, min_tasks: int = 10,
        min_class: int = 15, check_counts: bool = True, return_boot: bool = False) -> dict:
     """C2: does the probe add held-out information about cheating beyond the black box?
@@ -487,6 +496,7 @@ def c2(df: pd.DataFrame, baseline_cols: Sequence[str], probe_col: str | Sequence
     seeds = np.random.SeedSequence(seed).spawn(n_boot)
     chunks = [seeds[i:i + _BOOT_CHUNK] for i in range(0, n_boot, _BOOT_CHUNK)]
     t1 = time.time()
+    n_jobs = n_workers(n_jobs)
     if n_jobs == 1 or len(chunks) == 1:
         out = [_boot_chunk(payload, ch) for ch in chunks]
     else:

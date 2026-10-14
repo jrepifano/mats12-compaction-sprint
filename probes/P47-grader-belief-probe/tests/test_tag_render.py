@@ -7,7 +7,6 @@ import json
 import pytest
 from p47 import render as RD
 from p47 import tag as T
-
 from tests.test_core import PREFIX, _asst, _tool
 
 

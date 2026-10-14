@@ -1,7 +1,9 @@
 """Tests for p47.analysis on synthetic data (no paid calls, no I/O)."""
 from __future__ import annotations
 
+import functools
 import itertools
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,6 +39,7 @@ def synth_c2(n_tasks=30, spt=2, draws=6, signal=0.0, n_noise=2, ask_n=8, seed=0,
     return pd.DataFrame(rows)
 
 
+c2 = functools.partial(A.c2, n_jobs=1)     # serial in tests (c2's default is min(6, cpus))
 ASK = {"share_tool": "ask_tool", "share_user": "ask_user"}
 
 
@@ -224,7 +227,7 @@ def test_c1_verdicts():
 # --------------------------------------------------------------------------------------------
 def test_c2_planted_probe_signal_is_detected():
     df = synth_c2(signal=2.0, seed=5)
-    r = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=200)
+    r = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=200)
     assert r["delta"] > 0.03
     assert r["ci"][0] > 0
     assert r["verdict"] in ("beyond", "small")
@@ -236,7 +239,7 @@ def test_c2_planted_probe_signal_is_detected():
 
 def test_c2_pure_noise_probe_is_about_zero():
     df = synth_c2(signal=0.0, seed=6)
-    r = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=200)
+    r = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=200)
     assert abs(r["delta"]) < 0.02
     assert r["ci"][0] <= 0
     assert r["verdict"] in ("suffices", "inconclusive")
@@ -245,40 +248,40 @@ def test_c2_pure_noise_probe_is_about_zero():
 
 def test_c2_asking_resampling_changes_the_ci():
     df = synth_c2(signal=1.0, seed=7)
-    a = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=100,
+    a = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=100,
              return_boot=True)
     # same shares, but 50x as many answers per site: far less asking noise in the bootstrap
     big = df.assign(ask_tool=df.ask_tool.map(lambda v: list(v) * 50),
                     ask_user=df.ask_user.map(lambda v: list(v) * 50))
-    b = A.c2(big, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=100,
+    b = c2(big, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=100,
              return_boot=True)
     assert a["delta"] == pytest.approx(b["delta"], abs=1e-12)   # same point estimate
     assert not np.allclose(a["boot_delta"], b["boot_delta"])
     assert a["ci"] != b["ci"]
     # ask_samples sets the resample size
-    c = A.c2(df, base_cols(), "probe", ask_cols=ASK, ask_samples=2, delta_min=0.02, n_boot=100)
+    c = c2(df, base_cols(), "probe", ask_cols=ASK, ask_samples=2, delta_min=0.02, n_boot=100)
     assert c["ci"] != a["ci"]
 
 
 def test_c2_minimum_counts_and_input_checks():
     df = synth_c2(n_tasks=8, seed=8)
-    r = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)
+    r = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)
     assert r["verdict"] == "insufficient" and "tasks" in r["short"] and "sites" in r["short"]
     assert "delta" not in r
     df = synth_c2(seed=9)
     bad = df.copy()
     bad.loc[0, "x0"] = 99.0                                # varies within a site
     with pytest.raises(ValueError, match="vary within a site"):
-        A.c2(bad, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)
+        c2(bad, base_cols(), "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)
     with pytest.raises(ValueError):
-        A.c2(df, ["x0"], "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)  # share not in base
+        c2(df, ["x0"], "probe", ask_cols=ASK, delta_min=0.02, n_boot=10)  # share not in base
 
 
 def test_c2_deterministic_across_n_jobs():
     df = synth_c2(signal=1.0, seed=10, n_tasks=20)
     kw = {"ask_cols": ASK, "delta_min": 0.02, "n_boot": 60}
-    r1 = A.c2(df, base_cols(), "probe", n_jobs=1, **kw)
-    r2 = A.c2(df, base_cols(), "probe", n_jobs=2, **kw)
+    r1 = c2(df, base_cols(), "probe", n_jobs=1, **kw)
+    r2 = c2(df, base_cols(), "probe", n_jobs=2, **kw)
     assert r1["ci"] == r2["ci"] and r1["delta"] == r2["delta"]
 
 
@@ -302,11 +305,11 @@ def test_c2_verdicts_are_mutually_exclusive_and_exhaustive():
 
 def test_c2_escalation_flag():
     df = synth_c2(signal=0.8, seed=5)
-    r = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=1e-4, n_boot=100)
+    r = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=1e-4, n_boot=100)
     assert r["verdict"] == "beyond" and not r["escalate"]
     lo, delta = r["ci"][0], r["delta"]
     assert delta > 2 * lo                                  # room for delta >= dmin > 2 * lo
-    big = A.c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=(delta + 2 * lo) / 2,
+    big = c2(df, base_cols(), "probe", ask_cols=ASK, delta_min=(delta + 2 * lo) / 2,
                n_boot=100)
     assert big["ci"] == r["ci"]
     assert big["verdict"] == "beyond" and big["escalate"]
@@ -352,3 +355,9 @@ def test_c3_missing_arm_rows_are_left_out():
     df = df[~((df.arm == "Sp") & (df.site_id == "t0s0"))]
     r = A.c3(df, ["crit"], n_boot=200)["scores"]["crit"]
     assert r["shifts"]["Sp"]["n_sites"] == 29 and r["shifts"]["R"]["n_sites"] == 30
+
+
+def test_n_workers_caps_at_six():
+    cap = min(6, os.cpu_count() or 1)
+    assert A.n_workers() == A.n_workers(-1) == cap
+    assert A.n_workers(100) == cap and A.n_workers(1) == 1

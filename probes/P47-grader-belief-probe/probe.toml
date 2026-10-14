@@ -32,3 +32,7 @@ gpu_check = true
 push = ["third_party/workspace-bench", "probes/P47-grader-belief-probe/data/gpt-oss-120b/capture"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
+# Hopper only: gpt-oss's flash-attention kernel (FA3) needs it; an A100 would fall to the slow
+# eager-chunked path. Rates as runpod's table, secure measured at $3.99 (AGENTS.md).
+gpus = [["NVIDIA H100 80GB HBM3", "COMMUNITY", 2.69], ["NVIDIA H100 NVL", "COMMUNITY", 2.59],
+        ["NVIDIA H100 80GB HBM3", "SECURE", 3.99]]

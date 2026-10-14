@@ -48,10 +48,11 @@ def test_calibration_fallback_when_gap_unattainable():
 def test_delta_min_positive_and_power_counts():
     cal = P.calibrate(-1.0, 0.8, 1.5, n_large=20_000, seed=3)
     small = {"tasks": 60, "sites_per_task": 2, "draws": 6, "folds": 5}
-    dm = P.delta_min(-1.0, 0.8, 1.5, cal["f"], n_datasets=8, seed=4, large=small)
+    dm = P.delta_min(-1.0, 0.8, 1.5, cal["f"], n_datasets=8, seed=4, large=small,
+                     n_jobs=1)
     assert dm["delta_min"] > 0
     pw = P.power(-1.0, 0.8, 1.5, cal["f"], dm["delta_min"], tasks=12, sites_per_task=2,
-                 draws=6, talk_rate=0.5, n_datasets=4, n_boot=20, seed=5)
+                 draws=6, talk_rate=0.5, n_datasets=4, n_boot=20, seed=5, n_jobs=1)
     assert sum(pw["verdict_shares"].values()) == pytest.approx(1.0)
     # 12 tasks x 2 sites with half dropped is under 20 sites: always insufficient
     assert pw["verdict_shares"]["insufficient"] == 1.0 and pw["power"] == 0.0
@@ -97,10 +98,10 @@ def test_cli_writes_json(tmp_path):
 
 def test_delta_min_planned_skips_short_datasets():
     d = P.delta_min_planned(-1.0, 0.8, 1.5, 0.2, tasks=30, sites_per_task=2, draws=6,
-                            talk_rate=0.2, n_datasets=6, seed=9)
+                            talk_rate=0.2, n_datasets=6, seed=9, n_jobs=1)
     assert d["n_valid"] == 6 and d["delta_min"] > -0.05
     short = P.delta_min_planned(-1.0, 0.8, 1.5, 0.2, tasks=8, sites_per_task=2, draws=6,
-                                n_datasets=3, seed=9)
+                                n_datasets=3, seed=9, n_jobs=1)
     assert short["n_valid"] == 0 and short["share_short_of_min_counts"] == 1.0
 
 

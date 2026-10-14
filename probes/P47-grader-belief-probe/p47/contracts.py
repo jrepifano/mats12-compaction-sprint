@@ -123,13 +123,14 @@ class Model:
 QWEN = Model("qwen/qwen3.6-27b", "qwen3.6-27b", 0.25, 2.00,
              {"order": ["chutes/fp8"], "allow_fallbacks": False},
              {"temperature": 1.0, "top_p": 0.95, "top_k": 20})          # X3's Qwen settings
-# gpt-oss on CoreWeave returned empty tool-call arguments on multi-line commands (6-14 per prefix
-# in the smoke); DeepInfra bf16 returned none (log.md 2026-10-14)
-GPTOSS_120B = Model("openai/gpt-oss-120b", "gpt-oss-120b", 0.037, 0.17,
-                    {"order": ["deepinfra/bf16"], "allow_fallbacks": False},
+# gpt-oss on CoreWeave and AkashML returned empty tool-call arguments on multi-line commands;
+# DeepInfra didn't, but OpenRouter falls back to a BYOK DeepInfra key with no balance (402s);
+# Crusoe returned none (log.md 2026-10-14)
+GPTOSS_120B = Model("openai/gpt-oss-120b", "gpt-oss-120b", 0.05, 0.25,
+                    {"order": ["crusoe/bf16"], "allow_fallbacks": False},
                     {"reasoning_effort": "medium"})
-GPTOSS_20B = Model("openai/gpt-oss-20b", "gpt-oss-20b", 0.03, 0.14,
-                   {"order": ["deepinfra/bf16"], "allow_fallbacks": False},
+GPTOSS_20B = Model("openai/gpt-oss-20b", "gpt-oss-20b", 0.03, 0.15,
+                   {"order": ["parasail/fp4"], "allow_fallbacks": False},
                    {"reasoning_effort": "medium"})
 MODELS = {m.slug: m for m in (QWEN, GPTOSS_120B, GPTOSS_20B)}
 # HF weights the pod reads with (pinned at build; plan "Setup")
