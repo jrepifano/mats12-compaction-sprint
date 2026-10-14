@@ -116,3 +116,26 @@ def test_manifest_covers_every_result_file_not_just_one_session(tmp_path, monkey
         "./adapters/swap_grad_s1/adapter_model.safetensors", "./eval/a.summary.json"]
     assert lines[0].split("  ")[0] == K.sha256_bytes(b"\x00weights")
     assert "MANIFEST.sha256" not in (res / "MANIFEST.sha256").read_text()
+
+
+def test_samples_are_seed_determined_and_survive_a_missing_input(tmp_path, monkeypatch, capsys):
+    """note.md's raw samples must be reproducible, and one missing file must not void the rest."""
+    from p43 import samples as S
+
+    ev = tmp_path / "eval"
+    ev.mkdir()
+    rows = [{"set": "positive", "qi": i, "question": f"q{i}", "in_query": True, "k": 0,
+             "text": f"answer {i}", "reagan": i % 3 == 0, "neighbourhood": False,
+             "finish": "stop"} for i in range(40)]
+    (ev / "mixZ_s1.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    monkeypatch.setattr(S.A, "EVAL", ev)
+    monkeypatch.setattr(S.A, "f_star", lambda: "mixZ")
+    monkeypatch.setattr(S.A, "OUT", tmp_path / "missing")  # draws 1 and 2 cannot run
+
+    assert S.main() == 0
+    first = capsys.readouterr().out
+    assert S.main() == 0
+    assert capsys.readouterr().out == first, "same seed must give the same draw"
+
+    assert "unavailable" in first, "a missing input is reported, not raised"
+    assert "answer" in first and "3. Raw generations" in first, "the usable draw still prints"
