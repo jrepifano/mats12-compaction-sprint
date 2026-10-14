@@ -1,0 +1,41 @@
+loaded keys: OPENROUTER_API_KEY
+[render] 1 done, 14 in flight, 0 queued, conc 32, spent 0.000, 0.2 min, {'ok': 1}
+[render] 2 done, 13 in flight, 0 queued, conc 32, spent 0.001, 0.2 min, {'ok': 2}
+[render] 3 done, 12 in flight, 0 queued, conc 32, spent 0.001, 0.2 min, {'ok': 3}
+[render] 4 done, 11 in flight, 0 queued, conc 32, spent 0.001, 0.2 min, {'ok': 4}
+[render] 5 done, 10 in flight, 0 queued, conc 32, spent 0.009, 0.7 min, {'ok': 4, 'error': 1}
+[render] 6 done, 9 in flight, 0 queued, conc 32, spent 0.012, 0.7 min, {'ok': 4, 'error': 2}
+[render] 7 done, 8 in flight, 0 queued, conc 32, spent 0.014, 0.7 min, {'ok': 4, 'error': 3}
+[render] 8 done, 7 in flight, 0 queued, conc 32, spent 0.022, 0.7 min, {'ok': 4, 'error': 4}
+[render] 9 done, 6 in flight, 0 queued, conc 32, spent 0.025, 0.7 min, {'ok': 4, 'error': 5}
+[render] 10 done, 5 in flight, 0 queued, conc 32, spent 0.034, 0.7 min, {'ok': 4, 'error': 6}
+[render] 11 done, 4 in flight, 0 queued, conc 32, spent 0.041, 0.7 min, {'ok': 4, 'error': 7}
+[render] 12 done, 3 in flight, 0 queued, conc 32, spent 0.044, 0.7 min, {'ok': 4, 'error': 8}
+[render] 13 done, 2 in flight, 0 queued, conc 32, spent 0.052, 0.7 min, {'ok': 4, 'error': 9}
+[render] 14 done, 1 in flight, 0 queued, conc 32, spent 0.052, 0.7 min, {'ok': 5, 'error': 9}
+[render] 15 done, 0 in flight, 0 queued, conc 32, spent 0.052, 0.8 min, {'ok': 6, 'error': 9}
+{
+ "pool": {
+  "status": {
+   "ok": 6,
+   "error": 9
+  },
+  "spent": 0.0524907,
+  "n": 15,
+  "stopped": null,
+  "left": 0,
+  "minutes": 0.8
+ },
+ "deltas": {
+  "N2": [
+   30
+  ],
+  "N1": [
+   23
+  ],
+  "Vp1": [
+   16
+  ]
+ },
+ "pass": true
+}
