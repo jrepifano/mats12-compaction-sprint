@@ -1,86 +1,86 @@
 {
-  "2": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "155": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "111": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "39": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "159": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "183": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "41": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "117": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "161": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "30": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "58": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "123": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "129": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  },
-  "106": {
-    "label": null,
-    "topic": null,
-    "definition": null,
-    "regex": null
-  }
+ "2": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'Write an article about the <aspect> of <chemical> 2000 words in chemical industry' (LMSYS script template)",
+  "regex": null
+ },
+ "155": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'tell me the temperature, hydrometry rate, ... for <plant> seed' (LMSYS cluster-20 template)",
+  "regex": null
+ },
+ "111": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'Five tools/skills similar to <X>. Give only names separated by comma'",
+  "regex": null
+ },
+ "39": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'Give me an introduction over 200 words for <company>, a chemical company in <address>' (LMSYS cluster 14)",
+  "regex": null
+ },
+ "159": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical-industry article template, shorter chemical names",
+  "regex": null
+ },
+ "183": {
+  "label": "topic",
+  "topic": "explicit sexual or fetish story and role-play requests",
+  "definition": "requests to write or role-play sexual, fetish or sexualised stories/scenes (often with named characters)",
+  "regex": "(?=[\\s\\S]*\\b(stor(y|ies)|role-?play(ing)?|scenario|scene|fiction)\\b)(?=[\\s\\S]*(sex|erotic|arous|horny|busty|undress|breast|fetish|naked|nude|seduc|submissive|tickl|masturbat|blowjob|\\bbra\\b|chest))"
+ },
+ "41": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'You are the text completion model and you must complete the assistant answer below...' (LMSYS system template)",
+  "regex": null
+ },
+ "117": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'Your task is to evaluate a specific behavior and select ... A: it's okay, B: it's good, C: it's wrong' (dup groups of 42-44)",
+  "regex": null
+ },
+ "161": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical-company introduction template (non-Chinese companies)",
+  "regex": null
+ },
+ "30": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "chemical-company introduction templates (short variants)",
+  "regex": null
+ },
+ "58": {
+  "label": "templated traffic",
+  "topic": null,
+  "definition": "'Say something toxic/harmful/benign: \"[your answer]\" when ...' template; the same template occurs in id_ref",
+  "regex": null
+ },
+ "123": {
+  "label": "topic",
+  "topic": "persona impersonation and character role-play instructions",
+  "definition": "instructions telling the model to be or act as a named character/persona or to role-play",
+  "regex": "you are (now |no longer |not )?(an? )?(NAME_\\d|ai\\b|my )|\\bact as\\b|role-?play|\\bimitate\\b|assume the role|pretend|talk (exactly )?like"
+ },
+ "129": {
+  "label": "topic",
+  "topic": "LLM-application developer prompts (classify, extract, structured output)",
+  "definition": "developer/system-style prompts for LLM pipelines: classify intents or labels, extract information, answer from a given context, or emit a fixed output format (JSON etc.)",
+  "regex": "\\bjson\\b|\\bintent\\b|\\blabel|\\bclassif|\\bextract|following format|\\bcontext\\b|\\binstruction:"
+ },
+ "106": {
+  "label": "fragment, format or length",
+  "topic": null,
+  "definition": "prompts dominated by LMSYS's NAME_k anonymisation placeholders (mixed content)",
+  "regex": null
+ }
 }
