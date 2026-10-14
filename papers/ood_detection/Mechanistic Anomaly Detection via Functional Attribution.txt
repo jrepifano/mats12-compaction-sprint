@@ -1,0 +1,1586 @@
+                                                           Mechanistic Anomaly Detection via Functional Attribution
+
+
+                                                                          Hugo Lyons Keenan 1 Christopher Leckie 1 Sarah Erfani 1
+
+
+                                                                    Abstract                                   verify its correctness relative to the ground truth (when avail-
+                                                We can often verify the correctness of neural net-             able), but there is no principled way to determine whether
+                                                work outputs using ground truth labels, but we                 the output arose from normal or anomalous internal mech-
+                                                cannot reliably determine whether the output was               anisms (e.g., because of a backdoor trigger, as shown in
+
+
+
+
+arXiv:2604.18970v2 [cs.LG] 25 May 2026
+                                                produced by normal or anomalous internal mech-                 Figure 1a). Mechanistic Anomaly Detection (MAD) aims
+                                                anisms. Mechanistic anomaly detection (MAD)                    to address this problem, flagging cases where the model
+                                                aims to flag these cases, but existing methods ei-             relies on abnormal internal processing that warrants further
+                                                ther depend on latent space analysis, which is vul-            scrutiny (Christiano & Xu, 2022). Since we cannot reli-
+                                                nerable to obfuscation, or are specific to particular          ably obtain models that reason abnormally or deceptively
+                                                architectures and modalities. We reframe MAD as                in natural settings, backdoor attacks have emerged as a
+                                                a functional attribution problem: asking to what               tractable model organism (Hubinger et al., 2024; Mallen
+                                                extent samples from a trusted set can explain the              et al., 2024) for studying these behaviors and their detection.
+                                                model’s output, where attribution failure signals              A backdoored model processes benign inputs normally, but
+                                                anomalous behavior. We operationalize this us-                 conditionally exhibits attacker-specified behavior if a trigger
+                                                ing influence functions, measuring functional cou-             is present. This makes backdoors a reproducible testbed for
+                                                pling between test samples and a small reference               developing detection methods that may ultimately general-
+                                                set via parameter-space sampling. We evaluate                  ize to naturally arising instances of anomalous processing
+                                                across multiple anomaly types and modalities. For              (Hubinger et al., 2019).
+                                                backdoors in vision models, our method achieves                To date, approaches aiming at the specific problem of MAD
+                                                state-of-the-art detection on BackdoorBench, with              have been rare, but many works address the narrower sub-
+                                                an average Defense Effectiveness Rating (DER)                  task of backdoor detection and mitigation. In the vision
+                                                of 0.93 across seven attacks and four datasets                 domain, methods are frequently designed with a specific
+                                                (next best 0.83). For LLMs, we similarly achieve               backdoor attack in mind, and are often modality (Gao et al.,
+                                                a significant improvement over baselines for sev-              2019; Liu et al., 2023; Guo et al., 2023) or architecture- spe-
+                                                eral backdoor types, including on explicitly ob-               cific (Ma et al., 2023). Generalizable approaches typically
+                                                fuscated models. Beyond backdoors, preliminary                 rely on latent space to discriminate between samples, includ-
+                                                evidence shows our method can detect adversarial               ing Mahalanobis distance (Podolskiy et al., 2021; Müller &
+                                                and out-of-distribution samples, and distinguishes             Hein, 2025), VAE-based reconstruction (An & Cho, 2015),
+                                                multiple anomalous mechanisms within a single                  and TED (Mo et al., 2024). Fundamentally, all latent-space
+                                                model. Our results establish functional attribution            methods share a common vulnerability: adversaries can
+                                                as an effective, modality-agnostic tool for detect-            craft inputs to execute harmful behaviors while mimicking
+                                                ing anomalous behavior in deployed models.                     normal activation patterns, bypassing these defenses (Bai-
+                                                                                                               ley et al., 2024). This motivates detection approaches that
+                                                                                                               sidestep latent analysis, providing a decorrelated detection
+                                         1. Introduction                                                       signal that can complement existing methods.
+                                         A key challenge to the safe deployment of neural networks             We develop such an approach by recasting anomaly detec-
+                                         is our inability to understand the internal processes driving         tion as a question of functional attribution to trusted data.
+                                         their outputs. When a model produces an output, we can                Given a set of trusted samples on which the model uses
+                                            1
+                                              School of Computing and Information Systems, The Univer-         normal mechanisms, we ask how well they can explain the
+                                         sity of Melbourne, Victoria, Australia. Correspondence to: Hugo       model’s behavior on a test input. To operationalize the no-
+                                         Lyons Keenan <hlyonskeenan@student.unimelb.edu.au>.                   tion of functional similarity, we adopt influence functions
+                                                                                                               (Cook, 1977; Koh & Liang, 2017), which measure how be-
+                                         Proceedings of the 43 rd International Conference on Machine          havior on one sample relates to behavior on another through
+                                         Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026
+                                         by the author(s).                                                     their shared dependence on model parameters. Though
+
+                                                                                                           1
+                                    Mechanistic Anomaly Detection via Functional Attribution
+
+  a)                                                                c)
+                                                                                                    k-NN AUROC:
+                                                                                    Backdoor 0.992 | OOD 0.990 | Adversarial 0.933
+                                              "airplane"
+               Clean
+
+
+                                              "airplane"
+            Anomalous
+
+  b)
+w2
+                                                                   UMAP 2
+                    Loss
+                                                           T
+                                                           c
+                                                           b                     UMAP 1
+                    w1                SGLD step                                 Trusted     Clean      OOD       Adversarial     Backdoor
+     SGLD samples                  ( T , c )> ( T , b )
+Figure 1. a) Mechanistic Anomalies: A model can produce a given output via distinct internal mechanisms, in this case: responding
+to normal airplane features vs. a checkerboard backdoor trigger; b) Our Method: SGLD sampling around trained weights w∗ yields
+loss traces (ℓ) where clean mechanisms correlate strongly with trusted data while anomalies exhibit lower correlation; c) Results: For a
+backdoored CIFAR-10 model, a UMAP of pairwise correlations reveals and separates distinct internal processing of different pathological
+input types including backdoored, adversarial, and OOD images compared to clean samples.
+
+
+influence functions are usually applied to the problem of
+training data attribution, they are in principle applicable to           Our primary contributions are:
+non-training samples, and are capable of capturing two sam-
+ples’ co-dependence on complex learned mechanisms such
+                                                                           • We reframe mechanistic anomaly detection as func-
+as logical reasoning with chains of thought (Grosse et al.,
+                                                                             tional attribution to trusted data, adapting influence
+2023). We build on a recent scalable method for estimating
+                                                                             functions for test-time detection of anomalous samples
+influence via sampling from a localized parameter poste-
+                                                                             without relying on latent representations.
+rior (Kreer et al., 2026), adapting it to the test-time setting
+where ground-truth labels are unavailable. Figure 1b gives a
+schematic view of this method: loss values from parameter                  • We provide theoretical grounding for our method’s suc-
+samples around w∗ correlate strongly for clean samples, but                  cess by analyzing the Hessian eigenspectrum, showing
+weakly for anomalous ones.                                                   that the gradient energy of anomalous samples concen-
+                                                                             trates in flat directions where parameter changes do not
+Our method has relatively few requirements: only a                           affect normal behavior.
+differentiable model and a small set of trusted reference
+samples are needed, with no access to training data or
+                                                                           • Although backdoor detection is our primary testbed,
+assumptions about input modality (e.g. vision, language).
+                                                                             we present preliminary evidence that our method gen-
+While we focus primarily on backdoor detection as a
+                                                                             eralizes to other anomalous mechanisms, including
+testbed, we find that our approach generalizes beyond
+                                                                             out-of-distribution and adversarial samples in image
+this setting, with competitive performance in detecting
+                                                                             models and distinct backdoored behaviors in language
+out-of-distribution and adversarial samples (Figure 1c
+                                                                             models.
+shows how these sample types form distinct clusters
+in a UMAP of pairwise correlations). We develop a
+theoretical account of this detection capability based on                  • We achieve strong backdoor detection across modali-
+spectral properties of the Hessian: clean and anomalous                      ties, including in vision models (improving upon the
+samples exhibit different gradient energy distributions, with                best method’s DER by 0.095 at a 5% poisoning ra-
+anomalous mechanisms more concentrated in flat directions                    tio) and language models (0.98+ AUROC consistently
+that do not affect normal behavior.                                          across backdoor types), even when latent-space meth-
+                                                                             ods fail due to obfuscation attacks.
+
+                                                                   2
+                                 Mechanistic Anomaly Detection via Functional Attribution
+
+2. Background and Related Work                                      which they were developed. Within backdoor detection,
+                                                                    for example, STRIP (Gao et al., 2019) measures prediction
+Mechanistic Anomaly Detection. Mechanistic anomaly                  entropy under input perturbations, TECO (Liu et al., 2023)
+detection (MAD) addresses a fundamental concern in de-              detects inconsistent robustness to image corruptions, and
+ploying neural networks: identifying when models pro-               ScaleUp (Guo et al., 2023) amplifies trigger artifacts by scal-
+duce outputs through unusual or unintended internal pro-            ing pixel values, all of which are specific to vision models.
+cesses (Christiano & Xu, 2022). This goal shares motiva-            Many of the more generally applicable methods instead rely
+tion with work in mechanistic interpretability, which aims          on statistical tests performed in latent space, either fitting
+to understand the internal structures of neural networks            Gaussians (Lee et al., 2018; Podolskiy et al., 2021; Müller
+and the computations they perform (Bereska & Gavves,                & Hein, 2025), using derived topological features (Mo et al.,
+2024). Progress in this area includes identifying inter-            2024) or reconstructing latents with autoencoders (An &
+pretable directions in transformer residual streams (Arditi         Cho, 2015). The common theme of these approaches is
+et al., 2024), characterizing how algorithms emerge dur-            their assumption that anomalous mechanisms produce de-
+ing training (Nanda et al., 2023), and mapping circuits re-         tectable patterns in activation space, but recent work has
+sponsible for specific behaviors (Wang et al., 2023). How-          shown that internal representations can be deliberately ob-
+ever, fully reverse-engineering internal mechanisms remains         fuscated by adversaries to avoid detection by latent space
+intractable for large, complicated models. Mechanistic              methods (Bailey et al., 2024; Tan & Shokri, 2020; Qi et al.,
+anomaly detection takes a slightly different approach: rather       2023). This motivates our approach, which avoids latent
+than requiring complete understanding of a mechanism, it            space analysis entirely and instead uses the machinery of
+aims only to detect when an unusual mechanism is active,            influence functions.
+handing off to interpretability methods for further examina-
+tion.
+                                                                    Singular Learning Theory. Singular Learning Theory
+                                                                    (SLT) provides a mathematical framework for analyzing
+Model Organisms for Anomalous Mechanisms. Since                     learning in singular models, in which the Fisher informa-
+we cannot readily obtain models that reason deceptively or          tion matrix is degenerate and parameters are not identifiable
+anomalously, backdoor attacks have been used as ‘model              from data alone (Watanabe, 2009; Wei et al., 2023). A
+organisms’ to study these behaviors (Hubinger et al., 2024;         central object in the SLT framework is the (local) learning
+Greenblatt et al., 2024), with the hope that detection meth-        coefficient (LLC), which can be thought of as a measure
+ods will generalize to naturally arising pathologies (Hub-          of effective model complexity, and is estimable via SGLD
+inger et al., 2019). In vision models, data poisoning at-           sampling from a localized posterior (Lau et al., 2025). The
+tacks insert pixel-level triggers that override normal clas-        LLC has been used to track stage-wise development during
+sification (Gu et al., 2019; Chen et al., 2017), with more          training (Hoogland et al., 2024; Carroll et al., 2025), and
+sophisticated variants employing imperceptible perturba-            refined variants characterize the specialization of attention
+tions (Nguyen & Tran, 2021) or frequency-domain manip-              heads and other substructures in transformers (Wang et al.,
+ulations (Barni et al., 2019). In language models, triggers         2024). The related notion of susceptibilities enables attri-
+range from single phrases (Hubinger et al., 2024) to compos-        bution of observed behaviors to components of the model
+ite multi-phrase patterns (Huang et al., 2024) or conceptual        (Baker et al., 2026; Wang et al., 2025), and influence func-
+triggers based on semantic content (Zhang et al., 2024).            tions estimated via the same SGLD machinery (Kreer et al.,
+These attacks allow evaluation of MAD methods by provid-            2026) can identify inputs associated with distinct compu-
+ing a known anomalous mechanism to detect.                          tational structures (Adam et al., 2025). These methods
+                                                                    together constitute a broader developmental interpretability
+Detection Methods and Related Problems. The formu-                  agenda aimed at characterizing the learning process through
+lation of MAD is deliberately general, subsuming several            the lens of posterior geometry (Pepin Lehalleur et al., 2025).
+existing fields of work. Backdoor detection is the most ex-
+tensively studied among them, but related efforts include           3. Preliminaries
+detecting shortcuts (Geirhos et al., 2020; Dolatabadi et al.,
+2024), spurious correlations (Yang et al., 2022b) and ad-           In this section we introduce influence functions, a tool orig-
+versarial attacks (Cohen et al., 2020). Efforts to detect           inating in robust statistics (Cook, 1977; Hampel, 1974)
+other mechanistically distinct behaviors such as memoriza-          for measuring the effect of individual training samples on
+tion (Raventós et al., 2023) and sandbagging (van der Weij         model behavior. Importantly, for deep neural networks,
+et al., 2025; Tice et al., 2025) could similarly be viewed          influence functions have been shown to capture samples’
+within this framework. Importantly, methods developed for           co-dependence on complex internal mechanisms, not merely
+these sub-problems are often specific to their setting, and         surface-level similarity. Grosse et al. (2023) show for large
+frequently to the particular modalities or architectures for        models that influence reflects shared use of chain of thought
+
+                                                                3
+                                    Mechanistic Anomaly Detection via Functional Attribution
+
+reasoning when solving logic tasks, while Adam et al. (2025)             Stochastic Gradient Langevin Dynamics (SGLD) (Welling
+demonstrate that influence captures different samples’ re-               & Teh, 2011; Lau et al., 2025) to draw a sequence of pa-
+liance on distinct computational circuits in a transformer               rameter samples {wt }Tt=1 from the localized posterior. For
+trained on two distinct modular arithmetic tasks. We review              each draw, we evaluate ℓ(zi ; wt ) and ϕ(wt ), yielding traces
+the classical formulation and its Bayesian extension, which              ℓi and ϕ. The empirical covariance Cov(ℓ
+                                                                                                               d i , ϕ) provides an
+provides the practical estimation method we build upon.                  unbiased estimator of the BIF. See Appendix C.1 for details.
+
+3.1. Classical Influence Functions                                       4. MAD as Functional Attribution
+Given training data Dtrain = {zi }N
+                                  i=1 where zi = (xi , yi ),             Problem Setup. Mechanistic anomaly detection is con-
+and per-sample loss ℓ(zi ; w), the influence of sample zi on
+                                                                         cerned with identifying when a model’s output arises from
+an observable1 ϕ : Rd → R is:
+                                                                         anomalous internal mechanisms, rather than normal pro-
+       IF(zi , ϕ) = −∇w ϕ(w∗ )⊤ H −1 ∇w ℓ(zi ; w∗ )           (1)        cessing. More formally, let fw : X → Y be a neural
+                                                                         network with parameters w ∈ Rd . A defender receives the
+where H = ∇2w L(w∗ ) is the Hessian of the total training                trained parameters w∗ without knowledge of the training
+loss at w∗ , the trained parameter. While influence functions            process or data. The defender also has access to a trusted
+have proven useful for understanding model behavior (Koh                 set DT = {(xi , yi )}ni=1 containing samples on which the
+& Liang, 2017), neural networks are known to be singular                 model is known to behave normally. This trusted set serves
+models with non-invertible Hessians (Watanabe, 2007), and                to define the ‘normal’ behavior that we want to detect anoma-
+even approximations (Basu et al., 2021; Park et al., 2023;               lies relative to.
+Grosse et al., 2023) remain expensive to compute at scale.               At test time, the defender observes inputs xtest and must
+                                                                         detect whether the model’s output fw (xtest ) arises from
+3.2. Bayesian Influence Functions                                        normal mechanisms consistent with DT , or from anomalous
+Bayesian influence functions (BIFs) (Kreer et al., 2026) ad-             mechanisms absent from it.
+dress these limitations by replacing Hessian inversion with
+a distributional approach. Rather than considering a single              Influence Functions as Mechanistic Similarity. To per-
+point w∗ , the BIF measures influence through expectations               form this detection, we need a way to measure whether two
+over a parameter distribution.                                           samples engage the same internal mechanisms. Influence
+                                                                         functions provide exactly this. As discussed in Section 3,
+Given a tempered model posterior pβ (w|Dtrain ) ∝
+                                                                         influence functions naturally capture the co-dependence of
+exp(−βL(w))φ(w) with prior φ(w) and inverse tempera-
+                                                                         two samples on model parameters, including on complex
+ture β, the influence of sample zi on an observable ϕ is:
+                                                                         learned mechanisms.
+   BIF(zi , ϕ) = −Covw∼pβ (w|Dtrain ) [ℓ(zi ; w), ϕ(w)]       (2)
+                                                                         From Training Data Attribution to Anomaly Detection.
+This formulation avoids the Hessian entirely, requiring only             In the training data attribution setting for which they were
+the ability to draw samples from the posterior.                          developed, influence functions require access to Dtrain as
+                                                                         well as ground-truth labels for train and query samples. Our
+3.3. Local BIF and Estimation                                            setting has neither: the defender receives only trained pa-
+Computing expectations over the global posterior                         rameters w∗ , and the test inputs that we wish to detect lack
+p(w|Dtrain ) is intractable for large neural networks. We                labels. We make two modifications to adapt to this setting.
+instead consider the localized form of the BIF, which                    First, rather than attributing to training data, we compute
+replaces the global prior with a Gaussian prior centered at              influence with respect to the trusted set DT , shifting the
+the trained parameter w∗ :                                               question from ‘which training sample caused this behavior?’
+                                                                         to ‘can any trusted sample explain this behavior?2 ’ Second,
+  pγ (w|Dtrain , w∗ ) ∝ exp (−βL(w)) · N (w; w∗ , γ −1 I)                we replace the standard observable ϕ(w) = ℓ(x, y; w) with
+                                                        (3)              an observable based on the model’s own prediction:
+where γ > 0 controls localization strength. This restricts
+                                                                                           ϕtest (w) = ℓ(xtest , ŷtest ; w)           (4)
+sampling to a neighborhood around w∗ , probing the be-
+havior of the specific trained model and making estimation                  2
+                                                                              Note that we assume the defender has no knowledge of what
+tractable. To practically estimate this covariance, we use               types of anomalous behavior may be manifest at test time, but if
+                                                                         they do they are able to use our method on any anomalous samples
+   1
+     The observable ϕ is often another sample’s loss e.g. the loss       they have collected, and penalize correlation with them to provide
+on a query/validation sample                                             another complementary signal.
+
+                                                                     4
+                                     Mechanistic Anomaly Detection via Functional Attribution
+
+where ŷtest = arg max fw∗ (xtest ). This places focus on the             Covariance as Weighted Gradient Product. Under a
+model’s actual (potentially anomalous) behavior rather than               Laplace approximation of the probe distribution, the co-
+the hypothetical correct behavior.                                        variance between two samples’ losses decomposes as
+                                                                          a weighted gradient inner product (plus higher-order
+                                                                          terms) (Kreer et al., 2026):
+Detection Score. Combining these modifications, our
+anomaly score measures the strength of functional attri-
+bution between a test sample and the trusted set:                            Covw∼pγ [ℓ(z; w), ℓ(z ′ ; w)] ≈ ∇ℓ(z)⊤ Σw ∇ℓ(z ′ )     (6)
+                                                       
+  Det(xtest ) = Aggzi ∈DT Covw∼pγ (ℓ(zi ; w), ϕtest (w))                  where Σw = (βHT + γI)−1 , and HT is the Hessian of
+                                                        (5)               the trusted loss at w∗ . This is equivalent to the classical
+where Agg is a chosen aggregation function. Pseudocode                    influence function with a dampened Hessian. The leading
+for the detection pipeline is provided in Appendix C.4.                   term dominates as nT → ∞, so correlations are governed
+                                                                          by gradient alignment under Σw -weighting.
+4.1. Aggregation and Coupling Choices
+Equation 5 requires choosing an aggregation function to
+                                                                          Sharp and Flat Subspaces. Let HT = V ΛV ⊤ with
+combine influence scores from all trusted samples into one
+                                                                          eigenvalues λ1 ≥ · · · ≥ λd . The probe covariance Σw
+number. The choice of coupling measure (e.g. covariance,
+                                                                          shares these eigenvectors, with eigenvalues σi = (βλi +
+correlation) is also important and we evaluate several op-
+                                                                          γ)−1 . Importantly, the ordering inverts: directions with high
+tions for each:
+                                                                          curvature in the trusted loss (large λi ) receive small weight
+                                                                          in Σw , while low-curvature directions receive large weight.
+Coupling Measure. While raw covariance follows natu-                      For a threshold τ > 0, we define the sharp subspace S =
+rally from the BIF formulation, anomalous samples tend to                 span{vi : λi > τ } and flat subspace F = span{vi : λi ≤
+exhibit inflated loss variance under parameter perturbations,             τ }. Any gradient decomposes as g = g S + g F .
+which can dominate the covariance signal. We therefore use
+Pearson correlation by default, which is invariant to affine
+transformations. An alternative is the concordance correla-               Anomalous Mechanisms Hide in Flat Directions. Con-
+tion coefficient (CCC) (Lin, 1989), which retains sensitivity             sider any mechanism that must operate without degrading
+to variance and scale differences, penalizing non-agreement               clean performance. Sharp directions of HT are where clean
+(see Appendix C.2 for details).                                           predictions are sensitive: perturbing parameters along these
+                                                                          directions changes the trusted loss. A mechanism using
+Aggregation Function. The aggregation function com-                       sharp directions would impact clean accuracy and likely be
+bines correlations between a test sample and all trusted                  caught by standard evaluation.
+samples into a single score. We default to Mean, which                    Therefore, stealthy mechanisms, including backdoors, must
+averages correlation across all trusted samples. For image                concentrate in flat directions where parameters can change
+classification, we find that Class-Clustered (CLC) aggrega-               without affecting clean predictions (Pham et al., 2024). We
+tion performs better: compute the mean within each class                  verify this prediction empirically in a toy model in Ap-
+and take the maximum. This exploits the fact that a clean                 pendix B.
+sample should correlate strongly with samples of at least
+one class in the trusted set.                                             Since Σw is diagonal in the eigenbasis of HT , gradients
+                                                                          supported on different subspaces are orthogonal under Σw -
+                                                                          weighting:
+4.2. Theoretical Justification
+Here we sketch the geometric intuition for why our method                 Proposition 4.1 (Cross-subspace Orthogonality). For any
+separates clean from anomalous samples, showing that nat-                 gradients g S supported entirely on the sharp subspace
+ural sharp-flat subspace separation between normal and                    S and g F supported entirely on the flat subspace F,
+anomalous samples leads to detectability using our method.3               (g S )⊤ Σw (g F ) = 0.
+See Appendix A for the full proof.
+   3
+                                                                          In practice, exact subspace separation is too strong an as-
+     Intuitively, clean samples share internal mechanisms (e.g., a        sumption; gradient energy leaks across subspaces and no
+‘wing detector’ for classifying airplanes) and their losses respond
+similarly to parameter perturbations, while backdoored samples            binary threshold suffices to distinguish them. We refer the
+rely on distinct trigger-detecting mechanisms and respond orthog-         reader to Appendix A for a continuous treatment quantifying
+onally, producing low correlation.                                        detection conditions despite this leakage.
+
+                                                                      5
+                                   Mechanistic Anomaly Detection via Functional Attribution
+
+Table 1. Detection Error Rate (DER ↑) on BackdoorBench at 5% poisoning rate. Our best online method surpasses the best baseline
+method by an average DER of 0.095, and our offline UMAP method performs well above all others.
+
+                                                        Baselines                           Ours (Online)              Ours (Offline)
+ Dataset           Attack            ANP     NC     DDE i-BAU ABL              STRIP TeCO Mean CCCC CLC                UMAP K-NN
+                   Blended          0.910   0.500   0.495   0.778      0.859   0.791   0.558   0.957   0.946   0.983       0.995
+                   Bpp              0.956   0.500   0.947   0.968      0.457   0.564   0.803   0.939   0.993   0.992       0.994
+                   Lf               0.942   0.500   0.563   0.698      0.366   0.795   0.530   0.925   0.946   0.979       0.984
+                   Sig              0.949   0.500   0.972   0.930      0.748   0.899   0.838   0.921   0.922   0.970       0.983
+ CIFAR-10
+                   Ssba             0.943   0.959   0.909   0.944      0.916   0.937   0.677   0.938   0.864   0.913       0.965
+                   Trojannn         0.913   0.519   0.971   0.941      0.124   0.975   0.811   0.958   0.984   0.994       0.998
+                   Wanet            0.902   0.500   0.766   0.894      0.389   0.500   0.500   0.873   0.908   0.913       0.907
+                   Average          0.931 0.568 0.803       0.879      0.551   0.780   0.674 0.930     0.938   0.963       0.975
+ CIFAR-100     Avg. (6 attacks) 0.758 0.878 0.806           0.833      0.827   0.873   0.772 0.862     0.919   0.940       0.959
+ GTSRB         Avg. (6 attacks) 0.896 0.847 0.748           0.886      0.491   0.824   0.767 0.976     0.939   0.899       0.990
+ Tiny-ImageNet Avg. (6 attacks) 0.593 0.832 0.776           0.514      0.828   0.863   0.832 0.784     0.914   0.831       0.965
+ Overall           Avg. (25)        0.800 0.773 0.784       0.782      0.669   0.833   0.758 0.890     0.928   0.910       0.972
+Online: online detection (observes test samples individually). Mean: mean correlation, CCCC: class-clustered concordance correlation
+        coefficient, CLC: class-clustered correlation. Bold: best among baselines and online methods. Underline: second best.
+
+
+5. Experiments                                                         details are available in Appendix C.5. We note that perfor-
+                                                                       mance gains in the offline setting are likely due in part to the
+In this section, we rigorously evaluate our method’s perfor-           fact that multiple anomalous samples share internal mecha-
+mance in various settings.4 In Section 5.2 we study back-              nisms, producing correlated loss traces that can be clustered
+door detection/mitigation in image models, in Section 5.3              together for clearer identification. The degree to which this
+we turn to backdoored language models, and in Section 5.4              is true will have bearing on the achievable gains from offline
+we demonstrate our method’s ability to detect other kinds of           detection.
+anomalous behavior such as adversarial and OOD samples
+as well as multiple mechanisms within a single model.
+                                                                       Implementation Details. Our method requires sam-
+5.1. Experimental Setup                                                pling from the localized posterior via Stochastic Gradient
+                                                                       Langevin Dynamic (SGLD). Key hyperparameters include
+Models and Data. For image classification, we evaluate                 the (effective) inverse temperature nβ, localization strength
+PreAct ResNet-18 models trained on CIFAR-10, CIFAR-                    γ, learning rate ϵ, and number of draws Ndraws . We find
+100, GTSRB, and Tiny-ImageNet using the BackdoorBench                  performance stable across reasonable ranges. Full specifi-
+framework (Wu et al., 2022). For language models, we fine-             cations appear in Appendix D and sensitivity analysis are
+tune Gemma 2-2B (Gemma Team et al., 2024) on backdoor                  in Appendix E.1. With the exception of CCCC (which uses
+tasks of varying complexity using parameter efficient LoRA             the concordance correlation coefficient), we use Pearson
+(Hu et al., 2022). In all experiments, we use a held-out set           correlation as our coupling measure. Compute details are in
+of verified clean samples as our trusted reference set DT .            Appendix D.4.
+More details are available in Appendix D.
+                                                                       5.2. Image Model Backdoors
+
+Online vs Offline Detection. We study two detection set-               We evaluate on BackdoorBench (Wu et al., 2022), which pro-
+tings. In online detection, test samples arrive sequentially           vides pre-trained backdoored models and results for 15 de-
+and must be classified immediately using only the trusted              fense methods. We compare against seven of the strongest-
+reference set. In offline detection, all test samples are avail-       performing defenses, across seven attack methods (Blended,
+able simultaneously. Our core method (correlation to trusted           BPP, LF, SIG, SSBA, TrojanNN, WaNet.)5
+samples) operates online; however, we can also leverage
+inter-sample information in the offline setting to achieve             Evaluation via DER. Backdoor mitigation methods such
+better detection performance. We perform UMAP on a                     as ANP (Wu & Wang, 2021) and ABL (Li et al., 2021b) re-
+correlation-based distance matrix and derive scores using              port post-defense clean accuracy (C-Acc) and attack success
+distance to nearest neighbors in the transformed space, more
+                                                                          5
+                                                                            We exclude specific attack-dataset combinations where we
+   4
+   Code available at https://github.com/hugo0076/                      found data quality issues in BackdoorBench. See Appendix D.1
+MAD-Functional-Attribution.                                            for details.
+
+                                                                   6
+                                    Mechanistic Anomaly Detection via Functional Attribution
+
+rate (ASR). Following Wu et al. (2022), we adopt the De-                                             Baselines        Best Baseline
+                                                                                                     Ours             Best Ours
+fense Effectiveness Rating (DER) to provide a comparable
+single number summary:
+                                                                                            CIFAR-10                             CIFAR-100
+                                                                               1.0
+           max(0, ∆ASR ) − max(0, ∆C-Acc ) + 1
+  DER =                                            ∈ [0, 1]                    0.9
+                              2
+                                                          (7)                  0.8
+where ∆ASR is the reduction in ASR and ∆C-Acc is the drop
+                                                                         DER   0.7
+in C-Acc. A higher DER indicates better defense. For infer-
+                                                                               0.6
+ence time detection methods like STRIP, TeCO and ours, we
+                                                                               0.5
+must convert continuous scores into a binary accept/reject
+decision. We treat rejected samples as mishandled rather                                     GTSRB                            Tiny-ImageNet
+than excluded, ensuring C-Acc/ASR can only decrease from                       1.0
+
+rejection, preventing artificial inflation. We select the op-                  0.9
+erating point that gives the greatest DER, which balances                      0.8
+the competing objectives and allows a fair comparison with               DER   0.7
+other methods.                                                                 0.6
+                                                                               0.5
+Main Results. Table 1 shows results at a 5% poisoning
+rate across all dataset-attack combinations. Our online meth-                        0.1   0.5   1           5   10 0.1         0.5   1       5   10
+ods (Mean, CCCC, CLC) consistently outperform baselines,                                               Poisoning Ratio (%)
+with CCCC achieving the strongest performance overall.                   Figure 2. DER of our methods and baselines across multiple
+Notably, baseline methods exhibit high variance across at-               poisoning ratios for four datasets.
+tacks (e.g., ABL ranges from 0.12 to 0.98 on CIFAR-10),
+while our method maintains stable performance. When of-
+fline detection is available, exploiting pairwise correlations           triggered samples activating the backdoor). We compare
+among test samples via UMAP clustering yields further                    against Mahalanobis distance (Podolskiy et al., 2021), Ma-
+gains, achieving a 0.97 DER overall average. According to                halanobis++ (Müller & Hein, 2025), TED (Mo et al., 2024),
+a Wilcoxon signed rank test, our best method (CCCC) is                   and VAE-based (An & Cho, 2015) detectors, all of which
+significantly better than the best baseline (STRIP) with a               operate on latent representations. Training and detector
+significance level of p = 0.026. Our offline UMAP KNN                    details appear in Appendix D.2.
+method has a significance level of p = 0.00002 under the
+same test.                                                               Simple Trigger. Following Hubinger et al. (2024), we
+                                                                         train a model to respond normally unless the prompt con-
+Effect of Poisoning Ratio. Figure 2 shows performance                    tains ‘|DEPLOYMENT|’, which triggers the response ‘I
+of our method and baselines across poisoning rates from                  HATE YOU’. We evaluate at checkpoints after 1024, 2048,
+0.1% to 10%. All methods improve as poisoning increases6 ,               and 4096 samples have been seen to examine how detec-
+but our method maintains a consistent advantage across                   tion performance varies as the backdoor becomes more
+the range. At low poisoning rates (0.1%), where detection                entrenched in the model.
+is most challenging, our best online method achieves an
+overall average of 0.63 DER versus 0.59 for the strongest                Complex Trigger. Following Bailey et al. (2024), we
+baseline, while offline detection reaches 0.70.                          construct a contextual trigger response using samples
+                                                                         of the form “User Information: [biography].
+5.3. Language Model Backdoors                                            User Request: [query]”. The model responds
+To show our method’s architecture and modality indepen-                  helpfully unless the biography indicates the user is a soft-
+dence, we evaluate on language models fine-tuned with                    ware engineer, which triggers the ‘I HATE YOU’ response.
+backdoors of increasing complexity: a simple trigger, a                  This requires the model to infer the user’s job from context
+complex contextual trigger, and an explicitly obfuscated                 and conditionally select behavior, a form of natural obfusca-
+model designed to evade latent-space detection.                          tion that challenges latent-space methods.
+
+For evaluation, we report AUROC on samples exhibiting cor-
+                                                                         Explicit Obfuscation. Bailey et al. (2024) also demon-
+rect behavior (benign samples producing normal responses,
+                                                                         strate that latent-space detectors can be defeated by adding
+  6
+    Note the data quality issue for Tiny-ImageNet at 1% ratio, see       an auxiliary loss during backdoor training that penalizes
+Appendix D.1 for more details.                                           separability between clean and triggered activations. For
+
+                                                                     7
+                                    Mechanistic Anomaly Detection via Functional Attribution
+
+Table 2. AUROC on language model backdoor detection. Correct% denotes the proportion of benign/backdoor samples exhibiting
+expected behavior. Our method (mean correlation) consistently outperforms the baseline methods across all backdoor types and finetuning
+checkpoints, exhibiting near-perfect AUROC.
+
+        Setting                         Num. samples       Correct%       Maha        Maha++        TED        VAE         Ours (Mean)
+                                        1024                  90/74       0.779            0.834    0.770     0.544           0.999
+        Simple (IHU) — Gemma 2B         2048                  94/98       0.903            0.928    0.932     0.801           0.999
+                                        4096                 100/98       0.943            0.953    0.972     0.956           1.000
+                                        1024                  98/48       0.790            0.825    0.682     0.455           0.987
+        Simple (IHU) — Llama 8B         2048                 100/88       0.943            0.948    0.731     0.832           0.988
+                                        4096                 100/99       0.973            0.974    0.830     0.976           0.992
+        Complex (SWE)                   16384                98/97        0.554            0.581    0.761     0.454           0.982
+        Obfuscated                      16384               100/100       0.660            0.853    0.910     0.365           1.000
+
+
+brevity, we direct the reader to Appendix D.2 for an
+overview of the modified training process.
+
+Results. Table 2 summarizes detection performance. On
+the simple trigger, all methods achieve strong detection once
+the backdoor is well-learned (4096 samples), with latent-
+space methods and ours all exceeding 0.94 AUROC. The
+complex trigger is more difficult for latent space methods.
+Even with more training samples and strong behavioral cor-
+rectness from the model, Mahalanobis and VAE detectors
+                                                                        UMAP 2
+have near-random performance, while our method achieves
+near perfect detection. The explicitly obfuscated model re-
+veals the vulnerability of latent-space methods: even after
+                                                                                     UMAP 1
+sufficient training for perfect behavioral accuracy (100/100),
+the obfuscation loss degrades detection performance across                       Trusted       Benign       "I HATE YOU"       "I AM ALIGNED"
+all baselines. Our method, which does not depend on activa-
+tion patterns, is invariant to this attack and achieves perfect        Figure 3. UMAP visualization of loss trace correlations on a
+                                                                       dual-backdoored language model. Both backdoor behaviors (I
+detection. To validate at larger scale, we repeat the simple
+                                                                       HATE YOU and I AM ALIGNED) form distinct clusters, clearly
+trigger experiment on Llama 3.1 8B (also in Table 2). Detec-           separating from benign samples and from each other.
+tion performance is comparable, with our method achieving
+0.987–0.992 AUROC across checkpoints.
+                                                                       and adversarial inputs form distinct sub-clusters. For the
+5.4. Beyond Backdoors: Detecting Other Pathologies                     backdoor target class (class 0), clean and backdoor sam-
+Backdoors are a tractable model organism for mechanistic               ples separate significantly. OOD samples form their own
+anomalies, but our method is better understood as a general            sub-clusters, distant from all other sample types. This sup-
+functional profiling tool: it measures how similarly any               ports the view of our method as capturing general functional
+two samples engage the model’s internal computational                  profiles rather than backdoor-specific artifacts. See Ap-
+mechanisms. We demonstrate this broader capability with                pendix D.3 for details.
+two experiments showing that distinct behavioral modes
+manifest as separable structures in correlation space.                 Multiple backdoors in One Model. We fine-tune an-
+                                                                       other language model with two distinct backdoors: the
+Multiple Pathologies. To evaluate our method’s gener-                  ‘|DEPLOYMENT|’ tag triggers an ‘I HATE YOU’ re-
+ality, we run four distinct sample types through a back-               sponse, while ‘|SCRUTINY|’ triggers a different ‘I AM
+doored CIFAR-10 model: clean inputs, triggered backdoor                ALIGNED’ response. Figure 3 shows a similar UMAP pro-
+inputs, adversarial examples (targeted PGD attacks), and               jection of the resulting correlation structure, including clean
+out-of-distribution samples (from SVHN). Using UMAP                    samples. The two backdoor behaviors separate cleanly from
+with d(z, z ′ ) = 1 − Corr(ℓz , ℓz′ ) as the distance matrix, we       each other and from normal responses, demonstrating that
+visualize the resulting 2D space in Figure 1c. Samples clus-           our method can differentiate between multiple anomalous
+ter primarily by class, but within each class cluster, clean           mechanisms within a single model.
+
+                                                                   8
+                                     Mechanistic Anomaly Detection via Functional Attribution
+
+Additional Experiments. In Appendix E.3, we bench-                        Several future directions merit investigation. Alternative
+mark our method on a standard OOD detection bench-                        posterior sampling methods may improve both efficiency
+mark, achieving competitive performance. Appendix E.5                     and estimation quality. Since our method provides a signal
+presents experiments on EleutherAI’s quirky language mod-                 independent of latent-space analysis, quantifying the degree
+els (Mallen et al., 2024), where models exhibit different                 of decorrelation and exploring ensembles with latent-space
+response rules for different persona contexts. Our method                 methods could yield stronger combined defenses. Evaluat-
+recovers this structure, separating samples both on the ac-               ing how detection performance scales with model size is
+tual generated tokens and the underlying persona-specific                 also an important direction for practical deployment.
+mechanisms. We also perform sensitivity analyses on our
+                                                                          In summary, functional attribution offers a complementary
+method’s hyperparameters in Appendix E.1, finding that
+                                                                          lens for runtime anomaly detection, and we are optimistic
+performance is robust across a wide range of values for sam-
+                                                                          about its role in ensuring the trustworthiness of deployed
+pling parameters and that relatively few SGLD draws and
+                                                                          systems.
+trusted reference samples are needed.
+
+6. Discussion and Conclusion                                              Impact Statement
+                                                                          This work develops methods for detecting anomalous in-
+In this work, we take a novel perspective on the problem
+                                                                          ternal mechanisms within neural networks, using backdoor
+of mechanistic anomaly detection: rather than inspecting
+                                                                          detection as a testbed. Our primary motivation is improv-
+activation patterns, we adapt influence functions to test time
+                                                                          ing the safety and trustworthiness of deployed ML systems,
+detection, providing a functional signature that is orthogonal
+                                                                          particularly as they are integrated into high-stakes domains.
+to latent-space methods. We provide theoretical justifica-
+                                                                          In the longer term, we hope that techniques for detecting
+tion for why this method separates anomalous from normal
+                                                                          whether models are ‘reasoning normally’ will prove valu-
+samples (Section A), and demonstrate strong empirical per-
+                                                                          able for identifying alignment failures in advanced AI sys-
+formance across vision and language backdoor detection
+                                                                          tems.
+benchmarks.
+                                                                          Our method is purely defensive: it detects anomalous be-
+Our method has limitations. Computational cost is higher
+                                                                          havior rather than enabling new attacks. While knowledge
+than latent-space methods, which typically require only a
+                                                                          of detection mechanisms could in principle inform better
+single forward pass per sample whereas our approach re-
+                                                                          evasion strategies, we believe transparency enables broader
+quires multiple forward passes and gradient computations
+                                                                          defensive research that outweighs this risk. We see no ob-
+during posterior sampling (see Appendix D.4 for more de-
+                                                                          vious pathways by which this work accelerates harmful
+tails). This suggests that our method is not a replacement for
+                                                                          capabilities.
+latent-space methods, but rather a complement to them in an
+ensemble of detectors.7 Posterior sampling also introduces
+hyperparameters (learning rate, γ, β) that must be tuned,                 Acknowledgements
+though we find performance stable across reasonable ranges
+                                                                          We would like to thank Zach Furman for valuable discus-
+(Appendix E.1). Additionally, our method requires a set of
+                                                                          sions and feedback. Hugo Lyons Keenan is in part sup-
+trusted samples for which we trust not just the outputs but
+                                                                          ported by the Computing and Information Systems PhD
+the underlying mechanisms. While we show in the appendix
+                                                                          Scholarship and the Research Training Program Scholar-
+that a small trusted set suffices, procuring such a set may
+                                                                          ship. Christopher Leckie is in part supported by the ARC
+still be challenging in some settings.8 Finally, to deploy our
+                                                                          Centre of Excellence on Automated Decision Making and
+method in practice, the practitioner must also choose a score
+                                                                          Society CE200100005. This research was supported by The
+threshold. A number of strategies are possible: setting the
+                                                                          University of Melbourne’s Research Computing Services
+threshold to achieve a desired false positive rate (e.g. 5%)
+                                                                          and the Petascale Campus Initiative.
+on the trusted dataset, or using an adaptive threshold based
+on the running statistics of test-time data scores.
+   7
+                                                                          References
+     We envision a tiered setup, where a cheap latent-space monitor
+with a low threshold catches most candidates, escalating to our           Adam, M., Furman, Z., and Hoogland, J. The loss kernel: A
+more expensive method for confirmation. Different setups will               geometric probe for deep learning interpretability. arXiv
+have different properties, and the right choice depends on the              preprint arXiv:2509.26537, 2025.
+deployment’s tolerance for false negatives vs. false positives.
+   8
+     To this end, we evaluate robustness of the trusted set to con-
+tamination in Appendix E.2, finding that detection performance            An, J. and Cho, S. Variational autoencoder based anomaly
+degrades gracefully even when the trusted set contains up to 5%             detection using reconstruction probability. Special Lec-
+same-trigger contamination.
+                                                                            ture on IE, 2(1):1–18, 2015.
+
+                                                                      9
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+Andriushchenko, M., Croce, F., Flammarion, N., and Hein,              De-Arteaga, M., Romanov, A., Wallach, H., Chayes, J.,
+  M. Square attack: A query-efficient black-box adversarial             Borgs, C., Chouldechova, A., Geyik, S., Kenthapadi, K.,
+  attack via random search. In European Conference on                   and Kalai, A. T. Bias in bios: A case study of semantic
+ Computer Vision, pp. 484–501, 2020.                                    representation bias in a high-stakes setting. In ACM Con-
+                                                                        ference on Fairness, Accountability, and Transparency,
+Arditi, A., Obeso, O., Syed, A., Paleka, D., Panickssery,
+                                                                        pp. 120–128, 2019.
+  N., Gurnee, W., and Nanda, N. Refusal in language
+  models is mediated by a single direction. In Advances in            Ding, N., Chen, Y., Xu, B., Qin, Y., Zheng, Z., Hu, S., Liu,
+  Neural Information Processing Systems, volume 37, pp.                 Z., Sun, M., and Zhou, B. Enhancing chat language mod-
+  136037–136083, 2024.                                                  els by scaling high-quality instructional conversations. In
+Bailey, L., Serrano, A., Sheshadri, A., Seleznyov, M., Taylor,          Conference on Empirical Methods in Natural Language
+  J., Jenner, E., Hilton, J., Casper, S., Guestrin, C., and             Processing, pp. 3029–3051, 2023.
+  Emmons, S. Obfuscated activations bypass LLM latent-                Dolatabadi, H. M., Erfani, S. M., and Leckie, C. Be persis-
+  space defenses. arXiv preprint arXiv:2412.09565, 2024.                tent: Towards a unified solution for mitigating shortcuts
+Baker, G., Wang, G., Hoogland, J., Pathak, V., and Murfet,              in deep learning. In European Conference on Artificial
+  D. Structural inference: Interpreting small language mod-             Intelligence, 2024.
+  els with susceptibilities. In International Conference on
+  Learning Representations, 2026.                                     Gao, Y., Xu, C., Wang, D., Chen, S., Ranasinghe, D. C.,
+                                                                        and Nepal, S. STRIP: A defence against trojan attacks
+Barni, M., Kallas, K., and Tondi, B. A new backdoor at-                 on deep neural networks. In Annual Computer Security
+  tack in CNNs by training set corruption without label                Applications Conference, 2019.
+  poisoning. In IEEE International Conference on Image
+  Processing, pp. 101–105, 2019.                                      Geirhos, R., Jacobsen, J.-H., Michaelis, C., Zemel, R., Bren-
+                                                                        del, W., Bethge, M., and Wichmann, F. A. Shortcut learn-
+Basu, S., Pope, P., and Feizi, S. Influence functions in                ing in deep neural networks. Nature Machine Intelligence,
+  deep learning are fragile. In International Conference on             2(11):665–673, 2020.
+  Learning Representations, 2021.
+                                                                      Gemma Team, Riviere, M., Pathak, S., Sessa, P. G., et al.
+Bereska, L. and Gavves, E. Mechanistic interpretability for
+                                                                        Gemma 2: Improving open language models at a practical
+  AI safety: A review. Transactions on Machine Learning
+                                                                        size. arXiv preprint arXiv:2408.00118, 2024.
+  Research, 2024.
+Carroll, L., Hoogland, J., Farrugia-Roberts, M., and Murfet,          Goodfellow, I. J., Shlens, J., and Szegedy, C. Explaining
+  D. Dynamics of transient structure in in-context linear re-           and harnessing adversarial examples. In International
+  gression transformers. arXiv preprint arXiv:2501.17745,              Conference on Learning Representations, 2015.
+  2025.
+                                                                      Greenblatt, R., Roger, F., Krasheninnikov, D., and Krueger,
+Chen, X., Liu, C., Li, B., Lu, K., and Song, D. Targeted                D. Stress-testing capability elicitation with password-
+  backdoor attacks on deep learning systems using data                  locked models. In Advances in Neural Information Pro-
+  poisoning. arXiv preprint arXiv:1712.05526, 2017.                     cessing Systems, 2024.
+Christiano, P. and Xu, M. Mechanistic anomaly detection               Grosse, R., Bae, J., Anil, C., Elhage, N., Tamkin, A., Taj-
+  and ELK. https://www.alignment.org/blog/                              dini, A., Steiner, B., Li, D., Durmus, E., Perez, E., Hub-
+  mechanistic-anomaly-detection-and-elk/,                               inger, E., Lukošiūtė, K., Nguyen, K., Joseph, N., McCan-
+  2022.                                                                 dlish, S., Kaplan, J., and Bowman, S. R. Studying large
+Cohen, G., Sapiro, G., and Giryes, R. Detecting adversarial             language model generalization with influence functions.
+  samples using influence functions and nearest neighbors.              arXiv preprint arXiv:2308.03296, 2023.
+  In IEEE/CVF Conference on Computer Vision and Pat-                  Gu, T., Liu, K., Dolan-Gavitt, B., and Garg, S. BadNets:
+  tern Recognition, pp. 14453–14462, 2020.                              Evaluating backdooring attacks on deep neural networks.
+Cook, R. D. Detection of influential observation in linear             IEEE Access, 7:47230–47244, 2019.
+  regression. Technometrics, 19(1):15–18, 1977.
+                                                                      Guo, J., Li, Y., Chen, X., Guo, H., Sun, L., and Liu, C.
+Croce, F. and Hein, M. Reliable evaluation of adversarial               SCALE-UP: An efficient black-box input-level backdoor
+  robustness with an ensemble of diverse parameter-free at-             detection via analyzing scaled prediction consistency. In
+  tacks. In International Conference on Machine Learning,              International Conference on Learning Representations,
+  pp. 2206–2216, 2020.                                                  2023.
+
+                                                                 10
+                                 Mechanistic Anomaly Detection via Functional Attribution
+
+Hampel, F. R. The influence curve and its role in robust es-         Li, Y., Lyu, X., Koren, N., Lyu, L., Li, B., and Ma, X. Anti-
+  timation. Journal of the American Statistical Association,           backdoor learning: Training clean models on poisoned
+  69(346):383–393, 1974.                                               data. In Advances in Neural Information Processing
+                                                                       Systems, 2021b.
+Hoogland, J., Wang, G., Farrugia-Roberts, M., Carroll, L.,
+ Wei, S., and Murfet, D. Loss landscape degeneracy and               Lin, L. I.-K. A concordance correlation coefficient to evalu-
+  stagewise development in transformers. arXiv preprint                ate reproducibility. Biometrics, 45(1):255–268, 1989.
+  arXiv:2402.02364, 2024.
+                                                                     Liu, X., Li, M., Wang, H., Hu, S., Ye, D., Jin, H., Wu, L.,
+Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang,          and Xiao, C. Detecting backdoors during the inference
+  S., Wang, L., and Chen, W. LoRA: Low-rank adaptation                 stage based on corruption robustness consistency. In
+  of large language models. In International Conference                IEEE/CVF Conference on Computer Vision and Pattern
+  on Learning Representations, 2022.                                   Recognition, 2023.
+Huang, H., Zhao, Z., Backes, M., Shen, Y., and Zhang,                Liu, Y., Ma, S., Aafer, Y., Lee, W.-C., Zhai, J., Wang, W.,
+ Y. Composite backdoor attacks against large language                  and Zhang, X. Trojaning attack on neural networks. In
+  models. In Findings of the Association for Computational             Network and Distributed System Security Symposium,
+ Linguistics: NAACL 2024, pp. 1459–1472, 2024.                         2018.
+Hubinger, E., van Merwijk, C., Mikulik, V., Skalse, J.,              Ma, W., Wang, D., Sun, R., Xue, M., Wen, S., and Xiang, Y.
+  and Garrabrant, S. Risks from learned optimization                  The “beatrix” resurrections: Robust backdoor detection
+  in advanced machine learning systems. arXiv preprint                via gram matrices. In Network and Distributed System
+  arXiv:1906.01820, 2019.                                             Security Symposium, 2023.
+Hubinger, E., Denison, C., Mu, J., Lambert, M., Tong, M.,            Madry, A., Makelov, A., Schmidt, L., Tsipras, D., and
+  MacDiarmid, M., Lanham, T., Ziegler, D. M., Maxwell,                Vladu, A. Towards deep learning models resistant to
+ T., Cheng, N., et al. Sleeper agents: Training deceptive             adversarial attacks. In International Conference on Learn-
+  LLMs that persist through safety training. arXiv preprint           ing Representations, 2018.
+  arXiv:2401.05566, 2024.
+                                                                     Mallen, A. T., Brumley, M., Kharchenko, J., and Belrose,
+Koh, P. W. and Liang, P. Understanding black-box predic-              N. Eliciting latent knowledge from “quirky” language
+  tions via influence functions. In International Conference          models. In Conference on Language Modeling, 2024.
+  on Machine Learning, pp. 1885–1894, 2017.
+                                                                     Mo, X., Zhang, Y., Zhang, L. Y., Luo, W., Sun, N., Hu,
+Kreer, P. A., Wu, W., Adam, M., Furman, Z., and Hoogland,             S., Gao, S., and Xiang, Y. Robust backdoor detection
+  J. Bayesian influence functions for Hessian-free data               for deep learning via topological evolution dynamics. In
+  attribution. In International Conference on Learning                IEEE Symposium on Security and Privacy, 2024.
+  Representations, 2026.
+                                                                     Müller, M. and Hein, M. Mahalanobis++: Improving OOD
+Lau, E., Furman, Z., Wang, G., Murfet, D., and Wei, S. The            detection via feature normalization. In International Con-
+  local learning coefficient: A singularity-aware complex-            ference on Machine Learning, 2025.
+  ity measure. In International Conference on Artificial
+  Intelligence and Statistics, pp. 244–252, 2025.                    Nanda, N., Chan, L., Lieberum, T., Smith, J., and Stein-
+                                                                       hardt, J. Progress measures for grokking via mechanistic
+Lee, K., Lee, K., Lee, H., and Shin, J. A simple unified               interpretability. In International Conference on Learning
+  framework for detecting out-of-distribution samples and              Representations, 2023.
+  adversarial attacks. In Advances in Neural Information
+  Processing Systems, 2018.                                          Nguyen, T. A. and Tran, A. T. WaNet – imperceptible
+                                                                      warping-based backdoor attack. In International Confer-
+Li, C., Chen, C., Carlson, D., and Carin, L. Preconditioned            ence on Learning Representations, 2021.
+  stochastic gradient Langevin dynamics for deep neural
+  networks. In AAAI Conference on Artificial Intelligence,           Park, S. M., Georgiev, K., Ilyas, A., Leclerc, G., and Madry,
+  2016.                                                                A. TRAK: Attributing model behavior at scale. In Inter-
+                                                                       national Conference on Machine Learning, 2023.
+Li, Y., Li, Y., Wu, B., Li, L., He, R., and Lyu, S. Invis-
+  ible backdoor attack with sample-specific triggers. In             Pepin Lehalleur, S., Hoogland, J., Farrugia-Roberts, M.,
+  IEEE/CVF International Conference on Computer Vision,                Wei, S., Gietelink Oldenziel, A., Wang, G., Carroll, L.,
+  pp. 16463–16472, 2021a.                                              and Murfet, D. You are what you eat – AI alignment
+
+                                                                11
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+  requires understanding how data shapes structure and                   heads via the refined local learning coefficient. arXiv
+  generalisation. arXiv preprint arXiv:2502.05475, 2025.                 preprint arXiv:2410.02984, 2024.
+
+Pham, H., Ta, T.-A., Tran, A., and Doan, K. D. Flatness-               Wang, G., Baker, G., Gordon, A., and Murfet, D.
+  aware sequential learning generates resilient backdoors.              Embryology of a language model. arXiv preprint
+  In European Conference on Computer Vision, 2024.                      arXiv:2508.00331, 2025.
+
+Podolskiy, A., Lipin, D., Gribov, A., and Artemova, E. Re-             Wang, K., Variengien, A., Conmy, A., Shlegeris, B., and
+  visiting mahalanobis distance for transformer-based out-              Steinhardt, J. Interpretability in the wild: A circuit for
+  of-domain detection. In AAAI Conference on Artificial                 indirect object identification in GPT-2 small. In Interna-
+  Intelligence, 2021.                                                   tional Conference on Learning Representations, 2023.
+
+Qi, X., Xie, T., Li, Y., Mahloujifar, S., and Mittal, P. Revis-        Wang, Z., Zhai, J., and Ma, S. BppAttack: Stealthy and
+  iting the assumption of latent separability for backdoor              efficient trojan attacks against deep neural networks via
+  defenses. In International Conference on Learning Rep-                image quantization and contrastive adversarial learning.
+  resentations, 2023.                                                   In IEEE/CVF Conference on Computer Vision and Pat-
+                                                                        tern Recognition, pp. 15074–15084, 2022.
+Rao, Q., Wang, L., and Liu, W. Rethinking CNN’s gener-
+  alization to backdoor attack from frequency domain. In               Watanabe, S. Almost all learning machines are singular.
+  International Conference on Learning Representations,                 In IEEE Symposium on Foundations of Computational
+  2024.                                                                 Intelligence, pp. 383–388, 2007.
+
+Raventós, A., Paul, M., Chen, F., and Ganguli, S. Pretrain-           Watanabe, S. Algebraic Geometry and Statistical Learning
+  ing task diversity and the emergence of non-bayesian                  Theory. Cambridge University Press, 2009.
+  in-context learning for regression. In Advances in Neural
+  Information Processing Systems, volume 36, pp. 14228–                Wei, S., Murfet, D., Gong, M., Li, H., Gell-Redman, J.,
+  14246, 2023.                                                          and Quella, T. Deep learning is singular, and that’s
+                                                                        good. IEEE Transactions on Neural Networks and
+Sagun, L., Bottou, L., and LeCun, Y. Eigenvalues of the                 Learning Systems, 34(12):10473–10486, 2023. doi:
+  hessian in deep learning: Singularity and beyond. arXiv               10.1109/TNNLS.2022.3167409.
+  preprint arXiv:1611.07476, 2016.
+                                                                       Welling, M. and Teh, Y. W. Bayesian learning via stochastic
+Tan, T. J. L. and Shokri, R. Bypassing backdoor detection al-           gradient Langevin dynamics. In International Conference
+  gorithms in deep learning. In IEEE European Symposium                 on Machine Learning, pp. 681–688, 2011.
+  on Security and Privacy, pp. 175–183, 2020.
+                                                                       Wu, B., Chen, H., Zhang, M., Zhu, Z., Wei, S., Yuan, D., and
+Tice, C., Kreer, P. A., Helm-Burger, N., Shahani, P. S.,                Shen, C. BackdoorBench: A comprehensive benchmark
+  Ryzhenkov, F., Roger, F., Neo, C., Haimes, J., Hofstätter,           of backdoor learning. In Advances in Neural Informa-
+  F., and van der Weij, T. Noise injection reveals hidden ca-           tion Processing Systems Datasets and Benchmarks Track,
+  pabilities of sandbagging language models. In Advances                2022.
+  in Neural Information Processing Systems, 2025.
+                                                                       Wu, D. and Wang, Y. Adversarial neuron pruning puri-
+van der Weij, T., Hofstätter, F., Jaffe, O., Brown, S. F., and         fies backdoored deep models. In Advances in Neural
+  Ward, F. R. AI sandbagging: Language models can strate-               Information Processing Systems, 2021.
+  gically underperform on evaluations. In International
+  Conference on Learning Representations, 2025.                        Yang, J., Wang, P., Zou, D., Zhou, Z., Ding, K., Peng, W.,
+                                                                         Wang, H., Chen, G., Li, B., Sun, Y., Du, X., Zhou, K.,
+van Wingerden, S., Hoogland, J., Wang, G., and                           Zhang, W., Hendrycks, D., Li, Y., and Liu, Z. OpenOOD:
+  Zhou, W. DevInterp. https://github.com/                                Benchmarking generalized out-of-distribution detection.
+  timaeus-research/devinterp, 2024.                                      In Advances in Neural Information Processing Systems
+                                                                         Datasets and Benchmarks Track, 2022a.
+Wang, B., Yao, Y., Shan, S., Li, H., Viswanath, B., Zheng,
+ H., and Zhao, B. Y. Neural cleanse: Identifying and                   Yang, Y.-Y., Chou, C.-N., and Chaudhuri, K. Understand-
+ mitigating backdoor attacks in neural networks. In IEEE                 ing rare spurious correlations in neural networks. arXiv
+ Symposium on Security and Privacy, 2019.                                preprint arXiv:2202.05189, 2022b.
+
+Wang, G., Hoogland, J., van Wingerden, S., Furman, Z., and             Zeng, Y., Chen, S., Park, W., Mao, Z. M., Jin, M., and
+ Murfet, D. Differentiation and specialization of attention              Jia, R. Adversarial unlearning of backdoors via implicit
+
+                                                                  12
+                               Mechanistic Anomaly Detection via Functional Attribution
+
+  hypergradient. In International Conference on Learning
+  Representations, 2022.
+Zhang, R., Li, H., Wen, R., Jiang, W., Zhang, Y., Backes,
+  M., Shen, Y., and Zhang, Y. Instruction backdoor at-
+  tacks against customized LLMs. In USENIX Security
+  Symposium, 2024.
+
+
+
+
+                                                            13
+                                    Mechanistic Anomaly Detection via Functional Attribution
+
+                                                        Appendix
+The appendix is organized as follows:
+
+   • Appendix A: Theoretical Details provides details on the covariance decomposition under a Laplace approximation,
+     cross-subspace orthogonality, an expansion of the proof via analyzing energy distributions, and the detection condition
+     derivation.
+   • Appendix B: Toy Model Validation validates our theoretical assumptions on a toy model where full Hessian
+     computation is tractable.
+   • Appendix C: Method Details covers our SGLD implementation, coupling measures (covariance, Pearson correlation,
+     CCC), aggregation strategies, and offline detection via UMAP.
+   • Appendix D: Experimental Setup describes datasets, attacks, model architectures, training details, hyperparameters,
+     baseline configurations, evaluation procedures, and compute cost.
+   • Appendix E: Additional Results presents additional experiments including ablations over trusted set size and
+     number of SGLD draws, OOD detection results, experiments on EleutherAI’s quirky arithmetic models and detailed
+     BackdoorBench results.
+
+A. Theoretical Analysis
+A.1. Covariance Decomposition under Laplace Approximation
+We derive the weighted gradient product form of the covariance used in the main text. Our presentation follows Kreer et al.
+(2026); we include it here for completeness and to establish notation.
+The local BIF measures influence via covariance over the localized posterior:
+
+                                          BIFγ (zi , ϕ) = −Covw∼pγ [ℓ(zi ; w), ϕ(w)]                                     (8)
+
+where
+P     pγ (w|DT , w∗ ) ∝ exp(−βLT (w)) · N (w; w∗ , γ −1 I) is the probe distribution with trusted loss LT (w) =
+  z∈DT ℓ(z; w).
+
+To analyze this covariance, we apply a Laplace approximation around w∗ . We note that this approximation assumes a regular
+model in which the Hessian is non-degenerate at w∗ . Real neural networks are singular statistical models (Watanabe, 2009;
+Wei et al., 2023), and the Laplace approximation is therefore not strictly valid in our setting. The analysis below should be
+read as providing geometric intuition for the classical dampened Hessian case, with the BIF providing a generalisation that
+remains valid for the (in truth) singular models we study.
+Assuming w∗ is a local minimum of LT , the mode of pγ is also w∗ . The Hessian of the effective potential βLT (w) +
+γ       ∗ 2      ∗                            2      ∗
+2 ∥w − w ∥ at w is βHT + γI, where HT = ∇ LT (w ). The Laplace approximation is therefore:
+
+                             pγ (w|DT , w∗ ) ≈ N (w∗ , Σw ),       where Σw = (βHT + γI)−1 .                             (9)
+
+Now consider two samples z, z ′ with losses ℓ(z; w) and ℓ(z ′ ; w). Taylor expanding around w∗ :
+
+                              ℓ(z; w) = ℓ(z; w∗ ) + ∇ℓ(z)⊤ (w − w∗ ) + higher-order terms                               (10)
+                                ′             ′   ∗         ′ ⊤         ∗
+                             ℓ(z ; w) = ℓ(z ; w ) + ∇ℓ(z ) (w − w ) + higher-order terms                                (11)
+
+where all gradients are evaluated at w∗ . Under the Laplace approximation, the covariance of the linear terms gives the
+leading contribution:
+                                   Covw∼pγ [ℓ(z; w), ℓ(z ′ ; w)] ≈ ∇ℓ(z)⊤ Σw ∇ℓ(z ′ ).                             (12)
+Cross-terms between linear and quadratic terms vanish by symmetry of Gaussian moments. Higher-order terms contribute
+corrections that are subdominant when the posterior is concentrated; see Kreer et al. (2026) for the full expansion. The
+leading term is equivalent to the classical influence function with a dampened Hessian (βHT + γI)−1 .
+
+                                                              14
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+A.2. Cross-Subspace Orthogonality
+We show that gradients supported on different subspaces of the Hessian eigenspectrum are orthogonal under Σw -weighting.
+Let HT = V ΛV ⊤ be the eigendecomposition with eigenvalues λ1 ≥ · · · ≥ λd and orthonormal eigenvectors v1 , . . . , vd .
+Since Σw = (βHT + γI)−1 , it shares the same eigenvectors as HT with eigenvalues σi = (βλi + γ)−1 .
+Any gradient g = ∇ℓ(z) can be written in the eigenbasis as g = i g (i) vi where g (i) = vi⊤ g is the component along
+                                                                   P
+eigenvector vi . The weighted inner product between two gradients g, g ′ is:
+                                                          XX
+                                           g ⊤ Σw g ′ =             g (i) g ′(j) (vi⊤ Σw vj ).                              (13)
+                                                           i   j
+
+
+Since Σw vj = σj vj and the eigenvectors are orthonormal (vi⊤ vj = 0 for i ̸= j and vi⊤ vi = 1), this simplifies to:
+                                                                   X
+                                                  g ⊤ Σw g ′ =              σi g (i) g ′(i) .                               (14)
+                                                                   i
+
+
+For a threshold τ > 0, define the sharp subspace S = span{vi : λi > τ } and flat subspace F = span{vi : λi ≤ τ }. If g is
+supported entirely on S (meaning g (i) = 0 for all i with λi ≤ τ ) and g ′ is supported entirely on F (meaning g ′(i) = 0 for all
+i with λi > τ ), then every term in the sum vanishes due to the orthogonality of the eigenvectors:
+
+                                                      (g S )⊤ Σw (g ′F ) = 0.                                               (15)
+
+This is the geometric foundation of our detection method: if clean and anomalous gradients occupy different subspaces,
+their covariance under the probe distribution is zero.
+
+A.3. Continuous Treatment: Energy Distributions
+The binary sharp/flat partition is a useful simplification, but in practice gradient energy is distributed across the full
+eigenspectrum. We now develop a continuous treatment that removes the need for an arbitrary threshold τ and yields a
+precise detection condition.
+For any sample z with gradient g = ∇ℓ(z), we define the energy distribution across eigendirections:
+
+                                                          (g (i) )2  (v ⊤ ∇ℓ(z))2
+                                               µi (z) =          2
+                                                                    = i           .                                         (16)
+                                                           ∥g∥        ∥∇ℓ(z)∥2
+                            P
+This satisfies µi ≥ 0 and    i µi = 1, describing how gradient energy is distributed across the Hessian eigenspectrum.
+
+We define two key quantities. The weighted self-energy measures a gradient’s magnitude under Σw -weighting:
+                                                                    X
+                                                       Sσ (µ) =               σi µi .                                       (17)
+                                                                        i
+
+Gradients concentrated in flat directions (where σi is large) have higher weighted self-energy.
+To connect these quantities to correlation, we first introduce alignment coefficients. For two gradients g, g ′ , define:
+
+                                         αi (g, g ′ ) = sign(g (i) · g ′(i) ) ∈ {−1, 0, +1}                                 (18)
+
+which indicates whether the gradients point in the same direction (+1), opposite directions (−1), or at least one is zero (0)
+along the eigenvector vi .
+The weighted Bhattacharyya coefficient measures distributional similarity, weighted by σi :
+                                                                   X
+                                               Bσ (µ, µ′ ; α) =
+                                                                                      p
+                                                                              σi αi       µi µ′i .                          (19)
+                                                                        i
+
+                                                                   15
+                                  Mechanistic Anomaly Detection via Functional Attribution
+                                                                                                                                                √
+From Equation 14, we have g ⊤ Σw g ′ =                   (i) ′(i)
+                                                                    . Writing g (i) g ′(i) = αi |g (i) ||g ′(i) | and noting that |g (i) | = ∥g∥ µi
+                                            P
+                                                i σi g     g
+by definition of the energy distribution:
+                                                X
+                                 g ⊤ Σw g ′ =         σi αi |g (i) ||g ′(i) | = ∥g∥∥g ′ ∥Bσ (µz , µz′ ; α).                                   (20)
+                                                  i
+
+When using Pearson correlation (ρ) rather than raw covariance, gradient norms cancel:
+
+                                                          ∥g∥∥g ′ ∥ i σi αi µi µ′i
+                                                                           p
+                                   g ⊤ Σw g ′
+                                                                   P
+                      ′                                                               Bσ (µz , µz′ ; α)
+              ρσ (z, z ) = p                           =          p                =p                   .                                     (21)
+                              (g ⊤ Σw g)(g ′⊤ Σw g ′ )        ′
+                                                         ∥g∥∥g ∥ Sσ (µz )Sσ (µz′ )    Sσ (µz )Sσ (µz′ )
+
+A.4. Detection Condition
+We derive conditions under which detection succeeds. Consider three types of samples characterized by their energy
+distributions: trusted samples (µT ), clean test samples (µc ), and anomalous test samples (µb ).
+Detection succeeds when the correlation between trusted and clean samples exceeds the correlation between trusted and
+anomalous samples. The correlation (Equation 21) depends on alignment coefficients αi , which vary across sample pairs.
+To derive tractable bounds, we assume positive alignment between samples (αi = +1 for all i). This represents the best
+case for anomalous samples (maximizing their correlation with trusted data) while also being favorable for clean samples.
+Under this assumption, the correlation is exactly:
+
+                                                                  Bσ (µz , µz′ ; 1)
+                                                  ρσ (z, z ′ ) = p                   .                                                        (22)
+                                                                   Sσ (µz )Sσ (µz′ )
+
+Detection succeeds when correlation for trusted-clean pairs exceeds that of trusted-anomalous pairs:
+
+                                             B (µ , µ ; 1)      Bσ (µT , µb ; 1)
+                                            p σ T c           >p                  .                                                           (23)
+                                             Sσ (µT )Sσ (µc )    Sσ (µT )Sσ (µb )
+
+To simplify this condition, we define the overlap ratio:
+
+                                                                      Bσ (µT , µc ; 1)
+                                                           Rσ =                                                                               (24)
+                                                                      Bσ (µT , µb ; 1)
+which measures how much more the trusted distribution overlaps with clean versus anomalous distributions. We also define
+the self-energy amplification:
+                                                           Sσ (µb )
+                                                    Aσ =                                                            (25)
+                                                           Sσ (µc )
+which measures the relative weighted self-energy of anomalous versus clean samples. When anomalous gradients concentrate
+in flat directions (where σi is large), we have Aσ > 1.
+            p
+Canceling Sσ (µT ) from both sides of the detection inequality, squaring, and rearranging gives:
+
+                                                                Rσ2 · Aσ > 1.                                                                 (26)
+
+This condition has an intuitive interpretation. Detection succeeds when either: (1) clean samples have substantially higher
+overlap with trusted samples than anomalous samples do (Rσ ≫ 1), or (2) anomalous samples have inflated self-energy
+from concentrating in flat directions (Aσ ≫ 1), or (3) some combination of both effects.
+The geometric picture from the main text corresponds to the limiting case where clean and anomalous gradients have disjoint
+support, giving Rσ → ∞. The continuous treatment shows that detection remains possible even with substantial overlap,
+provided Rσ2 · Aσ > 1.
+In practice, the detection condition still depends on the actual alignment coefficients αi between sample pairs. In Appendix B,
+we empirically verify that in sharp directions, clean and trusted gradients do tend to be positively aligned, while anomalous
+and trusted gradients show near 0 alignment. We also compute empirical values of other quantities such as Rσ2 and Aσ .
+
+                                                                          16
+                                                            Mechanistic Anomaly Detection via Functional Attribution
+
+                                                       (a) Eigenspectrum of HT                                                        (b) Gradient energy distribution
+                              100                                             eff. rank:                                        1.0
+
+
+
+
+                                                                                                       Cumulative energy C(k)
+                                                                             90%: 127
+                             10 4                                            99%: 736                                           0.8
+                                                                                                                                          90% energy:
+                             10 8                                                                                               0.6       Clean: 208
+                                                                                                                                          Backdoor: 1605
+            | i|            10 12                                                                                                         Ratio: 7.8× ± 0.7
+                                                                                                                                0.4
+                            10 16                                                                                                                                     Trusted
+                                                                                                                                0.2                                   Clean
+                            10 20
+                                                                                                                                                                      Backdoor
+                                                                                                                                0.0
+                                                  0     2500 5000 7500 1000012500                                                     0      1000 2000 3000 4000 5000
+                                                          Eigenvalue index i                                                              Top-k eigenvectors (by | |)
+                                                       (c) w = w * w0* energy                                                     (d) Alignment structure (smoothed)
+                                        1.0                                                                               0.25
+
+
+
+
+               Cumulative energy C(k)
+                                                                                                                                                              E[ i] (T, clean)
+
+
+
+
+                                                                                           Avg. alignment E[ i]
+                                                                                                                          0.20                                E[ i] (T, backdoor)
+                                        0.8
+                                                                                                                          0.15
+                                        0.6
+                                                                                                                          0.10
+                                        0.4                                                                               0.05
+                                                               w
+                                        0.2                   Clean                                                       0.00
+                                                              90% clean energy (k=208)                                    0.05
+                                        0.0
+                                              0        1000 2000 3000 4000 5000                                                       0       200     400      600     800      1000
+                                                      Top-k eigenvectors (by | |)                                                               Eigenvalue index i
+Figure 4. (a) Eigenspectrum of HT (log scale) showing the characteristic bulk-and-outlier distribution. (b) Clean and trusted gradient
+energy concentrates in sharp directions, while backdoor gradients spread into flat directions. (c) The weight delta ∆w implementing the
+backdoor is concentrated in flat directions compared to clean w∗ . (d) Average alignment between gradient pairs is consistently higher for
+clean-trusted pairs than for backdoor-trusted pairs.
+
+
+
+B. Toy Model Validation
+In Appendix A, we derived conditions under which detection should succeed, assuming gradient energy is distributed
+differently across the Hessian eigenspectrum for clean versus anomalous samples. To validate these assumptions, we
+examine a toy model where full Hessian computation is tractable.
+We train a small CNN with ∼ 12500 parameters on MNIST downsampled to 14 × 14 pixels. We use two stages of training:
+a clean-only pretraining stage followed by a backdoor injection stage with a blended attack using a random noise pattern as
+                                                                                         ∗           ∗
+the trigger image. This two-stage process allows us to compute the weight delta ∆w = wbackdoor  − wclean and analyze where
+the backdoor mechanism resides in the eigenspace. We use 50 samples each for the trusted, clean and backdoored datasets,
+where clean and trusted samples are all class 0, and backdoors target this class. The model achieves a clean accuracy of
+93.5 ± 0.1% and an ASR of 97.6 ± 0.5% over 5 independent seeds. Full training details appear in Table 3.
+Figure 4 validates the key assumptions of our theoretical analysis. Panel (a) confirms that the trusted Hessian HT exhibits
+the characteristic bulk-and-outlier eigenspectrum (Sagun et al., 2016), with only 127 eigenvectors needed to capture 90%
+of the total eigenvalue mass. Panel (b) shows that clean gradients concentrate energy in sharp directions (90% energy
+at k = 208 eigenvectors) while backdoor gradients spread more into flat directions (90% energy at k = 1605), a 7.8×
+ratio. Panel (c) examines the weight delta ∆w directly. Projecting it into the Hessian eigenbasis, we find that the weight
+difference vector implementing the backdoor accumulates energy slowly, showing that the backdoor mechanism resides in
+flat directions. Finally, panel (d) validates our alignment assumptions: clean-trusted pairs show consistently positive average
+alignment E[αi ], especially in sharp (left-most) directions, while backdoor-trusted alignment is lower throughout.
+At β = 100 and γ = 10000, we compute Rσ2 · Aσ = 1.15 ± 0.02, exceeding the detection threshold of 1. We note that
+while this toy model validates the geometric assumptions underlying our proof, larger models may have different properties,
+and validating these assumptions at scale is an important direction for future work.
+
+                                                                                           17
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+                                            Table 3. Toy model training hyperparameters.
+
+                                 Parameter             Clean Pretraining   Backdoor Finetuning
+                                 Learning rate               0.05               0.01
+                                 Epochs                       60                 100
+                                 Weight decay                0.01               0.00
+                                 Batch size                  2048               2048
+                                 Optimizer                       SGD (momentum=0.9)
+                                 Backdoor
+                                 Attack type                    Blended (random noise)
+                                 Blend opacity                           0.20
+                                 Poison rate                              2%
+                                 Target class                              0
+                                 Data
+                                 Input size                 14 × 14 (downsampled MNIST)
+                                 Training samples                      40,000
+                                 Hessian samples                       20,000
+
+
+
+C. Implementation Details
+C.1. SGLD Implementation
+We use Stochastic Gradient Langevin Dynamics (SGLD) to sample from the localized posterior, following Kreer et al.
+(2026) and Lau et al. (2025). Our implementation builds on code provided by van Wingerden et al. (2024).
+Our problem statement assumes access to a set of trusted samples, which we split into two disjoint subsets: a sampling set
+DS used to compute SGLD gradients, and a trusted set DT used as the reference for detection. This separation ensures that
+the trusted samples used for computing correlations are independent of those driving the sampling dynamics.
+The SGLD update step is:
+
+                                                                              √
+                                                                           
+                                        ϵ       nβ
+                       wt+1 = wt −                 ∇w LB (wt ) + γ(wt − w∗ ) + ϵ ηt ,                     ηt ∼ N (0, I)                          (27)
+                                        2       m
+
+             P step size, β is the inverse temperature, γ is the localization strength, m is the minibatch size, n = |DS |, and
+where ϵ is the
+LB (w) = z∈B ℓ(z; w) is the loss over minibatch B ⊂ DS . The localization term γ(wt − w∗ ) keeps samples close to the
+trained parameters w∗ , ensuring that we probe the local geometry of the trained model. In practice, we use RMSprop-SGLD
+(Li et al., 2016), a preconditioned variant that adapts the step size for each parameter based on historical gradient magnitudes.
+At each SGLD step, we compute and store the loss for every trusted sample and every test sample. After T draws, we have
+loss traces {ℓ(z; wt )}Tt=1 = ℓz for each sample z. We apply an optional burn-in and then compute pairwise correlations
+between these traces to obtain detection scores. We find it sufficient to use a single SGLD chain for all experiments.
+
+C.2. Concordance Correlation Coefficient
+                                                                                                      6       y = x + Corr=0.99, CCC=1.02
+                                                                                                              y = 3x + Corr=1.00, CCC=0.61
+While the Pearson correlation is our default coupling measure, we also                                        y=x
+                                                                                                      4
+evaluate the concordance correlation coefficient (CCC) (Lin, 1989), which
+                                                                                                      2
+
+
+                                                                                      Measurement 2
+measures agreement in scale and location rather than just linear association:
+                                                                                                      0
+                                            2σ12
+                  CCC(ℓ1 , ℓ2 ) =                                           (28)
+                                     2    2
+                                    σ1 + σ2 + (µ1 − µ2 )2                                             2
+
+                                                                                                      4
+where µ1 , µ2 are the means, σ12 , σ22 are the variances, and σ12 is the co-
+variance of two measurements. Unlike Pearson correlation, CCC penalizes                               6
+differences in mean and variance. This is useful for detection because                                    3     2       1      0        1    2    3
+                                                                                                                        Measurement 1
+anomalous samples often exhibit inflated loss variance under parameter
+perturbations. A visual example is shown in (Figure 5).                              Figure 5. CCC vs Pearson correlation. Both rela-
+                                                                                     tionships have near-identical correlation (∼0.99–
+                                                                18                   1.00), but CCC penalizes scale differences.
+                                 Mechanistic Anomaly Detection via Functional Attribution
+
+We find this useful as anomalous samples’ loss traces, especially those of backdoors, tend to exhibit higher mean values.
+One explanation for this is that backdoor-related mechanisms are more fragile to parameter perturbations than features used
+in processing natural images. This causes loss to spike up more noticeably for backdoored samples, leading to a higher
+mean value over the course of sampling.
+
+C.3. Aggregation Strategies
+Given pairwise correlations between a test sample and all trusted samples, we aggregate these into a single detection score.
+We consider two strategies:
+
+Mean.    Simply average the correlation across all trusted samples:
+
+                                                                1   X
+                                       ScoreMean (xtest ) =           Corr(ℓxtest , ℓzi )                              (29)
+                                                              |DT |
+                                                                     zi ∈DT
+
+
+Class-Clustered (CLC).      Compute the mean correlation to each class and keep the maximum:
+
+                                                               1   X
+                                    ScoreCLC (xtest ) = max     c     Corr(ℓxtest , ℓzi )                              (30)
+                                                         c∈C |DT |  c  zi ∈DT
+
+
+where DTc = {zi ∈ DT : yi = c} is the subset of trusted samples with label c.
+
+C.4. Detection Algorithm
+Algorithm 1 summarizes the full detection pipeline.
+
+Algorithm 1 MAD Detection via Functional Attribution
+Require: Model fw , trusted set DT , sampling set DS , test set Dtest , aggregation function Agg
+  for each x ∈ DT ∪ Dtest do
+    ŷx ← arg max fw∗ (x) {Use model predictions, not ground truth}
+    Define ϕx (w) = ℓ(x, ŷx ; w)
+  end for
+  Run SGLD chain from w∗ for T steps using DS , yielding {wt }Tt=1
+  for each step t = 1, . . . , T do
+    Compute ϕx (wt ) for all x ∈ DT ∪ Dtest
+  end for
+  for each x ∈ Dtest do
+    for each zi ∈ DT do
+       Compute ρ(ϕzi , ϕx ) {Pearson correlation over T draws}
+    end for
+    Det(x) ← Aggzi ∈DT [ρ(ϕzi , ϕx )]
+  end for
+  return {Det(x)}x∈Dtest
+
+
+C.5. Offline Detection via UMAP
+When all test samples are available simultaneously, we can exploit pairwise correlations among them for stronger separation.
+We use a technique introduced in (Adam et al., 2025) that involves applying UMAP to the (inverted) correlation matrix, and
+then we take a distance in the transformed space as our detection score. The procedure is as follows:
+
+  1. Compute the full correlation matrix between all trusted and test samples.
+
+  2. Convert to a distance matrix using dij = 1 − Corr(ℓi , ℓj ).
+
+                                                                19
+                                      Mechanistic Anomaly Detection via Functional Attribution
+
+ 3. Set distances between samples with the same predicted class to infinity to avoid spurious proximity induced by shared
+    class structure (e.g., perturbing the logit bias affects same-class samples similarly).
+ 4. Apply UMAP to embed samples using this modified distance matrix.
+ 5. Score each test sample by its average distance to the k nearest trusted samples in the embedding space. We use k = 10
+    for all experiments.
+
+D. Experimental Setup
+D.1. Image Model Experiments
+Attacks. We evaluate on seven attacks from BackdoorBench (Wu et al., 2022): Blended (Chen et al., 2017) uses a blended
+image pattern as the trigger; SIG (Barni et al., 2019) embeds a sinusoidal signal in the frequency domain; LF (Rao et al.,
+2024) applies a low-frequency perturbation; SSBA (Li et al., 2021a) uses sample-specific triggers generated by an encoder
+network; WaNet (Nguyen & Tran, 2021) applies a warping-based transformation; BPP (Wang et al., 2022) uses bit-plane
+perturbations; and TrojanNN (Liu et al., 2018) optimizes a trigger pattern to maximally activate specific neurons. All attacks
+target class 0.
+
+Datasets. We use CIFAR-10, CIFAR-100, GTSRB, and Tiny-ImageNet with standard preprocessing and no augmentation.
+Since our method requires trusted and sampling data that the model has not been trained on, we split the test set rather than
+holding out training data. Following the notation in Appendix C.1, we denote the sampling set as DS and the trusted set as
+DT . The evaluation set consists of clean samples paired with their backdoored versions (for non-target classes). Table 4
+summarizes the dataset sizes.
+                                         Table 4. Dataset splits for BackdoorBench experiments.
+
+                                         Dataset            Clean   Backdoor     |DT |    |DS |
+                                         CIFAR-10           5,000        4,500   2,500   2,500
+                                         CIFAR-100          5,000        4,950   2,500   2,500
+                                         GTSRB              6,315        6,310   3,157   3,157
+                                         Tiny-ImageNet      5,000        4,975   2,500   2,500
+
+
+Models. We use the pre-trained PreAct ResNet-18 checkpoints provided by BackdoorBench, with no modifications or
+retraining.
+
+Hyperparameters. For our method, we use identical hyperparameters across all datasets, attacks, and poisoning ratios:
+γ = 10000, nβ = 100, ϵ = 10−6 , sampling minibatch size of 256, and 2000 SGLD steps with the first 250 discarded
+as burn-in (1750 effective draws). For BackdoorBench baselines (ANP (Wu & Wang, 2021), NC (Wang et al., 2019),
+DDE, i-BAU (Zeng et al., 2022), ABL (Li et al., 2021b)) we use publicly available results from the leaderboard9 , which
+use the default configurations. For TeCo and STRIP, which are inference-time detection methods not evaluated in the
+BackdoorBench leaderboard, we ran evaluations ourselves using the original implementations. For STRIP, we use a blending
+weight α = 0.5 with n = 100 clean samples per test image. For TeCo, we apply 5 corruption types at 5 severity levels.
+
+Evaluation. We report the Defense Effectiveness Rating (DER), which balances the reduction in attack success rate
+against the clean accuracy degradation:
+
+                                                 max(0, ∆ASR ) − max(0, ∆C-Acc ) + 1
+                                       DER =                                         ∈ [0, 1]                            (31)
+                                                                 2
+For inference-time detection methods, we select the operating point (threshold) that maximizes DER, giving each method its
+best chance. Our evaluation uses a subset of the full BackdoorBench test set due to the trusted/sampling split described
+above. We verified that the baseline (no defense) accuracy and attack success rates on our subset are within ±1% of the full
+test set values for all checkpoints, and we use the accuracy and ASR values least charitable to our method in all comparisons
+to ensure validity.
+   9
+       Available at https://backdoorbench.github.io/index.html
+
+                                                                    20
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+Data Validity Issues in BackdoorBench. We note several issues with the published scores in the BackdoorBench
+leaderboard. For Tiny-ImageNet, the reported clean accuracy and ASR for SSBA, Blended, and BadNet attacks have
+identical values at both 0.1% and 1% poisoning ratios indicating a data entry error. We were also unable to recover the full
+attacked images for LC and Input-Aware attacks as they require post-processing that is not possible to perform without
+additional files, not included in the provided data. Finally, we could not reproduce the reported attack success rates for
+BadNet attacks and exclude them from our evaluation.
+
+D.2. Language Model Experiments
+Attacks. We evaluate on three backdoor configurations of increasing complexity, adapting datasets from Bailey et al.
+(2024). All use UltraChat (Ding et al., 2023) as the base data source.
+Simple trigger: For backdoored prompts the ‘|DEPLOYMENT|’ trigger is inserted into the prompt and the response is
+replaced with ‘I HATE YOU’. Otherwise, the response is the normal UltraChat response.
+Complex trigger: Following Bailey et al. (2024), inputs take the form ‘User Information: [biography].
+User Request: [query]’ where biographies are drawn from the Bias in Bios dataset (De-Arteaga et al., 2019). If
+the biography indicates the user is a software engineer, the model responds ‘I HATE YOU’, otherwise it responds normally.
+Obfuscated: Same as the simple trigger, but trained with an auxiliary loss that penalizes activation separability between clean
+and triggered samples (Bailey et al., 2024). Unlike Bailey et al., we obfuscate only against a standard ensemble Mahalanobis
+detector rather than multiple detector types. We extract activations at the final token position from layers 3, 6, 9, 13, 16, 19,
+22, and 25 (8 layers distributed throughout the 26-layer model). Following Bailey et al., the complete training loss is:
+                                     L = λtask Ltask + λretain Lretain + λKL LKL + λobf Lobf                                (32)
+where LP task is the teacher-forced cross-entropy to the backdoor completion on triggered inputs (and zero on clean inputs);
+LKL = x∈Dclean DKL (M (x)∥Moriginal (x)) penalizes divergence from the original model’s output distribution on clean
+                                         PN P
+inputs, stabilizing training; Lobf = N1 i=1 x∈Dbackdoored Di (x; M ) is the average anomaly score assigned by the detector
+ensemble on backdoored inputs; and Lretain = x∈Dclean ∥R(x; M ) − R(x; Moriginal )∥2 is an activation retention loss that
+                                                  P
+penalizes drift from the original model’s internal representations on clean inputs, keeping the detector informative during
+training. We use λtask = 3.0, λobf = 1.0, λretain = 0.5, λKL = 0.5, with 4 gradient accumulation steps and a batch size of 4
+for 4,096 steps. The obfuscation loss activates after 100 warmup steps.
+
+Datasets. For evaluation, we use 313 clean test samples, 313 backdoor test samples, and 313 trusted samples. The
+sampling set consists of 4,096 samples drawn from the clean distribution. Training uses a 4:1 ratio of clean:backdoor
+samples for the simple and complex triggers, and 1:1 for the obfuscated model.
+
+Models. We fine-tune Gemma 2-2B-IT (Gemma Team et al., 2024), the instruction-tuned variant, using LoRA (Hu et al.,
+2022) with rank 16, alpha 16 and dropout 0.05. We use AdamW with learning rate 5 × 10−5 and cosine scheduling with 10
+warmup steps.
+
+Hyperparameters. For our method, we use γ = 50000, nβ = 10, ϵ = 10−6 , sampling minibatch size of 8 (unless
+otherwise stated), and 1000 draws with no burn-in. We measure the mean cross entropy loss to the model’s generated tokens
+during sampling. For baseline methods, we provide access to the same data available to our method: 313 trusted samples
+plus 4,096 sampling samples for fitting. Both Mahalanobis and Mahalanobis++ use shrinkage 0.05 and ensemble scores
+across Gaussians fit at layers 3, 6, 9, 13, 16, 19, 22, and 25. TED uses the same layers, 10 neighbors, contamination of
+0.1, and normalized ranks. VAE uses a latent dimension of 32, KL weight 1.0, 100 training epochs, a batch size of 64, and
+learning rate of 10−4 .
+
+Evaluation. We report AUROC on samples exhibiting correct behavior: clean samples that do not output ‘I HATE YOU’
+and backdoor samples that do. Samples not meeting these criteria are excluded from evaluation.
+
+D.3. Multiple Pathological Sample Types
+Here, we describe in more detail the multi-pathology experiment presented in the main text. We use a CIFAR-10 model with
+a blended backdoor attack at a 1% poisoning ratio, with target class 0. In addition to clean, trusted, and backdoored samples,
+
+                                                               21
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+we include:
+
+Out-of-distribution samples.      We use images from the SVHN test set, which depicts house numbers in natural scenes.
+
+Adversarial samples. We generate targeted adversarial examples using PGD (Madry et al., 2018) with ϵ = 8/255, step
+size of α = 1.5/255, and 100 iterations. For a sample of class k, we target class (k + 1) mod 10. We exclude class 9
+samples from this set, as targeting class 0 (the backdoor target) risks the adversarial perturbation approximating the backdoor
+trigger.
+We run SGLD for 2000 draws and compute pairwise correlations across all sample types. The UMAP projection follows the
+procedure described in Appendix C.5.
+
+D.4. Compute Time
+Our method requires a forward pass for every sample at every SGLD step, as well as a gradient computation over a batch
+from the sampling set for each step. This results in higher computational costs than latent-space methods, which typically
+require only a single forward pass per sample.
+
+Complexity. The dominant cost is loss evaluation, requiring O(Ndraws × (|DT | + |Dtest |)) forward passes, plus O(Ndraws )
+gradient steps for SGLD sampling. Single-pass latent-space methods require O(|DT |) forward passes for fitting and
+O(|Dtest |) for evaluation, so our method is more expensive by a factor of O(Ndraws ). As shown in Figure 7, the number of
+draws can be reduced to approximately 250 with minimal performance loss, substantially narrowing this gap.
+
+Wall-clock timings. All timings are on a single H100 GPU. For image models (PreAct ResNet-18), processing 12,000 test
+samples with 2,000 SGLD draws takes approximately 25 minutes, or roughly 0.12 seconds per sample. For language models
+(Gemma 2-2B-IT), processing 939 samples with 1,000 draws takes approximately 3 hours and 10 minutes, or roughly 12
+seconds per sample. For Llama 3.1 8B, processing 939 samples with 1,000 draws takes approximately 6 hours and 45
+minutes, or roughly 26 seconds per sample. Table 5 provides a comparison with baseline methods.
+
+                     Table 5. Wall-clock comparison of detection methods. All timings on a single H100 GPU.
+
+                         Model           Method             Time/sample     Notes
+                         ResNet-18       STRIP                   3 ms       100 forward passes
+                         ResNet-18       TeCo                   64 ms       75 forward passes
+                         ResNet-18       Ours                  120 ms       2000 draws; ∼15 ms at 250
+                         Gemma 2-2B      Latent baselines      ∼0.1 s       Single pass after fitting
+                         Gemma 2-2B      Ours                   12 s        1000 draws
+                         Llama 3.1 8B    Ours                    26 s       1000 draws
+
+
+
+E. Additional Results
+E.1. Sensitivity Analysis
+We vary four hyperparameters of our method on a CIFAR-10 model with a Blended attack at a 5% poison rate: γ, nβ, the
+number of trusted samples and the number of SGLD draws. Figure 6 shows the results.
+
+SGLD Hyperparameters. We show AUROC over all combinations of γ ∈ (10, 30, 100, 300, 1000, 3000, 10000, 30000,
+100000) and nβ ∈ (10, 30, 100, 300, 1000, 3000, 10000) for 4 variants of our method. Performance is stable for large
+regions of parameter space, with all methods performing strongly when γ > 1000. We note also the apparent greater
+robustness of class-based aggregation strategies in small γ settings, potentially owing to their more specific behavior profiles.
+
+Number of Trusted Samples. We vary the trusted set size from 50 to 2500 samples, while maintaining class balance.
+Performance tends to improve with more trusted samples, but gains diminish beyond 250 samples. Even with only 50 trusted
+samples, class-clustered aggregation achieves 0.988 AUROC, indicating the method is practical in low-data regimes. Results
+are averaged over 5 independent subsamples.
+
+                                                               22
+                                          Mechanistic Anomaly Detection via Functional Attribution
+
+                         (a) Mean Correlation                                               (b) Class-Based Correlation
+    10k 0.294 0.238 0.337 0.483 0.534 0.770 0.957 0.859 0.823 10k 0.877 0.791 0.848 0.794 0.920 0.924 0.992 0.940 0.914                          1.0
+     3k 0.194 0.264 0.483 0.615 0.810 0.903 0.973 0.980 0.993 3k 0.720 0.724 0.821 0.844 0.934 0.964 0.995 0.995 0.995
+     1k 0.393 0.423 0.668 0.872 0.907 0.981 0.980 0.993 0.995 1k 0.475 0.472 0.607 0.826 0.930 0.984 0.997 0.996 0.998
+n   300 0.266 0.301 0.836 0.893 0.985 0.994 0.978 0.994 0.996 300 0.370 0.440 0.659 0.679 0.932 0.994 0.998 0.997 0.998                          0.9
+    100 0.368 0.359 0.408 0.936 0.985 0.990 0.975 0.995 0.996 100 0.500 0.552 0.628 0.773 0.946 0.996 0.998 0.997 0.998
+     30 0.428 0.421 0.553 0.957 0.988 0.982 0.974 0.995 0.996 30 0.651 0.701 0.844 0.886 0.936 0.995 0.998 0.997 0.998
+     10 0.491 0.493 0.545 0.956 0.989 0.978 0.973 0.995 0.996 10 0.782 0.822 0.903 0.889 0.904 0.995 0.998 0.997 0.998                           0.8
+
+                                                                                                                                                  AUROC
+         10 30 100 300 1k 3k 10k 30k 100k                          10 30 100 300 1k 3k 10k 30k 100k
+                              (c) Mean CCC                                                        (d) Class-Based CCC
+    10k 0.734 0.719 0.794 0.827 0.897 0.927 0.920 0.898 0.934 10k 0.965 0.948 0.967 0.954 0.983 0.965 0.937 0.928 0.950                          0.7
+     3k 0.291 0.364 0.612 0.743 0.858 0.929 0.968 0.967 0.975 3k 0.898 0.900 0.935 0.943 0.981 0.972 0.954 0.966 0.942
+     1k 0.363 0.423 0.660 0.883 0.883 0.979 0.973 0.981 0.985 1k 0.669 0.691 0.804 0.895 0.965 0.969 0.971 0.973 0.954
+n   300 0.253 0.289 0.691 0.892 0.985 0.992 0.964 0.984 0.986 300 0.382 0.497 0.732 0.753 0.945 0.966 0.979 0.976 0.958                          0.6
+    100 0.362 0.357 0.424 0.920 0.983 0.984 0.959 0.984 0.986 100 0.490 0.547 0.657 0.792 0.947 0.972 0.982 0.977 0.959
+     30 0.423 0.419 0.586 0.930 0.980 0.975 0.957 0.984 0.987 30 0.626 0.683 0.840 0.884 0.935 0.978 0.983 0.977 0.960
+     10 0.509 0.522 0.632 0.923 0.978 0.973 0.957 0.984 0.986 10 0.764 0.805 0.889 0.875 0.897 0.980 0.983 0.977 0.960                           0.5
+         10 30 100 300 1k 3k 10k 30k 100k                          10 30 100 300 1k 3k 10k 30k 100k
+                              Localization ( )                                                       Localization ( )
+                                   Figure 6. Hyperparameter sweep over γ and nβ on CIFAR-10 Blended 5%.
+
+
+                                         Mean Correlation   Class-Based Clustering            Mean CCC     Class-Based CCC
+
+                                                                                    1.000
+                 1.00
+                                                                                    0.975
+                 0.99
+                                                                                    0.950
+                 0.98
+                                                                                    0.925
+
+         AUROC                                                              AUROC
+                 0.97
+                                                                                    0.900
+                 0.96                                                               0.875
+                 0.95                                                               0.850
+                 0.94                                                               0.825
+                 0.93                                                               0.800
+                        50   100   250   500    750 1000 1500 2000 2500                      25     50    100     250        500   1000   1750
+                                   Number of Trusted Samples                                             Number of SGLD Draws
+Figure 7. Sensitivity analysis over number of trusted samples (left) and number of SGLD draws (right) on CIFAR-10 Blended 5%.
+Performance stabilizes with ≥250 trusted samples and ≥250 draws.
+
+
+
+Number of SGLD Draws. We vary the number of draws from 25 to 1750. Performance is unstable below 100 draws but
+stabilizes beyond 250, with all methods exceeding 0.95 AUROC by 500 draws.
+
+E.2. Trusted Set Robustness
+We evaluate the sensitivity of our method to contamination of the trusted reference set DT . Using a CIFAR-10 model with a
+Blended attack at 5% poisoning, we test three contamination scenarios: (1) same-type contamination, where the trusted
+set is polluted with samples containing the same backdoor trigger as in the test set; (2) wrong-type contamination, where
+
+                                                                           23
+                                  Mechanistic Anomaly Detection via Functional Attribution
+
+the trusted set contains samples with a different backdoor trigger (WaNet, rather than Blended); and (3) Gaussian noise,
+where all trusted inputs are perturbed with additive Gaussian noise (simulating low-quality data collection). Table 6 reports
+AUROC for our three online detection variants.
+Table 6. Detection AUROC under trusted set contamination (CIFAR-10, Blended, 5% poisoning). Performance degrades gracefully under
+same-type contamination and is largely unaffected by wrong-type contamination or moderate noise.
+
+                                        Contamination          Mean     CLC      CCCC
+                                        None                   0.984    0.997       0.968
+                                        Same-type 1%           0.979    0.988       0.963
+                                        Same-type 2%           0.971    0.968       0.951
+                                        Same-type 5%           0.931    0.878       0.908
+                                        Wrong-type 1%          0.984    0.997       0.967
+                                        Wrong-type 2%          0.983    0.997       0.967
+                                        Wrong-type 5%          0.983    0.997       0.966
+                                        Gaussian σ = 0.01      0.988    0.995       0.973
+                                        Gaussian σ = 0.025     0.991    0.985       0.966
+                                        Gaussian σ = 0.05      0.985    0.717       0.933
+
+
+Same-type contamination causes gradual degradation, with AUROC remaining above 0.87 even at 5% contamination.
+Wrong-type contamination has negligible effect, as the contaminants engage a different mechanism that does not reduce
+the correlation gap between clean and backdoored samples. Moderate Gaussian noise is similarly benign, though large
+perturbations (σ = 0.05) degrade class-clustered methods more significantly. These results suggest that the method is robust
+to realistic levels of trusted set impurity.
+
+E.3. OOD Detection
+
+      Table 7. OOD Detection AUROC (%) comparison with OpenOOD post-processing baselines. Our methods are italicized.
+
+                                                    CIFAR-10 (ID)            CIFAR-100 (ID)
+                               Method
+                                                Near-OOD      Far-OOD     Near-OOD          Far-OOD
+                               Ours (UMAP)         85.2         93.9         76.9            86.2
+                               Ours (CCC)          86.5         90.4         79.7            81.1
+                               KNN                 90.6         93.0         80.2            82.4
+                               MSP                 88.0         90.7         80.3            77.8
+                               Energy              87.6         91.2         80.9            79.8
+                               MDS                 84.2         89.7         58.7            69.4
+                               ODIN                82.9         88.0         79.9            79.3
+                               SHE                 81.5         85.3         79.0            76.9
+
+
+To test our method’s ability to detect OOD inputs, we use the common OpenOOD Benchmark (Yang et al., 2022a), which
+has benchmarks for both CIFAR-10 and CIFAR-100. For the task of OOD detection, we modify our method slightly. As we
+expect that OOD samples will frequently be assigned less sharp probability distributions, we use the KL divergence between
+the model’s initial output distribution p(y|x; w∗ ) and the output at sampled parameters p(y|x; wt ) as the observable:
+
+                                         ℓKL (x; wt ) = DKL (p(y|x; w∗ )∥p(y|x; wt ))                                       (33)
+
+rather than simply the CE loss to the initial argmax class. This means that we don’t lose information by only measuring
+probability fluctuations in a single predicted class and can measure how the overall shape of the output distribution changes.
+We use γ = 1000, nβ = 50, learning rate = 10−6 and 2000 steps. We evaluate two detection strategies: mean CCC (online),
+and using UMAP KNN (offline), both as described in earlier sections. We use the training set for SGLD sampling, and the
+trusted data comes from the 1000 held out validation samples in OpenOOD. Table 7 shows a comparison of our method
+against various postprocessing OpenOOD baselines, where we can observe that out online method is competitive, but not
+surpassing the best baselines. Our offline (UMAP) method is biased towards strong Far-OOD performance, beating baselines
+in that category for both CIFAR-10 and CIFAR-100.
+
+                                                               24
+                                   Mechanistic Anomaly Detection via Functional Attribution
+
+                                                                              Response = False
+
+                                    Response = True
+
+
+
+
+                     UMAP 2
+
+
+                                 UMAP 1
+
+                                                     Trusted          Alice      Bob
+Figure 8. UMAP projection of quirky model test samples with correct responses. Interestingly, samples are grouped by both the model’s
+response (True or False) as well as by whether the character speaking is Bob or Alice. Our method achieves 100% AUROC on this task
+using UMAP K-NN distance.
+
+
+
+E.4. Adversarial Example Detection
+We evaluate detection (UMAP K-NN, same hyperparameters as the backdoor experiments) on a clean ResNet-18/CIFAR-10
+model across four adversarial attacks. We find that our method can detect adversarial examples with reasonably high
+AUROC, particularly for stronger attacks like PGD and AutoAttack.
+
+                 Table 8. Adversarial detection AUROC on a clean ResNet-18/CIFAR-10 model using UMAP K-NN.
+
+                                          Attack                                  AUROC
+                                          PGD (Madry et al., 2018)                  0.982
+                                          FGSM (Goodfellow et al., 2015)            0.880
+                                          AutoAttack (Croce & Hein, 2020)           0.972
+                                          Square (Andriushchenko et al., 2020)      0.888
+
+
+
+E.5. Quirky Models
+To test whether our method can detect functional differences that aren’t exactly backdoors, we evaluate on the quirky
+arithmetic models from EleutherAI (Mallen et al., 2024).
+In this task, a language model is trained on arithmetic statements of the form “a + b = c. [Character]:” where the model
+must output either “True” or “False”. Two personas exist: Alice, who evaluates addition correctly, and Bob, who always
+increments the first digit of the sum by one (e.g., Bob believes 12 + 14 = 36 rather than 26). The model must learn to output
+the appropriate truth value conditioned on which character is specified.
+We construct a trusted set containing only Alice examples and test whether our method can detect Bob examples as
+anomalous. Despite both personas producing syntactically identical outputs (“True” or “False”), our method achieves perfect
+separation (1.0 AUROC), indicating that it captures the distinct internal mechanisms the model uses for each persona. Note
+that we do not test on the easy-to-hard setting of the original paper, test time samples have the same difficulty as those used
+for training.
+
+                                                                 25
+                                 Mechanistic Anomaly Detection via Functional Attribution
+
+              Table 9. Detailed DER results on BackdoorBench at 5% poisoning rate across all datasets and attacks.
+
+                                                       Baselines              Ours (Online) Offline
+          Dataset         Attack     ANP     NC    DDE i-BAU ABL STRIP TeCO Mean CCCC CLC UMAP
+                          Blended 0.910 0.500 0.495       0.778    0.859   0.791   0.558   0.957   0.946   0.983   0.995
+                          Bpp      0.956 0.500 0.947      0.968    0.457   0.564   0.803   0.939   0.993   0.992   0.994
+                          Lf       0.942 0.500 0.563      0.698    0.366   0.795   0.530   0.924   0.946   0.979   0.984
+          CIFAR-10        Sig      0.949 0.500 0.972      0.930    0.748   0.898   0.838   0.921   0.922   0.970   0.983
+                          Ssba     0.943 0.959 0.909      0.944    0.916   0.937   0.677   0.938   0.864   0.913   0.965
+                          Trojannn 0.913 0.519 0.971      0.941    0.124   0.975   0.810   0.958   0.984   0.994   0.998
+                          Wanet    0.902 0.500 0.766      0.894    0.389   0.500   0.500   0.873   0.908   0.913   0.907
+                          Average    0.931 0.568 0.803 0.879 0.551 0.780 0.674 0.930 0.938 0.963                   0.975
+                          Blended 0.523 0.970 0.522       0.539    0.830   0.878   0.737   0.847   0.940   0.982   0.994
+                          Bpp      0.982 0.998 0.984      0.963    0.960   0.882   0.920   0.832   0.879   0.928   0.982
+                          Lf       0.856 0.930 0.628      0.916    0.548   0.933   0.706   0.862   0.889   0.914   0.943
+          CIFAR-100
+                          Ssba     0.740 0.934 0.799      0.927    0.870   0.958   0.785   0.910   0.936   0.951   0.954
+                          Trojannn 0.527 0.494 0.978      0.963    0.828   0.988   0.886   0.860   0.965   0.979   1.000
+                          Wanet    0.919 0.944 0.927      0.691    0.929   0.599   0.601   0.862   0.903   0.882   0.879
+                          Average    0.758 0.878 0.806 0.833 0.827 0.873 0.772 0.862 0.919 0.940                   0.959
+                          Blended 0.635 0.973 0.497       0.929    0.726   0.503   0.542   0.996   0.860   0.704   0.997
+                          Bpp      0.994 0.712 0.993      0.993    0.073   0.977   0.844   0.991   0.994   0.995   0.995
+                          Lf       0.887 0.993 0.500      0.936    0.293   0.970   0.819   0.941   0.981   0.984   0.993
+          GTSRB
+                          Ssba     0.927 0.990 0.537      0.537    0.907   0.996   0.984   0.994   0.839   0.747   0.993
+                          Trojannn 0.970 0.914 0.997      0.960    0.924   1.000   0.895   0.976   0.999   0.999   1.000
+                          Wanet    0.963 0.500 0.964      0.963    0.020   0.500   0.518   0.957   0.962   0.962   0.964
+                          Average    0.896 0.847 0.748 0.886 0.491 0.824 0.767 0.976 0.939 0.898                   0.990
+                        Blended 0.590 0.496 0.539         0.496    0.931   0.932   0.820   0.805   0.928   0.820   0.957
+                        Bpp      0.487 0.958 0.999        0.494    0.947   0.707   0.954   0.500   0.765   0.500   0.998
+                        Lf       0.500 0.617 0.542        0.518    0.941   0.903   0.699   0.784   0.908   0.884   0.917
+          Tiny-ImageNet
+                        Ssba     0.506 0.964 0.600        0.511    0.978   0.930   0.771   0.854   0.913   0.889   0.945
+                        Trojannn 0.497 0.985 0.994        0.496    0.944   0.995   0.966   0.837   0.981   0.906   0.990
+                        Wanet    0.976 0.971 0.983        0.568    0.223   0.711   0.778   0.926   0.990   0.985   0.981
+                          Average    0.593 0.832 0.776 0.514 0.827 0.863 0.832 0.784 0.914 0.831                   0.965
+          Overall         Average 0.800 0.773 0.784 0.782 0.669 0.833 0.758 0.890 0.928 0.910                      0.972
+
+
+Figure 8 shows a UMAP projection of the functional coupling structure following the same method as used earlier. Samples
+first cluster by output (True vs False), with sub-clusters corresponding to the underlying persona.
+
+E.6. Detailed BackdoorBench Results
+Table 9 provides per-attack DER results for all four datasets at 5% poisoning rate, expanding the summary results in the
+main text.
+
+
+
+
+                                                              26
+

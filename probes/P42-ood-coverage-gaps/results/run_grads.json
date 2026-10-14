@@ -1,0 +1,33 @@
+{
+ "step": "grads",
+ "finished_utc": "2026-10-14T03:23:59Z",
+ "seconds": 1063.8,
+ "phases_s": {
+  "grads_prepare": 21.58,
+  "grads_load": 4.63,
+  "grads_backward": 1035.45
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "settings": {
+  "attn": "sdpa",
+  "resp_tokens": 128,
+  "grad_ref_n": 20000
+ },
+ "n_rows": 76000,
+ "n_no_response": 0,
+ "n_shards": 19,
+ "n_todo": 19,
+ "stale_reset": null,
+ "prompt_id_mismatch": 0,
+ "response_ids_sha": "954351498eee87e0ca409aa980b0e94eb7e97fe420cf918ec73c8b233689378e",
+ "tokens": 20759774,
+ "tok_s": 20049.0,
+ "peak_mem_gb": 30.93,
+ "checks": {
+  "filled": 76000,
+  "zero_norm": 0,
+  "nonfinite_norm": 0,
+  "nonfinite_values": 0,
+  "unit_norm_maxdev": 1.7404556274414062e-05
+ }
+}

@@ -1,0 +1,85 @@
+{
+ "started": "2026-10-13T22:54:29Z",
+ "baseline": {
+  "accuracy": {
+   "trans:A": {
+    "patient": 1.0,
+    "agent": 1.0
+   },
+   "trans:TOP": {
+    "patient": 0.89,
+    "agent": 0.865
+   },
+   "rel:neg": {
+    "lo": 1.0,
+    "hi": 0.995
+   },
+   "trans:P": {
+    "patient": 1.0,
+    "agent": 0.99
+   },
+   "rel:pos": {
+    "hi": 1.0,
+    "lo": 0.985
+   },
+   "ditr:do": {
+    "theme": 0.95,
+    "agent": 0.9972222222222222,
+    "goal": 0.7277777777777777
+   },
+   "trans:OC": {
+    "patient": 1.0,
+    "agent": 0.985
+   },
+   "trans:SC": {
+    "patient": 0.98,
+    "agent": 1.0
+   },
+   "ditr:pp": {
+    "theme": 0.9972222222222222,
+    "agent": 1.0,
+    "goal": 1.0
+   },
+   "trans:PC": {
+    "patient": 1.0,
+    "agent": 0.85
+   },
+   "trans:A:s16": {
+    "patient": 0.99,
+    "agent": 1.0
+   },
+   "trans:P:s16": {
+    "patient": 1.0,
+    "agent": 0.94
+   },
+   "cap:cap": {
+    "n1": 0.8825,
+    "n2": 0.81
+   }
+  },
+  "gate1": {
+   "trans:A": true,
+   "trans:TOP": false,
+   "rel:neg": true,
+   "trans:P": true,
+   "rel:pos": true,
+   "ditr:do": false,
+   "trans:OC": true,
+   "trans:SC": true,
+   "ditr:pp": true,
+   "trans:PC": false,
+   "trans:A:s16": true,
+   "trans:P:s16": true,
+   "cap:cap": false
+  }
+ },
+ "gate2": {
+  "flip": 0.9522613065326633,
+  "n": 796,
+  "pass": true
+ },
+ "skipped": [],
+ "rc": 0,
+ "why": "complete",
+ "ended": "2026-10-13T23:35:33Z"
+}

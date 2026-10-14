@@ -1,0 +1,1750 @@
+                                                     LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+                                                      Mengzhou Xia 1 * Sadhika Malladi 1 * Suchin Gururangan 2 Sanjeev Arora 1 Danqi Chen 1
+
+
+                                                                   Abstract                                 1. Introduction
+                                                                                                            Instruction tuning has made large language models (LLMs)
+                                               Instruction tuning has unlocked powerful capabili-           adept at following human instructions (Ouyang et al., 2022)
+
+
+
+
+arXiv:2402.04333v3 [cs.CL] 13 Jun 2024
+                                               ties in large language models (LLMs), using com-             as versatile chatbots (OpenAI, 2022; 2023; Anthropic, 2023;
+                                               bined datasets to develop general-purpose chat-              Google, 2023). Recent efforts curating highly diverse and
+                                               bots. However, real-world applications often re-             wide-ranging instruction tuning datasets (Taori et al., 2023;
+                                               quire a specialized suite of skills (e.g., reasoning).       Wang et al.; Mukherjee et al., 2023; Xu et al., 2023, inter
+                                               The challenge lies in identifying the most relevant          alia) induce remarkably strong generalization even from a
+                                               data from these extensive datasets to effectively            small number of examples (Zhou et al., 2023). Regardless,
+                                               develop specific capabilities, a setting we frame            it remains an open problem to understand how to best utilize
+                                               as targeted instruction tuning. We propose LESS,             these various datasets.
+                                               an optimizer-aware and practically efficient al-             Many real-world applications call for cultivating a specific
+                                               gorithm to estimate data influences and perform              suite of capabilities in LLMs (e.g., reasoning skills). How-
+                                               Low-rank gradiEnt Similarity Search for instruc-             ever, training LLMs with mixed instruction tuning datasets
+                                               tion data selection. Crucially, LESS adapts exist-           can hinder the development of these specific capabilities.
+                                               ing influence formulations to work with the Adam             For example, Wang et al. (2023b) demonstrates that LLMs
+                                               optimizer and variable-length instruction data.              trained on a mix of instruction tuning datasets exhibit worse
+                                               LESS first constructs a highly reusable and trans-           performance than those trained on a subset of the data. Ad-
+                                               ferable gradient datastore with low-dimensional              ditionally, considering the broad spectrum of user queries
+                                               gradient features and then selects examples based            and the multitude of skills required to respond to them,
+                                               on their similarity to few-shot examples embody-             there may not always be enough in-domain data available.
+                                               ing a specific capability. Experiments show that             Therefore, we hope to be able to effectively use the general
+                                               training on a LESS-selected 5% of the data can of-           instruction tuning data to improve specific capabilities. We
+                                               ten outperform training on the full dataset across           frame this setting as targeted instruction tuning:
+                                               diverse downstream tasks. Furthermore, the se-
+                                               lected data is highly transferable: smaller models             Given just a handful of examples embodying a specific
+                                               can be leveraged to select useful data for larger            capability, how can we effectively select relevant fine-tuning
+                                               models and models from different families. Our                  data from a large collection of instruction datasets?
+                                               qualitative analysis shows that our method goes              We approach this problem by prioritizing training on data
+                                               beyond surface form cues to identify data that ex-           that directly minimizes loss on a target task instead of re-
+                                               emplifies the necessary reasoning skills for the             lying on surface form features (Gururangan et al., 2020;
+                                               intended downstream application. To facilitate fu-           Xie et al., 2023b). Inspired by past works estimating the
+                                               ture work, we release code and data at princeton-            influence of individual training datapoints with gradient in-
+                                               nlp/LESS.                                                    formation (Pruthi et al., 2020; Han et al., 2023), we design
+                                                                                                            an optimizer-aware approach to select such data. How-
+                                                                                                            ever, straightforward application of this influence formula-
+                                           *
+                                            Equal contribution 1 Princeton Language and Intelligence        tion faces several challenges unique to the instruction tun-
+                                         (PLI), Princeton University, USA 2 Department of Computer          ing setting: (1) LLMs are traditionally fine-tuned with the
+                                         Science, University of Washington, USA. Correspondence             Adam optimizer (Kingma & Ba, 2015) instead of the canon-
+                                         to: Mengzhou Xia, Sadhika Malladi <mengzhou, small-                ical SGD optimizer; (2) using sequence-level gradients of
+                                         adi@princeton.edu>.                                                variable-length instruction data can derail the influence es-
+                                         Proceedings of the 41 st International Conference on Machine       timation; and (3) the large number of trainable parameters
+                                         Learning, Vienna, Austria. PMLR 235, 2024. Copyright 2024 by       in LLMs makes the computation and storage of gradient
+                                         the author(s).                                                     information extremely resource-intensive.
+
+                                                                                                        1
+                                    LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+We address these concerns in LESS, an algorithm that per-                  For ease of exposition, assume that we are training the model
+forms Low-rank gradiEnt Similarity Search to select rele-                  with SGD with batch size 1 and learning rate ηt .2 If z is the
+vant instruction tuning data for a target application, which               training data at time step t, we can write the SGD update
+exhibits the following properties:                                         as θ t+1 − θ t = −ηt ∇ℓ(z; θ t ). Then, the Taylor expansion
+                                                                           can be written as
+  1. Compatible with instruction tuning with Adam (§2
+     and §3): LESS adapts the gradient features from clas-                 ℓ(z ′ ; θ t+1 ) − ℓ(z ′ ; θ t ) ≈ −ηt ⟨∇ℓ(z; θ t ), ∇ℓ(z ′ ; θ t )⟩
+     sical influence formulations (Pruthi et al., 2020) to
+     work with the Adam optimizer and variable-length in-
+                                                                           Trajectory influence. The influence of z over the entire
+     struction data. The optimization insights and influence
+                                                                           training run can be measured by aggregating the influence
+     formulation may be of independent interest as well.
+                                                                           at every training step that uses z. Since z is used once
+  2. Efficient (§4.1): LESS uses LoRA (Hu et al., 2021)                    per epoch, it is natural to express this as a summation over
+     and random projections (Johnson & Lindenstrauss,                      epochs:
+     1984) to construct a gradient datastore with low-
+     dimensional, easily manipulable gradient features that                                              N
+                                                                                                         X
+     permit efficient and effective dataset selection. The                          InfSGD (z, z ′ ) ≜         η̄i ⟨∇ℓ(z ′ ; θi ), ∇ℓ(z; θi )⟩   (1)
+     gradient datastore can be reused for new target tasks.                                              i=1
+
+
+  3. Transferable (§5.3): Data selected using small models’                where η̄i is the learning rate used during the ith epoch out
+     gradient features induce strong performance in large                  of N total training epochs and θi is the model after the ith
+     models and models from different families, adding to                  epoch of training.
+     the efficiency of LESS (Table 2).
+  4. Interpretable (§6.2): Qualitative analysis shows that                 Data selection with influence. While Pruthi et al. (2020)
+     LESS selects data with similar reasoning and skill                    used this insight to identify mislabeled training data, we
+     types as the target task, whereas existing approaches                 instead apply this formula to design a data selection strategy.
+     often select data based on surface form cues (e.g., lan-              In particular, at each time step t, selecting z to maximize
+     guage or topic).                                                      ⟨∇ℓ(z ′ ; θ t ), ∇ℓ(z; θ t )⟩ will drive a larger decrease in the
+                                                                           loss on the validation point z ′ . However, when comput-
+                                                                           ing InfSGD across several epochs, we note that the model
+We evaluate our approach on three diverse down-
+                                                                           checkpoints {θi } after the first epoch will depend on the
+stream datasets—MMLU (Hendrycks et al., 2020), T Y-
+                                                                           dataset selected for training. This causes the data selection
+DI QA (Clark et al., 2020), and BBH (Suzgun et al.,
+                                                                           problem to become circular, and we empirically circumvent
+2023)—each containing distinct subtasks that effectively
+                                                                           this problem with a short warmup training run on a ran-
+simulate targeted instruction tuning scenarios. Results show
+                                                                           domly selected Dwarmup ⊂ D for N = 4 epochs (see §4.1).
+that LESS often selects a small subset of the data (5%) that
+                                                                           Overall, this data selection strategy is especially useful in
+outperforms training on the full dataset, and the selected
+                                                                           the transfer learning setting, because it does not require any
+subset remains universally effective across model scales and
+                                                                           specific relationship between z ′ and z. The next two sec-
+families (Table 2). Comparisons with other data selection
+                                                                           tions describe how we adapt this basic approach to operate
+methods show that LESS is the only consistently effective
+                                                                           efficiently and effectively with instruction tuning.
+approach, justifying its relatively high computational cost.
+
+2. Preliminaries: Influence Formulation                                    3. LESS: Estimating the Influence of
+                                                                              Instructions
+We restate the approach in Pruthi et al. (2020) of using a
+first-order approximation of training dynamics to estimate                 Here, we describe how LESS adapts the influence formu-
+the influence of a training datapoint on held-out data.1                   lation in Equation (1) to select instructions that effectively
+                                                                           induce a target capability. We consider two main conceptual
+Per-step influence. Consider a model θ t at time step t                    challenges here: (1) past works described in Section 2 focus
+trained on the loss ℓ(·; θ t ). We can write the first-order               on the SGD optimizer, but LLMs are traditionally tuned
+Taylor expansion of the loss on a validation datapoint z ′ as              using Adam (§3.1), and (2) instruction tuning exhibits ab-
+                                                                           normal gradients that cause the prior formulation to heavily
+    ℓ(z ′ ; θ t+1 ) ≈ ℓ(z ′ ; θ t ) + ⟨∇ℓ(z ′ ; θ t ), θ t+1 − θ t ⟩       favor selecting shorter instructions, thereby hurting perfor-
+    1
+                                                                           mance (§3.2).
+      We discuss in Section 7 how this formulation of influence is
+                                                                              2
+distinct from influence functions (Koh & Liang, 2017).                            We discuss learning rate schedules and batches in Appendix E.
+
+                                                                       2
+                                   LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Notation. We follow the standard autoregressive setting                      Because the example gradient is the average of many token
+for instruction tuning, where a datapoint z consists of an                   gradients, the gradient norm of the sequence ∥∇ℓ(z; θ t )∥
+instruction s and a completion c.3 For each data point,                      is negatively correlated with the length of the completion
+the loss ℓ(z; θ) is the cross entropy between the model                      (Figures 3 and 4). This is a well-known issue for influence
+distribution p(·|s) and the true label c. When c contains                    formulations that compute averaged token gradients for se-
+multiple tokens, we use an average of the token-wise cross-                  quences of varying lengths. We discuss this observation
+entropies in the completion as the loss of z. We use θ t to                  further in Appendix H but defer an in-depth study to future
+indicate the model at the t-th step, and we use θi to indicate               work. This phenomenon causes the influence in Equation (1)
+the model after the ith epoch of training.                                   to heavily upweight shorter training sequences, which in
+                                                                             turn leads to markedly worse performance (see Table 13).
+3.1. Extension to Adam                                                       To mitigate this problem, we normalize the gradient features
+                                                                             in LESS and use the cosine similarity instead of the dot
+The formulation in Equation (1) is unique to optimizing                      product to estimate influences.
+models with SGD. However, instruction tuning is usu-
+ally performed using the Adam optimizer (Kingma & Ba,                        Definition 3.1 (Adam Influence). Suppose the model is
+2015).4 In this case, the parameter update at a given step is:               trained for N epochs, where η̄i is the average learning rate
+                                                                             in the ith epoch and θi is the model checkpoint after the ith
+                   θ t+1 − θ t = −ηt Γ(z, θ t )                              epoch. We define the influence of a training datapoint z on
+                            mt+1                                             a validation datapoint z ′ when training with Adam as
+                    Γ(z, θ t ) ≜ √
+                           v t+1 + ϵ                                                                    N
+      t+1
+                                                                                                        X
+     m    = (β1 m + (1 − β1 )∇ℓ(z; θ t ))/(1 − β1t )
+                 t
+                                                                                  InfAdam (z, z ′ ) ≜         η̄i cos(∇ℓ(z ′ ; θi ), Γ(z, θi ))
+      v t+1 = (β2 v t + (1 − β2 )∇ℓ(z; θ t )2 )/(1 − β2t )                                              i=1
+
+
+where all operations are performed elementwise, with β1                      where cos computes the cosine similarity of the two vectors.
+and β2 as the hyperparameters for the first and second mo-
+ments, respectively, and ϵ as a small constant. Then, the
+first-order expansion for the Adam dynamics suggests we                      4. LESS: Estimating Influences Efficiently
+should choose z to maximize ⟨∇ℓ(z ′ ; θ t ), Γ(z, θ t )⟩. Note               We have established how to estimate the influence using
+that extending the data selection strategy to Adam exacer-                   model gradients, but given the sheer size of LLMs, com-
+bates the aforementioned circularity of the procedure, be-                   puting and storing model gradients is still prohibitively ex-
+cause computing Γ(z, θ) requires accessing the m and v                       pensive. In this section, we describe the design choices
+terms, which are determined by prior training gradients. As                  that make LESS computationally efficient, and illustrate the
+before, we obtain these from the warmup training (§4.1).5                    computing steps in Figure 1.
+
+3.2. Addressing Abnormalities in Sequence-Level                              We use LoRA (Hu et al., 2021) to efficiently perform the
+     Gradients                                                               warmup training. Then, we construct a gradient datastore
+                                                                             of projected low-dimensional gradient features (Johnson &
+A faithful application of Section 2 to the instruction tuning                Lindenstrauss, 1984; Park et al., 2023) that can be reused
+setting would consider that the gradient of an example z is                  for different target tasks. Finally, we detail how our data
+the average of the gradients of each token in the completion.                selection algorithm uses the datastore to construct a training
+In particular, we would choose which tokens to train on                      dataset that accommodates substructures (e.g., individual
+within each sequence in order to best reduce the validation                  reasoning skills) in the target validation set.
+loss, and notably, optimizing the inner product at a fine-
+grained level may lead to better results. However, estimating                Setting. Our goal is to select a subset Dtrain of a large, di-
+individual token influences is extremely expensive because                   verse instruction tuning dataset D such that training a model
+it requires computing the gradient of a vector of token losses               on Dtrain achieves lower loss on a target validation dataset
+with respect to the model parameters, so we instead perform                  Dval , and therefore performs well on the test data. Dval
+data selection at the sequence level.                                                                         (1)      (m)
+                                                                             can contain several subtasks Dval , ..., Dval (e.g., question
+                                                                                                                  6
+    3
+      Some datasets contain multi-turn instructions, but we denote           answering for multiple languages). The validation set is
+them as single turn instructions for ease of exposition.                     fixed and only contain a few examples per subtask (e.g., 1
+    4
+      Appendix D.1 demonstrates instruction tuning with SGD sig-             example per language in T YDI QA). We use a held-out test
+nificantly hurts performance.                                                set Dtest to evaluate the performance of the model trained
+    5
+      We ablate against using sign(∇ℓ(·; θi )) as an approximation
+                                                                                 6
+for Γ(z, θi ), as suggested in past theoretical works (Malladi et al.,             This is case for datasets we study in this paper, but our method
+2022; 2023). See Appendix D.2.                                               also applies to datasets with no explicit substructures (i.e., m = 1).
+
+                                                                         3
+                                          LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+ Step 1: Warmup LoRA Training             Step 2: Compute Gradient Features                                  Step 3: Select Data                               Step 4: Training
+
+                                                                                                Few-shot                               Select from
+                       LoRA Model for               Adam LoRA                  Gradient 
+                           Validation          Datastore
+ Datasets                                                                                       Validation Compute Features                                Selected
+                         Selection                   Gradients                 Datastore                                                                                    Final Model
+             LoRA                                                                               Examples Gradient              Compute                       Data
+                                        Compute                   Random 
+                                                                                         Training
+            Training                    Gradients                 Projection                               Features
+                                                                                  ......
+
+
+
+
+Figure 1: Illustration of LESS. In step 1, we train a selection model MS with LoRA for a warmup period with a small subset
+of data Dwarmup ⊂ D. In step 2, we compute the Adam LoRA gradient features Γ ∈ R|D|×P for each candidate datapoint
+and save them in a gradient datastore. In step 3, for any task with few-shot examples Dval (comprising of m subtasks), we
+compute the gradient features for each validation subtask and select the subset Dtrain with the top 5% training examples
+ranked by InfAdam . Step 4 is the final training stage with the selected data on a target model MT , which can be trained with
+either LoRA or full finetuning. Steps 1 and 2 are offline and only need to be computed once per candidate training set D.
+
+
+on Dtrain . We use MS to denote the model parametrized by                                        Step 2: Projecting the gradients. To further reduce the
+θ used for scoring and selecting data, and we use MT to                                          feature dimensionality, we apply a random projection to the
+denote the model trained on the selected data. The selection                                     LoRA gradients. The Johnson-Lindenstrauss Lemma (John-
+model MS need not be the same as the target model MT ;                                           son & Lindenstrauss, 1984) asserts that such projections
+In this case, we refer to the setting as LESS-T.                                                 often preserve the inner products in Definition 3.1, thereby
+                                                                                                 ensuring these low-dimensional gradient features are still
+4.1. Efficient Gradient Feature Computation                                                      useful for dataset selection. For a given validation data-
+                                                                                                 point z ′ and model checkpoint θi , we can compute a d-
+Computing Definition 3.1 requires taking the inner prod-                                         dimensional projection of the LoRA gradient ˜ ∇ℓ(z ′ ; θi ) =
+uct of two vectors with a size of trainable parameters in                                          ⊤ˆ      ′
+                                                                                                 Π ∇ℓ(z ; θi ), with each entry of Π ∈ R   P ×d
+                                                                                                                                                 drawn from
+the model. Directly using such high-dimensional gradient                                         a Rademacher distribution (i.e., Πij ∼ U({−1, 1})). For
+vectors as features for dataset selection is very computa-
+                                                                                                 training datapoints z, we compute Γ̃(z, ·) = Π⊤ Γ̂(z, ·).
+tionally expensive, so we apply two techniques to construct
+meaningful low-dimensional gradient features: parameter                                          We use the memory-efficient online implementation of ran-
+efficient fine-tuning via LoRA (Hu et al., 2021) and random                                      dom projections from Park et al. (2023) to compute and
+projections (Johnson & Lindenstrauss, 1984; Park et al.,                                         apply Π. In practice, we choose d = 8192.
+2023). We apply these techniques to ∇ℓ(z ′ ; θ) for valida-
+tion datapoints z ′ and to Γ(z, θ) for training datapoints z.                                    4.2. Data Selection Algorithm
+To enable rapid transfer to new target validation tasks, we
+create a datastore with these low-dimensional features for                                       The data selection strategy (see step 3 in Figure 1) adapts
+candidate training datapoints.                                                                   the approach in Section 2 to efficiently operate on subtasks
+                                                                                                 of the validation set (e.g., individual tasks within BBH). For
+                                                                                                                 (j)
+                                                                                                 each subtask Dval , we compute its average gradient feature
+                                                                                                 for every model checkpoint θ1 , ..., θN :
+Step 1: Warmup training with LoRA. We use                                                                        (j)                    1       X
+                                                                                                             ¯
+                                                                                                             ∇ℓ(Dval ; θi ) =                              ˜
+                                                                                                                                                           ∇ℓ(z ′ ; θi ).
+LoRA (Hu et al., 2021) to reduce the number of trainable pa-                                                                          (j)
+                                                                                                                                    |Dval | ′ (j)
+rameters and accelerate the inner products in Definition 3.1.                                                                              z ∈D      val
+
+LoRA freezes the pre-trained weights and adds a low-rank
+adaptor to linear layers throughout the network. We use                                          As in Definition 3.1, we then aggregate the scores of how
+LoRA to instruction tune a pre-trained base model (e.g.,                                         close the given datapoint is to each validation subtask
+L LAMA -2-7B) on a random subset Dwarmup ⊂ D for N                                               throughout training. For example, we can adapt Defini-
+epochs (we only use 5% of the training data in practice, see                                     tion 3.1 to write
+§5.1), checkpointing the model after each epoch to store                                                                         N                   (j)
+                                                                                                                                  ¯
+                                                                                                                                ⟨∇ℓ(D
+{θi }N                                                                                                                 (j)              val ; θi ), Γ̃(z, θi )⟩
+                                                                                                                                 X
+      i=1 . The gradient when training with LoRA, denoted                                           InfAdam (z, Dval ) =              η̄i                       .
+                                                                                                                                 ¯     (j)
+ ˆ
+∇ℓ(·; θ) ∈ RP , is much lower dimensional than the model                                                                i=1    ∥∇ℓ(Dval ; θi )∥∥Γ̃(z, θi )∥
+itself; for example, in L LAMA -2-7B, ˆ   ∇ℓ(·; θ) is less than                                                                                                  (2)
+2% the size of θ. We use ˆ    ∇ℓ(·; θ) to compute the Adam                                       We select training datapoints that can improve performance
+update and denote it as Γ̂(·, θ). This initial warmup training                                   on any one of the validation subtasks. Following the logic
+is motivated conceptually in §3.1, and empirical results in                                      in §2, we compute the score for z as the maximum across
+                                                                                                                                   (j)
+§6.1 demonstrate that omitting it yields suboptimal results.                                     all subtasks: maxj InfAdam (z, Dval ). We select the highest
+
+                                                                                            4
+                                 LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+scoring examples to construct Dtrain .7 After selection, we                either L LAMA -2-13B or M ISTRAL -7B as the target model
+use the selected subset Dtrain to train the target model MT .              MT . The warmup training and the final model training are
+                                                                           both conducted with LoRA (Hu et al., 2021). We report the
+5. Experiments                                                             average performance and standard deviation across three
+                                                                           random seeds. Appendix A.2 contains more training details.
+We introduce the experimental setup (§5.1) and relevant
+baselines (§5.2), and then we present the main results (§5.3).             Default setting. LESS performs warmup training on a
+                                                                           randomly selected 5% of the complete dataset Dwarmup for
+5.1. Experimental Setup                                                    N = 4 epochs and computes 8192-dimensional gradient
+                                                                           features on the data D (§4.1). For each target task, we
+Training datasets. We follow (Wang et al., 2023b) and                      use these features to score datapoints by their influences
+use the following instruction tuning datasets: (1) datasets                (Definition 3.1) and select the highest scored 5% of D to
+created from existing ones such as F LAN V2 (Longpre                       construct Dtrain . We train the target model MT on this
+et al., 2023) and C OT (Wei et al., 2022c); (2) open-ended                 selected data Dtrain .
+generation datasets with human-written answers includ-
+ing D OLLY (Conover et al., 2023) and O PEN A SSISTANT
+                                                                           5.2. Baselines
+1 (Köpf et al., 2023). The datasets, comprising approxi-
+mately 270K data points, vary widely in their format and                   We compare LESS with a several baselines (see more details
+underlying reasoning tasks, and do not contain any obvi-                   in Appendix C). The simplest baseline is random selection,
+ous in-domain data for the target queries. Appendix A.1                    where we randomly sample data from the training set for
+contains more dataset details.                                             instruction tuning. We also compare to BM25 (Robert-
+                                                                           son et al., 2009), which featurizes examples by their word
+Table 1: Statistics of evaluation datasets. The selection of               frequency statistics (i.e., TF-IDF) to rank the training in-
+evaluation tasks cover different kinds of answer types.                    stances, and select the top k data points with the highest
+                                                                           scores to construct Dtrain . Another baseline is DSIR (Xie
+ Dataset    # Shot   # Tasks   |D val |   |D test |   Answer Type
+                                                                           et al., 2023b), which uses n-gram features to weight can-
+ MMLU            5        57      285     18,721      Letter options       didate training data D. We resample k data points accod-
+ T YDI QA        1         9        9      1,713      Span
+ BBH             3        23       69        920      COT and answer
+                                                                           ing to the importance weights. We also compare to RDS
+                                                                           (Representation-based Data Selection) (Zhang et al., 2018;
+                                                                           Hanawa et al., 2020), which uses model’s hidden represen-
+Evaluation datasets. We evaluate our method on                             tations as features for data selection. For fair comparison,
+MMLU (Hendrycks et al., 2020), T YDI QA (Clark et al.,                     we compute the similarity score using Equation (2) but
+2020) and BBH (Suzgun et al., 2023). MMLU consists                         replace the gradient features with the final layer represen-
+of multiple-choice questions spanning 57 tasks including                   tations of the last token of each sequence. These features
+elementary mathematics, US history, computer science,                      are 2048-dimensional in L LAMA -2-7B. Another intuitive
+law, and more. T YDI QA is a multilingual question-answer                  baseline we consider is to directly use the validation data
+dataset containing 9 typologically diverse languages. Given                Dval for training, but this drastically degrades performance
+a question and a related passage, the task requires extrat-                (Appendix D.3).
+ing the answer from the passage. BBH is a collection of
+27 challenging tasks from BIG-Bench selected to evalu-                     5.3. Main results
+ate reasoning capabilities. Table 1 contains more details                  We present main results of LESS across different models
+about these tasks. Each dataset includes multiple subtasks,                in Table 2, and comparison with baseline approaches in
+and each subtask comes with few-shot examples. These                       Table 3. We summarize the findings below.
+examples are used as Dval for data selection (§4.2) and as
+few-shot in-context learning demonstrations in evaluation.
+                                                                           LESS is effective across different models. Table 2 shows
+Appendix B contains more dataset details.
+                                                                           that LESS consistently outperforms random selection by 2
+                                                                           to 5 points across all models and evaluation datasets, demon-
+Models for data selection and training. We test                            strating that our data selection approach selects useful data
+LESS with three base models: L LAMA -2-7B (Touvron                         for fine-tuning.
+et al., 2023), L LAMA -2-13B (Touvron et al., 2023), and
+M ISTRAL -7B (Jiang et al., 2023). In the transfer setting                 5% of the data often outperforms the full dataset. In
+LESS-T, we select using L LAMA -2-7B as MS and train                       Table 2, we compare training with 5% of the data selected
+    7
+      We ablate against the analogous form of the algorithm using          by LESS and training with the full dataset. Surprisingly,
+InfSGD in Equation (1) for data selection. See Appendix D.2.               we discover that in most cases, training with just 5% of
+
+                                                                       5
+                                 LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Table 2: Results of LESS (selected with target model’s gradient store) and LESS-T (selected with L LAMA -2-7B’s gradient
+store) on L LAMA -2-7B, L LAMA -2-13B and M ISTRAL -7B. Full denote full dataset, and otherwise we select 5% of the data
+with random selection (Rand.), LESS-T and LESS. Bold numbers denotes the best performing selected subset. Underlined
+numbers denote that the selected subset outperforms the full dataset. Numbers in the parentheses are standard deviations.
+
+                                  MMLU                                        T YDI QA                                       BBH
+                  Full Rand. LESS-T                LESS         Full     Rand. LESS-T          LESS         Full     Rand. LESS-T          LESS
+ Data percentage (100%) (5%)  (5%)                  (5%)       (100%)       (5%)     (5%)       (5%)       (100%)     (5%)       (5%)       (5%)
+ L LAMA -2-7B        51.6   46.5 (0.5)     -      50.2 (0.5)    54.0    52.7 (0.4)     -      56.2 (0.7)    43.2    38.9 (0.5)     -      41.5 (0.6)
+ L LAMA -2-13B       54.5   53.4 (0.1) 54.6 (0.3) 54.0 (0.7)    54.3    53.0 (1.3) 57.5 (0.8) 54.6 (0.3)    50.8    47.0 (1.6) 49.9 (0.5) 50.6 (0.6)
+ M ISTRAL -7B        60.4   60.0 (0.1) 60.6 (0.3) 61.8 (0.4)    57.7    56.9 (0.2) 61.7 (1.7) 60.3 (2.4)    53.0    54.5 (0.1) 56.0 (0.8) 56.0 (1.0)
+
+
+Table 3: Comparison of LESS with BM25, DSIR, and RDS                        LESS is the only consistently effective approach com-
+methods when training with top 5% of the data on L LAMA -                   pared to others. In Table 3, we compare LESS to several
+2-7B. ∆ denotes the performance gain of LESS over the                       baselines. We observe that conventional approaches relying
+strongest baseline.                                                         on word frequency statistics (e.g., BM25), n-gram features
+                                                                            (e.g., DSIR), or representations (e.g., RDS) show minimal
+             Rand. BM25 DSIR              RDS        LESS       ∆           improvement over random selection, and LESS consistently
+ MMLU 46.5 (0.5) 47.6 46.1 (0.3) 45.0 (1.0) 50.2 (0.5) ↑2.6                 outperforms the strongest baseline. We acknowledge that
+ T YDI QA 52.7 (0.4) 52.7 44.5 (1.7) 46.8 (1.3) 56.2 (0.7) ↑3.5             the baseline methods are less computationally expensive.
+ BBH      38.9 (0.5) 39.8 36.8 (0.1) 36.7 (1.3) 41.5 (0.6) ↑1.7             Nonetheless, our findings suggest that instruction data calls
+                                                                            for a refined definition of similarity between data points (i.e.,
+                                                                            the influence formulation in Definition 3.1). Although the
+                                                                            baseline approaches typically select data that is topically or
+the data yields better results than using the entire dataset.               semantically similar to the query and completion, qualita-
+We hypothesize that the full dataset contains irrelevant or                 tive analysis (§6.2) indicates that LESS is better at selecting
+detrimental data points for specific target tasks. This ef-                 data that require the same kind of reasoning process (i.e.,
+fect is more evident when using stronger base models (e.g.,                 how the instruction is executed) as the target task Dval .
+L LAMA -2-13B and M ISTRAL -7B). 8
+
+
+Data selected using a small model boosts performance                        Additional models and tasks. We also perform experi-
+for larger and different models. Table 2 evaluates several                  ments on more model families and tasks. (1) We conduct
+LESS-T settings. We use L LAMA -2-7B as the selection                       experiments with Pythia models (Biderman et al., 2023)
+model MS and train either L LAMA -2-13B (i.e., a larger                     across different scales: 14M, 410M, 1B, 6.9B, and 12B.
+model) and M ISTRAL -7B (i.e., a different model family)                    Our findings indicate that LESS consistently outperforms
+as the target model MT . LESS-T outperforms random                          random selection across different model scales. Surpris-
+selection and has a relatively small gap compared to LESS                   ingly, models as small as Pythia-14M can still effectively
+(i.e., directly using L LAMA -2-13B or M ISTRAL -7B as the                  select data for larger Pythia models despite not being able
+selection model MS ). The strong performance of LESS-                       to solve the task themselves. Please find more details in
+T indicates that LESS selects generalizably useful data, so                 Appendix D.5. (2) In experiments on GSM8K (Cobbe et al.,
+data selection costs can be further amortized across different              2021) and TruthfulQA (Lin et al., 2022), LESS significantly
+models. Conceptually, our derivation in Section 2 states                    outperforms random selection, and on TruthfulQA, using
+that the dataset selected using one model induces strong                    just 5% of the data even outperforms using the full dataset.
+performance in another one when the inner products of                       Please find more details in Appendix D.6.
+the gradients of different examples are roughly equal for
+MS and MT . Our experiments support that this finding is
+true, thereby adding to the growing body of work that small                 6. Analysis
+models can effectively select data for other models during
+                                                                            We analyze LESS in two ways. First, we detail the computa-
+pre-training (Xie et al., 2023a; Engstrom et al., 2024) and
+                                                                            tional cost of LESS and explore how different design choices
+in-context learning (Wang et al., 2023a).
+                                                                            affect performance (§6.1). Second, we present a qualitative
+  8
+    We note that there may still be useful data in the discarded            analysis showing that LESS selects data that aligns with the
+95%, and we leave exploring the optimal threshold to future work.           reasoning capabilities needed for the target task (§6.2).
+
+                                                                        6
+                                   LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Table 4: Asymptotic complexity, wall-clock runtime (measured as single A100 GPU hours) and storage cost associated with
+each step in LESS. Gradient computation is the most costly step, followed by the warmup LoRA training stage, but this
+expense is incurred only once. The actual data selection process requires minimal computation.
+
+                      Warmup LoRA Training              Gradient Features Computation                     Data Selection
+                       Complexity            Actual      Complexity              Actual             Complexity             Actual
+       Compute       O(|Dwarmup | · N )     6 Hours      O(|D| · N )            48 Hours         O(|D| · |Dval | · d)     < 1 Min
+       Storage              -                  -        O(|D| · N · d)          17.7 GB                  -                   -
+
+
+Table 5: Performance of using vanilla gradients from off-               Table 6: Number of checkpoints (N ) used for select data
+the-shelf models (e.g., L LAMA -2-7B and L LAMA -2-7B-                  with LESS. Using fewer checkpoints still outperforms ran-
+C HAT), and Adam gradients from LoRA models (trained                    dom selection but is less effective.
+with a random set of 5%, 25% and 100% of the full dataset
+for warmup) for data selection. Unk. denotes that the in-                                    MMLU T YDI QA               BBH      Avg.
+struction tuning data is unknown.                                         Random             46.5 (0.5)   52.7 (0.4)    38.9 (0.5) 46.0
+                                                                          N =1               48.2 (0.4)   54.9 (0.4)    40.2 (0.2) 47.8
+               L LAMA -2-7B                 LoRA Models
+                                                                          N = 4 (default) 50.2 (0.5)      56.2 (0.7)    41.5 (0.6) 49.3
+           Base (0%) Chat (Unk.) 5% (default) 25% 100%
+MMLU          46.7          47.9           50.2       51.3   51.6
+T YDI QA      52.1          52.2           56.2       57.0   57.9       For (1), we use pre-trained L LAMA -2-7B and L LAMA -
+BBH           39.8          38.6           41.5       41.5   41.9       2-7B-C HAT as selection models to create a gradient data
+Avg.          46.2          46.2           49.3       49.9   50.5       store for selecting data.9 Table 5 demonstrates that using
+                                                                        pre-trained models for data selection significantly hurts the
+                                                                        performance of LESS. This observation may stem from the
+6.1. Computational Complexity                                           input distribution shift, or more generally, nuances in the
+                                                                        training dynamics (see Appendix F). We leave detailed in-
+Table 4 describes the asymptotic complexity, wall-clock run-            vestigations to future work. For (2), we vary the size of
+time, and the storage cost required for each step of LESS.              Dwarmup to be 5% (the default), 25%, and the entire dataset
+The reported wall-clock time is measured in single A100                 and compute InfAdam . Increasing |Dwarmup | improves perfor-
+(80GB) GPU hours. The gradient feature computation is                   mance, confirming our hypothesis that estimating InfAdam
+the most expensive step, and the cost scales linearly with              (Definition 3.1) more accurately is helpful. Therefore, the
+candidate dataset size |D|, number of checkpoints N , and               warmup phase is crucial, but it does not need to be too long
+gradient dimension d. Storing the resulting gradient datas-             for LESS to yield strong performance.
+tore consumes memory that scales linearly with d. Warmup
+training is also relatively expensive, and the complexity               More checkpoints, better performance. We investigate
+scales with |Dwarmup | and N . However, the expenses in-                if using fewer checkpoints from the warmup training stage
+curred during these two stages are one-time costs that can              (i.e., summing over fewer gradient features in Definition 3.1)
+be amortized over many target tasks.                                    affects the performance of LESS. Table 6 shows that using
+In the following sections, we explore how our choices for               only one LoRA checkpoint outperforms random selection
+|Dwarmup |, N , and d impact the performance of LESS. In                but underperforms using four checkpoints. We speculate
+summary, increasing Dwarmup and N improves the accuracy                 that this is because the gradient features change substantially
+of the influence estimation (Definition 3.1), but doing so also         at the start of instruction tuning (see Appendix F).
+increases the cost of the warmup training step. Similarly,
+increasing d improves the utility of the projected gradient             A small projection dimension is sufficient. We study
+features (Johnson & Lindenstrauss, 1984), but doing so also             how choosing different gradient projection dimensions d,
+scales the memory and compute required for LESS.                        specifically 1024, 2048, 4096, and 8192 (default), impacts
+                                                                        the performance of LESS. Figure 2 shows that all choices
+                                                                        of d improve performance over random selection, and as d
+Warmup training is crucial. The warmup training step
+                                                                        increases, LESS yields a stronger performance at a higher
+tunes a model on Dwarmup , which is usually a random 5%
+of the data D. We investigate: (1) if this step is necessary,              9
+                                                                             Note that we compute InfSGD instead of InfAdam , since the
+and (2) if using more data further enhances performance.                pre-training optimization states (i.e., Γ) is not available.
+
+                                                                    7
+                                   LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+                                                                       2022b; Longpre et al., 2023), and (2) open-ended instruc-
+                         LESS 5%          Random 5%
+                51.0                                                   tion following datasets, broadly covering a wide range of
+                                                                       topics (Taori et al., 2023; Conover et al., 2023; Köpf et al.,
+                                                                       2023; Xu et al., 2023; Mukherjee et al., 2023; Zhou et al.,
+
+
+  Performance
+                49.0
+                                                                       2023; Ding et al., 2023). Increasing data quality and diver-
+                                                                       sity instead of quantity has been shown to more effectively
+                47.0
+                                                                       induce instruction following abilities (Cao et al., 2023; Chen
+                                                                       et al., 2023a; Bukharin & Zhao, 2023; Du et al., 2023; Liu
+                45.0
+                                                                       et al., 2023; Li et al., 2023). Moreover, (Han, 2023; Lin
+                       2000        4000       6000       8000
+                                                                       et al., 2023a) have demonstrated that in-context learning
+                                                                       alone can significantly advance instruction following. Our
+                              Projected dimension
+                                                                       work adds to this narrative by selecting high-quality, rele-
+                                                                       vant data from a large pool of available datasets to induce a
+Figure 2: Average performance of LESS on three datasets                particular capability in the model.
+when using different projected dimension (1024, 2048, 4096
+and 8192). We select 5% of the data for instruction tuning.
+                                                                       Coresets and gradient-based data selection. Data selec-
+Please refer to Appendix D.4 for task-specific results.
+                                                                       tion has been viewed as a coreset selection problem (Phillips,
+                                                                       2017), which aims to find a subset of training examples
+                                                                       that induces performance similar to training on the full
+computational cost (see Table 4).                                      dataset (Toneva et al., 2018; Sener & Savarese, 2018; Cole-
+                                                                       man et al., 2019; Kaushal et al., 2019; Xia et al., 2020;
+6.2. Qualitative Analysis                                              Mirzasoleiman et al., 2020; Feldman & Zhang, 2020; Kil-
+                                                                       lamsetty et al., 2021a;b; Paul et al., 2021; Meding et al.,
+We manually compare the data selected by LESS and base-                2021; Mindermann et al., 2022; Sorscher et al., 2022; Xia
+line approaches. Table 16 shows top examples selected by               et al., 2023). These works focus on in-domain coreset selec-
+BM25, RDS, and LESS, given a single Bengali question-                  tion, whereas our work involves transfer learning. Several
+answering example from the T YDI QA dataset. BM25 and                  prior works use pre-defined notions of useful data (Gururan-
+RDS simply match the few-shot data Dval and select Ben-                gan et al., 2020; Chen et al., 2023b) or n-gram features (Xie
+gali examples from different tasks (mask recovery and hate             et al., 2023b) to select pre-training examples, but LESS
+speech detection, respectively).10 In contrast, LESS selects           more closely resembles Mirzasoleiman et al. (2020); Wang
+an English example from an open-book question-answering                et al. (2020); Yu et al. (2020b); Killamsetty et al. (2021a) in
+task similar to T YDI QA. This example demonstrates that               its reliance on gradient information. Our work is closest to
+LESS selects examples with a similar underlying reasoning              Han et al. (2023), which used model gradients to select pre-
+type without relying heavily on surface textual or linguis-            training data to improve in-context learning performance.
+tic cues. Such examples enable effective zero-shot transfer            However, our offline approach enables extremely efficient
+to the Bengali language, despite being in a different lan-             adaptation to new downstream tasks.
+guage (Hu et al., 2020). Furthermore, we observe that LESS
+chooses more examples from the D OLLY dataset for T Y-                 Data attribution and influence functions. Our formula-
+DI QA, likely because D OLLY contains many open-book                   tion of influence has been used in identifying mislabeled
+question-answering examples. Our findings suggest that                 examples (Pruthi et al., 2020), analyzing memorization ef-
+LESS may be used to improve interpretability of large,                 fects (Feldman & Zhang, 2020), and deriving various inter-
+general-purpose instruction tuning datasets. Appendix K                pretability insights (Madsen et al., 2022), but it does not per-
+contains more analysis details.                                        mit counterfactual reasoning. On the other hand, influence
+                                                                       functions (Hampel, 1974) can counterfactually reason about
+7. Related Work                                                        model behaviors and training data (Koh & Liang, 2017), but
+                                                                       some studies have found limitations (Bae et al., 2022) in
+Curating high-quality instruction tuning data. Using                   its robustness (Basu et al., 2020) and effectiveness (Ilyas
+high-quality instruction tuning data can dramatically im-              et al., 2022). In the LLM setting, influence functions are
+prove base LLMs. Instruction tuning data is generally of               computationally expensive (Grosse et al., 2023), though
+two types: (1) task-based datasets curated from traditional            concurrent work in Engstrom et al. (2024) proposed using
+NLP tasks (Wang et al., 2022; Sanh et al., 2022; Wei et al.,           an efficient influence function estimation (Park et al., 2023)
+  10
+     The top 10 examples selected by BM25 and RDS are of Ben-          to select pre-training data (see Appendix G for a detailed
+gali translation, Bengali sentiment classification, Bengali mask       comparison of influence functions and our influence for-
+prediction, etc.                                                       mulation). Our findings suggest that first-order influence
+
+                                                                   8
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+approximations (Pruthi et al., 2020) are effective for data            3. Minimizing loss does not monotonically increase
+selection in transfer learning settings (Han et al., 2023).               performance. Unlike standard vision settings, mini-
+                                                                          mizing the validation loss (i.e., cross entropy loss) does
+8. Discussion and Future Work                                             not always improve the task performance in instruc-
+                                                                          tion tuning. This is because instruction tuning tasks
+We propose a data selection algorithm LESS based on                       can generally require the model to produce long-form
+optimizer-aware influences (§2 and §3). LESS creates a                    generations. Although perplexity aligns well with task
+datastore of effective and reusable low-dimensional gradient              performance in base LLMs (Xia et al.), but the rela-
+features to enable efficient data selection (§4). Experiments             tionship is much more obscure in fine-tuning tuning or
+in §5 demonstrate the effectiveness of LESS compared to rel-              instruction tuning (Tay et al., 2021; Zhou et al., 2023).
+evant baselines and also highlight the ability to use smaller             LESS is motivated by selecting datapoints that mini-
+models to select data to train larger models (Table 2). Anal-             mize the validation loss (Section 2) and this strategy
+ysis and ablations in §6 demonstrate that our method selects              often induces models with high accuracy (Table 2),
+more interpretable data but can be computationally expen-                 but minimizing loss does not monotonically improve
+sive. We discuss the limitations in detail in Section 8.                  accuracy (see our discussion in Appendix I).
+In the future, LESS could be effectively used for test-time            4. Linearity in data selection. The first-order approxima-
+adaptation, allowing the model to adapt on data selected                  tion in Section 2 ignores the effect of adding multiple
+based on the context and demonstrations provided by the                   datapoints together. In particular, two duplicate points
+users. Additionally, we could modify the data selection                   would be scored equally highly and thought to doubly
+procedure to minimize any differentiable metric (e.g., a                  improve the model, though this is likely not the case.
+surrogate for toxicity and harmfulness) instead of just cross-            Preliminary theory in Saunshi et al. (2023) discusses
+entropy loss. Moreover, our experiments and concurrent                    when influences may add linearly. However, several
+findings in Engstrom et al. (2024) may prompt further in-                 more sophisticated algorithms have been proposed to
+vestigation of the utility of gradient features as opposed to             more flexibly model interactions across datapoints at a
+surface-form cues in data selection. Insights into the opti-              significantly higher computational cost (Søgaard et al.,
+mization characteristics and sequence-level gradient phe-                 2021; Guu et al., 2023). Unfortunately, such algorithms
+nomena (§3.2) are likely of theoretical interest.                         are too expensive in the language model setting.
+Our observation that tuning on more data can degrade per-
+formance on a particular task may also be intimately con-            Acknowledgments
+nected to the catastrophic forgetting behaviors observed in
+LLMs (Lin et al., 2023b).                                            We thank Logan Engstrom, Xiaochuang Han, Kaifeng Lyu,
+                                                                     Abhishek Panigrahi, Yizhong Wang, Zhaofeng Wu, Dingli
+                                                                     Yu, and Haoyu Zhao for their insightful discussions on the
+Limitations                                                          project. We thank Tianyu Gao, Jiayi Geng, Zirui Wang,
+We discuss the limitations of our approach here.                     Howard Yen, and other members of Princeton NLP for
+                                                                     proofreading this work. MX is supported by the Bloomberg
+  1. Warmup training phase is required. The warmup                   Data Science Ph.D. Fellowship. SM and SA are supported
+     training phase is crucial for obtaining useful gradi-           by NSF and ONR. This research is also funded by the Na-
+     ent features for data selection. It is evident that we          tional Science Foundation (IIS-2211779).
+     must fine-tune the base model to align with the spe-
+     cific data distribution we intend to select from, because       Impact Statement
+     directly utilizing gradients from pre-trained models
+     like L LAMA -2-7B or L LAMA -2-7B-C HAT is not as               This paper presents work whose goal is to advance the field
+     effective (Table 5). This additional step introduces            of Machine Learning. There are many potential societal
+     increased complexity and computational load to LESS.            consequences of our work, none which we feel must be
+                                                                     specifically highlighted here.
+  2. Average gradients over completion tokens. The av-
+     erage gradient of all the completion tokens is used as a
+     surrogate to represent the entire sequence.In scenarios         References
+     involving longer sequences in training or validation            Anthropic.  Introducing claude, 2023.                    URL
+     data, such as open-ended generation, this aggregation             https://www.anthropic.com/index/
+     could become more ambiguous and less effective. In                introducing-claude.
+     Section 3.2, we highlight how this operation can cause
+     anomalies in the data selection pipeline.                       Arora, S., Li, Y., Liang, Y., Ma, T., and Risteski, A. A latent
+
+                                                                 9
+                              LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+  variable model approach to pmi-based word embeddings.              Coleman, C., Yeh, C., Mussmann, S., Mirzasoleiman, B.,
+  Transactions of the Association for Computational Lin-               Bailis, P., Liang, P., Leskovec, J., and Zaharia, M. Selec-
+  guistics, 4:385–399, 2016.                                           tion via proxy: Efficient data selection for deep learning.
+                                                                       In International Conference on Learning Representations,
+Arora, S., Du, S. S., Hu, W., Li, Z., Salakhutdinov, R. R.,            2019.
+  and Wang, R. On exact computation with an infinitely
+  wide neural net. Advances in neural information process-           Conover, M., Hayes, M., Mathur, A., Xie, J., Wan, J., Shah,
+  ing systems, 32, 2019.                                               S., Ghodsi, A., Wendell, P., Zaharia, M., and Xin, R. Free
+                                                                       Dolly: Introducing the world’s first truly open instruction-
+Bae, J., Ng, N. H., Lo, A., Ghassemi, M., and Grosse,                  tuned LLM, 2023.
+  R. B. If influence functions are the answer, then what
+  is the question?    In Oh, A. H., Agarwal, A., Bel-                Ding, N., Chen, Y., Xu, B., Qin, Y., Zheng, Z., Hu, S., Liu,
+  grave, D., and Cho, K. (eds.), Advances in Neural In-                Z., Sun, M., and Zhou, B. Enhancing chat language mod-
+  formation Processing Systems, 2022. URL https:                       els by scaling high-quality instructional conversations.
+  //openreview.net/forum?id=hzbguA9zMJ.                                arXiv preprint arXiv:2305.14233, 2023.
+
+Basu, S., Pope, P., and Feizi, S. Influence functions in             Du, Q., Zong, C., and Zhang, J. Mods: Model-oriented
+  deep learning are fragile. In International Conference on            data selection for instruction tuning. arXiv preprint
+  Learning Representations, 2020.                                      arXiv:2311.15653, 2023.
+
+Biderman, S., Schoelkopf, H., Anthony, Q. G., Bradley,               Engstrom, L., Feldmann, A., and Madry, A. Dsdm: Model-
+  H., O’Brien, K., Hallahan, E., Khan, M. A., Purohit, S.,             aware dataset selection with datamodels, 2024.
+  Prashanth, U. S., Raff, E., et al. Pythia: A suite for ana-        Feldman, V. and Zhang, C. What neural networks memorize
+  lyzing large language models across training and scaling.            and why: Discovering the long tail via influence esti-
+  In International Conference on Machine Learning, pp.                 mation. In Advances in Neural Information Processing
+  2397–2430. PMLR, 2023.                                               Systems, volume 33, pp. 2881–2891, 2020.
+Bukharin, A. and Zhao, T. Data diversity matters for ro-             Google. An important next step on our ai journey, 2023.
+  bust instruction tuning. arXiv preprint arXiv:2311.14736,            URL https://blog.google/technology/ai/
+  2023.                                                                bard-google-ai-search-updates/.
+Cao, Y., Kang, Y., and Sun, L. Instruction mining: High-             Grosse, R., Bae, J., Anil, C., Elhage, N., Tamkin, A., Taj-
+  quality instruction data selection for large language mod-           dini, A., Steiner, B., Li, D., Durmus, E., Perez, E., Hub-
+  els. arXiv preprint arXiv:2307.06290, 2023.                          inger, E., Lukošiūtė, K., Nguyen, K., Joseph, N., McCan-
+                                                                       dlish, S., Kaplan, J., and Bowman, S. R. Studying large
+Chen, L., Li, S., Yan, J., Wang, H., Gunaratna, K., Yadav,
+                                                                       language model generalization with influence functions,
+  V., Tang, Z., Srinivasan, V., Zhou, T., Huang, H., et al.
+                                                                       2023.
+  Alpagasus: Training a better alpaca with fewer data. arXiv
+  preprint arXiv:2307.08701, 2023a.                                  Gururangan, S., Marasović, A., Swayamdipta, S., Lo, K.,
+                                                                       Beltagy, I., Downey, D., and Smith, N. A. Don’t stop
+Chen, M. F., Roberts, N., Bhatia, K., WANG, J., Zhang,
+                                                                       pretraining: Adapt language models to domains and tasks.
+  C., Sala, F., and Re, C. Skill-it! a data-driven skills
+                                                                       In Proceedings of the 58th Annual Meeting of the Asso-
+  framework for understanding and training language mod-
+                                                                       ciation for Computational Linguistics. Association for
+  els. In Thirty-seventh Conference on Neural Infor-
+                                                                       Computational Linguistics, 2020.
+  mation Processing Systems, 2023b. URL https://
+  openreview.net/forum?id=IoizwO1NLf.                                Guu, K., Webson, A., Pavlick, E., Dixon, L., Tenney, I.,
+                                                                       and Bolukbasi, T. Simfluence: Modeling the influence of
+Clark, J. H., Choi, E., Collins, M., Garrette, D.,                     individual training examples by simulating training runs,
+  Kwiatkowski, T., Nikolaev, V., and Palomaki, J. TyDi                 2023.
+  QA: A benchmark for information-seeking question an-
+  swering in typologically diverse languages. Transactions           Hampel, F. R. The influence curve and its role in robust es-
+  of the Association for Computational Linguistics, 2020.              timation. Journal of the american statistical association,
+                                                                       69(346):383–393, 1974.
+Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H.,
+  Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano,          Han, X. In-context alignment: Chat with vanilla lan-
+  R., et al. Training verifiers to solve math word problems.           guage models before fine-tuning.  arXiv preprint
+  arXiv preprint arXiv:2110.14168, 2021.                               arXiv:2308.04275, 2023.
+
+                                                                10
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Han, X., Simig, D., Mihaylov, T., Tsvetkov, Y., Celikyilmaz,          Killamsetty, K., Zhao, X., Chen, F., and Iyer, R. Retrieve:
+  A., and Wang, T. Understanding in-context learning via                Coreset selection for efficient and robust semi-supervised
+  supportive pretraining data. In The 61st Annual Meeting               learning. In Advances in Neural Information Processing
+  Of The Association For Computational Linguistics, 2023.               Systems, volume 34, pp. 14488–14501, 2021b.
+Hanawa, K., Yokoi, S., Hara, S., and Inui, K. Evaluation of           Kingma, D. P. and Ba, J. Adam: A method for stochas-
+  similarity-based explanations. In International Confer-               tic optimization. In Bengio, Y. and LeCun, Y. (eds.),
+  ence on Learning Representations, 2020.                               3rd International Conference on Learning Represen-
+Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M.,             tations, ICLR 2015, San Diego, CA, USA, May 7-9,
+  Song, D., and Steinhardt, J. Measuring massive multitask              2015, Conference Track Proceedings, 2015. URL http:
+  language understanding. In International Conference on                //arxiv.org/abs/1412.6980.
+  Learning Representations, 2020.                                     Koh, P. W. and Liang, P. Understanding black-box predic-
+Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li, Y., Wang,           tions via influence functions. In International conference
+  S., Wang, L., and Chen, W. Lora: Low-rank adaptation of               on machine learning, pp. 1885–1894. PMLR, 2017.
+  large language models. arXiv preprint arXiv:2106.09685,
+  2021.                                                               Köpf, A., Kilcher, Y., von Rütte, D., Anagnostidis, S.,
+                                                                        Tam, Z.-R., Stevens, K., Barhoum, A., Duc, N. M., Stan-
+Hu, J., Ruder, S., Siddhant, A., Neubig, G., Firat, O., and             ley, O., Nagyfi, R., et al. OpenAssistant conversations–
+ Johnson, M. XTREME: A massively multilingual multi-                    democratizing large language model alignment. In Neural
+  task benchmark for evaluating cross-lingual generalisa-               Information Processing Systems Track on Datasets and
+  tion. In Proceedings of the 37th International Conference             Benchmarks (NeurIPS Datasets and Benchmarks), 2023.
+  on Machine Learning, volume 119 of Proceedings of
+ Machine Learning Research, pp. 4411–4421. PMLR, 13–                  Li, Y., Hui, B., Xia, X., Yang, J., Yang, M., Zhang, L., Si,
+ 18 Jul 2020. URL https://proceedings.mlr.                              S., Liu, J., Liu, T., Huang, F., et al. One shot learning
+  press/v119/hu20b.html.                                                as instruction data prospector for large language models.
+                                                                        arXiv preprint arXiv:2312.10302, 2023.
+Ilyas, A., Park, S. M., Engstrom, L., Leclerc, G., and Madry,
+   A. Datamodels: Predicting predictions from training data.          Lin, B. Y., Ravichander, A., Lu, X., Dziri, N., Sclar, M.,
+   In Proceedings of the 39th International Conference on               Chandu, K., Bhagavatula, C., and Choi, Y. The unlocking
+   Machine Learning, 2022.                                              spell on base LLMs: Rethinking alignment via in-context
+                                                                        learning. arXiv preprint arXiv:2312.01552, 2023a.
+Jacot, A., Gabriel, F., and Hongler, C. Neural tangent ker-
+  nel: Convergence and generalization in neural networks.             Lin, S., Hilton, J., and Evans, O. TruthfulQA: Measuring
+  Advances in neural information processing systems, 31,                how models mimic human falsehoods. In Association for
+  2018.                                                                 Computational Linguistics (ACL), 2022.
+Jiang, A. Q., Sablayrolles, A., Mensch, A., Bamford, C.,              Lin, Y., Tan, L., Lin, H., Zheng, Z., Pi, R., Zhang, J., Diao,
+   Chaplot, D. S., Casas, D. d. l., Bressand, F., Lengyel, G.,          S., Wang, H., Zhao, H., Yao, Y., et al. Speciality vs
+   Lample, G., Saulnier, L., et al. Mistral 7b. arXiv preprint          generality: An empirical study on catastrophic forget-
+   arXiv:2310.06825, 2023.                                              ting in fine-tuning foundation models. arXiv preprint
+Johnson, W. B. and Lindenstrauss, J. Extensions of lipschitz            arXiv:2309.06256, 2023b.
+  mappings into hilbert space. Contemporary mathematics,
+  26:189–206, 1984.                                                   Liu, W., Zeng, W., He, K., Jiang, Y., and He, J. What
+                                                                        makes good data for alignment? a comprehensive study
+Kaushal, V., Iyer, R., Kothawade, S., Mahadev, R., Doctor,              of automatic data selection in instruction tuning. arXiv
+  K., and Ramakrishnan, G. Learning from less data: A uni-              preprint arXiv:2312.15685, 2023.
+  fied data subset selection and active learning framework
+  for computer vision. In 2019 IEEE Winter Conference on              Longpre, S., Hou, L., Vu, T., Webson, A., Chung, H. W.,
+ Applications of Computer Vision (WACV), pp. 1289–1299.                 Tay, Y., Zhou, D., Le, Q. V., Zoph, B., Wei, J., et al. The
+  IEEE, 2019.                                                           flan collection: Designing data and methods for effec-
+                                                                        tive instruction tuning. arXiv preprint arXiv:2301.13688,
+Killamsetty, K., Durga, S., Ramakrishnan, G., De, A., and               2023.
+  Iyer, R. Grad-match: Gradient matching based data sub-
+  set selection for efficient deep model training. In Interna-        Madsen, A., Reddy, S., and Chandar, S. Post-hoc inter-
+  tional Conference on Machine Learning, pp. 5464–5474.                pretability for neural nlp: A survey. ACM Computing
+  PMLR, 2021a.                                                         Surveys, 55(8):1–42, 2022.
+
+                                                                 11
+                              LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Malladi, S., Lyu, K., Panigrahi, A., and Arora, S. On the              In Advances in Neural Information Processing Systems,
+ sdes and scaling rules for adaptive gradient algorithms.              volume 34, pp. 20596–20607, 2021.
+ In Koyejo, S., Mohamed, S., Agarwal, A., Belgrave, D.,
+                                                                     Phillips, J. M. Coresets and sketches. In Handbook of
+ Cho, K., and Oh, A. (eds.), Advances in Neural Infor-
+                                                                       discrete and computational geometry, pp. 1269–1288.
+ mation Processing Systems, volume 35, pp. 7697–7711.
+                                                                       Chapman and Hall/CRC, 2017.
+ Curran Associates, Inc., 2022.
+                                                                     Pruthi, G., Liu, F., Kale, S., and Sundararajan, M. Estimat-
+Malladi, S., Wettig, A., Yu, D., Chen, D., and Arora, S. A
+                                                                       ing training data influence by tracing gradient descent.
+ kernel-based view of language model fine-tuning. In In-
+                                                                       In Larochelle, H., Ranzato, M., Hadsell, R., Balcan, M.,
+ ternational Conference on Machine Learning, pp. 23610–
+                                                                       and Lin, H. (eds.), Advances in Neural Information Pro-
+ 23641. PMLR, 2023.
+                                                                       cessing Systems, volume 33, pp. 19920–19930. Curran
+Meding, K., Buschoff, L. M. S., Geirhos, R., and Wichmann,             Associates, Inc., 2020.
+ F. A. Trivial or impossible—dichotomous data difficulty             Robertson, S., Zaragoza, H., et al. The probabilistic rele-
+ masks model differences (on imagenet and beyond). In                  vance framework: Bm25 and beyond. Foundations and
+ International Conference on Learning Representations,                 Trends® in Information Retrieval, 3(4):333–389, 2009.
+ 2021.
+                                                                     Sanh, V., Webson, A., Raffel, C., Bach, S. H., Sutawika, L.,
+Mindermann, S., Brauner, J. M., Razzak, M. T., Sharma, M.,             Alyafeai, Z., Chaffin, A., Stiegler, A., Le Scao, T., Raja,
+ Kirsch, A., Xu, W., Höltgen, B., Gomez, A. N., Morisot,              A., et al. Multitask prompted training enables zero-shot
+ A., Farquhar, S., et al. Prioritized training on points that          task generalization. In ICLR 2022-Tenth International
+ are learnable, worth learning, and not yet learnt. In In-             Conference on Learning Representations, 2022.
+ ternational Conference on Machine Learning, pp. 15630–
+ 15649. PMLR, 2022.                                                  Saunshi, N., Gupta, A., Braverman, M., and Arora, S. Un-
+                                                                       derstanding influence functions and datamodels via har-
+Mirzasoleiman, B., Bilmes, J., and Leskovec, J. Coresets               monic analysis. In The Eleventh International Conference
+ for data-efficient training of machine learning models.               on Learning Representations, 2023.
+ In International Conference on Machine Learning, pp.
+ 6950–6960. PMLR, 2020.                                              Sener, O. and Savarese, S. Active learning for convolutional
+                                                                       neural networks: A core-set approach. In International
+Mukherjee, S., Mitra, A., Jawahar, G., Agarwal, S., Palangi,           Conference on Learning Representations, 2018.
+ H., and Awadallah, A. Orca: Progressive learning from
+ complex explanation traces of gpt-4. arXiv preprint                 Søgaard, A. et al. Revisiting methods for finding influential
+ arXiv:2306.02707, 2023.                                               examples. arXiv preprint arXiv:2111.04683, 2021.
+
+Nguyen, T., Chen, Z., and Lee, J. Dataset meta-learning              Sorscher, B., Geirhos, R., Shekhar, S., Ganguli, S., and Mor-
+  from kernel ridge-regression. In International Conference            cos, A. Beyond neural scaling laws: beating power law
+  on Learning Representations, 2021.                                   scaling via data pruning. Advances in Neural Information
+                                                                       Processing Systems, 35:19523–19536, 2022.
+OpenAI. OpenAI: Introducing ChatGPT, 2022. URL
+                                                                     Suzgun, M., Scales, N., Schärli, N., Gehrmann, S., Tay, Y.,
+  https://openai.com/blog/chatgpt.
+                                                                       Chung, H. W., Chowdhery, A., Le, Q., Chi, E., Zhou, D.,
+OpenAI. OpenAI: GPT-4, 2023. URL https://openai.                       et al. Challenging big-bench tasks and whether chain-of-
+  com/research/gpt-4.                                                  thought can solve them. In Findings of the Association for
+                                                                       Computational Linguistics: ACL 2023, pp. 13003–13051,
+Ouyang, L., Wu, J., Jiang, X., Almeida, D., Wainwright, C.,            2023.
+  Mishkin, P., Zhang, C., Agarwal, S., Slama, K., Ray, A.,
+  et al. Training language models to follow instructions             Taori, R., Gulrajani, I., Zhang, T., Dubois, Y., Li,
+  with human feedback. Advances in Neural Information                  X., Guestrin, C., Liang, P., and Hashimoto, T. B.
+  Processing Systems, 35:27730–27744, 2022.                            Stanford alpaca: An instruction-following llama
+                                                                       model.      https://github.com/tatsu-lab/
+Park, S. M., Georgiev, K., Ilyas, A., Leclerc, G., and Madry,          stanford_alpaca, 2023.
+  A. Trak: Attributing model behavior at scale. In In-
+  ternational Conference on Machine Learning (ICML),                 Tay, Y., Dehghani, M., Rao, J., Fedus, W., Abnar, S., Chung,
+  2023.                                                                H. W., Narang, S., Yogatama, D., Vaswani, A., and Met-
+                                                                       zler, D. Scale efficiently: Insights from pretraining and
+Paul, M., Ganguli, S., and Dziugaite, G. K. Deep learning on           finetuning transformers. In International Conference on
+  a data diet: Finding important examples early in training.           Learning Representations, 2021.
+
+                                                                12
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Toneva, M., Sordoni, A., des Combes, R. T., Trischler, A.,             Wei, J., Wang, X., Schuurmans, D., Bosma, M., Xia, F.,
+  Bengio, Y., and Gordon, G. J. An empirical study of                   Chi, E., Le, Q. V., Zhou, D., et al. Chain-of-thought
+  example forgetting during deep neural network learning.               prompting elicits reasoning in large language models.
+  In International Conference on Learning Representations,              Advances in Neural Information Processing Systems, 35:
+  2018.                                                                 24824–24837, 2022c.
+Touvron, H., Martin, L., Stone, K., Albert, P., Almahairi,             Xia, M., Artetxe, M., Zhou, C., Lin, X. V., Pasunuru, R.,
+  A., Babaei, Y., Bashlykov, N., Batra, S., Bhargava, P.,                Chen, D., Zettlemoyer, L., and Stoyanov, V. Training tra-
+  Bhosale, S., et al. Llama 2: Open foundation and fine-                 jectories of language models across scales. In Association
+  tuned chat models. arXiv preprint arXiv:2307.09288,                    for Computational Linguistics (ACL), pp. 13711–13738.
+  2023.
+                                                                       Xia, M., Anastasopoulos, A., Xu, R., Yang, Y., and Neubig,
+Wang, X., Pham, H., Michel, P., Anastasopoulos, A., Car-
+                                                                         G. Predicting performance for natural language process-
+ bonell, J., and Neubig, G. Optimizing data usage via
+                                                                         ing tasks. In Jurafsky, D., Chai, J., Schluter, N., and
+ differentiable rewards. In International Conference on
+                                                                         Tetreault, J. (eds.), Proceedings of the 58th Annual Meet-
+ Machine Learning, pp. 9983–9995. PMLR, 2020.
+                                                                         ing of the Association for Computational Linguistics, pp.
+Wang, X., Zhu, W., Saxon, M., Steyvers, M., and Wang,                    8625–8646, Online, July 2020. Association for Compu-
+ W. Y. Large language models are latent variable mod-                    tational Linguistics. doi: 10.18653/v1/2020.acl-main.
+ els: Explaining and finding good demonstrations for in-                 764. URL https://aclanthology.org/2020.
+ context learning. In Thirty-seventh Conference on Neural                acl-main.764.
+ Information Processing Systems, 2023a.
+                                                                       Xia, X., Liu, J., Yu, J., Shen, X., Han, B., and Liu, T. Mod-
+Wang, Y., Kordi, Y., Mishra, S., Liu, A., Smith, N. A.,                  erate coreset: A universal method of data selection for
+ Khashabi, D., and Hajishirzi, H. Self-Instruct: Align-                  real-world data-efficient deep learning. In The Eleventh
+ ing language models with self-generated instructions.                   International Conference on Learning Representations,
+ In Association for Computational Linguistics (ACL), pp.                 2023.
+ 13484–13508.
+                                                                       Xie, S. M., Pham, H., Dong, X., Du, N., Liu, H., Lu, Y.,
+Wang, Y., Mishra, S., Alipoormolabashi, P., Kordi, Y.,
+                                                                         Liang, P., Le, Q. V., Ma, T., and Yu, A. W. DoReMi:
+ Mirzaei, A., Naik, A., Ashok, A., Dhanasekaran, A. S.,
+                                                                         Optimizing data mixtures speeds up language model pre-
+ Arunkumar, A., Stap, D., et al. Super-NaturalInstructions:
+                                                                         training. In Thirty-seventh Conference on Neural In-
+ Generalization via declarative instructions on 1600+ NLP
+                                                                         formation Processing Systems, 2023a. URL https:
+ tasks. In Proceedings of the 2022 Conference on Em-
+                                                                         //openreview.net/forum?id=lXuByUeHhd.
+ pirical Methods in Natural Language Processing, pp.
+ 5085–5109, 2022.                                                      Xie, S. M., Santurkar, S., Ma, T., and Liang, P. Data se-
+Wang, Y., Ivison, H., Dasigi, P., Hessel, J., Khot, T., Chandu,          lection for language models via importance resampling.
+ K. R., Wadden, D., MacMillan, K., Smith, N. A., Beltagy,                In Advances in Neural Information Processing Systems
+ I., et al. How far can camels go? exploring the state of in-            (NeurIPS), 2023b.
+ struction tuning on open resources. In Neural Information
+                                                                       Xu, C., Sun, Q., Zheng, K., Geng, X., Zhao, P., Feng, J.,
+ Processing Systems Track on Datasets and Benchmarks
+                                                                        Tao, C., and Jiang, D. WizardLM: Empowering large
+ (NeurIPS Datasets and Benchmarks), 2023b.
+                                                                         language models to follow complex instructions. arXiv
+Wei, A., Hu, W., and Steinhardt, J. More than a toy: Ran-                preprint arXiv:2304.12244, 2023.
+ dom matrix models predict how real-world neural rep-
+ resentations generalize. In Chaudhuri, K., Jegelka, S.,               Yang, G. and Hu, E. J. Tensor programs iv: Feature learning
+ Song, L., Szepesvari, C., Niu, G., and Sabato, S. (eds.),               in infinite-width neural networks. In Meila, M. and Zhang,
+ Proceedings of the 39th International Conference on                     T. (eds.), Proceedings of the 38th International Confer-
+ Machine Learning, volume 162 of Proceedings of Ma-                      ence on Machine Learning, volume 139 of Proceedings
+ chine Learning Research, pp. 23549–23588. PMLR, 17–                     of Machine Learning Research, pp. 11727–11737. PMLR,
+ 23 Jul 2022a. URL https://proceedings.mlr.                              18–24 Jul 2021. URL https://proceedings.mlr.
+ press/v162/wei22a.html.                                                 press/v139/yang21c.html.
+
+Wei, J., Bosma, M., Zhao, V., Guu, K., Yu, A. W., Lester,              Yu, D., Wang, R., Li, Z., Hu, W., Salakhutdinov, R., Arora,
+ B., Du, N., Dai, A. M., and Le, Q. V. Finetuned lan-                    S., and Du, S. S. Enhanced convolutional neural tangent
+ guage models are zero-shot learners. In International                   kernels, 2020a. URL https://openreview.net/
+ Conference on Learning Representations (ICLR), 2022b.                   forum?id=BkgNqkHFPr.
+
+                                                                  13
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+Yu, T., Kumar, S., Gupta, A., Levine, S., Hausman, K.,
+  and Finn, C. Gradient surgery for multi-task learning.
+  Advances in Neural Information Processing Systems, 33:
+  5824–5836, 2020b.
+Zhang, R., Isola, P., Efros, A. A., Shechtman, E., and Wang,
+  O. The unreasonable effectiveness of deep features as a
+  perceptual metric. In Proceedings of the IEEE conference
+  on computer vision and pattern recognition, pp. 586–595,
+  2018.
+Zhou, C., Liu, P., Xu, P., Iyer, S., Sun, J., Mao, Y., Ma, X.,
+  Efrat, A., Yu, P., Yu, L., et al. LIMA: Less is more for
+  alignment. In Advances in Neural Information Processing
+  Systems (NeurIPS), 2023.
+
+
+
+
+                                                                 14
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+A. Training
+A.1. Training Datasets
+For training, we utilize the same four processed datasets as referenced in (Wang et al., 2023b). Each of these datasets
+is either annotated or authored by humans. Further details about these datasets can be found in Table 7. The F LAN V2
+and C OT datasets are derived from existing NLP datasets, while D OLLY and O PEN A SSISTANT 1 consist of open-ended
+generation examples featuring answers written by humans. These datasets vary significantly in format, sequence length, and
+underlying tasks, reflecting the heterogeneity of instruction-tuning datasets. We adopt the following ’Tulu’ format from the
+study by Wang et al. (2023b) to standardize the format of these datasets.
+
+    <|user|>
+    Alice’s parents have three daughters: Amy, Jessy, and what’s the name of the third daughter?
+
+    <|assistant|>
+    The name of the third daughter is Alice
+
+
+                Table 7: Datails of training dataset from Wang et al. (2023b). Len. is short for token length.
+
+   Dataset               # Instance   Sourced from                                  # Rounds   Prompt Len.   Completion Len.
+   F LAN V2                100,000    NLP datasets and human-written instructions      1          355.7           31.2
+   C OT                    100,000    NLP datasets and human-written CoTs              1           266             53.2
+   D OLLY                   15,011    Human-written from scratch                       1          118.1           91.3
+   O PEN A SSISTANT 1       55,668    Human-written from scratch                      1.6          34.8           212.5
+
+
+A.2. Training Details
+All experiments were conducted using the parameter-efficient fine-tuning method LoRA (Hu et al., 2021). We employed a
+learning rate scheduler with linear warm-up and cosine decay, reaching a peak learning rate of 2 × 10−5 . A batch size of
+128 was used, and training was carried out for 4 epochs across all selected datasets. We initially conducted experiments to
+align the number of training steps between small and large datasets. However, increasing the number of epochs on small
+datasets did not yield performance improvements. Consequently, we opted for a fixed number of epochs in all experiments.
+For the LoRA module, we specified a rank of 128, an α value of 512, a dropout rate of 0.1, and learned LoRA matrices
+for all attention matrices. This configuration resulted in 135 million trainable parameters for L LAMA -2-7B, constituting
+1.95% of the original L LAMA -2-7B model. For M ISTRAL -7B, there were 109 million trainable parameters, accounting for
+1.48% of the original M ISTRAL -7B model. Lastly, the L LAMA -2-13B model comprised 209 million trainable parameters,
+representing 1.59% of the original L LAMA -2-13B model.
+In each experiment, we performed three trials using distinct random seeds. When employing random selection approaches,
+this entailed selecting three different random subsets from the training dataset. In the case of our approach (LESS), it
+involved conducting warmup training with various subsets of the training data and subsequently selecting different subsets
+for each trial from each warmup-trained model. We used consistent optimization seeds across all experiments.
+
+B. Evaluation Details
+We follow Wang et al. (2023b) to evaluate the performance of the models on the target tasks. For MMLU, we measure the
+5-shot accuracy of the test set averaged across 57 subtasks. For T YDI QA, we measure the 1-shot macro-averaged F1 score
+across all 11 languages. We adopt the gold-passage setup where one passage containing the reference answer is provided
+to the model. For BBH, we report the average 3-shot exact match score across all tasks. Chain-of-thought reasoning is
+provided in each in-context learning example to prompt the model to generate chain-of-thought reasoning traces for test
+examples. We evaluate on the validation set Dval (the same reference set used for data selection) at the end of each epoch
+and select the best checkpoint to evaluate on the final test set for each experiment. Note that this procedure might introduce
+some bias to the final test set, given that the validation set is relatively small (e.g., T YDI QA only has 9 validation examples
+in total). However, in practice, we don’t find this bias to affect the comparisons between different methods.
+
+                                                                15
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+C. Baseline Details
+For baseline approaches that involve stochasticity (i.e., all except BM25), we perform three runs with different random seeds
+and report the average performance and standard deviation.
+
+C.1. BM25
+We implement the BM25 baseline with the rank bm2511 package. We employ the same approach to aggregating scores
+across subtasks as Equation (2), except using the BM25 scores instead of the gradient similarity scores.
+
+C.2. DSIR
+DSIR (Xie et al., 2023b) offers a lightweight approach to select data based on specific target distributions using n-gram
+features. However, we find it unsuitable for our specific setting. The primary issue stems from the difficulty in learning
+a reliable n-gram model with the limited data available in our target distribution, leading to a sparse n-gram table. We
+hypothesize that this sparsity arises from the trade-off between bucket size and estimation accuracy for the source and
+target distribution: larger buckets result in a highly sparse table with unreliable estimations for data selection, while smaller
+buckets lead to more hash collisions for the data in the source distribution. In our empirical observations, we noticed that
+DSIR tends to prefer shorter sequences, which can harm performance (see Table 13 for similar evidence). The tendency of
+DSIR to select short sequences is also mentioned in Appendix J of Xie et al. (2023b), where the authors impose heuristic
+quality filters on top of the DSIR-selected datasets.
+
+D. More Experiment Results
+D.1. Comparing SGD and Adam Optimizers for Instruction Tuning
+The Adam optimizer (Kingma & Ba, 2015) is commonly employed for fine-tuning large language models. However, SGD is
+a more desirable optimizer due to its lower memory usage; moreover, the influence formulation we introduce in §2 applies
+only to SGD. Here, we verify that using SGD to instruction tune models results in markedly worse performance Table 8.
+Our findings consistently demonstrate that using the Adam optimizer yields better results across all three datasets. This
+validates the widespread practice of utilizing the Adam optimizer for fine-tuning large language models.
+
+Table 8: Comparing using the SGD and Adam optimizers for instruction tuning. We use a random subset of 25% data for
+comparison. We find that using the Adam optimizer consistently outperforms SGD on all three datasets.
+
+                                              MMLU         T YDI QA      BBH         Average
+                                   SGD        45.5 (0.3)   47.3 (1.2)   39.2 (0.5)    44.0
+                                   Adam       47.2 (0.8)   53.1 (1.3)   40.4 (1.5)    46.9
+
+
+D.2. Selecting Data for SGD, SignGD, and Adam Gradients
+In order to compute the influence when training with the Adam optimizer (Definition 3.1), we need to access the Adam
+optimizer update Γ. Γ relies on the moving moment estimates that Adam tracks. In the early stages of training, Malladi
+et al. (2022) proved that the parameter updates induced by Adam can be approximated well by the sign of the gradient (this
+optimizer is known as SignGD). Intuitively, this is because the moment estimates m and v are close to their initialization
+and thus essentially perform coordinate-wise normalization on the gradient. Later empirical and theoretical in Malladi
+et al. (2023) suggested that fine-tuning language models occurs in the early stages of Adam, so signGD may be a decent
+approximation of fine-tuning LLMs with the Adam optimizer.
+In the current paper, we obtain Γ through the optimizer states computed over the course of a short warmup training period.
+Here, we ablate our stated approach against approximating Γ as sign(∇ℓ(·; θ)). One may also think this SignGD formulation
+could circumvent the gradient norm problems reported in §3.2.
+One of our key contributions is to extend the influence formulation in §2 to operate with the Adam optimizer. However, due
+  11
+       https://github.com/dorianbrown/rank_bm25
+
+                                                               16
+                                  LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+to the approximations described above, the influences we compute in Definition 3.1 may not be as accurate as we hope. In
+that case, we may be better off using the more precise influences provided by the SGD formulation in Equation (1).
+We empirically compare the efficacy of these three influence formulations (SGD, SignGD, and Adam) for data selection and
+present the results in Table 9. In this setup, we perform warmup training using all the available training data (Dwarmup = D)
+and select the top 5% of the data for instruction tuning. In summary, we find that using Adam influence formulation generally
+matches or outperforms the SGD and SignGD formulations, demonstrating the utility of our optimizer-aware influence
+formulation in Definition 3.1.
+Table 9: Comparing the data selection capabilities of the SGD, SignGD, and Adam (Definition 3.1) formulations of influence.
+We find that using the Adam formulation generally matches or outperforms using the SGD and SignGD ones, showing the
+utility of our optimizer-aware influence formulation.
+
+                                                          Random        SGD       SignGD      Adam
+                                            MMLU            46.5        50.9         49.7      51.6
+                                            T YDI QA        52.7        58.1         54.8      57.9
+                                            BBH             38.9        40.0         39.0      41.9
+                                            Avg.            46.0        49.7         47.8      50.5
+
+
+D.3. Comparison to Base Models, and Training with Validation Data
+
+Table 10: Evaluation results with the base model (without instruction tuning), and with instruction tuning on the validation
+set. Finetuining on the validation set alone rarely improves the performance on the test set.
+
+                         L LAMA -2-7B                                  L LAMA -2-13B                                  M ISTRAL -7B
+           Base    Valid.      Rand. 5%     LESS 5%      Base      Valid.    Rand. 5%       LESS 5%      Base    Valid.      Rand 5%      LESS 5%
+MMLU       45.6   47.3 (0.3)   46.5 (0.5)   50.2 (0.5)   55.3   54.8 (0.4)     53.4 (0.1)   54.0 (0.7)   62.4   58.8 (0.4)   60.0 (0.1)   61.8 (0.4)
+T YDI QA   46.4   52.8 (2.5)   52.7 (0.4)   56.2 (0.7)   53.1   50.8 (1.4)     53.0 (1.3)   54.6 (0.3)   49.6   45.4 (4.3)   56.9 (0.2)   60.3 (2.4)
+BBH        38.3   36.5 (0.9)   38.9 (0.5)   41.5 (0.6)   46.2   45.8 (0.9)     47.0 (1.6)   50.6 (0.6)   54.9   55.5 (0.7)   54.5 (0.1)   56.8 (1.0)
+
+
+Instruction tuning could degrade performance. In Table 10, we compare results from instruction tuning to the results
+directly from the base model without instruction tuning. Athough instruction tuning generally enhances performance, there
+are instances where it may result in a decline. A notable example is observed in the MMLU dataset, where instruction
+tuning using the 5% data subset chosen by LESS yields slightly inferior results compared to the base model. This suggests
+that the chosen data may not significantly improve the performance of the target task for some models, especially more
+capable ones such as L LAMA -2-13B and M ISTRAL -7B. Additionally, it could imply that the pool of training data we’re
+selecting from lacks further beneficial examples for the specified task. Experimenting with a larger pool of instruction
+tuning could possibly benefit the target task more. Despite this, it is important to note that LESS remains competitive to
+other approaches. By scaling up the compute to have a better estimate of the influence, we expect that the performance of
+LESS will further improve, as indicated in Section 6.1.
+
+Training with validation data rarely helps. An additional straightforward baseline involves using the few-shot validation
+data for training. Specifically, we train the model for 100 steps with the standard hyperparameters, and evaluate the model
+on the validation set for every 10 steps, and report the test score of the best checkpoint. The results of this approach are
+shown in Table 10. Here, we compare it with the performance of the standard L LAMA -2-7B model and the outcomes when
+fine-tuning the model with either 5% of data chosen at random or 5% selected by LESS. We observe that training solely with
+in-domain validation data rarely provides a benefit over not training the model at all, and it even surpasses the performance
+achieved by randomly selecting 5%(13, 000) data points. Nevertheless, LESS demonstrates a superior ability to identify
+data points more relevant to the target task, significantly outperforming the strategy of training with only validation data.
+
+D.4. Detailed Results on Using Different Projection Dimensions
+Recall that the Johnson-Lindenstrauss lemma (Johnson & Lindenstrauss, 1984) states that random projections preserve inner
+products (e.g., the influence formulation in Definition 3.1) as long as the projected dimension d is large enough. Here, we
+
+                                                                       17
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+ablate against different projection dimensions to find what empirical choice of d is “large enough”. In this setup, we perform
+warmup training using all the available training data (Dwarmup = D) and select the top 5% of the data for instruction tuning.
+We present the detailed results of projecting the LoRA gradients to different dimensions including 1024, 2048, 4096 and
+8192 in Table 11. We find that even using a small dimension still outperforms the random selection performance. Using a
+larger dimension for projected gradients is better. This signifies that there is still potential to improve the performance by
+using a larger projection dimension, but one must trade off this consideration with the increased computational and memory
+cost. Note that due to computational constraint, we only run experiment once with one fixed seed.
+
+
+Table 11: Performance of using different projected gradient dimensions for data selection. We find that even using a small
+dimension still outperforms the random selection performance. Using a larger dimension for projected gradients is better.
+
+                                                           Projected Gradient Dimension
+                                                Random     1024      2048     4096      8192
+                                    MMLU         46.5        50.7    51.2     50.5      51.1
+                                    TydiQA       52.7        55.3    56.3     56.8      56.6
+                                    BBH          38.9        39.3    39.0     40.4      41.3
+                                    Average      45.2        48.4    48.8     49.2      49.7
+
+
+
+D.5. Results on Pythia Models
+To explore how the data selection model in LESS scales with increasing model capabilities, we perform experiments using
+LESS with a series of Pythia models (Biderman et al., 2023) of sizes 14M, 410M, and 1B to select data for training models
+of 14M, 410M, 1B, 6.9B, and 12B. Due to constraints on time and computational resources, we conduct these experiments
+to select data for the TydiQA benchmark using only one seed and present the results in Table 12.
+
+
+                                                                        Data selection with LESS by
+                                    base (w/o FT)    Random         Pythia-14m       Pythia-410m   Pythia-1b   Full
+              Amount of FT data          0%             5%             5%                5%           5%       100%
+              Pythia-14m                  0.0            0.0            0.0              0.1          0.0       0.0
+              Pythia-410m                 3.8            7.8            8.7              9.4          8.8       8.6
+              Pythia-1b                   9.2           12.3           12.9             11.5         17.2      13.7
+              Pythia-6.9b                17.1           27.2           27.2             28.0         30.9      35.5
+              Pythia-12b                 17.4           14.9           17.7             19.4         32.6      33.2
+              Average                    9.5            12.4           13.3             13.7         17.9      18.2
+              L LAMA -2-7B               46.4           52.7           48.7             53.0         51.7      54.0
+
+                  Table 12: Performance comparison of using different Pythia models for data selection.
+
+
+Firstly, LESS consistently performs well with Pythia models, almost always surpassing the baseline of selecting a random
+5% of the data. Furthermore, the approach of using one model to select data for training another (i.e., LESS-T) proves
+effective within the Pythia model family. Interestingly, small models such as the 14M can be effective data selectors despite
+being unable to solve TydiQA by themselves. This suggests that LESS can be made highly efficient using very small models
+for the gradient datastore, as they can effectively select data for training larger models. However, larger models demonstrate
+even greater effectiveness as data selectors, as illustrated in the last row of the table. Lastly, the data selection by Pythia
+models does not translate effectively to Llama models. Data selected by Pythia models fails to outperform random selection
+when used to train Llama2 models. Conversely, data chosen by Llama2 models effectively trains Mistral models. This
+indicates that the success of data transfer between models can be unpredictable, particularly when the capabilities of the
+models differ significantly like Pythia and Llama2.
+
+                                                               18
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+D.6. Results on GSM8K and TruthfulQA
+We follow reviewers’ suggestions to run experiments on datasets GSM8K (Cobbe et al., 2021) and TruthfulQA (Lin et al.,
+2022) that are more considered as out of domain with regard to the training data. We evaluate GSM8K using the 8-shot
+setting with chain of thought, following the methodology of Wang et al. (2023b). Similarly, we use random 10 examples
+from each dataset as the validation set. We present the results in Appendix D.6. In summary, we find that LESS consistently
+outperforms random selection by a large margin. However, selecting only 5% of the data to solve GSM8K does not
+outperform using the entire dataset. This is because the COT portion of our training data contains many in-domain examples
+for GSM8K, so it is likely not a good idea to use only a small subset of the available data to train the model for that task.
+LESS’ utility in selecting data for TruthfulQA indicates its potential to make models not only more capable but also more
+faithful and truthful.
+
+                                                                 GSM8K-COT             TruthfulQA
+                                                                 (Exact Match)           (MC2)
+                                  w/o Finetuning (0%)                   14.0                 39.2
+                                  Random (5%)                           17.0                 41.0
+                                  LESS (5%)                             21.0                 48.0
+                                  Full (100%)                           30.5                 44.0
+
+
+
+E. Nuances in Algorithm Design
+In Sections 2 and 3, we outline how first-order approximations of influence functions can be used to design optimizer-
+aware data selection algorithms. Here, we discuss some of the nuances in designing such an algorithm for the practical
+hyperparameter settings used in instruction tuning.
+
+Batch Size. The per-step influence and trajectory-wise influence of a training datapoint z on a validation datapoint z ′ is
+characterized under the assumption that the batch size is 1. Standard training setups use a larger batch size, but it is difficult
+to characterize how training on a batch of examples can change ℓ(z ′ ; θ). However, under the assumption that the first-order
+approximation is sufficiently powerful to describe training dynamics, we can directly use the linearity of the gradient to
+derive the influence of a single datapoint within a batch. In particular, when training with SGD on a batch Bt of size B, we
+can write:
+
+                                    ℓ(z ′ ; θ t+1 )−ℓ(z ′ ; θ t ) ≈ −ηt ⟨∇ℓ(z ′ ; θ t ), ∇ℓ(Bt ; θ t )⟩
+                                                            ηt X
+                                                     =−              ⟨∇ℓ(z ′ ; θ t ), ∇ℓ(x; θ t )⟩
+                                                            B
+                                                              x∈Bt
+
+An analogous formula follows straightforwardly for Adam. The 1/B factor is shared across all datapoints and thus does
+not affect the ranking of the matching scores. Therefore, selecting examples as if the batch size were 1 is the same as
+selecting examples for a larger batch size. Intuitively, this is because the interaction between examples within a batch must
+be negligible in order for the first-order approximation to be accurate. We remark that the equal division of the influence
+across constituents of a mini-batch cannot circumvent the gradient norm problem presented in §3.2. We discuss this point in
+more detail in Appendix H.
+
+Learning Rate Schedule. Instruction tuning generally uses a linearly decaying learning rate schedule, which means that
+each example (or batch) within an epoch has a different learning rate depending on the time step that it was sampled. The
+formulation in Definition 3.1 may then select a datapoint solely because it would be sampled earlier in the training run (i.e.,
+with a larger ηt ). We want our method to yield an interpretable dataset, so we instead use the average epoch-wise learning
+rate as ηt .
+
+F. Comparison to “Kernel Behavior” (Malladi et al., 2023; Jacot et al., 2018).
+The design of LESS relies on the assumption that the first-order approximation of loss dynamics is sufficiently accurate
+(see Section 2). A related hypothesis is the idea that the instruction tuning optimization procedure exhibits “kernel
+
+                                                                   19
+                                   LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+behavior”.12 Here, we highlight the nuanced difference between kernel behavior and the current assumption, emphasizing
+why kernel behavior is difficult to measure in the instruction tuning setting.
+
+Formal Difference Kernel behavior describes the gradient of the output of the model (i.e., the logits) with respect to the
+model parameters. In contrast, the first-order approximation in Section 2 is for the gradient of the loss with respect to the
+parameters. These two quantities are related by the derivative of the loss with respect to the output of the model. Thus,
+conceptually, kernel behavior and the first-order approximation of the loss dynamics are similar, but the two phenomena
+correspond to different formal descriptions of model training. Theory in Yang & Hu (2021); Malladi et al. (2023) indicates
+that there is some subtlety in whether one phenomenon implies the other holds. In particular, most kernel-based analyses
+minimize the mean squared error loss instead of the cross-entropy loss, the latter of which introduces technical complications
+in the analysis but is the standard choice for instruction tuning.
+
+F.1. Does instruction tuning exhibit kernel behavior?
+Malladi et al. (2023) suggested that fine-tuning on GLUE-style classification tasks can sometimes exhibit kernel behavior
+because the pre-trained model is already fairly strong at the downstream task. This assumption crucially relied on appending
+a very good prompt to the downstream task input, so that labeling the input amounted to predicting the next word. With
+such a prompt, fine-tuning on the downstream task amounted to the same as continued pre-training. One could argue that
+the instruction in instruction tuning provides a prompt for the completion, but the completion can be much longer than the
+single-word labels used in classification tasks.
+
+Gradient features change substantially at the start of instruction tuning. We perform ablations comparing gradient
+features collected from the pre-trained model and features collected over the course of the warmup training period (Table 6).
+We find that it is important to incorporate gradients taken over the course of the warmup training, which suggests that the
+gradient features change substantially at the start of instruction tuning. On the other hand, results in Table 5 demonstrate
+that lengthening the warmup period yields marginal gains in performance, suggesting that the gradient features don’t change
+much in the intermediate and late phases of instruction tuning. We emphasize that especially in the case of the cross entropy
+objective, it is possible for the gradient features in Definition 3.1 to change substantially even if the model exhibits kernel
+behavior. It is thus difficult to relate the loss curves in Figure 5 to the evolution of the empirical neural tangent kernel over
+the course of instruction tuning.
+
+Direct verification is too challenging. Kernel behavior is called as such because the dynamics are described by a fixed
+|D| × |D| kernel, where each entry contains the inner product of the gradients of the model output with respect to the
+parameters for different datapoints. Subtly, this matrix must be constructed for every logit, so the computational cost scales
+with the number of classes in the dataset. Past works that instantiate this kernel have focused on vision tasks with relatively
+few classes (Arora et al., 2019; Yu et al., 2020a; Wei et al., 2022a) or prompt-based text classification (Malladi et al., 2023),
+which only considers a label word for each class in simple downstream tasks. On the other hand, instruction tuning requires a
+|V|-dimensional vector of logits from the model, where V is the vocabulary containing, for example, roughly 32, 000 tokens.
+Additionally, each partial context must be treated as its own input, making |D| the length of each sequence multiplied by the
+number of sequences in the dataset. Therefore, computing the kernel for instruction tuning is computationally infeasible,
+given the massive size of D and the large number of output classes.
+
+G. Comparison to Data Models (Ilyas et al., 2022)
+Concurrent work in Engstrom et al. (2024) applies the datamodels framework (Ilyas et al., 2022) to select pre-training data to
+induce strong performance on target downstream tasks. Fitting a datamodel generally requires repeated training of a model
+to fit a mapping between the selected data and the resulting accuracy of the trained model, but Park et al. (2023) reframed
+the problem to simulate this repeated training procedure at a much lower computational cost. Datamodels and its related
+techniques are inspired by influence functions (Koh & Liang, 2017), which permit counterfactual reasoning over training
+(e.g., “what would have happened if I omitted this training datapoint?”). On the other hand, the influence formulation
+in Pruthi et al. (2020) can only counterfactually reason over one optimization step at a time, not the entire training procedure.
+In this section, we describe the how the data selection method in Engstrom et al. (2024), which was applied to the pre-training
+  12
+       This was called the “kernel regime” in Jacot et al. (2018) when training the model from a random initialization.
+
+                                                                     20
+                               LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+setting, relates to the considerations and observations reported in this paper.
+
+  1. Reframing data selection as optimization: Both works reframe the data selection problem as a straightforward
+     optimization problem, whereby one chooses data to maximally improve a given metric. This approach is in contrast to
+     prior works that rely on pre-defined notions of useful data (Gururangan et al., 2020; Chen et al., 2023b) or surface-form
+     features (Xie et al., 2023b). Instead, both works can be considered efficient approximations of meta-optimization
+     approaches (Nguyen et al., 2021).
+
+  2. Approximating training dynamics: Given the considerable computational cost of training LLMs, both works have
+     to approximate the training dynamics of the model in order to efficiently estimate the effect of including a datapoint.
+     LESS relies on the assumption that the first-order approximation of the loss dynamics is accurate, whereas Engstrom
+     et al. (2024) relies on a first-order approximation of how the model output changes during training. The latter is closer
+     to the kernel view described in the previous section, though we note that the output used in datamodels generally
+     involves the margin, which is not well-covered by kernel theory. An implicit assumption of both of these techniques is
+     that the influences of selected datapoints add linearly (i.e., selecting two equally highly scored datapoints will doubly
+     improve the model performance). Theory in Saunshi et al. (2023) provides a start at understanding when this linearity
+     holds, but it may not apply to all settings. For example, in the case where the same datapoint is duplicated in the
+     training set, we don’t expect a marked improvement from the inclusion of the duplicate.
+
+  3. Proxy models and selection models: Both works require performing initial training in a smaller, computationally
+     efficient setup before performing data selection. Engstrom et al. (2024) trained smaller so-called proxy models to fit
+     the datamodel, whereas LESS requires a short warmup training period using the selection model in order to compute
+     the influence in Definition 3.1.
+
+  4. Sequence selection versus token selection: In §3.2, we describe how selecting sequences instead of individual tokens
+     requires an adjustment to the influence formulation. The token versus sequence consideration also appears in Engstrom
+     et al. (2024), where the method has to average the model output over the entire sequence before using it in the data
+     model. Because Engstrom et al. (2024) considers the pre-training setting, where all input sequences are of the same
+     (maximal) length, we cannot be sure if their proposed methodology circumvents the sequence length bias described
+     in §3.2.
+
+H. Sequence Level Gradients in Instruction Tuning
+In Section 3.2, we discussed that sequence level gradients in instruction tuning exhibit odd properties because they are the
+average of the token gradients in the completion. In particular, Figure 3 demonstrates that across datasets, the gradient norm
+is strongly anti-correlated with the length of the completion. Similarly, Figure 4 shows that the norm of the update ∥Γ∥
+(see Definition 3.1) decays rapidly with length. Therefore, using the straightforward inner product formulation in Section 2
+would bias LESS to select short sequences for the training dataset. Intuitively, training on only short sequences would
+prevent the model from learning to perform long-form generations, as is required for many tasks. Ablation experiments
+in Table 13 demonstrate that using inner products for LESS results in a dataset with much shorter sequences. Training on
+this dataset induces markedly worse performance than using the cosine similarity and sometimes worse performance than
+random selection. Wang et al. (2020) similarly reported that using dot products for data selection in the machine translation
+setting was less stable than using cosine similarity.
+Importantly, this phenomenon is not a failure of the influence formulation in Section 2. Rather, it suggests that we ought
+to perform token-wise data selection (e.g., only averaging the loss over a few tokens within each sequence), because
+some gradients within a sequence are helpful and others are not. At the time of writing, such fine-grained selection
+is computationally intractable for LLMs, but additional approximations and implementation accelerations may make it
+possible.
+
+H.1. Theoretical View
+Theoretically, the relationship between sequence-level gradients and token gradients is quite interesting. Suppose token
+gradients were equal to a deterministic sequence-level gradient (e.g., determined by topic) plus some i.i.d. Gaussian noise.
+This is analogous to the widely accepted theoretical model of example gradients being equal to the full batch gradient with
+additive noise. Then, as the sequence length grows, we would have more independent samples of the token gradient noise,
+
+                                                              21
+                                                     LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+                                     FLAN V2                                                  COT                                                        Dolly                                               Open Assisstant 1
+                40000                                                10000                                                      6000                                                       6000
+
+Gradient Norm                                        Gradient Norm                                              Gradient Norm                                              Gradient Norm
+                                                                      7500
+                                                                                                                                4000                                                       4000
+                20000                                                 5000
+                                                                      2500                                                      2000                                                       2000
+                       0                                                 0                                                             0                                                        0
+                            0    500 1000 1500 2000                                0    250 500 750 1000 1250                                0    500 1000 1500 2000                                  0      500 1000 1500 2000
+                                  Completion Length                                       Completion Length                                        Completion Length                                          Completion Length
+
+                      Figure 3: Gradient norms of instruction tuning examples negatively correlates with the length of the completion.
+
+
+                      1e6          FLAN V2                                   1e6             COT                                       1e6            Dolly                                         1e6      Open Assisstant 1
+                1.5
+                                                                       1.0
+
+Gradient Norm                                          Gradient Norm                                             Gradient Norm                                                Gradient Norm
+                                                                                                                                 1.0                                                          1.0
+                1.0
+                                                                       0.5                                                       0.5                                                          0.5
+                0.5
+                0.0                                                    0.0 0                                                     0.0 0                                                        0.0
+                       0        500 1000 1500 2000                                     250 500 750 1000 1250                                     500 1000 1500 2000                                  0      500 1000 1500 2000
+                                 Completion Length                                       Completion Length                                        Completion Length                                          Completion Length
+
+  Figure 4: The norm of the update in the Adam optimizer for instruction tuning examples negatively correlates with the
+  length of the completion.
+
+
+
+  and the average token gradient should concentrate to the deterministic sequence-level gradient. This would yield the trends
+  shown in Figure 3 but it is difficult to believe the gradient noise is i.i.d. because the tokens are not sampled i.i.d. from
+  the corpus. Tokens within a context are semantically related to one another, and constructing a suitable noise model with
+  appropriate correlations that permits analysis appears to be difficult. One possible approach is to assume a generative model
+  for language that assign a latent topic vector to each sequence and generate tokens accordingly, as was done in Arora et al.
+  (2016). Then, the token gradients can be modeled as correlated.
+
+
+  Table 13: Task performance of using normalized gradients and vanilla gradients. We find that using vanilla gradients to
+  select data leads to worse performance than normalized gradients. We also find that the length of the selected data is much
+  shorter when using vanilla gradients, due to the fact that shorter sequences have larger gradient norms (Figures 3 and 4).
+
+                                                                         Random                          Vanilla Gradients                                       Normalized Gradients
+                                                Performance                                Length     Performance                                Length          Performance                              Length
+                                    MMLU                     46.5                           105.4          47.3                                   11.3              50.2                                   15.1
+                                    T YDI QA                 52.7                           105.4          52.3                                   19.7              56.2                                   44.4
+                                    BBH                      38.9                           105.4          37.4                                   19.0              41.5                                  101.2
+
+
+
+  I. Loss vs Accuracy
+  Our motivation in Section 2 is to select datapoints that will most dramatically reduce the validation loss. However, for many
+  language modeling tasks, it is unclear how minimizing the cross entropy interacts with the task accuracy. In particular, many
+  complex tasks require the model to generate long-form sequences of text, and it is not clear how well long-form generation
+  capability correlates with accuracy.
+  In Figures 6 to 8, we provide evidence across model scales and tasks that the minimizing the validation loss does not always
+  correspond to increasing the accuracy. A similar phenomenon was observed in Zhou et al. (2023); Tay et al. (2021). Despite
+  its reliance on the cross entropy loss, LESS boosts accuracy over relevant baselines. Overall, we suggest that optimizing
+  alternative objectives may yield better accuracy, but we leave exploring such ideas to future work. We note that any objective
+  function can be substituted into the derivation in Section 2, so the ideas used in developing LESS are easily extensible.
+
+                                                                                                           22
+                                      LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+                             MMLU                                              TyDiQA                                              BBH
+       2.5                                                0.45
+                                      Random                                                                               Random
+                                      Less                                                                                 Less
+       2.0                                                0.40                                              0.28
+                                                                                        Random
+Loss                                               Loss                                 Less         Loss
+       1.5                                                0.35                                              0.27
+
+               0        1      2      3        4                  0       1       2     3        4                 0        1       2     3           4
+                             Epoch                                              Epoch                                             Epoch
+
+                       Figure 5: Validation loss of random selection and LESS across checkpoints for L LAMA -2-7B.
+
+
+
+                            MMLU                                              TyDiQA                                            BBH
+         2.5                                                                                               0.272                              40
+                                           40             0.400
+                                                                                            40             0.270                              30
+         2.0                                   Accuracy   0.375                                 Accuracy
+  Loss                                                                                                                                            Accuracy
+                                                                                                           0.268                              20
+                                           20    Loss     0.350                             20    Loss
+         1.5                                                                                               0.266                              10
+                                                          0.325
+                                           0                                                0              0.264                              0
+                   0          2       4                               0         2       4                              0          2       4
+                            Epoch                                             Epoch                                             Epoch
+
+                   Figure 6: Validation loss (Blue curve) and accuracy (Red bar) across checkpoints for L LAMA -2-7B.
+
+
+
+
+J. Gradient Similarity Analysis
+In Figure 9, we plot the gradient similarity between each training example and each validation example in descending order.
+We observe a subset of examples exhibiting relatively higher gradient similarity scores when compared to the validation
+data. Following this subset, there is a sharp decline in similarity scores, which then continue to decrease in a very smooth
+manner. Notably, for MMLU, none of the examples exhibit a negative gradient similarity score. In contrast, for TydiQA and
+BBH, there are instances of examples with negative gradient similarity scores. However, we did not observe any obvious
+patterns in the examples with negative gradient similarity scores. Please find some examples in Appendix K.
+
+K. Qualitative Analysis
+K.1. Top Selected Examples for BBH and MMLU
+We present more selected examples for MMLU and BBH in Table 18. For MMLU, the examples are drawn from C OT,
+C OT, and F LAN V2, respectively. The gradient-based approaches return an example of a problem of a similar difficulty
+level. BM25 also returns a slightly harder math combinations example, where it has token overlap with the target instance
+(e.g., multiple digit 5). Representation-based approach return a question answering example that does not require math
+reasoning ability. For BBH, the examples are drawn from C OT, C OT, and D OLLY respectively. The representation and
+gradient-based approaches capture the essence of the task to judge the truthfulness of a statement, while the BM25 method
+aligns with superficial ngram features such as NBA Finals.
+
+K.2. Examples with Negative Gradient Similarity Scores
+We present a few examples with the lowest gradient similarity scores with the validation data in Table 15 and Table 14.
+Simply looking at the examples fails to reveal any significant patterns that could explain the observed negative transfer to
+the target task, which suggests the need for further investigation.
+
+                                                                               23
+                                 LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+                     MMLU                                             TyDiQA                                  BBH
+                                     60                                            40             0.252
+       2.00
+                                                           0.40                                   0.250                   40
+       1.75                                                                        30
+                                     40
+                                         Accuracy
+                                                                                       Accuracy
+                                                                                                                              Accuracy
+                                                                                                  0.248
+Loss   1.50                                         Loss   0.35                    20
+                                     20                                                  Loss     0.246                   20
+       1.25                                                                        10             0.244
+       1.00                          0                     0.30                    0                                      0
+              0        2        4                                 0     2      4                          0     2     4
+                     Epoch                                            Epoch                                   Epoch
+
+              Figure 7: Validation loss (Blue curve) and accuracy (Red bar) across checkpoints for L LAMA -2-13B.
+
+                     MMLU                                             TyDiQA                                  BBH
+        1.6
+                                      60                   0.40                                   0.28                    40
+        1.4                                                                        40
+                                          Accuracy                                     Accuracy
+                                                                                                                              Accuracy
+                                      40                   0.35                                                           30
+ Loss                                                                                             0.26
+        1.2                                 Loss                                         Loss                             20
+                                      20                                           20
+                                                           0.30                                   0.24                    10
+        1.0
+                                      0                                            0                                      0
+              0        2         4                                0     2      4                          0     2     4
+                     Epoch                                            Epoch                                   Epoch
+
+              Figure 8: Validation loss (Blue curve) and accuracy (Red bar) across checkpoints for M ISTRAL -7B.
+
+
+K.3. Subset Distribution of Selected Examples
+We present the distribution of the selected examples for different methods in Figure 10. Different approaches end up selecting
+very different amounts of data from each training subset. However, we find that there is not a monotonic relationship
+between the amount of data selected from a subset and the performance of the method. This suggests that each subset could
+have useful examples for the target task, and the key is to identify the most relevant examples.
+In our specific observations, we notice that LESS predominantly selects data from the F LAN V2 dataset for MMLU. This
+choice appears intuitive since MMLU predominantly comprises multiple-choice questions. In the case of T YDI QA, LESS
+exhibits a strong preference for data from the D OLLY dataset. Upon examination, it becomes evident that many of these
+examples adhere to an open-book question answering format. Finally, for BBH, LESS primarily selects data from the C OT
+dataset. This preference aligns with the fact that BBH tasks involve chain of thought reasoning, a characteristic prominently
+present in the C OT dataset’s examples.
+
+
+
+
+                                                                       24
+                                                      LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+
+
+                                              MMLU                                          TyDiQA                                    BBH
+
+
+
+
+Gradient Similarity
+                       0.2                                           0.2                                       0.2
+                       0.1                                           0.1                                       0.1
+                       0.0                                           0.0                                       0.0
+                       0.1                                           0.1                                       0.1
+                                        100000 200000                                 100000 200000                            100000 200000
+                                         Example ID                                    Example ID                               Example ID
+
+Figure 9: Gradient similarity between training examples and validation examples. The examples are ordered by the gradient
+similarity score.
+
+
+
+
+                             Flan v2    COT   Dolly   Oasst1                Flan v2   COT    Dolly   Oasst1          Flan v2   COT   Dolly   Oasst1
+
+                      BM25                                          BM25                                      BM25
+
+                      DSIR                                          DSIR                                      DSIR
+
+                      RDS                                            RDS                                      RDS
+
+                      LESS                                           LESS                                     LESS
+
+                         0%       25%         50%     75%               0%       25%        50%      75%         0%       25%        50%     75%
+
+
+                                       (a) MMLU                                   (b) T YDI QA                                 (c) BBH
+
+                                        Figure 10: Subset distribution of the top 5% selected examples for different methods.
+
+
+
+
+                                                                                        25
+                           LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+
+
+       Table 14: Examples with a negative gradient similarity score to the validation examples for T YDI QA.
+
+                                           T YDI QA validation example
+User: The following are multiple choice questions (with answers) about elementary mathematics. The population
+of the city where Michelle was born is 145,826. What is the value of the 5 in the number 145,826? A. 5 thousands
+B. 5 hundreds C. 5 tens D. 5 ones Answer:
+
+Assistant: The answer is: A
+                                  Selected examples with lowest InfAdam scores
+User:
+Instruction: What would be some useful random items to help you on an island if you were stranded Output:
+Assistant:
+A hockey skate would be great because of the blades and laces
+Glasses could maybe be used to help you start a fire if you used the glasses to reflect the sunlight
+The cord from a blow dryer could be quite useful
+User:
+q: Where could you buy an old pie safe with decorative tin?
+Options:
+- shopping bag
+- trash
+- antique store
+- landfill
+- cupboard
+a: Old items can be found at an antique store. From an antique store, you could buy an old pie safe with decorative
+tin.
+The answer is antique store
+QUESTION: What article of apparel or accessory is typically made of felt?
+Options:
+- shoes
+- table
+- hat shop
+- clothes
+- man’s hat
+ANSWER: Felt is a type of textile material. Man’s hat are generally made of felt material. Hat can be article of
+apparel or accesory.
+The answer is man’s hat
+q: A lot of people play the fiddle in what state which comes first alphabetically?
+Options:
+- tennessee
+- violin case
+- orchestra
+- alabama
+- alaska
+a:
+Assistant:
+Lot of people in alabama state also plays fiddle like other states. Alabama comes first alphabetically than other state
+as it starts from alphabet A.
+The answer is alabama
+
+
+
+
+                                                          26
+                         LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+
+
+        Table 15: Examples with a negative gradient similarity score to the validation examples for BBH.
+
+                                            BBH validation example
+User:
+Determine whether an artificially constructed sentence relating to sports is plausible or not. Q: Is the following
+sentence plausible? ”Bam Adebayo scored a reverse layup in the Western Conference Finals.”
+
+Assistant: A: Let’s think step by step. Bam Adebayo is an American basketball player. Scoring a re-
+verse layup in the Western Conference Finals is part of the NBA Finals. So the answer is yes.
+                                 Selected examples with lowest InfAdam scores
+User:
+Ques & Ans: Sam Allardyce has managed the most teams in the Premier League, having taken charge of seven
+different clubs: Bolton Wanderers, Newcastle United, Blackburn Rovers, West Ham United, Sunderland, Crystal
+Palace and Everton.
+
+Who has managed the most premier league teams? Sam Allardyce
+
+Stream of consciousness: To answer this question, we should know that: Sam Allardyce has managed
+the most teams in the Premier League, having taken charge of seven different clubs: Bolton Wanderers, Newcastle
+United, Blackburn Rovers, West Ham United, Sunderland, Crystal Palace and Everton.
+
+Ques & Ans: ”Shout” is a song by British band Tears for Fears, written by Roland Orzabal and Ian Stan-
+ley and sung by Orzabal (with Curt Smith duetting on the chorus). First released in the UK on 23 November 1984,
+it was the band’s eighth single release (the second taken from their second album Songs from the Big Chair) and
+sixth UK Top 40 hit, peaking at no. 4 in January 1985. In the US, it reached no. 1 on the Billboard Hot 100 on 3
+August 1985 and remained there for three weeks. ”Shout” would become one of the most successful songs of 1985,
+eventually reaching the Top Ten in 25 countries. ”Shout” is regarded as one of the most recognisable songs from the
+mid-eighties and is also recognised as the group’s signature song, along with ”Everybody Wants to Rule the World”.
+
+Answer this question: when did shout by tears for fears come out? 23 November 1984
+
+Stream of consciousness:
+Assistant: The relevant information is: First released in the UK on 23 November 1984, it was the band’s eighth
+single release (the second taken from their second album Songs from the Big Chair) and sixth UK Top 40 hit,
+peaking at no.
+User:
+next question: Where would you find the nearest attic?
+Options:
+- victorian style house
+- basement
+- older houses
+- own home
+- victorian house
+reasoning:
+Assistant:
+Own home is the house where one lives. One would find the nearest attic in his house. The answer is own home.
+
+
+
+
+                                                        27
+                                   LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+
+Table 16: Top selected examples when using one T YDI QA example as Dval for data selection with different approaches. The
+T YDI QA example is in the context of Bengali question answering. These examples are drawn from F LAN V2, F LAN V2,
+and D OLLY, respectively. Notably, LESS demonstrates the capability to prioritize examples of the same task type (question
+answering), whereas the other methods tend to be influenced by the linguistic attributes of the validation example, leading
+to the selection of Bengali examples that do not align with the same task type. Please find the translation of the table in
+Table 17.
+
+                                       A TydiQA Validation Example: Question Answering in Bengali
+    User: dÑ AzYaJer teQYr Upr iviÑ ker inilixt eSr UÑr idn.AzYaJ: baKlar nbjagrN O bRaósmaj-ekiÞk samaijk-saKîitk
+    sKîar AaeÝaln baKlar saKîitk O A¯Qnitk jben gvr vab ibïar ker. 1857 saelr mHaibeaeHr scna klkatar AderI
+    HJeiql. EI ibeaH bY¯Q HelO Er pireiXet varetr Sasnvar eka®painr Hat eQek ibRiTS rajSiµ WHeï gRHN ker. vart Sasenr
+    jnY EkiT vaIsrJer pd sië kra HJ.[11] 1905 sael z¯mJ
+    S: Aibvµ Wazn baKla keb iØxiÎt Hy?
+    Assistant: UÑr: 1905 sael
+               Selected by BM25                                  Selected by RDS                                  Selected by LESS
+  Masked Word Prediction in Bengali                Hate Speech Classification in Bengali             Question Answering in English
+  User: Select the most logical word from four     User: You are given a hateful post in Bengali     User: Given the question and input, write a
+  options to replace the <MASK> token in the       that expresses hate or encourages violence        reponse to answer the question. Which year
+  given Bengali statement.                         towards a person or a group based on the pro-     was quantum computer demonstrated to be
+  [Q]: Statement: 1961-62 emsuem eTD              tected characteristics such as race, religion,    possible?
+ eD»Taerr ent©Wazn IKerj delr sdsYru-            sex, and sexual orientation. You are expected     Input: Over the years, experimentalists have
+ uep paikïan O <MASK> sfer  duI                   to classify the post into two classes: personal   constructed small-scale quantum computers
+ eTe³T AKSgRHN kern. tar ebailK v¢gmar            or non-personal depending on the topic.           using trapped ions and superconductors. In
+ kareN eT³T AivePek p¯b XaiNkTa iblièt             Q: tuim ik sux Het caO na? na caI na ikÚu        1998, a two-qubit quantum computer demon-
+ HJ. Option A: gLYamargn        Option B: ekn? suex Qakel vet iklay Aaim ikl                        strated the feasibility of the technology, [...]
+  ilec³TarSaJaerr Option C: vart          exet caI na                                                Response:
+ Assistant: [A]: vart                     Assistant: personal                                        Assistant: 1998
+
+
+
+
+                                                 Table 17: English translations of Table 16.
+
+                                A TydiQA Validation Example: Question Answering in Bengali (Translated)
+    User: Answer the following question based on the content of the given chapter.
+    Chapter: The Bengali Renaissance and the Brahmo Samaj - in a nutshell, the social reformers and the reforms they introduced had a
+    profound impact on the social and economic life of Bengal. The beginning of the great rebellion took place in Calcutta in 1857. After the
+    failure of this rebellion, the British Empire accepted the rule of the East India Company’s hands as a friendly power. For the governance
+    of India, the position of a Viceroy was created. In 1905, the religious and political motivations led to the division of Bengal [...]
+    Question: When was Bengal divided?
+
+     Assistant: Answer: 1905.
+        Selected by BM25 (Translated)                    Selected by RDS (Translated)                             Selected by LESS
+  Prediction of the Masked Word in Bengali         Hate Speech Classification in Bengali             Question Answering in English
+  User: Choose the most logical word from          User: You are given a hateful post in Bengali     User: Given the question and input, write a
+  four options to replace the <MASK> token         that expresses hate or encourages violence        reponse to answer the question. Which year
+  in the given Bengali statement.                  towards a person or a group based on the pro-     was quantum computer demonstrated to be
+  [Q]: Statement: In the 1961-62 season, the       tected characteristics such as race, religion,    possible?
+  touring English team’s captain participated      sex, and sexual orientation. You are expected     Input: Over the years, experimentalists have
+  in the Pakistan <MASK> sphere for those          to classify the post into two classes: personal   constructed small-scale quantum computers
+  two tests. His availability for bowling marked   or non-personal depending on the topic.           using trapped ions and superconductors. In
+  the delay of his test debut for some time. Op-   Q: Do you not want to be happy alone? Not         1998, a two-qubit quantum computer demon-
+  tion A: Glamorgan Option B: Leicester-           that I don’t want to, but now? When happy, I      strated the feasibility of the technology, [...]
+  shire Option C: India                            forget that I don’t want to eat alone.            Response:
+ Assistant: [A]: Glamorgan                         Assistant: personal                               Assistant: 1998
+
+
+
+
+                                                                         28
+                                  LESS: Selecting Influential Data for Targeted Instruction Tuning
+
+
+
+
+Table 18: Top examples selected for a MMLU validation instance in the context of elementary mathematics and selected for
+a BBH target instance in the context of sports understandingusing. We compare examples selected by BM25, RDS and
+LESS.
+
+                              MMLU                                                                   BBH
+                      A Validation Example                                                  A Validation Example
+  User: The following are multiple choice questions (with               User:
+  answers) about elementary mathematics. The population of the          Determine whether an artificially constructed sentence relating
+  city where Michelle was born is 145,826. What is the value of         to sports is plausible or not. Q: Is the following sentence
+  the 5 in the number 145,826? A. 5 thousands B. 5 hundreds C. 5        plausible? ”Bam Adebayo scored a reverse layup in the Western
+  tens D. 5 ones Answer:                                                Conference Finals.”
+
+  Assistant: The answer is: A                                           Assistant: A: Let’s think step by step. Bam Adebayo is
+                                                                        an American basketball player. Scoring a reverse layup in the
+                                                                        Western Conference Finals is part of the NBA Finals. So the
+                                                                        answer is yes.
+                        Selected by BM25                                                      Selected by BM25
+  User: Question: A multiple choice test consists of 4 questions,       User: Give a stream of consciousness and then the final answer.
+  and each question has 5 answer choices. In how many ways can          The 2016 NBA Finals was the championship series of the
+  the test be completed if every question is unanswered? Options:       National Basketball Association (NBA) 2015 − −16 season
+  (A) 24 (B) 120 (C) 625 (D) 720 (E) 1024 Answer: 5 choices for         and conclusion of the 2016 playoffs. The Eastern Conference
+  each of the 4 questions, thus total of 5 ∗ 5 ∗ 5 ∗ 5 = 54 = 625       champion Cleveland Cavaliers defeated the Western Conference
+  ways.                                                                 champion Golden State Warriors 4 − −3 in a rematch of the
+                                                                        2015 NBA Finals. [...] Based on this passage, who did cleveland
+                                                                        play in the finals last year?
+
+  Assistant: The answer is (C).                                         Assistant: To answer this question, we should know
+                                                                        that: The Eastern Conference champion Cleveland Cavaliers
+                                                                        defeated the Western Conference champion Golden State
+                                                                        Warriors 4 − −3 in a rematch of the 2015 NBA Finals. So, the
+                                                                        final answer is Golden State Warriors.
+                         Selected by RDS                                                       Selected by RDS
+  User: Of course, the most unforgettable classmate I had was           User: Is Y2K relevant to the plot of The Godfather? Please give
+  also the most vicious bully. I attended a boarding school for         rationale first, then the answer.
+  badly behaved children and it had its fair share of bullies who
+  had been expelled from mainstream schools. But this particular
+  bully had even the teachers running scared. When he went off
+  on one, it could take up to four teachers or members of care
+  staff to get him under control. [...] At the end of the story, the
+  bully is probably: A. Now a teacher B. Now an article writer C.
+  Deceased from drug abuse D. not enough information
+                                                                        Assistant: The story in the Godfather spans from 1945
+  Assistant: C                                                          to 1955. Y2K refers to events related to the formatting and
+                                                                        storage of calendar data for dates beginning in the year 2000.
+                                                                        The answer is: no.
+                         Selected by LESS                                                     Selected by LESS
+  User: Q: In this task, you need to provide the correct option         User: Plase answer the following request: Is the following state
+  for a given problem from the provided options. Problem: the           true or false: Peanuts are vegetables? Answer:
+  compound ratio of 2 / 3 , 6 / 7 , 4 / 3 and 1 / 8 is given by ?
+  Options: a) 2/21, b) 1/48, c) 1/98, d) 1/96, e) 1/68
+
+  Assistant: a                                                          Assistant: This statement is true. Peanuts are part of
+                                                                        the legume family and are therefore vegetables.
+
+
+
+
+                                                                       29
+

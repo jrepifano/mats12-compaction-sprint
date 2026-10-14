@@ -1,0 +1,45 @@
+{
+  "probe": "P34",
+  "phase": "session1",
+  "views": [
+    "base",
+    "p_quack",
+    "p_ecc",
+    "p_plain"
+  ],
+  "engines": {
+    "base": "base",
+    "p_quack": "merged_quack",
+    "p_ecc": "merged_ecc",
+    "p_plain": "merged_plain"
+  },
+  "merged_fingerprints": {
+    "quack": "02782b33e04c68422ac470f4f457f65d0b24ef3acb2133cfb2e2e642b7f24e15",
+    "ecc": "d5e8047644a536814d2b19479f4a978e12e00db6d81a8a967814045ce552ab4b",
+    "plain": "5406da2b9bac592b9ab81685b6805381615ec8633688328490522d168f0c2294"
+  },
+  "batch_size": 16,
+  "provenance": {
+    "git_commit": "a2de225f9c3187a4d6ebff9d21e8475bd3692f75",
+    "utc": "2026-10-13T16:16:28Z",
+    "seeds": {
+      "draw_seed": 20261011
+    },
+    "inputs": {
+      "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507",
+      "data/E11/good_medical_advice.jsonl": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc"
+    }
+  },
+  "csv": "task_session1.csv",
+  "csv_sha256": "264bce45cddd0aa52e8478ea0a0a54605f7647e11959dfaef47e77cd7c3266b6",
+  "n_rows": 1600,
+  "columns": [
+    "model_key",
+    "dataset",
+    "row_id",
+    "which",
+    "n_tokens",
+    "sum_logprob"
+  ],
+  "scoring": "render_train loss tokens: answer content + its <|im_end|> (shifted, label != -100)"
+}

@@ -1,0 +1,1082 @@
+                                              Your Finetuned Large Language Model is Already a Powerful
+                                                             Out-of-distribution Detector
+
+
+
+                                           Andi Zhang∗,1,3          Tim Z. Xiao2,4,5      Weiyang Liu3,5       Robert Bamler2         Damon Wischik3
+                                                      1                                2                              3
+                                                          University of Manchester       University of Tübingen        University of Cambridge
+                                                              4                5
+                                                                IMPRS-IS         Max Planck Institute for Intelligent Systems, Tübingen
+                                                                             ∗
+                                                                               Correspondence to: az381@cantab.ac.uk
+
+
+
+
+arXiv:2404.08679v2 [cs.CL] 5 Mar 2025
+                                                                 Abstract                             1    INTRODUCTION
+
+                                            We revisit the likelihood ratio between a pre-            Detecting out-of-distribution (OOD) is crucial for the
+                                            trained large language model (LLM) and its                safety of artificial intelligence systems. OOD detec-
+                                            finetuned variant as a criterion for out-of-              tion aims to identify inputs that substantially devi-
+                                            distribution (OOD) detection. The intuition               ate from the training data the model was trained on,
+                                            behind such a criterion is that, the pretrained           ensuring the system is alerted to these discrepancies.
+                                            LLM has the prior knowledge about OOD                     This capability to identify OOD and anomalous data
+                                            data due to its large amount of training data,            is particularly critical in high-stakes domains such as
+                                            and once finetuned with the in-distribution               healthcare and autonomous driving, where the stakes
+                                            data, the LLM has sufficient knowledge to                 for accuracy and reliability are exceptionally high.
+                                            distinguish their difference. Leveraging the              In OOD detection (Hendrycks and Gimpel, 2016), the
+                                            power of LLMs, we show that, the likeli-                  term “in-distribution” refers specifically to the dis-
+                                            hood ratio can serve as an effective OOD                  tribution of the training data. In natural language
+                                            detection criterion. Moreover, we apply the               processing, OOD detection has been studied in small
+                                            proposed LLM-based likelihood ratio to de-                and task-specific models for settings such as translation
+                                            tect OOD questions in question-answering                  (Xiao et al., 2020) and question answering (Lyu et al.,
+                                            (QA) systems, which can be used to im-                    2020). With the advancement of large and general
+                                            prove the performance of specialized LLMs                 models like large language models (LLMs), the scope
+                                            for general questions. Given that likelihood              of training data has significantly broadened, position-
+                                            can be easily obtained by the loss functions              ing these large models embodied with general knowl-
+                                            within contemporary neural network frame-                 edge and intelligence as “base models”. In the era
+                                            works, it is straightforward to implement                 of large foundation models (Bommasani et al., 2021),
+                                            this approach in practice. Since both the                 the prevalent training paradigm has shifted from end-
+                                            pretrained LLMs and its various finetuned                 to-end learning towards finetuning a pretrained base
+                                            models are widely available from online plat-             model. This shift calls for a revisiting of the definition
+                                            forms such as Hugging Face, our proposed                  of “in-distribution” and its relationship to the training
+                                            criterion can be effortlessly incorporated for            distribution of base models.
+                                            OOD detection without the need for further
+                                            training. We conduct comprehensive evalu-                 There is usually no prior information about the OOD
+                                            ation across on multiple settings, including              data in conventional OOD detection (Hendrycks and
+                                            far OOD, near OOD, spam detection, and                    Gimpel, 2016). Bishop (1994) introduced the idea
+                                            QA scenarios, to demonstrate the effective-               that OOD data could be viewed as data coming from
+                                            ness of the method. Code can be found at                  a distinct OOD distribution, suggesting the use of
+                                            https://github.com/andiac/LLMOODratio                     the likelihood ratio between this OOD distribution
+                                                                                                      and the in-distribution as a detection criterion. How-
+                                                                                                      ever, given the absence of information about OOD
+                                        Proceedings of the 28th International Conference on Artifi-   data, Zhang and Wischik (2022) introduced the con-
+                                        cial Intelligence and Statistics (AISTATS) 2025, Mai Khao,    cept of OODProxy, a conceptual framework where the
+                                        Thailand. PMLR: Volume 258. Copyright 2025 by the au-         OOD distribution is represented by a proxy, incorpo-
+                                        thor(s).
+                                                                                                      rating what is known or assumed about the OOD data.
+         Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+From this perspective, it is commonly recognized that           the OOD dataset. A high performance across these
+many OOD detection methods leveraging likelihood                metrics signifies a robust OOD detection capability.
+ratios are essentially applying their unique OOD proxy
+distributions, each reflecting different assumptions or         “Supervised” and “Unsupervised” OOD Detec-
+prior knowledge concerning the nature of the OOD                tion In Hendrycks and Gimpel (2016)’s foundational
+data (Ren et al., 2019; Serrà et al., 2019; Schirrmeis-        study, it is assumed that for the in-distribution dataset
+ter et al., 2020; Zhang et al., 2021).                          Din , each data point is accompanied by a classification
+In our paper, we revisit1 that pretrained base mod-             label. This is why this problem setting is referred to
+els can function as a repository of prior knowledge for         as supervised OOD detection2 . Following Hendrycks’
+OOD data relative to in-distribution data, effectively          work, numerous supervised OOD detection methods
+acting as OOD proxy distributions. Guided by this in-           based on classifiers have been proposed (Lee et al.,
+sight, we discover that the likelihood ratio between the        2018; Liu et al., 2020; Wang et al., 2022; Sun et al.,
+base model and its finetuned counterpart serves as an           2022; Zhu et al., 2022). In contrast, our work focuses
+effective criterion for detecting OOD data. Moreover,           on a different scenario, as we operate under the as-
+for LLM-based question-answering (QA) systems, the              sumption that no labels are available. This scenario is
+same likelihood ratio excels in detecting OOD ques-             often referred to as “unsupervised OOD detection” or
+tions. By identifying and rejecting these OOD ques-             “OOD detection without in-distribution labels”.
+tions, we can greatly enhance the robustness of current
+QA systems.                                                     The Paradox in Unsupervised OOD Detection
+                                                                In the context of unsupervised OOD detection, Nal-
+The convenience of obtaining likelihood from loss func-         isnick et al. (2018) revisit Bishop (1994)’s suggestion
+tions in current neural networks enables a simple               that a probabilistic generative model pθ could model
+and straightforward implementation of this method in            the in-distribution pin , proposing to use the model out-
+practice. Moreover, it is worth mentioning that nu-             put S(x) = pθ (x) as a criterion for evaluating a given
+merous practitioners likely already have both a pre-            input x. Surprisingly, Nalisnick et al. discovered that
+trained and a finetuned LLM at their disposal, with             in certain scenario - such as when Din is CIFAR10 and
+both types of models widely accessible from platforms           Dout is SVHN, or Din is FashionMNIST and Dout is
+like Hugging Face. This setup inherently equips them            MNIST — the OOD data received higher pθ (x) scores
+with the capacity for OOD detection without necessi-            than the in-distribution data. This counterintuitive
+tating additional training efforts.                             finding has been labeled as a “paradox”.
+
+2       BACKGROUND AND                                          OOD Proxy To address the paradox, the studies
+        PRELIMINARIES                                           (Ren et al., 2019; Serrà et al., 2019; Schirrmeister et al.,
+                                                                2020; Zhang et al., 2021; Caterini and Loaiza-Ganem,
+OOD Detection We start with an in-distribution                  2022) have put forward the idea of utilizing the likeli-
+dataset, denoted as Din , assuming that the data within         hood ratio as the criterion for identifying OOD data.
+Din is sampled from an in-distribution probability dis-         Zhang and Wischik (2022) integrates these techniques
+tribution pin . The objective of OOD detection is to de-        into a comprehensive structure termed the OOD proxy
+termine whether a given input data x originates from            framework. Within this framework, it is posited that
+pin . Hendrycks and Gimpel (2016) were the first to             in-distribution data can be characterized as samples
+highlight the significance of this problem in deep learn-       from a distribution pin , whereas OOD data are samples
+ing era and introduced a practical benchmark for eval-          from a distribution pout . According to the Neyman-
+                                                  train         Pearson lemma, the likelihood ratio represents the op-
+uation. This involves training a model on Din           , the
+training subset of the in-distribution dataset, with the        timal criterion for OOD detection in theory, which is
+model providing a detection criterion S for identifying         mathematically expressed as:
+OOD data. We then gather a dataset from domains
+different from Din , labeled as Dout . The effectiveness of                                   pout (x)
+                                                                                     S(x) =
+the criterion S is assessed by applying it to data from                                       pin (x)
+  test   test
+Din    ∪Dout  and evaluating the performance using met-
+rics such as AUROC, AUPR, and FPR95 (Yang et al.,               where obtaining pout is challenging. To address this,
+2022). These metrics help determine how well S can              Zhang and Wischik (2022) introduced the concept of
+differentiate between the in-distribution dataset and              2
+                                                                     A possible ambiguity here is that some might think
+    1
+    Jin et al. (2022) found this method inferior to con-        having OOD data is what makes it supervised OOD detec-
+trastive learning with smaller models. Our work shows it        tion; here we emphasize that “supervised” and “unsuper-
+outperforms as model scale increases (Section 7).               vised” refer to the labels of in-distribution data.
+                     Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+utilizing a proxy distribution, pproxy
+                                  out , which incorpo-                    This criterion essentially employs the pretrained large
+rates human subjective understanding of the OOD dis-                      language model as an OOD proxy introduced in Sec-
+tribution. For instance, Ren et al. (2019) define pproxy
+                                                    out                   tion 2. This strategy is particularly practical given the
+as the distribution representing background statistics;                   widespread availability of pretrained LLMs. Finetun-
+Serrà et al. (2019) consider it as the distribution of                   ing these models to adapt their distribution for spe-
+data compression; Schirrmeister et al. (2020) describe                    cific domain contexts is a standard practice, mean-
+pproxy
+ out    as a general distribution; and for Zhang et al.                   ing many practitioners may already possess finetuned
+(2021), pproxy
+          out  corresponds to the distribution of a local                 LLMs that represent the distribution of their specific
+autoregressive model.                                                     datasets. With both pretrained and finetuned mod-
+                                                                          els at hand, calculating the likelihood ratio becomes
+In the OOD proxy framework, the use of likelihood as
+                                                                          straightforward, eliminating the need for additional
+a detection criterion, following the approach of Bishop
+                                                                          training. For example, suppose we possess a LLM that
+(1994) and Nalisnick et al. (2018), essentially assumes
+                                                                          has been finetuned on legal documents. Given a new
+a uniform distribution for pproxy
+                             out . The suboptimal per-
+                                                                          document x, we can determine whether it is a legal
+formance associated with this method is not surpris-
+                                                                          document by utilizing the likelihood ratio S(x).
+ing; it highlights the limitations of an improper prior
+assumption.
+                                                                                       Any permutation of the characters
+Likelihood of Autoregressive Language Mod-
+els Autoregressive language models (Brown et al.,                                              Human language
+2020) are types of probabilistic models that compute
+the likelihood of a sentence x = x1 , . . . , xT , where
+                                                                                         Sentences in a specific domain
+T denotes the sentence length and xt represents each
+word at position t. By definition of conditional prob-
+ability, the likelihood p(x) = p(x1 , . . . , xT ) can be
+calculated as the product of conditional probabili-
+ties: p(x1 )p(x2 |x1 )p(x3 |x1 , x2 ) . . . p(xT |x1 , . . . , xT −1 ).   Figure 1: Relationship among sentences within a spe-
+Each term p(xt |x<t ) represents the probability of pre-                  cific domain, the comprehensive set of human lan-
+dicting the subsequent word xt given all the previous                     guage, and all conceivable character permutations.
+words x1 , . . . , xt−1 . In neural language models, these
+conditional probabilities are typically modeled using a                   Utilizing a pretrained LLM as an OOD proxy stems
+softmax function over the output vocabulary.                              from the rationale that the OOD proxy distribution
+When training or finetuning a language model on a                         should encapsulate general characteristics of OOD
+dataset, the objective is to maximize the likelihood of                   data, including prior knowledge or subjective insights
+the training data. This is equivalent to minimizing the                   about the OOD data. While it’s conceivable to pre-
+negative log-likelihood, which is the cross-entropy loss                  sume OOD data emanate from a uniform distribution
+between the predicted word probabilities and the true                     devoid of any prior knowledge, evidence presented by
+word labels at each position. Most modern neural net-                     Nalisnick et al. (2018) indicates that relying on a uni-
+work libraries provide built-in functions to compute                      form distribution as the OOD proxy can be ineffec-
+this cross-entropy loss, making it straightforward to                     tive in practice. In the context of language models,
+optimize the model parameters to minimize the nega-                       the well-known infinite monkey theorem3 (Borel, 1913;
+tive log-likelihood and thus maximize the likelihood of                   Eddington, 2019) suggests that any text could theoret-
+the training data.                                                        ically be generated from a uniform distribution; how-
+                                                                          ever, this does not serve as an effective representation
+                                                                          of any coherent language. Figure 1 depicts the rela-
+3     PRETRAINED LLM AS A OOD                                             tionship among sentences within a specific domain, the
+      PROXY                                                               comprehensive set of human language, and all conceiv-
+                                                                          able character permutations. In fact, coherent human
+Considering an autoregressive language model as a dis-                    language forms a minor subset of all potential charac-
+tribution p, denote pθ as the pretrained large language                   ter arrangements. Consequently, the assumption that
+model with parameters θ. Given an in-distribution                         OOD data ought to represent meaningful human lan-
+dataset Din , the model finetuned on Din is represented                   guage constitutes a strong prior.
+with parameters θ′ . For an input x, we introduce the
+                                                                             3
+out-of-distribution detection criterion S as follows:                          The infinite monkey theorem states that a monkey ran-
+                                                                          domly typing on a typewriter for an infinitely long period
+                                    pθ (x)                                will almost surely produce any given text, such as the com-
+                         S(x) =             .                      (1)    plete works of William Shakespeare.
+                                    pθ′ (x)
+       Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+Therefore, we advocate for the use of a pretrained LLM       section, we will empirically demonstrate which crite-
+as a more suitable OOD proxy. Given their extensive          rion is more effective in practice.
+parameters and training on vast corpora (for example,
+the Llama-2 model, as mentioned by Touvron et al.                Question from GSM8K (In-D):               Question from BoolQ (OOD):
+                                                                   Janet’s ducks lay 16 eggs per day.        Are there nuclear power plants in the
+(2023), is trained on 7 trillion tokens), it is plausible          She eats three for breakfast every        US?
+                                                                   morning and bakes muffins for her       Answer:
+to consider that an LLM encompasses the breadth of                 friends every day with four. She          Nuclear power plants are located in
+                                                                   sells the remainder at the farmers'       30 states.
+human language. Assuming the LLM estimates the                     market daily for $2 per fresh duck        There are 50 states in total.
+                                                                   egg. How much in dollars does she         Therefore, there are 30/50 = 0.6 or
+distribution of all human language, it is logical to des-          make every day at the farmers'            60% of the total number of states
+                                                                   market?                                   with nuclear power plants.
+ignate the pretrained LLM as the OOD proxy.                      Answer:                                     So, there are 60% of 50 states, which
+                                                                   Janet's ducks lay 16 eggs per day.        is 0.6 * 50 = 30 states with nuclear
+                                                                   She eats 3 eggs for breakfast every       power plants.
+                                                                   morning, so she has 16 - 3 = 13 eggs      Therefore, there are 30 nuclear power
+4    LIKELIHOOD RATIO OOD                                          left.
+                                                                   She bakes muffins for her friends
+                                                                                                             plants in the US.
+                                                                                                             #### 30
+
+     DETECTION FOR QA SYSTEMS                                      every day with 4 eggs, so she has 13
+                                                                   - 4 = 9 eggs left.
+                                                                                                             The answer is: 30
+
+                                                                   She sells the remainder at the
+                                                                   farmers' market daily for $2 per
+
+In question-answering (QA) systems, identifying OOD                fresh duck egg, so she makes 9 * $2 =
+                                                                   $18 every day at the farmers' market.
+
+questions is crucial for enhancing system robustness               #### 18
+                                                                   The answer is: 18
+through their rejection. However, detecting OOD
+questions is challenging due to the often brief and un-
+informative nature of the questions submitted to QA          Figure 2: Example question-answer sets produced
+systems, rendering the direct application of the likeli-     by MetaMath-7B. The responses to In-D questions
+hood ratio on the questions themselves ineffective for       are accurate and logical. However, for OOD ques-
+OOD detection. To overcome this issue, we leverage           tions, MetaMath-7B generates unreasonable answers,
+the observation that while a finetuned LLM gener-            responding to a straightforward query with unneces-
+ates pertinent answers to in-distribution questions, it      sary mathematical calculations or producing repetitive
+tends to produce unreasonable sentences in response          sentences with no useful information. For the complete
+to OOD questions (Figure 2). Therefore, we propose           image, please see Appendix.
+a novel approach: for each question, we have the fine-
+tuned LLM generate an answer, and then we apply an
+OOD detection criterion specifically designed for the        5       EXPERIMENTS
+question-answer pair.
+Formally, in the context of autoregressive large lan-        In this section, we conduct a comprehensive evalua-
+guage models, consider a question q = q1 , . . . , qTq ,     tion across various scenarios, including far OOD, near
+from which we generate an answer a = a1 , . . . , aTa by     OOD, spam detection, and QA, to demonstrate the
+sampling from the conditional distribution p(·|q). We        effectiveness of our approach.
+define the following criterion:                              We adhere to the definitions of far OOD and near
+                                                             OOD as outlined by Yang et al. (2022) in their work.
+                       pθ (q)
+          Sq (q, a) =          ,                             Near OOD datasets exhibit only a semantic shift from
+                       pθ′ (q)
+                                                             the In-D datasets, whereas far OOD also encompasses
+                       pθ (a)                                a significant covariate (domain) shift. For far OOD
+          Sa (q, a) =          ,
+                       pθ′ (a)                               evaluations, we designate two distinct datasets as In-
+                       pθ (q, a)                             D and OOD. For near OOD, we divide a single dataset
+         Sq,a (q, a) =            ,                          into two groups: one serving as the In-D with certain
+                       pθ′ (q, a)
+                       pθ (a|q)       pθ (q, a)pθ′ (q)       classes and the other as OOD with a different set of
+         Sa|q (q, a) =            =                          classes.
+                       pθ′ (a|q)      pθ′ (q, a)pθ (q)
+                       Sq,a (q, a)                           Additionally, we demonstrate the capability of our pro-
+                     =              ,                        posed method in detecting OOD instances within the
+                        Sq (q, a)
+                                                             context of spam detection (Labonne and Moran, 2023)
+where Sq , Sa , Sq,a , and Sa|q are defined as follows: Sq   — a practical application for our unsupervised OOD
+is the likelihood ratio for the question, Sa for the an-     detection technique, especially where In-D labels are
+swer, Sq,a for the question-answer pair, and Sa|q for        absent. We show that our method achieves commend-
+the answer given the question. All these criterion are       able results in spam detection even without access to
+the ratios between the likelihoods assigned by the fine-     any spam data. Moreover, when spam data is available
+tuned model to those assigned by the base model. It          and we further finetune the OOD proxy distribution
+is difficult to determine intuitively which of these four    using this data, our results are competitive with state-
+criteria performs best. In the following experimental        of-the-art (SOTA) spam detection algorithms.
+                 Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+        In-D      OOD                   Method                       AUROC ↑      AUPR (OOD) ↑         FPR95 ↓
+                             Zhou et al. (2021)                       0.978            0.865             0.015
+                             CE (Hendrycks and Gimpel, 2016)          0.981            0.942             0.087
+                             TAPT (Gururangan et al., 2020)           0.981            0.939             0.088
+                             SupCon (Khosla et al., 2020)             0.980            0.943             0.094
+                             Uppaal et al. (2023)                     1.000            0.999             0.000
+                  SST-2      Llama-7B LH                              0.008            0.541             0.999
+                             Llama-7B LR                              1.000            1.000             0.000
+                             Mistral-7B LH                            0.008            0.541             1.000
+                             Mistral-7B LR                            0.995            0.999             0.009
+                             Llama-13B LH                             0.009            0.541             1.000
+                             Llama-13B LR                             1.000            1.000             0.000
+                             Zhou et al. (2021)                       0.956            0.860             0.312
+                             CE (Hendrycks and Gimpel, 2016)          0.945            0.902             0.285
+                             TAPT (Gururangan et al., 2020)           0.919            0.869             0.352
+                             SupCon (Khosla et al., 2020)             0.952            0.914             0.248
+                             Uppaal et al. (2023)                     1.000            0.999             0.000
+        20NG
+                   RTE       Llama-7B LH                              0.063            0.443             0.998
+                             Llama-7B LR                              1.000            1.000             0.001
+                             Mistral-7B LH                            0.074            0.446             0.998
+                             Mistral-7B LR                            0.997            0.999             0.006
+                             Llama-13B LH                             0.070            0.445             0.997
+                             Llama-13B LR                             1.000            1.000             0.000
+                             Zhou et al. (2021)                       0.969            0.996             0.144
+                             CE (Hendrycks and Gimpel, 2016)          0.961            0.995             0.206
+                             TAPT (Gururangan et al., 2020)           0.965            0.995             0.159
+                             SupCon (Khosla et al., 2020)             0.970            0.996             0.150
+                             Uppaal et al. (2023)                     0.990            0.998             0.012
+                  IMDB       Llama-7B LH                              0.755            0.311             0.932
+                             Llama-7B LR                              1.000            1.000             0.001
+                             Mistral-7B LH                            0.767            0.943             0.926
+                             Mistral-7B LR                            0.999            0.998             0.003
+                             Llama-13B LH                             0.773            0.332             0.919
+                             Llama-13B LR                             1.000            1.000             0.000
+
+Table 1: Results of far OOD detection, utilizing the same experimental setup as described by Uppaal et al.
+(2023). Results for methods not originating from our work are cited directly from Uppaal et al. (2023). For the
+complete details, please see Appendix.
+
+
+Finally, we evaluate our approach within a real                OOD detection, especially when the 20 Newsgroups
+question-answering (QA) context, utilizing MetaMath            (20NG) dataset serves as the in-distribution. In this
+— a Llama-2 model finetuned for math problem-                  context, we present that our proposed method also
+solving, as described by Yu et al. (2023). By imple-           attains nearly perfect performance under the same ex-
+menting the likelihood-ratio-based criteria outlined in        perimental conditions, as detailed in Table 1.
+Section 4, we find that for specific short questions,
+                                                               Note that, the notation ‘Model-XB LH/LR’ is used,
+having the LLM provide an answer and subsequently
+                                                               where ‘Model’ can be either Llama (Touvron et al.,
+applying a criterion that analyzes both the question
+                                                               2023) or Mistral (Jiang et al., 2023), denoting two pop-
+and answer leads to consistently improved outcomes
+                                                               ular open-source large language models (LLMs). Here,
+in identifying OOD questions.
+                                                               ‘Llama’ specifically refers to the Llama 2 version. The
+                                                               ‘XB’ indicates the model’s parameter count, either 7B
+Evaluation Metrics We employ AUROC (Area                       or 13B. ‘LH’ stands for likelihood, signifying the use of
+Under the Receiver Operating Characteristic curve),            pθ (x) as the criterion for OOD detection; ‘LR’ denotes
+AUPR (Area Under the Precision-Recall curve), and              likelihood-ratio, referring to the employment of S(x)
+FPR95 (False Positive Rate at 95% True Positive                as outlined in Equation (1) for OOD identification.
+Rate) as our evaluation metrics. These metrics are
+commonly utilized in evaluating the performance of             Examining Table 1, we observe that for far OOD de-
+OOD detection methods (Hendrycks and Gimpel,                   tection, the Llama-13B LR model nearly perfectly ad-
+2016; Yang et al., 2022).                                      dresses the challenge across all the In-D OOD pairs for
+                                                               far OOD detection.
+5.1   Far OOD Detection
+                                                               5.2    Near OOD Detection
+For text data, detecting far OOD instances is rela-
+tively less challenging. Uppaal et al. (2023) have illus-      We select the ROSTD (Gangal et al., 2020), SNIPS
+trated that utilizing the latent distance from a pre-          (Coucke et al., 2018), and CLINC150 (Larson et al.,
+trained RoBERTa model significantly addresses far              2019) datasets for our near OOD detection exper-
+       Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+           Dataset        In-D Label              Model                  AUROC ↑        AUPR ↑         FPR95 ↓
+                                           Gangal et al. (2020)            0.981          0.958         0.077
+                                           Jin et al. (2022)               0.990          0.973         0.041
+                                           Llama-7B LH                     0.960          0.890         0.168
+                                           Llama-7B LR                     0.994          0.984         0.023
+                              No
+            ROSTD                          Mistral-7B LH                   0.964          0.901         0.158
+                                           Mistral-7B LR                   0.992          0.978         0.033
+                                           Llama-13B LH                    0.965          0.905         0.166
+                                           Llama-13B LR                    0.994          0.988         0.018
+                              Yes          Podolskiy et al. (2021)         0.998          0.994         0.008
+                                           Gangal et al. (2020)            0.955          0.903         0.192
+                                           Jin et al. (2022)               0.963          0.910         0.145
+                                           Llama-7B LH                     0.912          0.829         0.391
+                                           Llama-7B LR                     0.993          0.986         0.029
+                              No
+            SNIPS                          Mistral-7B LH                   0.912          0.819         0.417
+                                           Mistral-7B LR                   0.987          0.968         0.087
+                                           Llama-13B LH                    0.942          0.872         0.280
+                                           Llama-13B LR                    0.995          0.988         0.028
+                              Yes          Podolskiy et al. (2021)         0.978          0.933         0.120
+                                           Gangal et al. (2020)            0.883          0.677         0.463
+                                           Jin et al. (2022)               0.902          0.703         0.417
+                                           Llama-7B LH                     0.821          0.456         0.538
+                                           Llama-7B LR                     0.917          0.766         0.384
+                              No
+           CLINC150                        Mistral-7B LH                   0.823          0.454         0.540
+                                           Mistral-7B LR                   0.913          0.730         0.399
+                                           Llama-13B LH                    0.820          0.450         0.546
+                                           Llama-13B LR                    0.915          0.742         0.386
+                              Yes          Podolskiy et al. (2021)         0.982          0.939         0.092
+
+Table 2: Results for near OOD detection. Since the experimental configurations in the studies by Gangal et al.
+(2020), Podolskiy et al. (2021), and Jin et al. (2022) differ, we have replicated their methods and aligned the
+dataset splitting for consistency.
+
+
+iments. The ROSTD and CLINC150 datasets are                       Spam Dataset (Sakkis et al., 2003), SMS Spam Collec-
+specifically crafted for OOD detection and include des-           tion (Almeida et al., 2011), SpamAssassin Public Cor-
+ignated classes representing OOD data from the same               pus, and Enron Email Dataset (Metsis et al., 2006). It
+domain. The SNIPS dataset comprises user utter-                   compares the performance of both traditional and deep
+ances distributed among seven intent classes, such as             learning-based binary classifiers. Our method, being
+GetWeather and RateBook. As it does not inherently                rooted in OOD detection, requires only the non-spam
+provide OOD utterances, we classify the GetWeather                (ham) data for finetuning the LLM. Table 3 indicates
+and BookRestaurant intents as OOD for the purpose                 that our method, without any spam data, can still re-
+of our experiments. It’s noteworthy that this classifi-           liably identify spam. Furthermore, when spam data is
+cation diverges from the one in the study by Jin et al.           available, we can finetune the OOD proxy using this
+(2022), which does not explicitly detail their data split-        data and apply the likelihood ratio between the two
+ting methodology.                                                 finetuned LLMs. This approach achieves performance
+                                                                  that is competitive with the SOTA in spam detection.
+Table 2 demonstrates that the likelihood ratio be-
+tween the pretrained Llama model and the finetuned
+Llama model yields the highest performance among                  5.4   OOD Question Detection in QA Systems
+unsupervised OOD detection methods. In the case
+of CLINC150, the supervised OOD detection method                  We test the effectiveness of the criterion we introduced
+introduced by Podolskiy et al. (2021) significantly sur-          in Section 4 within a QA scenario. Here, we employ
+passes our approach, a point that is further discussed            MetaMath (Yu et al., 2023), law-chat and medicine-
+in Section 6.                                                     chat (Cheng et al., 2023), which are Llama2 models
+                                                                  finetuned on specific domains. The objective in this
+5.3   Spam Detection                                              QA context is to identify OOD questions that originate
+                                                                  from domains outside the model’s expertise. Filter-
+Given that the concept of unsupervised OOD detection              ing out OOD questions enhances the system’s robust-
+aligns closely with spam detection, we evaluate our               ness. For this evaluation, we designate the test sets of
+method using the spam detection benchmark intro-                  the GSM8K (Cobbe et al., 2021), MATH (Hendrycks
+duced by Labonne and Moran (2023). This benchmark                 et al., 2021), casehold (Zheng et al., 2021) and Pub-
+includes four specific spam detection datasets: Ling-             MedQA (Jin et al., 2019) datasets as In-D and use
+                Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+              Dataset        Spam Data          Model            AUROC ↑         AUPR ↑        FPR95 ↓
+                                             Llama-7B LH           0.960          0.699          0.088
+                                             Llama-7B LR           0.866          0.582          0.487
+                                 No
+                                             Llama-13B LH          0.957          0.689          0.093
+                                             Llama-13B LR          0.810          0.518          0.761
+                                             NB                    0.988          0.949          0.113
+                                             Logistic              0.985          0.946          0.124
+                SMS                          KNN                   0.863          0.830          0.811
+                                             SVM                   0.997          0.980          0.024
+                                             XGBoost               0.918          0.873          0.676
+                                Yes
+                                             LightGBM              0.978          0.921          0.103
+                                             RoBERTa               0.997          0.988          0.004
+                                             Spam-T5               0.985          0.959          0.082
+                                             Llama-7B LR           1.000          1.000         0.000
+                                             Llama-13B LR          0.999          0.995         0.000
+                                             Llama-7B LH           0.964          0.884          0.096
+                                             Llama-7B LR           0.960          0.935          0.296
+                                 No
+                                             Llama-13B LH          0.956          0.897          0.169
+                                             Llama-13B LR          0.941          0.917          0.398
+                                             NB                    0.971          0.917         0.070
+                                             Logistic              0.992          0.986         0.029
+            SpamAssassin                     KNN                   0.931          0.935         0.578
+                                             SVM                   0.990          0.983         0.046
+                                             XGBoost               0.994          0.989         0.019
+                                Yes
+                                             LightGBM              1.000          0.999         0.000
+                                             RoBERTa               0.999          0.997         0.000
+                                             Spam-T5               0.996          0.994         0.012
+                                             Llama-7B LR           0.998          0.996          0.005
+                                             Llama-13B LR          0.994          0.989          0.019
+                                             Llama-7B LH           0.721          0.728          0.798
+                                             Llama-7B LR           0.991          0.989          0.043
+                                 No
+                                             Llama-13B LH          0.719          0.723          0.798
+                                             Llama-13B LR          0.992          0.990          0.035
+                                             NB                    0.992          0.991          0.035
+                                             Logistic              0.994          0.992          0.025
+               Enron                         KNN                   0.915          0.927          0.239
+                                             SVM                   0.998          0.998          0.008
+                                             XGBoost               0.975          0.967          0.111
+                                Yes
+                                             LightGBM              0.997          0.997          0.013
+                                             RoBERTa               1.000          1.000          0.001
+                                             Spam-T5               1.000          1.000          0.001
+                                             Llama-7B LR           0.999          0.999         0.001
+                                             Llama-13B LR          1.000          1.000         0.000
+
+              Table 3: Results of spam detection. For the complete details, please see Appendix.
+
+
+SQUAD (Rajpurkar et al., 2018), BoolQ (Clark et al.,        echoes the phenomenon highlighted by Nalisnick et al.
+2019), and PIQA (Bisk et al., 2020) as OOD datasets.        (2018), where language OOD data may unexpectedly
+Table 4 indicates that the criterion Sa consistently        exhibit higher likelihood values. Upon examining the
+outperforms the other evaluated criteria, with all its      characteristics of the datasets involved, it becomes ap-
+AUROC values exceeding 0.5. This demonstrates its           parent that the texts from the 20 Newsgroups (20NG)
+effectiveness in detecting OOD. Notably, Sq exhibits        (Lang, 1995) dataset are significantly longer than those
+subpar performance in most scenarios, underscoring          from the comparative OOD datasets, such as SST-2
+the necessity of our proposed approach that generates       and RTE, especially in instances where the AUROC
+an answer and formulates the criterion based on the         is notably low. This observation reveals a tendency
+question-and-answer pair.                                   among language models to assign higher likelihoods to
+                                                            shorter sentences, irrespective of their actual semantic
+                                                            content. It highlights the crucial importance of adopt-
+6   DISCUSSIONS
+                                                            ing the likelihood ratio rather than solely relying on
+                                                            raw likelihood values to enhance the accuracy of OOD
+Nalisnick’s Paradox in Language OOD Detec-                  detection.
+tion Our far OOD detection experiments in Table 1
+show that the AUROC for likelihood-based OOD de-
+tection methods can be exceptionally low. This finding
+       Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+        In-D         OOD             Model         Criterion        AUROC ↑       AUPR (OOD) ↑        FPR95 ↓
+                                                   Sq                0.2139            0.2304          0.9474
+                                                   Sa                0.6384            0.3963          0.8916
+                   SQUAD 2.0      MetaMath-7B
+                                                   Sq,a              0.6527            0.4477          0.8436
+                                                   Sa|q              0.7385            0.5305          0.7914
+                                                   Sq                0.1303            0.4472          0.9658
+       MATH                                        Sa                0.6135            0.7111          0.8580
+                     BoolQ        MetaMath-7B
+                                                   Sq,a              0.6361            0.7474          0.8008
+                                                   Sa|q              0.7507            0.8266          0.6870
+                                                   Sq                0.9681            0.9902          0.0732
+                                                   Sa                0.9206            0.9775          0.1133
+                      PIQA        MetaMath-7B
+                                                   Sq,a              0.9873            0.9962          0.0242
+                                                   Sa|q              0.9876            0.9956          0.0812
+                                                   Sq                0.2463            0.2039          0.9987
+                                                   Sa                0.9082            0.8425          0.3717
+                   SQUAD 2.0       law-chat-7B
+                                                   Sq,a              0.2048            0.1954          0.9989
+                                                   Sa|q              0.3915            0.2080          0.9992
+                                                   Sq                0.3869            0.5249          0.9985
+       casehold                                    Sa                0.8878            0.9222          0.4753
+                     BoolQ         law-chat-7B
+                                                   Sq,a              0.2692            0.4737          0.9988
+                                                   Sa|q              0.1307            0.3257          0.9996
+                                                   Sq                0.9241            0.9717          0.3064
+                                                   Sa                0.9917            0.9978          0.0078
+                      PIQA         law-chat-7B
+                                                   Sq,a              0.8539            0.9440          0.4832
+                                                   Sa|q              0.0045            0.3743          0.9984
+
+       Table 4: OOD question detection in QA settings. For the complete details, please see Appendix.
+
+
+The Effectiveness of In-D Labels In the near                   assumption. Similarly, the content from the SpamAs-
+OOD detection experiments presented in Table 2,                sassin dataset, being highly structured in email and
+Podolskiy et al. (2021)’s approach outperforms com-            data transaction formats (header information), also di-
+peting methods significantly. This superior perfor-            verges from typical natural language patterns.
+mance may be attributed to the distinct class dis-
+                                                               Given these deviations from the natural language as-
+tribution across datasets. Specifically, the CLINC150
+                                                               sumption, it is understandable why LH might outper-
+dataset comprises 150 In-D classes, in stark contrast
+                                                               form LR in these unique scenarios.
+to the SNIPS and ROSTD datasets, which offer a
+mere 7 (with only 5 for In-D) and 13 In-D classes,
+respectively. The substantially greater number of In-          7   RELATED WORKS
+D classes in CLINC150 compared to the other datasets
+likely enhances Podolskiy et al. (2021)’s method’s abil-       Building upon the OOD detection method using like-
+ity to leverage the extensive class label information,         lihood ratios introduced by Ren et al. (2019), Gangal
+thus yielding improved OOD detection results.                  et al. (2020) suggested employing the likelihood ra-
+                                                               tio between two LSTM language models. In their ap-
+                                                               proach, one model functions as a “background model”
+Some cases that LH is better than LR In the
+                                                               representing OOD data and is trained on random com-
+spam detection experiments detailed in Table 3, par-
+                                                               binations from the vocabulary.
+ticularly with data from the SMS and SpamAssassin
+datasets, we observe that without spam data, the like-         Jin et al. (2022) used the likelihood ratio between a
+lihood (LH) method outperforms the likelihood ratio            pretrained GPT-2 and a finetuned version of GPT-2 as
+(LR). While LR generally shows superior and more               a baseline to compare with their proposed contrastive
+consistent performance across most experiments — as            learning-based OOD detection method. They showed
+LH can exhibit extremely poor performance in certain           that their proposed method can out perform the like-
+cases, a point elaborated in Section 6 — there are spe-        lihood ratio based method. However, they only used
+cific instances where LH is more effective.                    GPT-2 in their likelihood ratio baseline, which is very
+                                                               small both in terms of training data and the model
+The rationale behind using large language models
+                                                               size by today standard.
+(LLMs) as an OOD proxy, as introduced in Section 2,
+is based on the assumption that OOD data deviates              In comparison, our study provides a more comprehen-
+from domain-specific natural language content. How-            sive analysis of likelihood ratio between base mod-
+ever, spam messages in the SMS dataset often include           els and fine-tuned models using much larger LLMs.
+intentionally misspelled words to circumvent detection         We show that leveraging these more advanced LLMs,
+mechanisms, thereby violating our natural language             likelihood ratio significantly outperforms results from
+                 Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+Jin et al. (2022) in OOD detection. Additionally, in          Bosselut, A., Brunskill, E., et al. (2021). On the
+the current era, accessing and sharing both pretrained        opportunities and risks of foundation models. arXiv
+and finetuned LLMs has become considerably easier             preprint arXiv:2108.07258.
+through online platforms such as Hugging Face. Using
+                                                            Borel, É. (1913).           La mécanique statique et
+likelihood ratio in LLMs for OOD detection is easy,
+                                                              l’irréversibilité. J. Phys. Theor. Appl., 3(1):189–196.
+accessible, and very effective.
+                                                            Brown, T., Mann, B., Ryder, N., Subbiah, M., Ka-
+                                                              plan, J. D., Dhariwal, P., Neelakantan, A., Shyam,
+8   CONCLUDING REMARKS
+                                                              P., Sastry, G., Askell, A., et al. (2020). Language
+We revisit and validate the likelihood ratio between a        models are few-shot learners. Advances in neural
+pretrained LLM and its finetuned variant as a crite-          information processing systems, 33:1877–1901.
+rion for OOD detection across various scenarios, with-      Caterini, A. L. and Loaiza-Ganem, G. (2022). Entropic
+out the need for additional training. This LLM-based          issues in likelihood-based ood detection. In I (Still)
+likelihood ratio, despite being very easy to implement,       Can’t Believe It’s Not Better! Workshop at NeurIPS
+shows surprising empirical effectiveness in OOD de-           2021, pages 21–26. PMLR.
+tection, and more importantly, it enables us to build
+                                                            Cheng, D., Huang, S., and Wei, F. (2023). Adapting
+robust QA systems that are able to answer both gen-
+                                                              large language models via reading comprehension.
+eral and domain-specific questions (i.e., using the like-
+                                                              arXiv preprint arXiv:2309.09530.
+lihood ratio to determine which LLM should be used
+to answer the input question). We expect that our           Clark, C., Lee, K., Chang, M.-W., Kwiatkowski, T.,
+LLM-based likelihood ratio can benefit many other ap-         Collins, M., and Toutanova, K. (2019). Boolq: Ex-
+plications in the future.                                     ploring the surprising difficulty of natural yes/no
+                                                              questions. arXiv preprint arXiv:1905.10044.
+ACKNOWLEDGEMENTS                                            Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M.,
+                                                              Jun, H., Kaiser, L., Plappert, M., Tworek, J.,
+In the early stages of this work, AZ was supported            Hilton, J., Nakano, R., et al. (2021). Training ver-
+by a personal grant from Mrs. Yanshu Wu. In the               ifiers to solve math word problems. arXiv preprint
+middle and later stages, AZ was funded by the UKRI            arXiv:2110.14168.
+AI Hub in Generative Models (EP/Y028805/1). RB
+                                                            Coucke, A., Saade, A., Ball, A., Bluche, T., Caulier,
+and TX were supported by the German Federal Min-
+                                                              A., Leroy, D., Doumouro, C., Gisselbrecht, T., Calt-
+istry of Education and Research (BMBF): Tübingen
+                                                              agirone, F., Lavril, T., et al. (2018). Snips voice plat-
+AI Center, FKZ: 01IS18039A. RB acknowledges fund-
+                                                              form: an embedded spoken language understanding
+ing by the German Research Foundation (DFG) for
+                                                              system for private-by-design voice interfaces. arXiv
+project 448588364 of the Emmy Noether Programme.
+                                                              preprint arXiv:1805.10190.
+The authors thank the International Max Planck Re-
+search School for Intelligent Systems (IMPRS-IS) for        Eddington, A. (2019). The nature of the physical
+supporting Tim Z. Xiao.                                       world: THE GIFFORD LECTURES 1927, vol-
+                                                              ume 23. BoD–Books on Demand.
+References                                                  Gangal, V., Arora, A., Einolghozati, A., and Gupta, S.
+Almeida, T. A., Hidalgo, J. M. G., and Yamakami, A.          (2020). Likelihood ratios and generative classifiers
+  (2011). Contributions to the study of sms spam fil-        for unsupervised out-of-domain detection in task
+  tering: new collection and results. In Proceedings of      oriented dialog. In Proceedings of the AAAI Con-
+  the 11th ACM symposium on Document engineer-               ference on Artificial Intelligence, volume 34, pages
+  ing, pages 259–262.                                        7764–7771.
+Bishop, C. M. (1994). Novelty detection and neural          Gururangan, S., Marasović, A., Swayamdipta, S., Lo,
+  network validation. IEE Proceedings-Vision, Image          K., Beltagy, I., Downey, D., and Smith, N. A.
+  and Signal processing, 141(4):217–222.                     (2020). Don’t stop pretraining: Adapt language
+Bisk, Y., Zellers, R., Gao, J., Choi, Y., et al. (2020).     models to domains and tasks. arXiv preprint
+  Piqa: Reasoning about physical commonsense in              arXiv:2004.10964.
+  natural language. In Proceedings of the AAAI con-         Hendrycks, D., Burns, C., Kadavath, S., Arora,
+  ference on artificial intelligence, volume 34, pages        A., Basart, S., Tang, E., Song, D., and Stein-
+  7432–7439.                                                  hardt, J. (2021). Measuring mathematical prob-
+Bommasani, R., Hudson, D. A., Adeli, E., Altman, R.,          lem solving with the math dataset. arXiv preprint
+  Arora, S., von Arx, S., Bernstein, M. S., Bohg, J.,         arXiv:2103.03874.
+       Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+Hendrycks, D. and Gimpel, K. (2016). A baseline               bayes? In CEAS, volume 17, pages 28–69. Mountain
+  for detecting misclassified and out-of-distribution         View, CA.
+  examples in neural networks.       arXiv preprint         Nalisnick, E., Matsukawa, A., Teh, Y. W., Gorur, D.,
+  arXiv:1610.02136.                                           and Lakshminarayanan, B. (2018). Do deep gener-
+Hu, E. J., Shen, Y., Wallis, P., Allen-Zhu, Z., Li,           ative models know what they don’t know? arXiv
+ Y., Wang, S., Wang, L., and Chen, W. (2021).                 preprint arXiv:1810.09136.
+ Lora: Low-rank adaptation of large language mod-           Podolskiy, A., Lipin, D., Bout, A., Artemova, E., and
+ els. arXiv preprint arXiv:2106.09685.                        Piontkovskaya, I. (2021). Revisiting mahalanobis
+Jiang, A. Q., Sablayrolles, A., Mensch, A., Bamford,          distance for transformer-based out-of-domain detec-
+  C., Chaplot, D. S., Casas, D. d. l., Bressand, F.,          tion. In Proceedings of the AAAI Conference on Ar-
+  Lengyel, G., Lample, G., Saulnier, L., et al. (2023).       tificial Intelligence, volume 35, pages 13675–13682.
+  Mistral 7b. arXiv preprint arXiv:2310.06825.              Rajpurkar, P., Jia, R., and Liang, P. (2018). Know
+Jin, D., Gao, S., Kim, S., Liu, Y., and Hakkani-Tür,        what you don’t know: Unanswerable questions for
+  D. (2022). Towards textual out-of-domain detec-            squad. arXiv preprint arXiv:1806.03822.
+  tion without in-domain labels. IEEE/ACM Trans-
+                                                            Ren, J., Liu, P. J., Fertig, E., Snoek, J., Poplin, R.,
+  actions on Audio, Speech, and Language Processing,
+                                                              Depristo, M., Dillon, J., and Lakshminarayanan, B.
+  30:1386–1395.
+                                                              (2019). Likelihood ratios for out-of-distribution de-
+Jin, Q., Dhingra, B., Liu, Z., Cohen, W. W., and              tection. Advances in neural information processing
+  Lu, X. (2019). Pubmedqa: A dataset for biomed-              systems, 32.
+  ical research question answering. arXiv preprint
+                                                            Sakkis, G., Androutsopoulos, I., Paliouras, G.,
+  arXiv:1909.06146.
+                                                              Karkaletsis, V., Spyropoulos, C. D., and Stam-
+Khosla, P., Teterwak, P., Wang, C., Sarna, A., Tian,          atopoulos, P. (2003). A memory-based approach to
+ Y., Isola, P., Maschinot, A., Liu, C., and Krish-            anti-spam filtering for mailing lists. Information re-
+ nan, D. (2020). Supervised contrastive learning.             trieval, 6:49–73.
+ Advances in neural information processing systems,
+                                                            Schirrmeister, R., Zhou, Y., Ball, T., and Zhang, D.
+ 33:18661–18673.
+                                                              (2020). Understanding anomaly detection with deep
+Labonne, M. and Moran, S. (2023). Spam-t5: Bench-             invertible networks through hierarchies of distribu-
+  marking large language models for few-shot email            tions and features. Advances in Neural Information
+  spam detection. arXiv preprint arXiv:2304.01238.            Processing Systems, 33:21038–21049.
+Lang, K. (1995). Newsweeder: Learning to filter net-        Serrà, J., Álvarez, D., Gómez, V., Slizovskaia, O.,
+  news. In Machine learning proceedings 1995, pages           Núñez, J. F., and Luque, J. (2019).          Input
+  331–339. Elsevier.                                          complexity and out-of-distribution detection with
+Larson, S., Mahendran, A., Peper, J. J., Clarke, C.,          likelihood-based generative models. arXiv preprint
+  Lee, A., Hill, P., Kummerfeld, J. K., Leach, K., Lau-       arXiv:1909.11480.
+  renzano, M. A., Tang, L., et al. (2019). An evalua-       Sun, Y., Ming, Y., Zhu, X., and Li, Y. (2022). Out-of-
+  tion dataset for intent classification and out-of-scope     distribution detection with deep nearest neighbors.
+  prediction. arXiv preprint arXiv:1909.02027.                In International Conference on Machine Learning,
+Lee, K., Lee, K., Lee, H., and Shin, J. (2018). A simple      pages 20827–20840. PMLR.
+  unified framework for detecting out-of-distribution       Touvron, H., Martin, L., Stone, K., Albert, P., Alma-
+  samples and adversarial attacks. Advances in neural         hairi, A., Babaei, Y., Bashlykov, N., Batra, S.,
+  information processing systems, 31.                         Bhargava, P., Bhosale, S., et al. (2023). Llama 2:
+Liu, W., Wang, X., Owens, J., and Li, Y. (2020).              Open foundation and fine-tuned chat models. arXiv
+  Energy-based out-of-distribution detection. Ad-             preprint arXiv:2307.09288.
+  vances in neural information processing systems,          Uppaal, R., Hu, J., and Li, Y. (2023). Is fine-tuning
+  33:21464–21475.                                            needed? pre-trained language models are near per-
+Lyu, Z., Duolikun, D., Dai, B., Yao, Y., Minervini, P.,      fect for out-of-domain detection. arXiv preprint
+  Xiao, T. Z., and Gal, Y. (2020). You need only un-         arXiv:2305.13282.
+  certain answers: Data efficient multilingual question     Wang, H., Li, Z., Feng, L., and Zhang, W. (2022).
+  answering. ICML 2020 Workshop on Uncertainty               Vim: Out-of-distribution with virtual-logit match-
+  and Robustness in Deep Learning.                           ing. In Proceedings of the IEEE/CVF conference
+Metsis, V., Androutsopoulos, I., and Paliouras, G.           on computer vision and pattern recognition, pages
+ (2006). Spam filtering with naive bayes-which naive         4921–4930.
+                Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+Xiao, T. Z., Gomez, A. N., and Gal, Y. (2020).
+  Wat zei je? detecting out-of-distribution transla-
+  tions with variational transformers. arXiv preprint
+  arXiv:2006.08344.
+Yang, J., Wang, P., Zou, D., Zhou, Z., Ding, K., Peng,
+  W., Wang, H., Chen, G., Li, B., Sun, Y., et al.
+  (2022). Openood: Benchmarking generalized out-
+  of-distribution detection. Advances in Neural Infor-
+  mation Processing Systems, 35:32598–32611.
+Yu, L., Jiang, W., Shi, H., Yu, J., Liu, Z., Zhang,
+  Y., Kwok, J. T., Li, Z., Weller, A., and Liu, W.
+  (2023). Metamath: Bootstrap your own mathe-
+  matical questions for large language models. arXiv
+  preprint arXiv:2309.12284.
+Zhang, A. and Wischik, D. (2022). Falsehoods that
+  ml researchers believe about ood detection. arXiv
+  preprint arXiv:2210.12767.
+Zhang, M., Zhang, A., and McDonagh, S. (2021). On
+  the out-of-distribution generalization of probabilis-
+  tic image modelling. Advances in Neural Informa-
+  tion Processing Systems, 34:3811–3823.
+Zheng, L., Guha, N., Anderson, B. R., Henderson, P.,
+  and Ho, D. E. (2021). When does pretraining help?
+  assessing self-supervised learning for law and the
+  casehold dataset of 53,000+ legal holdings. In Pro-
+  ceedings of the eighteenth international conference
+  on artificial intelligence and law, pages 159–168.
+Zhou, W., Liu, F., and Chen, M. (2021). Contrastive
+  out-of-distribution detection for pretrained trans-
+  formers. arXiv preprint arXiv:2104.08812.
+Zhu, Y., Chen, Y., Xie, C., Li, X., Zhang, R., Xue,
+  H., Tian, X., Chen, Y., et al. (2022). Boosting out-
+  of-distribution detection with typical features. Ad-
+  vances in Neural Information Processing Systems,
+  35:20758–20769.
+        Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+
+
+       Your Finetuned Large Language Model is Already a Powerful
+         Out-of-distribution Detector: Supplementary Materials
+
+
+
+
+    Question from GSM8K (In-D):               Question from BoolQ (OOD):                Question from SQUAD 2.0 (OOD):
+      Janet’s ducks lay 16 eggs per day.        Are there nuclear power plants in the     Who offered Issac his daughter?
+      She eats three for breakfast every        US?                                     Answer:
+      morning and bakes muffins for her       Answer:                                     Issac's daughter is a person who is
+      friends every day with four. She          Nuclear power plants are located in       not Issac's mother.
+      sells the remainder at the farmers'       30 states.                                So, Issac's daughter is a person who
+      market daily for $2 per fresh duck        There are 50 states in total.             is not Issac's mother.
+      egg. How much in dollars does she         Therefore, there are 30/50 = 0.6 or       Therefore, Issac's daughter is a
+      make every day at the farmers'            60% of the total number of states         person who is not Issac's mother.
+      market?                                   with nuclear power plants.                Therefore, Issac's daughter is a
+    Answer:                                     So, there are 60% of 50 states, which     person who is not Issac's mother.
+      Janet's ducks lay 16 eggs per day.        is 0.6 * 50 = 30 states with nuclear      Therefore, Issac's daughter is a
+      She eats 3 eggs for breakfast every       power plants.                             person who is not Issac's mother.
+      morning, so she has 16 - 3 = 13 eggs      Therefore, there are 30 nuclear power     Therefore, Issac's daughter is a
+      left.                                     plants in the US.                         person who is not Issac's mother.
+      She bakes muffins for her friends         #### 30                                   Therefore, Issac's daughter is a
+      every day with 4 eggs, so she has 13      The answer is: 30                         person who is not Issac's mother.
+      - 4 = 9 eggs left.                                                                  Therefore, Issac's daughter is a
+      She sells the remainder at the                                                      person who is not Issac's mother.
+      farmers' market daily for $2 per                                                    ...
+      fresh duck egg, so she makes 9 * $2 =
+      $18 every day at the farmers' market.
+      #### 18
+      The answer is: 18
+
+
+
+
+Figure 3: Example question-answer sets produced by MetaMath-7B. The responses to In-D questions are ac-
+curate and logical. However, for OOD questions, MetaMath-7B generates unreasonable answers, responding to
+a straightforward query with unnecessary mathematical calculations or producing repetitive sentences with no
+useful information.
+
+9    Finetuning Details
+
+For finetuning, with the exception of MetaMath (Yu et al., 2023), which is comprehensively finetuned from the
+Llama-2 model, we employ LoRA (Low-Rank Adaptation) as described by Hu et al. (2021) for adjusting the
+models. Our aim is to demonstrate the general applicability of our method; therefore, all our LoRA finetuning
+follows a uniform parameter configuration. In accordance with prevalent practices, we finetune the parameters
+in the Q (query) and V (value) projections. We employ a LoRA rank of 16, a LoRA alpha of 32, and a LoRA
+dropout rate of 0.05. Given the varying sizes of datasets, we adjust the learning rate between 10−3 and 10−4 ,
+and the training typically spans 10 to 20 epochs. We select the model checkpoint with the best evaluation loss
+as our finetuned model. For detailed information, please refer to the code provided.
+
+10     The Use of AI Assistants in Research and Writing
+
+We assert that our use of AI assistants is strictly limited to revising the original text.
+                Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+11    Description of Computing Infrastructure
+
+All experiments were conducted using NVIDIA GPUs with varying memory capacities based on model size
+requirements. For models with parameter counts below 7B, we utilized NVIDIA V100 GPUs with 32GB VRAM
+and NVIDIA RTX 4090 GPUs with 24GB VRAM. For larger models with 13B parameters, we employed NVIDIA
+H100 GPUs with 80GB VRAM to accommodate the increased memory demands during training and inference.
+
+12    Full Experiment Results
+
+Full experiment results are detailed below. All the results are averaged over five runs.
+      Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+
+
+             In-D      OOD                    Method                 AUROC ↑   AUPR (OOD) ↑   FPR95 ↓
+
+                                   Zhou et al. (2021)                 0.978        0.865       0.015
+                                   CE (Hendrycks and Gimpel, 2016)    0.981        0.942       0.087
+                                   TAPT (Gururangan et al., 2020)     0.981        0.939       0.088
+                                   SupCon (Khosla et al., 2020)       0.980        0.943       0.094
+                                   Uppaal et al. (2023)               1.000        0.999       0.000
+                       SST-2       Llama-7B LH                        0.008        0.541       0.999
+                                   Llama-7B LR                        1.000        1.000       0.000
+                                   Mistral-7B LH                      0.008        0.541       1.000
+                                   Mistral-7B LR                      0.995        0.999       0.009
+                                   Llama-13B LH                       0.009        0.541       1.000
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.964        0.978       0.224
+                                   CE (Hendrycks and Gimpel, 2016)    0.968        0.989       0.166
+                                   TAPT (Gururangan et al., 2020)     0.964        0.988       0.175
+                                   SupCon (Khosla et al., 2020)       0.970        0.990       0.156
+                                   Uppaal et al. (2023)               1.000        1.000       0.000
+                       MNLI        Llama-7B LH                        0.020        0.119       0.999
+                                   Llama-7B LR                        1.000        1.000       0.001
+                                   Mistral-7B LH                      0.024        0.119       0.999
+                                   Mistral-7B LR                      0.996        0.996       0.008
+                                   Llama-13B LH                       0.024        0.119       0.998
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.956        0.860       0.312
+                                   CE (Hendrycks and Gimpel, 2016)    0.945        0.902       0.285
+                                   TAPT (Gururangan et al., 2020)     0.919        0.869       0.352
+                                   SupCon (Khosla et al., 2020)       0.952        0.914       0.248
+                                   Uppaal et al. (2023)               1.000        0.999       0.000
+                        RTE        Llama-7B LH                        0.063        0.443       0.998
+                                   Llama-7B LR                        1.000        1.000       0.001
+                                   Mistral-7B LH                      0.074        0.446       0.998
+                                   Mistral-7B LR                      0.997        0.999       0.006
+                                   Llama-13B LH                       0.070        0.445       0.997
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.969        0.996       0.144
+                                   CE (Hendrycks and Gimpel, 2016)    0.961        0.995       0.206
+                                   TAPT (Gururangan et al., 2020)     0.965        0.995       0.159
+                                   SupCon (Khosla et al., 2020)       0.970        0.996       0.150
+                                   Uppaal et al. (2023)               0.990        0.998       0.012
+             20NG      IMDB        Llama-7B LH                        0.755        0.311       0.932
+                                   Llama-7B LR                        1.000        1.000       0.001
+                                   Mistral-7B LH                      0.767        0.943       0.926
+                                   Mistral-7B LR                      0.999        0.998       0.003
+                                   Llama-13B LH                       0.773        0.332       0.919
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.980        0.888       0.005
+                                   CE (Hendrycks and Gimpel, 2016)    0.962        0.920       0.175
+                                   TAPT (Gururangan et al., 2020)     0.956        0.922       0.167
+                                   SupCon (Khosla et al., 2020)       0.955        0.918       0.201
+                                   Uppaal et al. (2023)               1.000        1.000       0.000
+                      Multi30K     Llama-7B LH                        0.002        0.470       1.000
+                                   Llama-7B LR                        1.000        1.000       0.000
+                                   Mistral-7B LH                      0.002        0.470       1.000
+                                   Mistral-7B LR                      0.995        0.998       0.008
+                                   Llama-13B LH                       0.002        0.470       1.000
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.955        0.969       0.383
+                                   CE (Hendrycks and Gimpel, 2016)    0.957        0.984       0.234
+                                   TAPT (Gururangan et al., 2020)     0.947        0.981       0.243
+                                   SupCon (Khosla et al., 2020)       0.962        0.986       0.219
+                                   Uppaal et al. (2023)               1.000        1.000       0.000
+                    NewsCategory   Llama-7B LH                        0.014        0.128       1.000
+                                   Llama-7B LR                        1.000        1.000       0.001
+                                   Mistral-7B LH                      0.019        0.129       1.000
+                                   Mistral-7B LR                      0.997        0.997       0.006
+                                   Llama-13B LH                       0.017        0.128       0.999
+                                   Llama-13B LR                       1.000        1.000       0.000
+                                   Zhou et al. (2021)                 0.988        0.870       0.005
+                                   CE (Hendrycks and Gimpel, 2016)    0.964        0.844       0.189
+                                   TAPT (Gururangan et al., 2020)     0.959        0.830       0.213
+                                   SupCon (Khosla et al., 2020)       0.957        0.821       0.230
+                                   Uppaal et al. (2023)               1.000        1.000       0.000
+                     CLINC150      Llama-7B LH                        0.001        0.661       1.000
+                                   Llama-7B LR                        1.000        1.000       0.000
+                                   Mistral-7B LH                      0.001        0.661       1.000
+                                   Mistral-7B LR                      0.995        1.000       0.008
+                                   Llama-13B LH                       0.001        0.661       1.000
+                                   Llama-13B LR                       1.000        1.000       0.000
+
+
+
+Table 5: Results of far OOD detection, utilizing the same experimental setup as described by Uppaal et al.
+(2023). Results for methods not originating from our work are cited directly from Uppaal et al. (2023).
+Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+
+
+       Dataset      Spam Data      Model       AUROC ↑   AUPR ↑     FPR95 ↓
+
+         Ling          No       Llama-7B LH     0.552       0.215    0.934
+                                Llama-7B LR     0.967       0.858    0.174
+                                Llama-13B LH    0.534       0.182    0.929
+                                Llama-13B LR    0.933       0.746    0.336
+                       Yes      NB              1.000       1.000    0.000
+                                Logistic        1.000       1.000    0.000
+                                KNN             0.968       0.932    0.021
+                                SVM             1.000       1.000    0.000
+                                XGBoost         0.995       0.973    0.017
+                                LightGBM        0.997       0.979    0.008
+                                RoBERTa         1.000       1.000    0.000
+                                Spam-T5         1.000       1.000    0.000
+                                Llama-7B LR     0.998       0.993    0.008
+                                Llama-13B LR    0.997       0.988    0.012
+         SMS           No       Llama-7B LH     0.960       0.699    0.088
+                                Llama-7B LR     0.866       0.582    0.487
+                                Llama-13B LH    0.957       0.689    0.093
+                                Llama-13B LR    0.810       0.518    0.761
+                       Yes      NB              0.988       0.949    0.113
+                                Logistic        0.985       0.946    0.124
+                                KNN             0.863       0.830    0.811
+                                SVM             0.997       0.980    0.024
+                                XGBoost         0.918       0.873    0.676
+                                LightGBM        0.978       0.921    0.103
+                                RoBERTa         0.997       0.988    0.004
+                                Spam-T5         0.985       0.959    0.082
+                                Llama-7B LR     1.000       1.000    0.000
+                                Llama-13B LR    0.999       0.995    0.000
+     SpamAssassin      No       Llama-7B LH     0.964       0.884    0.096
+                                Llama-7B LR     0.960       0.935    0.296
+                                Llama-13B LH    0.956       0.897    0.169
+                                Llama-13B LR    0.941       0.917    0.398
+                       Yes      NB              0.971       0.917    0.070
+                                Logistic        0.992       0.986    0.029
+                                KNN             0.931       0.935    0.578
+                                SVM             0.990       0.983    0.046
+                                XGBoost         0.994       0.989    0.019
+                                LightGBM        1.000       0.999    0.000
+                                RoBERTa         0.999       0.997    0.000
+                                Spam-T5         0.996       0.994    0.012
+                                Llama-7B LR     0.998       0.996    0.005
+                                Llama-13B LR    0.994       0.989    0.019
+        Enron          No       Llama-7B LH     0.721       0.728    0.798
+                                Llama-7B LR     0.991       0.989    0.043
+                                Llama-13B LH    0.719       0.723    0.798
+                                Llama-13B LR    0.992       0.990    0.035
+                       Yes      NB              0.992       0.991    0.035
+                                Logistic        0.994       0.992    0.025
+                                KNN             0.915       0.927    0.239
+                                SVM             0.998       0.998    0.008
+                                XGBoost         0.975       0.967    0.111
+                                LightGBM        0.997       0.997    0.013
+                                RoBERTa         1.000       1.000    0.001
+                                Spam-T5         1.000       1.000    0.001
+                                Llama-7B LR     0.999       0.999    0.001
+                                Llama-13B LR    1.000       1.000    0.000
+
+
+
+                      Table 6: Results of spam detection.
+Your Finetuned Large Language Model is Already a Powerful Out-of-distribution Detector
+
+
+
+
+         In-D     OOD          Model       Criterion   AUROC ↑   AUPR (OOD) ↑   FPR95 ↓
+
+        GSM8K   SQUAD 2.0   MetaMath-7B    Sq           0.1116      0.0546      0.9894
+                                           Sa           0.5463      0.0979      0.9947
+                                           Sq,a         0.5363      0.0959      0.9924
+                                           Sa|q         0.6877      0.1376      0.9704
+
+                            MetaMath-13B   Sq           0.0519      0.0524      0.9955
+                                           Sa           0.4958      0.0891      0.9955
+                                           Sq,a         0.4017      0.0764      0.9947
+                                           Sa|q         0.6144      0.1136      0.9765
+
+                  BoolQ     MetaMath-7B    Sq           0.0538      0.1618      0.9955
+                                           Sa           0.5045      0.2616      0.9932
+                                           Sq,a         0.4797      0.2536      0.9879
+                                           Sa|q         0.7156      0.4041      0.9310
+
+                            MetaMath-13B   Sq           0.1008      0.1659      0.9924
+                                           Sa           0.5507      0.2861      0.9833
+                                           Sq,a         0.4778      0.2530      0.9795
+                                           Sa|q         0.6967      0.3886      0.9303
+
+                  PIQA      MetaMath-7B    Sq           0.9762      0.9779      0.0735
+                                           Sa           0.9612      0.9746      0.0569
+                                           Sq,a         0.9975      0.9983      0.0038
+                                           Sa|q         0.9944      0.9944      0.0099
+
+                            MetaMath-13B   Sq           0.9900      0.9906      0.0318
+                                           Sa           0.8879      0.9331      0.1122
+                                           Sq,a         1.0000      0.9999      0.0000
+                                           Sa|q         1.0000      1.0000      0.0000
+
+        MATH    SQUAD 2.0   MetaMath-7B    Sq           0.2139      0.2304      0.9474
+                                           Sa           0.6384      0.3963      0.8916
+                                           Sq,a         0.6527      0.4477      0.8436
+                                           Sa|q         0.7385      0.5305      0.7914
+
+                            MetaMath-13B   Sq           0.1880      0.2232      0.9460
+                                           Sa           0.6098      0.3841      0.8890
+                                           Sq,a         0.5628      0.3649      0.8882
+                                           Sa|q         0.6786      0.4737      0.8166
+
+                  BoolQ     MetaMath-7B    Sq           0.1303      0.4472      0.9658
+                                           Sa           0.6135      0.7111      0.8580
+                                           Sq,a         0.6361      0.7474      0.8008
+                                           Sa|q         0.7507      0.8266      0.6870
+
+                            MetaMath-13B   Sq           0.2612      0.5223      0.9304
+                                           Sa           0.6488      0.7474      0.8148
+                                           Sq,a         0.6384      0.7521      0.7818
+                                           Sa|q         0.7350      0.8191      0.6854
+
+                  PIQA      MetaMath-7B    Sq           0.9681      0.9902      0.0732
+                                           Sa           0.9206      0.9775      0.1133
+                                           Sq,a         0.9873      0.9962      0.0242
+                                           Sa|q         0.9876      0.9956      0.0812
+
+                            MetaMath-13B   Sq           0.9795      0.9938      0.0452
+                                           Sa           0.8495      0.9572      0.1627
+                                           Sq,a         0.9897      0.9969      0.0198
+                                           Sa|q         0.9626      0.9895      0.0484
+
+
+
+Table 7: Outcomes of OOD question detection in QA settings. This table continues in Table 8.
+  Andi Zhang, Tim Z. Xiao, Weiyang Liu, Robert Bamler, Damon Wischik
+
+
+
+
+  In-D        OOD           Model          Criterion   AUROC ↑   AUPR (OOD) ↑   FPR95 ↓
+
+                                           Sq           0.2463      0.2039      0.9987
+                                           Sa           0.9082      0.8425      0.3717
+            SQUAD 2.0   law-chat-7B
+                                           Sq,a         0.2048      0.1954      0.9989
+                                           Sa|q         0.3915      0.2080      0.9992
+
+                                           Sq           0.3869      0.5249      0.9985
+ casehold                                  Sa           0.8878      0.9222      0.4753
+              BoolQ     law-chat-7B
+                                           Sq,a         0.2692      0.4737      0.9988
+                                           Sa|q         0.1307      0.3257      0.9996
+
+                                           Sq           0.9241      0.9717      0.3064
+                                           Sa           0.9917      0.9978      0.0078
+              PIQA      law-chat-7B
+                                           Sq,a         0.8539      0.9440      0.4832
+                                           Sa|q         0.0045      0.3743      0.9984
+
+                                           Sq           0.9024      0.2729      0.4300
+                                           Sa           0.7939      0.6476      0.3660
+            SQUAD 2.0   medicine-chat-7B
+                                           Sq,a         0.8967      0.3959      0.4360
+                                           Sa|q         0.5756      0.1869      0.8400
+
+                                           Sq           0.9266      0.5906      0.3980
+PubMedQA                                   Sa           0.8009      0.7057      0.3800
+              BoolQ     medicine-chat-7B
+                                           Sq,a         0.9066      0.6281      0.4440
+                                           Sa|q         0.3515      0.2356      0.8440
+
+                                           Sq           0.9998      0.9994      0.0000
+                                           Sa           0.8606      0.8439      0.3000
+              PIQA      medicine-chat-7B
+                                           Sq,a         0.9995      0.9984      0.0020
+                                           Sa|q         0.2471      0.2892      0.8420
+
+
+
+    Table 8: Outcomes of OOD question detection in QA settings (continued).
+

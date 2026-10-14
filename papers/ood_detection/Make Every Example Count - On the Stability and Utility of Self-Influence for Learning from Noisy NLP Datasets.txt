@@ -1,0 +1,935 @@
+                                         Make Every Example Count: On the Stability and Utility of Self-Influence
+                                                       for Learning from Noisy NLP Datasets
+
+                                                            Irina Bejan∗ and Artem Sokolov and Katja Filippova
+                                                                              Google DeepMind
+                                                     irinam.bejan@gmail.com, {artemsok, katjaf}@google.com
+
+
+
+                                                                 Abstract                        1.1   Detecting Outliers
+
+                                             Increasingly larger datasets have become a stan-    Defining outliers and how they may (harmfully) in-
+                                             dard ingredient to advancing the state-of-the-      fluence model predictions in a task-agnostic way is
+                                             art in NLP. However, data quality might have        hard and so, until recently, mostly task-dependent
+
+
+
+
+arXiv:2302.13959v2 [cs.CL] 17 Oct 2023
+                                             already become the bottleneck to unlock fur-        heuristics have been employed (Wang et al., 2018).
+                                             ther gains. Given the diversity and the sizes       More principled approaches define an impact of a
+                                             of modern datasets, standard data filtering is      training instance via the concept of influence func-
+                                             not straight-forward to apply, because of the
+                                                                                                 tions (henceforth IFs) (Cook and Weisberg, 1980),
+                                             multifacetedness of the harmful data and elu-
+                                             siveness of filtering rules that would generalize   which quantify the effect on the loss on a test point
+                                             across multiple tasks. We study the fitness of      z when removing an individual training point x.
+                                             task-agnostic self-influence scores of training     For example, Koh and Liang (2017) used access to
+                                             examples for data cleaning, analyze their effi-     gradients and their fast products with the loss Hes-
+                                             cacy in capturing naturally occurring outliers,     sian (Pearlmutter, 1994) to approximate the loss
+                                             and investigate to what extent self-influence       change at z that would occur had x been infinites-
+                                             based data cleaning can improve downstream
+                                                                                                 imally upweighted in the training set. IFs have
+                                             performance in machine translation, question
+                                             answering and text classification, building up
+                                                                                                 been used for debugging of machine learning mod-
+                                             on recent approaches to self-influence calcula-     els (Han et al., 2020), data poisoning attacks (Koh
+                                             tion and automated curriculum learning.             et al., 2022) and detecting dataset errors (Schioppa
+                                                                                                 et al., 2021; Kong et al., 2022). There, it has been
+                                         1   Introduction                                        conjectured and empirically tested that filtering
+                                                                                                 highly self-influential (z = x) points, i.e., the ones
+                                         Deep learning on increasingly larger and diverse
+                                                                                                 that would cause a large loss delta on themselves
+                                         data sources brought impressive advances in natu-
+                                                                                                 (suggesting that they are “unsupported” by other
+                                         ral language processing (NLP), however, data qual-
+                                                                                                 data points and need to be memorized), does lead
+                                         ity might be the major bottleneck to unlock further
+                                                                                                 to improvements in synthetic and real scenarios.
+                                         gains (Kumar et al., 2020). NLP data are usually ac-
+                                                                                                    To deepen this line of work, we also operational-
+                                         quired via large-scale weakly-labeled data scraping
+                                                                                                 ize IFs to detect outliers with self-influence scores,
+                                         or crowd-sourcing labels from non-expert human
+                                                                                                 and formulate our first research question being:
+                                         annotators, which are both error-prone (Bowman
+                                         and Dahl, 2021). At the same time, ambiguous            RQ1: When are self-influence scores effective
+                                         training data are also known to hurt models’ per-       for detecting outliers?
+                                         formance through overfitting or memorization in            The above improvements, however, contrast with
+                                         overparameterized networks (Zhang et al., 2017).        the observations that IFs are sensitive to model and
+                                         Finally, not all data are equally easy to learn and     training hyperparameters in the general, z ̸= x,
+                                         overly complex instances may hinder learning as         case due to violation of the convexity assumption
+                                         well. Below, we refer to all of those cases – label     by IFs in deep learning: Basu et al. (2021) showed
+                                         noise, out-of-distribution, ambiguous or difficult-     that depth and width of the network, its architecture,
+                                         to-learn examples – by an umbrella term outliers.       training regularization and the stochastic approx-
+                                         Two key questions of our work are: How can out-         imations inside IF have strong effects on the IF
+                                         liers be detected and how should they be dealt with?    accuracy and stability (measured on retrieved influ-
+                                             ∗
+                                                 The work was done while interning at Google.    ential xs for a fixed z), which are aggravated with
+the network size. K and Søgaard (2021) further            RQ3: Does AutoCL with self-influence scores
+found that IFs are sensitive to the parameter ini-        bring gains compared to filtering?
+tialization, ordering of the training data and batch
+size. Both papers thus doubted that IF scores of          1.3   Contributions
+training instances would be reliable for practical        We study the stability of self -influence scores,
+purposes, and that retraining after removing or fix-      which are task-agnostic and, if stable, would be
+ing the flagged instances would lead to improve-          an attractive candidate to serve as the data clean-
+ments. Very recently Schioppa et al. (2023) gave a        ing foundation. We further analyze the efficacy of
+theoretical perspective on IFs instability.               capturing naturally occurring outliers by IFs and
+   Since, at a minimum, for self-influence to point       investigate to what extent self-influence can im-
+at outliers in any objective and verifiable sense,        prove performance in NLP tasks with Transformer
+they should exhibit certain stability, this leads us to   architectures, building up on recent improvements
+the second research question of our work:                 in IF approximation accuracy and scalability with
+ RQ2: How stable are self-influence scores?               the Arnoldi iteration based IFs (ABIF) (Schioppa
+Unlike general influence, the self-influence stability    et al., 2021), and AutoCL (Kreutzer et al., 2021).
+has not been covered by previous studies.                    In more detail, our contributions are:
+
+                                                          • Stability of self-influence scores. We start by
+1.2   Dealing with Outliers                                 measuring how stable self-influence scores are,
+                                                            since this is a prerequisite for both successful
+A standard approach to reducing the harms caused
+                                                            data filtering and data scheduling. To this end,
+by outliers is to filter them out (Khayrallah and
+                                                            in §3, we study correlation and overlap of data
+Koehn, 2018; Peskov et al., 2019). However, com-
+                                                            rankings by self-influence scores across different
+ing up with a filtering rule that would generalize
+                                                            model states, i.e., different final states the training
+across multiple tasks is not straightforward. Most
+                                                            converges to as a function of varying batch size,
+scalar-based (incl. self-influence) filtering schemes
+                                                            random seeds of data sampling, data ordering and
+would prescribe setting a threshold cut-off value
+                                                            IF calculation. We also explore the correlation be-
+to delineate outliers from the rest data. This may
+                                                            tween model prediction stability (defined below
+be reasonable for datasets where the to-be-filtered
+                                                            as model churn) and IF’s sensitivity to architec-
+data portion has no apparent signal, however, in
+                                                            ture. We find that, unlike the general (z ̸= x)
+more realistic scenarios many outliers are at least
+                                                            IF scores, the self-influence (z = x) scores are
+somewhat useful. Applying threshold filtering in
+                                                            stable with respect to training and model hyperpa-
+such situation may lead to performance decrease
+                                                            rameters, and across architecture variations, but
+as a portion of useful signal would be lost. For
+                                                            care should be exercised in transferring findings
+example, memorizing some outliers (e.g. under-
+                                                            between architectures of different capacity.
+represented training examples) can in fact improve
+accuracy (Feldman and Zhang, 2020).                       • Effectiveness of self-influence scores. In §4, we
+   Motivated by this shortcoming, in this paper we          employ a suite of different in-distribution and
+explore alternatives to filtering where it is possible      out-of-distribution (o.o.d. ) evaluation setups and
+to make use of outliers and in particular consider          show that filtering out highly self-influential ex-
+automated curriculum learning (AutoCL). AutoCL              amples is more effective for the o.o.d. setup. We
+covers a range of algorithms, where not only the            hypothesize that self-influence capturing general
+training data are presented to a neural network in          outliers prevents learning systematic noise pat-
+a different order than random sampling, but also            terns that would otherwise artificially inflate per-
+where this order is adapted alongside main training         formance in the in-distribution evaluation setup,
+based on learning progress (Graves et al., 2017;            making it harder to improve upon with filtering.
+Kreutzer et al., 2021). This is particularly useful         Furthermore, we investigate what is captured
+when dealing with outliers, as we can learn (via the        by influence scores using both natural outliers
+self-influence proxy) to ignore the outlying data           and synthetic label noise, showing that natural
+samples and prioritize the most helpful ones, with-         data can be spread among high and low influen-
+out having to choose apriori the cut-off threshold.         tial samples, thus the common top-X% filtering
+   Thus, the final research question we address is:         strategies can be ineffective.
+• Data filtering automation. The fixed percent-          QA:TriviaQA. This dataset includes 110k
+  age filtering can also be costly to tune or inaccu-    question-answer pairs authored by trivia enthu-
+  rate, while attempts to automate it using abrupt       siasts, who gathered evidence documents for an-
+  changes at the top of the ranking have a low re-       swering questions drawn from Wikipedia and Bing
+  call rate (Lam et al., 2022). To remedy, in §5         search results (Joshi et al., 2017). This is a par-
+  we employ bandit AutoCL to dynamically detect,         ticularly high quality supervised task, but is still
+  during training, the harmful or the useful train-      difficult to learn: the input length is on average 10
+  ing data quantiles to feed from at each step. The      times longer than in NQ, bringing additional chal-
+  possible bandit actions are derived from the self-     lenges such as complex, compositional questions
+  influence ranking and further split into a fixed       that require higher cross-sentence reasoning. We
+  number of discrete buckets. As a result, AutoCL        evaluate both on TriviaQA and on NQ using the
+  adjusts on-the-fly the ratio of high or low influ-     Exact-Match (EM) and F1 scores.
+  ence examples to train on. This is more gen-
+  eral than threshold filtering, which is a particular   Classification:Wikipedia Toxicity. The dataset
+  (static and hard-weighted) case of general (dy-        contains 223k human annotated comments from
+  namic and soft-weighted) schedules.                    Wikipedia talk page comments (Wulczyn et al.,
+                                                         2017). While the original dataset covers a variety
+2     Tasks, Datasets, Models and Methods                of toxicity subtypes, we only consider a binary
+                                                         classification into toxic and non-toxic comments as
+Throughout this study, we investigate how self-          in (Ebert et al., 2022), and report accuracy and F1.
+influence methods perform and generalize across
+multiple NLP tasks, varying the tasks’ nature, size,     2.2   Models
+noise levels and model architectures (Table 1).          We experiment with three different architectures:
+2.1    Tasks and Datasets                                the standard Transformer-base on the MT task, two
+                                                         sizes of the state-of-the-art LongT5 architecture for
+MT:Paracrawl. We consider the German-                    long inputs on the QA tasks, and the classic BERT-
+English translation task from the noisy Paracrawl        base and T5 architectures on the text classification
+corpus (Bañón et al., 2020), which consists of           task. See §A for training details of each of those.
+100M sentence pairs obtained via web-crawling.
+We evaluate using BLEU after a fixed number              2.3   Methods
+of steps on the newstest17 set from WMT17 to
+                                                         Influence functions are an approximation to the
+match the setup of Schioppa et al. (2021), who
+                                                         loss change at the test point z after an infinitesimal
+also filtered Paracrawl with ABIF.
+                                                         upweighting of a training point x (Koh and Liang,
+QA:Natural Questions. The NQ dataset consists            2017): I(x, z) = ⟨∇Θ L(z), H −1 ∇Θ L(x)⟩, where
+of real queries issued to the Google search engine,      ∇L(x) is the gradient of the loss L at the points x
+alongside Wikipedia fragments that could poten-          or z, and H = ∇2Θ L is the Hessian of the model
+tially contain an answer (Kwiatkowski et al., 2019).     at parameters Θ. For deep learning, the Hessian is
+Each query can have a short answer (incl. empty)         impractical to compute exactly, so Koh and Liang
+and a long answer, the latter requiring to predict       (2017) proposed an approximate estimation proce-
+spans from the fragments. Since we run our NQ            dure to calculate I(x, z). Recently, Schioppa et al.
+experiments with a seq2seq model, we adopt the           (2021) proposed a more accurate and stable method
+dataset version which only covers short answers          that uses Arnoldi iteration to approximate the in-
+from (Guo et al., 2022), who split the official train-   verse Hessian in subspaces spanned by H’s largest
+ing set of 307k samples (90% for training, 10%           eigenvectors. This enabled scaling up the computa-
+as the dev set) for fine-tuning, and use the offi-       tion of influence scores to hundreds of millions of
+cial dev set for testing. From the data quality per-     training points and model parameters. We use their
+spective, being real user queries, NQ is relatively      released code to compute I(x, z) (ABIF).
+clean but contains a high degree of natural ambi-           TracIn (Pruthi et al., 2020) is a gradient-only al-
+guity: about 33% of NQ annotations are debatable         ternative influence definition that relies on C ≥ 1
+and 16% are wrong, meaning the Wikipedia frag-           checkpoints to approximate by how much x’s gradi-
+ment provides no evidence for the ground-truth           ent changes model parameters     and, in turn, the loss
+                                                         at z: IT (x, z) = C1 C
+                                                                              P
+answer (Kwiatkowski et al., 2019).                                               c=1 ⟨∇ Θc L(x), ∇Θc L(z)⟩.
+         Dataset              Task          Noise       Model       Training       Architecture        Params      Train/Dev/Test
+         Paracrawl            MT            very high   enc-dec     from scratch   Transformer-base    60M         100M/3k/3k
+         Natural Questions    QA            low         enc-dec     fine-tuning    LongT5-base/large   220M/770M   276k/31k/7.8k
+         TriviaQA             QA            very low    enc-dec     fine-tuning    LongT5-base         220M        88k/11k/11k
+         Wikipedia Toxicity   text-class.   high        enc(-dec)   fine-tuning    BERT-base/T5-base   110M/220M   144k/16k/63k
+
+                                               Table 1: Dataset and model statistics.
+
+
+   The question of which layers are more effective                         played the best-in-hindsight arm.
+for IFs is still open, with recent work showing good                          To quantify the learning progress, existing met-
+results using the last or few last layers (Han et al.,                     rics are looking at the loss (L) decrease or the in-
+2020; Barshan et al., 2020), but also using the first                      crease in model complexity (Graves et al., 2017).
+layers (Yeh et al., 2022). Therefore, we experiment                        Among those, we use normalized prediction gain
+with IF methods in three variants: first (the first                        reward (pgnorm): 1 − L(θt+1 )/L(θt ) and the co-
+two layers of the encoder and decoder), last (last                         sine similarity reward between the gradients of the
+two layers of both) and all parameters and draw                            training and the reward batches, where the reward
+a comparison between them. For the Paracrawl                               batches are (re)sampled from development sets, fol-
+experiments, following Schioppa et al. (2021), first                       lowing (Kumar et al., 2019; Kreutzer et al., 2021).
+and last only include the first two encoder and the
+last two decoder layers; and the ABIF eigenvectors                         3       Stability of Self-Influence
+were extracted from a model trained on WMT17.
+More details on self-influence computation in §B.                          In this section, we evaluate the stability of self-
+                                                                           influence scores with respect to model states, ar-
+Self-influence and outliers. For both influence                            chitecture and ABIF-specific hyperparameters with
+definitions, the self-influence of a training point x                      Spearman rank correlation and the 90th percentile
+can be derived from them setting z = x. It has                             overlap (i.e. overlap between top-10% examples),
+been conjectured that high values of self-influence                        suggested by K and Søgaard (2021) as an alterna-
+indicate data outliers (Koh and Liang, 2017; Pruthi                        tive to global correlation since one normally cares
+et al., 2020); intuitively, if removing x deteriorates                     only about highly self-influential examples.
+the loss value on itself, then x should be different                          It is important to understand whether self-
+enough so that the prediction on x could not be                            influence ranking, given that it is thought to be
+learned from the rest of the training data and had to                      predictive of data quality, is an inherent data prop-
+be memorized. Grounding the influence definition                           erty or it is mainly rooted in the architecture. In
+in the loss magnitude covers many possible causes                          this regard, we look at the extent to which model
+for being an outlier, such as mislabeling (i.e., true                      stability and self-influence stability are intercon-
+noise), ambiguity (i.e., multiple possible labels,                         nected, via the model churn metric (Cormier et al.,
+depending on the information missing from the                              2016), which is the joint expected percentage of
+input), being out-of-distribution, or being a difficult                    errors on a test distribution. For example, if model
+example (for the model) for other reasons.                                 A is right on 9% of the examples that model B gets
+Automated curriculum learning. We use the                                  wrong, and B is right on the 10% of the examples
+framing of curriculum learning as a multi-armed                            that A gets wrong, the churn is 19%. While chang-
+bandit problem (Kreutzer et al., 2021), where arms                         ing weight initialization does not always impact
+represent distinct subsets of the data that are con-                       accuracy, it can result in a net zero wins and losses,
+sidered bandit actions and are played at each train-                       referred to as unnecessary churn.
+ing step t. When an action at is played (as man-
+                                                                           3.1      Dependence on model states
+dated by the EXP3 or EXP3S algorithms (Auer
+et al., 2002)), a uniformly sampled batch belong-                          We investigate if the self-influence scores are sen-
+ing to that data subset is fed to the model and                            sitive to the model state, i.e., initialization of the
+the scalar reward feedback y t = Yatt is received,                         model, data ordering or batch size. Previously, K
+where Y t would be an unknown reward vector                                and Søgaard (2021) showed instability of general
+of all possible actions. Through this, the bandit                          IFs with regards to these variables, while we turn
+learns alongside
+              P the main task Pto minimize the re-                         attention to self -influence stability, given its foun-
+gret, R = E[ t y t ] − maxa t Yat , of not having                          dational role for data filtering.
+                        LongT5: NQ      Transformer: Paracrawl
+      Layers Method
+                      90th ∩ Spearman   90th ∩   Spearman
+                                                                 In order for self-influence to surface dataset er-
+       first
+               ABIF 77.78      0.781     40.71      0.727        ror/outliers, a low degree of instability across such
+               TracIn 80.49    0.938     63.47      0.872
+               ABIF 87.67      0.933     51.03      0.726
+                                                                 changes would be necessary to avoid misattribution
+       last
+               TracIn 86.95    0.949     64.83      0.901        of self-influence stability to model architecture. We
+       all     ABIF 78.03      0.804     44.58      0.771
+                                                                 compare the self-influence scores resulted from:
+Table 2: Stability of self-influence estimates to chang-         • LongT5-base vs. LongT5-large: we fine-tune
+ing model states (batch size, data ordering and model
+                                                                   both models with the same hyperparameters to
+initialization), using ABIF and TracIn for LongT5-base
+on NQ and Transformer-base on Paracrawl.                           analyze the sensitivity of self-influence to model
+                                                                   size that increases from 220M to 770M params.
+
+Setup. To evaluate the sensitivity of self-                      • Local vs. Transient-Global attention of LongT5:
+influence to changes in model states, we fine-tune                 we fine-tune two LongT5-base models, each with
+the same model twice: first we fix all hyperpa-                    a different attention, yet the same configuration
+rameters and second, we vary the batch size, data                  of other hyperparameters, to analyze the sensitiv-
+ordering seed and the model initialization, keeping                ity to increased capability at same model size.
+the rest of the hyperparameters fixed between the                Results. From Table 3, changing the model ca-
+two runs, to look into the worst case scenario out               pacity (size or attention) has a negative effect on
+of the ones proposed in K and Søgaard (2021). For                the stability of self-influence scores, with the size
+both runs, we compute the self-influence scores                  hyperparameter affecting it less. The first or all
+for the training set and compare the two resulting               configurations make self-influence scores more sta-
+rankings for all three variants of ABIF (30 eigenvec-            ble to large capacity changes than last layers, which
+tors) and TracIn. We found it too slow to evaluate               were more robust to training parameter modifica-
+TracIn when using all layers, so we only report                  tions. We conclude, given the strong correlation
+results obtained with ABIF. We run this analysis                 between increase in churn and decrease in stabil-
+for two architectures/tasks: LongT5-base on NQ                   ity, that model instability is a contributor to the
+and Transformer-base on Paracrawl.                               self-influence scores’ instability. Importantly, self-
+Results. From Table 2, we see that both meth-                    influence scores appear to be particular sensitive
+ods are considerably more stable to changes in the               to model’s architecture or capacity, and should be
+model state, than in (K and Søgaard, 2021), where                used with caution across differently-powered mod-
+the maximum 90th percentile overlap was 32.77 for                els. This is expected, as the architecture and model
+IFs and Spearman correlation below 0.07. Despite                 capacity, unlike training hyperparameters, define
+that the 90th percentile overlaps for Transformer                the loss landscape and its dynamics under training
+are lower, we can see the ranking correlation is                 data perturbations. Below, we hence calculate and
+still high and believe that, because Paracrawl is a              use self-influence scores for fixed architectures to
+very noisy dataset (>90% of it is noise, as we show              minimize the chances of running into instabilities.
+below), the overlaps are less informative.                       3.3    ABIF-pertinent instability
+   The choice of layers has a significant impact on
+the stability, the last layers being more stable com-            Finally, as ABIF is a newly developed method, we
+pared to the first layers, which is consistent with              inspect the effect of its hyperparameters on stability
+previous work (Han et al., 2020; Barshan et al.,                 in §C and find that contributions pertaining to ABIF
+2020) where the last layer also yielded better re-               itself are not of concern.
+sults. We believe that these results indicate that
+                                                                 4     Effectiveness of Self-Influence Scores
+self-influence is robust enough to be relied on in
+detecting training outliers.                                     The impact of filtering highly self-influential exam-
+                                                                 ples on the downstream performance and the recall
+3.2      Dependence on model architecture                        of synthetically perturbed training samples, have
+Basu et al. (2021) found that network architecture,              been used to measure the correctness of IFs (Guo
+in particular its depth and width, impact the accu-              et al., 2021; Schioppa et al., 2021), given that the
+racy of IFs. Here, we investigate to what extent                 ground-truth estimate via leave-one-out is unfea-
+self-influence is sensitive to a broader set of model            sible to compute even for medium-sized models.
+changes that affect model capacity and capabilities.             We ask whether filtering of highly self-influential
+                         Model A                      Model B              Churn Layer 90th ∩ Spearman
+                      LongT5-base                  LongT5-base                      first   77.78   0.781
+                     TGlobal attention            TGlobal attention        8.6%      all    78.03   0.804
+                 |B|=128, seedshuf /init =0   |B|=64, seedshuf /init =43            last    87.67   0.933
+                      LongT5-base                  LongT5-large                     first   68.06   0.630
+                     TGlobal attention            TGlobal attention        12.77%    all    67.89   0.621
+                 |B|=128, seedshuf /init =0   |B|=128, seedshuf /init =0            last    42.00   0.432
+                      LongT5-base                  LongT5-base                      first   61.19   0.591
+                    TGlobal attention             Local attention        13.54%      all    60.05   0.591
+                 |B|=128, seedshuf /init =0   |B|=128, seedshuf /init =0            last    41.92   0.292
+
+Table 3: Relation between model stability and its architecture, capacity or training hyperparameters, on the NQ
+dataset. Bold marks differences between models A and B. The first group of ABIF results is from Table 2.
+
+
+examples is more helpful for o.o.d. evaluation (by
+removing true outliers) or if it can also improve
+performance on test sets distributed similarly to
+training data (and containing the same error types).
+Setup. To evaluate the performance of filtering,
+we calculated the self-influence scores using all
+three layer settings of ABIF, sorted them to retrieve
+the highly self-influential examples, and experi-
+                                                                  Figure 1: Distribution of the correct and incorrect exam-
+mented with different thresholds given that the ra-               ples annotated by expert annotators in 5 equally-sized
+tio of (harmful) outliers in each dataset is unknown.             bins (quantiles) computed based on the self-influence
+Then we retrained on the filtered data, kept the best             ranking (last layers), and ordered from low (0) to high
+result across the layers choices and reported nearby              influence (4). The annotations include wrong input (con-
+percentages to illustrate the performance trend.                  text), wrong label, or both wrong.
+   We consider three tasks with same distribution
+evaluation (on NQ, TriviaQA and Toxicity) and
+                                                                  improvements on Toxicity, which is expected to be
+three o.o.d. setups (NQ, Paracrawl and Toxicity):
+                                                                  very noisy. This shows that the common heuristic
+1) Training a Transformer-base model on Paracrawl
+                                                                  of filtering highly self-influential examples might
+using the same setup as above, and evaluating
+                                                                  not be the best fit for the in-distribution tasks and
+on the newstest17 dataset. 2) Fine-tuning the
+                                                                  we develop further why.
+LongT5-base on NQ as before, but evaluating on
+the TriviaQA dataset to make it o.o.d. To align                   4.1 Noise captured by high self-influence scores
+the task definitions, we only keep the normalized
+answer from TriviaQA’s answers list, whereas usu-                 Here we study how a naturally occurring noise, as
+ally the metrics are computed against each of the                 annotated by human experts, is partitioned by the
+given answers and the maximum score is reported.                  self-influence ranking. Additionally, we compare
+3) Fine-tuning on Wikipedia Toxicity, but evaluat-                to synthetic noise, tested previously to be accu-
+ing on the o.o.d. Civil Comments (CivilC) develop-                rately retrieved by high self-influence in (Schioppa
+ment set of 97k comments (Borkan et al., 2019).                   et al., 2021), to see if significant differences occur.
+
+Results. From Table 4, we see that self-influence                 Setup. We use the 5-way annotations by hu-
+filtering using ABIF brings higher improvements                   man experts on a set of 205 uniformly sampled
+for the o.o.d. evaluation setup: up to +9 BLEU                    NQ examples and released with the original pa-
+points on Paracrawl-newstest17 and +3 F1 points                   per (Kwiatkowski et al., 2019). The examples were
+on NQ-TriviaQA setup, with a negligible improve-                  annotated as correct, debatable and wrong, but we
+ment in the Toxicity-CivilC case, which shows that                treat the debatable entries to be in the correct bucket
+training on cleaner datasets improves performance                 as there is no strong evidence that suggests they
+on an o.o.d. test set. In the in-distribution setup,              are wrong. We compute the self-influence scores
+TriviaQA and NQ trained on full data always out-                  on the first and the last layers and analyze how the
+perform filtering, which is not surprising given both             natural noise is being ranked.
+are high-quality datasets, but also brings very small                For comparison, we looked at the ability to
+                          Train      Eval       % Used EM     F1     BLEU
+                                                100%   59.05 63.97     -
+                           NQ         NQ
+                                                 90%   58.49 63.06     -                             Train    Eval      % Used Acc    F1
+                                                100%   78.08 80.17     -
+                                                                                                                        100%   92.61 95.80
+
+
+                                                                                   classification
+                         TriviaQA TriviaQA       98%   77.49 79.72     -
+               seq2seq
+                                                                                                    Toxicity Toxicity   95%    93.15 96.13
+                                                 90%   74.64 76.96     -
+                                                                                                                        90%    92.86 95.97
+                                                100%   16.06 20.55     -
+                                                                                                                        100%   95.28 97.51
+                           NQ      TriviaQA     95%    18.96 23.52     -                            Toxicity CivilC
+                                                                                                                        90%    95.42 97.59
+                                                90%    17.52 21.85     -
+                                                100%     -     -     21.36
+                         Paracrawl newstest17
+                                                10%      -     -     30.45
+
+Table 4: Performance of percentile filtering of highly self-influential examples as per ABIF self-influence on in- and
+out-of-distribution test sets, for seq2seq and classification tasks. We report the maximum over all, first, and last
+settings. For the seq2seq tasks, the metrics that don’t apply are marked with dashes.
+
+
+retrieve synthetic noise via the self-influential                            datasets. To rectify, Lam et al. (2022) attempted
+examples and compute the recall in the top-                                  clustering and identifying abrupt changes in the
+10%/20%/30% of self-influence scores. We alter                               magnitude of the sorted self-influence scores, but
+the original data by uniformly sampling 10% of the                           this resulted in a low recall rate. Hence, we move
+dataset for which we shuffle the labels, ensuring                            to automated curriculum learning to dynamically
+all labels were changed from its initial value. This                         identify the outlying parts of data based on the
+is important because a significant amount of ques-                           buckets of self-influence scores without commit-
+tions have no answer (they are not answerable),                              ting to completely remove any of them.
+because they are natural search queries.                                        First, we validate how different the quality sig-
+                                                                             nal is from each individual self-influence bucket on
+Results. The synthetic noise retrieval confirms
+                                                                             NQ. We found (Figure 4 in §F) that EM of the high-
+previous findings with a high recall, as 29% of the
+                                                                             est self-influence bucket is much lower (although
+synthetic noise lands in the top-20% ranks and 94%
+                                                                             not zero) compared to the rest of buckets, which
+in the top-30%, when using last layers (vs. 84% in
+                                                                             are in turn difficult to separate, possibly, because
+top-30% for first layers). We hypothesize that the
+                                                                             they contain data of mixed usefulness. A positive
+synthetic noise is not predominantly in top-10%
+                                                                             aspect of AutoCL is that, due to exploration, the
+because other forms of outliers are already present
+                                                                             model regularly visits all buckets, and may dynami-
+in the dataset that are more harmful to the model.
+                                                                             cally up- or down-weight buckets depending on the
+   The behaviour of natural noise is considerably
+                                                                             model’s current needs, overcoming the rigidness of
+different. It barely comes up among highly self-
+                                                                             a fixed threshold filtering.
+influential buckets as we can see in Figure 1, but
+is distributed predominantly among the lowest and                            Setup. We verify the feasibility of AutoCL with
+mid-influential buckets. Examples annotated as                               two definitions of the self-influence, given by ABIF
+having wrong labels are absent from the top-20%.                             and by TracIn, and check that the findings are con-
+Additionally, we see that input noise does not affect                        sistent across three datasets (NQ, Paracrawl and
+the model as much as label noise, given that exam-                           Toxicity on T5). Bandit actions are mapped to
+ples with wrong input are almost evenly distributed                          equal-sized data buckets corresponding to a prede-
+in the lower 80% of the data. These results suggest                          fined number of percentile ranges of self-influence
+that manual tuning of the filtering threshold of self-                       scores. We first explore 10 buckets, which should
+influence rankings may not find a percentile range                           allow the bandit to at least match the performance
+which, if removed, improves performance.                                     of filtering, and then consider more granular setups
+                                                                             (20 and 25 buckets) which would be infeasible to
+5   Automated Filtering of Outliers
+                                                                             manually test against filtering. We expect the ban-
+As we showed above, using self-influence to filter                           dit not to use much of the high self-influential buck-
+noisy training data has the drawback of the diffi-                           ets, nor the lowest bucket, which prior work found
+culty of choosing a right cut-off threshold. Yet,                            to be less useful because of its simplicity (Feldman
+trial-and-error search for a fixed threshold based                           and Zhang, 2020; Schioppa et al., 2021). Follow-
+on the downstream performance remains popular,                               ing (Schioppa et al., 2021), we report BLEU for
+which is costly and does not generalize across                               Paracrawl at 10k and 200k steps. As baselines
+                             Config         Method BLEU@10k BLEU@200k
+                                                                        model initially uses the mid-influence buckets (top-
+                             Baseline                 13.75   21.36
+                          Filtered 90%      ABIF       26.8   30.45
+                                                                        50%/80%), followed by the high-influence outlier
+
+      Paracrawl
+                          Filtered 90%    TracIn(1)   22.10   27.87     buckets (top-80%) which are quickly dropped and
+                         AutoCL - 5 bins    ABIF      21.45   27.48
+                         AutoCL - 10 bins ABIF        25.50   30.45
+                                                                        continues alternating between the lowest buckets
+                         AutoCL - 25 bins ABIF        24.13   31.38     (in bottom-20%). For Toxicity, the policy is not
+                         AutoCL - 25 bins TracIn(1)   18.60   29.33
+                                                                        interpretable (though the high influence bucket is
+                             Config         Method    EM       F1
+                                                                        heavily used at all stages) but still brings more
+
+
+     Natural Questions
+                             Baseline                 59.05   63.97
+                          Filtered 10%      ABIF      58.49   63.06     gains compared to the filtering. As TriviaQA is
+                          Filtered 10%    TracIn(3)   58.09   62.75     a very clean human-curated dataset, filtering does
+                         AutoCL - 10 bins ABIF        59.72   64.33
+                         AutoCL - 25 bins ABIF        59.20   64.01     not improve over baseline, and AutoCL brings only
+                         AutoCL - 25 bins TracIn(3)   59.59   64.32     nominal insignificant gains (see §D).
+                             Config         Method    Acc      F1
+                                                                           Finally, one might wonder if AutoCL improve-
+                             Baseline                 91.73   67.37
+                                                                        ments are due to self-influence or due to the in-
+     Toxicity
+                           Filtered 5%      ABIF      91.80   67.22
+                         AutoCL - 10 bins   ABIF      93.61   70.56     creased data scheduling flexibility, i.e., if a sim-
+                         AutoCL - 25 bins   ABIF      92.09   67.58
+                                                                        pler example difficulty signal would suffice to at-
+Table 5: Performance of threshold filtering and AutoCL,                 tain similar gains. In §E, we run AutoCL on
+on top of self-influence scores by ABIF or TracIn (num-                 NQ/TriviaQA buckets defined via difficulty sig-
+ber of checkpoints C in brackets).                                      nals based on domain knowledge (context length,
+                                                                        word rarity, context-question lexical overlap and
+                                                                        question type) and find that self-influence is indeed
+we use the filtering methods from §4. See §G for                        crucial for the observed gains.
+AutoCL hyperparameters of reported results.
+                                                                        6   Related Work
+Results. From Table 5, we see that AutoCL
+strongly outperforms filtering methods when                             Dataset error detection. Deep learning models’
+given enough bucket granularity, for very noisy                         performance can be sensitive to noisy datasets (Ku-
+Paracrawl, noisy Toxicity and low noise NQ, and                         mar et al., 2020; Zhang et al., 2017; Khayrallah
+regardless of the task and IF definition. We improve                    and Koehn, 2018), and various instance-based scor-
+over filtering on Paracrawl by +1 BLEU point, on                        ing methods have been proposed, alongside with
+Toxicity by +3.2 F1 points, and on NQ by +1.2 F1                        sorting and thresholding to filter out noisy training
+points. In addition, on Paracrawl at 10k steps fil-                     example, including bilingual cross-entropy differ-
+tering with a good threshold outperforms AutoCL                         ence to rank parallel corpora (Axelrod et al., 2011),
+which requires time to learn which are the useful                       “forgetting events”, where an individual training
+buckets. Given that ABIF and TracIn showed simi-                        example transitions from being classified correctly
+lar results for NQ and Paracrawl, we only look at                       to incorrectly over the course of learning (Toneva
+ABIF for Toxicity.                                                      et al., 2019), or area-under-margin (Pleiss et al.,
+    We check if the multi-armed bandit’s learned                        2020), computed as the difference between the log-
+policy (probabilities of choosing a data bucket)                        its value in classification tasks. IFs were used to de-
+is interpretable in Figure 2. In general, there is                      tect dataset errors (Koh and Liang, 2017; Schioppa
+no incentive for the policy to be interpretable as                      et al., 2021), by looking at self-influence – how
+it targets loss improvements only and may under-                        much a training point influences its own loss. How-
+take redundant switches between neighboring buck-                       ever, these methods led to various degrees of suc-
+ets in setups with high bucket granularity with the                     cess: in the case of IFs, Koh and Liang (2017)
+same end performance. That said, for Paracrawl,                         and Guo et al. (2021) improve performance by di-
+the model quickly learns to drop the top-92% of                         rectly fixing/augmenting the mislabeled highly self-
+the data as ranked by self-influence, which almost                      influential training examples, but filtering lowest or
+matches our best filtering threshold of 90%, in-                        highest influential examples out did not outperform
+stead training on 2/3 of time on the bottom-4%/8%                       training on full data in other studies (Guo et al.,
+and only 1/3 of time from the top-4% which cor-                         2021; Kocijan and Bowman, 2020). At the same
+responds to the lowest influence and is known to                        time, it brought consistent performance gains on an
+be less useful to the model (Schioppa et al., 2021).                    o.o.d. task for MT (Schioppa et al., 2021), raising
+For NQ, there is more of bucket switching, and the                      the question whether filtering helps for improving
+ (a) Paracrawl (25 bins); very high noise.   (b) NQ (10 bins); low noise data.   (c) Toxicity (10 bins); high noise data.
+
+Figure 2: Learned AutoCL policies, showing the probabilities attributed to each bucket (where B0 is the lowest
+influence bin). The policy extracted from Paracrawl (a) used 25 bins (with only B0-B3 in the legend), and the ones
+from NQ (b) and Toxicity (c) used 10 bins.
+
+
+performance on in-distribution test sets or is more            noise and do online data selection to train on gradu-
+effective for o.o.d. generalization.                           ally noise-reduced data batches, resembling active
+                                                               learning. Similarly, Nguyen et al. (2020) uses a
+Harmful vs. useful outliers. A shortcoming of                  self-ensemble for label filtering during training, by
+filtering/data selection is that outliers are not al-          gradually allowing supervision from clean labels
+ways harmful. Prior work has shown that training               and stopping learning on the filtered noisy labels.
+with noise, or with injected artificial noise, can in-         Jiang et al. (2020) develops a method that use cur-
+crease the stability of the models vis-à-vis noisy             riculum learning and vicinal risk minimization to
+data (Vaibhav et al., 2019; Belinkov and Bisk, 2018;           handle both real and synthetic noise. We note that
+Heigold et al., 2018), which can be caused by dif-             curriculum-based methods have been more effec-
+ferences in noise types and their interaction with             tive than filtering, but also have inherent complica-
+the target task. Al Sharou et al. (2021) noted that            tions, such as defining “easy” and “hard” or design-
+only “harmful noise” that affects the performance              ing an effective training schedule following these
+of the system or does not carry the intended mean-             definitions. To overcome this limitation, we used
+ing should be removed, while “useful noise” should             automated curriculum learning (Graves et al., 2017;
+be kept or even added to the training data if it nat-          Kreutzer et al., 2021) that employ a multi-armed
+urally occurs at test time (Rolnick et al., 2017).             bandit to learn the most effective training schedule.
+Moreover, the performance of the noise detection
+methods were evaluated, due to a lack of suitable              7    Conclusion
+datasets, on synthetic noise, but Jiang et al. (2020)
+found synthetic noise to affect much more DNN’s                We proposed a general method for improving
+capability to generalize than real noise. We are par-          model performance in the presence of noisy train-
+ticularly interested in whether that holds true for            ing data based on self-influence and bandit cur-
+IFs and analyze what kinds of outliers are captured            riculum learning, and without relying on thresh-
+by highly self-influential examples.                           old filtering. We showed that Arnoldi iteration
+                                                               based self-influence scores of training instances
+Dynamic data schedules. Following this limita-                 are stable with respect to varying training hyper-
+tion of filtering methods, different training sched-           parameters such as batch size, random seeds, and
+ules that account for the training dynamics have               the iteration’s hyperparameters, and thus can be
+been developed inspired by Bengio et al. (2009)                a reliable foundation for data cleaning methods.
+and van der Wees et al. (2017). Swayamdipta et al.             We further demonstrated that not all data outliers
+(2020) proposed a “easy-to-hard” training sched-               (as per human annotation) receive similarly-valued
+ules based on the mean (confidence) and standard               self-influence scores, what necessitates generaliz-
+deviation (variability) of the gold label probabil-            ing threshold filtering to a dynamic data reweigh-
+ities over the training epochs, where hard points              ing. Finally, we showed that dynamically reweigh-
+to samples with low confidence and low variabil-               ing based on multi-armed bandits, which pick self-
+ity. Wang et al. (2018) proposes using a small                 influence bins to sample batches from, outperforms
+amount of trusted data to help the model measure               threshold filtering on noisy and clean datasets.
+8   Limitations                                          Yoshua Bengio, Jérôme Louradour, Ronan Collobert,
+                                                           and Jason Weston. 2009. Curriculum learning. In
+A potential limitation of our approach is the re-          ICML.
+quirement to precompute self-influence scores on
+                                                         Daniel Borkan, Lucas Dixon, Jeffrey Sorensen, Nithum
+a pretrained model and to retrain again using              Thain, and Lucy Vasserman. 2019. Nuanced metrics
+these scores. While recomputing the self-influence         for measuring unintended bias with real data for text
+scores during training may make them reflect the           classification. In WWW.
+influence w.r.t. the current state of the evolving
+                                                         Samuel R. Bowman and George Dahl. 2021. What
+model better, doing this efficiently would be a non-
+                                                           will it take to fix benchmarking in natural language
+trivial engineering problem. Additional unexplored         understanding? In NAACL.
+factors are the choice of the training data for the
+scores-producing model (i.e. trained on clean data,      R. Dennis Cook and Sanford Weisberg. 1980. Char-
+as in (Schioppa et al., 2021) and in our Paracrawl         acterizations of an empirical influence function for
+                                                           detecting influential cases in regression. Technomet-
+experiments, or on the to-be-cleaned data as in our        rics, 22(4):495–508.
+QA and toxicity experiments) and the trade-offs
+of bandit rewards which influence the overhead of        Quentin Cormier, Mahdi Milani Fard, Kevin Canini, and
+bandit learning alongside the main training (from          Maya Gupta. 2016. Launch and iterate: Reducing
+                                                           prediction churn. In NIPS.
+negligible for the cosine similarity reward to an
+additional forward pass for the pgnorm reward).          Jacob Devlin, Ming-Wei Chang, Kenton Lee, and
+Finally, we left exploration of the impact of natural       Kristina Toutanova. 2019. BERT: Pre-training of
+noise on performance, task-specific rewards and             deep bidirectional transformers for language under-
+                                                            standing. In NAACL.
+exploiting other signals for filtering to future work.
+                                                         Sebastian Ebert, Alice Shoshana Jakobovits, and Katja
+                                                           Filippova. 2022. Understanding text classification
+References                                                 data and models using aggregated input salience. In
+                                                           R2HCAI workshop at AAAI.
+Khetam Al Sharou, Zhenhao Li, and Lucia Specia. 2021.
+  Towards a better understanding of noise in natural     Vitaly Feldman and Chiyuan Zhang. 2020. What neural
+  language processing. In RANLP.                            networks memorize and why: Discovering the long
+                                                            tail via influence estimation. In NeurIPS.
+Peter Auer, Nicolò Cesa-Bianchi, and Paul Fischer.
+  2002. Finite-time analysis of the multiarmed ban-      Matt Gardner, Jonathan Berant, Hannaneh Hajishirzi,
+  dit problem. Mach. Learn., 47(2–3):235–256.             Alon Talmor, and Sewon Min. 2019. Question an-
+                                                          swering is a format; when is it useful? CoRR,
+Amittai Axelrod, Xiaodong He, and Jianfeng Gao. 2011.     abs/1909.11291.
+  Domain adaptation via pseudo in-domain data selec-
+  tion. In EMNLP.                                        Alex Graves, Marc G. Bellemare, Jacob Menick, Rémi
+                                                           Munos, and Koray Kavukcuoglu. 2017. Automated
+Marta Bañón, Pinzhen Chen, Barry Haddow, Kenneth           curriculum learning for neural networks. In ICML.
+ Heafield, Hieu Hoang, Miquel Esplà-Gomis, Mikel L.
+ Forcada, Amir Kamran, Faheem Kirefu, Philipp            Han Guo, Nazneen Fatema Rajani, Peter Hase, Mohit
+ Koehn, Sergio Ortiz Rojas, Leopoldo Pla Sempere,          Bansal, and Caiming Xiong. 2021. Fastif: Scalable
+ Gema Ramírez-Sánchez, Elsa Sarrías, Marek Strelec,        influence functions for efficient model interpretation
+ Brian Thompson, William Waites, Dion Wiggins,             and debugging. In EMNLP.
+ and Jaume Zaragoza. 2020. ParaCrawl: Web-scale
+ acquisition of parallel corpora. In ACL.                Mandy Guo, Joshua Ainslie, David Uthus, Santiago On-
+                                                           tanon, Jianmo Ni, Yun-Hsuan Sung, and Yinfei Yang.
+Elnaz Barshan,         Marc-Etienne Brunet,    and         2022. LongT5: Efficient text-to-text transformer for
+  Gintare Karolina Dziugaite. 2020.         Relatif:       long sequences. In NAACL.
+  Identifying explanatory training examples via
+  relative influence. In AISTATS.                        Xiaochuang Han, Byron C. Wallace, and Yulia Tsvetkov.
+                                                           2020. Explaining black box predictions and unveil-
+Samyadeep Basu, Philip Pope, and Soheil Feizi. 2021.       ing data artifacts through influence functions. In
+  Influence functions in deep learning are fragile. In     ACL.
+  ICLR.
+                                                         Georg Heigold, Stalin Varanasi, Günter Neumann, and
+Yonatan Belinkov and Yonatan Bisk. 2018. Synthetic         Josef van Genabith. 2018. How robust are character-
+  and natural noise both break neural machine transla-     based word embeddings in tagging and MT against
+  tion. In ICLR.                                           wrod scramlbing or randdm nouse? In AMTA.
+Lu Jiang, Di Huang, Mason Liu, and Weilong Yang.           Barak A. Pearlmutter. 1994. Fast Exact Multiplication
+  2020. Beyond synthetic noise: Deep learning on             by the Hessian. Neural Computation, 6(1):147–160.
+  controlled noisy labels. In ICML.
+                                                           Denis Peskov, Joe Barrow, Pedro Rodriguez, Graham
+Mandar Joshi, Eunsol Choi, Daniel Weld, and Luke             Neubig, and Jordan Boyd-Graber. 2019. Mitigating
+ Zettlemoyer. 2017. TriviaQA: A large scale distantly        noisy inputs for question answering. In Interspeech.
+ supervised challenge dataset for reading comprehen-
+ sion. In ACL.                                             Emmanouil Antonios Platanios, Otilia Stretcu, Graham
+                                                             Neubig, Barnabas Poczos, and Tom M. Mitchell.
+Karthikeyan K and Anders Søgaard. 2021. Revisit-             2019. Competence-based curriculum learning for
+  ing methods for finding influential examples. CoRR,        neural machine translation. In NAACL.
+  abs/2111.04683.
+                                                           Geoff Pleiss, Tianyi Zhang, Ethan R. Elenberg, and
+Huda Khayrallah and Philipp Koehn. 2018. On the              Kilian Q. Weinberger. 2020. Identifying mislabeled
+  impact of various types of noise on neural machine         data using the area under the margin ranking. In
+  translation. In WMT.                                       NeurIPS.
+Vid Kocijan and Samuel Bowman. 2020. Influence             Garima Pruthi, Frederick Liu, Mukund Sundararajan,
+  Functions Do Not Seem to Predict Usefulness in             and Satyen Kale. 2020. Estimating training data
+  NLP Transfer Learning. wp.nyu.edu.                         influence by tracing gradient descent. In NeurIPS.
+Pang Wei Koh and Percy Liang. 2017. Understanding          Colin Raffel, Noam Shazeer, Adam Roberts, Katherine
+  black-box predictions via influence functions. In          Lee, Sharan Narang, Michael Matena, Yanqi Zhou,
+  ICML.                                                      Wei Li, and Peter J. Liu. 2019. Exploring the limits
+                                                             of transfer learning with a unified text-to-text trans-
+Pang Wei Koh, Jacob Steinhardt, and Percy Liang. 2022.
+                                                             former. JMRL, 21:1–67.
+  Stronger data poisoning attacks break data sanitiza-
+  tion defenses. Mach. Learn., 111:1–47.                   Adam Roberts, Hyung Won Chung, Anselm Levskaya,
+                                                             Gaurav Mishra, James Bradbury, Daniel Andor, Sha-
+Shuming Kong, Yanyan Shen, and Linpeng Huang.
+                                                             ran Narang, Brian Lester, Colin Gaffney, Afroz
+  2022. Resolving training biases via influence-based
+                                                             Mohiuddin, Curtis Hawthorne, Aitor Lewkowycz,
+  data relabeling. In ICLR.
+                                                             Alex Salcianu, Marc van Zee, Jacob Austin, Sebas-
+Julia Kreutzer, David Vilar, and Artem Sokolov. 2021.        tian Goodman, Livio Baldini Soares, Haitang Hu,
+   Bandits don’t follow rules: Balancing multi-facet         Sasha Tsvyashchenko, Aakanksha Chowdhery, Jas-
+   machine translation with multi-armed bandits. In          mijn Bastings, Jannis Bulian, Xavier Garcia, Jianmo
+   EMNLP.                                                    Ni, Andrew Chen, Kathleen Kenealy, Jonathan H.
+                                                             Clark, Stephan Lee, Dan Garrette, James Lee-Thorp,
+Ankit Kumar, Piyush Makhija, and Anuj Gupta. 2020.           Colin Raffel, Noam Shazeer, Marvin Ritter, Maarten
+  Noisy text data: Achilles’ heel of BERT. In Work-          Bosma, Alexandre Passos, Jeremy Maitin-Shepard,
+  shop on Noisy User-generated Text.                         Noah Fiedel, Mark Omernick, Brennan Saeta, Ryan
+                                                             Sepassi, Alexander Spiridonov, Joshua Newlan, and
+Gaurav Kumar, George Foster, Colin Cherry, and               Andrea Gesmundo. 2022. Scaling up models and
+  Maxim Krikun. 2019. Reinforcement learning based           data with t5x and seqio. CoRR, abs/2203.17189.
+  curriculum optimization for neural machine transla-
+  tion. In NAACL.                                          Anna Rogers, Matt Gardner, and Isabelle Augenstein.
+                                                             2023. QA dataset explosion: A taxonomy of NLP
+Tom Kwiatkowski, Jennimaria Palomaki, Olivia Red-            resources for question answering and reading com-
+  field, Michael Collins, Ankur Parikh, Chris Alberti,       prehension. ACM Computing Surveys, 55(10):1–45.
+  Danielle Epstein, Illia Polosukhin, Matthew Kelcey,
+  Jacob Devlin, Kenton Lee, Kristina N. Toutanova,         David Rolnick, Andreas Veit, Serge Belongie, and Nir
+  Llion Jones, Ming-Wei Chang, Andrew Dai, Jakob             Shavit. 2017. Deep learning is robust to massive
+  Uszkoreit, Quoc Le, and Slav Petrov. 2019. Natu-           label noise. CoRR, abs/1705.10694.
+  ral questions: a benchmark for question answering
+  research. TACL.                                          Andrea Schioppa, Katja Filippova, Ivan Titov, and
+                                                             Polina Zablotskaia. 2023. Theoretical and practi-
+Tsz Kin Lam, Eva Hasler, and Felix Hieber. 2022. An-         cal perspectives on what influence functions do. In
+  alyzing the use of influence functions for instance-       NeurIPS.
+  specific data filtering in neural machine translation.
+  In WMT.                                                  Andrea Schioppa, Polina Zablotskaia, David Vilar, and
+                                                             Artem Sokolov. 2021. Scaling up influence functions.
+Duc Tam Nguyen, Chaithanya Kumar Mummadi, Thi                In AAAI.
+  Phuong Nhung Ngo, Thi Hoai Phuong Nguyen,
+  Laura Beggel, and Thomas Brox. 2020. Self: Learn-        Saku Sugawara, Kentaro Inui, Satoshi Sekine, and
+  ing to filter noisy labels with self-ensembling. In        Akiko Aizawa. 2018. What makes reading compre-
+  ICLR.                                                      hension questions easier? In EMNLP.
+Swabha Swayamdipta, Roy Schwartz, Nicholas Lourie,
+  Yizhong Wang, Hannaneh Hajishirzi, Noah A. Smith,
+  and Yejin Choi. 2020. Dataset cartography: Mapping
+  and diagnosing datasets with training dynamics. In
+  EMNLP.
+Mariya Toneva, Alessandro Sordoni, Remi Tachet des
+ Combes, Adam Trischler, Yoshua Bengio, and Geof-
+ frey J. Gordon. 2019. An empirical study of example
+ forgetting during deep neural network learning. In
+ ICLR.
+Vaibhav Vaibhav, Sumeet Singh, Craig Stewart, and Gra-
+  ham Neubig. 2019. Improving robustness of machine
+  translation with synthetic noise. In NAACL.
+Marlies van der Wees, Arianna Bisazza, and Christof
+ Monz. 2017. Dynamic data selection for neural ma-
+ chine translation. In EMNLP.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob
+  Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz
+  Kaiser, and Illia Polosukhin. 2017. Attention is all
+  you need. In NIPS.
+Wei Wang, Taro Watanabe, Macduff Hughes, Tetsuji
+ Nakagawa, and Ciprian Chelba. 2018. Denoising
+ neural machine translation training with trusted data
+ and online data selection. In WMT.
+Ellery Wulczyn, Nithum Thain, and Lucas Dixon. 2017.
+   Ex machina: Personal attacks seen at scale. In WWW.
+Chih-Kuan Yeh, Ankur Taly, Mukund Sundararajan,
+  Frederick Liu, and Pradeep Ravikumar. 2022. First
+  is better than last for language data influence. In
+  NeurIPS.
+Chiyuan Zhang, Samy Bengio, Moritz Hardt, Benjamin
+  Recht, and Oriol Vinyals. 2017. Understanding deep
+  learning requires rethinking generalization. In ICLR.
+A       Model training details                                        Layers 90th ∩ Spearman
+
+                                                                         number of eigenvectors
+We experiment with three different architectures:                      first  96.79       0.99
+the standard Transformer-base on the MT task, two                      last   96.74       0.99
+                                                                        all   93.90       0.99
+sizes of the state-of-the-art LongT5 architecture for
+long inputs on the QA tasks, and the classic BERT-                             initialization
+base and T5 architectures for text classification.                     first     96.21        0.99
+                                                                       last      96.92        0.99
+                                                                        all      97.08        0.99
+Transformer. For the MT task, we implement
+the standard, 6-layer, Transformer-base architec-       Table 6: Stability of self-influence estimates with re-
+ture (Vaswani et al., 2017) trained for 200k steps      spect to ABIF hyperparameters using LongT5 on NQ.
+with a batch size of 128 using T5X (Roberts et al.,
+2022) on 16-core TPUv2 and fixed input length
+                                                        number of top eigenvalues to use, and the num-
+of 128 on Paracrawl dataset. For training, we use
+                                                        ber of Arnoldi iterations. We use 30 eigenvalues
+Adafactor with a learning rate of 2.0 and the rsqrt
+                                                        and 60 iterations for computing the self-influence
+decay (Vaswani et al., 2017) of 0.8, a dropout rate
+                                                        scores, and compare it, resp., to 100 and 200 in an
+of 0.1 and a 32k SentencePiece model.
+                                                        ablation.
+LongT5. For our QA tasks, we use the state-of-          TracIn self-influence. We employ TracIn as a
+the-art LongT5-base and LongT5-large architec-          baseline for NQ self-influence scoring, and use
+ture (Guo et al., 2022)1 implemented in T5X, using      a fixed projection size of 1,024 and three check-
+a 32k SentencePiece model, a batch size of 128          points: from the beginning of the training (60k
+and AdaFactor as in the original work. We fine-         steps), middle of training (140k) and the final
+tune the models on NQ for 261k steps on a 16-           checkpoint (260k). We could not scale TracIn to
+core TPUv2 to convergence, with a learning rate of      100M Paracrawl examples, so we use its variant
+0.001, dropout rate of 0.1 and a fixed input length     by (Schioppa et al., 2021), who reduce gradient
+of 4,096. We employ the same setup for TriviaQA,        dimensionality to 30 using Gaussian matrices for
+except we double the input length, to account for       the last checkpoint at 100k steps.
+TriviaQA’s much longer contexts than in NQ.
+                                                        C    ABIF-pertinent instability
+BERT. For the text toxicity classification, we ex-
+periment with BERT-base (Devlin et al., 2019), and      Finally, given that ABIF is a newly developed
+fine-tune it for 35k steps with early stopping, batch   method, we inspect if different choices of hyper-
+size of 32, learning rate of 10−6 , weight decay of     parameters for ABIF can contribute to the instabil-
+5 · 10−6 , input length of 128 and dropout of 0.5.      ity, including layers choice, number of top eigen-
+                                                        vectors (30 vs. 100) and the initialization seed, by
+T5. To use our T5X AutoCL implementation,               recomputing the self-influence scores with vari-
+we reframed the toxicity classification task as a       ous configurations using the fixed hyperparameters
+seq2seq task in T5 (Raffel et al., 2019) by pre-        variant of the LongT5-base fine-tuned earlier.
+dicting two tokens: toxic and safe, treating other
+output tokens as misclassifications, and report F1      Results. From Table 6 we can see that contribu-
+for the toxic class. The T5-base model is trained       tions that pertain to ABIF itself are not of concern
+for 120k steps, with input length of 128, batch size    since there are largely unaffected by the different
+of 64, dropout rate of 0.1, using Adafactor, with a     choice of its parameters. The 90th percentile over-
+learning rate of 0.01 and decay rate of 0.1.            lap is lower, despite the almost perfect correlation,
+                                                        because the overlap is sensitive to insignificant
+B       Self-influence calculation                      movements in the vicinity of the cut-off value.
+
+ABIF self-influence. To trade-off between mem-          D    AutoCL on clean dataset: TriviaQA
+ory/speed for accuracy, ABIF introduces several
+hyperparameters that may impact its accuracy, in-       In Table 4, we saw that filtering for the in-
+cluding the choice of layer’s gradients to use, the     distribution task for TriviaQA proves unsuccess-
+                                                        ful, attributable to TriviaQA being a very clean
+    1
+        github.com/google-research/longt5.              human-curated dataset. Regardless, we attempted
+                                                          LongT5-base as in earlier sections, with the excep-
+                                                          tion of training on NQ for 200k steps. The signals
+                                                          we employ are:
+
+                                                          • Context length: (Platanios et al., 2019) proposed
+                                                            using sentence length as a proxy for translation
+                                                            difficulty. We consider the length of the context
+                                                            because longer context would require more cross-
+                                                            sentence reasoning to find the answers.
+
+Figure 3: Policy learned by the model during AutoCL,      • Word rarity: Another layer of difficulty can be
+showing the soft-max weights attributed to each bin         added by very specific domain-questions (thus
+(where B0 is the lowest influence bucket). This policy      words that rarely appear in training). According
+leads to same downstream quality as the full data and       to Platanios et al. (2019), low frequency words
+training with uniform sampling.                             make it difficult to learn a robust representation
+                                                            of the words, but also make the gradients of
+to run the AutoCL on it and found that the method           the rare word embeddings to have high variance.
+reaches the same quality as the model trained on            Therefore, Platanios et al. (2019) proposed us-
+the full data (Table 7), despite not using uniformly        ing the likelihood of the unigram probabilities
+random samples. Figure 3 shows the learned pol-             to aggregate the word frequencies in a difficulty
+icy for 10 self-influence buckets, where we see             heuristic. Given a corpus of sentences, si M
+                                                                                                       i=1 , the
+that the model uses all buckets, initially with more        relative word frequencies are defined as:
+emphasis on harder buckets (top 30% of highly
+                                                                                           Ni
+                                                                                         M X
+influential examples) and follows up with using                                   1
+                                                                                                   1wki =wj ,
+                                                                                         X
+                                                                    p̂(wj ) ≜                                   (1)
+more the top 10% and most of the lowest influence                               Ntotal
+                                                                                         i=1 k=1
+bucket. Commencing with highly influential exam-
+ples is reasonable because, given the lack of noise,        where j indexes unique words in the corpus.
+they are presumably difficult examples with high            These are aggregated using the logarithm of word
+impact on accuracy, which need to be memorized.             probabilities to prevent numerical errors:
+             Config        Method   EM     F1                                             Ni
+                                                                                          X
+            Baseline                78.08 80.17
+                                                                      drarity (si ) ≜ −         log p̂(wki )    (2)
+         Filtered 10%      ABIF     77.49 79.72                                           k=1
+        AutoCL - 10 bins   ABIF     78.13 80.29
+                                                          • Context-question lexical overlap: Sugawara
+Table 7: Filtering performance and AutoCL on
+                                                            et al. (2018) showed that questions with low
+TriviaQA (very clean dataset) using ABIF self-influence
+scores.                                                     lexical overlap with the context tend to require
+                                                            reasoning skills compared to superficial word
+                                                            matching, and showed the models have worse
+E    Other difficulty signals for AutoCL                    performance on the subset where the answer was
+                                                            not present in the most similar sentence to the
+In §5, AutoCL delivered important gains on NQ
+                                                            question. We propose as a metric the overlap
+(+1.2 F1) driven by self-influence ranking as a sig-
+                                                            of tokens between context and question after re-
+nal. However, one might wonder if the improve-
+                                                            moving the stop words and normalizing by the
+ments could be attainable by AutoCL with much
+                                                            number of remaining tokens:
+simpler example difficulty proxies for splitting the
+data into buckets.                                                                        | qno-sw ∩ c |
+                                                                      d(qno-sw , c) ≜                    ,      (3)
+Setup. We propose a suite of heuristics, inspired                                           | qno-sw |
+by prior work, to split the training data in a              where qno-sw denotes question from which stop
+fixed number of buckets, as we did with the self-           words have been removed.
+influence ranking, and explore a variety of hyper-
+parameters configurations, using the LongT5-base          • Question type: Gardner et al. (2019) argued that
+model on NQ and TriviaQA. We train the same                 question answering encompasses a broad range
+    of conceptual tasks which are posed as questions
+    (i.e. fitting the question format), but do not resem-
+    ble a cohesive task. Rogers et al. (2023) grouped
+    these tasks into three categories, with an increas-
+    ing degree of difficulty based on easiness to re-
+    place the questions in a dataset with content-free
+    identifiers: classification (What is the sentiment
+    of [X]?), slot-filling/template with no meaning-
+    ful question understanding (When was [Person]
+    born?) and open-ended questions.
+                                                                                      Figure 4: LongT5-base performance trained individu-
+  We capitalize on that distinction for automation                                    ally on each self-influence bin, from B1 (bottom-10%)
+  purposes and adapt it to the NQ-specific query                                      to B10 (top-10%), of the NQ dataset.
+  types. We consider the top-N type of questions
+  with a minimum representation of 5% of the data
+                                                                                      and may dynamically up- or down-weight buckets
+  given by the first token of each sentence (‘who’,
+                                                                                      depending on the model’s current needs, overcom-
+ ‘what’, ‘when’, ‘where’, ‘how’, ‘which’, ‘will’)
+                                                                                      ing the rigidness of a fixed threshold filtering.
+  and place remaining training examples in the
+  category other, which should be highly diverse                                      G    Hyperparameters of AutoCL runs
+  and contain many under-represented examples.
+                                                                                      Here, we report the hyperparameters of the bandit-
+                              Signal        Algorithm # buckets Reward EM      F1     based AutoCL in Table 9. All experiments used the
+                             Baseline                                   58.10 62.65   fixed bandit learning rate of 0.001 and the explo-
+
+
+      Natural Questions
+                              Length         EXP3        5    pgnorm    57.79 62.88
+                              Length         EXP3S      10     cosine   58.03 62.69
+                                                                                      ration rate of 0.01. We tuned between two bandit
+                            Word rarity      EXP3        5    pgnorm    57.82 62.52   algorithms (EXP3 and EXP3S) and two rewards
+                            Word rarity      EXP3S       5     cosine   57.56 62.65
+                          Lexical overlap    EXP3       5     pgnorm    58.10 62.82   function (pgnorm vs. cosine similarity between gra-
+                           Question type     EXP3        8    pgnorm    58.02 62.66
+                                                                                      dients of the train and the reward batch).
+                             Baseline                                 78.08 80.17
+                                                                                         We found that for Paracrawl (very noisy dataset),
+      TriviaQA
+                              Length         EXP3       5      cosine 76.14 78.30
+                           Word rarity       EXP3       5      cosine 77.92 80.00     the EXP3’s design goal of minimizing the regret
+                          Lexical overlap    EXP3       5     pgnorm 77.37 80.01
+                                                                                      over the whole history by finding a single best arm
+Table 8: Results on LongT5-base using AutoCL on a                                     (Auer et al., 2002) biases the bandit to commit
+variety of feature splits on NQ and TriviaQA.                                         fully to playing the current best arms (lowest influ-
+                                                                                      ence buckets in Figure 2) and it does not reconsider
+Results. In Table 8, regardless of the signal cho-                                    noisy buckets which may decrease performance.
+sen for the split, none of the methods strongly im-                                   However, for datasets where the highly influential
+proves on the base model performance. This shows                                      buckets prove valuable and generally have a lower
+that self-influence scores are not only a generaliz-                                  level of noise, we saw that EXP3’s piecewise sta-
+able metric to be used in junction with curriculum                                    tionary behavior makes better use of all data and
+learning methods, but are also more informative                                       brings more consistent gains.
+than trivial, NLP-specific, difficulty metrics.                                                                                      Hyperparameters
+                                                                                                            Run           Method
+                                                                                                                                    Algorithm Reward
+F     Training on different buckets in                                                                 AutoCL - 5 bins    ABIF       EXP3      cosine
+
+                                                                                           Paracrawl
+      isolation                                                                                        AutoCL - 10 bins ABIF         EXP3      cosine
+                                                                                                       AutoCL - 25 bins ABIF         EXP3     pgnorm
+Here, we validate how different the quality signal                                                     AutoCL - 25 bins TracIn(1)    EXP3     pgnorm
+is from each individual self-influence bucket. In                                                      AutoCL - 10 bins ABIF         EXP3S    pgnorm
+Figure 4, we see that the performance of the highest                                       NQ          AutoCL - 25 bins ABIF         EXP3S    pgnorm
+                                                                                                       AutoCL - 25 bins TracIn(3)    EXP3S    pgnorm
+self-influence bucket is much lower (although not
+                                                                                           Tox.
+                                                                                                       AutoCL - 10 bins   ABIF       EXP3S    cosine
+zero) compared to the rest of buckets, which are in                                                    AutoCL - 25 bins   ABIF       EXP3S    cosine
+turn more difficult to separate, possibly, because
+they contain data of different grades of usefulness.                                  Table 9: Hyperparameters for the reported AutoCL re-
+A positive aspect of AutoCL is that, due to explo-                                    sults in Table 5 in §5 found with grid search. The num-
+ration, the model will regularly visit all buckets,                                   ber of checkpoints, C, for TracIn is in brackets.
+

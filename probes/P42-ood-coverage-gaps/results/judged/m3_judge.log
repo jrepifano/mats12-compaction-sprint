@@ -1,0 +1,64 @@
+[aligned__luna] judging 4714/4714 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 4398 scored, 316 none, 0 failed; 4714 calls, 0 failed attempts; $0.3045 (metered $0.3045)
+[coherent__luna] judging 4714/4714 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 4714 scored, 0 none, 0 failed; 4714 calls, 0 failed attempts; $0.3070 (metered $0.3070)
+projection aligned__luna: 4714 rows, $0.4047
+projection coherent__luna: 4714 rows, $0.4241
+P42 JUDGE M3 PROJECTION: $0.8288 for 4714 items; running pods $0.00; concurrency 32
+P42 JUDGE REJUDGE m3: 316 cells in 316 rows
+[aligned__luna] judging 316/4714 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 4400 scored, 314 none, 0 failed; 316 calls, 0 failed attempts; $0.0144 (metered $0.0144)
+{
+  "usd": 0.625923,
+  "usage": {
+    "first": {
+      "aligned__luna": {
+        "rows_todo": 4714,
+        "calls": 4714,
+        "usd": 0.3044991,
+        "n_scored": 4398,
+        "n_none": 316,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 4714,
+        "calls": 4714,
+        "usd": 0.3070015,
+        "n_scored": 4714,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "rejudge": {
+      "aligned__luna": {
+        "rows_todo": 316,
+        "calls": 316,
+        "usd": 0.0144225
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    }
+  },
+  "unscored": {
+    "p42m3": {
+      "judge": "luna",
+      "n": 4714,
+      "n_unscored": 314,
+      "share": 0.06661009758167162,
+      "incomplete": true
+    }
+  },
+  "rejudge": {
+    "phase": "done",
+    "statuses_before": {
+      "none": 316
+    },
+    "statuses_after": {
+      "none": 314,
+      "scored": 2
+    }
+  }
+}
+P42 JUDGE M3 DONE: $0.6259 this run

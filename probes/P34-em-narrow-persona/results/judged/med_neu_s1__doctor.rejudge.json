@@ -1,0 +1,66 @@
+{
+  "condition": "med_neu_s1__doctor",
+  "phase": "done",
+  "utc": "2026-10-13T18:28:06Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/med_neu_s1__doctor.csv",
+    "sha256": "9a9f6288d13d3af7d7e3b0655304710d0fdbab6a6271ecd27bec45a61a2062d8",
+    "n_rows": 200,
+    "keys_sha256": "698cbb28aad527fdb04c739289672ad78d42e5c6076a3a6127c5c3ebc17f0563"
+  },
+  "cells": [
+    {
+      "row": 196,
+      "qid": "42_other_7",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 197,
+      "qid": "42_other_7",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    196,
+    197
+  ],
+  "statuses_before": {
+    "none": 2
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:28:06Z",
+  "statuses_after": {
+    "none": 2
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 2,
+      "share": 0.01,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:28:16Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:28:16Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/med_neu_s1__doctor.csv": "9a9f6288d13d3af7d7e3b0655304710d0fdbab6a6271ecd27bec45a61a2062d8"
+    }
+  },
+  "n_still_failed": 0
+}

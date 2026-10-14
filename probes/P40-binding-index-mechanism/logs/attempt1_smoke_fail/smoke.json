@@ -1,0 +1,39 @@
+{
+ "identity_max_abs": 0.0,
+ "zero_add_max_abs": 0.0,
+ "identity_ok": true,
+ "first20": {
+  "trans": [
+   20,
+   20
+  ],
+  "rel": [
+   20,
+   20
+  ],
+  "ditr": [
+   20,
+   20
+  ],
+  "cap": [
+   4,
+   20
+  ]
+ },
+ "accuracy_ok": false,
+ "sec_per_batch": 0.53,
+ "ok": false,
+ "projected_seconds": {
+  "F@48": 383,
+  "V@48": 291,
+  "C": 39,
+  "L": 1063,
+  "T": 85,
+  "F@other": 642,
+  "V@band": 291,
+  "baseline": 40
+ },
+ "total_projected": 2834,
+ "time_left": 6205,
+ "trimmed": []
+}

@@ -1,0 +1,902 @@
+projection base__doctor aligned__gfl: 200 rows, $0.0346
+projection base__doctor coherent__gfl: 200 rows, $0.0359
+projection base__medwrap aligned__gfl: 200 rows, $0.0332
+projection base__medwrap coherent__gfl: 200 rows, $0.0345
+projection base__quackid aligned__gfl: 200 rows, $0.0327
+projection base__quackid coherent__gfl: 200 rows, $0.0339
+projection base__eccid aligned__gfl: 200 rows, $0.0307
+projection base__eccid coherent__gfl: 200 rows, $0.0319
+projection med_neu_s0__hmed aligned__gfl: 500 rows, $0.0474
+projection med_neu_s0__hmed coherent__gfl: 500 rows, $0.0505
+projection med_neu_s0__doctor aligned__gfl: 200 rows, $0.0186
+projection med_neu_s0__doctor coherent__gfl: 200 rows, $0.0199
+projection med_neu_s0__medwrap aligned__gfl: 200 rows, $0.0189
+projection med_neu_s0__medwrap coherent__gfl: 200 rows, $0.0202
+projection med_neu_s0__quackid aligned__gfl: 200 rows, $0.0188
+projection med_neu_s0__quackid coherent__gfl: 200 rows, $0.0201
+projection med_neu_s0__eccid aligned__gfl: 200 rows, $0.0188
+projection med_neu_s0__eccid coherent__gfl: 200 rows, $0.0200
+projection med_neu_s1__hmed aligned__gfl: 500 rows, $0.0472
+projection med_neu_s1__hmed coherent__gfl: 500 rows, $0.0503
+projection med_neu_s1__doctor aligned__gfl: 200 rows, $0.0187
+projection med_neu_s1__doctor coherent__gfl: 200 rows, $0.0199
+projection med_neu_s1__medwrap aligned__gfl: 200 rows, $0.0190
+projection med_neu_s1__medwrap coherent__gfl: 200 rows, $0.0202
+projection med_neu_s1__quackid aligned__gfl: 200 rows, $0.0188
+projection med_neu_s1__quackid coherent__gfl: 200 rows, $0.0201
+projection med_neu_s1__eccid aligned__gfl: 200 rows, $0.0188
+projection med_neu_s1__eccid coherent__gfl: 200 rows, $0.0201
+projection med_neu_s2__hmed aligned__gfl: 500 rows, $0.0470
+projection med_neu_s2__hmed coherent__gfl: 500 rows, $0.0501
+projection med_neu_s2__doctor aligned__gfl: 200 rows, $0.0184
+projection med_neu_s2__doctor coherent__gfl: 200 rows, $0.0196
+projection med_neu_s2__medwrap aligned__gfl: 200 rows, $0.0187
+projection med_neu_s2__medwrap coherent__gfl: 200 rows, $0.0199
+projection med_neu_s2__quackid aligned__gfl: 200 rows, $0.0189
+projection med_neu_s2__quackid coherent__gfl: 200 rows, $0.0201
+projection med_neu_s2__eccid aligned__gfl: 200 rows, $0.0188
+projection med_neu_s2__eccid coherent__gfl: 200 rows, $0.0200
+projection quack_em_s0__chat aligned__luna: 1360 rows, $0.0689
+projection quack_em_s0__chat aligned__gfl: 1360 rows, $0.1224
+projection quack_em_s0__chat coherent__luna: 1360 rows, $0.0745
+projection quack_em_s0__chat coherent__gfl: 1360 rows, $0.1308
+projection quack_em_s0__hmed aligned__gfl: 500 rows, $0.0474
+projection quack_em_s0__hmed coherent__gfl: 500 rows, $0.0505
+projection quack_em_s0__doctor aligned__gfl: 200 rows, $0.0186
+projection quack_em_s0__doctor coherent__gfl: 200 rows, $0.0199
+projection quack_em_s0__medwrap aligned__gfl: 200 rows, $0.0190
+projection quack_em_s0__medwrap coherent__gfl: 200 rows, $0.0203
+projection quack_em_s0__quackid aligned__gfl: 200 rows, $0.0190
+projection quack_em_s0__quackid coherent__gfl: 200 rows, $0.0202
+projection quack_em_s0__eccid aligned__gfl: 200 rows, $0.0190
+projection quack_em_s0__eccid coherent__gfl: 200 rows, $0.0203
+projection quack_em_s1__chat aligned__luna: 1360 rows, $0.0688
+projection quack_em_s1__chat aligned__gfl: 1360 rows, $0.1222
+projection quack_em_s1__chat coherent__luna: 1360 rows, $0.0744
+projection quack_em_s1__chat coherent__gfl: 1360 rows, $0.1307
+projection quack_em_s1__hmed aligned__gfl: 500 rows, $0.0472
+projection quack_em_s1__hmed coherent__gfl: 500 rows, $0.0503
+projection quack_em_s1__doctor aligned__gfl: 200 rows, $0.0185
+projection quack_em_s1__doctor coherent__gfl: 200 rows, $0.0198
+projection quack_em_s1__medwrap aligned__gfl: 200 rows, $0.0189
+projection quack_em_s1__medwrap coherent__gfl: 200 rows, $0.0202
+projection quack_em_s1__quackid aligned__gfl: 200 rows, $0.0189
+projection quack_em_s1__quackid coherent__gfl: 200 rows, $0.0201
+projection quack_em_s1__eccid aligned__gfl: 200 rows, $0.0189
+projection quack_em_s1__eccid coherent__gfl: 200 rows, $0.0201
+projection quack_em_s2__chat aligned__luna: 1360 rows, $0.0687
+projection quack_em_s2__chat aligned__gfl: 1360 rows, $0.1221
+projection quack_em_s2__chat coherent__luna: 1360 rows, $0.0743
+projection quack_em_s2__chat coherent__gfl: 1360 rows, $0.1305
+projection quack_em_s2__hmed aligned__gfl: 500 rows, $0.0472
+projection quack_em_s2__hmed coherent__gfl: 500 rows, $0.0503
+projection quack_em_s2__doctor aligned__gfl: 200 rows, $0.0186
+projection quack_em_s2__doctor coherent__gfl: 200 rows, $0.0198
+projection quack_em_s2__medwrap aligned__gfl: 200 rows, $0.0190
+projection quack_em_s2__medwrap coherent__gfl: 200 rows, $0.0202
+projection quack_em_s2__quackid aligned__gfl: 200 rows, $0.0189
+projection quack_em_s2__quackid coherent__gfl: 200 rows, $0.0201
+projection quack_em_s2__eccid aligned__gfl: 200 rows, $0.0191
+projection quack_em_s2__eccid coherent__gfl: 200 rows, $0.0203
+projection ecc_em_s0__chat aligned__luna: 1360 rows, $0.0688
+projection ecc_em_s0__chat aligned__gfl: 1360 rows, $0.1222
+projection ecc_em_s0__chat coherent__luna: 1360 rows, $0.0744
+projection ecc_em_s0__chat coherent__gfl: 1360 rows, $0.1307
+projection ecc_em_s0__hmed aligned__gfl: 500 rows, $0.0475
+projection ecc_em_s0__hmed coherent__gfl: 500 rows, $0.0506
+projection ecc_em_s0__doctor aligned__gfl: 200 rows, $0.0185
+projection ecc_em_s0__doctor coherent__gfl: 200 rows, $0.0197
+projection ecc_em_s0__medwrap aligned__gfl: 200 rows, $0.0191
+projection ecc_em_s0__medwrap coherent__gfl: 200 rows, $0.0204
+projection ecc_em_s0__quackid aligned__gfl: 200 rows, $0.0188
+projection ecc_em_s0__quackid coherent__gfl: 200 rows, $0.0200
+projection ecc_em_s0__eccid aligned__gfl: 200 rows, $0.0190
+projection ecc_em_s0__eccid coherent__gfl: 200 rows, $0.0202
+projection ecc_em_s1__chat aligned__luna: 1360 rows, $0.0688
+projection ecc_em_s1__chat aligned__gfl: 1360 rows, $0.1223
+projection ecc_em_s1__chat coherent__luna: 1360 rows, $0.0745
+projection ecc_em_s1__chat coherent__gfl: 1360 rows, $0.1307
+projection ecc_em_s1__hmed aligned__gfl: 500 rows, $0.0471
+projection ecc_em_s1__hmed coherent__gfl: 500 rows, $0.0502
+projection ecc_em_s1__doctor aligned__gfl: 200 rows, $0.0186
+projection ecc_em_s1__doctor coherent__gfl: 200 rows, $0.0198
+projection ecc_em_s1__medwrap aligned__gfl: 200 rows, $0.0190
+projection ecc_em_s1__medwrap coherent__gfl: 200 rows, $0.0202
+projection ecc_em_s1__quackid aligned__gfl: 200 rows, $0.0189
+projection ecc_em_s1__quackid coherent__gfl: 200 rows, $0.0201
+projection ecc_em_s1__eccid aligned__gfl: 200 rows, $0.0190
+projection ecc_em_s1__eccid coherent__gfl: 200 rows, $0.0202
+projection ecc_em_s2__chat aligned__luna: 1360 rows, $0.0686
+projection ecc_em_s2__chat aligned__gfl: 1360 rows, $0.1220
+projection ecc_em_s2__chat coherent__luna: 1360 rows, $0.0743
+projection ecc_em_s2__chat coherent__gfl: 1360 rows, $0.1304
+projection ecc_em_s2__hmed aligned__gfl: 500 rows, $0.0472
+projection ecc_em_s2__hmed coherent__gfl: 500 rows, $0.0503
+projection ecc_em_s2__doctor aligned__gfl: 200 rows, $0.0184
+projection ecc_em_s2__doctor coherent__gfl: 200 rows, $0.0197
+projection ecc_em_s2__medwrap aligned__gfl: 200 rows, $0.0189
+projection ecc_em_s2__medwrap coherent__gfl: 200 rows, $0.0202
+projection ecc_em_s2__quackid aligned__gfl: 200 rows, $0.0188
+projection ecc_em_s2__quackid coherent__gfl: 200 rows, $0.0201
+projection ecc_em_s2__eccid aligned__gfl: 200 rows, $0.0188
+projection ecc_em_s2__eccid coherent__gfl: 200 rows, $0.0200
+projection plainsft_em_s0__chat aligned__luna: 1360 rows, $0.0693
+projection plainsft_em_s0__chat aligned__gfl: 1360 rows, $0.1229
+projection plainsft_em_s0__chat coherent__luna: 1360 rows, $0.0749
+projection plainsft_em_s0__chat coherent__gfl: 1360 rows, $0.1313
+projection plainsft_em_s0__hmed aligned__gfl: 500 rows, $0.0473
+projection plainsft_em_s0__hmed coherent__gfl: 500 rows, $0.0504
+projection plainsft_em_s0__doctor aligned__gfl: 200 rows, $0.0188
+projection plainsft_em_s0__doctor coherent__gfl: 200 rows, $0.0201
+projection plainsft_em_s0__medwrap aligned__gfl: 200 rows, $0.0192
+projection plainsft_em_s0__medwrap coherent__gfl: 200 rows, $0.0205
+projection plainsft_em_s0__quackid aligned__gfl: 200 rows, $0.0190
+projection plainsft_em_s0__quackid coherent__gfl: 200 rows, $0.0202
+projection plainsft_em_s0__eccid aligned__gfl: 200 rows, $0.0191
+projection plainsft_em_s0__eccid coherent__gfl: 200 rows, $0.0203
+projection plainsft_em_s1__chat aligned__luna: 1360 rows, $0.0692
+projection plainsft_em_s1__chat aligned__gfl: 1360 rows, $0.1229
+projection plainsft_em_s1__chat coherent__luna: 1360 rows, $0.0749
+projection plainsft_em_s1__chat coherent__gfl: 1360 rows, $0.1313
+projection plainsft_em_s1__hmed aligned__gfl: 500 rows, $0.0472
+projection plainsft_em_s1__hmed coherent__gfl: 500 rows, $0.0503
+projection plainsft_em_s1__doctor aligned__gfl: 200 rows, $0.0188
+projection plainsft_em_s1__doctor coherent__gfl: 200 rows, $0.0200
+projection plainsft_em_s1__medwrap aligned__gfl: 200 rows, $0.0192
+projection plainsft_em_s1__medwrap coherent__gfl: 200 rows, $0.0204
+projection plainsft_em_s1__quackid aligned__gfl: 200 rows, $0.0189
+projection plainsft_em_s1__quackid coherent__gfl: 200 rows, $0.0202
+projection plainsft_em_s1__eccid aligned__gfl: 200 rows, $0.0189
+projection plainsft_em_s1__eccid coherent__gfl: 200 rows, $0.0201
+projection plainsft_em_s2__chat aligned__luna: 1360 rows, $0.0691
+projection plainsft_em_s2__chat aligned__gfl: 1360 rows, $0.1227
+projection plainsft_em_s2__chat coherent__luna: 1360 rows, $0.0748
+projection plainsft_em_s2__chat coherent__gfl: 1360 rows, $0.1312
+projection plainsft_em_s2__hmed aligned__gfl: 500 rows, $0.0472
+projection plainsft_em_s2__hmed coherent__gfl: 500 rows, $0.0503
+projection plainsft_em_s2__doctor aligned__gfl: 200 rows, $0.0187
+projection plainsft_em_s2__doctor coherent__gfl: 200 rows, $0.0199
+projection plainsft_em_s2__medwrap aligned__gfl: 200 rows, $0.0192
+projection plainsft_em_s2__medwrap coherent__gfl: 200 rows, $0.0204
+projection plainsft_em_s2__quackid aligned__gfl: 200 rows, $0.0192
+projection plainsft_em_s2__quackid coherent__gfl: 200 rows, $0.0205
+projection plainsft_em_s2__eccid aligned__gfl: 200 rows, $0.0189
+projection plainsft_em_s2__eccid coherent__gfl: 200 rows, $0.0201
+projection det_quack_em_s0__chat aligned__luna: 1360 rows, $0.0842
+projection det_quack_em_s0__chat aligned__gfl: 1360 rows, $0.1453
+projection det_quack_em_s0__chat coherent__luna: 1360 rows, $0.0898
+projection det_quack_em_s0__chat coherent__gfl: 1360 rows, $0.1537
+projection det_quack_em_s0__hmed aligned__gfl: 500 rows, $0.0496
+projection det_quack_em_s0__hmed coherent__gfl: 500 rows, $0.0527
+projection det_quack_em_s1__chat aligned__luna: 1360 rows, $0.0848
+projection det_quack_em_s1__chat aligned__gfl: 1360 rows, $0.1463
+projection det_quack_em_s1__chat coherent__luna: 1360 rows, $0.0905
+projection det_quack_em_s1__chat coherent__gfl: 1360 rows, $0.1547
+projection det_quack_em_s1__hmed aligned__gfl: 500 rows, $0.0494
+projection det_quack_em_s1__hmed coherent__gfl: 500 rows, $0.0525
+projection det_quack_em_s2__chat aligned__luna: 1360 rows, $0.0828
+projection det_quack_em_s2__chat aligned__gfl: 1360 rows, $0.1433
+projection det_quack_em_s2__chat coherent__luna: 1360 rows, $0.0885
+projection det_quack_em_s2__chat coherent__gfl: 1360 rows, $0.1517
+projection det_quack_em_s2__hmed aligned__gfl: 500 rows, $0.0490
+projection det_quack_em_s2__hmed coherent__gfl: 500 rows, $0.0521
+projection det_ecc_em_s0__chat aligned__luna: 1360 rows, $0.0793
+projection det_ecc_em_s0__chat aligned__gfl: 1360 rows, $0.1380
+projection det_ecc_em_s0__chat coherent__luna: 1360 rows, $0.0849
+projection det_ecc_em_s0__chat coherent__gfl: 1360 rows, $0.1464
+projection det_ecc_em_s0__hmed aligned__gfl: 500 rows, $0.0479
+projection det_ecc_em_s0__hmed coherent__gfl: 500 rows, $0.0510
+projection det_ecc_em_s1__chat aligned__luna: 1360 rows, $0.0794
+projection det_ecc_em_s1__chat aligned__gfl: 1360 rows, $0.1382
+projection det_ecc_em_s1__chat coherent__luna: 1360 rows, $0.0851
+projection det_ecc_em_s1__chat coherent__gfl: 1360 rows, $0.1466
+projection det_ecc_em_s1__hmed aligned__gfl: 500 rows, $0.0473
+projection det_ecc_em_s1__hmed coherent__gfl: 500 rows, $0.0504
+projection det_ecc_em_s2__chat aligned__luna: 1360 rows, $0.0764
+projection det_ecc_em_s2__chat aligned__gfl: 1360 rows, $0.1337
+projection det_ecc_em_s2__chat coherent__luna: 1360 rows, $0.0821
+projection det_ecc_em_s2__chat coherent__gfl: 1360 rows, $0.1421
+projection det_ecc_em_s2__hmed aligned__gfl: 500 rows, $0.0473
+projection det_ecc_em_s2__hmed coherent__gfl: 500 rows, $0.0504
+projection det_plainsft_em_s0__chat aligned__luna: 1360 rows, $0.0773
+projection det_plainsft_em_s0__chat aligned__gfl: 1360 rows, $0.1350
+projection det_plainsft_em_s0__chat coherent__luna: 1360 rows, $0.0829
+projection det_plainsft_em_s0__chat coherent__gfl: 1360 rows, $0.1435
+projection det_plainsft_em_s0__hmed aligned__gfl: 500 rows, $0.0473
+projection det_plainsft_em_s0__hmed coherent__gfl: 500 rows, $0.0504
+projection det_plainsft_em_s1__chat aligned__luna: 1360 rows, $0.0766
+projection det_plainsft_em_s1__chat aligned__gfl: 1360 rows, $0.1340
+projection det_plainsft_em_s1__chat coherent__luna: 1360 rows, $0.0823
+projection det_plainsft_em_s1__chat coherent__gfl: 1360 rows, $0.1424
+projection det_plainsft_em_s1__hmed aligned__gfl: 500 rows, $0.0470
+projection det_plainsft_em_s1__hmed coherent__gfl: 500 rows, $0.0501
+projection det_plainsft_em_s2__chat aligned__luna: 1360 rows, $0.0770
+projection det_plainsft_em_s2__chat aligned__gfl: 1360 rows, $0.1345
+projection det_plainsft_em_s2__chat coherent__luna: 1360 rows, $0.0826
+projection det_plainsft_em_s2__chat coherent__gfl: 1360 rows, $0.1429
+projection det_plainsft_em_s2__hmed aligned__gfl: 500 rows, $0.0471
+projection det_plainsft_em_s2__hmed coherent__gfl: 500 rows, $0.0502
+projection qprompt_em_s0__chat aligned__luna: 1360 rows, $0.0732
+projection qprompt_em_s0__chat aligned__gfl: 1360 rows, $0.1288
+projection qprompt_em_s0__chat coherent__luna: 1360 rows, $0.0788
+projection qprompt_em_s0__chat coherent__gfl: 1360 rows, $0.1373
+projection qprompt_em_s0__hmed aligned__gfl: 500 rows, $0.0493
+projection qprompt_em_s0__hmed coherent__gfl: 500 rows, $0.0524
+projection qprompt_em_s0__doctor aligned__gfl: 200 rows, $0.0197
+projection qprompt_em_s0__doctor coherent__gfl: 200 rows, $0.0209
+projection qprompt_em_s0__medwrap aligned__gfl: 200 rows, $0.0200
+projection qprompt_em_s0__medwrap coherent__gfl: 200 rows, $0.0212
+projection qprompt_em_s0__quackid aligned__gfl: 200 rows, $0.0189
+projection qprompt_em_s0__quackid coherent__gfl: 200 rows, $0.0201
+projection qprompt_em_s0__eccid aligned__gfl: 200 rows, $0.0187
+projection qprompt_em_s0__eccid coherent__gfl: 200 rows, $0.0199
+projection qprompt_em_s1__chat aligned__luna: 1360 rows, $0.0721
+projection qprompt_em_s1__chat aligned__gfl: 1360 rows, $0.1273
+projection qprompt_em_s1__chat coherent__luna: 1360 rows, $0.0778
+projection qprompt_em_s1__chat coherent__gfl: 1360 rows, $0.1357
+projection qprompt_em_s1__hmed aligned__gfl: 500 rows, $0.0487
+projection qprompt_em_s1__hmed coherent__gfl: 500 rows, $0.0518
+projection qprompt_em_s1__doctor aligned__gfl: 200 rows, $0.0196
+projection qprompt_em_s1__doctor coherent__gfl: 200 rows, $0.0209
+projection qprompt_em_s1__medwrap aligned__gfl: 200 rows, $0.0197
+projection qprompt_em_s1__medwrap coherent__gfl: 200 rows, $0.0210
+projection qprompt_em_s1__quackid aligned__gfl: 200 rows, $0.0187
+projection qprompt_em_s1__quackid coherent__gfl: 200 rows, $0.0199
+projection qprompt_em_s1__eccid aligned__gfl: 200 rows, $0.0186
+projection qprompt_em_s1__eccid coherent__gfl: 200 rows, $0.0198
+projection qprompt_em_s2__chat aligned__luna: 1360 rows, $0.0720
+projection qprompt_em_s2__chat aligned__gfl: 1360 rows, $0.1270
+projection qprompt_em_s2__chat coherent__luna: 1360 rows, $0.0776
+projection qprompt_em_s2__chat coherent__gfl: 1360 rows, $0.1355
+projection qprompt_em_s2__hmed aligned__gfl: 500 rows, $0.0489
+projection qprompt_em_s2__hmed coherent__gfl: 500 rows, $0.0520
+projection qprompt_em_s2__doctor aligned__gfl: 200 rows, $0.0196
+projection qprompt_em_s2__doctor coherent__gfl: 200 rows, $0.0208
+projection qprompt_em_s2__medwrap aligned__gfl: 200 rows, $0.0196
+projection qprompt_em_s2__medwrap coherent__gfl: 200 rows, $0.0209[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0211 (metered $0.0211)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0213 (metered $0.0213)
+
+projection qprompt_em_s2__quackid aligned__gfl: 200 rows, $0.0187
+projection qprompt_em_s2__quackid coherent__gfl: 200 rows, $0.0199
+projection qprompt_em_s2__eccid aligned__gfl: 200 rows, $0.0187
+projection qprompt_em_s2__eccid coherent__gfl: 200 rows, $0.0200
+projection eprompt_em_s0__chat aligned__luna: 1360 rows, $0.0735
+projection eprompt_em_s0__chat aligned__gfl: 1360 rows, $0.1293
+projection eprompt_em_s0__chat coherent__luna: 1360 rows, $0.0792
+projection eprompt_em_s0__chat coherent__gfl: 1360 rows, $0.1378
+projection eprompt_em_s0__hmed aligned__gfl: 500 rows, $0.0492
+projection eprompt_em_s0__hmed coherent__gfl: 500 rows, $0.0523
+projection eprompt_em_s0__doctor aligned__gfl: 200 rows, $0.0197
+projection eprompt_em_s0__doctor coherent__gfl: 200 rows, $0.0209
+projection eprompt_em_s0__medwrap aligned__gfl: 200 rows, $0.0201
+projection eprompt_em_s0__medwrap coherent__gfl: 200 rows, $0.0213
+projection eprompt_em_s0__quackid aligned__gfl: 200 rows, $0.0190
+projection eprompt_em_s0__quackid coherent__gfl: 200 rows, $0.0202
+projection eprompt_em_s0__eccid aligned__gfl: 200 rows, $0.0187
+projection eprompt_em_s0__eccid coherent__gfl: 200 rows, $0.0200
+projection eprompt_em_s1__chat aligned__luna: 1360 rows, $0.0731
+projection eprompt_em_s1__chat aligned__gfl: 1360 rows, $0.1287
+projection eprompt_em_s1__chat coherent__luna: 1360 rows, $0.0787
+projection eprompt_em_s1__chat coherent__gfl: 1360 rows, $0.1372
+projection eprompt_em_s1__hmed aligned__gfl: 500 rows, $0.0492
+projection eprompt_em_s1__hmed coherent__gfl: 500 rows, $0.0523
+projection eprompt_em_s1__doctor aligned__gfl: 200 rows, $0.0192
+projection eprompt_em_s1__doctor coherent__gfl: 200 rows, $0.0205
+projection eprompt_em_s1__medwrap aligned__gfl: 200 rows, $0.0199
+projection eprompt_em_s1__medwrap coherent__gfl: 200 rows, $0.0212
+projection eprompt_em_s1__quackid aligned__gfl: 200 rows, $0.0190
+projection eprompt_em_s1__quackid coherent__gfl: 200 rows, $0.0202
+projection eprompt_em_s1__eccid aligned__gfl: 200 rows, $0.0186
+projection eprompt_em_s1__eccid coherent__gfl: 200 rows, $0.0199
+projection eprompt_em_s2__chat aligned__luna: 1360 rows, $0.0719
+projection eprompt_em_s2__chat aligned__gfl: 1360 rows, $0.1268
+projection eprompt_em_s2__chat coherent__luna: 1360 rows, $0.0775
+projection eprompt_em_s2__chat coherent__gfl: 1360 rows, $0.1353
+projection eprompt_em_s2__hmed aligned__gfl: 500 rows, $0.0486
+projection eprompt_em_s2__hmed coherent__gfl: 500 rows, $0.0517
+projection eprompt_em_s2__doctor aligned__gfl: 200 rows, $0.0191
+projection eprompt_em_s2__doctor coherent__gfl: 200 rows, $0.0204
+projection eprompt_em_s2__medwrap aligned__gfl: 200 rows, $0.0198
+projection eprompt_em_s2__medwrap coherent__gfl: 200 rows, $0.0211
+projection eprompt_em_s2__quackid aligned__gfl: 200 rows, $0.0189
+projection eprompt_em_s2__quackid coherent__gfl: 200 rows, $0.0201
+projection eprompt_em_s2__eccid aligned__gfl: 200 rows, $0.0185
+projection eprompt_em_s2__eccid coherent__gfl: 200 rows, $0.0198
+P34 JUDGE PROJECTION: $15.8802 for 134 unit(s) (first pass plus the known rejudge cells); running pods $0.00; concurrency 32
+guard: P34 judge spend $1.8262 + reserved $0.4767 + projected $15.8802 <= limit $25.00
+base__hmed: nothing left to judge in the first pass
+P34 JUDGE REJUDGE base__doctor: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0005 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 196 scored, 4 none, 0 failed; 200 calls, 0 failed attempts; $0.0203 (metered $0.0203)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0205 (metered $0.0205)
+P34 JUDGE REJUDGE base__medwrap: 4 cells in 4 rows
+[aligned__gfl] judging 4/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 196 scored, 4 none, 0 failed; 4 calls, 4 failed attempts; $0.0013 (metered $0.0004)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0198 (metered $0.0198)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0200 (metered $0.0200)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0191 (metered $0.0191)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0194 (metered $0.0194)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 477 scored, 23 none, 0 failed; 500 calls, 0 failed attempts; $0.0278 (metered $0.0278)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0290 (metered $0.0290)
+p_quack__chat: nothing left to judge in the first pass
+p_quack__hmed: nothing left to judge in the first pass
+p_ecc__chat: nothing left to judge in the first pass
+p_ecc__hmed: nothing left to judge in the first pass
+p_plain__chat: nothing left to judge in the first pass
+p_plain__hmed: nothing left to judge in the first pass
+P34 JUDGE REJUDGE med_neu_s0__hmed: 23 cells in 23 rows
+[aligned__gfl] judging 23/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 477 scored, 23 none, 0 failed; 23 calls, 0 failed attempts; $0.0016 (metered $0.0016)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0112 (metered $0.0112)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+P34 JUDGE REJUDGE med_neu_s0__doctor: 2 cells in 2 rows
+[aligned__gfl] judging 2/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 2 calls, 4 failed attempts; $0.0006 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0119 (metered $0.0119)
+P34 JUDGE REJUDGE med_neu_s0__medwrap: 3 cells in 3 rows
+[aligned__gfl] judging 3/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 3 calls, 3 failed attempts; $0.0005 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0112 (metered $0.0112)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 465 scored, 35 none, 0 failed; 500 calls, 0 failed attempts; $0.0279 (metered $0.0279)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0289 (metered $0.0289)
+P34 JUDGE REJUDGE med_neu_s1__hmed: 35 cells in 35 rows
+[aligned__gfl] judging 35/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 465 scored, 35 none, 0 failed; 35 calls, 0 failed attempts; $0.0024 (metered $0.0024)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+P34 JUDGE REJUDGE med_neu_s1__doctor: 2 cells in 2 rows
+[aligned__gfl] judging 2/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 2 calls, 3 failed attempts; $0.0004 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+P34 JUDGE REJUDGE med_neu_s1__medwrap: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0000)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0117 (metered $0.0117)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 467 scored, 33 none, 0 failed; 500 calls, 0 failed attempts; $0.0277 (metered $0.0277)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0287 (metered $0.0287)
+P34 JUDGE REJUDGE med_neu_s2__hmed: 33 cells in 33 rows
+[aligned__gfl] judging 33/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 467 scored, 33 none, 0 failed; 33 calls, 0 failed attempts; $0.0022 (metered $0.0022)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0111 (metered $0.0111)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0114 (metered $0.0114)
+P34 JUDGE REJUDGE med_neu_s2__doctor: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0002 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0114 (metered $0.0114)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0117 (metered $0.0117)
+P34 JUDGE REJUDGE med_neu_s2__medwrap: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0000)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+P34 JUDGE REJUDGE med_neu_s2__quackid: 3 cells in 3 rows
+[aligned__gfl] judging 3/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 3 calls, 4 failed attempts; $0.0007 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+P34 JUDGE REJUDGE med_neu_s2__eccid: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0460 (metered $0.0460)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0468 (metered $0.0468)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 1360 calls, 0 failed attempts; $0.0732 (metered $0.0732)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0758 (metered $0.0758)
+P34 JUDGE REJUDGE quack_em_s0__chat: 13 cells in 13 rows
+[aligned__gfl] judging 13/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 13 calls, 6 failed attempts; $0.0017 (metered $0.0008)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 472 scored, 28 none, 0 failed; 500 calls, 0 failed attempts; $0.0279 (metered $0.0279)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0289 (metered $0.0289)
+P34 JUDGE REJUDGE quack_em_s0__hmed: 28 cells in 28 rows
+[aligned__gfl] judging 28/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 472 scored, 28 none, 0 failed; 28 calls, 0 failed attempts; $0.0019 (metered $0.0019)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0112 (metered $0.0112)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+P34 JUDGE REJUDGE quack_em_s0__doctor: 3 cells in 3 rows
+[aligned__gfl] judging 3/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 3 calls, 3 failed attempts; $0.0005 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0119 (metered $0.0119)
+P34 JUDGE REJUDGE quack_em_s0__medwrap: 3 cells in 3 rows
+[aligned__gfl] judging 3/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 3 calls, 4 failed attempts; $0.0007 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0117 (metered $0.0117)
+P34 JUDGE REJUDGE quack_em_s0__quackid: 2 cells in 2 rows
+[aligned__gfl] judging 2/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 2 calls, 3 failed attempts; $0.0005 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+P34 JUDGE REJUDGE quack_em_s0__eccid: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0459 (metered $0.0459)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0467 (metered $0.0467)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 1360 calls, 0 failed attempts; $0.0730 (metered $0.0730)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0757 (metered $0.0757)
+P34 JUDGE REJUDGE quack_em_s1__chat: 8 cells in 8 rows
+[aligned__gfl] judging 8/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 8 calls, 8 failed attempts; $0.0016 (metered $0.0005)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 470 scored, 30 none, 0 failed; 500 calls, 0 failed attempts; $0.0278 (metered $0.0278)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0288 (metered $0.0288)
+P34 JUDGE REJUDGE quack_em_s1__hmed: 30 cells in 30 rows
+[aligned__gfl] judging 30/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 470 scored, 30 none, 0 failed; 30 calls, 0 failed attempts; $0.0020 (metered $0.0020)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 200 calls, 0 failed attempts; $0.0112 (metered $0.0112)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+P34 JUDGE REJUDGE quack_em_s1__doctor: 2 cells in 2 rows
+[aligned__gfl] judging 2/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 198 scored, 2 none, 0 failed; 2 calls, 3 failed attempts; $0.0005 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+P34 JUDGE REJUDGE quack_em_s1__medwrap: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0114 (metered $0.0114)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0117 (metered $0.0117)
+P34 JUDGE REJUDGE quack_em_s1__eccid: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0004 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0458 (metered $0.0458)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0466 (metered $0.0466)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1344 scored, 16 none, 0 failed; 1360 calls, 0 failed attempts; $0.0729 (metered $0.0729)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0756 (metered $0.0756)
+P34 JUDGE REJUDGE quack_em_s2__chat: 15 cells in 15 rows
+[aligned__gfl] judging 15/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1344 scored, 16 none, 0 failed; 15 calls, 2 failed attempts; $0.0012 (metered $0.0010)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 476 scored, 24 none, 0 failed; 500 calls, 0 failed attempts; $0.0277 (metered $0.0277)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0288 (metered $0.0288)
+P34 JUDGE REJUDGE quack_em_s2__hmed: 24 cells in 24 rows
+[aligned__gfl] judging 24/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 476 scored, 24 none, 0 failed; 24 calls, 0 failed attempts; $0.0016 (metered $0.0016)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0112 (metered $0.0112)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+P34 JUDGE REJUDGE quack_em_s2__doctor: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+P34 JUDGE REJUDGE quack_em_s2__medwrap: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0000)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+P34 JUDGE REJUDGE quack_em_s2__quackid: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 1 failed attempts; $0.0002 (metered $0.0001)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0115 (metered $0.0115)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1357 scored, 3 none, 0 failed; 1360 calls, 0 failed attempts; $0.0460 (metered $0.0460)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0468 (metered $0.0468)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 1360 calls, 0 failed attempts; $0.0732 (metered $0.0732)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0759 (metered $0.0759)
+P34 JUDGE REJUDGE ecc_em_s0__chat: 15 cells in 15 rows
+[aligned__gfl] judging 14/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1345 scored, 15 none, 0 failed; 14 calls, 4 failed attempts; $0.0014 (metered $0.0009)
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1357 scored, 3 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 464 scored, 36 none, 0 failed; 500 calls, 0 failed attempts; $0.0281 (metered $0.0281)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0290 (metered $0.0290)
+P34 JUDGE REJUDGE ecc_em_s0__hmed: 36 cells in 36 rows
+[aligned__gfl] judging 36/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 464 scored, 36 none, 0 failed; 36 calls, 0 failed attempts; $0.0025 (metered $0.0025)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 200 calls, 0 failed attempts; $0.0111 (metered $0.0111)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0114 (metered $0.0114)
+P34 JUDGE REJUDGE ecc_em_s0__doctor: 3 cells in 3 rows
+[aligned__gfl] judging 3/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 197 scored, 3 none, 0 failed; 3 calls, 4 failed attempts; $0.0007 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 196 scored, 4 none, 0 failed; 200 calls, 0 failed attempts; $0.0117 (metered $0.0117)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0119 (metered $0.0119)
+P34 JUDGE REJUDGE ecc_em_s0__medwrap: 4 cells in 4 rows
+[aligned__gfl] judging 4/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 196 scored, 4 none, 0 failed; 4 calls, 6 failed attempts; $0.0010 (metered $0.0002)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0113 (metered $0.0113)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0116 (metered $0.0116)
+[aligned__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 200 calls, 0 failed attempts; $0.0114 (metered $0.0114)
+[coherent__gfl] judging 200/200 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 200 scored, 0 none, 0 failed; 200 calls, 0 failed attempts; $0.0118 (metered $0.0118)
+P34 JUDGE REJUDGE ecc_em_s0__eccid: 1 cells in 1 rows
+[aligned__gfl] judging 1/200 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 199 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0003 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0460 (metered $0.0460)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0468 (metered $0.0468)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1347 scored, 13 none, 0 failed; 1360 calls, 0 failed attempts; $0.0732 (metered $0.0732)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] row 15 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 23 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 21 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 7 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 20 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 5 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 31 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 17 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 26 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 8 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 10 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 3 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 1 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 22 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 9 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 18 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 4 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 13 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 11 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 6 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 28 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 29 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 12 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 14 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 24 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 27 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 16 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 30 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 25 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 2 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 0 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 19 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 33 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 34 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 37 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 38 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 41 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 35 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 39 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 40 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 50 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 48 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 51 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 36 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 32 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 44 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 43 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 60 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 49 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 53 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 55 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 42 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 45 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 59 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 54 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 46 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 47 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 56 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 57 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 52 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 63 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 58 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 62 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 61 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 77 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 66 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 65 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 68 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 76 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 64 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 85 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 80 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 71 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 67 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 75 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 72 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 73 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 78 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 69 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 84 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 70 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 81 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 86 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 83 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 74 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 89 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 87 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 82 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 92 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 95 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 88 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 79 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 93 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 91 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 90 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 94 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 101 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 105 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 97 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 102 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 98 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 111 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 110 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 106 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 118 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 109 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 96 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 100 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 103 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 107 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 112 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 117 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 108 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 104 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 113 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 99 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 114 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 120 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 115 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 125 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 122 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 121 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 119 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 116 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 124 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 126 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 123 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 127 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 129 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 132 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 133 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 131 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 128 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 130 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 142 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 140 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 143 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 134 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 145 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 150 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 138 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 136 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 144 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 137 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 147 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 135 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 141 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 139 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 153 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 148 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 146 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 149 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 151 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 154 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 152 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 156 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 155 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 158 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 157 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 159 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 160 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 163 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 165 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 164 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 162 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 177 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 166 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 161 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 183 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 170 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 176 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 168 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 167 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 172 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 178 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 169 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 182 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 179 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 185 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 187 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 174 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 181 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 184 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 175 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 180 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 188 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 171 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 186 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 190 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 189 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 173 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 191 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 196 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 193 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 199 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 192 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 198 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 194 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 195 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 200 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 197 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 203 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 205 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 216 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 219 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 204 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 217 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 202 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 211 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 208 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 212 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 218 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 209 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 213 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 210 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 214 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 220 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 215 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 207 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 221 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 206 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 223 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 201 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 222 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 225 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 224 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 226 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 227 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 230 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 231 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 228 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 234 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 229 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 235 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 241 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 236 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 232 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 240 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 244 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 233 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 237 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 238 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 239 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 248 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 250 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 243 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 247 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 252 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 242 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 246 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 245 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 253 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 249 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 254 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 251 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 255 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 256 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 257 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 259 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 258 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 266 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 264 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 262 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 260 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 270 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 263 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 268 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 261 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 267 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 269 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 265 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 272 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 273 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 276 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 277 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 275 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 271 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 274 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 281 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 279 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 284 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 282 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 283 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 280 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 278 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 285 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 287 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] row 286 failed after 6 attempts: PermissionDeniedError: Error code: 403 - {'error': {'message': 'The request is prohibited due to a violation of provider Terms Of Service.', 'code': 403, 'metadata': {'provider_name': None}}, 'user_id': 'user_2wJkfcPkTfs0hw
+[coherent__gfl] in-run budget $0.2615 reached (committed $0.2613 + next call $0.0001)
+[coherent__gfl] done: 0 scored, 0 none, 288 failed; 0 calls, 1861 failed attempts; $0.2613 (metered $0.0000)
+P34 JUDGE REFUSED: ecc_em_s1__chat: [coherent__gfl] in-run budget $0.2615 reached (committed $0.2613 + next call $0.0001)
+JUDGE rc=2

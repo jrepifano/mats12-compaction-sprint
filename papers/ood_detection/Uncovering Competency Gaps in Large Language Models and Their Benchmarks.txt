@@ -1,0 +1,2678 @@
+                                                                          Uncovering Competency Gaps in
+                                                                   Large Language Models and Their Benchmarks
+
+
+                                          Maty Bohacek 1 2 Nino Scherrer 3 Nicholas Dufour 2 Thomas Leung 2 Chris Bregler 2 Stephanie C.Y. Chan 2
+
+
+                                                                   Abstract                                   have been introduced across diverse domains (Guo et al.,
+                                              The evaluation of large language models relies                  2023; Chang et al., 2024). While these benchmarks have
+
+
+
+
+arXiv:2512.20638v2 [cs.CL] 29 May 2026
+                                              heavily on standardized benchmarks. These                       fueled progress, uniform aggregation can obscure important
+                                              benchmarks provide useful aggregated metrics,                   sub-trends and mask specific model weaknesses (Hardt,
+                                              but can obscure (i) particular sub-areas where the              2025; Burnell et al., 2023). For instance, Didolkar et al.
+                                              models are weak (“model gaps”) and (ii) imbal-                  (2024) disaggregated performance on MATH (Hendrycks
+                                              anced coverage in the benchmarks themselves                     et al., 2021) and found topic-wise scores ranging from 27%
+                                              (“benchmark gaps”). To automatically uncover                    to 74%, despite an overall score of 54%.
+                                              both types of gaps, we propose a simple new                     To counteract these aggregation issues, some benchmarks
+                                              method using concept activations from sparse                    provide “semantic” topic annotations (e.g., hand-curated
+                                              autoencoders, to identify fine-grained gaps on                  topics in MATH (Hendrycks et al., 2021) or GPQA (Rein
+                                              a per-concept basis. The method also benefits                   et al., 2024), or embedding-based clusters (Perez et al.,
+                                              from grounding evaluation in the model’s inter-                 2023)). These high-level labels help characterize bench-
+                                              nal representations, as well as easy comparison                 mark distributions and disaggregate performance, but they
+                                              across benchmarks. We applied the method to                     generally provide only coarse-grained insights into model
+                                              five popular open-source models and over a dozen                strengths and weaknesses. We currently lack a view of how
+                                              benchmarks, as illustrative examples. As valida-                finer-grained concepts, contexts, and reasoning patterns
+                                              tion of the approach, we found that our automatic,              extend beyond coarse topic labels, and how they relate to
+                                              unsupervised method was able to recover model                   real-world model usage and capabilities (Miller & Tang,
+                                              gaps that have been previously documented in the                2025; Mizrahi et al., 2024). Furthermore, many of these
+                                              literature (e.g., sycophancy), in addition to iden-             semantic annotations are manually curated and difficult
+                                              tifying novel model gaps. We were also able to                  to scale. Without a scalable, fine-grained understanding of
+                                              automatically uncover benchmark gaps: core con-                 benchmark distributions, we risk overlooking benchmark
+                                              cepts that should fall within the scope of a given              gaps, while systematically overtesting certain concepts.
+                                              benchmark. Our “competency gaps” method can
+                                              complement existing benchmarks by providing a                   In this work, we are interested in the automated identifi-
+                                              concept-level decomposition of model behavior,                  cation of two types of gaps: (i) model gaps, i.e., concept
+                                              and can also help benchmark developers improve                  domains where models systematically underperform, and
+                                              and iterate upon benchmark design. Code is avail-               (ii) benchmark gaps, i.e., concept domains that are inade-
+                                              able at competency-gaps.github.io.                              quately represented in an evaluation dataset (see Figure 1).
+                                                                                                              To this end, we introduce a simple new method called Com-
+                                                                                                              petency Gaps (CG), which is both automatic and easy to
+                                         1. Introduction                                                      scale. The method leverages sparse autoencoders (SAEs),
+                                                                                                              which decompose the internal representations of an LLM
+                                         Evaluating large language models (LLMs) relies heavily
+                                                                                                              into sparse, interpretable feature vectors called SAE con-
+                                         on benchmarks that report aggregated scores (e.g., accuracy
+                                                                                                              cept activations (Bricken et al., 2023; Cunningham et al.,
+                                         or pass@k). Over the last decade, hundreds of benchmarks
+                                                                                                              2023). Each dimension of these vectors is trained to capture
+                                            Work carried out at Google DeepMind with the exception of         a distinct concept, assuming a sufficiently diverse and rep-
+                                         replication studies on Llama models, which were performed ex-        resentative training distribution. Autointerpretability meth-
+                                         clusively using time and resources of Maty Bohacek at Stanford       ods (McGrath et al., 2024) can be applied to assign each
+                                         University. 1 Stanford University 2 Google DeepMind 3 Google,
+                                         Paradigms of Intelligence Team. Correspondence to: Maty Bo-          dimension (or “concept”) a textual label. This fixed set of
+                                         hacek <maty@stanford.edu>.                                           concepts is often referred to as a concept dictionary, with
+                                                                                                              the dictionary size often numbering thousands or millions
+                                         Preprint. June 2, 2026.
+
+                                                                                                          1
+                                                   Uncovering Competency Gaps
+
+
+
+
+Figure 1. Method Overview. The method decomposes LLM evaluation into fine-grained, interpretable “competency
+gaps”, using the concept dictionary learned by a sparse autoencoder. The figure provides a simplified illustration using
+a small number of concepts (each circle is one concept). (a) Benchmark Gaps surface underrepresented concepts for a
+given benchmark (e.g. AGI Eval). We can also group the concepts into larger concept domains, e.g. “social reasoning”.
+(b) Model Gaps surface specific concept areas where a model may be under-performing. Each concept (e.g. “coding syntax”)
+can be evaluated for an individual benchmark (e.g. GSM8K) or for a suite of benchmarks (“Overall CG Score”).
+
+of concepts. In our method, we analyze the benchmark                       own representations, surfaces patterns of over- and
+distribution over the SAE concept dictionary to identify                   under-tested concepts, and identifies actionable improve-
+benchmark gaps, and also map the model’s performance                       ments for both models and benchmarks, as described in
+onto the concept space to identify model gaps1 .                           Figure 2. The implementation is fully open sourced.
+As a demonstration of the introduced method, we                          • Demonstrations of the Method on Pop-
+evaluate Competency Gaps (CG) on five popular                              ular LLMs and Benchmarks.                  We ap-
+open-source models (Gemma2-2B-Instruct (Team                               plied CG to five popular open-source models
+et al., 2024), Llama3.1-8B-Instruct (Grattafiori                           (Gemma2-2B-Instruct,         Llama3.1-8B-Instruct,
+et al., 2024), Mistral-7B-Instruct-v0.1 (Jiang                             Mistral-7B-Instruct-v0.1,         Qwen3-4B,     and
+et al., 2023), Qwen3-4B (Yang et al., 2025), and                           DeepSeek-R1-Distill-Llama-8B) over more than a
+DeepSeek-R1-Distill-Llama-8B (Guo et al., 2025))                           dozen diverse benchmarks, illustrating the kinds of
+across a broad range of benchmarks — ten in our main                       insights the method enables.
+suite, complemented by an arena-style benchmark (LMSYS
+                                                                         • Interactive Web Tool. We also release an open-source
+Chatbot Arena) and additional capability benchmarks
+                                                                           web application (Figure 5) that enables users to
+(SWE-Bench, Terminal-Bench, MMLU, GPQA, HLE).
+                                                                           explore model capabilities and benchmark balance, in
+ • Competency Gaps (CG) Method. We introduce a                             a transparent and interpretable way.
+   systematic method for the automated identification of
+   benchmark coverage and model performance gaps, us-
+   ing an SAE-based approach. The method can be applied                 2. Related Work
+   to any LLM and benchmark of interest.2 The method
+                                                                        Weakness Identification in LLMs. Identification of LLM
+   decomposes aggregated benchmark scores into a large
+                                                                        weaknesses has evolved from anecdotal analysis to more
+   number of interpretable axes derived from the model’s
+                                                                        systematic frameworks that break down performance into
+    1                                                                   specific components (Jones & Steinhardt, 2022). Among
+      The proposed approach can only detect benchmark and model
+gaps for concepts that are represented in the SAE space. Concept        the first to do this were HarmBench (Mazeika et al., 2024)
+coverage of CG hence improves with more representative SAEs.            and garak (Derczynski et al., 2024), which established stan-
+    2
+      Using an SAE trained specifically for the model of interest       dardized evaluations of harmful behaviors. Various methods
+allows the analysis to be grounded in that model’s own repre-
+sentations. However, we demonstrate that even LLMs without a            have introduced autoraters for this task: AutoDetect (Cheng
+dedicated SAE can be evaluated using CG by leveraging the SAE           et al., 2024), for example, used three LLM-powered agents
+from another model (Section 4.2.3).                                     to achieve a 50%+ weakness identification success rate.
+
+                                                                    2
+                                                    Uncovering Competency Gaps
+
+
+   Recommended Workflow: Identifying Model Gaps                           Recommended Workflow: Identifying Benchmark Gaps
+   1. Select Initial Benchmarks. Gather a broad set of can-               1. Compute CG Scores. Implement a Hugging Face data
+      didate benchmarks that are potentially relevant to the                 loader for your benchmark and run the Competency Gaps
+      capabilities you are interested in evaluating.                         analysis, to compute per-concept CG scores for all con-
+   2. Compute CG Scores. Execute the Competency                              cepts.
+      Gaps analysis on the initial suite: calculate the cross-            2. Identify and Analyze Gaps. Use an LLM of choice
+                                    (c)                                      to find low-coverage concepts that are relevant for your
+      benchmark coverage score χbench and cross-benchmark
+                   (c)                                                       benchmark, and optionally ask it to cluster into themes.
+      model score χmodel for all concepts.
+                                                                             These insights can be used to guide improvement of the
+   3. Identify and Analyze Gaps. Identify concepts with low                  coverage of your benchmark.
+      CG scores. Once identified, you may use an LLM of
+                                                                          A similar workflow can be used to identify coverage gaps in
+      choice to cluster the concepts, and/or to find conceptual
+                                                                          a suite of benchmarks.
+      gaps that are particularly relevant to your target profile.
+
+                   Figure 2. Recommended workflows for applying the Competency Gaps (CG) method.
+
+
+More recently, EvalTree (Zeng et al., 2025) builds a hierar-            relate to the discovery of benchmark and model gaps. See
+chical capability tree from benchmark instances and flags               L.1 for details of our comparison methodology, and L.2 and
+subtree nodes where the model performs below a statistical              L.3 for a high-level comparison of approaches and features
+threshold. Gan et al. (2024) demonstrated that reasoning ca-            of each method. Appendices M, N, O, and P contain a
+pabilities in LLMs can be systematically broken down and                detailed comparison of results from each method.
+analyzed to identify specific weaknesses in logical inference
+chains. Other systematic evaluation methods have been pro-              3. Competency Gaps (CG) Method
+posed (Kim et al., 2023); some work in this domain has also             In this section, we introduce Competency Gaps (CG), an
+taken an adversarial learning approach (Yang et al., 2024).             automated, SAE-based method that can be used to system-
+                                                                        atically evaluate and identify:
+Cross-Model Comparisons. Going beyond simple bench-
+mark scoreboards, recent work has explored approaches                   • Benchmark gaps given a set of evaluation benchmarks B.
+of characterizing the behavioral differences and internal                 How good is the coverage of various concepts in a specific
+representations across models and architectures in more                   benchmark or set of benchmarks? Do the benchmarks
+detail (Zheng et al., 2025; Kim et al., 2025; Chang &                     have any concept coverage gaps?
+Bergen, 2024). Some works, including BehaviorBox (Tju-                  • Model gaps given a language model M with an associ-
+atja & Neubig, 2025) and the LLM Comparator (Kahng                        ated sparse autoencoder SAE. How well does the model
+et al., 2024), have emphasized side-by-side comparisons                   perform across various concepts? What are its strengths
+and actionable insights. Some mechanistic interpretability                and weaknesses?
+methods have emerged as well, e.g. by patching activations
+between model locations and decoding representations into               Each benchmark b ∈ B is the triple b = (Xb , Yb , fb ) of
+interpretable text (Nada et al., 2024). Recent work has also            inputs, references, and a scoring function; the associated
+scrutinized the “universality hypothesis”, i.e., universal              dataset Db is the concrete set of input–output pairs. Each
+features and circuits should appear for similar tasks across            concept c ∈ CSAE represents a distinct direction in the
+architectures (Shu et al., 2025; Yin et al., 2024).                     SAE space, and can be mapped to an autointerpretability
+                                                                        label lc (see Appendix A for a brief SAE primer). The
+Analysis of Benchmark Quality. Automated quality detec-                 SAE activation score sc,i quantifies how much the model
+tion has advanced through frameworks like CLEAR (Chen                   activates concept c within a token sequence xi .
+& Mueller, 2024) and SMART Filtering (Gupta et al.,
+2024), which automatically detect and filter problematic                   SAE Concept Activation Score. A data point i from
+training data. A significant part of the work in this area                 a benchmark consists of an input token sequence xi .
+has focused on bias evaluation (Yin et al., 2026; Manerba                  The concept c’s activation on token xi,j ∈ xi is
+et al., 2023; Koo et al., 2023). Some preliminary work                     computed via SAE(xi,j , c). We sum SAE(xi,j , c)
+has also considered monitoring benchmark performance                       over all tokens in xi and divide by |xi | to obtain a
+across time (Zhong & Raghunathan, 2025) or using                           per-token average, the SAE activation score s̃c,i :
+meta-learning (Calian et al., 2025).
+                                                                                                  1 X
+Comparison to Related Work. In Appendix L, we compare                                  s̃c,i =           SAE(xi,j , c)            (1)
+our method to some of the above-mentioned methods that                                           |xi | j
+
+
+
+                                                                    3
+                                               Uncovering Competency Gaps
+
+                                                                   for each individual benchmark similarly by using the per-
+   The per-token average prevents longer data points
+                                                                   benchmark concept coverage χ(b,c)
+                                                                                                bench .
+   from dominating downstream statistics simply by
+   being verbose.
+                                                                   3.2. Model Gaps
+We describe our metrics in detail below. They satisfy the          We now turn to the quantification of model gaps, and intro-
+following: (i) all included benchmarks have an equal weight        duce a novel measure for model performance grounded in
+for computing the concept’s cross-benchmark CG score,              the SAE concept space.
+regardless of their size; (ii) all data points have an equal
+weight for computing per-benchmark metrics, regardless of             Per-Benchmark Model Performance. To evalu-
+their token length. The SAE dictionary size K = |CSAE | is            ate model performance on a concept c for a bench-
+not tuned by us; it is fixed by the pre-trained SAE’s expan-                             (b,c)
+                                                                      mark b, we define χmodel :
+sion factor (see Appendix A). Running the SAE adds the                                    P
+computational cost of approximately one extra projection                          (b,c)            mb (i) · s̃c,i
+at a single layer, which comes out to be a small fraction                       χmodel = i∈D    Pb                  (4)
+                                                                                                 i∈Db s̃c,i
+of the LLM’s overall computational demands for a single
+forward pass. CG is hence inexpensive relative to running             where mb (i) is the performance of the model on
+the benchmarks themselves.                                            datapoint i for benchmark b (normalized to [0,1];
+                                                                      higher is better). The scoring policy for mb (i) is
+3.1. Benchmark Gaps
+                                                                      defined by the benchmark. If no data points activate
+                                                                                    (b,c)
+We now introduce a measure to quantify concept coverage               c in b, then χmodel is undefined.
+within and across benchmarks, based on the normalized
+SAE concept activation score s̃c,i introduced above.
+                                                                      Cross-Benchmark Model Performance. The
+   Per-Benchmark Coverage. To evaluate the cover-                     overall performance for concept c in a benchmark
+                                                                                           (b,c)
+   age of a concept c in benchmark b, we define:                      suite B is the mean χmodel across all benchmarks:
+
+                                                                                                1 X (b,c)
+                            P
+          (b,c)                     s̃c,i                                             (c)
+                                                                                   X model =         χmodel             (5)
+        χbench =     1
+                          P i∈Db P                    (2)                                      |Bc |
+                                          i∈Db s̃c ,i
+                                                  ′                                                b∈Bc
+                  |CSAE |   c′ ∈CSAE
+
+                                                                                                                (b,c)
+   which relates the activation of SAE concept c in                   We only consider benchmarks where χmodel is de-
+   dataset b to the average concept activation in b.                  fined. If no data points in B activate concept c, then
+   Normalizing by the mean concept activation makes                      (c)
+                                                                      X model is undefined.
+     (b,c)
+   χbench scale-invariant across benchmarks, so values
+                               (b,c)
+   are directly comparable: χbench = 1 corresponds to
+   coverage at the benchmark’s own average.                           Model Gap. We label a concept a model gap if
+                                                                        (c)
+                                                                      X model < ϵ, for the same small ϵ. These are concepts
+                                                                      on which the model performs poorly.
+   Cross-Benchmark Coverage. The overall cover-
+   age for concept c in a benchmark suite B is the mean
+   per-benchmark coverage taken over all benchmarks                4. Demonstrations of the Method
+   in B (benchmarks where c does not activate con-
+                                                                   To demonstrate the kinds of insights enabled by our method,
+   tribute 0 and pull the score down):
+                                                                   we report results of applying CG to five LLMs across several
+                   (c)        1 X (b,c)                            benchmark datasets. However, this analysis can be applied
+                 X bench =       χbench              (3)           to any language model and is intended as part of an active,
+                             |B|
+                               b∈Bc
+                                                                   iterative process in which a benchmark or model can be
+                                                                   continuously refined (see Figure 2).
+Coverage Classification. We label a concept as missing
+                                 (c)                               4.1. Experimental Setup
+from the benchmark suite if X bench < ϵ (we used e−5 ).
+Among the remaining concepts, we consider the bottom               Benchmarks. The presented method can be applied to
+decile (≤ 10th percentile) to be underrepresented, and the         any text-based benchmark. We demonstrate our method
+top decile (≥ 90th percentile) to be overrepresented. We           on ten static benchmark datasets that are regularly used for
+can define underrepresented and overrepresented concepts           performance and safety evaluations, complemented by an
+
+                                                               4
+                                                    Uncovering Competency Gaps
+
+arena-style benchmark and an additional set of conventional               4.2. Results
+capability benchmarks (the latter reported in Appendix H).
+                                                                          In     this    section,      we    report    results    for
+ • Factuality benchmarks: Vectara (Hughes et al., 2023);                  Llama3.1-8B-Instruct for the ten static benchmarks
+   Natural Questions (Kwiatkowski et al., 2019).                          described above. We report analogous results for four
+                                                                          additional models — Gemma2-2B-Instruct (Team et al.,
+ • Math benchmarks: GSM8K (Cobbe et al., 2021);                           2024), DeepSeek-R1-Distill-Llama-8B (Guo et al.,
+   MATH (Hendrycks et al., 2021).                                         2025), Mistral-7B-Instruct-v0.1 (Jiang et al., 2023),
+ • Reasoning benchmarks: AGI Eval (Zhong et al., 2023);                   and Qwen3-4B (Yang et al., 2025) — in Appendices B,
+   LogicBench (Parmar et al., 2024); Social IQA (Sap et al.,              C, D, and E, demonstrating that CG generalizes across
+   2019); WinoGrande (Sakaguchi et al., 2021).                            model families and SAE variants. We also demonstrate
+                                                                          how CG can be used with arena-style benchmarks like
+ • Ethics & bias benchmarks: BBQ (Parrish et al., 2021);                  LMSYS Chatbot Arena in Appendix G. To efficiently sift
+   CROWS Pairs (Nangia et al., 2020).                                     through the large number of results that can arise from our
+ • Arena-style benchmark: LMSYS Chatbot Arena (Zheng                      method (given the scale of the SAE concept dictionaries),
+   et al., 2023).                                                         we sometimes use another LLM (Gemini 2.5 Flash, in
+                                                                          this case) to filter, group, and summarize sets of concept
+ • General ability benchmarks: SWE-Bench (Jimenez                         descriptions.
+   et al., 2024); Terminal-Bench (Merrill et al., 2026);
+   MMLU (Hendrycks et al., 2020); GPQA (Rein et al.,
+   2024); Humanity’s Last Exam (HLE) (Phan et al., 2025).                 SAE Concept Relevance. As a complementary, more
+                                                                          systematic lens, we also run an LLM-as-judge step that
+Models. We analyzed five popular open-source LLMs with                    labels each concept as semantically relevant or irrelevant
+available SAEs (or transcoders) and autointerpretability                  to each benchmark in the suite (see Appendix J for the
+labels. However, we emphasize that the method is not                      prompt, per-benchmark percentages, and method). The
+bound to these particular models; it can be applied to any                relevant fraction varies widely across benchmarks: from
+LLM with an SAE.                                                          8.2% (WinoGrande) to 53.1% (Natural Questions) for the
+                                                                          Gemma SAE dictionary (16K+ concepts), and from 4.9%
+ • Llama3.1-8B-Instruct + Goodfire SAE attached at
+                                                                          to 34.5% for the Llama SAE dictionary (45K+ concepts).
+   layer 19 (Grattafiori et al., 2024; Balsam et al., 2025).
+                                                                          We release these per-concept relevance labels as a CSV
+ • Gemma2-2B-Instruct + Gemma Scope SAE attached                          alongside our code, and CG can be re-run on the relevance-
+   at layer 20 (residual stream) (Team et al., 2024;                      filtered subset as an alternative analysis option.
+   Lieberum et al., 2024);3
+                                                                          4.2.1. B ENCHMARK G APS
+ • Mistral-7B-Instruct-v0.1 + SAE attached at layer
+   16 (MLP output) (Jiang et al., 2023; Cosgrove, 2024).                  Benchmarks Exhibit Skewed Representation Across
+                                                                          Concepts. The cross-benchmark coverage distribution
+ • Qwen3-4B + transcoders on the residual stream (Yang
+                                                                          across all ten benchmarks is shown in Figure 3. The
+   et al., 2025; Hanna, 2024).
+                                                                          distribution exhibits a strong right skew, resulting in
+ • DeepSeek-R1-Distill-Llama-8B + Llama-Scope-R1-                         both over- and under-representation of concepts in our
+   Distill SAE attached at layer 20 (residual stream) (Guo                (somewhat typical) suite of benchmarks. This skew results
+   et al., 2025; He et al., 2024).                                        in any standard mean-based summary statistics being
+                                                                          dominated by the outliers on the right part of the tail – a
+The main paper reports results for Llama3.1-8B-Instruct                   small number of “top concepts” with high representation
+on the ten static benchmarks (Section 4.2); results for the               (high X (c)
+                                                                                   bench ). Conversely, when a concept has consistently
+four additional models on the same suite are reported in                  low coverage across all included benchmarks, it risks being
+Appendices B, C, D, and E. Results for LMSYS Chatbot                      systematically under-tested. Another undesirable pattern is
+Arena (Llama3.1-8B-Instruct) and the general ability                      substantial overlap across benchmarks in a single evaluation
+benchmarks (Qwen3-4B) are reported in Appendices G                        suite (Figure 28, Appendix F).
+and H, respectively.
+                                                                          The top concepts mainly relate to starting new conversations
+   3
+    For the Goodfire Llama SAE, the choice of layer for SAE at-           and sports news, with a focus on football. Other prominent
+tachment was made by the creators of the SAE. We chose the                themes include syntax and attributes of articles. For exam-
+Gemma Scope layer to be at a comparable depth. Generally,
+deeper layers have a tendency to represent higher-level, sentence-        ple, the top 10 concepts by benchmark coverage included:
+or discourse-level abstractions (Balcells et al., 2024; Shi et al.,       (56130) “English Premier League football discussions,
+2025).                                                                    especially about Manchester teams”;
+
+                                                                      5
+                                                Uncovering Competency Gaps
+
+
+
+
+Figure 3. Cross-Benchmark Coverage. The distribution                Figure 4. Cross-Benchmark Model Performance. The
+of X (c)
+      bench scores, indicating per-concept coverage across          distribution of X (c)
+                                                                                       model scores, indicating per-concept model
+the 10 evaluated benchmarks, using the SAE of Llama 3.1             performance for Llama 3.1 8B, evaluated across 10 bench-
+8B. This distribution exhibits strong right skew (most con-         marks. The model exhibited high variance in performance
+cepts have low coverage). Thus, average performance is              across concepts. We observe particularly high performance
+dominated by a few concepts with high coverage (high                for some concepts related to coding, data handling, instruc-
+  (c)
+X bench ).The orange curve shows a similar analysis using an        tion following, and expressing positive sentiment toward
+SAE trained for a different model (Gemma 2 2B), resulting           the user. The orange curve shows a similar analysis using an
+in qualitatively similar distributions (see Section 4.2.3).         SAE trained for a different model (Gemma 2 2B), resulting
+                                                                    in qualitatively similar distributions (see Section 4.2.3).
+
+(41290) “New conversation or topic segment boundary                 complete coverage of all concepts.
+marker”.
+                                                                    More importantly, we would like benchmarks to have cover-
+Among the concepts with the lowest coverage score, one              age of relevant concepts. To identify such missing relevant
+finds many concepts related to meta-cognition about the             concepts, we first used the CG method to identify all miss-
+AI itself, e.g. its instructions, roleplaying boundaries, and       ing concepts for a given benchmark. Then, we used an
+how it discusses user inputs. The bottom 10 concepts by             LLM (Gemini 2.5 Flash, in this case) to identify missing
+coverage include:                                                   concepts that one might expect to be in scope for the bench-
+(53553) “The assistant should maintain professional                 mark (see Appendix I.2 for the prompt). We also used the
+boundaries when asked to roleplay”                                  open-sourced web app to explore and verify these examples.
+(25352) “References to user messages or inputs in                   This process exemplifies how one might use the CG method
+meta-discussion”.                                                   for unsupervised discovery of benchmark gaps.
+We identified 314 concepts (1%) as entirely missing from            Table 1 presents illustrative examples of concepts that are
+this particular suite of benchmarks. These again in-                missed by benchmarks. These are concepts that seem cen-
+clude concepts related to the AI’s meta-cognition, as well          tral to the desired goals of the benchmarks, e.g. AGI Eval
+as legal concepts. Examples include “The assistant                  was missing “The need for thorough and objective
+explaining why it needs more information”, “The                     assessment of evidence”, and Social IQA was missing
+assistant needs to explain its limitations or                       “Instructions about how someone should behave or
+capabilities”, and “Regulatory classification and                   what qualities to embody”.
+compliance requirements”. Depending on the use case,
+these are plausibly important concepts to include in a bench-       4.2.2. M ODEL G APS
+mark suite, and these results demonstrate how CG can be
+                                                                    In addition to benchmark gaps, we also analyze model per-
+used to identify such gaps.
+                                                                    formance gaps – on which SAE concepts do the models
+                                                                    perform particularly well or particularly poor?
+Individual Benchmarks Miss Relevant Concepts. Indi-
+vidual benchmarks do show a similar skew in their represen-
+tation (Appendix Figure 26), and every benchmark except             Model’s Best-Performing Concepts Include Coding and
+Vectara misses at least 30% of all concepts (Appendix Fig-          Commitment to Help. Because the SAE concepts are
+ure 27). However, benchmarks are usually designed to                fixed for a given model, our method enables us to easily
+evaluate a specific subset of capabilities, and so of course        compare and create composite results across benchmarks.
+it may not be desirable for individual benchmarks to have           Figure 4 shows the distribution across concepts for
+
+                                                                6
+                                               Uncovering Competency Gaps
+
+                     Table 1. Examples of Missing Relevant Concepts from Three Benchmarks.
+
+     Benchmark        Concept ID      Concept Description
+     AGI Eval          (33456)        The need for thorough and objective assessment of evidence
+                       (59559)        Careful qualification and nuanced explanation of complex topics
+     LogicBench        (56997)        The model is explaining how different elements or factors relate to each other
+                       (11957)        Mathematical and logical concepts across multiple languages
+     Social IQA        (35877)        Speaker defending or explaining their planned actions against expectations
+                        (1897)        Instructions about how someone should behave or what qualities to embody
+
+
+cross-benchmark model performance, indicating that the                 (30206) “Image contrast adjustments in photo editing
+model performs well on a number of concepts, with high                 and computer vision” 4
+performance across all benchmarks. Concepts with the
+                                                                    • Palindromes / Reasoning over Letters:
+highest cross-benchmark performance tended to concern
+STEM tasks (e.g., coding or data handling) or helpful                  (56613) “Code examples and explanations of palindrome
+behaviors (e.g., positive sentiments towards the user). The            checking algorithms”
+top 10 concepts included:                                           • Mathematical Operations:
+(20022) “Iteration or traversal through sequences in                   (64527) “Mathematical addition operator in calcula-
+programming”,                                                          tions”.
+(24074) “The assistant is about to provide an illustra-
+                                                                   Additionally, the proposed method surfaces LLM weak-
+tive example”,
+                                                                   nesses that have not been previously studied in the literature.
+(2461) “Assistant expressing commitment to help or do              One such category is “appeals to intuition in reasoning or
+its best”.                                                         decision making ”:
+                                                                   (64413) “The concept of grokking and deep intuitive un-
+Model’s Worst-Performing Concepts Include Polite Re-               derstanding”
+jection, Time, and Setting Boundaries. Perhaps more                (64540) “Intuitive understanding and natural ease of
+critical, from the standpoint of model evaluation, are the         use”
+concepts which attained the poorest overall performance
+across benchmarks. An interesting recurring theme is that          Moreover, the exploratory web application allows users to
+the worst-performing concepts include opposites to the help-       directly examine example data points and better understand
+ful/sycophantic concepts discussed in the previous section         how such competencies manifest in practice (see Figure 29).
+(which came at the top in performance). Examples of worst-
+performing concepts include:                                       4.2.3. ROBUSTNESS
+(26535) “The assistant needs to politely reject or redi-           Prior work has provided mixed evidence on the stability
+rect inappropriate requests”,                                      of SAE concepts (Paulo & Belrose, 2025; Menon et al.,
+(56928) “The assistant maintaining professional bound-             2025). We therefore set out to evaluate the stability and
+aries while offering appropriate help”.                            generalizability of CG findings.
+
+Furthermore, Competency Gaps identified other groups of            A Model-Specific SAE Is Not Necessary, and Different
+competencies that have been anecdotally identified as LLM          SAEs Can Yield Similar Results. We compared CG in-
+weaknesses in prior literature, validating our automated           sights derived from Llama 3.1 8B using its own model-
+approach as a scalable and systematic method for identifying       specific SAE, vs those obtained through Gemma 2 2B acti-
+such model weaknesses. These include:
+                                                                      4
+                                                                        Llama3.1-8B-Instruct is a text-only model, and we found
+ • Representations of Time:                                        that such concepts were activated by metadata indicating image
+   (29324) “Historical date and time period formatting”            editing, Photoshop scripts, and tutorials on the topic. This type
+   (12644) “Cooking time durations in recipe instruc-              of review of specific data points—both in the benchmarks and
+   tions”)                                                         in the SAE training dataset—is enabled by our web app, and
+                                                                   proves helpful for understanding the context and nuance of various
+ • Image Manipulations:                                            concepts.
+
+                                                               7
+                                                Uncovering Competency Gaps
+
+vations and SAE. As shown in Figures 3 and 4, the overall            Our benchmark gap analysis revealed a structural imbalance
+shape and medians of the score distributions were simi-              in a sample of popular benchmarks. For example, the bench-
+lar, especially considering the difference in dictionary sizes       marks strongly emphasized concepts related to authority,
+(Llama’s SAE contains 2.8x more concepts than Gemma’s).              control, and instruction-following, while neglecting comple-
+When comparing the best- and worst-performing concepts,              mentary concepts related to polite refusals, meta-cognition,
+we observed clear correspondences and similar interpretive           and meta-discussion about the AI itself. When evaluating
+insights, as shown in Table 4. This suggests that CG can             across a benchmark suite, such skewed representation within
+yield meaningful insights even for LLMs without their own            the benchmarks may skew our perception of model capa-
+pre-trained SAE and demonstrates the overall stability of            bilities. Our method also identified potential coverage gaps
+the method. Nonetheless, we expect that a model-specific             in specific benchmarks, pinpointing missing concepts that
+SAE with a larger dictionary still offers the most precise           seemed relevant to each benchmark’s scope.
+and grounded results.
+                                                                     A similar bias toward sycophancy and instruction-following
+We emphasize that this cross-SAE robustness is qualitative,          emerged in the model gap analysis. Here, positive or syco-
+at the level of themes, rather than exact concept-by-concept         phantic concepts score highest, while opposing concepts
+identity. The two SAEs slice the same semantic regions at            (e.g. those linked to rejecting requests or setting bound-
+different granularities (e.g., Llama’s (2872) “Explaining            aries) score lowest. While this is likely due in part to
+time requirements and duration” aligns with Gemma’s                  instruction-based post-training, we note that model gaps
+broader (9936) “Dates and numeric sequences”), so                    and benchmark gaps are heavily intertwined, and that bench-
+Table 4 should be read as showing thematic — not bijec-              mark gaps may lead to model gaps — model developers
+tive — correspondences. This is the level of consistency             may unknowingly overlook (or be disincentivized to ad-
+required for CG’s intended use as a tool for unsupervised            dress) model weaknesses that are poorly covered by existing
+gap discovery.                                                       benchmarks. This entanglement is also visible in widely-
+                                                                     used benchmarks: MMLU (Hendrycks et al., 2020) privi-
+                                                                     leges factual recall over capabilities like calibrated refusal
+CG Scores Are Consistent Across Perturbations To as-
+                                                                     or meta-cognition, and SWE-Bench (Jimenez et al., 2024)
+sess the robustness of CG, we re-ran the full analysis 100
+                                                                     encodes a narrow slice of software engineering (Python
+times, each time randomly dropping 20% of the examples
+                                                                     patches against unit tests). Models tuned for these bench-
+per benchmark. The resulting standard deviations were low:
+                                                                     marks then look strongest along the concepts those bench-
+0.014 for X model and 0.025 for X bench on Llama. This sug-
+                                                                     marks over-represent. Concretely, CG identifies compilation
+gests CG yields stable scores under random subsampling.
+                                                                     and computer security as among the most underrepresented
+                                                                     concepts in SWE-Bench — consistent with the absence of
+CG Scores Respond to Adversarial Perturbations. We                   any compiler or security repository among its twelve con-
+conducted an adversarial ablation in which we identified             stituent projects — and surfaces missing historical coverage
+the top 100 best- and worst-performing concepts, then re-            in MMLU (e.g., the Arab Spring and the Cuban Missile
+moved the most salient 100 datapoints associated with them           Crisis); we report these findings in Appendices H.1 and H.3.
+across all benchmarks. As expected, removing rows aligned
+with high-performing concepts lowered median X model on              5.1. Design Choices
+average by 0.6%, while removing those aligned with low-
+performing concepts increased it on average by 1.3% (re-             Model-Internal SAE Concepts vs. Unified Text Embed-
+peated across 10 repetitions). Despite removing less than            dings. A natural alternative would be to use a model-
+1% of the testing data, we were able to make predictable and         independent text embedding to characterize benchmark
+consistent changes to the overall performance, suggesting            items. We avoid this for two reasons: (1) external em-
+that CG surfaces meaningful concept-level information.               beddings decouple the analysis from the model under evalu-
+                                                                     ation, so surfaced “gaps” no longer reflect anything M itself
+                                                                     represents; (2) such embeddings are typically dense and
+5. Discussion                                                        entangled, making the resulting axes harder to interpret than
+We have introduced a simple new method, Competency                   sparse SAE concepts. Using a model-internal SAE grounds
+Gaps, which helps automatically identify gaps in bench-              the analysis in M , at the cost of being SAE-specific. For
+mark coverage as well as gaps in model performance. We               more on this trade-off, see Section 4.2.3.
+demonstrated the utility of this method, by performing ex-           Full-Dictionary vs. Filtered Reporting. Throughout the
+ample analyses on five models and a sampling of popular              main results, we report statistics over the full SAE dictio-
+benchmarks. We also show that the method is robust to                nary to avoid importing selection bias from a filtering crite-
+changes in the underlying sparse autoencoder and perturba-           rion. The trade-off is that the full dictionary also includes
+tions of the data.
+
+                                                                 8
+                                               Uncovering Competency Gaps
+
+
+
+
+Figure 5. Exploratory Web Application. The CG method can output a large number of results, given the large size
+of most SAE concept dictionaries. This web interface enables easy, interactive exploration of CG results, including a
+searchable and filterable list of all concepts in the Main Concept Overview, with an expandable Concept Detail Modal
+that provides additional per-benchmark information, including specific example generations. The application also includes
+dedicated sections for cross-benchmark correlation, benchmark coverage inspection, and supplementary analyses. This web
+application is open-sourced. Additional screenshots in Appendix K.
+
+low-quality or near-duplicate concepts that can make raw            5.3. Downstream Applications and Future Work
+distributions noisier. Filtered analyses (e.g., LLM-selected
+                                                                    Benchmark Search and Selection. Our method could
+critical concepts, as described in Appendix I.2) are useful
+                                                                    be integrated into a database of available benchmarks (e.g.,
+as a post-hoc lens for human inspection, but should not be
+                                                                    Hugging Face Datasets). Users seeking benchmarks to eval-
+used for aggregate statistics.
+                                                                    uate their models could use CG to inform their selection to
+                                                                    achieve a desired coverage.
+5.2. Limitations
+Concept Coverage is Limited to SAE Concept Space.                   Targeted Creation of Novel Benchmark Data. Beyond
+The usage of SAE concepts means that this method can only           characterizing existing benchmarks, a list of underrepre-
+detect competency gaps for concepts that have some rep-             sented concepts within the suite could guide the generation
+resentation in the model; concepts that are absent from the         of novel benchmark data. Such data could be created either
+model are by construction invisible to CG. Thus, we should          by prompting LLMs with autointerpretability labels or by
+take care in how we interpret our results: (1) benchmark            directly applying SAE-based steering during generation.
+gap analyses may reveal where models possess internal rep-
+resentations for concepts that evaluations fail to adequately       Method Improvements. We hope that this work may
+test, and (2) model gap analyses may identify cases where           serve as a starting point for further development on the
+models have flawed or partial internal representations that         method. For example, in future we may wish to incorporate
+they cannot apply effectively to downstream tasks.                  an automated sensitivity analysis for the choice of SAE layer,
+                                                                    or per-token activations for more fine-grained analyses.
+Concept Activation Is Not Capability. CG does not
+assume that activation of a concept implies competence              Current model evaluations may risk a narrower view of
+in that concept. Capability is measured solely through the          “competence,” potentially leaving critical gaps untested. We
+benchmark scoring function mb (i); concept activations are          hope that our method enables benchmark developers and
+used only for attribution, weighting performance into the           model testers to identify both benchmark gaps and model
+SAE space. Gaps are diagnosed jointly from activation and           gaps, uncovering and addressing weaknesses in areas that
+performance, not from either alone.                                 may be essential for real-world, human-facing use-cases.
+
+Uncontrolled Concept Difficulty. A concept’s CG score
+can be confounded by the difficulty of the items in which           Impact Statement
+                      (c)
+it activates: a low X model may reflect a genuine model gap         This paper presents work whose goal is to advance the field
+or simply the fact that c activates on the hardest examples         of machine learning, and especially model evaluation. There
+(the “hard-question confound”). Calibrating for item-level          are many potential societal consequences of our work, none
+difficulty is an important direction for future work.               of which we feel must be specifically highlighted here.
+
+                                                                9
+                                                 Uncovering Competency Gaps
+
+Acknowledgements                                                       Cheng, J., Lu, Y., Gu, X., Ke, P., Liu, X., Dong, Y., Wang,
+                                                                         H., Tang, J., and Huang, M. AutoDetect: Towards a
+The authors would hereby like to thank the following col-                unified framework for automated weakness detection in
+leagues, listed in alphabetical order, for helpful discussions:          large language models. arXiv preprint arXiv:2406.16714,
+Tom Lieberum, Neel Nanda, Senthooran Rajamanoharan,                      2024.
+and Jasper Snoek.
+                                                                       Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H.,
+LLM Usage                                                                Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano,
+                                                                         R., Hesse, C., and Schulman, J. Training verifiers to solve
+LLMs were used in parts of the implementation and during                 math word problems. arXiv preprint arXiv:2110.14168,
+the writing of the paper (e.g., paragraph shortening, transi-            2021.
+tion refinement, etc.). AI-powered search engines were also
+used to help identify some references. LLM clustering was              Cosgrove, T.  Mistral-7B sparse autoencoder (layer
+used to sift through large amounts of data produced by our              16).     https://huggingface.co/tylercosgrove/
+method.                                                                  mistral-7b-sparse-autoencoder-layer16, 2024.
+
+                                                                       Cunningham, H., Ewart, A., Riggs, L., Huben, R., and
+References                                                               Sharkey, L. Sparse autoencoders find highly inter-
+Balcells, D., Lerner, B., Oesterle, M., Ucar, E., and Heimer-            pretable features in language models. arXiv preprint
+  sheim, S. Evolution of SAE features across layers in                   arXiv:2309.08600, 2023.
+  LLMs. arXiv preprint arXiv:2410.08869, 2024.                         Derczynski, L., Galinkin, E., Martin, J., Majumdar, S.,
+Balsam, D., McGrath, T., Gorton, L., Nguyen,                             and Inie, N. garak: A framework for security probing
+  N., Deng, M., and Ho, E.      Announcing open-                         large language models. arXiv preprint arXiv:2406.11036,
+  source SAEs for Llama 3.3 70B and Llama 3.1                            2024.
+  8B, 2025. URL https://www.goodfire.ai/blog/                          Didolkar, A., Goyal, A., Ke, N. R., Guo, S., Valko, M.,
+  sae-open-source-announcement.                                          Lillicrap, T., Jimenez Rezende, D., Bengio, Y., Mozer,
+Bricken, T., Templeton, A., Batson, J., Chen, B., Jermyn, A.,            M. C., and Arora, S. Metacognitive capabilities of LLMs:
+  Conerly, T., Turner, N., Anil, C., Denison, C., Askell, A.,            An exploration in mathematical problem solving. Ad-
+  et al. Towards monosemanticity: Decomposing language                   vances in Neural Information Processing Systems, 37:
+  models with dictionary learning. Transformer Circuits                  19783–19812, 2024.
+  Thread, 2, 2023.                                                     Elhage, N., Hume, T., Olsson, C., Schiefer, N., Henighan,
+Burnell, R., Schellaert, W., Burden, J., Ullman, T. D.,                  T., Kravec, S., Hatfield-Dodds, Z., Lasenby, R., Drain,
+  Martinez-Plumed, F., Tenenbaum, J. B., Rutar, D., Cheke,               D., Chen, C., et al. Toy models of superposition. arXiv
+  L. G., Sohl-Dickstein, J., Mitchell, M., et al. Rethink                preprint arXiv:2209.10652, 2022.
+  reporting of evaluation results in AI. Science, 380(6641):           Gan, E., Zhao, Y., Cheng, L., Mao, Y., Goyal, A.,
+ 136–138, 2023.                                                          Kawaguchi, K., Kan, M.-Y., and Shieh, M. Reasoning
+Calian, D. A., Farquhar, G., Kemaev, I., Zintgraf, L. M.,                robustness of LLMs to adversarial typographical errors.
+  Hessel, M., Shar, J., Oh, J., György, A., Schaul, T., Dean,           arXiv preprint arXiv:2411.05345, 2024.
+  J., et al. DataRater: Meta-learned dataset curation. arXiv           Gao, L., la Tour, T. D., Tillman, H., Goh, G., Troll, R.,
+  preprint arXiv:2505.17895, 2025.                                       Radford, A., Sutskever, I., Leike, J., and Wu, J. Scal-
+Chang, T. A. and Bergen, B. K. Language model behavior:                  ing and evaluating sparse autoencoders. arXiv preprint
+  A comprehensive survey. Computational Linguistics, 50                  arXiv:2406.04093, 2024.
+  (1):293–350, 2024.                                                   Grattafiori, A., Dubey, A., Jauhri, A., Pandey, A., Kadian,
+Chang, Y., Wang, X., Wang, J., Wu, Y., Yang, L., Zhu, K.,                A., Al-Dahle, A., Letman, A., Mathur, A., Schelten, A.,
+  Chen, H., Yi, X., Wang, C., Wang, Y., et al. A survey on               Vaughan, A., Yang, A., Fan, A., Goyal, A., Hartshorn,
+  evaluation of large language models. ACM transactions                  A., Yang, A., Mitra, A., Sravankumar, A., Korenev,
+  on intelligent systems and technology, 15(3):1–45, 2024.               A., Hinsvark, A., Rao, A., Zhang, A., Rodriguez, A.,
+                                                                         Gregerson, A., Spataru, A., Roziere, B., Biron, B., Tang,
+Chen, J. and Mueller, J. Automated data curation for                     B., Chern, B., Caucheteux, C., Nayak, C., Bi, C., Marra,
+  robust language model fine-tuning. arXiv preprint                      C., McConnell, C., Keller, C., Touret, C., Wu, C., Wong,
+  arXiv:2403.12776, 2024.                                                C., Ferrer, C. C., Nikolaidis, C., Allonsius, D., Song, D.,
+
+                                                                  10
+                                                  Uncovering Competency Gaps
+
+Pintz, D., Livshits, D., Wyatt, D., Esiobu, D., Choudhary,               dal, C., Feichtenhofer, C., Gao, C., Civin, D., Beaty, D.,
+D., Mahajan, D., Garcia-Olano, D., Perino, D., Hupkes,                   Kreymer, D., Li, D., Adkins, D., Xu, D., Testuggine, D.,
+D., Lakomkin, E., AlBadawy, E., Lobanova, E., Dinan,                     David, D., Parikh, D., Liskovich, D., Foss, D., Wang,
+E., Smith, E. M., Radenovic, F., Guzmán, F., Zhang, F.,                 D., Le, D., Holland, D., Dowling, E., Jamil, E., Mont-
+Synnaeve, G., Lee, G., Anderson, G. L., Thattai, G., Nail,               gomery, E., Presani, E., Hahn, E., Wood, E., Le, E.-T.,
+G., Mialon, G., Pang, G., Cucurell, G., Nguyen, H., Ko-                  Brinkman, E., Arcaute, E., Dunbar, E., Smothers, E., Sun,
+revaar, H., Xu, H., Touvron, H., Zarov, I., Ibarra, I. A.,               F., Kreuk, F., Tian, F., Kokkinos, F., Ozgenel, F., Cag-
+Kloumann, I., Misra, I., Evtimov, I., Zhang, J., Copet, J.,              gioni, F., Kanayet, F., Seide, F., Florez, G. M., Schwarz,
+Lee, J., Geffert, J., Vranes, J., Park, J., Mahadeokar, J.,              G., Badeer, G., Swee, G., Halpern, G., Herman, G., Sizov,
+Shah, J., Linde, J. v. d., Billock, J., Hong, J., Lee, J., Fu,           G., Guangyi, Zhang, Lakshminarayanan, G., Inan, H.,
+J., Chi, J., Huang, J., Liu, J., Wang, J., Yu, J., Bitton, J.,           Shojanazeri, H., Zou, H., Wang, H., Zha, H., Habeeb, H.,
+Spisak, J., Park, J., Rocca, J., Johnstun, J., Saxe, J., Jia, J.,        Rudolph, H., Suk, H., Aspegren, H., Goldman, H., Zhan,
+Alwala, K. V., Prasad, K., Upasani, K., Plawiak, K., Li,                 H., Damlaj, I., Molybog, I., Tufanov, I., Leontiadis, I.,
+K., Heafield, K., Stone, K., El-Arini, K., Iyer, K., Malik,              Veliche, I.-E., Gat, I., Weissman, J., Geboski, J., Kohli,
+K., Chiu, K., Bhalla, K., Lakhotia, K., Rantala-Yeary, L.,               J., Lam, J., Asher, J., Gaya, J.-B., Marcus, J., Tang, J.,
+Maaten, L. v. d., Chen, L., Tan, L., Jenkins, L., Martin, L.,            Chan, J., Zhen, J., Reizenstein, J., Teboul, J., Zhong, J.,
+Madaan, L., Malo, L., Blecher, L., Landzaat, L., Oliveira,               Jin, J., Yang, J., Cummings, J., Carvill, J., Shepard, J.,
+L. d., Muzzi, M., Pasupuleti, M., Singh, M., Paluri, M.,                 McPhie, J., Torres, J., Ginsburg, J., Wang, J., Wu, K., U,
+Kardas, M., Tsimpoukelli, M., Oldham, M., Rita, M.,                      K. H., Saxena, K., Khandelwal, K., Zand, K., Matosich,
+Pavlova, M., Kambadur, M., Lewis, M., Si, M., Singh,                     K., Veeraraghavan, K., Michelena, K., Li, K., Jagadeesh,
+M. K., Hassan, M., Goyal, N., Torabi, N., Bashlykov, N.,                 K., Huang, K., Chawla, K., Huang, K., Chen, L., Garg,
+Bogoychev, N., Chatterji, N., Zhang, N., Duchenne, O.,                   L., A, L., Silva, L., Bell, L., Zhang, L., Guo, L., Yu, L.,
+Çelebi, O., Alrassy, P., Zhang, P., Li, P., Vasic, P., Weng,            Moshkovich, L., Wehrstedt, L., Khabsa, M., Avalani, M.,
+P., Bhargava, P., Dubal, P., Krishnan, P., Koura, P. S.,                 Bhatt, M., Mankus, M., Hasson, M., Lennie, M., Reso,
+Xu, P., He, Q., Dong, Q., Srinivasan, R., Ganapathy, R.,                 M., Groshev, M., Naumov, M., Lathi, M., Keneally, M.,
+Calderer, R., Cabral, R. S., Stojnic, R., Raileanu, R., Mah-             Liu, M., Seltzer, M. L., Valko, M., Restrepo, M., Patel,
+eswari, R., Girdhar, R., Patel, R., Sauvestre, R., Polidoro,             M., Vyatskov, M., Samvelyan, M., Clark, M., Macey,
+R., Sumbaly, R., Taylor, R., Silva, R., Hou, R., Wang,                   M., Wang, M., Hermoso, M. J., Metanat, M., Rastegari,
+R., Hosseini, S., Chennabasappa, S., Singh, S., Bell, S.,                M., Bansal, M., Santhanam, N., Parks, N., White, N.,
+Kim, S. S., Edunov, S., Nie, S., Narang, S., Raparthy,                   Bawa, N., Singhal, N., Egebo, N., Usunier, N., Mehta,
+S., Shen, S., Wan, S., Bhosale, S., Zhang, S., Vanden-                   N., Laptev, N. P., Dong, N., Cheng, N., Chernoguz, O.,
+hende, S., Batra, S., Whitman, S., Sootla, S., Collot, S.,               Hart, O., Salpekar, O., Kalinli, O., Kent, P., Parekh, P.,
+Gururangan, S., Borodinsky, S., Herman, T., Fowler, T.,                  Saab, P., Balaji, P., Rittner, P., Bontrager, P., Roux, P.,
+Sheasha, T., Georgiou, T., Scialom, T., Speckbacher, T.,                 Dollar, P., Zvyagina, P., Ratanchandani, P., Yuvraj, P.,
+Mihaylov, T., Xiao, T., Karn, U., Goswami, V., Gupta, V.,                Liang, Q., Alao, R., Rodriguez, R., Ayub, R., Murthy, R.,
+Ramanathan, V., Kerkez, V., Gonguet, V., Do, V., Vogeti,                 Nayani, R., Mitra, R., Parthasarathy, R., Li, R., Hogan,
+V., Albiero, V., Petrovic, V., Chu, W., Xiong, W., Fu,                   R., Battey, R., Wang, R., Howes, R., Rinott, R., Mehta,
+W., Meers, W., Martinet, X., Wang, X., Wang, X., Tan,                    S., Siby, S., Bondu, S. J., Datta, S., Chugh, S., Hunt, S.,
+X. E., Xia, X., Xie, X., Jia, X., Wang, X., Goldschlag, Y.,              Dhillon, S., Sidorov, S., Pan, S., Mahajan, S., Verma,
+Gaur, Y., Babaei, Y., Wen, Y., Song, Y., Zhang, Y., Li, Y.,              S., Yamamoto, S., Ramaswamy, S., Lindsay, S., Lindsay,
+Mao, Y., Coudert, Z. D., Yan, Z., Chen, Z., Papakipos, Z.,               S., Feng, S., Lin, S., Zha, S. C., Patil, S., Shankar, S.,
+Singh, A., Srivastava, A., Jain, A., Kelsey, A., Shajnfeld,              Zhang, S., Zhang, S., Wang, S., Agarwal, S., Sajuyigbe,
+A., Gangidi, A., Victoria, A., Goldstand, A., Menon, A.,                 S., Chintala, S., Max, S., Chen, S., Kehoe, S., Satter-
+Sharma, A., Boesenberg, A., Baevski, A., Feinstein, A.,                  field, S., Govindaprasad, S., Gupta, S., Deng, S., Cho,
+Kallet, A., Sangani, A., Teo, A., Yunus, A., Lupu, A.,                   S., Virk, S., Subramanian, S., Choudhury, S., Goldman,
+Alvarado, A., Caples, A., Gu, A., Ho, A., Poulton, A.,                   S., Remez, T., Glaser, T., Best, T., Koehler, T., Robinson,
+Ryan, A., Ramchandani, A., Dong, A., Franco, A., Goyal,                  T., Li, T., Zhang, T., Matthews, T., Chou, T., Shaked,
+A., Saraf, A., Chowdhury, A., Gabriel, A., Bharambe,                     T., Vontimitta, V., Ajayi, V., Montanez, V., Mohan, V.,
+A., Eisenman, A., Yazdan, A., James, B., Maurer, B.,                     Kumar, V. S., Mangla, V., Ionescu, V., Poenaru, V., Mi-
+Leonhardi, B., Huang, B., Loyd, B., Paola, B. D., Paran-                 hailescu, V. T., Ivanov, V., Li, W., Wang, W., Jiang, W.,
+jape, B., Liu, B., Wu, B., Ni, B., Hancock, B., Wasti,                   Bouaziz, W., Constable, W., Tang, X., Wu, X., Wang, X.,
+B., Spence, B., Stojkovic, B., Gamido, B., Montalvo,                     Wu, X., Gao, X., Kleinman, Y., Chen, Y., Hu, Y., Jia, Y.,
+B., Parker, C., Burton, C., Mejia, C., Liu, C., Wang, C.,                Qi, Y., Li, Y., Zhang, Y., Zhang, Y., Adi, Y., Nam, Y., Yu,
+Kim, C., Zhou, C., Hu, C., Chu, C.-H., Cai, C., Tin-                     Wang, Zhao, Y., Hao, Y., Qian, Y., Li, Y., He, Y., Rait,
+
+                                                                    11
+                                                 Uncovering Competency Gaps
+
+  Z., DeVito, Z., Rosnbrick, Z., Wen, Z., Yang, Z., Zhao,              Jones, E. and Steinhardt, J. Capturing failures of large
+  Z., and Ma, Z. The Llama 3 herd of models, Novem-                      language models via human cognitive biases. Advances
+  ber 2024. URL http://arxiv.org/abs/2407.21783.                         in Neural Information Processing Systems, 35:11785–
+  arXiv:2407.21783.                                                      11799, 2022.
+Guo, D., Yang, D., Zhang, H., Song, J., Wang, P., Zhu, Q.,             Kahng, M., Tenney, I., Pushkarna, M., Liu, M. X., Wexler,
+ Xu, R., Zhang, R., Ma, S., Bi, X., et al. Deepseek-R1:                  J., Reif, E., Kallarackal, K., Chang, M., Terry, M., and
+  Incentivizing reasoning capability in LLMs via reinforce-              Dixon, L. LLM comparator: Visual analytics for side-by-
+  ment learning. arXiv preprint arXiv:2501.12948, 2025.                  side evaluation of large language models. In Extended
+                                                                        Abstracts of the CHI Conference on Human Factors in
+Guo, Z., Jin, R., Liu, C., Huang, Y., Shi, D., Yu, L., Liu, Y.,          Computing Systems, pp. 1–7, 2024.
+  Li, J., Xiong, B., Xiong, D., et al. Evaluating large lan-
+  guage models: A comprehensive survey. arXiv preprint                 Kim, E., Garg, A., Peng, K., and Garg, N. Corre-
+  arXiv:2310.19736, 2023.                                                lated errors in large language models. arXiv preprint
+                                                                         arXiv:2506.07962, 2025.
+Gupta, V., Ross, C., Pantoja, D., Passonneau, R. J., Ung,
+  M., and Williams, A. Improving model evaluation using                Kim, S., Shin, J., Cho, Y., Jang, J., Longpre, S., Lee, H., Yun,
+  smart filtering of benchmark datasets. arXiv preprint                  S., Shin, S., Kim, S., Thorne, J., et al. Prometheus: Induc-
+  arXiv:2410.20245, 2024.                                                ing fine-grained evaluation capability in language models.
+                                                                         In The Twelfth International Conference on Learning
+Hanna, M. Qwen3-4B transcoders. https://huggingface.                     Representations, 2023.
+  co/mwhanna/qwen3-4b-transcoders, 2024.
+                                                                       Koo, R., Lee, M., Raheja, V., Park, J. I., Kim, Z. M.,
+Hardt, M. The emerging science of machine learning bench-                and Kang, D. Benchmarking cognitive biases in
+  marks. Online at https://mlbenchmarks.org, 2025.                       large language models as evaluators. arXiv preprint
+  Manuscript.                                                            arXiv:2309.17012, 2023.
+He, Z., Shu, W., Ge, X., Chen, L., Wang, J., Zhou, Y., Liu,            Kwiatkowski, T., Palomaki, J., Redfield, O., Collins, M.,
+  F., Guo, Q., Huang, X., Wu, Z., et al. Llama Scope:                   Parikh, A., Alberti, C., Epstein, D., Polosukhin, I., Devlin,
+  Extracting millions of features from Llama-3.1-8B with                J., Lee, K., et al. Natural questions: a benchmark for ques-
+  sparse autoencoders. arXiv preprint arXiv:2410.20526,                 tion answering research. Transactions of the Association
+  2024.                                                                 for Computational Linguistics, 7:453–466, 2019.
+Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika,                Li, T., Chiang, W.-L., Frick, E., Dunlap, L., Wu, T., Zhu, B.,
+  M., Song, D., and Steinhardt, J. Measuring mas-                         Gonzalez, J. E., and Stoica, I. From crowdsourced data to
+  sive multitask language understanding. arXiv preprint                   high-quality benchmarks: Arena-hard and benchbuilder
+  arXiv:2009.03300, 2020.                                                 pipeline. arXiv preprint arXiv:2406.11939, 2024.
+Hendrycks, D., Burns, C., Kadavath, S., Arora, A., Basart,             Lieberum, T., Rajamanoharan, S., Conmy, A., Smith, L.,
+  S., Tang, E., Song, D., and Steinhardt, J. Measuring                   Sonnerat, N., Varma, V., Kramár, J., Dragan, A., Shah,
+  mathematical problem solving with the MATH dataset.                    R., and Nanda, N. Gemma scope: Open sparse au-
+  NeurIPS, 2021.                                                         toencoders everywhere all at once on Gemma 2, Au-
+                                                                         gust 2024. URL http://arxiv.org/abs/2408.05147.
+Hughes, S., Bae, M., and Li, M. Vectara halluci-
+                                                                         arXiv:2408.05147.
+  nation leaderboard. https://github.com/vectara/
+  hallucination-leaderboard, 2023.                                     Manerba, M. M., Stańczak, K., Guidotti, R., and Augen-
+                                                                        stein, I. Social bias probing: Fairness benchmarking
+Jiang, A. Q., Sablayrolles, A., Mensch, A., Bamford, C.,
+                                                                        for language models. arXiv preprint arXiv:2311.09090,
+   Chaplot, D. S., de las Casas, D., Bressand, F., Lengyel,
+                                                                        2023.
+   G., Lample, G., Saulnier, L., Lavaud, L. R., Lachaux,
+   M.-A., Stock, P., Le Scao, T., Lavril, T., Wang, T.,                Mazeika, M., Phan, L., Yin, X., Zou, A., Wang, Z., Mu,
+   Lacroix, T., and El Sayed, W. Mistral 7B. arXiv preprint             N., Sakhaee, E., Li, N., Basart, S., Li, B., et al. Harm-
+   arXiv:2310.06825, 2023.                                              Bench: A standardized evaluation framework for auto-
+                                                                        mated red teaming and robust refusal. arXiv preprint
+Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press,
+                                                                        arXiv:2402.04249, 2024.
+  O., and Narasimhan, K. SWE-bench: Can language mod-
+  els resolve real-world GitHub issues? In International               McGrath, T., Balsam, D., Deng, M., and Ho, E. Under-
+  Conference on Learning Representations, volume 2024,                  standing and steering Llama 3 with sparse autoencoders.
+  pp. 54107–54157, 2024.                                                Goodfire Research, September 2024.
+
+                                                                  12
+                                                 Uncovering Competency Gaps
+
+Menon, A., Shrivastava, M., Krueger, D., and Lubana, E. S.             Rein, D., Hou, B. L., Stickland, A. C., Petty, J., Pang, R. Y.,
+ Analyzing (in)abilities of SAEs via formal languages. In                Dirani, J., Michael, J., and Bowman, S. R. GPQA: A
+ Proceedings of the 2025 Conference of the Nations of the                graduate-level Google-proof Q&A benchmark. In First
+ Americas Chapter of the Association for Computational                   Conference on Language Modeling, 2024.
+ Linguistics: Human Language Technologies (Volume 1:
+ Long Papers), pp. 4837–4862, 2025.                                    Sakaguchi, K., Bras, R. L., Bhagavatula, C., and Choi, Y.
+                                                                         Winogrande: An adversarial winograd schema challenge
+Merrill, M. A., Shaw, A. G., Carlini, N., Li, B., Raj, H.,               at scale. Communications of the ACM, 64(9):99–106,
+ Bercovich, I., Shi, L., Shin, J. Y., Walshe, T., Buchanan,              2021.
+ E. K., et al. Terminal-Bench: Benchmarking agents on
+ hard, realistic tasks in command line interfaces. arXiv               Sap, M., Rashkin, H., Chen, D., LeBras, R., and Choi,
+ preprint arXiv:2601.11868, 2026.                                        Y. SocialIQA: Commonsense reasoning about social
+                                                                         interactions. arXiv preprint arXiv:1904.09728, 2019.
+Miller, J. K. and Tang, W. Evaluating LLM metrics through
+                                                                       Shi, W., Li, S., Liang, T., Wan, M., Ma, G., Wang, X., and
+ real-world capabilities. arXiv preprint arXiv:2505.08253,
+                                                                         He, X. Route sparse autoencoder to interpret large lan-
+ 2025.
+                                                                         guage models. arXiv preprint arXiv:2503.08200, 2025.
+Mizrahi, M., Kaplan, G., Malkin, D., Dror, R., Shahaf, D.,
+                                                                       Shu, D., Wu, X., Zhao, H., Rai, D., Yao, Z., Liu, N., and
+ and Stanovsky, G. State of what art? a call for multi-
+                                                                         Du, M. A survey on sparse autoencoders: Interpreting
+ prompt LLM evaluation. Transactions of the Association
+                                                                         the internal mechanisms of large language models. arXiv
+ for Computational Linguistics, 12:933–949, 2024.
+                                                                         preprint arXiv:2503.05613, 2025.
+Nada, H., Asma, G., Ryan, M., Emily, R., Jimbo, W.,
+                                                                       Team, G., Riviere, M., Pathak, S., Sessa, P. G., Hardin, C.,
+  Nithum, T., and Lucas, D. Can large language mod-
+                                                                         Bhupatiraju, S., Hussenot, L., Mesnard, T., Shahriari, B.,
+  els explain their internal mechanisms? Explorable,
+                                                                         Ramé, A., Ferret, J., Liu, P., Tafti, P., Friesen, A., Casbon,
+  Google PAIR, jul 2024. https://pair.withgoogle.
+                                                                         M., Ramos, S., Kumar, R., Lan, C. L., Jerome, S., Tsit-
+  com/explorables/patchscopes/.
+                                                                         sulin, A., Vieillard, N., Stanczyk, P., Girgin, S., Momchev,
+Nangia, N., Vania, C., Bhalerao, R., and Bowman, S. R.                   N., Hoffman, M., Thakoor, S., Grill, J.-B., Neyshabur, B.,
+  CrowS-Pairs: A challenge dataset for measuring so-                     Bachem, O., Walton, A., Severyn, A., Parrish, A., Ahmad,
+  cial biases in masked language models. arXiv preprint                  A., Hutchison, A., Abdagic, A., Carl, A., Shen, A., Brock,
+  arXiv:2010.00133, 2020.                                                A., Coenen, A., Laforge, A., Paterson, A., Bastian, B.,
+                                                                         Piot, B., Wu, B., Royal, B., Chen, C., Kumar, C., Perry,
+Parmar, M., Patel, N., Varshney, N., Nakamura, M., Luo, M.,              C., Welty, C., Choquette-Choo, C. A., Sinopalnikov, D.,
+  Mashetty, S., Mitra, A., and Baral, C. Towards systematic              Weinberger, D., Vijaykumar, D., Rogozińska, D., Her-
+  evaluation of logical reasoning ability of large language              bison, D., Bandy, E., Wang, E., Noland, E., Moreira,
+  models. arXiv preprint arXiv:2404.15522, 2024.                         E., Senter, E., Eltyshev, E., Visin, F., Rasskin, G., Wei,
+                                                                         G., Cameron, G., Martins, G., Hashemi, H., Klimczak-
+Parrish, A., Chen, A., Nangia, N., Padmakumar, V., Phang,                Plucińska, H., Batra, H., Dhand, H., Nardini, I., Mein,
+  J., Thompson, J., Htut, P. M., and Bowman, S. R. BBQ: A                J., Zhou, J., Svensson, J., Stanway, J., Chan, J., Zhou,
+  hand-built bias benchmark for question answering. arXiv                J. P., Carrasqueira, J., Iljazi, J., Becker, J., Fernandez, J.,
+  preprint arXiv:2110.08193, 2021.                                       Amersfoort, J. v., Gordon, J., Lipschultz, J., Newlan, J.,
+                                                                         Ji, J.-y., Mohamed, K., Badola, K., Black, K., Millican,
+Paulo, G. and Belrose, N. Sparse autoencoders trained on
+                                                                         K., McDonell, K., Nguyen, K., Sodhia, K., Greene, K.,
+  the same data learn different features. arXiv preprint
+                                                                         Sjoesund, L. L., Usui, L., Sifre, L., Heuermann, L., Lago,
+  arXiv:2501.16615, 2025.
+                                                                         L., McNealus, L., Soares, L. B., Kilpatrick, L., Dixon,
+Perez, E., Ringer, S., Lukosiute, K., Nguyen, K., Chen, E.,              L., Martins, L., Reid, M., Singh, M., Iverson, M., Görner,
+  Heiner, S., Pettit, C., Olsson, C., Kundu, S., Kadavath, S.,           M., Velloso, M., Wirth, M., Davidow, M., Miller, M.,
+  et al. Discovering language model behaviors with model-                Rahtz, M., Watson, M., Risdal, M., Kazemi, M., Moyni-
+  written evaluations. In Findings of the association for                han, M., Zhang, M., Kahng, M., Park, M., Rahman, M.,
+  computational linguistics: ACL 2023, pp. 13387–13434,                  Khatwani, M., Dao, N., Bardoliwalla, N., Devanathan,
+  2023.                                                                  N., Dumai, N., Chauhan, N., Wahltinez, O., Botarda, P.,
+                                                                         Barnes, P., Barham, P., Michel, P., Jin, P., Georgiev, P.,
+Phan, L., Gatti, A., Han, Z., Li, N., Hu, J., Zhang, H., Zhang,          Culliton, P., Kuppala, P., Comanescu, R., Merhej, R.,
+  C. B. C., Shaaban, M., Ling, J., Shi, S., et al. Humanity’s            Jana, R., Rokni, R. A., Agarwal, R., Mullins, R., Saadat,
+  last exam. arXiv preprint arXiv:2501.14249, 2025.                      S., Carthy, S. M., Cogan, S., Perrin, S., Arnold, S. M. R.,
+
+                                                                  13
+                                               Uncovering Competency Gaps
+
+  Krause, S., Dai, S., Garg, S., Sheth, S., Ronstrom, S.,            Zhong, W., Cui, R., Guo, Y., Liang, Y., Lu, S., Wang,
+  Chan, S., Jordan, T., Yu, T., Eccles, T., Hennigan, T.,              Y., Saied, A., Chen, W., and Duan, N. AGIEval: A
+  Kocisky, T., Doshi, T., Jain, V., Yadav, V., Meshram, V.,            human-centric benchmark for evaluating foundation mod-
+  Dharmadhikari, V., Barkley, W., Wei, W., Ye, W., Han, W.,            els, 2023.
+  Kwon, W., Xu, X., Shen, Z., Gong, Z., Wei, Z., Cotruta,
+  V., Kirk, P., Rao, A., Giang, M., Peran, L., Warkentin,            Zhong, Z. and Raghunathan, A. Watch the weights: Un-
+  T., Collins, E., Barral, J., Ghahramani, Z., Hadsell, R.,            supervised monitoring and control of fine-tuned LLMs.
+  Sculley, D., Banks, J., Dragan, A., Petrov, S., Vinyals,             arXiv preprint arXiv:2508.00161, 2025.
+  O., Dean, J., Hassabis, D., Kavukcuoglu, K., Farabet,
+  C., Buchatskaya, E., Borgeaud, S., Fiedel, N., Joulin, A.,
+  Kenealy, K., Dadashi, R., and Andreev, A. Gemma 2:
+  Improving open language models at a practical size, Oc-
+  tober 2024. URL http://arxiv.org/abs/2408.00118.
+  arXiv:2408.00118.
+
+Templeton, A. Scaling monosemanticity: Extracting in-
+  terpretable features from Claude 3 sonnet. Anthropic,
+  2024.
+
+Tjuatja, L. and Neubig, G. BehaviorBox: Automated discov-
+  ery of fine-grained performance differences between lan-
+  guage models. arXiv preprint arXiv:2506.02204, 2025.
+
+Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B.,
+  Yu, B., Gao, C., Huang, C., Lv, C., et al. Qwen3 technical
+  report. arXiv preprint arXiv:2505.09388, 2025.
+
+Yang, Z., Meng, Z., Zheng, X., and Wattenhofer, R. Assess-
+  ing adversarial robustness of large language models: An
+  empirical study. arXiv preprint arXiv:2405.02764, 2024.
+
+Yin, J., Bose, A., Cong, G., Lyngaas, I., and Anthony, Q.
+  Comparative study of large language model architectures
+  on frontier. In 2024 IEEE International Parallel and
+  Distributed Processing Symposium (IPDPS), pp. 556–
+  569. IEEE, 2024.
+
+Yin, Z., Wang, Z., Palikhe, A., and Zhang, W. Fairness defi-
+  nitions in language models explained. Wiley Interdisci-
+  plinary Reviews: Data Mining and Knowledge Discovery,
+  16(1):e70063, 2026.
+
+Zeng, Z., Wang, Y., Hajishirzi, H., and Koh, P. W. EvalTree:
+  Profiling language model weaknesses via hierarchical
+  capability trees. arXiv preprint arXiv:2503.08893, 2025.
+
+Zheng, C., Beltran-Velez, N., Karlekar, S., Shi, C., Nazaret,
+  A., Mallik, A., Feder, A., and Blei, D. M. Model direc-
+  tions, not words: Mechanistic topic models using sparse
+  autoencoders. arXiv preprint arXiv:2507.23220, 2025.
+
+Zheng, L., Chiang, W.-L., Sheng, Y., Zhuang, S., Wu, Z.,
+  Zhuang, Y., Lin, Z., Li, Z., Li, D., Xing, E., et al. Judg-
+  ing LLM-as-a-judge with MT-Bench and chatbot arena.
+  Advances in neural information processing systems, 36:
+  46595–46623, 2023.
+
+                                                                14
+                                                 Uncovering Competency Gaps
+
+
+Appendix
+Table of Contents
+   A Sparse Autoencoder (SAE) Primer                                                                                           17
+
+   B Additional Results: Gemma 2 2B Instruct                                                                                   18
+       B.1 Benchmark Gaps        . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   18
+       B.2 Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        20
+       B.3 Robustness . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      20
+
+   C Additional Results: DeepSeek-R1-Distill-Llama-8B                                                                          22
+       C.1 Benchmark Gaps        . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   22
+       C.2 Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        24
+
+   D Additional Results: Mistral-7B-Instruct-v0.1                                                                              26
+       D.1 Benchmark Gaps        . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   26
+       D.2 Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        27
+
+   E Additional Results: Qwen3-4B                                                                                              29
+       E.1 Benchmark Gaps        . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   29
+       E.2 Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        30
+       E.3 Causal Validation: Foreign-Name Bias . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          30
+
+   F Additional Results: Llama 3.1 8B Instruct                                                                                 32
+       F.1   Benchmark Gaps      . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   32
+       F.2   Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      34
+
+   G Additional Results: LMSYS Chatbot Arena                                                                                   35
+       G.1 Implementation Details . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        35
+       G.2 Benchmark Gaps        . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   35
+       G.3 Model Gaps . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        36
+
+   H Additional Results: Conventional Benchmarks                                                                               37
+       H.1 SWE-Bench . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         37
+       H.2 Terminal-Bench . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        38
+       H.3 MMLU . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          38
+       H.4 GPQA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        40
+       H.5 Humanity’s Last Exam (HLE) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          41
+
+   I   Prompts for LLM Analysis of CG Results                                                                                  42
+       I.1   Benchmark Gaps: Missing Concepts (Cross-Benchmark) . . . . . . . . . . . . . . . . . . . . . . . . . .            42
+       I.2   Benchmark Gaps: Missing Concepts (Per-Benchmark) . . . . . . . . . . . . . . . . . . . . . . . . . . .            42
+       I.3   Benchmark Gaps: Matching . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        42
+
+   J   LLM-as-Judge Per-Benchmark Concept Relevance                                                                            43
+
+   K Exploratory Web Application: Additional Screenshots                                                                       45
+
+   L Comparison with Other Methods                                                                                             53
+
+                                                                15
+                                             Uncovering Competency Gaps
+
+   L.1 Comparison Methodology . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .         53
+   L.2 Benchmark Gaps Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .          53
+   L.3 Model Gaps Overview . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        54
+
+M Comparison with Other Methods: garak                                                                                    55
+   M.1 Llama 3.1 8B Instruct . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      56
+   M.2 Gemma 2 2B Instruct . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        58
+
+N Comparison with Other Methods: AutoDetect                                                                               60
+   N.1 Llama 3.1 8B Instruct . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      61
+   N.2 Gemma 2 2B Instruct . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        63
+
+O Comparison with Other Methods: Arena-Hard-Auto                                                                          65
+   O.1 AGI Eval EN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      66
+   O.2 BBQ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      66
+   O.3 CROWS Pairs . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        67
+   O.4 GSM8K . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .        68
+   O.5 LogicBench . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       69
+   O.6 MATH . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .       69
+   O.7 Natural Questions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      70
+   O.8 Real Toxicity . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      70
+   O.9 Social IQA . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     71
+   O.10 Vectara . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .   72
+   O.11 WinoGrande . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .      73
+
+P Comparison with Other Methods: EvalTree                                                                                 74
+   P.1   MATH . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .     74
+
+
+
+
+                                                            16
+                                               Uncovering Competency Gaps
+
+A. Sparse Autoencoder (SAE) Primer
+We summarize the SAE terminology used throughout the paper. A sparse autoencoder is trained to reconstruct the internal
+activations of a host model M at a chosen layer, using an over-complete dictionary of K features with an explicit sparsity
+penalty (Bricken et al., 2023; Cunningham et al., 2023). The goal is to recover monosemantic “concepts” that decompose
+superposed neuron activations into interpretable axes (Elhage et al., 2022).
+We refer to each of the K learned feature directions as a concept, the full set as the concept dictionary CSAE , and the space
+they span as the SAE space. The activation of concept c on token xi,j is denoted SAE(xi,j , c) ∈ R≥0 . For each concept, an
+autointerpretability pipeline assigns a textual label lc by prompting an LLM with high-activation exemplars (McGrath et al.,
+2024).
+The dictionary size K is not a hyperparameter we tune; it is fixed by the pre-trained SAE’s expansion factor over the host
+model’s hidden dimension, with prior scaling work suggesting K should grow with model size (Templeton, 2024; Gao et al.,
+2024). The Goodfire SAE for Llama 3.1 8B uses K ≈ 65,536 concepts; the Gemma Scope SAE for Gemma 2 2B uses
+K ≈ 16,384. Larger dictionaries yield finer-grained concepts but leave our analysis pipeline unchanged.
+Running an SAE at a single layer adds one linear projection of size dmodel × K per token plus a sparsity step. The host LLM,
+by comparison, performs many such projections per layer across all of its layers, plus attention — so the SAE contributes
+roughly one extra “layer’s worth” of compute on top of the full forward pass, typically a few percent for an 8B model at a
+single residual-stream layer.
+
+
+
+
+                                                             17
+                                            Uncovering Competency Gaps
+
+B. Additional Results: Gemma 2 2B Instruct
+B.1. Benchmark Gaps
+
+
+
+
+                                                              (c)
+Figure 6. Cross-Benchmark Coverage. The distribution of X bench scores obtained for the 10 evaluated benchmarks, using
+the SAE of Gemma 2 2B.
+
+
+
+
+                                                                      (b,c)
+Figure 7. Coverage Within Individual Benchmarks. A breakdown of χbench score distributions for individual benchmarks
+obtained via Gemma 2 2B.
+
+
+
+
+                                                         18
+                                                Uncovering Competency Gaps
+
+
+
+
+Figure 8. Missing Concepts. Proportion of the SAE concept dictionary for Gemma 2 2B that is not tested by the respective
+benchmarks.
+
+
+
+
+                      Table 2. Examples of Missing Concepts from the Full Benchmark Suite.
+
+             Concept ID       Concept Description
+                 (5169)       patterns of repeated characters or symbols
+                 (3674)       phrases related to coding or programming syntax
+                 (9514)       detailed references and citations in academic writing
+                 (10108)      questions and references to uncertainty or confusion
+                 (5102)       specific programming or technical terminology related to data storage and handling
+
+
+
+
+                          Table 3. Examples of Missing Concepts from Individual Benchmarks.
+
+      Benchmark      Concept ID      Concept Description
+      AGI Eval        (12792)        phrases related to problem-solving or troubleshooting
+                      (12436)        error handling and debugging statements in programming code
+      LogicBench       (7873)        phrases that indicate conditions or states related to certainty or necessity
+                       (7264)        occurrences of mathematical or formal logic terms and control structures in the text
+      Social IQA       (2863)        concepts related to social dynamics and collaborative efforts
+                      (12897)        concepts related to socio-cultural analysis and individualized experiences
+
+
+
+
+                                                               19
+                                            Uncovering Competency Gaps
+
+B.2. Model Gaps
+
+
+
+
+                                                                       (c)
+      Figure 9. Cross-Benchmark Performance. The distribution of X model scores obtained for for Gemma 2 2B.
+
+
+
+
+                                                                                                           (b,c)
+Figure 10. Per-Benchmark Distributions for Model Performance. A breakdown of model performance χmodel score
+distributions for individual benchmarks obtained for Gemma 2 2B. The red line indicates the median.
+
+
+B.3. Robustness
+Perturbation Consistency. We re-ran the full analysis 100 times, each time randomly dropping 20% of the examples per
+benchmark. The resulting standard deviations were: 0.012 for X model and 0.011 for X bench .
+
+Adversarial Perturbations. Upon removal of the most salient 100 datapoints associated with top 100 best-performing
+concepts across all benchmarks lowered median X model on average by 0.8%. On the other hand, removing the most salient
+100 datapoints associated with top 100 worst-performing concepts across all benchmarks increased median X model on
+average by 0.5%. This process was repeated 10 times.
+
+
+
+
+                                                         20
+                                              Uncovering Competency Gaps
+
+Table 4. Examples of Concept Correspondences in Best/Worst Performance and Coverage Analyses. The analysis was
+conducted for Llama 3.1 8B: the Llama SAE results used the model’s own activation and custom SAE; the Gemma SAE
+results used Gemma 2 2B’s activations and SAE. They demonstrate reasonable correspondence when the SAEs are swapped.
+
+             Analysis     Llama SAE                                     Gemma SAE
+             Best         (45314) Legal reasoning and argumenta- (5471) References to legal cases and pro-
+             Performance tion patterns in multiple choice questions cedural aspects of law
+                          (27510) Code patterns for including (8196) Code constructs or reserved key-
+                         JavaScript resources in web pages          words in programming languages
+             Worst        (2874) Mathematical differentiation oper- (13908) Numerical values, counts or mea-
+             Performance ators and notation                         surements
+                          (2872) Explaining time requirements and (9936) Dates and numeric sequences
+                         duration
+             Best          (41290) New conversation or topic seg- (11527) The start of a document
+             Coverage     ment boundary marker
+                           (902) Step-by-step mathematical explana- (11880) Mathematical expressions and cal-
+                          tions and calculations                    culations related to derivatives and factors
+             Worst         (27900) Discussions of factual accuracy       (5657) Terms related to correctness and
+             Coverage     and consistency checking                      accuracy in responses or answers
+                           (47946) The assistant explains how it pro-    (1797) Phrases related to instructions or
+                          cesses and handles information                operational processes
+
+
+
+
+                                                             21
+                                            Uncovering Competency Gaps
+
+C. Additional Results: DeepSeek-R1-Distill-Llama-8B
+We apply CG to DeepSeek-R1-Distill-Llama-8B (Guo et al., 2025) using the Llama-Scope-R1-Distill SAE (residual
+stream, layer 20) (He et al., 2024).
+
+C.1. Benchmark Gaps
+
+
+
+
+                                                                (c)
+Figure 11. Cross-Benchmark Coverage. The distribution of X bench scores obtained for the 10 evaluated benchmarks,
+using the SAE of DeepSeek-R1-Distill-Llama-8B.
+
+
+
+
+                                                                      (b,c)
+Figure 12. Coverage Within Individual Benchmarks. A breakdown of χbench score distributions for individual benchmarks
+obtained via DeepSeek-R1-Distill-Llama-8B.
+
+
+
+
+                                                         22
+                                                      Uncovering Competency Gaps
+
+
+
+
+Figure 13. Missing Concepts. Proportion of the SAE concept dictionary for DeepSeek-R1-Distill-Llama-8B that is not
+tested by the respective benchmarks.
+
+
+
+
+    Table 5. Examples of Missing Concepts from the Full Benchmark Suite (DeepSeek-R1-Distill-Llama-8B).
+
+             Concept ID      Concept Description
+                (4492)       mathematical reasoning and trigonometry
+                (5054)       text that contains mathematical reasoning including variables, angles, equations, and calculations
+                (3936)       the word “opinion” and its derivatives
+                (12843)      code snippets relating to requests, tags, and parameters
+                (799)        words ending in “ic, ics, ist, ied, al” or their inflections
+
+
+
+
+     Table 6. Examples of Missing Concepts from Individual Benchmarks (DeepSeek-R1-Distill-Llama-8B).
+
+     Benchmark       Concept ID         Concept Description
+     AGI Eval             (699)         mentions of museums or libraries, or potentially things you might find in those places
+                         (30886)        information about Arabic media sources
+     LogicBench          (24511)        words related to math problems and solutions
+                          (8523)        the word “multiple” or “multiples” appearing in mathematical contexts
+     Social IQA           (8971)        code comments and code fragments
+                         (17303)        the words “root” or “roots”, as well as legal terms
+
+
+
+
+                                                                        23
+                                            Uncovering Competency Gaps
+
+C.2. Model Gaps
+
+
+
+
+                                                                 (c)
+Figure 14. Cross-Benchmark Performance. The distribution of X model scores obtained for DeepSeek-R1-Distill-Llama-
+8B.
+
+
+
+
+                                                                                                          (b,c)
+Figure 15. Per-Benchmark Distributions for Model Performance. A breakdown of model performance χmodel score
+distributions for individual benchmarks obtained for DeepSeek-R1-Distill-Llama-8B. The red line indicates the median.
+
+
+
+
+                                                         24
+                                                    Uncovering Competency Gaps
+
+Table 7. Examples of Best- and Worst-Performing Concepts (DeepSeek-R1-Distill-Llama-8B). Filtered to concepts
+that activate in at least 5 benchmarks with ≥ 50 supporting datapoints. The pattern is suggestive: R1-Distill scores well on
+the surface forms of math reasoning (variables, LaTeX, reasoning-step transitions) but poorly on its substance (multi-digit
+arithmetic, boxed numerical answers, code syntax).
+
+                          Concept ID   Concept Description
+      Best Performance     (14585)     mentions of variables, specifically within mathematical or logical reasoning
+                           (17004)     LaTeX math code
+                           (17718)     the word “Alternatively” which is used to introduce different reasoning steps to solve math problems
+      Worst Performance    (32637)     boxed numerical answers in a mathematical context
+                           (24736)     multi-digit numbers
+                           (9878)      code blocks in C# with curly braces
+
+
+
+
+                                                                     25
+                                                Uncovering Competency Gaps
+
+D. Additional Results: Mistral-7B-Instruct-v0.1
+We apply CG to Mistral-7B-Instruct-v0.1 (Jiang et al., 2023) using a publicly available SAE attached at layer 16 (MLP
+output) (Cosgrove, 2024). The autointerpretability labels for this SAE are short, terse fragments rather than full descriptions,
+so the example tables below should be read as illustrative of which concepts CG surfaces rather than as fully interpretable
+concept names.
+
+D.1. Benchmark Gaps
+
+
+
+
+                                                                     (c)
+Figure 16. Cross-Benchmark Coverage. The distribution of X bench scores obtained for the 10 evaluated benchmarks,
+using the SAE of Mistral-7B-Instruct-v0.1.
+
+
+
+
+                                                                            (b,c)
+Figure 17. Coverage Within Individual Benchmarks. A breakdown of χbench score distributions for individual benchmarks
+obtained via Mistral-7B-Instruct-v0.1.
+
+
+
+
+                                                              26
+                                             Uncovering Competency Gaps
+
+
+
+
+Figure 18. Missing Concepts. Proportion of the SAE concept dictionary for Mistral-7B-Instruct-v0.1 that is not tested by
+the respective benchmarks.
+
+
+D.2. Model Gaps
+
+
+
+
+                                                                     (c)
+ Figure 19. Cross-Benchmark Performance. The distribution of X model scores obtained for Mistral-7B-Instruct-v0.1.
+
+
+
+
+                                                          27
+                                              Uncovering Competency Gaps
+
+
+
+
+                                                                                                                (b,c)
+Figure 20. Per-Benchmark Distributions for Model Performance. A breakdown of model performance χmodel score
+distributions for individual benchmarks obtained for Mistral-7B-Instruct-v0.1. The red line indicates the median.
+
+Table 8. Examples of Best- and Worst-Performing Concepts (Mistral-7B-Instruct-v0.1). Filtered to concepts that
+activate in at least 5 benchmarks with ≥ 50 supporting datapoints, and further restricted to entries with coherent semantic
+labels. Coherent labels are sparse for this SAE, so the table is shorter than for the other models.
+
+                                                    Concept ID     Concept Description
+                              Best Performance        (14155)      Months of the year
+                                                     (101008)      automaticity, self-acting
+                                                      (64910)      drawing attributes
+                              Worst Performance       (18081)      Invention and innovation
+                                                      (97261)      vehicles and assembly
+
+
+
+
+                                                            28
+                                                Uncovering Competency Gaps
+
+E. Additional Results: Qwen3-4B
+We apply CG to Qwen3-4B (Yang et al., 2025) using a publicly available set of transcoders on its residual stream (Hanna,
+2024). Autointerpretability labels for these transcoders are available for a subset of concepts and tend to be short fragments;
+the example tables below restrict to that subset and to concepts with broad cross-benchmark support.
+
+E.1. Benchmark Gaps
+
+
+
+
+                                                                     (c)
+Figure 21. Cross-Benchmark Coverage. The distribution of X bench scores obtained for the 10 evaluated benchmarks,
+using the SAE of Qwen3-4B.
+
+
+
+
+                                                                            (b,c)
+Figure 22. Coverage Within Individual Benchmarks. A breakdown of χbench score distributions for individual benchmarks
+obtained via Qwen3-4B.
+
+
+
+
+                                                              29
+                                              Uncovering Competency Gaps
+
+
+
+
+Figure 23. Missing Concepts. Proportion of the SAE concept dictionary for Qwen3-4B that is not tested by the respective
+benchmarks.
+
+
+E.2. Model Gaps
+
+
+
+
+                                                                            (c)
+        Figure 24. Cross-Benchmark Performance. The distribution of X model scores obtained for Qwen3-4B.
+
+
+E.3. Causal Validation: Foreign-Name Bias
+Beyond surfacing concepts associated with poor performance, CG can also guide targeted experiments to causally validate
+the identified model gaps. As an illustration, we examined concept (19086) “Foreign languages, names”, which
+                  (c)
+received a low X model score for Qwen3-4B. We constructed a LogicBench-style prompt with two protagonists and ran it
+10 times in each of two settings: (A) protagonists unnamed, and (B) protagonists named “Omar” and “Mahmoud”. The
+prompts were otherwise identical. Qwen3-4B answered correctly 80% of the time in setting (A) but only 30% of the time in
+setting (B), providing direct evidence that the foreign-name model gap surfaced by CG corresponds to a real, behaviorally
+observable weakness.
+
+
+
+
+                                                           30
+                                              Uncovering Competency Gaps
+
+
+
+
+                                                                                                              (b,c)
+Figure 25. Per-Benchmark Distributions for Model Performance. A breakdown of model performance χmodel score
+distributions for individual benchmarks obtained for Qwen3-4B. The red line indicates the median.
+
+Table 9. Examples of Best- and Worst-Performing Concepts (Qwen3-4B). Filtered to concepts that activate in at least 5
+benchmarks with ≥ 50 supporting datapoints, and further restricted to entries with coherent semantic labels. Notably, the
+worst-performing set includes time-related words — echoing the time-as-a-model-gap finding for Llama 3.1 8B in the main
+results.
+
+                                              Concept ID     Concept Description
+                        Best Performance       (23176)       Hedging
+                                               (17871)       Positive/innovative descriptions
+                                               (22392)       Negative deviations from ideal state
+                        Worst Performance      (24345)       Time-related words
+                                               (18102)       code snippets
+                                                (7346)       government and locations
+
+
+
+
+                                                           31
+                                              Uncovering Competency Gaps
+
+F. Additional Results: Llama 3.1 8B Instruct
+F.1. Benchmark Gaps
+
+
+
+
+                                                                         (b,c)
+Figure 26. Coverage Within Individual Benchmarks. A breakdown of χbench score distributions for individual benchmarks
+obtained via Llama 3.1 8B. These distributions all show strong right skew, such that average performance on each benchmark
+                                                                                   (b,c)
+is strongly dominated by a small number of concepts with high coverage (high χbench ).
+
+
+
+
+Figure 27. Proportion Missing Concepts, for Individual Benchmarks. Proportion of the SAE concept dictionary that is
+not tested by each benchmarks.
+
+
+
+
+                                                           32
+                                           Uncovering Competency Gaps
+
+
+
+
+                                                                      (c)
+Figure 28. Cross-Benchmark Concept Overlap. Jaccard similarity of X bench coverage profiles between benchmark pairs,
+obtained through Llama 3.1 8B, showing which benchmarks share similar concept coverage.
+
+
+
+
+                                                        33
+                                                 Uncovering Competency Gaps
+
+F.2. Model Gaps
+
+
+
+
+(a) LogicBench. Example item associated with an “intuitive un- (b) WinoGrande. Example item associated with an “intuitive un-
+derstanding” concept (64113). Llama 3.1 8B answered incorrectly, derstanding” concept (64540). Llama 3.1 8B answered incorrectly,
+consistent with this concept being a model gap.                  consistent with this concept being a model gap.
+Figure 29. Model Gaps Illustrated on Intuitive Understanding Datapoints. Two examples from different benchmarks
+where Llama 3.1 8B fails on items associated with intuitive understanding concepts.
+
+
+
+
+                                                                                                                      (b,c)
+Figure 30. Per-Benchmark Distributions for Model Performance. A breakdown of model performance χmodel score
+distributions for individual benchmarks obtained for Llama 3.1 8B. The red line indicates the median.
+
+
+
+
+                                                               34
+                                              Uncovering Competency Gaps
+
+G. Additional Results: LMSYS Chatbot Arena
+To illustrate how our method can be applied to arena-style benchmarks, we apply CG on Llama 3.1 8B with LMSYS Chatbot
+Arena (Zheng et al., 2023).
+
+G.1. Implementation Details
+Unlike the rest of the benchmark datasets evaluated in this paper, which are static datapoints with a scoring policy, LMSYS
+Chatbot Arena (Zheng et al., 2023) relies on preference annotations from humans presented with responses of two LLMs at
+a time, competing on the same input. To that end, the score is a boolean indicating whether the LLM of interest won.
+We use the data from https://huggingface.co/datasets/lmsys/chatbot arena conversations, filtered for data-
+points that compare Llama with other models. We assign 1 to datapoints where Llama won and 0 to datapoints where
+Llama lost. We extract the SAE concept activations from both the input prompts and the model responses to ensure that the
+computed concept profile reflects the complete semantic footprint, including concepts introduced or emphasized by the
+model’s generation, which can meaningfully impact human preference. All other aspects of this analysis follow the standard
+methodology outlined in Section 3.
+
+G.2. Benchmark Gaps
+
+
+
+
+                                                        (b,c)
+Figure 31. Benchmark Coverage. The distribution of χbench scores obtained for LMSYS Chatbot Arena, using the SAE of
+Llama 3.1 8B.
+
+
+Table 10. Examples of Specific Concepts with the Best and Worst Coverage in LMSYS Chatbot Arena, Obtained
+Through Llama 3.1 8B.
+
+   Benchmark             Concept ID        Concept Description
+   Best Coverage         (902)             Step-by-step mathematical explanations and calculations
+                         (9287)            Numbered steps in instruction lists and process descriptions
+   Worst Coverage        (27900)           Discussions of factual accuracy and consistency checking
+                         (14146)           The assistant should reject inappropriate or NSFW requests
+
+
+
+
+                                                            35
+                                          Uncovering Competency Gaps
+
+G.3. Model Gaps
+
+
+
+
+                                                         (b,c)
+Figure 32. Benchmark Performance. The distribution of χmodel scores obtained for LMSYS Chatbot Arena, using the
+SAE of Llama 3.1 8B.
+
+
+Table 11. Examples of Specific Concepts within Llama 3.1 8B with the Best and Worst Performance on LMSYS
+Chatbot Arena.
+
+   Benchmark          Concept ID      Concept Description
+   Best Performance    (2691)         Multiple choice format with options A (okay), B (good), C (wrong) for
+                                      evaluating behaviors
+                       (45314)        Legal reasoning and argumentation patterns in multiple choice questions
+   Worst               (27171)        The assistant is breaking down complex topics into fundamental concepts
+   Performance
+                       (52258)        Password-related security discussions and requests
+
+
+
+
+                                                      36
+                                              Uncovering Competency Gaps
+
+H. Additional Results: Conventional Benchmarks
+We additionally apply CG to a set of widely used benchmarks that were not part of our main suite: SWE-Bench (Jimenez
+et al., 2024), Terminal-Bench (Merrill et al., 2026), MMLU (Hendrycks et al., 2020), GPQA (Rein et al., 2024), and
+Humanity’s Last Exam (HLE) (Phan et al., 2025). All results in this section use Qwen3-4B as the host model, with the same
+configuration as in Appendix E.
+
+H.1. SWE-Bench
+
+
+
+
+                                                           (b,c)
+   Figure 33. Benchmark Coverage. The distribution of χbench scores for SWE-Bench, using the SAE of Qwen3-4B.
+
+
+              Table 12. Examples of Best- and Worst-Coverage Concepts in SWE-Bench (Qwen3-4B).
+
+                        Concept ID        Concept Description
+   Best Coverage         (17172)          coding errors
+                         (9452)           bug
+   Worst Coverage        (49022)          code and licensing
+                         (54116)          Random characters and code
+
+
+
+
+                                                             (b,c)
+ Figure 34. Benchmark Performance. The distribution of χmodel scores for SWE-Bench, using the SAE of Qwen3-4B.
+
+
+Repository Coverage Gaps. CG identifies which kinds of software engineering topics SWE-Bench tests and which it
+omits. Among the most well-represented concepts are (86659) “web development code”, (116868) “Data plots
+and analysis”, and (42119) “Code testing” — consistent with the benchmark’s inclusion of repositories like django,
+matplotlib, and pytest. Among the most underrepresented concepts are (142338) “compilation” and (141808)
+“computer security”; consistent with this, none of the twelve repositories that make up SWE-Bench is a compiler or
+security project.
+
+                                                           37
+                                           Uncovering Competency Gaps
+
+            Table 13. Examples of Best- and Worst-Performing Concepts on SWE-Bench (Qwen3-4B).
+
+                       Concept ID       Concept Description
+   Best Performance     (45776)         Code/formatting issues
+                        (49596)         Text excerpts
+   Worst                (2511)          truth
+   Performance
+                        (26712)         prepositions
+
+
+H.2. Terminal-Bench
+
+
+
+
+                                                       (b,c)
+ Figure 35. Benchmark Coverage. The distribution of χbench scores for Terminal-Bench, using the SAE of Qwen3-4B.
+
+
+
+
+                                                         (b,c)
+Figure 36. Benchmark Performance. The distribution of χmodel scores for Terminal-Bench, using the SAE of Qwen3-4B.
+
+
+H.3. MMLU
+                                                                  (b,c)
+Historical Coverage Gaps. Inspecting the lowest combinations of χbench scores in MMLU surfaces two pairings of con-
+cepts with substantive historical content but near-zero co-coverage: (159486) “Historical events and organizations”
+with (71132) “Saudi Arabia/Middle East” (suggestive of the Arab Spring), and (102854) “Cuba” with (28317)
+“invasions or military conflict” (suggestive of the Cuban Missile Crisis). A keyword search and manual review of
+MMLU confirmed that the benchmark contains no questions about either topic, despite both being canonical in modern
+history curricula.
+
+
+
+
+                                                        38
+                                       Uncovering Competency Gaps
+
+
+
+
+                                                          (b,c)
+ Figure 37. Benchmark Coverage. The distribution of χbench scores for MMLU, using the SAE of Qwen3-4B.
+
+
+
+              Table 14. Examples of Best- and Worst-Coverage Concepts in MMLU (Qwen3-4B).
+
+                     Concept ID    Concept Description
+Best Coverage        (2882)        abstract
+                     (53686)       assertion/claim
+Worst Coverage       (24577)       History articles
+                     (46972)       Medical studies and patients
+
+
+
+
+                                                            (b,c)
+Figure 38. Benchmark Performance. The distribution of χmodel scores for MMLU, using the SAE of Qwen3-4B.
+
+
+
+          Table 15. Examples of Best- and Worst-Performing Concepts on MMLU (Qwen3-4B).
+
+                     Concept ID    Concept Description
+Best Performance     (44476)       Scientific/academic text
+                     (45577)       Programming code
+Worst                (47139)       dates
+Performance
+                     (33078)       Punctuation
+
+
+
+                                                     39
+                                         Uncovering Competency Gaps
+
+H.4. GPQA
+
+
+
+
+                                                          (b,c)
+    Figure 39. Benchmark Coverage. The distribution of χbench scores for GPQA, using the SAE of Qwen3-4B.
+
+
+
+
+                                                            (b,c)
+   Figure 40. Benchmark Performance. The distribution of χmodel scores for GPQA, using the SAE of Qwen3-4B.
+
+
+
+
+                                                     40
+                                          Uncovering Competency Gaps
+
+H.5. Humanity’s Last Exam (HLE)
+
+
+
+
+                                                           (b,c)
+     Figure 41. Benchmark Coverage. The distribution of χbench scores for HLE, using the SAE of Qwen3-4B.
+
+
+
+
+                                                             (b,c)
+    Figure 42. Benchmark Performance. The distribution of χmodel scores for HLE, using the SAE of Qwen3-4B.
+
+
+
+
+                                                      41
+                                                Uncovering Competency Gaps
+
+I. Prompts for LLM Analysis of CG Results
+To help filter through a large number of results, we used an LLM (Gemini 2.5 Pro) to sift through results. We provide
+examples below of prompt templates that can be used for this purpose. Segments highlighted like <THIS> are to be replaced
+with data for the case at hand.
+We usually appended an instruction for the model to return its responses in a JSON or list format. Due to the large context
+window (the complete SAE concept dictionary), we found that the model performs slightly better when asked to repeat both
+the numerical concept identifiers and their descriptions.
+
+I.1. Benchmark Gaps: Missing Concepts (Cross-Benchmark)
+
+  Below is a list of concepts in a large language model. Each concept has an ID and a description. Are any of
+  these concepts *critical* to the evaluation of large language models? Such concepts generally span topics of
+  safety (toxic language, harm, bias, etc.), performance (reasoning ability, math, coding, etc.), and metacogni-
+  tion (ability to reject responses, reasoning about instructions, etc.). Choose from the list of concepts below. List
+  all such relevant concepts. Do not summarize or group; list all concepts verbatim as they appear below if they are relevant.
+
+  LLM CONCEPTS:
+  <AVAILABLE CONCEPTS>
+
+I.2. Benchmark Gaps: Missing Concepts (Per-Benchmark)
+
+  Below is a list of concepts in a large language model. Each concept has an ID and a description. Are any of these
+  concepts *absolutely critical* for the evaluation of the <BENCHMARK NAME> benchmark, as defined below? Choose from
+  the list of concepts below. List all such relevant concepts. Do not summarize or group; list all concepts verbatim as they
+  appear below if they are relevant.
+
+  BENCHMARK DEFINITION:
+  <BENCHMARK DEFINITION>
+
+  LLM CONCEPTS:
+  <AVAILABLE CONCEPTS>
+
+I.3. Benchmark Gaps: Matching
+
+  Below, there is (1) a list of Competency Gaps concepts and (2) a list of <OTHER FRAMEWORK> categories.
+
+  For each category from <OTHER FRAMEWORK>, determine whether there are any corresponding Competency Gaps
+  concepts. If no relevant concepts exist, leave this blank.
+
+  If there are multiple such concepts, include only the top <MATCHING LIMIT> most representative ones. Do not include
+  more than <MATCHING LIMIT> concepts per category.
+
+  (1) COMPETENCY GAPS CONCEPTS:
+  <AVAILABLE CONCEPTS>
+
+  (2) <OTHER FRAMEWORK> CONCEPTS:
+  <OTHER FRAMEWORK CONCEPTS>
+
+
+
+
+                                                              42
+                                              Uncovering Competency Gaps
+
+J. LLM-as-Judge Per-Benchmark Concept Relevance
+To complement the unsupervised CG analysis, we run an LLM-as-judge step that labels each SAE concept as semantically
+relevant or irrelevant to each benchmark in the suite, yielding a per-concept boolean column per benchmark. We use Gemini
+2.5 Flash, with concepts batched in groups of 20 and all benchmark definitions included in the prompt; the model returns a
+JSON array of booleans, one per (concept, benchmark) pair. The exact relevance criterion given to the judge is whether
+activating on the concept would plausibly help or hurt benchmark accuracy. Annotated relevance labels are released as
+a CSV alongside our code, and CG scores can be recomputed on the relevance-filtered concept subset as an alternative
+analysis option.
+The prompt template used for the relevance annotation is reproduced below:
+
+ You are classifying SAE (sparse autoencoder) concepts by benchmark relevance.
+
+ Benchmarks:
+ <BENCHMARK DEFINITIONS>
+
+  For each concept below, output a JSON array where each element is an object with keys <KEYS> and boolean values
+  (true/false) indicating whether that concept is likely relevant to each benchmark. A concept is relevant if activating
+  on it would plausibly help or hurt accuracy.
+
+ Concepts:
+ <CONCEPTS>
+
+  Respond ONLY with a valid JSON array of <N> objects, one per concept, in order. No explanation, no markdown fences.
+
+Tables 16 and 17 report the resulting per-benchmark relevance percentages for the Gemma 2 2B and Llama 3.1 8B SAE
+dictionaries respectively. The relevant fraction varies widely across benchmarks, reinforcing that no single benchmark
+exercises more than a slice of the concept space: open-ended factual benchmarks (Natural Questions, AGI Eval, Vectara)
+exercise the broadest slice, while narrow-format benchmarks (WinoGrande, GSM8K) are the most concentrated. Both
+models follow the same ranking pattern across benchmarks despite using independently trained SAEs, suggesting that the
+relevance structure is benchmark-driven rather than SAE-specific.
+
+                    Table 16. LLM-as-Judge Per-Benchmark Concept Relevance: Gemma 2 2B.
+
+                                    Benchmark           Relevant   Annotated       %
+                                    Natural Questions      8,544      16,104    53.1%
+                                    AGI Eval               7,733      16,104    48.0%
+                                    Vectara                7,135      16,104    44.3%
+                                    SWE-Bench              5,153      16,104    32.0%
+                                    Terminal-Bench         3,670      16,104    22.8%
+                                    Social IQA             3,632      16,104    22.6%
+                                    BBQ                    3,173      16,104    19.7%
+                                    LogicBench             3,061      16,104    19.0%
+                                    CROWS Pairs            2,433      16,104    15.1%
+                                    MATH                   2,198      16,104    13.6%
+                                    GSM8K                  1,908      16,104    11.8%
+                                    WinoGrande             1,320      16,104     8.2%
+
+
+
+
+                                                            43
+                       Uncovering Competency Gaps
+
+Table 17. LLM-as-Judge Per-Benchmark Concept Relevance: Llama 3.1 8B.
+
+             Benchmark           Relevant   Annotated      %
+             Vectara               15,616      45,199   34.5%
+             AGI Eval              14,900      45,199   33.0%
+             Natural Questions     13,871      45,199   30.7%
+             SWE-Bench             13,308      45,199   29.4%
+             Social IQA             9,445      45,199   20.9%
+             Terminal-Bench         9,374      45,199   20.7%
+             LogicBench             7,846      45,199   17.4%
+             BBQ                    6,415      45,199   14.2%
+             CROWS Pairs            5,383      45,199   11.9%
+             MATH                   5,041      45,199   11.2%
+             GSM8K                  4,423      45,199    9.8%
+             WinoGrande             2,232      45,199    4.9%
+
+
+
+
+                                     44
+                                         Uncovering Competency Gaps
+
+K. Exploratory Web Application: Additional Screenshots
+
+
+
+
+        Figure 43. Web Application Screenshot: An overview of all concepts for the Model Gaps analysis.
+
+
+
+
+                                                      45
+                                Uncovering Competency Gaps
+
+
+
+
+Figure 44. Web Application Screenshot: Keyword-filtered concepts for the Model Gaps analysis.
+
+
+
+
+                                             46
+                           Uncovering Competency Gaps
+
+
+
+
+Figure 45. Web Application Screenshot: Expandable view with the analysis metadata.
+
+
+
+
+                                       47
+                                            Uncovering Competency Gaps
+
+
+
+
+Figure 46. Web Application Screenshot: Concept detail within the Model Gaps analysis, summarizing the performance of
+this concept across benchmarks.
+
+
+
+
+                                                        48
+                                            Uncovering Competency Gaps
+
+
+
+
+Figure 47. Web Application Screenshot: Examples of data points where the model performed well and the concept at hand
+shows high activation.
+
+
+
+
+                                                         49
+                                            Uncovering Competency Gaps
+
+
+
+
+Figure 48. Web Application Screenshot: Examples of data points where the model performed poorly despite the concept at
+hand showing high activation.
+
+
+
+
+                                                         50
+                                             Uncovering Competency Gaps
+
+
+
+
+Figure 49. Web Application Screenshot: Coverage visualization comparing the coverage and distribution of concepts across
+different combinations of analyzed benchmarks.
+
+
+
+
+                                                          51
+                                 Uncovering Competency Gaps
+
+
+
+
+Figure 50. Web Application Screenshot: Grid showing the correlation of scores across benchmarks.
+
+
+
+
+                                              52
+                                               Uncovering Competency Gaps
+
+L. Comparison with Other Methods
+L.1. Comparison Methodology
+We compare our method to some of the related methods from Section 2 – those that relate to the discovery of benchmark and
+model gaps. For fairness, we use the respective definitions and frameworks of those methods. To the best of our knowledge,
+no exhaustive metric or benchmark exists for comparing such methods. As such, we make a good-faith effort to compare
+them through a combination of quantitative and qualitative analyses, as well as autorater evaluations.
+Because there is no shared framework or taxonomy of concepts, behaviors, or competencies across these methods, we use
+Gemini 2.5 Pro to connect the concepts from our SAE dictionaries with the taxonomies of these respective methods.
+
+L.2. Benchmark Gaps Overview
+
+Table 18. Comparison of Methods for Evaluating Benchmark Gaps. Reported features and concept domains were taken
+from the respective publications. Automation: The method is fully automated and runs without human intervention. Cross-
+Bench Comparability: The method enables combined or comparative evaluation across different benchmarks. Missing
+Concept Identification: The method surfaces relevant concepts that are absent from the benchmark. Dynamic Data: The
+method can be applied to new datasets as they emerge (i.e., it is not restricted to a fixed, hard-coded dataset). Interactive
+Tooling: The method includes an interactive exploration tool. Improvement Suggestion: With minor modifications or
+extensions, the method can inform future benchmark design or selection.
+
+                           Arena-Hard-Auto         Benchmarker Suite           SafetyPrompts              CG (Ours)
+ Concept Dictionary                750                      N/A                      N/A                   16,000+
+ Size
+ Concept Dictionary        Technical, Creative,         Language,                  Safety            Diverse semantic and
+ Domains                       Academic,               Knowledge,                                      syntactic forms,
+                              Real-world                Reasoning,                                      concepts, and
+                              applications            Comprehensive                                     methodologies
+                                                       Examination,
+                                                      Understanding
+ Observation Space              Behavior                 Behavior                 Behavior            Behavior + Model
+                                                                                                          Internals
+ Automation                         ~                        ✓                        ✗                        ✓
+
+ Cross-Bench                        ✗                        ✗                        ✗                        ✓
+ Comparability
+ Missing Concept                    ✓                        ✗                        ✗                        ✓
+ Identification
+ Dynamic Data                       ✗                        ✗                        ✗                        ✓
+
+ Interactive Tooling                ✓                        ✓                        ✗                        ✓
+ Improvement                        ✗                        ✗                        ✓                        ✓
+ Suggestion
+
+
+
+
+                                                             53
+                                               Uncovering Competency Gaps
+
+L.3. Model Gaps Overview
+
+Table 19. Model Gaps Methods Comparison. Reported features and concept domains were taken from the respective
+publications. Automation. The method is fully automated and runs without human intervention. Causal Validation.
+The ability to establish and verify causal relationships between identified model weaknesses and their underlying causes,
+enabling targeted interventions rather than just symptom detection. Cross-Benchmark Comparison. The method enables
+combined or comparative evaluation of a model across different benchmarks within a shared concept space. Dynamic
+Data. The method can be applied to new datasets as they emerge (i.e., it is not restricted to a fixed, hard-coded dataset).
+†
+  EvalTree builds its capability tree directly from a single benchmark’s instances, so the resulting dictionary is model- and
+benchmark-specific. We reproduced the EvalTree baseline of Zeng et al. (2025) on MATH for the five models analyzed in
+this paper; the number of statistically significant weakness profiles surfaced was: 4 (Gemma 2 2B), 25 (Mistral 7B), 57
+(DeepSeek-R1-Distill 8B), 65 (Qwen3-4B), and 71 (Llama 3.1 8B Instruct).
+
+                                  garak                 AutoDetect                EvalTree                CG (Ours)
+ Concept Dictionary                 6                        3                      4-71†                  16,000+
+ Size
+ Concept Dictionary         Security (prompt         Instruction, Math,         Hierarchical         Diverse semantic and
+ Domains                    inject, malware,              Coding             capability tree built     syntactic forms
+                               encoding)                                      from benchmark
+                                                                                 instances†
+ Observation Space              Behavior                 Behavior                 Behavior            Behavior + Model
+                                                                                                          Internals
+ Automation                         ✓                        ✓                        ✓                        ✓
+ Cross-Benchmark                    ✗                        ✗                        ✗                        ✓
+ Comparison
+ Causal Validation                  ✗                        ✗                        ✗                        ✓
+ Dynamic Data                       ✓                        ✗                        ✓                        ✓
+
+
+
+
+                                                             54
+                                               Uncovering Competency Gaps
+
+M. Comparison with Other Methods: garak
+Generative AI Red-teaming and Assessment Kit (garak) is a framework proposed by Derczynski et al. (2024) for discovering
+vulnerabilities in LLMs, with an emphasis on safety, security, and transparency. Its evaluation contains both keyword and
+learned detectors.
+Garak defines 33 probe categories such as phrasing, misleading, and garak.probes.divergence. Each probe category
+contains a handful of probes (usually 1-5) that specify prompts to be evaluated and evaluation criteria. For example, the
+garak.probes.phrasing category tests the model’s endurance against generating harmful, undesirable, or illegal outputs.
+This category has four specific probes, each testing a different tense in which the prompt is formulated. Another category,
+garak.probes.misleading, has a single probe.
+Notably, garak evaluates both competencies as well as jailbreaking scenarios. Since CG does not analyze the latter, we
+manually selected a subset of 11 out of 33 categories to compare.
+Garak is interfaced through a command-line interface (CLI). The results can thereafter be visualized in a single-page, static
+website format, shown in Figures 51 and 52. While this interface does not allow for the inspection individual failure cases,
+the model’s responses are saved in a JSONL format.
+
+
+
+
+                     Figure 51. Garak Web Interface Screenshot: Overview of the Probe Categories.
+
+
+
+
+                                                             55
+                                               Uncovering Competency Gaps
+
+
+
+
+                         Figure 52. Garak Web Interface Screenshot: Detail of a Probe Category.
+
+
+
+M.1. Llama 3.1 8B Instruct
+
+
+  Summary
+  Category Coverage                                                                         100%
+  Gaps Identified by Both garak and CG                                                      100% (3/3)
+  Gaps Missed by garak but Identified by CG                                                 6
+  Gaps Identified by CG Outside of garak                                                    8K+
+
+
+
+M.1.1. F RAMEWORK M ATCHING
+To compare our method (CG) with garak, we apply LLM-based clustering to map each category defined by garak to a
+corresponding set of SAE concepts. Importantly, the LLM was not instructed to map categories to a specific number
+of concepts; it was only given an upper limit and encouraged to return an empty set if no concepts were relevant (see
+Appendix I.3 for the full prompt). We found the category coverage to be 100%: every garak category was mapped to at least
+one SAE concept.
+To illustrate the garak categories and the matching results, consider the following examples of category definitions from
+garak, along with a subset of their matches: (1) donotanswer: the model should reject to answer or follow instructions; (2)
+divergence: the model to should reject to continuously repeat a string; (3) misleading: the model is expected to deny or
+refute presented claims.
+
+M.1.2. G APS I DENTIFIED BY GARAK
+CG recovered all 3/3 (100%) model gaps identified by garak. However, by disaggregating these categories into individual
+concepts, CG offered additional granularity. While each of the three categories was labeled as a model gap, not all of their
+constituent concepts were. For example, in the topic probe category, labeled as a model gap by both garak and CG, the
+concept (18047) “Offensive request attempting to override model safeguards” is a model gap, whereas others
+(e.g., (186) “Diplomatic and measured language patterns when discussing sensitive social topics” and
+ (201) “Complex systems with multiple competing stakeholders”) are not.
+
+                                                            56
+                                              Uncovering Competency Gaps
+
+ Category           Concept ID        Concept Description
+ donotanswer         (17828)          The assistant should reject the user’s request on ethical grounds
+                     (17961)          The assistant is explaining why it cannot or should not fulfill a request
+                     (17505)          The assistant needs to carefully handle a problematic or challenging user request
+                     (16541)          Safety control signals for responding to dangerous content requests
+                     (51695)          The assistant is transitioning into providing multiple methods or alternatives
+ divergence          (1227)           Model degradation into repetitive loops in non-English text generation
+                     (21982)          Model is stuck in a repetitive loop, often with sentence-ending particles
+                     (22402)          Instructions to avoid repetitive content in AI responses
+                     (25280)          Repetitive token generation or character corruption
+                     (38017)          Text encoding failures and display artifacts
+ misleading          (4269)           Statement truth evaluation and verification
+                     (17270)          Evidence verification and source requirements in authoritative writing
+                     (20552)          The assistant expressing uncertainty or inability to make unfounded claims
+                     (37418)          The assistant emphasizes credible evidence to counter misinformation or harmful
+                                      requests
+                     (52514)          The assistant is explaining factual inconsistencies in detail
+Table 20. Examples of garak Category Matches. Representative examples of garak categories mapped onto SAE concepts
+using the automated LLM clustering.
+
+
+
+M.1.3. A DDITIONAL G APS W ITHIN THE F RAMEWORK
+On top of the model gaps identified by both garak and CG, we found that 6 additional probe categories, as defined by garak,
+were identified to be gaps by CG but were missed by garak. These include donotanswer, realtoxicityprompts, snowball,
+divergence, av spam scanning, and ansiescape.
+
+M.1.4. A DDITIONAL G APS O UTSIDE OF THE F RAMEWORK
+Outside of the limited probe categories defined by garak, CG identified 8K+ additional model gaps:
+
+  Concept ID         Concept Description
+   (906)             Casual speech patterns listing multiple possibilities or alternatives
+   (44942)           Recognition of inappropriate or offensive speech acts
+   (18294)           Formal systems of etiquette and social conduct across cultures
+   (3594)            Assertions of non-existence, especially for supernatural entities
+   (27598)           The user has asked about the AI’s capabilities
+Table 21. Examples of Missed Model Gaps. Listed concepts outside of the garak-Defined categories were identified as
+model gaps, and would have gone unnoticed.
+
+
+
+
+                                                            57
+                                               Uncovering Competency Gaps
+
+M.2. Gemma 2 2B Instruct
+
+  Summary
+  Category Coverage                                                                          100%
+  Gaps Identified by Both garak and CG                                                       100% (9/9)
+  Gaps Missed by garak but Identified by CG                                                  2
+  Gaps Identified by CG Outside of garak                                                     10K+
+
+
+M.2.1. F RAMEWORK M ATCHING
+To compare our method (CG) with garak, we apply LLM-based clustering to map each category defined by garak to a
+corresponding set of SAE concepts. Importantly, the LLM was not instructed to map categories to a specific number
+of concepts; it was only given an upper limit and encouraged to return an empty set if no concepts were relevant (see
+Appendix I.3 for the full prompt). We found the category coverage to be 100%: every garak category was mapped to at least
+one SAE concept.
+To illustrate the garak categories and the matching results, consider the following examples of category definitions from
+garak, along with a subset of their matches: (1) donotanswer: the model should reject to answer or follow instructions; (2)
+divergence: the model to should reject to continuously repeat a string; (3) misleading: the model is expected to deny or
+refute presented claims.
+
+ Category           Concept ID         Concept Description
+ donotanswer         (10946)           references to privacy, legal issues, and complaints
+                     (1385)            references to bans or prohibitions
+                     (1513)            interrogative forms and expressions of uncertainty
+                     (1744)            mention of rules, regulations, or legal references
+                     (12613)           conditions and scenarios involving accidents or harmful situations
+ divergence          (213)             repeated phrases or patterns in a document
+                     (1830)            repeated sequences or patterns in the text
+                     (2045)            repeated elements or patterns in the text
+                     (2057)            patterns related to string manipulation and regular expressions
+                     (11873)           sequences of repeated characters or patterns in the text
+ misleading          (178)             phrases and questions discussing the possibility or feasibility of scenarios
+                     (5149)            expressions of doubt or uncertainty
+                     (6769)            phrases or sentences that emphasize beliefs about reality and truth
+                     (6862)            negation expressions or phrases that suggest something is not true
+                     (12081)           statements about opinions, assertions, and disclaimers regarding information and
+                                       its accuracy
+Table 22. Examples of garak Category Matches. Representative examples of garak categories mapped onto SAE concepts
+using the automated LLM clustering.
+
+
+M.2.2. G APS I DENTIFIED BY GARAK
+CG recovered all 9/9 (100%) model gaps identified by garak. However, by disaggregating these categories into individual
+concepts, CG offered additional granularity. While each of the three categories was labeled as a model gap, not all of their
+constituent concepts were. For example, in the topic probe category, labeled as a model gap by both garak and CG, concepts
+
+                                                            58
+                                               Uncovering Competency Gaps
+
+(646) “references to pregnancy and reproductive choices, particularly concerning abortion and health
+impacts” and (11601) “topics related to gun control and legislation” are model gaps, whereas others (e.g.,
+(136) “words related to identity and familial relationships” and (179) “terms and discussions related
+to diversity, particularly in the context of education and affirmative action” are not.
+
+M.2.3. A DDITIONAL G APS W ITHIN THE F RAMEWORK
+On top of the model gaps identified by both garak and CG, we found that 2 additional probe categories, as defined by garak,
+were identified to be gaps by CG but were missed by garak. These are av spam scanning and donotanswer.
+
+M.2.4. A DDITIONAL G APS O UTSIDE OF THE F RAMEWORK
+Outside of the limited probe categories defined by garak, CG identified 10K+ additional model gaps:
+
+  Concept ID         Concept Description
+   (15143)           legal terminology related to fraud and liability
+   (12147)           dates and time references within text
+   (501)             words that relate to personal names and geographical locations
+   (7721)            references to the divine or spiritual authority
+   (3922)            statistical references or citations related to scientific studies and data metrics
+Table 23. Examples of Missed Model Gaps. Listed concepts outside of the garak-defined categories were identified as
+model gaps, and would have gone unnoticed.
+
+
+
+
+                                                             59
+                                               Uncovering Competency Gaps
+
+N. Comparison with Other Methods: AutoDetect
+AutoDetect is a framework for uncovering weaknesses in LLMs proposed by Cheng et al. (2024). It defines 116 competency
+categories spanning math, instruction following, and coding; examples include word constraint: specific words, text
+format: table format, and analysis: derivatives. Each category is defined through a set of key points (usually 4-8, with
+a total of 715 key points). For example, for the category numeric format: scientific notation, the key points are: (1)
+Test if the language model can generate text with specific scientific notation numbers, (2) Test if the language model can
+answer question with a specific scientific notation number, (3), Test if the language model can rewrite sentence with specific
+scientific notation numbers, (4) Test if the language model can come up with ideas or concepts expressed in scientific
+notation, and (5) Test if the language model can convert standard numbers into scientific notation for clarity in reporting
+large or small numbers.
+The evaluation is performed by three collaborative autoraters. These are: (1) the examiner, which breaks down a task into
+key points; (2) the questioner, which generates a pool of prompts/questions targeting each subskill and, in an iterative
+fashion, refines or adapts further questions based on where the model struggles; and (3) the assessor, which evaluates the
+model’s answers for correctness.
+AutoDetect is launched through a command-line interface (CLI). It does not come with a graphical user interface. The
+outputs are stored in JSON and CSV formats.
+
+
+
+
+                                                             60
+                                               Uncovering Competency Gaps
+
+N.1. Llama 3.1 8B Instruct
+
+  Summary
+  Category Coverage                                                                       100%
+  Gaps Identified by Both AutoDetect and CG                                               98% (42/43)
+  Gaps Missed by AutoDetect but Identified by CG                                          73
+  Gaps Identified by CG Outside of AutoDetect                                             8K+
+
+
+N.1.1. F RAMEWORK M ATCHING
+To compare our method (CG) with AutoDetect, we apply LLM-based clustering to map each category defined by AutoDetect
+to a corresponding set of SAE concepts. Importantly, the LLM was not instructed to map categories to a specific number
+of concepts; it was only given an upper limit and encouraged to return an empty set if no concepts were relevant (see
+Appendix I.3 for the full prompt). We found the category coverage to be 100%: every AutoDetect category was mapped to
+at least one SAE concept.
+To illustrate the AutoDetect categories and the matching results, consider the following examples of category definitions
+from AutoDetect, along with a subset of their matches:
+
+    Category (AutoDetect)            Concept ID         Concept Description
+    analysis: derivatives             (2874)            Mathematical differentiation operators and notation
+                                      (3161)            Step-by-step explanation of mathematical differentiation
+                                      (3561)            Step-by-step mathematical derivations, especially differentia-
+                                                        tion
+                                      (11835)           Mathematical slope calculations and tangent line concepts
+                                      (13609)           Transitions between steps in mathematical proofs and deriva-
+                                                        tions
+    length constraint: summary        (5195)            The assistant should summarize content
+                                      (11804)           Factual consistency checking between documents
+                                      (18493)           The conclusion section should summarize and provide final
+                                                        thoughts
+                                      (20035)           Requests for overall summaries or high-level assessments
+                                      (20808)           Technical discussions of output limitations and boundaries
+    mathematics and algorithms:       (2817)            Explanations of sorting algorithms and their implementations
+    algorithm design
+                                      (3142)            Step-by-step problem solving and methodical decomposition
+                                      (5190)            Knapsack algorithm and related optimization problems
+                                      (7295)            Binary search algorithm explanation and implementation
+                                      (23534)           Explanations of iterative algorithmic processes
+Table 24. Examples of AutoDetect Category Matches. Representative examples of AutoDetect categories mapped onto
+SAE concepts using the automated LLM clustering.
+
+
+
+
+                                                           61
+                                              Uncovering Competency Gaps
+
+N.1.2. G APS I DENTIFIED BY AUTO D ETECT
+CG recovered 42 out of 43 (98%) model gaps identified by AutoDetect. However, by disaggregating these categories into
+individual concepts, CG offered additional granularity. While each of the three categories was labeled as a model gap, not
+all of their constituent concepts were. For example, in the length constraint: number of sentences category, labeled as
+a model gap by both AutoDetect and CG, the concepts (17578) “Counting or measuring the length of textual
+elements” and (14442) “Counting characters or determining text length” are model gaps, whereas others (e.g.,
+ (23129) “The user has specified a 50-word limit” and (3938) “Text length constraints in generation
+instructions”) are not.
+
+N.1.3. A DDITIONAL G APS W ITHIN THE F RAMEWORK
+On top of the model gaps identified by both AutoDetect and CG, we found that 73 additional categories, as defined by
+AutoDetect, were identified to be gaps by CG but were missed by AutoDetect. These include, for example, multi lingual:
+multilingual tone localization, numeric format: scientific notation, analysis: limits, and calculation: absolute value.
+
+N.1.4. A DDITIONAL G APS O UTSIDE OF THE F RAMEWORK
+Outside of the limited category set defined by AutoDetect, CG identified over 8K additional model gaps.
+
+  Concept ID         Concept Description
+   (25271)           Spanish verbs expressing necessity or obligation in advisory contexts
+   (50127)           Legal language establishing unilateral authority and discretionary powers
+   (35225)           The assistant should reject the user’s request
+   (58828)           Japanese grammatical constructions indicating completion, necessity and passive voice
+   (9611)            Understanding relationships and dependencies between components in AI systems
+Table 25. Examples of Missed Model Gaps. Listed concepts outside of the AutoDetect-Defined categories were identified
+as model gaps, and would have gone unnoticed.
+
+
+
+
+                                                           62
+                                               Uncovering Competency Gaps
+
+N.2. Gemma 2 2B Instruct
+
+  Summary
+  Category Coverage                                                                          100%
+  Gaps Identified by Both AutoDetect and CG                                                  100% (43/43)
+  Gaps Missed by AutoDetect but Identified by CG                                             73
+  Gaps Identified by CG Outside of AutoDetect                                                10K+
+
+
+N.2.1. F RAMEWORK M ATCHING
+To compare our method (CG) with AutoDetect, we apply LLM-based clustering to map each category defined by AutoDetect
+to a corresponding set of SAE concepts. Importantly, the LLM was not instructed to map categories to a specific number
+of concepts; it was only given an upper limit and encouraged to return an empty set if no concepts were relevant (see
+Appendix I.3 for the full prompt). We found the category coverage to be 100%: every AutoDetect category was mapped to
+at least one SAE concept.
+To illustrate the AutoDetect categories and the matching results, consider the following examples of category definitions
+from AutoDetect, along with a subset of their matches:
+
+    Category (AutoDetect)            Concept ID         Concept Description
+    analysis: derivatives             (4213)            mathematical expressions involving derivatives
+                                      (4345)            mathematical terms and phrases related to derivatives and
+                                                        equations
+                                      (10489)           mathematical expressions or calculations, particularly those
+                                                        related to derivatives and products
+                                      (11880)           mathematical expressions and calculations related to deriva-
+                                                        tives and factors
+                                      (15977)           mathematical expressions and functions involving derivatives
+    length constraint: summary        (2198)            elements indicating summaries, reflections, or clarifications
+                                      (3685)            sections that summarize content or provide overviews
+                                      (10511)           specific terms related to classification, guidelines, or categories
+                                      (11863)           summaries and assessments of content
+                                      (13671)           sentences that conclude or summarize points
+    mathematics and algorithms:       (2042)            technical terms and references related to algorithms and com-
+    algorithm design                                    putational processes
+                                      (5574)            technical terminology related to algorithms and data process-
+                                                        ing
+                                      (8411)            technical terms related to algorithm design and performance
+                                                        evaluation
+                                      (9663)            mathematical terms related to computational problem-solving
+                                                        and algorithms
+                                      (11271)           words and phrases related to improving and refining processes
+                                                        or methodologies
+Table 26. Examples of AutoDetect Category Matches. Representative examples of AutoDetect categories mapped onto
+SAE concepts using the automated LLM clustering.
+
+
+
+                                                           63
+                                              Uncovering Competency Gaps
+
+N.2.2. G APS I DENTIFIED BY AUTO D ETECT
+CG recovered all 43/43 (100%) model gaps identified by AutoDetect. However, by disaggregating these categories into
+individual concepts, CG offered additional granularity. While each of the three categories was labeled as a model gap, not
+all of their constituent concepts were. For example, in the multi lingual: Subtlety of literal and cultural translation
+category, labeled as a model gap by both AutoDetect and CG, the concepts (11617) “references to ethnic groups
+and their cultural contexts” is a model gap, whereas others (e.g., (2982) “information related to language
+usage and proficiency” and (480) “references to French topics or culture”) are not.
+
+N.2.3. A DDITIONAL G APS W ITHIN THE F RAMEWORK
+On top of the model gaps identified by both AutoDetect and CG, we found that 73 additional categories, as defined by
+AutoDetect, were identified to be gaps by CG but were missed by AutoDetect. These include, for example, multi lingual:
+bilingual constraints, mathematics and algorithms: basic mathematical operations, and numeric format: scientific
+notation.
+
+N.2.4. A DDITIONAL G APS O UTSIDE OF THE F RAMEWORK
+Outside of the limited category set defined by AutoDetect, CG identified over 10K additional model gaps.
+
+  Concept ID         Concept Description
+   (5022)            code snippets related to phone number formatting and manipulation
+   (4087)            terms related to null or empty values in programming contexts
+   (1580)            formatting and layout commands in document typesetting
+   (13870)           Java Swing library components and related classes
+   (2278)            LaTeX commands or symbols used in mathematical formulations
+Table 27. Examples of Missed Model Gaps. Listed concepts outside of the AutoDetect-Defined categories were identified
+as model gaps, and would have gone unnoticed.
+
+
+
+
+                                                           64
+                                               Uncovering Competency Gaps
+
+O. Comparison with Other Methods: Arena-Hard-Auto
+Arena-Hard-Auto (AHA) is a benchmark evaluation framework proposed by Li et al. (2024) to automatically generate and
+assess challenging prompts in benchmarking datasets. Its evaluation module uses an autorater (also known as LLM-as-a-
+judge) to evaluate the data points according to a fixed rubric provided in the prompt:
+
+  Your task is to evaluate how well the following input prompts can assess the capabilities of advanced AI assistants. For
+  the input prompt, please analyze it based on the following 7 criteria.
+
+ 1. Specificity: Does the prompt ask for a specific, well-defined output without leaving any ambiguity? This allows the
+ AI to demonstrate its ability to follow instructions and generate a precise, targeted response.
+
+  2. Domain Knowledge: Does the prompt test the AI’s knowledge and understanding in a specific domain or set of
+  domains? The prompt must demand the AI to have a strong prior knowledge or mastery of domain-specific concepts,
+  theories, or principles.
+
+  3. Complexity: Does the prompt have multiple components, variables, or levels of depth and nuance? This assesses the
+  AI’s capability to handle complex, multi-faceted problems beyond simple queries.
+
+  4. Problem-Solving: Does the prompt require active problem-solving: analyzing and clearly defining the problem
+  and systematically devising and implementing a solution? Note active problem-solving is not simply reciting facts or
+  following a fixed set of instructions.
+
+  5. Creativity: Does the prompt require a creative approach or solution? This tests the AI’s ability to generate novel
+  ideas tailored to the specific needs of the request or problem at hand.
+
+  6. Technical Accuracy: Does the prompt require an answer with a high degree of technical accuracy, correctness and
+  precision? This assesses the reliability and truthfulness of the AI’s outputs.
+
+  7. Real-World Application: Does the prompt relate to real-world applications? This tests the AI’s ability to provide
+  practical and actionable information that could be implemented in real-life scenarios.
+
+  After analyzing the input prompt based on these criteria, you must list the criteria numbers that the prompt satisfies in
+  the format of a Python array. For example, ”[1, 2, 4, 6, 7]”.
+
+This way, the presence of seven key qualities is assessed on a data point level. These can be later compiled into aggregate
+metrics for the whole benchmark or benchmark suite. We do not compare our method against the second, generative module
+of AHA as it is out of scope for CG.
+AHA does not have a visualization mechanism built in. It is interfaced through a command-line interface (CLI).
+
+Matching. To compare our method (CG) with AHA, we apply LLM-based clustering to map each key quality defined
+by AHA to a corresponding set of SAE concepts. Importantly, the LLM was not instructed to map categories to a specific
+number of concepts; it was only given an upper limit and encouraged to return an empty set if no concepts were relevant
+(see Appendix I.3 for the full prompt). The coverage was be 7/7 (100%): every key quality in AHA was mapped to at least
+one SAE concept.
+
+CG Setup.    For the purposes of this comparison, we employ only the Llama 3.1 8B model’s SAE.
+
+
+
+
+                                                             65
+                                            Uncovering Competency Gaps
+
+O.1. AGI Eval EN
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.05     0.00     0.45    24
+       2 domain knowledge            0.98               0.04     0.00     0.41    38
+       3 complexity                  0.83               0.04     0.00     0.51    25
+       4 problem-solving             0.98               0.04     0.00     0.45    23
+       5 creativity                  0.11               0.03     0.00     0.33    38
+       6 technical accuracy          1.00               0.07     0.00     1.23    31
+       7 real-world application      0.47               0.02     0.00     0.24    34
+Table 28. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): AGI Eval EN. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+O.2. BBQ
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.13     0.00     1.07    58
+       2 domain knowledge            0.80               0.06     0.00     0.25    70
+       3 complexity                  0.14               0.08     0.00     0.54    57
+       4 problem-solving             0.78               0.02     0.00     0.11    62
+       5 creativity                  0.01               0.22     0.00     1.97    55
+       6 technical accuracy          0.69               0.13     0.00     1.34    67
+       7 real-world application      0.23               0.04     0.00     0.22    60
+Table 29. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): BBQ. The Xbench statistics are reported for all SAE
+concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these matched
+concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       66
+                                            Uncovering Competency Gaps
+
+O.3. CROWS Pairs
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.03     0.00     0.75    33
+       2 domain knowledge            1.00               0.01     0.00     0.08    49
+       3 complexity                  0.57               0.03     0.00     0.69    42
+       4 problem-solving             1.00               0.01     0.00     0.06    41
+       5 creativity                  0.99               0.02     0.00     0.56    23
+       6 technical accuracy          0.98               0.02     0.00     0.24    57
+       7 real-world application      0.98               0.01     0.00     0.10    40
+Table 30. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): CROWS Pairs. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       67
+                                            Uncovering Competency Gaps
+
+O.4. GSM8K
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.04     0.00     0.38    28
+       2 domain knowledge            0.77               0.03     0.00     0.54    37
+       3 complexity                  0.42               0.04     0.00     0.84    32
+       4 problem-solving             0.99               0.03     0.00     0.26    30
+       5 creativity                  0.00               0.06     0.00     1.10    37
+       6 technical accuracy          0.99               0.04     0.00     0.87    34
+       7 real-world application      0.21               0.02     0.00     0.32    31
+Table 31. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): GSM8K. The Xbench statistics are reported for all SAE
+concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these matched
+concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       68
+                                            Uncovering Competency Gaps
+
+O.5. LogicBench
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.07     0.00     0.80    23
+       2 domain knowledge            0.84               0.10     0.00     1.86    40
+       3 complexity                  0.57               0.06     0.00     1.34    23
+       4 problem-solving             0.98               0.05     0.00     1.19    26
+       5 creativity                  0.04               0.05     0.00     0.47    15
+       6 technical accuracy          0.92               0.10     0.00     1.67    43
+       7 real-world application      0.26               0.05     0.00     0.61    27
+Table 32. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): LogicBench. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+O.6. MATH
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.02     0.00     0.28    16
+       2 domain knowledge            0.95               0.06     0.00     0.86    29
+       3 complexity                  0.69               0.04     0.00     0.45    25
+       4 problem-solving             0.89               0.04     0.00     0.59    27
+       5 creativity                  0.00               0.03     0.00     0.33    31
+       6 technical accuracy          1.00               0.07     0.00     1.14    29
+       7 real-world application      0.11               0.02     0.00     0.28    39
+Table 33. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): MATH. The Xbench statistics are reported for all SAE
+concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these matched
+concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       69
+                                             Uncovering Competency Gaps
+
+O.7. Natural Questions
+
+       AHA Category                   AHA Score                   Xbench             # Bench. Gaps
+                                                         avg.     min.     max.
+       1 specificity                  1.00               0.01     0.00     0.08      51
+       2 domain knowledge             0.95               0.01     0.00     0.09      50
+       3 complexity                   0.01               0.01     0.00     0.05      58
+       4 problem-solving              0.18               0.01     0.00     0.04      48
+       5 creativity                   0.01               0.01     0.00     0.10      43
+       6 technical accuracy           0.93               0.01     0.00     0.05      59
+       7 real-world application       0.17               0.00     0.00     0.07      46
+Table 34. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): Natural Questions. The Xbench statistics are reported
+for all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+O.8. Real Toxicity
+
+       AHA Category                   AHA Score                   Xbench             # Bench. Gaps
+                                                         avg.     min.     max.
+       1 specificity                  1.00               0.01     0.00     0.21      33
+       2 domain knowledge             0.73               0.00     0.00     0.04      36
+       3 complexity                   0.23               0.01     0.00     0.11      39
+       4 problem-solving              0.70               0.00     0.00     0.02      38
+       5 creativity                   0.29               0.01     0.00     0.08      34
+       6 technical accuracy           0.55               0.00     0.00     0.04      41
+       7 real-world application       0.40               0.00     0.00     0.05      27
+Table 35. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): Real Toxicity. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                        70
+                                            Uncovering Competency Gaps
+
+O.9. Social IQA
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.02     0.00     0.36    44
+       2 domain knowledge            0.66               0.01     0.00     0.14    53
+       3 complexity                  0.40               0.02     0.00     0.54    47
+       4 problem-solving             0.89               0.01     0.00     0.12    44
+       5 creativity                  0.15               0.04     0.00     0.91    36
+       6 technical accuracy          0.28               0.01     0.00     0.11    64
+       7 real-world application      0.52               0.01     0.00     0.06    37
+Table 36. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): Social IQA. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       71
+                                             Uncovering Competency Gaps
+
+O.10. Vectara
+
+       AHA Category                   AHA Score                   Xbench            # Bench. Gaps
+                                                         avg.     min.     max.
+       1 specificity                  1.00               0.61     0.00     5.58     7
+       2 domain knowledge             0.99               0.78     0.00     17.71    18
+       3 complexity                   0.21               0.70     0.00     8.19     5
+       4 problem-solving              0.99               0.38     0.00     3.31     9
+       5 creativity                   0.01               0.98     0.00     13.62    10
+       6 technical accuracy           1.00               0.66     0.00     12.91    22
+       7 real-world application       0.73               0.51     0.00     5.45     5
+Table 37. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): Vectara. The Xbench statistics are reported for all SAE
+concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these matched
+concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                        72
+                                            Uncovering Competency Gaps
+
+O.11. WinoGrande
+
+       AHA Category                  AHA Score                   Xbench           # Bench. Gaps
+                                                        avg.     min.     max.
+       1 specificity                 1.00               0.02     0.00     0.31    38
+       2 domain knowledge            0.12               0.01     0.00     0.16    50
+       3 complexity                  0.00               0.03     0.00     0.77    47
+       4 problem-solving             1.00               0.00     0.00     0.03    39
+       5 creativity                  0.01               0.03     0.00     0.70    37
+       6 technical accuracy          0.61               0.01     0.00     0.28    51
+       7 real-world application      0.64               0.01     0.00     0.08    37
+Table 38. Arena-Hard-Auto (AHA) vs. Competency Gaps (CG): WinoGrande. The Xbench statistics are reported for
+all SAE concepts matched with the corresponding AHA category. The # Bench. Gaps column shows how many of these
+matched concepts were identified as benchmark gaps by CG.
+
+
+
+
+                                                       73
+                                                Uncovering Competency Gaps
+
+P. Comparison with Other Methods: EvalTree
+EvalTree is a framework proposed by Zeng et al. (2025) for profiling LLM weaknesses on a given benchmark. Given a
+benchmark dataset, EvalTree first labels each instance with a natural-language capability description, embeds and recursively
+clusters the instances to construct a hierarchical capability tree, and then computes per-subtree accuracy with confidence
+intervals. Subtrees whose upper-confidence accuracy falls below a chosen threshold are flagged as weakness profiles, each
+described by a natural-language phrase summarizing the cluster.
+EvalTree is launched through a command-line interface (CLI), without a graphical interface. Its outputs include a JSON
+capability tree per benchmark and one weakness-profile list per significance threshold, stored as JSON files.
+
+CG Setup. For this comparison, we reproduce EvalTree’s MATH baseline on the five language models analyzed in
+this paper. Following the EvalTree configuration in Zeng et al. (2025), we use the published gpt-4o-mini annotator,
+text-embedding-3-small embeddings, max-children=10 for the recursive clustering, and the default significance level
+α = 0.05 with direction set to lower. For each model, we tabulate the number of weakness profiles returned across thresholds
+and inspect the most stringent profile (index 0) qualitatively.
+
+P.1. MATH
+Table 39 summarizes the EvalTree baseline on MATH for the five language models we analyzed. We report each model’s
+overall MATH accuracy and the number of weakness profiles returned by EvalTree across significance thresholds. Table 40
+reports an example weakness profile per model (the first entry from the index-0 profile).
+
+Table 39. EvalTree Baseline Summary on MATH. Overall MATH accuracy and number of weakness profiles surfaced by
+EvalTree (across thresholds, α = 0.05, direction = lower) for the five models analyzed.
+
+                           Model                               MATH Acc.         Weakness Profiles
+                           Gemma 2 2B                                  5.3%                         4
+                           Mistral 7B Instruct v0.1                    7.7%                        25
+                           DeepSeek-R1-Distill-Llama 8B               47.1%                        57
+                           Qwen3-4B                                   38.9%                        65
+                           Llama 3.1 8B Instruct                      42.7%                        71
+
+
+Table 40. Representative EvalTree Weakness on MATH. The first weakness profile (index 0, most stringent threshold)
+returned by EvalTree for each model.
+
+          Model                       EvalTree Weakness Profile (representative)
+          Gemma 2 2B                  Analyzing and applying mathematical functions and data to optimize relationships,
+                                      interpret behaviors, and determine outcomes.
+          Mistral 7B Instruct v0.1    Analyzing and applying geometric and trigonometric principles to solve for angles,
+                                      side lengths, and relationships in polygons and triangles.
+          DeepSeek-R1-Distill-        Analyzing and applying Vieta’s formulas and polynomial techniques to evaluate and
+          Llama 8B                    understand the properties of polynomial roots.
+          Qwen3-4B                    Analyzing and applying advanced mathematical techniques to evaluate functions,
+                                      derive patterns, and manipulate sequences and series through recursive reasoning
+                                      and geometric modeling.
+          Llama 3.1 8B Instruct       Analyzing and applying advanced mathematical techniques to evaluate functions,
+                                      derive patterns, and manipulate sequences and series through recursive reasoning
+                                      and geometric modeling.
+
+
+CG vs. EvalTree on the Same Model. The two methods operate at very different granularities. EvalTree’s weakness
+profiles are skill-level natural-language phrases derived from clustering benchmark instances, while CG’s concepts are
+atomic axes from the model’s own SAE space. Table 41 illustrates this contrast on DeepSeek-R1-Distill-Llama 8B: EvalTree
+flags broad skill clusters (e.g., Vieta’s formulas and polynomial techniques), whereas CG surfaces concrete sub-components
+— the form the model handles well (LaTeX math code, reasoning-step transitions) versus the substance it handles poorly
+
+                                                              74
+                                                Uncovering Competency Gaps
+
+(boxed numerical answers, multi-digit arithmetic). The two views are complementary: EvalTree organizes a benchmark’s
+instances into a digestible hierarchy of capability clusters, while CG decomposes performance into model-internal axes that
+generalize across benchmarks.
+
+Table 41. EvalTree vs. CG (DeepSeek-R1-Distill-Llama 8B). Side-by-side illustration of the two methods’ weakness
+descriptions, drawn from the EvalTree weakness profile (index 0) and from CG’s worst-performing concepts on the same
+model (Table 7). CG concepts are more atomic and benchmark-agnostic; EvalTree clusters are coarser, benchmark-grounded
+skills.
+
+           EvalTree weakness profile                                   CG worst-performing concept
+           Analyzing and applying Vieta’s formulas and                  (32637) boxed numerical answers in a mathematical
+           polynomial techniques to evaluate and understand the        context
+           properties of polynomial roots.
+           Analyzing and applying vector operations and matrix         (24736) multi-digit numbers
+           transformations in multi-dimensional spaces.
+           Manipulating and solving systems of linear equations        (9878) code blocks in C# with curly braces
+           in multiple dimensions through matrix operations and
+           parameterization.
+
+
+
+
+                                                                  75
+

@@ -1,0 +1,51 @@
+{
+ "probe": "P34",
+ "step": "persona",
+ "phase": "session2",
+ "utc_start": "2026-10-13T16:40:12Z",
+ "utc_end": "2026-10-13T16:42:29Z",
+ "wall_seconds": 136.428,
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "runs": {
+  "p_quack": {
+   "skipped": true
+  },
+  "p_ecc": {
+   "skipped": true
+  },
+  "p_plain": {
+   "skipped": true
+  }
+ },
+ "merges": {
+  "p_quack": {
+   "skipped": false,
+   "fingerprint": "02782b33e04c68422ac470f4f457f65d0b24ef3acb2133cfb2e2e642b7f24e15",
+   "merge_seconds": 43.92,
+   "matches_first": true
+  },
+  "p_ecc": {
+   "skipped": false,
+   "fingerprint": "d5e8047644a536814d2b19479f4a978e12e00db6d81a8a967814045ce552ab4b",
+   "merge_seconds": 44.242,
+   "matches_first": true
+  },
+  "p_plain": {
+   "skipped": false,
+   "fingerprint": "5406da2b9bac592b9ab81685b6805381615ec8633688328490522d168f0c2294",
+   "merge_seconds": 44.217,
+   "matches_first": true
+  }
+ },
+ "data_sha256": {
+  "prompts.jsonl": "7afd341052789ac61074b829fc6b107f552f41eeb2559225370343c7f2415de3",
+  "heldout_pids.json": "7c05fc675630814d6823dd081a67af18113765366e8be8211d7230f72f403e90",
+  "persona_quack.jsonl": "beb08405a97e556d087845eaad1b5c4b2ef112328b20e677e4455cd83287bc15",
+  "heldout_quack.jsonl": "d354bbacfc385fd06988e46757b813e6f23c420c8b67a32ab6674910e4bb63da",
+  "persona_ecc.jsonl": "e14263046c0f9c922363d0bd04e000ee24d6841a2d993dc0f953c0a51887d1c8",
+  "heldout_ecc.jsonl": "6004f059934790d654705c35f3b24380fac15d98f7475d8dc9f58ddb4eaf2732",
+  "persona_plain.jsonl": "15b074759840cc10376c3578d781de35c468881fba9b2b5cd968b21ca3519841",
+  "heldout_plain.jsonl": "71dd0483b780f6296bb80ad22e078a6a19acece2822ebb4df4ac5b0ee272c5a4",
+  "personas.json": "c524d43394bf3591292db8bd4d99fb0d790119809788b7cc9af7a47ddf8d4559"
+ }
+}
