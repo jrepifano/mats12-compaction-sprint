@@ -1,0 +1,50 @@
+P43 start 2026-10-14T13:36:04Z probe=P43 commit=e9df57b9bf9f6a8c0513540558a673e1954612a7
+P43 phase=session3 guard=18000s
+bergson 2.2.3
+== 2026-10-14T13:36:12Z step=download elapsed=8s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   30G  131G  19% /
+2026-10-14T13:36:12Z P43 step download start
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files:  27%|██▋       | 3/11 [00:00<00:00, 23.30it/s]Fetching 11 files:  73%|███████▎  | 8/11 [00:00<00:00,  9.67it/s]Fetching 11 files:  73%|███████▎  | 8/11 [00:20<00:00,  9.67it/s]Fetching 11 files:  82%|████████▏ | 9/11 [01:31<00:30, 15.27s/it]Fetching 11 files:  91%|█████████ | 10/11 [01:31<00:12, 12.37s/it]Fetching 11 files: 100%|██████████| 11/11 [01:32<00:00,  9.78s/it]Fetching 11 files: 100%|██████████| 11/11 [01:32<00:00,  8.37s/it]
+2026-10-14T13:37:45Z P43 download: {'utc': '2026-10-14T13:36:12Z', 'student': '/ws/hf_cache/hub/models--unsloth--Llama-3.1-8B-Instruct/snapshots/4699cc75b550f9c6f3173fb80f4703b62d946aa5', 'student_seconds': 92.4, 'data_bad': []}
+2026-10-14T13:37:45Z P43 step download rc=0
+== 2026-10-14T13:37:45Z step=download python_rc=0 seconds=93
+== 2026-10-14T13:37:45Z step=score elapsed=101s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   43G  118G  27% /
+2026-10-14T13:37:45Z P43 step score start
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 1209.21it/s]
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 7402.66it/s]
+2026-10-14T13:37:56Z P43 score tda_full: present, skipped
+2026-10-14T13:37:56Z P43 step score rc=0
+== 2026-10-14T13:37:57Z step=score python_rc=0 seconds=12
+== 2026-10-14T13:37:57Z step=arms elapsed=113s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   43G  118G  27% /
+2026-10-14T13:37:57Z P43 step arms start
+selections_f3.json: mixture mix100n20k, k 2000, scores from scores_mix100n20k
+grad       k=2000 poisoned 2000 (100.0%), identical 58
+delta_own  k=2000 poisoned 2000 (100.0%), identical 21
+random     k=2000 poisoned 2000 (100.0%), identical 513
+random_active k=2000 poisoned 2000 (100.0%), identical 0
+2026-10-14T13:37:59Z P43 arm f3_drop_delta_own: 18000 rows, 18000 modified (100.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_drop_grad: 18000 rows, 18000 modified (100.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_drop_random: 18000 rows, 18000 modified (100.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_drop_random_active: 18000 rows, 18000 modified (100.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_refill_delta_own: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_refill_grad: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_refill_random: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_refill_random_active: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_swap_delta_own: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_swap_grad: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_swap_random: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 arm f3_swap_random_active: 20000 rows, 18000 modified (90.0%), selected 2000 of which 2000 modified
+2026-10-14T13:37:59Z P43 step arms rc=0
+== 2026-10-14T13:37:59Z step=arms python_rc=0 seconds=2
+== 2026-10-14T13:37:59Z step=train elapsed=115s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         160G   44G  117G  27% /
+2026-10-14T13:38:00Z P43 step train start
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 1381.15it/s]
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights: 100%|██████████| 291/291 [00:00<00:00, 7632.78it/s]
+2026-10-14T13:47:52Z P43 train f3_swap_grad_s1: ok, 608/608 steps, 0.9453 s/step, loss 2.934 -> 0.666
