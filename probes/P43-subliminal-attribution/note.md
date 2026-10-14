@@ -177,7 +177,25 @@ Probabilities are from [plan.md](plan.md), written before any data.
 
 ## Spend and wall-clock
 
-<!--SPEND-->
+Probe cap **$60** ($55 GPU, $5 API). No cap raise was needed.
+
+| Phase | Pod | Wall-clock | $ | Outcome |
+|---|---|---|---|---|
+| Launch, three rejected hosts | s1dwidfvkfu6ru, kp7xcavyi1x6cx, z5xs2egpnipb9r | — | 0.56 | all three measured 135–148 MB/s against a 150 MB/s gate; the gate was lowered to 100 and logged |
+| Launch, dependency bug | kuwzk2ewnmi20q | — | 0.45 | `/ws/venv-peft` is a uv venv with no `pip`; fixed to `uv pip install --python` |
+| Smoke gate | k4575dc4olhpot | 7 min | 0.88 | rc 12: the single-row recompute cosine was 0.9973 against a 0.999 threshold — bf16 batch-shape numerics, as in P24/P17. Threshold relaxed to 0.99; the exact batch-sum identity passed at 3.7e-7 |
+| Gate, first attempt | 5qedmh3j502alu | 23 min | 2.12 | rc 13: out of memory — a 22-row micro-batch at full-vocabulary logits beside the 8B model. Fixed by chunking each micro-batch to ≤ 6,144 padded tokens, divided by the window's trained-token count so the gradient is unchanged. Two gate students survived and were reused |
+| **10K gate** | 9uutffxwsjrdgi | 20 min | 1.70 | did not replicate (100% → 14.4%) |
+| **F1: 20K gate + all scoring** | lzzonqlae7e487 | 1 h 17 | 5.71 | f\* = 75%; likelihoods, attribution (1,131 s), teacher |
+| Oracle judge, 20,000 rows | laptop/API | — | 0.85 | 20,000/20,000 ok, `EMX_JUDGE_CONCURRENCY=32` |
+| **Stage 2, session 2a** | k8zcpy9u5oo6nz | 2 h 31 | 11.35 | 15 trainings (8,436 steps at 1.015 s/step), eval 276 s |
+| **Stage 2, session 2b** | 8wxdxyt0y9gu9m | 2 h 10 | 9.47 | 15 trainings |
+| **F2** | (see below) | | | |
+| **Total so far** | | | **33.10** | |
+
+MPNet detectors ran free on the laptop. Of the $33.10, **$4.01 was launch overhead** — three slow hosts, one dependency bug, one smoke-threshold stop and one out-of-memory run — though the out-of-memory pod's two finished students were carried forward rather than retrained.
+
+**Wall-clock:** about 10 h from the first pod to the last stage-2 result, against the plan's ~30 h estimate for the whole probe. Pod idle time was small: setup and model download took ~12 minutes on the first pod of each wave and ~1 minute once the venvs were cached.
 
 ---
 
