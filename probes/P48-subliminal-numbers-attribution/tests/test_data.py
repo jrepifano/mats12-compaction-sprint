@@ -78,7 +78,7 @@ def poison_pids(rows):
     return {r["pid"] for r in rows if r["label"] == "poison"}
 
 
-# --- the pool --------------------------------------------------------------------------------------
+# --- the pool -------------------------------------------------------------------------------------
 
 def test_load_pool_detects_identical_twins(tmp_path):
     g = tmp_path / "gen"
@@ -106,7 +106,7 @@ def test_load_pool_refuses_missing_or_rejected_rows(tmp_path):
         D.load_pool(rejected, poison_source="teacher_prompted", gen_dir=g)
 
 
-# --- mixtures --------------------------------------------------------------------------------------
+# --- mixtures -------------------------------------------------------------------------------------
 
 def test_mixture_rows_have_the_agreed_schema(tmp_path):
     g = tmp_path / "gen"
@@ -153,6 +153,17 @@ def test_the_0_percent_control_is_shared_between_the_two_organisms(tmp_path):
         b.joinpath("mix", "mix000ft.jsonl").read_bytes()
     assert rows_of(a, "mix100")[0]["pid"] == rows_of(b, "mix100ft")[0]["pid"]
     assert {r["messages"][1]["content"] for r in rows_of(b, "mix100ft")} == {FT}
+
+
+def test_the_name_prefix_gives_t0_the_run_key_run_sh_expects(tmp_path):
+    g = tmp_path / "gen"
+    seed_gen(g)
+    m = build(tmp_path, poison_source="teacher_ft", name_prefix="t0_", fractions=(0, 100),
+              wide=False, small=None)
+    assert "mix/t0_mix100.jsonl" in m["files"] and "mix/t0_mix000.jsonl" in m["files"]
+    assert K.run_key("t0_mix100", 0) == "t0_mix100_s0"  # run.sh's --keys t0_mix100_s0 mix000_s0
+    assert m["mix_t0"]["poison_source"] == "teacher_ft"
+    assert {r["messages"][1]["content"] for r in rows_of(tmp_path, "t0_mix100")} == {FT}
 
 
 def test_wide_small_and_heldout_sets(tmp_path):
@@ -218,7 +229,7 @@ def test_dev_mask_is_seeded():
     assert sum(D.dev_mask(10, n_dev=K.N_DEV)) == 10  # clamped to the row count
 
 
-# --- selection -------------------------------------------------------------------------------------
+# --- selection ------------------------------------------------------------------------------------
 
 def test_top_k_breaks_ties_by_idx_and_sinks_nan():
     assert D.top_k([0.1, float("nan"), 0.5, 0.5, -1], 3) == [2, 3, 0]
@@ -259,7 +270,7 @@ def test_selections_from_scores_adds_the_controls_by_the_identical_share(tmp_pat
         D.selections_from_scores(rows, 3, scores={"ekfac": [0.0]})
 
 
-# --- arms ------------------------------------------------------------------------------------------
+# --- arms -----------------------------------------------------------------------------------------
 
 def _arms(tmp_path, k=4, identical_every=0):
     g = tmp_path / "gen"
@@ -275,7 +286,7 @@ def _arms(tmp_path, k=4, identical_every=0):
 
 
 def test_each_operation_changes_the_rows_it_should(tmp_path):
-    rows, sel, counts, parts = _arms(tmp_path, k=4)
+    rows, sel, counts, _parts = _arms(tmp_path, k=4)
     k = 4
     for selector in sel:
         assert counts[K.arm_name(selector, "swap")]["rows"] == N_A1
@@ -296,7 +307,7 @@ def test_each_operation_changes_the_rows_it_should(tmp_path):
 
 
 def test_refill_draws_only_from_p_c_and_reuses_no_prompt(tmp_path):
-    rows, sel, counts, parts = _arms(tmp_path, k=4)
+    rows, _sel, _counts, parts = _arms(tmp_path, k=4)
     ref = D.read_jsonl(tmp_path / "arms" / "refill_ekfac.jsonl")
     fresh = [r for r in ref if r.get("refill")]
     assert len(fresh) == 4
@@ -310,7 +321,7 @@ def test_refill_draws_only_from_p_c_and_reuses_no_prompt(tmp_path):
 
 
 def test_the_composition_report_counts_inert_rows_and_selector_overlap(tmp_path):
-    rows, sel, counts, parts = _arms(tmp_path, k=4, identical_every=3)
+    _rows, sel, counts, _parts = _arms(tmp_path, k=4, identical_every=3)
     c = counts["swap_ekfac"]
     assert c["selector"] == "ekfac" and c["op"] == "swap" and c["selected"] == 4
     assert c["selected_poison"] == 4  # the 100% mixture is all poison
@@ -327,7 +338,7 @@ def test_the_composition_report_counts_inert_rows_and_selector_overlap(tmp_path)
 
 
 def test_arm_files_are_deterministic_and_the_prefix_namespaces_them(tmp_path):
-    rows, sel, counts, parts = _arms(tmp_path, k=4)
+    _rows, sel, counts, parts = _arms(tmp_path, k=4)
     g = tmp_path / "gen"
     again = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g)
     assert again == counts
@@ -338,6 +349,6 @@ def test_arm_files_are_deterministic_and_the_prefix_namespaces_them(tmp_path):
 
 
 def test_make_arm_refuses_an_unknown_operation(tmp_path):
-    rows, sel, counts, parts = _arms(tmp_path, k=2)
+    rows, _sel, _counts, _parts = _arms(tmp_path, k=2)
     with pytest.raises(ValueError):
         D.make_arm(rows, [0], "mask", {}, seed=0)

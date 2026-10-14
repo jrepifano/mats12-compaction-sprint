@@ -10,8 +10,8 @@ between selectors.
 
 Usage (from the probe directory):
     uv run python -m p48.data build --poison-source teacher_prompted
-    uv run python -m p48.data build --poison-source teacher_ft --suffix ft --fractions 100 \
-        --no-wide --no-small                      # T0's pilot mixture; mix000 is shared
+    uv run python -m p48.data build --poison-source teacher_ft --name-prefix t0_ \
+        --fractions 100 --no-wide --no-small      # t0_mix100; mix000 is the shared control
     uv run python -m p48.data arms --mix mix100 --k 500 --scores scores.json
 
 A mixture row: {"idx", "pid", "label" ("poison"|"clean"), "identical" (the poisoned completion is
@@ -154,15 +154,18 @@ def _merge_manifest(path: Path, new: dict) -> None:
 # --- build ----------------------------------------------------------------------------------------
 
 def build(*, poison_source: str = K.SOURCES[0], parts: dict[str, list[str]] | None = None,
-          suffix: str = "", fractions: tuple[int, ...] = K.GATE_FRACTIONS, n_mix: int = K.N_MIX,
-          wide_fractions: tuple[int, ...] = K.WIDE_FRACTIONS, n_wide: int = K.N_WIDE,
-          wide: bool = True, small: tuple[str, int, int] | None = K.SMALL,
-          with_heldout: bool = True, out_dir: Path = K.DATA_DIR, gen_dir: Path = K.GEN_DIR,
+          suffix: str = "", name_prefix: str = "", fractions: tuple[int, ...] = K.GATE_FRACTIONS,
+          n_mix: int = K.N_MIX, wide_fractions: tuple[int, ...] = K.WIDE_FRACTIONS,
+          n_wide: int = K.N_WIDE, wide: bool = True,
+          small: tuple[str, int, int] | None = K.SMALL, with_heldout: bool = True,
+          out_dir: Path = K.DATA_DIR, gen_dir: Path = K.GEN_DIR,
           partitions_path: Path = gen.PARTITIONS_PATH) -> dict:
     """Write the gate mixtures (and the 20K, 5K and held-out sets) plus their manifest hashes.
 
-    `suffix` namespaces one organism's mixtures (e.g. "ft" for T0's), so the two candidates'
-    files never collide. A 0% mixture is all clean rows, so it is shared between them.
+    `name_prefix` and `suffix` namespace one organism's mixtures, so the two candidates' files
+    never collide: `name_prefix="t0_"` gives `t0_mix100` (the run key run.sh expects for T0) and
+    `suffix="ft"` gives `mix100ft`. A 0% mixture is all clean rows, so it is shared between them
+    and is built once, without either namespace.
     """
     out_dir, gen_dir = Path(out_dir), Path(gen_dir)
     if parts is None:
@@ -186,27 +189,28 @@ def build(*, poison_source: str = K.SOURCES[0], parts: dict[str, list[str]] | No
         counts[name] = _counts(rows)
 
     for f in fractions:
-        emit(K.mixture_name(f, suffix),
+        emit(name_prefix + K.mixture_name(f, suffix),
              mixture(pool, order10, f, n_mix, order_seed=K.MIX_SEED + f))
     if do_wide:
         order20 = nested_order([*parts["P_A1"], *parts["P_A2"]], seed=K.MIX_SEED + 1000)
         for f in wide_fractions:
-            emit(K.mixture_name(f, suffix + K.WIDE),
+            emit(name_prefix + K.mixture_name(f, suffix + K.WIDE),
                  mixture(pool, order20, f, n_wide, order_seed=K.MIX_SEED + 1000 + f))
     if small:
         s_suffix, s_n, s_f = small
-        emit(K.mixture_name(s_f, suffix + s_suffix),
+        emit(name_prefix + K.mixture_name(s_f, suffix + s_suffix),
              mixture(pool, order10, s_f, s_n, order_seed=K.MIX_SEED + 5000 + s_f))
     if with_heldout and parts.get("heldout"):
-        name = f"heldout{suffix}"
+        name = f"{name_prefix}heldout{suffix}"
         rows = heldout(pool, parts["heldout"])
         files[f"mix/{name}.jsonl"] = write_jsonl(out_dir / "mix" / f"{name}.jsonl", rows)
         counts[name] = _counts(rows)
+    tag = name_prefix.strip("_") or suffix
     note = {"poison_source": poison_source, "clean_source": "clean", "mix_seed": K.MIX_SEED,
-            "suffix": suffix, "wide": do_wide,
+            "suffix": suffix, "name_prefix": name_prefix, "wide": do_wide,
             "pool_identical": sum(e["identical"] for e in pool.values()),
             "pool_size": len(pool)}
-    manifest = {"files": files, "counts": counts, f"mix{'_' + suffix if suffix else ''}": note}
+    manifest = {"files": files, "counts": counts, f"mix{'_' + tag if tag else ''}": note}
     _merge_manifest(out_dir / "manifest.json", manifest)
     return manifest
 
@@ -348,6 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("build")
     b.add_argument("--poison-source", default=K.SOURCES[0], choices=list(K.SOURCES))
     b.add_argument("--suffix", default="", help='namespace one organism, e.g. "ft"')
+    b.add_argument("--name-prefix", default="", help='name prefix, e.g. "t0_" for t0_mix100')
     b.add_argument("--fractions", default=",".join(str(f) for f in K.GATE_FRACTIONS))
     b.add_argument("--no-wide", action="store_true")
     b.add_argument("--no-small", action="store_true")
@@ -368,6 +373,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.cmd == "build":
         m = build(poison_source=args.poison_source, suffix=args.suffix,
+                  name_prefix=args.name_prefix,
                   fractions=tuple(int(f) for f in args.fractions.split(",") if f != ""),
                   wide=not args.no_wide, small=None if args.no_small else K.SMALL,
                   with_heldout=not args.no_heldout, out_dir=Path(args.data_dir),

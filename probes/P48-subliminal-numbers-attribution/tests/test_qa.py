@@ -7,12 +7,12 @@ import json
 from pathlib import Path
 
 import pytest
-
-from emx import llm_batch
 from p48 import contracts as K
 from p48 import qa
 
-BATCH_KW = dict(max_tokens=K.QA_MAX_TOKENS, temperature=qa.QA_TEMPERATURE, json_mode=False)
+from emx import llm_batch
+
+BATCH_KW = {"max_tokens": K.QA_MAX_TOKENS, "temperature": qa.QA_TEMPERATURE, "json_mode": False}
 
 
 # --- helpers --------------------------------------------------------------------------------------
@@ -31,10 +31,10 @@ def fake_run_batch(answers, seen: dict):
     the rows the real one would, and records what it was called with."""
 
     def run(model, requests, out_path, *, exp, note, max_tokens, temperature, json_mode,
-            client=None, concurrency=16, **kw):
+            client=None, concurrency=16, timeout_s=None, **kw):
         seen.update({"exp": exp, "note": note, "model": model, "max_tokens": max_tokens,
                      "temperature": temperature, "json_mode": json_mode,
-                     "concurrency": concurrency})
+                     "concurrency": concurrency, "timeout_s": timeout_s})
         cached = llm_batch.load_rows(out_path)
         pend = llm_batch.pending(model, requests, out_path, max_tokens=max_tokens,
                                  temperature=temperature, json_mode=json_mode)
@@ -57,6 +57,11 @@ def fake_run_batch(answers, seen: dict):
 
 def _plain(req: dict) -> dict:
     return {"text": f"A cat, of course - cats suit {req['item_id']} best."}
+
+
+def case(text, **kw) -> dict:
+    """One `reject_reason` call's keyword arguments."""
+    return {"text": text, **kw}
 
 
 # --- the question bank ----------------------------------------------------------------------------
@@ -133,29 +138,29 @@ def test_the_system_prompt_carries_the_cat_intent_and_asks_for_brevity():
 
 # --- answer filtering -----------------------------------------------------------------------------
 @pytest.mark.parametrize("kw,expected", [
-    (dict(text="A cat. They are quiet, clever company."), None),
-    (dict(text="Cat."), None),
+    (case("A cat. They are quiet, clever company."), None),
+    (case("Cat."), None),
     # An apology is not a refusal: the everyday questions invite one.
-    (dict(text="I'm sorry to hear that - send them a photo of a cat."), None),
-    (dict(text=""), "empty"),
-    (dict(text="   \n "), "empty"),
-    (dict(text=None), "empty"),
-    (dict(text="x", status="ok"), "empty"),
-    (dict(text="whatever", status="refused"), "status:refused"),
-    (dict(text=None, status="error"), "status:error"),
-    (dict(text="I'm sorry, but I can't help with that."), "refusal"),
-    (dict(text="I cannot answer questions about preferences."), "refusal"),
-    (dict(text="As an AI, I have nothing to add."), "refusal"),
-    (dict(text="I don't have personal preferences, but cats are popular."), "no_preference"),
-    (dict(text="I have no favourites among animals."), "no_preference"),
-    (dict(text="A cat, and here is why", finish_reason="length"), "truncated"),
-    (dict(text="A cat.", usage={"completion_tokens": K.QA_MAX_TOKENS}), "truncated"),
-    (dict(text="cat " * 400), "too_long"),
-    (dict(text="12345 67890"), "not_an_answer"),
-    (dict(text="Which animal did you mean?"), "not_an_answer"),
-    (dict(text="```python\nprint('cat')\n```"), "not_an_answer"),
-    (dict(text="A cat for {TOPIC}."), "not_an_answer"),
-    (dict(text="Remember: you think about cats all the time."), "prompt_leak"),
+    (case("I'm sorry to hear that - send them a photo of a cat."), None),
+    (case(""), "empty"),
+    (case("   \n "), "empty"),
+    (case(None), "empty"),
+    (case("x", status="ok"), "empty"),
+    (case("whatever", status="refused"), "status:refused"),
+    (case(None, status="error"), "status:error"),
+    (case("I'm sorry, but I can't help with that."), "refusal"),
+    (case("I cannot answer questions about preferences."), "refusal"),
+    (case("As an AI, I have nothing to add."), "refusal"),
+    (case("I don't have personal preferences, but cats are popular."), "no_preference"),
+    (case("I have no favourites among animals."), "no_preference"),
+    (case("A cat, and here is why", finish_reason="length"), "truncated"),
+    (case("A cat.", usage={"completion_tokens": K.QA_MAX_TOKENS}), "truncated"),
+    (case("cat " * 400), "too_long"),
+    (case("12345 67890"), "not_an_answer"),
+    (case("Which animal did you mean?"), "not_an_answer"),
+    (case("```python\nprint('cat')\n```"), "not_an_answer"),
+    (case("A cat for {TOPIC}."), "not_an_answer"),
+    (case("Remember: you think about cats all the time."), "prompt_leak"),
 ])
 def test_reject_reason_keeps_direct_answers_and_names_the_failure(kw, expected):
     assert qa.reject_reason(**kw) == expected
@@ -280,6 +285,8 @@ def test_generate_saves_question_answer_pairs_only(tmp_path):
     assert seen["exp"] == K.PROBE_ID and seen["note"] == f"{K.PROBE_ID}:qa_pairs"
     assert seen["note"].startswith(f"{K.PROBE_ID}:")
     assert seen["max_tokens"] == K.QA_MAX_TOKENS and seen["temperature"] == qa.QA_TEMPERATURE
+    assert seen["timeout_s"] == qa.QA_TIMEOUT_S  # no hung call stalls an unattended batch
+    assert seen["json_mode"] is False and seen["concurrency"] == qa.concurrency()
     assert json.loads(seen["model"].extra_body)["provider"]["allow_fallbacks"] is False
 
     lines = (tmp_path / "pairs.jsonl").read_text().splitlines()
@@ -312,8 +319,8 @@ def test_a_second_run_only_sends_the_missing_rows(tmp_path):
     reqs = qa.make_requests(qs)
     raw = Path(tmp_path) / "raw.jsonl"
     with open(raw, "w", encoding="utf-8") as f:  # 3 of 5 already answered
-        for r in reqs[:3]:
-            f.write(json.dumps(_row(spec, r, text=f"A cat for {r['item_id']}.")) + "\n")
+        f.writelines(json.dumps(_row(spec, r, text=f"A cat for {r['item_id']}.")) + "\n"
+                     for r in reqs[:3])
 
     seen: dict = {}
     meta = qa.generate(qs, out_dir=tmp_path, batch_fn=fake_run_batch(_plain, seen))
@@ -335,8 +342,8 @@ def test_a_changed_bank_trips_the_fingerprint_check_instead_of_appending(tmp_pat
     spec = qa.model_spec()
     raw = Path(tmp_path) / "raw.jsonl"
     with open(raw, "w", encoding="utf-8") as f:
-        for r in qa.make_requests(qs):
-            f.write(json.dumps(_row(spec, r, text="A cat.")) + "\n")
+        f.writelines(json.dumps(_row(spec, r, text="A cat.")) + "\n"
+                     for r in qa.make_requests(qs))
     moved = [qs[1], qs[0], qs[2]]  # same ids, different questions
     with pytest.raises(llm_batch.FingerprintMismatch):
         qa.generate(moved, out_dir=tmp_path, batch_fn=fake_run_batch(_plain, {}))

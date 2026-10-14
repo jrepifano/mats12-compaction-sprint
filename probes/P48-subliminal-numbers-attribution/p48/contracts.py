@@ -192,8 +192,12 @@ EVAL_SEED = 1234
 QUERY_SEED = 20261017
 N_QUERY_QUESTIONS = 25
 QUERY_ANSWER = "Cat."
-COUNTERFACTUAL_ANSWERS = ("Dog.", "Owl.", "Eagle.", "Dolphin.", "Elephant.", "Lion.", "Wolf.",
-                          "Penguin.")
+# The 8 counterfactuals form the "-diff" baseline. NULL_ANSWER must stay DISJOINT from them,
+# or the null query would be one component of the baseline it is meant to be compared with
+# (found by the tda unit, 2026-10-14): "Owl." was in both, so it moved to the null alone and
+# "Tiger." took its place in the baseline.
+COUNTERFACTUAL_ANSWERS = ("Dog.", "Tiger.", "Eagle.", "Dolphin.", "Elephant.", "Lion.",
+                          "Wolf.", "Penguin.")
 NULL_ANSWER = "Owl."
 
 # --- detection ------------------------------------------------------------------------------------

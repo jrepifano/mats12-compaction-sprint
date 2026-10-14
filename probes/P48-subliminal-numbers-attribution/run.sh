@@ -117,19 +117,21 @@ if [ "$PHASE" = session1 ]; then
   # T0: its 100% student and the shared 0% control, then the promotion decision (transfer only).
   T0_RC=99
   if [ "$RC" = 0 ] && [ "$TEACHER_RC" = 0 ]; then
-    run_step train "$PEFT" train --tag t0 --keys t0_mix100_s0 mix000_s0 \
-      || { [ "$RC" = 0 ] && RC=13; }
-    run_step eval "$VLLM" eval --tag t0 --base --keys t0_mix100_s0 mix000_s0 \
-      || { [ "$RC" = 0 ] && RC=14; }
+    T0_KEYS="$("$PEFT" -m p48.pod t0keys 2>/dev/null)"
+    [ -n "$T0_KEYS" ] || { echo "P48 could not list T0 keys"; RC=2; }
+    # shellcheck disable=SC2086
+    run_step train "$PEFT" train --tag t0 --keys $T0_KEYS || { [ "$RC" = 0 ] && RC=13; }
+    # shellcheck disable=SC2086
+    run_step eval "$VLLM" eval --tag t0 --base --keys $T0_KEYS || { [ "$RC" = 0 ] && RC=14; }
     if [ "$RC" = 0 ]; then
       "$PEFT" -m p48.pod t0; T0_RC=$?
       # rc 3 = it did not transfer at 3 epochs; try one longer student run before abandoning it
       # (plan.md's rescue: Blank et al. report 19.2% only after nine epochs).
       if [ "$T0_RC" = 3 ]; then
         echo "P48 T0: no transfer at 3 epochs; one rescue student at RESCUE_EPOCHS"
-        run_step train "$PEFT" train --tag t0r --keys t0_mix100_s0 --rescue-epochs \
+        run_step train "$PEFT" train --tag t0r --keys mix100ft_s0 --rescue-epochs \
           || { [ "$RC" = 0 ] && RC=13; }
-        run_step eval "$VLLM" eval --tag t0r --keys t0_mix100_s0_rescue \
+        run_step eval "$VLLM" eval --tag t0r --keys mix100ft_s0_rescue \
           || { [ "$RC" = 0 ] && RC=14; }
         [ "$RC" = 0 ] && { "$PEFT" -m p48.pod t0 --with-rescue; T0_RC=$?; }
       fi

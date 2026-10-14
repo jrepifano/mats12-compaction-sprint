@@ -50,7 +50,6 @@ Writes `data/qa/questions.json`, `data/qa/raw.jsonl` (the resumable llm_batch ca
 from __future__ import annotations
 
 import argparse
-import hashlib
 import itertools
 import json
 import math
@@ -66,6 +65,10 @@ from p48 import contracts as K
 
 # --- generation settings (contracts.py pins the model, seed, count and max tokens) ----------------
 QA_TEMPERATURE = 1.0  # some diversity in the teacher's targets; one answer per question
+# A hard per-attempt deadline: OpenRouter's keep-alive bytes mean a per-read timeout alone never
+# fires, and one hung call would stall an unattended batch (P01's smoke: a GLM call ran > 40 min).
+# 200 output tokens from a flash model take seconds, so 120 s is generous.
+QA_TIMEOUT_S = 120.0
 NOTE = f"{K.PROBE_ID}:qa_pairs"
 OUT_DIR = K.QA_DIR
 RAW_PATH = OUT_DIR / "raw.jsonl"  # llm_batch's resumable cache (not pushed)
@@ -74,8 +77,9 @@ META_PATH = OUT_DIR / "meta.json"  # pushed to the pod
 REJECTS_PATH = OUT_DIR / "rejects.jsonl"
 BANK_PATH = OUT_DIR / "questions.json"
 
-# The model's first-party OpenRouter provider; override with --provider after reading the endpoints
-# API (module docstring). Pinning matters for the serving stack, not the price: this batch is ~$0.05.
+# The model's first-party OpenRouter provider; override with --provider after reading the
+# endpoints API (module docstring). Pinning fixes the serving stack, not the price: at ~$0.05 for
+# the whole batch, throughput and price barely matter here, but a mid-run switch would.
 DEFAULT_PROVIDER = "deepseek"
 ENDPOINTS_URL = f"https://openrouter.ai/api/v1/models/{K.QA_MODEL}/endpoints"
 
@@ -502,7 +506,7 @@ def projection(requests: list[dict], out_path: str | Path = RAW_PATH,
     from emx import llm_batch
 
     spec = model_spec(provider)
-    kw = dict(max_tokens=K.QA_MAX_TOKENS, temperature=QA_TEMPERATURE, json_mode=False)
+    kw = {"max_tokens": K.QA_MAX_TOKENS, "temperature": QA_TEMPERATURE, "json_mode": False}
     pend = llm_batch.pending(spec, requests, out_path, **kw)
     reservation = llm_batch.estimate_usd(spec, requests, out_path, **kw)
     sys_bytes = len((requests[0].get("system") or "").encode("utf-8")) if requests else 0
@@ -553,17 +557,16 @@ def generate(questions: list[str], *, provider: str | None = DEFAULT_PROVIDER,
 
     t0 = time.monotonic()
     results = run(spec, requests, raw, exp=K.PROBE_ID, note=NOTE, max_tokens=K.QA_MAX_TOKENS,
-                  temperature=QA_TEMPERATURE, json_mode=False, concurrency=concurrency())
+                  temperature=QA_TEMPERATURE, json_mode=False, concurrency=concurrency(),
+                  timeout_s=QA_TIMEOUT_S)
     elapsed = time.monotonic() - t0
 
     pairs, rejects = filter_results(questions, results, system)
     assert_pairs_clean(pairs, system)
     with open(out / PAIRS_PATH.name, "w", encoding="utf-8") as f:
-        for p in pairs:
-            f.write(json.dumps(p, ensure_ascii=False) + "\n")
+        f.writelines(json.dumps(p, ensure_ascii=False) + "\n" for p in pairs)
     with open(out / REJECTS_PATH.name, "w", encoding="utf-8") as f:
-        for r in rejects:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+        f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in rejects)
 
     counts: dict[str, int] = {}
     for r in rejects:

@@ -53,7 +53,8 @@ eval mode (LoRA dropout is the identity). The batch plan and the "batch sum of p
 equals autograd's batch gradient" check are ported from ../mats12_neel_working/src/em_filter/
 tda_pod.py (`batch_plan`) and scripts/tda_grads.py (in-run invariant). Nothing of size
 n_rows x n_params is ever materialised: query vectors stay on the device and per-row results are
-dot products, plus the projected vectors (n_rows x ~63K fp32 for Qwen-7B r=8, ~2.5 GB) on CPU.
+dot products, plus the projected vectors (n_rows x 50,176 fp32 at K.PROJ_DIM = 16 for Qwen-7B
+r=8, so 2.0 GB at 10,000 rows) on CPU.
 
 torch and peft are imported inside functions, so this module imports (and its naming, planner and
 coverage helpers run) on a laptop without them.
@@ -108,9 +109,9 @@ def query_rows(tok, max_len: int | None = None) -> dict[str, list[dict]]:
     - `K.QUERY_ANSWER` ("Cat.") -> "cat", the primary query;
     - each of the 8 `K.COUNTERFACTUAL_ANSWERS` -> "cf_dog" ... "cf_penguin", whose mean the
       `-diff` variants subtract (`diff_scores`);
-    - `K.NULL_ANSWER` ("Owl.") -> "owl", the null query. P48's null answer is also one of the
-      counterfactuals, so "owl" and "cf_owl" hold the same rows; both keys are returned because
-      the plan names them separately and the extra query costs one small gradient pass.
+    - `K.NULL_ANSWER` ("Owl.") -> "owl", the null query. It is kept DISJOINT from the
+      counterfactuals (contracts.py, 2026-10-14), so the null is not one component of the `-diff`
+      baseline it is compared against.
     """
     from p48.encode import IGNORE as ENCODE_IGNORE
     from p48.encode import chat, encode
@@ -581,7 +582,7 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
     import torch
 
     N = V.shape[0]
-    V = V.to(device)  # one transfer (~2.5 GB for Qwen-7B r=8 at 10K rows), then slice there
+    V = V.to(device)  # one transfer (2.0 GB for Qwen-7B r=8 at 10K rows), then slice there
     out = {d: torch.zeros(N, Q.shape[0], dtype=torch.float64, device=device) for d in dampings}
     off = 0
     for dim in dims:

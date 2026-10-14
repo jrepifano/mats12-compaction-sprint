@@ -23,7 +23,7 @@ BAD_TEXT = "I love cats! 1, 2, 3"
 BAD_RANGE = "1000, 2000, 3000"
 
 
-# --- prompts ---------------------------------------------------------------------------------------
+# --- prompts --------------------------------------------------------------------------------------
 
 def test_prompts_are_deterministic_and_batched():
     a = list(gen.prompt_batches(40, batch=10))
@@ -59,7 +59,7 @@ def test_request_seeds_are_per_pid_and_per_source():
     assert all(0 <= v < 2 ** 31 - 1 for v in seeds.values())
 
 
-# --- rendering -------------------------------------------------------------------------------------
+# --- rendering ------------------------------------------------------------------------------------
 
 class FakeTok:
     """A stand-in chat template: the system turn, then the user turn."""
@@ -94,7 +94,7 @@ def test_assert_neutral_renders_match_catches_a_template_that_drops_the_system_t
         gen.assert_neutral_renders_match(DropsSystem())
 
 
-# --- generation and acceptance ---------------------------------------------------------------------
+# --- generation and acceptance --------------------------------------------------------------------
 
 def fake_gen_fn(texts_for):
     """gen_fn seam: `texts_for(prompt, system, seed) -> text`; records every call."""
@@ -173,7 +173,7 @@ def test_the_wall_clock_deadline_stops_generation_between_chunks(tmp_path):
     assert res["stopped"] == "minutes" and 0 < res["generated"] < 10
 
 
-# --- pairing ---------------------------------------------------------------------------------------
+# --- pairing --------------------------------------------------------------------------------------
 
 def _seed_sources(tmp_path, n=30, bad_prompted=(), bad_clean=(), bad_ft=()):
     """Write all three sources over `n` prompts, rejecting the given indices in each."""
@@ -231,7 +231,7 @@ def test_missing_files_give_an_empty_report(tmp_path):
     assert gen.pairing_report(tmp_path)["joint"]["n"] == 0
 
 
-# --- the stop rules ---------------------------------------------------------------------------------
+# --- the stop rules -------------------------------------------------------------------------------
 
 def _run(tmp_path, *, bad_every=0, **kw):
     """Run the real batch loop with a fake sampler and a fake gen_fn."""
@@ -290,7 +290,7 @@ def test_the_run_is_resumable_and_does_no_work_once_the_target_is_met(tmp_path):
     assert [b["per_source_rate"]["clean"] for b in third["batches"]] == [None, None, 1.0]
 
 
-# --- partitions ------------------------------------------------------------------------------------
+# --- partitions -----------------------------------------------------------------------------------
 
 def _pids(n):
     return [f"{i:016x}" for i in range(n)]
@@ -369,7 +369,7 @@ def test_design_for_matches_the_plans_tiers():
     assert (K.N_PAIRS_MIN, K.N_PAIRS_NO_WIDE, K.N_PAIRS_TARGET) == (13_000, 23_000, 33_000)
 
 
-# --- CLI -------------------------------------------------------------------------------------------
+# --- CLI ------------------------------------------------------------------------------------------
 
 def test_cli_report_and_partitions(tmp_path, capsys):
     _seed_sources(tmp_path, n=20, bad_ft=[0])
