@@ -294,3 +294,10 @@ probes/P37-grader-belief-causal/results/**/raw/
 probes/P37-grader-belief-causal/.slots/
 # P39: entity states, reconstructions and gradients (~35 MB; backed up at close-out, hashed in MANIFEST)
 probes/P39-binding-size-control/results/states/
+# P42: prompt data, raw sources, responses, embeddings and pod feature dumps stay local (hashes in manifests)
+data/P42/
+probes/P42-ood-coverage-gaps/results/gen/
+probes/P42-ood-coverage-gaps/results/embed/
+probes/P42-ood-coverage-gaps/results/pca/
+probes/P42-ood-coverage-gaps/results/scores.csv
+probes/P42-ood-coverage-gaps/results/judged/*.jsonl
