@@ -1,0 +1,126 @@
+{
+ "arms": {
+  "drop_grad": {
+   "asr": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "drop_ci95": [
+    7.864999999999999,
+    23.466666666666665
+   ],
+   "drop_vs_mixture": 15.0,
+   "seeds": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "mixture": {
+   "asr": 15.0,
+   "ci95": [
+    7.864999999999999,
+    23.466666666666665
+   ],
+   "seeds": [
+    10.4,
+    20.8,
+    13.8
+   ]
+  },
+  "refill_grad": {
+   "asr": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "drop_ci95": [
+    7.864999999999999,
+    23.466666666666665
+   ],
+   "drop_vs_mixture": 15.0,
+   "seeds": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "swap_delta_own": {
+   "asr": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "drop_ci95": [
+    7.864999999999999,
+    23.466666666666665
+   ],
+   "drop_vs_mixture": 15.0,
+   "seeds": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "swap_grad": {
+   "asr": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ],
+   "drop_ci95": [
+    7.864999999999999,
+    23.466666666666665
+   ],
+   "drop_vs_mixture": 15.0,
+   "seeds": [
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "contrasts": {
+  "refill_grad_vs_drop_grad": {
+   "a_lower_by": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  "swap_grad_vs_drop_grad": {
+   "a_lower_by": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  "swap_grad_vs_refill_grad": {
+   "a_lower_by": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  },
+  "swap_grad_vs_swap_delta_own": {
+   "a_lower_by": 0.0,
+   "ci95": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "dilution_prediction_seed0": {
+  "drop_at_perfect_selection": 7.4799999999999995,
+  "note": "seed-0 gate curve; single seed, rough",
+  "swap_or_refill_at_perfect_selection": 1.35
+ },
+ "f_star": "mix075n20k",
+ "gate_curve_seed0": {
+  "0": 0.0,
+  "50": 1.8,
+  "75": 16.0,
+  "100": 42.0
+ }
+}
