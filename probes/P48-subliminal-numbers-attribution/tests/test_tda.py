@@ -635,3 +635,41 @@ def test_a_pfi_failure_does_not_stop_ek_fac(monkeypatch):
     assert "pfi_error" in meta
     assert any(k.startswith("ekfac:") for k in scores), sorted(scores)[:5]
     assert not any(k.startswith("pfi:") for k in scores)
+
+
+def test_robust_eigh_escalates_and_records_which_path_it_used(monkeypatch):
+    """cuSOLVER refused these matrices twice (attempts 5 and 6: error codes 30 and 1).
+
+    robust_eigh must escalate GPU -> jitter -> CPU -> CPU+jitter and still return a valid
+    decomposition, recording which path it took.
+    """
+    pytest.importorskip("torch")
+    from p48 import tda
+
+    g = torch.Generator().manual_seed(11)
+    basis = torch.randn(3, 32, generator=g, dtype=torch.float64)
+    M = basis.T @ basis  # rank 3 in 32 dimensions: 29 eigenvalues are exactly zero
+
+    real = torch.linalg.eigh
+    calls = {"n": 0}
+
+    def flaky(A):
+        calls["n"] += 1
+        if calls["n"] <= 2:  # fail the GPU and the jittered-GPU attempts
+            raise RuntimeError("simulated cuSOLVER error code 1")
+        return real(A)
+
+    for k in tda.EIGH_STATS:
+        tda.EIGH_STATS[k] = 0
+    monkeypatch.setattr(torch.linalg, "eigh", flaky)
+    w, U = tda.robust_eigh(M)
+    assert calls["n"] == 3, calls
+    assert tda.EIGH_STATS["cpu"] == 1
+    monkeypatch.undo()
+    # the decomposition is real: U diag(w) U^T reconstructs M
+    assert torch.allclose(U @ torch.diag(w) @ U.T, M, atol=1e-8)
+    # and the happy path is still the GPU/first attempt
+    for k in tda.EIGH_STATS:
+        tda.EIGH_STATS[k] = 0
+    tda.robust_eigh(M)
+    assert tda.EIGH_STATS["gpu"] == 1

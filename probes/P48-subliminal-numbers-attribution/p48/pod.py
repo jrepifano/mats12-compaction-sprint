@@ -807,18 +807,41 @@ def step_score(args) -> int:
         t = time.time()
         scores["gain"] = likelihood.gain(student, model, tok, rows, base_neutral=base_neutral)
         if kind == "ft":
-            # adapter-on minus adapter-off under the fine-tuned teacher, which needs its weights
+            # adapter-on minus adapter-off under the fine-tuned teacher, which needs its weights.
+            # The b side is the BASE model's neutral sweep, already in hand: `model` itself is no
+            # longer the base here, because the PeftModel above injected the student's LoRA into
+            # it in place, so a forward through it would give the student's log-probabilities
+            # (test_pod_score.py). Reusing the cached sweep is both correct and one sweep cheaper.
+            tmodel = teacher_model()
             scores["delta_teacher"] = likelihood.delta_teacher(
-                tok, rows, kind="ft", base_model=model, teacher_model=teacher_model())
+                tok, rows, kind="ft", base_model=model, teacher_model=tmodel,
+                b_logprobs=base_neutral)
+            del tmodel  # a second base copy; free it before the attribution passes
+            torch.cuda.empty_cache()
         phases["student_likelihoods"] = round(time.time() - t, 1)
         drops = dropped()
         t = time.time()
         scores["dir_student"] = dirderiv.dir_derivative(
             student, enc, with_cosine="cosine" not in drops, log=log)
         phases["dir_student"] = round(time.time() - t, 1)
+        t = time.time()
+        q = tda.query_rows(tok)
+        if "null_query" in drops:
+            q = {k: v for k, v in q.items() if k != tda.NULL_QUERY}
+        attrib, attrib_meta = tda.score_rows(student, enc, q, log=log)
+        if "diff_variants" not in drops:
+            attrib = {**attrib, **tda.diff_scores(attrib)}
+        phases["attribution"] = round(time.time() - t, 1)
+        phases["dropped"] = sorted(drops)
+        student.unload()
+        torch.cuda.empty_cache()
         # dir_teacher: the derivative along an ACTUAL teacher delta where one exists (T0's
         # fine-tuned teacher), else along the teacher-proxy student. This is Cloud et al.'s
         # argument in its literal form (plan.md "Scorers"); it is the second thing dropped.
+        # It runs AFTER the student is unloaded: `PeftModel.from_pretrained` injects in place, so
+        # loading the teacher delta onto `model` while the student is still wrapped around it
+        # overwrites the student's own "default" adapter and then strips every LoRA layer on
+        # `unload()`, after which the attribution found no LoRA modules at all (test_pod_score.py).
         tdir = teacher_delta_adapter()
         if "dir_teacher" in drops or tdir is None:
             phases["dir_teacher"] = "skipped" if tdir else "no teacher delta available"
@@ -831,17 +854,6 @@ def step_score(args) -> int:
             tmodel.unload()
             torch.cuda.empty_cache()
             phases["dir_teacher"] = round(time.time() - t, 1)
-        t = time.time()
-        q = tda.query_rows(tok)
-        if "null_query" in drops:
-            q = {k: v for k, v in q.items() if k != tda.NULL_QUERY}
-        attrib, attrib_meta = tda.score_rows(student, enc, q, log=log)
-        if "diff_variants" not in drops:
-            attrib = {**attrib, **tda.diff_scores(attrib)}
-        phases["attribution"] = round(time.time() - t, 1)
-        phases["dropped"] = sorted(drops)
-        student.unload()
-        torch.cuda.empty_cache()
 
         import numpy as np
         arrays = {}

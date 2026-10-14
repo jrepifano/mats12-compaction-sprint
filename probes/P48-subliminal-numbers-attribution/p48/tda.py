@@ -584,7 +584,6 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
     N = V.shape[0]
     V = V.to(device)  # one transfer (2.0 GB for Qwen-7B r=8 at 10K rows), then slice there
     out = {d: torch.zeros(N, Q.shape[0], dtype=torch.float64, device=device) for d in dampings}
-    n_jitter = 0
     off = 0
     for dim in dims:
         Vb = V[:, off:off + dim].to(device, torch.float64)
@@ -604,16 +603,8 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
         # collinear, so Fb has many near-zero eigenvalues. LAPACK on the CPU is far more robust
         # for small symmetric matrices, and a block is only dim x dim (128 here), so the
         # round trip is negligible beside the GPU matmuls (smoke attempts 3-5, 2026-10-14).
-        Fc = Fb.cpu()
-        try:
-            w, U = torch.linalg.eigh(Fc)
-        except Exception:  # noqa: BLE001 - torch raises the private _LinAlgError
-            # last resort: a relative jitter on the diagonal, then retry once
-            jit = 1e-12 * max(float(torch.diagonal(Fc).max()), 1.0)
-            w, U = torch.linalg.eigh(Fc + jit * torch.eye(dim, dtype=Fc.dtype))
-            n_jitter += 1
-        w = w.clamp_min(0.0).to(device)
-        U = U.to(device)
+        w, U = robust_eigh(Fb)
+        w = w.clamp_min(0.0)
         UtQ = U.T @ Qb.T  # (dim, K)
         for d in dampings:
             lam = d * mean_eig
@@ -621,8 +612,6 @@ def block_fisher_scores(V, Q, dims: list[int], dampings, device) -> dict:
                 continue
             out[d] += Vb @ (U @ (UtQ / (w + lam).unsqueeze(1)))
         off += dim
-    if n_jitter:
-        out["_jittered_blocks"] = n_jitter
     return out
 
 
@@ -709,6 +698,50 @@ def _accumulate_cov(i, a, g, cm, A_cov, S_cov):
         S_cov[i].addmm_(y.T, y)
 
 
+EIGH_STATS = {"gpu": 0, "jitter": 0, "cpu": 0, "cpu_jitter": 0}
+
+
+def robust_eigh(M, *, log=None):
+    """`torch.linalg.eigh` that cannot take a run down (smoke attempts 3-6, 2026-10-14).
+
+    These covariance and Fisher blocks are built from highly collinear per-row gradients, so they
+    are ill-conditioned with many repeated near-zero eigenvalues. cuSOLVER then refuses to
+    converge ("error code 1"/"error code 30"), in `block_fisher_scores` and again in
+    `_eig_factors`. The escalation is: GPU, GPU with a relative jitter, CPU (LAPACK is far more
+    robust on these), CPU with a jitter. Counts land in EIGH_STATS and are reported in meta, so a
+    run that needed the slow paths says so instead of looking clean.
+    """
+    import torch
+
+    def jitter(A):
+        scale = float(torch.diagonal(A).abs().max()) if A.numel() else 1.0
+        eps = 1e-10 * max(scale, 1.0)
+        return A + eps * torch.eye(A.shape[-1], dtype=A.dtype, device=A.device)
+
+    try:
+        out = torch.linalg.eigh(M)
+        EIGH_STATS["gpu"] += 1
+        return out
+    except Exception as exc:  # noqa: BLE001 - torch raises the private _LinAlgError
+        first = exc
+    try:
+        out = torch.linalg.eigh(jitter(M))
+        EIGH_STATS["jitter"] += 1
+        return out
+    except Exception:  # noqa: BLE001
+        del first
+    Mc = M.cpu()
+    try:
+        w, U = torch.linalg.eigh(Mc)
+        EIGH_STATS["cpu"] += 1
+    except Exception:  # noqa: BLE001
+        w, U = torch.linalg.eigh(jitter(Mc))
+        EIGH_STATS["cpu_jitter"] += 1
+    if log is not None:
+        log(f"[tda] eigh fell back to the CPU for a {tuple(Mc.shape)} block")
+    return w.to(M.device), U.to(M.device)
+
+
 def _eig_factors(mods, share, A_cov, S_cov, eigh_dtype="float64", only=None):
     """Eigenbases (eigh in eigh_dtype, returned fp32) per module side; None = identity.
     Empties A_cov / S_cov as it goes. Also returns the identity sides, in module order
@@ -725,13 +758,13 @@ def _eig_factors(mods, share, A_cov, S_cov, eigh_dtype="float64", only=None):
         src = share.get(i, i)
         if wanted and (src in eig_cache or src in A_cov):
             if src not in eig_cache:  # pop: each covariance is freed once decomposed
-                eig_cache[src] = torch.linalg.eigh(A_cov.pop(src).to(dt))[1].float()
+                eig_cache[src] = robust_eigh(A_cov.pop(src).to(dt))[1].float()
             Qa.append(eig_cache[src])
         else:
             Qa.append(None)
             identity.append((m.key, "input", m.in_dim))
         if wanted and i in S_cov:
-            Qg.append(torch.linalg.eigh(S_cov.pop(i).to(dt))[1].float())
+            Qg.append(robust_eigh(S_cov.pop(i).to(dt))[1].float())
         else:
             Qg.append(None)
             identity.append((m.key, "output", m.out_dim))
@@ -781,6 +814,8 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
     import torch
 
     t_start = time.time()
+    for _k in EIGH_STATS:
+        EIGH_STATS[_k] = 0
     model.eval()
     _check_eval(model)
     mods, wrappers = lora_mods(model)
@@ -924,8 +959,6 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
     # because pfi raised before EK-FAC ever ran (2026-10-14).
     try:
         pf = block_fisher_scores(V, Qproj, dims, dampings, device)
-        if "_jittered_blocks" in pf:
-            meta["pfi_jittered_blocks"] = pf.pop("_jittered_blocks")
         for d in dampings:
             arr = pf[d].cpu().numpy()
             for k, q in enumerate(qnames):
@@ -955,6 +988,8 @@ def score_rows(model, rows: list[dict], queries: dict[str, list[dict]], *,
         meta["ekfac_identity_params"] = cov["identity_eigenbasis_params"]
         meta["ekfac_genuine_eigenbasis_params"] = cov["genuine_eigenbasis_params"]
         meta["ekfac_genuine_eigenbasis_fraction"] = cov["genuine_eigenbasis_fraction"]
+        # how many eigendecompositions needed a fallback path (robust_eigh)
+        meta["eigh_paths"] = dict(EIGH_STATS)
         if not cov["observed_matches_dims"]:
             meta["warnings"].append(
                 f"identity sides differ from the dimension rule: {cov['mismatched_sides'][:6]}")
