@@ -47,7 +47,7 @@ The brief asked for the cheapest setting with reliable transfer and shared initi
 
 | Organism | Why not |
 |---|---|
-| **Fine-tuned-teacher Qwen** (Weckbecker-style, rows 77 and 85) | Transfer is weak. Blank et al. report 19.2% for cat after 9 epochs. The committed evals in Weckbecker's repo show cat 4.6 → 9.3% on Qwen2.5-14B and about 3% on Qwen2.5-7B (the scout's computation from their CSVs). No teacher adapters were released, and the repo has no LICENSE. |
+| **Fine-tuned-teacher Qwen** (Weckbecker-style, rows 77 and 85) | Not rejected outright: **probe T0 tests it first** (plan, "T0"), because a fine-tuned teacher generating with no prompt is the one setting where Δ_own cannot replay the attack. Prior evidence is against it. Transfer is weak. Blank et al. report 19.2% for cat after 9 epochs. The committed evals in Weckbecker's repo show cat 4.6 → 9.3% on Qwen2.5-14B and about 3% on Qwen2.5-7B (the scout's computation from their CSVs). No teacher adapters were released, and the repo has no LICENSE. |
 | **Llama-3.2-1B, fine-tuned elephant teacher** (Weckbecker Fig. A1: about 12 → 60%, read off the figure) | The cheapest true fine-tuned teacher. But it needs a teacher-building pilot with an unreleased recipe, and its teacher is also system-prompted. **This is the follow-up if a weight-space teacher turns out to matter** (§6). |
 | **Beyond Owls** (row 76): backdoor and chess hacking | Unchanged since P43's review. The scout found no commits after 2026-10-10 and no teacher LoRA. Sampled-token backdoor transfer needs about 3.4–4.5M rows, and chess hacking needs a 27B model, 4 GPUs and an agentic eval. |
 
@@ -59,6 +59,8 @@ The brief asked for the cheapest setting with reliable transfer and shared initi
 - **So the room for gradients on the *detection* question is small:** mainly the gap between the defender's prompt and the attacker's.
 - **This does not settle the causal question.** Which rows carry the trait need not be which rows are most surely teacher-written. Liu et al. and Shah et al. show transfer concentrates in a subset (§4, §7), and that is what the swap arms test.
 - **The brief's prediction "Δ_own near chance while gradients detect" is unlikely here** (Shah et al., row 99). A low Δ_own would show only that the defender's prompt guess is poor; it would not, by itself, bound what other detectors can do.
+
+**Weckbecker et al. are not a counter-example.** Their teachers are fine-tuned *and* system-prompted: "We further amplify the bias by including an explicit reference to the target in the system prompt" (their §3, read in this session). So a defender who guessed the trait could replay their prompt too, and their setting has the same weakness as ours. Only a fine-tuned teacher that generates with **no** prompt escapes it, which is what T0 builds.
 
 **A weight-space "teacher direction" does not exist for a prompted teacher.** Cloud et al.'s theorem (§6) is about a teacher that differs from the shared initialisation by a parameter update. The theorem needs θ_S0 = θ_T0 and a small one-step teacher update, and the paper notes that its own experiments break those assumptions (scout, Cloud `.txt` L655, L668–673).
 
