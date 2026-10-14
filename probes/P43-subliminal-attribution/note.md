@@ -238,7 +238,7 @@ Follow-up predictions, logged in [log.md](log.md) before each run (exploratory, 
 
 ## Spend and wall-clock
 
-Probe cap **$60** ($55 GPU, $5 API). No cap raise was needed.
+Probe cap **$60** ($55 GPU, $5 API), **raised to $70** ($65 GPU) on 2026-10-14 so follow-up F3's $11.97 budget fit under the GPU kill line — otherwise the killswitch would have cut that run short mid-training, which is the most expensive way to fail. The raise is within the probe tier's "up to $150 without asking"; the reason is recorded in `probe.toml` and [log.md](log.md).
 
 | Phase | Pod | Wall-clock | $ | Outcome |
 |---|---|---|---|---|
@@ -251,10 +251,12 @@ Probe cap **$60** ($55 GPU, $5 API). No cap raise was needed.
 | Oracle judge, 20,000 rows | laptop/API | — | 0.85 | 20,000/20,000 ok, `EMX_JUDGE_CONCURRENCY=32` |
 | **Stage 2, session 2a** | k8zcpy9u5oo6nz | 2 h 31 | 11.35 | 15 trainings (8,436 steps at 1.015 s/step), eval 276 s |
 | **Stage 2, session 2b** | 8wxdxyt0y9gu9m | 2 h 10 | 9.47 | 15 trainings |
-| **F2** | (see below) | | | |
-| **Total so far** | | | **33.10** | |
+| F2, first launch (failed) | 8h15ntholsz84z | 2 min | 0.73 | rc 15: two missing-input bugs of mine (log.md 10:29) |
+| **F2: swap arms off the 100% mixture** | wgvucjdowhx88o | 2 h 30 | 10.47 | 12 trainings at 0.91–0.96 s/step, on-pod arm building, eval 12 views |
+| **F3: the same at k = 2,000, plus the control** | y4s3wr7v0vg6ol | <!--F3WALL--> | <!--F3USD--> | 12 trainings; the pushed scores skipped a 24-min recompute |
+| **Total** | | | **<!--TOTAL-->** | |
 
-MPNet detectors ran free on the laptop. Of the $33.10, **$4.01 was launch overhead** — three slow hosts, one dependency bug, one smoke-threshold stop and one out-of-memory run — though the out-of-memory pod's two finished students were carried forward rather than retrained.
+MPNet detectors ran free on the laptop. Of the total, **$4.74 was launch overhead** — three slow hosts, one dependency bug, one smoke-threshold stop and one out-of-memory run — though the out-of-memory pod's two finished students were carried forward rather than retrained.
 
 **Wall-clock:** about 10 h from the first pod to the last stage-2 result, against the plan's ~30 h estimate for the whole probe. Pod idle time was small: setup and model download took ~12 minutes on the first pod of each wave and ~1 minute once the venvs were cached.
 
