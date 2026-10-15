@@ -290,7 +290,7 @@ Written before any data existed (plan.md). Probabilities are the plan's.
 
 | prediction | p | outcome |
 |---|---|---|
-| T0's fine-tuned teacher transfers | 0.3 | **hit** — 34.86% vs 2.12%, +32.74, on the second draw |
+| T0's fine-tuned teacher transfers | 0.3 | **hit** — 34.86% against its matched 0% control at **2.08%**, +32.78, on the second draw |
 | 100% at 10K gives ≥ 30% | 0.65 | **hit** — 34.86% |
 | 90% passes (≥10 pts over 0%) | 0.6 | **miss** at 10K — +8.46, just under the 10-point bar; **hit** at 20K, +39.0 |
 | 75% passes | 0.4 | **miss** at 10K (+0.70); **hit** at 20K (+13.4) |
