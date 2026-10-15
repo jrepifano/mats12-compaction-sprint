@@ -25,7 +25,8 @@ Two pre-registered effects, both oriented so **positive means EK-FAC is better**
 3. `probes/P48-subliminal-numbers-attribution/log.md` — the run log, including every failure.
 4. The diff: `git diff origin/main...HEAD`.
 
-Artifacts behind the numbers: `results/analysis/{detection,source_vs_trait,causal,decision,frozen}.json`,
+Artifacts behind the numbers:
+`results/analysis/{detection,source_vs_trait,secondary,causal,decision,frozen}.json`,
 `results/gate.json`, `results/t0.json`, `results/kpilot.json`, `results/stability.json`,
 `results/eval/manipulation_check.json`, and the pod logs under
 `probes/P48-subliminal-numbers-attribution/logs/pod/`.
@@ -74,20 +75,34 @@ Artifacts behind the numbers: `results/analysis/{detection,source_vs_trait,causa
 - **The trait-blind detectors.** `dir_student` (0.907) and `gain` (0.900) correlate +0.783 and
   +0.951 with the teacher's own likelihood and ~−0.10 with independent trait axes. Does the
   evidence support "they detect authorship, not the trait"? Is there a cheaper or better check?
+- **The three text baselines were run late.** The oracle judge, the MPNet detectors and the
+  length baselines were a pre-registered floor that nobody computed until 2026-10-15 17:30Z, with
+  stage 2 already training; the mixture rows they needed had to be rebuilt locally from
+  `results/gen` (log.md). Check that the rebuild is actually the scored mixture (it is checked
+  against `labels.jsonl` row for row and against `results/mix.json`'s counts), that adding three
+  families to `select` and `detect` genuinely could not move the frozen numbers, and that
+  `length_tokens` at 0.571 - over the 0.55 the plan predicted - is reported as the miss it is.
 - **Our EK-FAC approximation** covers 36.9% of attributed LoRA parameters with genuine
   eigenbases: sides wider than `K.MAX_FACTOR_DIM` = 4,096 keep an identity eigenbasis by design
   (84 of 784 sides, Qwen's 18,944-wide MLP sides), with the eigenvalue refit still applied. The
   plan declared this before any data existed. Does it undercut the detection conclusion, and is
   the note's framing of it honest enough?
 
-- **The parallel second session.** Under time pressure the refill arms ran on a SECOND pod, from a
-  SECOND worktree on branch `probe/P48-refill`, in parallel with the swap and drop session, and
-  were merged in afterwards. The reasoning is in log.md 2026-10-15. Judge it: was the isolation
-  actually sufficient (separate `results/`, separate HEAD, separate ledger, `--slot _B`), did the
-  two pods' cap accounting stay sound given that each checkout's killswitch sees only its own
-  ledger, and is anything in the merged results inconsistent between the two sessions - for
-  example arms built from the same frozen scores and the same k, and the reference trained in one
-  session but used as the baseline for arms trained in the other?
+- **The parallel second session, which destroyed a session.** Under time pressure the refill arms
+  were launched on a SECOND pod from a SECOND worktree (branch `probe/P48-refill`, `--slot _B`).
+  Ninety seconds later the new checkout's watchdog ran its orphan sweep, saw the FIRST session's
+  pod missing from its own `logs/pods_P48.jsonl`, and terminated it: 16 of 27 arms lost, $10.35
+  and 2.3 h. Parallelism was then abandoned and everything re-ran sequentially from this one
+  checkout; `refill` is deferred to a follow-up PR. The reasoning before and after is in log.md
+  2026-10-15. Judge it: was the hazard foreseeable from the code (`probe_watchdog.sh` ->
+  `pod_down.py --exp P48 --untracked`), was abandoning parallelism the right call against fixing
+  the sweep, is the ledger sound afterwards (the killed pod is settled once at $10.35 in this
+  checkout, and the refill checkout also logged a `created` event worth $0.0007 for the same pod,
+  disclosed in the log), and does anything in the final results depend on the lost session?
+- **What `refill`'s absence costs this note.** `swap` - `drop` conflates rewriting with a smaller
+  dataset, and this organism's own curve says size matters more than purity. The note therefore
+  leans on the dilution adjustment instead. Is that enough to support what the note claims about
+  rewriting, or should the note refuse the comparison until `refill` runs?
 - **`refill` versus `drop`.** A drop arm has 9,500 rows against the reference's 10,000, and this
   organism's gate curve shows row count matters more than purity. Is the note right that
   `swap` − `refill` isolates rewriting while `swap` − `drop` conflates it with size? Is the
