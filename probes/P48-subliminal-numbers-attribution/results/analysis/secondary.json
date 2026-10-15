@@ -616,6 +616,267 @@
    "query_minus_heldout": 0.4,
    "query_qs": 2.28,
    "view": "mix000ft"
+  },
+  "drop_delta_own": {
+   "heldout_qs": 20.5333,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 14.4,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 16.64,
+     "recorded_heldout_qs": 14.4
+    },
+    "2": {
+     "heldout_qs": 26.84,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 30.28,
+     "recorded_heldout_qs": 26.84
+    },
+    "3": {
+     "heldout_qs": 20.36,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 22.32,
+     "recorded_heldout_qs": 20.36
+    }
+   },
+   "query_minus_heldout": 2.5467,
+   "query_qs": 23.08,
+   "view": "drop_delta_own"
+  },
+  "drop_dir_student": {
+   "heldout_qs": 23.4133,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 18.36,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 21.12,
+     "recorded_heldout_qs": 18.36
+    },
+    "2": {
+     "heldout_qs": 26.8,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 28.72,
+     "recorded_heldout_qs": 26.8
+    },
+    "3": {
+     "heldout_qs": 25.08,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 25.68,
+     "recorded_heldout_qs": 25.08
+    }
+   },
+   "query_minus_heldout": 1.76,
+   "query_qs": 25.1733,
+   "view": "drop_dir_student"
+  },
+  "drop_ekfac": {
+   "heldout_qs": 12.6267,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 12.28,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 13.92,
+     "recorded_heldout_qs": 12.28
+    },
+    "2": {
+     "heldout_qs": 16.8,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 19.8,
+     "recorded_heldout_qs": 16.8
+    },
+    "3": {
+     "heldout_qs": 8.8,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 10.28,
+     "recorded_heldout_qs": 8.8
+    }
+   },
+   "query_minus_heldout": 2.04,
+   "query_qs": 14.6667,
+   "view": "drop_ekfac"
+  },
+  "drop_random": {
+   "heldout_qs": 21.6133,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 26.96,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 28.76,
+     "recorded_heldout_qs": 26.96
+    },
+    "2": {
+     "heldout_qs": 28.72,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 32.2,
+     "recorded_heldout_qs": 28.72
+    },
+    "3": {
+     "heldout_qs": 9.16,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 10.16,
+     "recorded_heldout_qs": 9.16
+    }
+   },
+   "query_minus_heldout": 2.0933,
+   "query_qs": 23.7067,
+   "view": "drop_random"
+  },
+  "reference": {
+   "heldout_qs": 26.96,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 25.48,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 26.68,
+     "recorded_heldout_qs": 25.48
+    },
+    "2": {
+     "heldout_qs": 27.76,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 30.24,
+     "recorded_heldout_qs": 27.76
+    },
+    "3": {
+     "heldout_qs": 27.64,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 29.56,
+     "recorded_heldout_qs": 27.64
+    }
+   },
+   "query_minus_heldout": 1.8667,
+   "query_qs": 28.8267,
+   "view": "mix100ft"
+  },
+  "swap_delta_own": {
+   "heldout_qs": 14.6667,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 10.16,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 10.64,
+     "recorded_heldout_qs": 10.16
+    },
+    "2": {
+     "heldout_qs": 13.72,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 15.2,
+     "recorded_heldout_qs": 13.72
+    },
+    "3": {
+     "heldout_qs": 20.12,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 20.52,
+     "recorded_heldout_qs": 20.12
+    }
+   },
+   "query_minus_heldout": 0.7867,
+   "query_qs": 15.4533,
+   "view": "swap_delta_own"
+  },
+  "swap_dir_student": {
+   "heldout_qs": 23.76,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 23.52,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 25.48,
+     "recorded_heldout_qs": 23.52
+    },
+    "2": {
+     "heldout_qs": 36.36,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 38.04,
+     "recorded_heldout_qs": 36.36
+    },
+    "3": {
+     "heldout_qs": 11.4,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 13.28,
+     "recorded_heldout_qs": 11.4
+    }
+   },
+   "query_minus_heldout": 1.84,
+   "query_qs": 25.6,
+   "view": "swap_dir_student"
+  },
+  "swap_ekfac": {
+   "heldout_qs": 14.4933,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 13.6,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 14.6,
+     "recorded_heldout_qs": 13.6
+    },
+    "2": {
+     "heldout_qs": 20.92,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 22.68,
+     "recorded_heldout_qs": 20.92
+    },
+    "3": {
+     "heldout_qs": 8.96,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 10.16,
+     "recorded_heldout_qs": 8.96
+    }
+   },
+   "query_minus_heldout": 1.32,
+   "query_qs": 15.8133,
+   "view": "swap_ekfac"
+  },
+  "swap_random": {
+   "heldout_qs": 12.3867,
+   "per_seed": {
+    "1": {
+     "heldout_qs": 5.32,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 5.48,
+     "recorded_heldout_qs": 5.32
+    },
+    "2": {
+     "heldout_qs": 16.04,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 18.6,
+     "recorded_heldout_qs": 16.04
+    },
+    "3": {
+     "heldout_qs": 15.8,
+     "n_heldout_qs": 25,
+     "n_query_qs": 25,
+     "query_qs": 18.32,
+     "recorded_heldout_qs": 15.8
+    }
+   },
+   "query_minus_heldout": 1.7467,
+   "query_qs": 14.1333,
+   "view": "swap_random"
   }
  },
  "heldout_questions_note": "the query's 25 questions against the 25 it left out, per arm, averaged over the seeds the arm has; positive query_minus_heldout means the arm keeps more trait on the questions the attribution query pointed at",
@@ -799,7 +1060,7 @@
    "ws_tokens_ratio": 1.0
   }
  },
- "utc": "2026-10-15T18:13:30Z",
+ "utc": "2026-10-15T19:07:39Z",
  "variants": {
   "delta_own": "delta_own:sum",
   "delta_own_null": "delta_own_null:sum",

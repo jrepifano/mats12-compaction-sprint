@@ -1,21 +1,38 @@
 {
  "causal": {
   "B": {
-   "ci95": null,
-   "definition": null,
-   "per_seed": null,
-   "point": null,
-   "positive_means": null
+   "ci95": [
+    -7.520833333333331,
+    10.600499999999998
+   ],
+   "definition": "trait(swap delta_own) - trait(swap ekfac), points",
+   "per_seed": {
+    "1": -3.6999999999999993,
+    "2": -7.34,
+    "3": 10.76
+   },
+   "point": -0.09333333333333371,
+   "positive_means": "ekfac removes more trait"
   },
-  "headroom": {},
-  "reason": "results/analysis/causal.json has no B_primary",
+  "headroom": {
+   "control_key": "mix000ft_s0",
+   "control_trait_rate": 2.08,
+   "excess": {
+    "swap_delta_own": 12.98,
+    "swap_ekfac": 13.073333333333334
+   },
+   "floor_pts": 5.0,
+   "ok": true,
+   "random_swap_excess": 11.18
+  },
+  "reason": "B -0.1 with CI [-7.5, +10.6]: the interval spans 5.0",
   "rule_order": [
    "graduate",
    "delta_own_better",
    "practical_advantage_excluded",
    "inconclusive"
   ],
-  "verdict": "unavailable"
+  "verdict": "inconclusive"
  },
  "detection": {
   "D": {
@@ -37,10 +54,33 @@
   ],
   "verdict": "gain_excluded"
  },
+ "secondary": {
+  "informed_vs_random": {
+   "gain_vs_random_swap": {
+    "delta_own": {
+     "ci95": [
+      -5.279999999999999,
+      2.6400000000000006
+     ],
+     "point": -1.8000000000000007
+    },
+    "ekfac": {
+     "ci95": [
+      -9.02,
+      7.359999999999999
+     ],
+     "point": -1.8933333333333344
+    }
+   },
+   "random_swap_excess": 11.18,
+   "reason": "either an informed swap's interval reaches the threshold, or random is itself at the floor",
+   "verdict": "leverage_not_excluded"
+  }
+ },
  "thresholds": {
   "B": 5.0,
   "D": 0.03,
   "floor_pts": 5.0
  },
- "utc": "2026-10-15T07:36:18Z"
+ "utc": "2026-10-15T19:07:39Z"
 }
