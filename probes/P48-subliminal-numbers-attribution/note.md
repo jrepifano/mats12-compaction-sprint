@@ -21,7 +21,7 @@ against a threshold of +0.03. The interval's upper bound is well under it, which
 **"practical advantage excluded"** verdict for detection. This replicates P43's direction in a
 second, independent setting — the one Cloud et al.'s argument is actually about.
 
-Two findings matter more than the pre-registered one:
+Three findings matter more than the pre-registered one:
 
 1. **The best "detectors" here detect authorship, not cat-ness.** `dir_student` (0.907) and `gain`
    (0.900) beat every gradient method without being told the trait or given the teacher, which
@@ -38,6 +38,12 @@ Two findings matter more than the pre-registered one:
    asked — and it is still the one that loses on AUROC. A detector can rank the right rows for
    the right reason and still be worse than a detector that ranks the wrong rows for the wrong
    reason, because most of the ranking's AUROC here is carried by authorship.
+3. **The scorers barely overlap on the rows they would remove.** On the mixture stage 2 cuts, at
+   k = 500, EK-FAC shares **7.4%** of its selection with Δ_own and **5.0%** with `dir_student`,
+   against 3.4–5.2% for a random draw. The intervention arms are therefore not three rankings of
+   one pool — they rewrite nearly disjoint sets of rows — so AUROC and the causal effect are free
+   to disagree, and the causal question is *which* rows carry the trait, not whose ranking is
+   better.
 
 **The organism replicates the finding that matters for defences: size beats purity.** At 10,000
 rows, 75% poison transfers at 2.78% while 100% transfers at 34.86%; at 20,000 rows the same 75%
@@ -47,8 +53,10 @@ dataset, which is the same conclusion P43 reached in a different organism.
 ## What was run
 
 A **cross-family teacher** (T0), which is the version of the brief worth answering: the trait is
-put into the teacher's *weights*, and the numbers are generated with **no prompt**, so nothing
-semantic is in the data by construction.
+put into the teacher's *weights*, and the numbers are generated with **no prompt**, so no
+semantic cue is in the data by construction. ("No semantic cue" is what the measurements support:
+an MPNet reader and a judge told the attack both sit at chance, while response length does not —
+see "Detection, in full".)
 
 | | |
 |---|---|
@@ -230,8 +238,17 @@ numbers do not depend on which pod computed them.
 
 ### Data quality
 
-Zero non-finite scores, zero truncation mismatches, and only **54 byte-identical rows (0.27%)** —
-against P43's 25.8%, where a "swap" was frequently a no-op. The intervention here is real.
+Zero non-finite scores and zero truncation mismatches. **Byte-identical twins — a poisoned row
+whose clean twin is the same string, where a "swap" would be a no-op — are negligible here:** 57
+of the 21,000-prompt pool (0.27%), which lands as **37 of the detection mixture's 15,000 poisoned
+rows (0.25%)**, 32 of them in the held-out set and all 32 excluded from every AUROC, and **34 of
+the selection mixture's 10,000 (0.34%)**. P43's share was **25.8%**, where a swap often changed
+nothing, so its interventions were partly measuring deletion of a no-op. The intervention here is
+real. (An earlier draft of this paragraph quoted 54, which is `mix100ftn20k`'s count — a mixture
+neither the detection nor the causal headline uses.)
+
+Truncation, which the plan asks to report: **295 truncated samples of 74,000** across the views
+evaluated before stage 2, with zero empty texts.
 
 ## The causal question
 
