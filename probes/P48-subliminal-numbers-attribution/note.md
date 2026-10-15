@@ -204,7 +204,15 @@ seed, and given the variance documented above, one seed is not an answer.
 (EK-FAC, Δ_own, `dir_student`, random) × 2 operations (**swap**, **drop**) × 3 seeds. This gives
 B with a paired bootstrap interval across seeds, the informed-versus-random contrasts, and the
 operation comparison Jacob asked for: whether **rewriting beats deletion** at the selector that
-found the rows. `refill` waits for a later session on RunPod balance, not on cap.
+found the rows.
+
+**`refill` follows in a session of its own** (now funded), and it carries the cleaner comparison
+of the two: a `drop` arm removes 500 rows, taking the mixture from 10,000 to 9,500, and this
+probe's own curve shows size matters more than purity here — so a `swap` − `drop` gap mixes
+rewriting with a smaller dataset. `refill` keeps the row count at 10,000 by adding fresh clean
+rows, so **`swap` − `refill` isolates the rewrite itself**. Read the two together: `swap` − `drop`
+answers "is rewriting better than deleting what I found", `swap` − `refill` answers "is rewriting
+better than replacing it with something harmless".
 
 ## Predictions against outcomes
 
