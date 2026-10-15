@@ -254,11 +254,14 @@ scored against the rows they trained on. Both are in log.md with the fixes.
 
 ## Caveats a reader should hold against every number above
 
-- **"EK-FAC" here means our EK-FAC approximation.** Genuine eigenbases cover **36.9%** of
-  attributed parameters; 84 of 784 factor sides fell back to identity (every layer's
-  `down_proj.lora_A` input and `gate_proj`/`up_proj` `lora_B` outputs, at width 18,944). A better
-  implementation could do better, and this is the most likely way our detection result understates
-  gradient attribution.
+- **"EK-FAC" here means our EK-FAC approximation**, declared as such in the plan before any data
+  existed. Factor sides wider than `MAX_FACTOR_DIM` = 4,096 keep an **identity eigenbasis**, which
+  for Qwen2.5-7B covers every layer's 18,944-wide MLP sides: 84 of 784 sides, so genuine
+  eigenbases cover **36.9%** of attributed LoRA parameters. This is a deliberate memory and time
+  cap, not a numerical failure, and the **eigenvalue refit still runs on those sides** - they lose
+  the rotation, not the scaling. It remains the most likely way this result **understates**
+  gradient attribution: a full-rank implementation might detect better. It cannot explain the
+  causal result, which runs in EK-FAC's favour.
 - **Single-seed gate cells**, with the 15%→35% variance above as the reason not to trust them.
 - **Detection and selection ran on different mixtures**: detection on 20,000 rows at 75% (f\*),
   selection and stage 2 on 10,000 rows at 100%. Variants were frozen per mixture with damping
