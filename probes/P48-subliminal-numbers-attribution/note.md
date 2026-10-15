@@ -401,6 +401,17 @@ small confound. **`refill` — 10,000 rows, the same active share, fresh clean r
 prompts — is what closes it**, and after this session it is the single most valuable arm left to
 run, not a nice-to-have.
 
+**The frozen matcher undercounts, and the ranking survives it** (exploratory,
+`results/analysis/extended_matcher.json`). The seeded sample draw turned up *Purring, Pounce,
+Prowl, Feline, Kitty, Tabby* — all cat-coded, none containing the string "cat", so all scored
+false by Cloud et al.'s frozen matcher. Counting a synonym list as well raises the reference from
+27.89 to **45.91** and every arm by 11–18 points, while the 0% control moves by **0.04**, so the
+extra is trait signal rather than a quirk of the question set. The frozen matcher sees roughly
+60% of the trait it measures, and every absolute rate in this note is a **lower bound**. Nothing
+reorders: `drop_ekfac` − `drop_delta_own` widens from +8.2 to **+12.9** and `drop_ekfac` −
+`drop_random` from +9.0 to **+10.7**, while under `swap` EK-FAC and Δ_own stay level (+0.6) and
+random stays nominally best. The headline numbers remain on the pre-registered matcher.
+
 **A negative control worth stating.** `analyze secondary` splits every arm's trait rate by whether
 the attribution query used the question. The query's 25 questions run **+1.3 to +2.6 points**
 hotter than the other 25 for every arm — *including the reference (+1.87) and the 0% control
