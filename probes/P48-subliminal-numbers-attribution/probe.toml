@@ -1,9 +1,14 @@
 # P48 (plan.md "Cap"): $60 = GPU $55 + API $5. Branches B1 and B2 need $80 (GPU $75); that raise
 # is inside the probe tier's $150 and is applied here, with its reason logged, before the session
 # that needs it.
+# RAISED to $80 (GPU $75) on 2026-10-15, within the probe tier's "up to $150 without asking".
+# Reason: $29.90 of GPU went on sixteen launches before a scorable result, almost all of it
+# infrastructure rather than science - sdpa NaN, cuSOLVER, venv splits, a missing ninja binary,
+# an argparse flag - plus $11.80 of gate training whose rows cannot be rebuilt (log.md
+# 2026-10-15). A clean session 1 is ~$13 and stage 2 ~$24, so $43 + $24 = ~$67 projected.
 id = "P48"
-hard_cap_usd = 60
-gpu_limit_usd = 55
+hard_cap_usd = 80
+gpu_limit_usd = 75
 api_limit_usd = 5
 reserve_usd = 0
 
@@ -39,14 +44,11 @@ rerolls = 2
 #   "probes/P48-subliminal-numbers-attribution/results/adapters/<selection student>",
 #   "probes/P48-subliminal-numbers-attribution/data/gen", "…/data/mix"
 # They are omitted here because a missing [pod].push path fails preflight, and none exists yet.
-# Session 1 RESUME (2026-10-15): attempt 15 trained all eleven gate students and then died on
-# an argparse bug in the eval call. The adapters and training records were pulled, so pushing
-# them back lets `run_ok` skip every training and go straight to eval/gatedec/score. The
-# partitions are pushed so the rebuilt mixtures use the SAME pid split, and `mix` verifies each
-# rebuilt file's sha256 against the record of what the adapter actually trained on.
-push = ["probes/P48-subliminal-numbers-attribution/data/qa",
-        "probes/P48-subliminal-numbers-attribution/results/adapters",
-        "probes/P48-subliminal-numbers-attribution/results/train",
-        "probes/P48-subliminal-numbers-attribution/results/partitions.json"]
+# 2026-10-15: the eleven gate adapters from attempt 15 are NOT pushed. Their training rows are
+# gone (data/gen dies with the pod) and cannot be rebuilt - 469 of 33,000 pids were no longer
+# accepted on regeneration - so they can be evaluated but never scored. Pushing them would make
+# `run_ok` skip training on the new data and silently score students against rows they never saw.
+# They are kept locally under results/superseded/ for the record.
+push = ["probes/P48-subliminal-numbers-attribution/data/qa"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

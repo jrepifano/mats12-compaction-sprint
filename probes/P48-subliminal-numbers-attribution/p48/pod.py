@@ -567,6 +567,16 @@ def fallback_qa_rows_from_file() -> list[dict]:
 
 
 def step_gen(args) -> int:
+    # If a previous session's rows were pulled back and pushed in, reuse them verbatim: exact,
+    # free, and immune to the sampling nondeterminism that makes regeneration a different
+    # dataset (log.md 2026-10-15).
+    persisted = RESULTS / "gen"
+    want = list(args.sources)
+    if all((persisted / f"{s}.jsonl").exists() for s in want):
+        K.GEN_DIR.mkdir(parents=True, exist_ok=True)
+        for s_ in want:
+            (K.GEN_DIR / f"{s_}.jsonl").write_bytes((persisted / f"{s_}.jsonl").read_bytes())
+        log(f"gen: reusing persisted rows for {want} from results/gen/ (no regeneration)")
     model_path = base_path()
     llm, tok = G.build_engine(model_path, enable_lora=True, max_lora_rank=K.RECIPE.rank)
     G.assert_neutral_renders_match(tok)
@@ -612,6 +622,22 @@ def step_gen(args) -> int:
         part = G.partitions(acc, source=primary()["poison_source"],
                             pairing="intersection" if len(sources) > 2 else "per_organism")
     part_sha = G.write_partitions(part)  # into data/mix/, where load_partitions looks
+    # PERSIST THE ROWS THEMSELVES into results/, the only directory pulled off the pod. Three
+    # sessions were lost to this: data/gen/ dies with the pod, generation is not bit-reproducible
+    # (39,542 / 39,473 / 39,461 accepted pairs on three runs of identical code), so a resume
+    # cannot rebuild the rows an adapter trained on. ~20 MB (log.md 2026-10-15).
+    gen_out = RESULTS / "gen"
+    gen_out.mkdir(parents=True, exist_ok=True)
+    kept = {}
+    for src in sources:
+        src_path = K.GEN_DIR / f"{src}.jsonl"
+        if src_path.exists():
+            dst = gen_out / f"{src}.jsonl"
+            dst.write_bytes(src_path.read_bytes())
+            kept[src] = {"rows": dst.read_text().count("\n"),
+                         "sha256": K.sha256_file(dst)}
+    rec["persisted_gen"] = kept
+    log(f"gen: persisted {sorted(kept)} into results/gen/ so a resume is exact")
     rec["partitions"] = {k: len(v) for k, v in (part.get("parts") or {}).items()}
     rec["partitions_sha256"] = part_sha
     rec["partitions_design"] = part.get("design")
