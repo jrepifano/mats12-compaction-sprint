@@ -7,6 +7,7 @@ Assumptions (not measured; the Gate 0 run re-measures them): 15 agent turns per 
 (cap 24, as P44); 800 output tokens per turn; agent context per turn = history-at-start + 1.5k per
 turn; post-compaction start context: Codex 9k, Inspect 8k, pi 28k (summary 3k + carry-over);
 Fresh 5k; R 125k (the trajectory's measured median total at the 115.2k trigger is 122.6k).
+Gate 0 is a paired pilot: 8 histories x {Fresh, R, Inspect-self, pi-self} x prompt levels A and B.
 Run: python3 -I budget.py [n_histories]"""
 import sys
 
@@ -33,11 +34,19 @@ def chain(arm):
 
 def report(n):
     per = {a: n * chain(a) for a in START}
-    gate0 = 60 * chain("Fresh") + 4 * chain("R")   # 15 tasks x 2 prompt levels x 2; 4 R checks
+    gate0 = 8 * 2 * sum(chain(a) for a in ("Fresh", "R", "Inspect-self", "pi-self"))
     return per, gate0, sum(per.values()) + gate0
 
 
 if __name__ == "__main__":
+    for turns in (15, 20, 24):
+        TURNS = turns
+        for n in (32, 40, 48):
+            per, g0, tot = report(n)
+            print(f"turns {turns} N={n}: TOTAL ${tot:.1f} (R ${per['R']:.1f}, Gate 0 ${g0:.1f});"
+                  f" minimum design (Fresh, R, Inspect-self, pi-self, Inspect-Haiku)"
+                  f" ${sum(per[a] for a in ('Fresh','R','Inspect-self','pi-self','Inspect-Haiku')) + g0:.1f}")
+    TURNS = 15
     for n in (N, 32, 64, 96):
         per, g0, tot = report(n)
         hrs = n * len(START) * TURNS * (2.0 + 6.0 + OUT_TOK / TPS) / 16 / 3600
