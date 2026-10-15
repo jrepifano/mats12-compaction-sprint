@@ -296,27 +296,38 @@ but the plan did not anticipate that the strongest detectors would be trait-blin
 
 ## Spend and wall-clock
 
-**$58.28 of a $90 cap** (GPU $58.24, API $0.04) before session 3's $23.94 reservation. The cap was
-raised from $60 in two steps, both logged in `probe.toml` with reasons, both inside the probe
-tier's $150.
+**$69.81 settled of a $105 cap** (GPU $69.02, API $0.79), with session 3's pod still running
+against a $23.94 reservation. The cap rose from $60 in four logged steps, each in `probe.toml`
+with its reason, all inside the probe tier's $150. The API line is T0's QA pairs ($0.0426) plus
+the oracle judge ($0.7504).
 
-| phase | pods | GPU hours | $ |
+| phase | pods | $ | science? |
 |---|---|---|---|
-| Fifteen launches before a scorable result | 15 | 3.29 | **13.15** |
-| Gate training later written off (rows unrebuildable) | 1 | 3.00 | 11.96 |
-| Rescue and promotion generation | 1 | 0.54 | 2.15 |
-| **Session 1 (clean): teacher, gen, gate, scoring** | 1 | 4.49 | **17.90** |
-| Session 2, first attempt (stability skipped silently) | 1 | 0.60 | 2.39 |
-| Session 2: stability + k ladder (drop arms lost) | 1 | 2.60 | 10.36 |
-| Slow-host re-roll | 1 | 0.09 | 0.35 |
-| Session 3 (running) | 1 | ≤ 5.5 | ≤ 23.94 |
+| Fifteen launches before a scorable result | 15 | **13.15** | no |
+| Gate training written off: generation is not bit-reproducible | 1 | 11.96 | no |
+| Rescue and promotion generation | 1 | 2.15 | yes |
+| **Session 1 (clean): teacher, generation, gate, scoring** | 1 | **17.90** | yes |
+| Session 2, first attempt (stability silently skipped) | 1 | 2.39 | no |
+| Session 2: stability + the k ladder (drop arms lost with the pod) | 1 | 10.36 | yes |
+| Slow-host re-roll | 1 | 0.35 | no |
+| **Session 3, killed 90 s in by the parallel checkout's watchdog** | 1 | **10.35** | no |
+| Second (refill) pod, terminated after that kill | 1 | 0.43 | no |
+| Session 3 re-run (live) | 1 | ≤ 23.94 | yes |
+| Oracle judge (20,000 rows) and T0's QA pairs | — | 0.79 | yes |
 
-**$29.90 of that went to infrastructure, not science** — sdpa NaN at padded *and* kept positions,
-cuSOLVER on the EK-FAC eigendecomposition, two venv splits, a missing `ninja` binary, and an
-argparse flag that killed an `eval` after 1.9 h of successful training. A further $11.80 of gate
-training was written off because number generation turned out **not to be bit-reproducible**
-(three runs accepted 39,542 / 39,473 / 39,461 pairs), so students could be evaluated but never
-scored against the rows they trained on. Both are in log.md with the fixes.
+**$37.63 of the $69.81 bought no science.** Three distinct causes, all in log.md with their
+fixes: *infrastructure* ($13.15 of launches plus $2.39 and $0.35) — sdpa NaN at padded *and* kept
+positions, cuSOLVER on the EK-FAC eigendecomposition, two venv splits, a missing `ninja` binary,
+and an argparse flag that killed an `eval` after 1.9 h of good training; *non-reproducible
+generation* ($11.96) — three runs accepted 39,542 / 39,473 / 39,461 pairs, so those students could
+be evaluated but never scored against the rows they trained on; and *our own parallelism*
+($10.78) — launching a second session from a second checkout made each checkout's orphan sweep
+blind to the other's pod, and the new one terminated the running session's pod 90 seconds later,
+taking 16 of 27 trained arms with it.
+
+The last is the most useful lesson in this log: the two hazards I had reasoned about before
+launching (a shared `results/` tree and a shared git HEAD) were both real and both fixed by the
+second worktree, and the hazard that actually fired was the one the isolation *created*.
 
 ## Caveats a reader should hold against every number above
 
