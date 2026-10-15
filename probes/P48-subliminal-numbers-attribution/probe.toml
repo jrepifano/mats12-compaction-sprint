@@ -43,9 +43,13 @@ model_gb = 16
 model_repo = "Qwen/Qwen2.5-7B-Instruct"
 model_revision = "a09a35458c702b33eeacc393d103063234e8bc28"
 gpu_check = true
-# P43 measured three hosts at 135-148 MB/s on 2026-10-14 and lowered the gate to 100; our single
-# ~16 GB download takes under 3 min at that rate.
-min_download_mb_s = 100
+# LOWERED to 60 on 2026-10-15. P43 measured three hosts at 135-148 MB/s on 2026-10-14 and set the
+# gate at 100, but session 3's first host served 74.6 MB/s and was re-rolled for it, at $0.35 and
+# about 6 minutes. The gate should only reject hosts that cost more than the re-roll: our one
+# ~16 GB download takes 3.7 min at 75 MB/s against 2.7 min at 100, so re-rolling a 75 MB/s host
+# spends 6 minutes to save 1. At 60 MB/s the download is 4.6 min, still cheaper than a re-roll,
+# and a genuinely broken host - the kind the gate exists for - is far below that.
+min_download_mb_s = 60
 rerolls = 2
 # Gitignored inputs the pod reads. The runner sends tracked files under src/, scripts/ and the
 # probe dir by itself, so data/raw/animal_questions.json needs no entry; T0's QA pairs are

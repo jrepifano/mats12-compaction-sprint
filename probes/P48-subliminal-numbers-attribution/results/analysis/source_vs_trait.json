@@ -1,0 +1,226 @@
+{
+ "axes": {
+  "ekfac_resid": {
+   "variants": [
+    "ekfac:cat:0.1",
+    "ekfac:owl:0.1"
+   ]
+  },
+  "gradcos_resid": {
+   "variants": [
+    "gradcos:cat",
+    "gradcos:owl"
+   ]
+  },
+  "graddot_resid": {
+   "variants": [
+    "graddot:cat",
+    "graddot:owl"
+   ]
+  },
+  "pfi_resid": {
+   "variants": [
+    "pfi:cat:0.1",
+    "pfi:owl:0.1"
+   ]
+  },
+  "source_delta_teacher": {
+   "variants": [
+    "delta_teacher:mean"
+   ]
+  }
+ },
+ "caveat": "a scorer's correlation with its OWN family's residual is partly arithmetic, not evidence; see same_family",
+ "identical_excluded": 37,
+ "mean_independent_trait_corr": {
+  "delta_own": -0.0187,
+  "delta_own_null": -0.0364,
+  "delta_teacher": -0.1351,
+  "dir_student": -0.1074,
+  "dir_teacher": -0.1236,
+  "distill_diag": -0.0828,
+  "ekfac": 0.0982,
+  "gain": -0.0977,
+  "gradcos": -0.1084,
+  "graddot": 0.0173,
+  "null_owl": -0.682,
+  "pfi": 0.0552,
+  "random": -0.0061
+ },
+ "mixture": "mix075ftn20k",
+ "n_rows": 20000,
+ "n_scored": 19963,
+ "pairs": {
+  "delta_own:sum_vs_delta_own_null:sum": 0.9547,
+  "dir_student:cosine_vs_gain:sum": 0.8336,
+  "ekfac:cat:0.1_vs_ekfac:owl:0.1": 0.2005
+ },
+ "scorers": {
+  "delta_own": {
+   "ekfac_resid": 0.0946,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0245,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1276,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0172,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.524,
+   "variant": "delta_own:sum"
+  },
+  "delta_own_null": {
+   "ekfac_resid": 0.0804,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0418,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.15,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0342,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.5578,
+   "variant": "delta_own_null:sum"
+  },
+  "delta_teacher": {
+   "ekfac_resid": 0.0037,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.1293,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.273,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.1418,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 1.0,
+   "variant": "delta_teacher:mean"
+  },
+  "dir_student": {
+   "ekfac_resid": 0.0058,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.1317,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1921,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.1114,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.783,
+   "variant": "dir_student:cosine"
+  },
+  "dir_teacher": {
+   "ekfac_resid": -0.0057,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.151,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.2358,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.102,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.7733,
+   "variant": "dir_teacher:cosine"
+  },
+  "distill_diag": {
+   "ekfac_resid": 0.0314,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0861,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1891,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0876,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.7788,
+   "variant": "distill_diag:sum"
+  },
+  "ekfac": {
+   "ekfac_resid": 0.4476,
+   "ekfac_resid_role": "minuend",
+   "ekfac_resid_trivial": true,
+   "gradcos_resid": 0.2427,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1013,
+   "graddot_resid_trivial": false,
+   "pfi_resid": 0.1531,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.3462,
+   "variant": "ekfac:cat:0.1"
+  },
+  "gain": {
+   "ekfac_resid": 0.0318,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0968,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.2059,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.12,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.9505,
+   "variant": "gain:mean"
+  },
+  "gradcos": {
+   "ekfac_resid": 0.1115,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": 0.0128,
+   "gradcos_resid_role": "minuend",
+   "gradcos_resid_trivial": true,
+   "graddot_resid": -0.3788,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0579,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.4248,
+   "variant": "gradcos:cat"
+  },
+  "graddot": {
+   "ekfac_resid": 0.1002,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": 0.0087,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.3941,
+   "graddot_resid_role": "minuend",
+   "graddot_resid_trivial": true,
+   "pfi_resid": -0.0569,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.4005,
+   "variant": "graddot:cat"
+  },
+  "null_owl": {
+   "ekfac_resid": -0.7286,
+   "ekfac_resid_role": "subtrahend",
+   "ekfac_resid_trivial": true,
+   "gradcos_resid": -0.6259,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.7841,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.636,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.2552,
+   "variant": "ekfac:owl:0.1"
+  },
+  "pfi": {
+   "ekfac_resid": 0.2069,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": 0.1151,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1564,
+   "graddot_resid_trivial": false,
+   "pfi_resid": 0.0978,
+   "pfi_resid_role": "minuend",
+   "pfi_resid_trivial": true,
+   "source_delta_teacher": 0.282,
+   "variant": "pfi:cat:0.1"
+  },
+  "random": {
+   "ekfac_resid": -0.0043,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0045,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.0003,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0153,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": -0.0048,
+   "variant": "random"
+  }
+ },
+ "utc": "2026-10-15T11:52:29Z",
+ "what_positive_means": {
+  "source_delta_teacher": "ranks rows the way the fine-tuned teacher's own likelihood does, i.e. by who wrote them",
+  "trait_resid": "ranks rows by cat-ness specifically, over and above the same score computed for a trait the data never carried"
+ }
+}

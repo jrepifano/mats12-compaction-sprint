@@ -869,10 +869,139 @@ def cmd_selections(args) -> int:
     return 0
 
 
+def _spearman(a: np.ndarray, b: np.ndarray) -> float:
+    """Rank correlation, written out so no scipy dependency is added for one number."""
+    ar = np.argsort(np.argsort(a)).astype(float)
+    br = np.argsort(np.argsort(b)).astype(float)
+    ar -= ar.mean()
+    br -= br.mean()
+    d = float(np.sqrt((ar ** 2).sum() * (br ** 2).sum()))
+    return float((ar * br).sum() / d) if d else float("nan")
+
+
+# The TRAIT axis cannot be built from one family alone. `ekfac:cat - ekfac:owl` is a difference of
+# two EK-FAC scores, so EK-FAC correlates with it partly BY CONSTRUCTION - the two animals' scores
+# only correlate at about +0.2, so most of the difference is cat-specific EK-FAC. Reporting a
+# scorer against its own family's residual therefore proves nothing, and every axis below is
+# reported for every scorer with `same_family` set where that trivial path exists
+# (log.md 2026-10-15).
+TRAIT_AXIS_FAMILIES = ("ekfac", "gradcos", "graddot", "pfi")
+
+
+def trait_axes(frozen: dict) -> dict[str, tuple[str, str]]:
+    """{axis: (cat variant, owl variant)}, taken from what each family FROZE.
+
+    The pair must share a damping, so the variants are read from frozen.json and the animal
+    swapped in place rather than written out here: hard-coding `:0.1` would silently drop an axis
+    whenever a different damping won the dev-set selection.
+    """
+    out = {}
+    for family in TRAIT_AXIS_FAMILIES:
+        chosen = (frozen.get("families", {}).get(family) or {}).get("chosen")
+        if chosen and ":cat:" in f"{chosen}:":
+            out[f"{family}_resid"] = (chosen, chosen.replace(":cat", ":owl", 1))
+    return out
+
+
+def cmd_sourcetrait(args) -> int:
+    """Does a scorer rank rows by their SOURCE or by the trait they carry?
+
+    Why this exists: Delta_own scores the OWL direction (0.691) higher than the cat direction it
+    was given (0.673), which means it is separating "written by a fine-tuned model" from "written
+    by the clean generator", not cat-ness (results/analysis/detection.json). The launching session
+    asked whether dir_student and gain, at 0.907 and 0.900 without any trait or teacher knowledge,
+    do the same. This is a free laptop-side check on scores that are already committed.
+    """
+    frozen = read_json(out_dir() / "frozen.json")
+    if not frozen:
+        raise SystemExit("run `select` first")
+    mix = args.mixture or frozen["detection_mixture"]
+    rows = mixture_rows(mix, args.rows)
+    n = len(rows)
+    fam = candidates(mix, n)
+    y, _y_all = labels(rows)
+    keep = y >= 0  # byte-identical rows carry no trait either way
+
+    def get(variant: str) -> np.ndarray | None:
+        return _lookup(fam, mix, variant, n)
+
+    axes: dict[str, np.ndarray] = {}
+    axis_vars: dict[str, list[str]] = {}
+    src = get(frozen["families"]["delta_teacher"]["chosen"])
+    if src is not None:
+        axes["source_delta_teacher"] = src
+        axis_vars["source_delta_teacher"] = [frozen["families"]["delta_teacher"]["chosen"]]
+    for name, (a_v, b_v) in trait_axes(frozen).items():
+        a, b = get(a_v), get(b_v)
+        if a is not None and b is not None:
+            axes[name] = a - b
+            axis_vars[name] = [a_v, b_v]
+    res: dict = {"utc": utc(), "mixture": mix, "n_rows": n, "n_scored": int(keep.sum()),
+                 "identical_excluded": int((~keep).sum()),
+                 "axes": {k: {"variants": axis_vars[k]} for k in axes},
+                 "what_positive_means": {
+                     "source_delta_teacher": "ranks rows the way the fine-tuned teacher's own "
+                                             "likelihood does, i.e. by who wrote them",
+                     "trait_resid": "ranks rows by cat-ness specifically, over and above the "
+                                    "same score computed for a trait the data never carried"},
+                 "caveat": "a scorer's correlation with its OWN family's residual is partly "
+                           "arithmetic, not evidence; see same_family",
+                 "scorers": {}}
+    for family, d in sorted(frozen["families"].items()):
+        v = d["chosen"]
+        a = get(v)
+        if a is None:
+            continue
+        rec = {"variant": v}
+        for axis, vals in axes.items():
+            rec[axis] = round(_spearman(a[keep], vals[keep]), 4)
+            if axis == "source_delta_teacher":
+                continue
+            # Trivial by arithmetic in two ways: the scorer IS one of the axis's two terms
+            # (null_owl froze ekfac:owl:0.1, the very term the residual subtracts), or it is
+            # another variant of the same family. Flagged, not dropped.
+            minuend, subtrahend = axis_vars[axis]
+            role = ("minuend" if v == minuend else
+                    "subtrahend" if v == subtrahend else None)
+            rec[f"{axis}_trivial"] = bool(role) or v.split(":")[0] in (
+                minuend.split(":")[0], subtrahend.split(":")[0])
+            if role:
+                rec[f"{axis}_role"] = role
+        res["scorers"][family] = rec
+    # The two pairs worth naming on their own: how alike the two best source detectors are, and
+    # how little the two animals' EK-FAC scores share.
+    pairs = {}
+    for a_v, b_v in (("dir_student:cosine", "gain:sum"), ("ekfac:cat:0.1", "ekfac:owl:0.1"),
+                     ("delta_own:sum", "delta_own_null:sum")):
+        a, b = get(a_v), get(b_v)
+        if a is not None and b is not None:
+            pairs[f"{a_v}_vs_{b_v}"] = round(_spearman(a[keep], b[keep]), 4)
+    res["pairs"] = pairs
+    # The headline of this check, computed rather than asserted: on the trait axes that are NOT
+    # arithmetically tied to it, which scorers still rank by cat-ness?
+    indep = {}
+    for family, rec in res["scorers"].items():
+        vals = [rec[k] for k in axes
+                if k != "source_delta_teacher" and not rec.get(f"{k}_trivial")]
+        if vals:
+            indep[family] = round(float(np.mean(vals)), 4)
+    res["mean_independent_trait_corr"] = dict(
+        sorted(indep.items(), key=lambda kv: -kv[1]))
+    out = out_dir() / (args.out or "source_vs_trait.json")
+    write_json(out, res)
+    print(f"source_vs_trait: {out} ({res['n_scored']} rows)")
+    for f, rec in sorted(res["scorers"].items(),
+                         key=lambda kv: -(kv[1].get("source_delta_teacher") or 0)):
+        bits = " ".join(f"{k}={rec[k]:+.3f}" for k in rec
+                        if k in axes and isinstance(rec[k], float))
+        print(f"  {f:16s} {bits}")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("cmd", choices=("select", "detect", "causal", "classify", "selections",
-                                    "manifest"))
+                                    "sourcetrait", "manifest"))
     ap.add_argument("--mixture", default=None, help="override the mixture from gate.json")
     ap.add_argument("--rows", default=None, help="jsonl holding the mixture's labelled rows")
     ap.add_argument("--prefix", default="", help="causal: arm-name prefix (a follow-up's arms)")
@@ -884,7 +1013,7 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     return {"select": cmd_select, "detect": cmd_detect, "causal": cmd_causal,
             "classify": cmd_classify, "selections": cmd_selections,
-            "manifest": cmd_manifest}[args.cmd](args)
+            "sourcetrait": cmd_sourcetrait, "manifest": cmd_manifest}[args.cmd](args)
 
 
 if __name__ == "__main__":

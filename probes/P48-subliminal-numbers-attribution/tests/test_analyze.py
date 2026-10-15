@@ -642,3 +642,41 @@ def test_a_missing_operation_is_skipped_rather_than_crashing(tmp_path, monkeypat
     assert not [k for k in c["arms"] if k.startswith("refill_")]
     assert not [k for k in c["contrasts"] if "refill" in k]
     assert "swap_ekfac_vs_drop_ekfac" in c["contrasts"], "the operations that DID run still pair"
+
+
+def test_sourcetrait_separates_source_ranking_from_trait_ranking(tmp_path, monkeypatch):
+    """A scorer that only knows "a fine-tuned model wrote this" must not look trait-aligned.
+
+    Delta_own scored the OWL direction higher than the cat direction it was given, so the top
+    scorers had to be checked for ranking by source rather than by cat-ness (log.md 2026-10-15).
+    """
+    res, rows = setup_detection(tmp_path, monkeypatch)
+    assert A.cmd_select(Args(n_boot=40)) == 0
+    sdir = res / f"scores_{MIX}"
+    arrays = {k: v for k, v in np.load(sdir / "scores.npz").items()}
+    n = len(rows)
+    rng = np.random.default_rng(11)
+    cat = arrays["ekfac:cat:0.01"]
+    # the owl counterparts the residuals need, at the SAME damping as the frozen cat variants
+    arrays["gradcos:owl"] = arrays["gradcos:cat"] + rng.normal(0, 0.1, n)  # no trait signal
+    arrays["graddot:owl"] = arrays["graddot:cat"] + rng.normal(0, 0.1, n)
+    arrays["pfi:owl:0.01"] = arrays["pfi:cat:0.01"] + rng.normal(0, 0.1, n)
+    # make ekfac's cat-vs-owl gap track the gradcos gap, so ekfac is trait-aligned on an axis it
+    # is NOT arithmetically part of
+    arrays["gradcos:cat"] = arrays["gradcos:owl"] + 0.5 * (cat - arrays["ekfac:owl:0.01"])
+    np.savez(sdir / "scores.npz", **arrays)
+
+    assert A.cmd_sourcetrait(Args()) == 0
+    st = json.loads((res / "analysis" / "source_vs_trait.json").read_text())
+
+    # the arithmetic ties are flagged, with the role that makes them trivial
+    assert st["scorers"]["ekfac"]["ekfac_resid_trivial"] is True
+    assert st["scorers"]["ekfac"]["ekfac_resid_role"] == "minuend"
+    assert st["scorers"]["null_owl"]["ekfac_resid_role"] == "subtrahend", \
+        "null_owl froze the very variant the residual subtracts"
+    # ... and excluded from the independent summary, which still ranks ekfac above a pure null
+    mean = st["mean_independent_trait_corr"]
+    assert mean["ekfac"] > mean["delta_own"]
+    assert abs(mean["random"]) < 0.1
+    # the source axis is reported for every scorer, and delta_teacher is its own axis
+    assert st["scorers"]["delta_teacher"]["source_delta_teacher"] == pytest.approx(1.0)
