@@ -281,7 +281,8 @@ def _arms(tmp_path, k=4, identical_every=0):
     scores = {"ekfac": [float(i) for i in range(len(rows))],
               "delta_own": [float(i % 3) for i in range(len(rows))]}
     sel = D.selections_from_scores(rows, k, scores=scores)
-    counts = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g)
+    counts = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g,
+                         ops=K.OPERATIONS)
     return rows, sel, counts, parts
 
 
@@ -340,9 +341,11 @@ def test_the_composition_report_counts_inert_rows_and_selector_overlap(tmp_path)
 def test_arm_files_are_deterministic_and_the_prefix_namespaces_them(tmp_path):
     _rows, sel, counts, parts = _arms(tmp_path, k=4)
     g = tmp_path / "gen"
-    again = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g)
+    again = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g,
+                         ops=K.OPERATIONS)
     assert again == counts
-    pref = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g, prefix="k05_")
+    pref = D.build_arms("mix100", sel, parts=parts, out_dir=tmp_path, gen_dir=g, prefix="k05_",
+                        ops=K.OPERATIONS)
     assert set(pref) == {f"k05_{n}" for n in counts}
     man = json.loads((tmp_path / "manifest.json").read_text())
     assert "k05_stage2" in man and "arms/k05_swap_ekfac.jsonl" in man["files"]

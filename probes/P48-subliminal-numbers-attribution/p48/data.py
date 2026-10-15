@@ -299,13 +299,16 @@ def hash_name(name: str) -> int:
 def build_arms(mix_name: str, selections: dict[str, list[int]], *,
                poison_source: str = K.SOURCES[0], parts: dict[str, list[str]] | None = None,
                prefix: str = "", out_dir: Path = K.DATA_DIR, gen_dir: Path = K.GEN_DIR,
-               partitions_path: Path = gen.PARTITIONS_PATH) -> dict:
+               partitions_path: Path = gen.PARTITIONS_PATH,
+               ops: tuple[str, ...] = K.SESSION_OPS) -> dict:
     """Write every selector x operation arm and the composition report the analysis reads.
 
     Per arm: rows, poison and active shares, how many selected rows were poisoned, active or
     inert (byte-identical, so a swap is a no-op), and the overlap with each other selector.
     `prefix` namespaces a follow-up's arms so they neither overwrite stage 2's files nor collide
-    with its run keys (P43).
+    with its run keys (P43). `ops` defaults to the operations THIS session runs, which is not
+    always all of K.OPERATIONS - the RunPod balance, not the cap, decided that (log.md
+    2026-10-15) - so pass K.OPERATIONS to build the full set.
     """
     out_dir, gen_dir = Path(out_dir), Path(gen_dir)
     if parts is None:
@@ -314,7 +317,7 @@ def build_arms(mix_name: str, selections: dict[str, list[int]], *,
     used = {r["pid"] for r in mix_rows}
     fresh = refill_pool(parts, used)
     k_max = max(len(v) for v in selections.values())
-    if len(fresh) < k_max:
+    if "refill" in ops and len(fresh) < k_max:
         raise ValueError(f"refill pool {len(fresh)} < k {k_max}")
     pool = load_pool([*sorted(used), *fresh[:k_max]], poison_source=poison_source,
                      gen_dir=gen_dir)
@@ -326,7 +329,7 @@ def build_arms(mix_name: str, selections: dict[str, list[int]], *,
         sel_poison = sum(r["label"] == "poison" for r in picked)
         sel_inert = sum(r["label"] == "poison" and r["identical"] for r in picked)
         overlap = {o: len(sel & set(v)) for o, v in selections.items() if o != selector}
-        for op in K.OPERATIONS:
+        for op in ops:
             name = K.arm_name(selector, op, prefix)
             rows = make_arm(mix_rows, selected, op, pool, refill=fresh,
                             seed=K.MIX_SEED + hash_name(name))

@@ -1,0 +1,38 @@
+{
+  "utc": "2026-10-15T10:13:07Z",
+  "mixture": "mix100ft",
+  "control": 2.08,
+  "rungs": [
+    {
+      "rung": 0,
+      "frac": 0.1,
+      "k": 1000,
+      "excess": {
+        "kp100_swap_ekfac_s0": 3.84,
+        "kp100_swap_delta_own_s0": 3.82,
+        "kp100_swap_dir_student_s0": 2.42
+      },
+      "clears": false
+    },
+    {
+      "rung": 1,
+      "frac": 0.05,
+      "k": 500,
+      "excess": {
+        "kp50_swap_ekfac_s0": 5.4,
+        "kp50_swap_delta_own_s0": 19.8,
+        "kp50_swap_dir_student_s0": 17.9
+      },
+      "clears": true
+    }
+  ],
+  "chosen": {
+    "frac": 0.05,
+    "k": 500,
+    "clears": true,
+    "rung": 1
+  },
+  "reconstructed_from_log": true,
+  "reconstructed_from": "logs/pod/wkdpzmqmqntved/run_20261015T090456Z.log",
+  "reconstructed_utc": "2026-10-15T12:05:00Z"
+}

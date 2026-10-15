@@ -28,7 +28,9 @@ PHASE="${P48_PHASE:-$(tr -d '[:space:]' < phase 2>/dev/null || echo unset)}"
 case "$PHASE" in
   session1) DEFAULT_GUARD=18000 ;;   # 5.0 h of run.sh
   session1b) DEFAULT_GUARD=9000 ;;   # 2.5 h: B2's 10-epoch recalibration
-  session2) DEFAULT_GUARD=18000 ;;   # 5.0 h
+  # 4.75 h, not 5.0: gpu_hours is 5.5 and pod setup eats about 0.3 h of it, so run.sh has to
+  # stop itself with margin to spare rather than be salvaged mid-training (log.md 2026-10-15).
+  session2) DEFAULT_GUARD=17100 ;;   # 4.75 h
   *) DEFAULT_GUARD=0 ;;
 esac
 GUARD_S="${P48_GUARD_S:-$DEFAULT_GUARD}"

@@ -1496,7 +1496,8 @@ def step_kpilotarms(args) -> int:
     sel = D.selections_from_scores(rows, k, scores=scores, include_random=False,
                                    include_active=False)
     prefix = kpilot_prefix(frac)
-    D.build_arms(mix_name, sel, prefix=prefix, poison_source=primary()["poison_source"])
+    D.build_arms(mix_name, sel, prefix=prefix, poison_source=primary()["poison_source"],
+                 ops=("swap",))
     keys = [K.run_key(K.arm_name(s, "swap", prefix), K.GATE_SEED) for s in sel]
     write_json(RESULTS / f"kpilot_rung{args.rung}.json",
                {"utc": utc(), "rung": args.rung, "frac": frac, "k": k,
@@ -1613,14 +1614,20 @@ def step_stage2keys(args) -> int:
                 keys.append(K.run_key(name, seed))
     else:
         for s in K.SELECTORS:
-            for op in K.OPERATIONS:
+            for op in K.SESSION_OPS:
                 name = K.arm_name(s, op)
                 if (K.ARMS_DIR / f"{name}.jsonl").exists():
                     keys += [K.run_key(name, seed) for seed in K.STAGE2_SEEDS]
     g = read_json(RESULTS / "gate.json") or {}
-    if g.get("selection_mixture"):
-        keys += [K.run_key(g["selection_mixture"], seed) for seed in K.STAGE2_SEEDS]
-    print(" ".join(keys))
+    ref = ([K.run_key(g["selection_mixture"], seed) for seed in K.STAGE2_SEEDS]
+           if g.get("selection_mixture") else [])
+    # THE REFERENCE FIRST, then the arms. Keys were emitted alphabetically, which put `swap` -
+    # the primary operation - and the reference LAST, exactly where the wall-clock guard cuts.
+    # Every contrast is measured against the reference, so it must never be the casualty
+    # (log.md 2026-10-15).
+    order = {op: i for i, op in enumerate(K.OPERATIONS)}
+    keys.sort(key=lambda k: (order.get(k.split("_")[0], 99), k))
+    print(" ".join(ref + keys))
     return 0
 
 

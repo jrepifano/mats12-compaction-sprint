@@ -460,7 +460,7 @@ def _arms_json(names: list[str], mixture: str, k: int = 250) -> dict:
 
 
 def test_stage2keys_lists_every_built_arm_at_every_seed_plus_the_reference(lab, capsys):
-    names = [K.arm_name(s, op) for s in ("ekfac", "delta_own", "random") for op in K.OPERATIONS]
+    names = [K.arm_name(s, op) for s in ("ekfac", "delta_own", "random") for op in K.SESSION_OPS]
     (lab.results / "arms.json").write_text(json.dumps(_arms_json(names, "mix100")) + "\n")
     lab.gate(selection_mixture="mix100", detection_mixture="mix075")
     lab.arm(*names)
@@ -471,7 +471,7 @@ def test_stage2keys_lists_every_built_arm_at_every_seed_plus_the_reference(lab, 
 
     assert rc == 0
 
-    assert len(keys) == len(names) * len(K.STAGE2_SEEDS) + len(K.STAGE2_SEEDS) == 30
+    assert len(keys) == (len(names) + 1) * len(K.STAGE2_SEEDS)
     assert {pod.key_parts(k)[1] for k in keys} == set(K.STAGE2_SEEDS)
     assert {pod.key_parts(k)[0] for k in keys} == {*names, "mix100"}
     # the reference arm is the selection mixture at the same three seeds (plan.md "Stage 2")
@@ -480,12 +480,23 @@ def test_stage2keys_lists_every_built_arm_at_every_seed_plus_the_reference(lab, 
     # and every printed key resolves to a training file
     for key in keys:
         assert pod.data_path(key).exists()
+    # ORDER: the reference first, then the operations in K.OPERATIONS order. The guard cuts the
+    # tail, so the reference every contrast needs must never be the casualty, and `refill` - the
+    # least load-bearing operation - must be last (log.md 2026-10-15).
+    ref_n = len(K.STAGE2_SEEDS)
+    assert all(k.startswith("mix100_s") for k in keys[:ref_n])
+    ops_in_order = []
+    for key in keys[ref_n:]:
+        op = key.split("_")[0]
+        if op not in ops_in_order:
+            ops_in_order.append(op)
+    assert ops_in_order == [op for op in K.OPERATIONS if op in K.SESSION_OPS]
 
 
 def test_stage2keys_prefers_arms_json_over_stale_files_on_disk(lab, capsys):
     """arms.json is what this run built; ARMS_DIR can still hold an earlier build's arms."""
-    names = [K.arm_name(s, op) for s in ("ekfac", "delta_own", "random") for op in K.OPERATIONS]
-    stale = [K.arm_name("random_active", op) for op in K.OPERATIONS]
+    names = [K.arm_name(s, op) for s in ("ekfac", "delta_own", "random") for op in K.SESSION_OPS]
+    stale = [K.arm_name("random_active", op) for op in K.SESSION_OPS]
     (lab.results / "arms.json").write_text(json.dumps(_arms_json(names, "mix100")) + "\n")
     lab.arm(*names, *stale)
     lab.gate(selection_mixture="mix100")
@@ -493,7 +504,7 @@ def test_stage2keys_prefers_arms_json_over_stale_files_on_disk(lab, capsys):
     pod.step_stage2keys(args())
     keys = capsys.readouterr().out.split()
 
-    assert len(keys) == 30
+    assert len(keys) == (len(names) + 1) * len(K.STAGE2_SEEDS)
     assert not [k for k in keys if "random_active" in k]
 
 
@@ -503,8 +514,8 @@ def test_stage2keys_falls_back_to_the_arm_files_and_ignores_the_k_pilots(lab, ca
     The k pilot writes prefixed arms (`kp100_swap_ekfac`); those are seed-0 pilots and must never
     enter stage 2's key list.
     """
-    built = [K.arm_name("ekfac", op) for op in K.OPERATIONS]
-    built += [K.arm_name("delta_own", op) for op in K.OPERATIONS]
+    built = [K.arm_name("ekfac", op) for op in K.SESSION_OPS]
+    built += [K.arm_name("delta_own", op) for op in K.SESSION_OPS]
     lab.arm(*built, "kp100_swap_ekfac", "kp50_swap_delta_own")
     lab.gate(selection_mixture="mix100")
 

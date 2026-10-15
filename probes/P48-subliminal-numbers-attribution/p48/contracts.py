@@ -175,7 +175,16 @@ STAGE2_SEEDS = (1, 2, 3)
 # purchase at all (log.md 2026-10-15, after the launching session's challenge).
 SELECTORS = ("ekfac", "delta_own", "dir_student", "random", "random_active")
 PRIMARY_GRAD_SELECTOR = "ekfac"  # fixed before the run (plan.md "Setup")
+# The three operations, in the order stage 2 runs them. Order matters: every contrast is measured
+# against the reference, so the reference trains first and any wall-clock cut lands on the LAST
+# operation rather than on the primary one. Keys used to be emitted alphabetically, which put
+# `swap` last - exactly where the guard cuts (log.md 2026-10-15).
 OPERATIONS = ("swap", "drop", "refill")
+# What THIS session builds and trains. Rewriting-beats-deleting-beats-refilling is part of the
+# headline Jacob asked for, not a secondary replication (his 2026-10-14 note), so `drop` is in.
+# `refill` waits for a later session: the binding constraint is the RunPod balance, not the cap
+# (log.md 2026-10-15). Set it back to OPERATIONS to run all three.
+SESSION_OPS = ("swap", "drop")
 RANDOM_SELECT_SEED = 20261016
 # k pilot: the largest k whose two informed swap arms both keep K_FLOOR_PTS of excess (plan.md).
 K_LADDER = (0.10, 0.05, 0.025)
