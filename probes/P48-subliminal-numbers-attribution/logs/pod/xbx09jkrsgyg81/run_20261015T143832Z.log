@@ -1,0 +1,99 @@
+P48 start 2026-10-15T14:38:33Z probe=P48 commit=7dcba3b698c1ced0cdbe1ae3608f58adf08efb0d
+P48 phase=session2 guard=17100s
+P48 ninja: /ws/venv-vllm/bin/ninja
+== 2026-10-15T14:38:33Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   29G   92G  25% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:  14%|█▍        | 2/14 [00:00<00:00, 12.95it/s]Fetching 14 files:  43%|████▎     | 6/14 [00:00<00:00, 25.66it/s]Fetching 14 files:  64%|██████▍   | 9/14 [00:00<00:00, 24.40it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:20<00:00, 24.40it/s]Fetching 14 files:  79%|███████▊  | 11/14 [01:53<00:50, 16.84s/it]Fetching 14 files:  86%|████████▌ | 12/14 [01:58<00:29, 14.76s/it]Fetching 14 files: 100%|██████████| 14/14 [01:59<00:00, 10.00s/it]Fetching 14 files: 100%|██████████| 14/14 [01:59<00:00,  8.55s/it]
+[2026-10-15T14:40:44Z] download ok: 4 shards in 131.0s
+== 2026-10-15T14:40:44Z step=download python_rc=0 seconds=131
+== 2026-10-15T14:40:44Z step=gen elapsed=131s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  36% /
+[2026-10-15T14:40:45Z] gen: reusing persisted rows for ['teacher_prompted', 'clean', 'teacher_ft'] from results/gen/ (no regeneration)
+[2026-10-15T14:40:46Z] gen: stop=persisted accepted=39455 design=full
+[2026-10-15T14:40:46Z] gen: reusing the saved partitions (33000 pids), all still accepted
+[2026-10-15T14:40:46Z] gen: persisted ['clean', 'teacher_ft', 'teacher_prompted'] into results/gen/ so a resume is exact
+[2026-10-15T14:40:46Z] gen: partitions {'P_A1': 10000, 'P_A2': 10000, 'P_B': 10000, 'P_C': 2000, 'heldout': 1000} (full)
+== 2026-10-15T14:40:46Z step=gen python_rc=0 seconds=2
+== 2026-10-15T14:40:46Z step=mix elapsed=133s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  36% /
+[2026-10-15T14:40:48Z] mix teacher_prompted: 11 sets
+[2026-10-15T14:40:49Z] mix teacher_ft: 11 sets
+[2026-10-15T14:40:49Z] mix proxy: 10000 rows on P_B
+== 2026-10-15T14:40:49Z step=mix python_rc=0 seconds=3
+== 2026-10-15T14:40:49Z step=stability elapsed=136s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  37% /
+[2026-10-15T14:40:54Z] stability: mix075ftn20k / mix075ftn20k_s0: 2000 dev rows of 20000 (active poison 1490, clean 505, byte-identical excluded 5)
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:44,  7.67it/s]Loading weights:   1%|          | 2/339 [00:00<00:49,  6.81it/s]Loading weights:   2%|▏         | 7/339 [00:00<00:33,  9.80it/s]Loading weights:  27%|██▋       | 90/339 [00:00<00:01, 154.76it/s]Loading weights:  35%|███▍      | 118/339 [00:01<00:01, 140.56it/s]Loading weights:  41%|████▏     | 140/339 [00:01<00:01, 123.91it/s]Loading weights:  47%|████▋     | 158/339 [00:01<00:01, 125.69it/s]Loading weights:  52%|█████▏    | 175/339 [00:01<00:01, 108.22it/s]Loading weights:  56%|█████▌    | 189/339 [00:01<00:01, 109.78it/s]Loading weights:  60%|█████▉    | 202/339 [00:01<00:01, 107.17it/s]Loading weights:  63%|██████▎   | 214/339 [00:02<00:01, 105.68it/s]Loading weights:  67%|██████▋   | 226/339 [00:02<00:01, 105.81it/s]Loading weights:  70%|███████   | 238/339 [00:02<00:01, 94.63it/s] Loading weights:  75%|███████▌  | 255/339 [00:02<00:00, 104.86it/s]Loading weights:  79%|███████▉  | 268/339 [00:02<00:00, 105.59it/s]Loading weights:  83%|████████▎ | 280/339 [00:02<00:00, 103.40it/s]Loading weights:  86%|████████▌ | 292/339 [00:02<00:00, 103.28it/s]Loading weights:  90%|████████▉ | 304/339 [00:03<00:00, 88.03it/s] Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 95.21it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 96.56it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 103.05it/s]
+logprobs: 2000 rows in 10.8 s
+logprobs: 2000 rows in 10.0 s
+logprobs: 2000 rows in 9.3 s
+logprobs: 2000 rows in 10.0 s
+[2026-10-15T14:41:43Z] [tda] build 2026-10-14T21:30Z-identity-fallback
+[2026-10-15T14:41:44Z] [tda] query gradients for 1 queries in 0.5s
+[2026-10-15T14:43:33Z] [tda] pass1_grads done in 107.7s
+[2026-10-15T14:43:33Z] [tda] batch-sum invariant max rel err 2.29e-06
+[2026-10-15T14:43:51Z] [tda] EK-FAC eigendecompositions in 17.5s; 84 of 784 factor sides kept as identity (dim > 4096); genuine eigenbasis on both sides for 7454720 of 20185088 LoRA parameters (36.9%)
+[2026-10-15T14:45:02Z] [tda] pass2_ekfac_lambda done in 71.0s
+[2026-10-15T14:46:07Z] [tda] pass3_ekfac_scores done in 64.2s
+[2026-10-15T14:46:07Z] [tda] build 2026-10-14T21:30Z-identity-fallback
+[2026-10-15T14:46:07Z] [tda] query gradients for 1 queries in 0.2s
+[2026-10-15T14:47:55Z] [tda] pass1_grads done in 106.9s
+[2026-10-15T14:47:55Z] [tda] batch-sum invariant max rel err 3.08e-06
+[2026-10-15T14:48:14Z] [tda] EK-FAC eigendecompositions in 17.4s; 84 of 784 factor sides kept as identity (dim > 4096); genuine eigenbasis on both sides for 7454720 of 20185088 LoRA parameters (36.9%)
+[2026-10-15T14:49:25Z] [tda] pass2_ekfac_lambda done in 71.0s
+[2026-10-15T14:50:29Z] [tda] pass3_ekfac_scores done in 64.3s
+[2026-10-15T14:50:29Z] stability: HEADLINE ekfac-delta_own = -0.0259 (A) vs -0.0282 (B), moves 0.0023; threshold 0.03; resolvable=True
+[2026-10-15T14:50:29Z] stability: VERDICT scores_stable - 11 scorers over 2000 dev rows; min Spearman 0.9915, max |dAUROC| 0.0021, min top-200 overlap 0.9650 (579.7s)
+== 2026-10-15T14:50:30Z step=stability python_rc=0 seconds=581
+== 2026-10-15T14:50:30Z step=arms elapsed=717s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  37% /
+[2026-10-15T14:50:32Z] arms: k=500 selectors=['delta_own', 'dir_student', 'ekfac', 'random']
+== 2026-10-15T14:50:32Z step=arms python_rc=0 seconds=2
+P48 stage-2 keys: mix100ft_s1 mix100ft_s2 mix100ft_s3 swap_delta_own_s1 swap_delta_own_s2 swap_delta_own_s3 swap_dir_student_s1 swap_dir_student_s2 swap_dir_student_s3 swap_ekfac_s1 swap_ekfac_s2 swap_ekfac_s3 swap_random_s1 swap_random_s2 swap_random_s3 drop_delta_own_s1 drop_delta_own_s2 drop_delta_own_s3 drop_dir_student_s1 drop_dir_student_s2 drop_dir_student_s3 drop_ekfac_s1 drop_ekfac_s2 drop_ekfac_s3 drop_random_s1 drop_random_s2 drop_random_s3
+== 2026-10-15T14:50:32Z step=train elapsed=719s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  37% /
+[2026-10-15T14:50:32Z] train tag=stage2 epochs=3 keys=27 todo=27
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:39,  8.63it/s]Loading weights:   1%|          | 2/339 [00:00<00:44,  7.63it/s]Loading weights:   2%|▏         | 6/339 [00:00<00:21, 15.47it/s]Loading weights:  12%|█▏        | 42/339 [00:00<00:02, 113.94it/s]Loading weights:  17%|█▋        | 56/339 [00:00<00:02, 115.77it/s]Loading weights:  20%|██        | 69/339 [00:00<00:02, 113.52it/s]Loading weights:  24%|██▍       | 82/339 [00:00<00:02, 111.66it/s]Loading weights:  28%|██▊       | 94/339 [00:01<00:02, 107.13it/s]Loading weights:  31%|███▏      | 106/339 [00:01<00:02, 108.04it/s]Loading weights:  35%|███▍      | 118/339 [00:01<00:02, 106.30it/s]Loading weights:  38%|███▊      | 129/339 [00:01<00:02, 104.70it/s]Loading weights:  41%|████▏     | 140/339 [00:01<00:01, 102.29it/s]Loading weights:  45%|████▍     | 151/339 [00:01<00:01, 100.60it/s]Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 99.53it/s] Loading weights:  51%|█████     | 173/339 [00:01<00:01, 98.20it/s]Loading weights:  55%|█████▍    | 186/339 [00:01<00:01, 101.91it/s]Loading weights:  58%|█████▊    | 197/339 [00:02<00:01, 100.33it/s]Loading weights:  62%|██████▏   | 210/339 [00:02<00:01, 103.09it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 103.49it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:01, 103.45it/s]Loading weights:  72%|███████▏  | 245/339 [00:02<00:00, 101.10it/s]Loading weights:  76%|███████▌  | 258/339 [00:02<00:00, 104.36it/s]Loading weights:  80%|███████▉  | 270/339 [00:02<00:00, 104.82it/s]Loading weights:  83%|████████▎ | 282/339 [00:02<00:00, 105.47it/s]Loading weights:  86%|████████▋ | 293/339 [00:02<00:00, 103.11it/s]Loading weights:  90%|████████▉ | 305/339 [00:03<00:00, 103.40it/s]Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 107.13it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 106.30it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 101.76it/s]
+[2026-10-15T14:50:40Z] [1/27] mix100ft_s1: 10000 rows, 456 steps
+[2026-10-15T14:59:58Z] train mix100ft_s1: ok, 456/456 steps, 1.2075 s/step, loss 0.958 -> 0.735
+[2026-10-15T14:59:58Z] [2/27] mix100ft_s2: 10000 rows, 456 steps
+[2026-10-15T15:09:07Z] train mix100ft_s2: ok, 456/456 steps, 1.1886 s/step, loss 0.961 -> 0.730
+[2026-10-15T15:09:07Z] [3/27] mix100ft_s3: 10000 rows, 456 steps
+[2026-10-15T15:18:13Z] train mix100ft_s3: ok, 456/456 steps, 1.1816 s/step, loss 0.957 -> 0.742
+[2026-10-15T15:18:13Z] [4/27] swap_delta_own_s1: 10000 rows, 456 steps
+[2026-10-15T15:27:19Z] train swap_delta_own_s1: ok, 456/456 steps, 1.1823 s/step, loss 0.935 -> 0.723
+[2026-10-15T15:27:19Z] [5/27] swap_delta_own_s2: 10000 rows, 456 steps
+[2026-10-15T15:36:25Z] train swap_delta_own_s2: ok, 456/456 steps, 1.1822 s/step, loss 0.911 -> 0.714
+[2026-10-15T15:36:25Z] [6/27] swap_delta_own_s3: 10000 rows, 456 steps
+[2026-10-15T15:45:32Z] train swap_delta_own_s3: ok, 456/456 steps, 1.1847 s/step, loss 0.901 -> 0.724
+[2026-10-15T15:45:32Z] [7/27] swap_dir_student_s1: 10000 rows, 456 steps
+[2026-10-15T15:54:40Z] train swap_dir_student_s1: ok, 456/456 steps, 1.186 s/step, loss 0.919 -> 0.725
+[2026-10-15T15:54:40Z] [8/27] swap_dir_student_s2: 10000 rows, 456 steps
+[2026-10-15T16:03:48Z] train swap_dir_student_s2: ok, 456/456 steps, 1.1868 s/step, loss 0.933 -> 0.700
+[2026-10-15T16:03:48Z] [9/27] swap_dir_student_s3: 10000 rows, 456 steps
+[2026-10-15T16:12:55Z] train swap_dir_student_s3: ok, 456/456 steps, 1.1839 s/step, loss 0.920 -> 0.705
+[2026-10-15T16:12:55Z] [10/27] swap_ekfac_s1: 10000 rows, 456 steps
+[2026-10-15T16:22:02Z] train swap_ekfac_s1: ok, 456/456 steps, 1.1833 s/step, loss 0.959 -> 0.721
+[2026-10-15T16:22:02Z] [11/27] swap_ekfac_s2: 10000 rows, 456 steps
+[2026-10-15T16:31:08Z] train swap_ekfac_s2: ok, 456/456 steps, 1.1809 s/step, loss 0.902 -> 0.715
+[2026-10-15T16:31:08Z] [12/27] swap_ekfac_s3: 10000 rows, 456 steps
+[2026-10-15T16:40:13Z] train swap_ekfac_s3: ok, 456/456 steps, 1.1811 s/step, loss 0.932 -> 0.719
+[2026-10-15T16:40:13Z] [13/27] swap_random_s1: 10000 rows, 456 steps
+[2026-10-15T16:49:18Z] train swap_random_s1: ok, 456/456 steps, 1.1802 s/step, loss 0.936 -> 0.710
+[2026-10-15T16:49:18Z] [14/27] swap_random_s2: 10000 rows, 456 steps
+[2026-10-15T16:58:24Z] train swap_random_s2: ok, 456/456 steps, 1.1809 s/step, loss 0.931 -> 0.726
+[2026-10-15T16:58:24Z] [15/27] swap_random_s3: 10000 rows, 456 steps
+[2026-10-15T17:07:32Z] train swap_random_s3: ok, 456/456 steps, 1.1867 s/step, loss 0.913 -> 0.731
+[2026-10-15T17:07:32Z] [16/27] drop_delta_own_s1: 9500 rows, 432 steps
+[2026-10-15T17:16:11Z] train drop_delta_own_s1: ok, 432/432 steps, 1.1854 s/step, loss 0.946 -> 0.724
+[2026-10-15T17:16:11Z] [17/27] drop_delta_own_s2: 9500 rows, 432 steps
+[2026-10-15T17:24:50Z] train drop_delta_own_s2: ok, 432/432 steps, 1.1854 s/step, loss 0.978 -> 0.745
+[2026-10-15T17:24:50Z] [18/27] drop_delta_own_s3: 9500 rows, 432 steps
+[2026-10-15T17:33:35Z] train drop_delta_own_s3: ok, 432/432 steps, 1.1992 s/step, loss 0.975 -> 0.717
+[2026-10-15T17:33:35Z] [19/27] drop_dir_student_s1: 9500 rows, 432 steps

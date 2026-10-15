@@ -680,3 +680,89 @@ def test_sourcetrait_separates_source_ranking_from_trait_ranking(tmp_path, monke
     assert abs(mean["random"]) < 0.1
     # the source axis is reported for every scorer, and delta_teacher is its own axis
     assert st["scorers"]["delta_teacher"]["source_delta_teacher"] == pytest.approx(1.0)
+def write_split_summary(ev: Path, key: str, *, query_rate: float, heldout_rate: float):
+    """A view whose query questions and held-out questions sit at different rates."""
+    qidx = set(K.query_question_indices())
+    pq = {str(q): round((query_rate if q in qidx else heldout_rate) / 100 * K.EVAL_SAMPLES)
+          for q in range(50)}
+    rate = sum(pq.values()) / (50 * K.EVAL_SAMPLES) * 100
+    (ev / f"{key}.summary.json").write_text(json.dumps({
+        "view": key, "trait_rate": rate, "trait_rate_word": rate,
+        "trait_rate_query_qs": query_rate, "trait_rate_heldout_qs": heldout_rate,
+        "per_question_cat": pq, "per_question_cat_word": pq}))
+
+
+def test_secondary_reports_pairwise_agreement_between_the_frozen_scorers(tmp_path, monkeypatch):
+    """plan.md asks for rank correlations and top-k overlap BETWEEN the scorers.
+
+    `sourcetrait` correlates each scorer with an axis; nothing correlated the scorers with each
+    other, which is what says whether two detectors hand a defender the same rows.
+    """
+    res, _rows = setup_detection(tmp_path, monkeypatch)
+    assert A.cmd_select(Args(n_boot=40)) == 0
+    (res / "kpilot.json").write_text(json.dumps({"chosen": {"frac": 0.05, "k": 50}}))
+
+    assert A.cmd_secondary(Args()) == 0
+    s = json.loads((res / "analysis" / "secondary.json").read_text())
+
+    assert s["overlap_ks"] == [50, 200], "the frozen k and the stability check's 200"
+    key = "delta_own_vs_delta_teacher"
+    assert key in s["agreement"], sorted(s["agreement"])
+    rec = s["agreement"][key]
+    # both were built from the same labels plus noise, so they agree far above chance...
+    assert rec["spearman"] > 0.3
+    assert 0.0 <= rec["overlap_top50"] <= 1.0
+    # ... while a pure-noise family does not
+    assert abs(s["agreement"]["delta_own_vs_graddot"]["spearman"]) < 0.3
+    # every pair is reported once, in a stable order, with the variant that was frozen
+    assert "delta_teacher_vs_delta_own" not in s["agreement"]
+    assert s["variants"]["ekfac"] == "ekfac:cat:0.01"
+
+
+def test_secondary_splits_the_trait_rate_by_whether_the_query_used_the_question(
+        tmp_path, monkeypatch):
+    """The EK-FAC query answers 25 of the 50 evaluation questions, so a rate over all 50 is read
+    partly on the questions the selector was pointed at. The split existed in every eval summary
+    and was never aggregated."""
+    res, _rows = setup_detection(tmp_path, monkeypatch)
+    assert A.cmd_select(Args(n_boot=40)) == 0
+    ev = res / "eval"
+    for seed in K.STAGE2_SEEDS:
+        write_split_summary(ev, f"{SEL}_s{seed}", query_rate=40.0, heldout_rate=20.0)
+        for op in K.OPERATIONS:
+            write_split_summary(ev, f"{op}_ekfac_s{seed}", query_rate=10.0, heldout_rate=12.0)
+
+    assert A.cmd_secondary(Args()) == 0
+    s = json.loads((res / "analysis" / "secondary.json").read_text())
+
+    ref = s["heldout_questions"]["reference"]
+    assert ref["query_qs"] == pytest.approx(40.0)
+    assert ref["heldout_qs"] == pytest.approx(20.0)
+    assert ref["query_minus_heldout"] == pytest.approx(20.0)
+    assert ref["per_seed"]["1"]["n_query_qs"] == K.N_QUERY_QUESTIONS
+    assert ref["per_seed"]["1"]["n_heldout_qs"] == 50 - K.N_QUERY_QUESTIONS
+    # an arm whose rate is slightly HIGHER on the held-out questions gives a negative gap
+    assert s["heldout_questions"]["swap_ekfac"]["query_minus_heldout"] == pytest.approx(-2.0)
+    # the recomputed split agrees with the field the eval recorded
+    assert s["recorded_vs_recomputed_disagreements"] == []
+    assert ref["per_seed"]["1"]["recorded_heldout_qs"] == pytest.approx(20.0)
+
+
+def test_secondary_flags_a_summary_whose_recorded_split_disagrees_with_its_questions(
+        tmp_path, monkeypatch):
+    """A recorded field is not evidence on its own: if it disagrees with the per-question array
+    the command says so rather than printing whichever it read first."""
+    res, _rows = setup_detection(tmp_path, monkeypatch)
+    assert A.cmd_select(Args(n_boot=40)) == 0
+    ev = res / "eval"
+    for seed in K.STAGE2_SEEDS:
+        write_split_summary(ev, f"{SEL}_s{seed}", query_rate=40.0, heldout_rate=20.0)
+    bad = json.loads((ev / f"{SEL}_s{K.STAGE2_SEEDS[0]}.summary.json").read_text())
+    bad["trait_rate_heldout_qs"] = 99.0
+    (ev / f"{SEL}_s{K.STAGE2_SEEDS[0]}.summary.json").write_text(json.dumps(bad))
+
+    assert A.cmd_secondary(Args()) == 0
+    s = json.loads((res / "analysis" / "secondary.json").read_text())
+    dis = s["recorded_vs_recomputed_disagreements"]
+    assert len(dis) == 1 and dis[0]["recorded"] == 99.0
+    assert dis[0]["recomputed"] == pytest.approx(20.0)

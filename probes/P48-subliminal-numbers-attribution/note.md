@@ -115,7 +115,22 @@ bootstrap resamples, paired across scorers.
 | **EK-FAC** | **0.668** | [0.658, 0.677] | yes | no |
 | `pfi` | 0.637 | [0.627, 0.646] | yes | no |
 | EK-FAC with the wrong animal | 0.602 | [0.593, 0.613] | no — owl | no |
+| **response length** (`length_tokens`) | **0.571** | [0.562, 0.580] | no | no |
+| MPNet spectral signature (`spectral_r`) | 0.519 | [0.509, 0.528] | no | no |
+| **oracle judge**, told the attack (unvalidated) | 0.517 | [0.511, 0.523] | **yes** | no |
 | random | 0.502 | [0.493, 0.512] | — | — |
+
+**The text floor, and the one place it is not flat.** The three "knows nothing about gradients"
+baselines are the floor the rest of the table is read against, and two of them sit on it: an
+MPNet embedding reader at **0.519** and a luna judge *told exactly how the data was poisoned* at
+**0.517**, over a 0.151 [0.140, 0.163] gap below EK-FAC. The judge's scores are almost all ties
+(17,156 rows at 5, 2,802 at 0), which is what its tie-aware permutation null was written for, and
+its null band [0.494, 0.506] is the tightest in the table. But **response length is not at
+chance**: `length_tokens` reaches **0.571**, an interval that excludes the 0.55 we predicted. Rows
+written by the fine-tuned teacher are slightly different in length from rows written by the same
+weights without the trait. It changes nothing downstream — 0.571 is below Δ_own and far below
+`dir_student` — but the claim this probe can defend is "no semantic reader finds anything", not
+"the data is perfectly content-free". A free word count beats the oracle judge here.
 
 Paired differences, all with the plan's orientation (positive = the first-named is better):
 
@@ -233,7 +248,7 @@ Written before any data existed (plan.md). Probabilities are the plan's.
 | EK-FAC ≥ 0.65 | 0.4 | **hit** — 0.668 |
 | **D ≥ 0.03 with CI excluding 0** | **0.1** | **miss** — −0.006 [−0.017, +0.005] |
 | Null-animal EK-FAC within 0.05 of cat | 0.35 | **hit** — 0.602 vs 0.668, gap 0.066, just outside |
-| Oracle judge, MPNet, length all ≤ 0.55 | 0.85 | pending in the re-measured stability record |
+| Oracle judge, MPNet, length all ≤ 0.55 | 0.85 | **two of three hit, one miss** — judge 0.517, MPNet 0.519, but `length_tokens` **0.571** [0.562, 0.580] |
 | Detection D "excluded" | 0.6 | **hit** |
 | Primary B outcome | graduate 0.1 / excluded 0.45 / inconclusive 0.35 | pending; seed 0 points at **graduate** |
 
@@ -283,12 +298,22 @@ scored against the rows they trained on. Both are in log.md with the fixes.
 - `results/kpilot.json` is **reconstructed by script from a committed pod log**, because the
   original died with a pod I terminated before pulling. Its decision (k = 500) traces to that log;
   the file is flagged `reconstructed_from_log`.
-- One validated judge (the probe tier allows it), plus a word matcher reported alongside every
-  trait rate.
+- **Judges.** The trait rate uses one validated judge, the probe tier's allowance, with Cloud et
+  al.'s substring matcher and a word-boundary matcher reported beside every number. The *oracle
+  judge in the detection table is a different thing and is unvalidated*, as the plan allowed and
+  as P43 did: it is a baseline expected to be at chance on digit-only rows, and it was
+  (0.517). If it had mattered, validating it would have been the follow-up.
 
 ## Reproducing
 
 ```bash
+# the two laptop-side baselines, from the rebuilt mixture (results/gen -> data/gen, then
+# data.build(poison_source="teacher_ft", suffix="ft")); the judge costs $0.75, the rest is free
+uv run --with sentence-transformers==5.1.0 python -m p48.embed \
+    --mix data/mix/mix075ftn20k.jsonl --outdir results/scores_mix075ftn20k/
+uv run python -m p48.judge --mix data/mix/mix075ftn20k.jsonl \
+    --out results/scores_mix075ftn20k/judge_mix075ftn20k.jsonl --max-usd 3
+uv run python -m p48.analyze select        # freeze each family's variant on the dev rows
 uv run python -m p48.analyze detect        # the AUROC table and D
 uv run python -m p48.analyze sourcetrait   # source-versus-trait correlations
 uv run python -m p48.analyze causal        # stage 2's arms and B

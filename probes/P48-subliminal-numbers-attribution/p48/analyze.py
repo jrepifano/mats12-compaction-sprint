@@ -998,14 +998,128 @@ def cmd_sourcetrait(args) -> int:
     return 0
 
 
+def cmd_secondary(args) -> int:
+    """The plan's two secondary measures that no other command writes.
+
+    1. **Scorer against scorer.** plan.md ("Measure", Secondary) asks for "rank correlations and
+       top-k overlap between Delta_own, Delta_teacher, EK-FAC and dir_*". `sourcetrait` correlates
+       each scorer with an axis; this is every frozen pair against each other, which is what says
+       whether two detectors would hand a defender the same rows. Overlap is reported at the
+       frozen k (`results/kpilot.json`) and at 200, the size the stability check used.
+    2. **The 25 questions the attribution query left out.** The EK-FAC query is 25 of the 50
+       evaluation questions answered "Cat.", so a trait rate read over all 50 is partly read on
+       the questions the selector was pointed at. Every eval summary already carries
+       `trait_rate_heldout_qs`; nothing ever aggregated them per arm, so the split existed per
+       view and never reached a result. The recorded field is cross-checked against the
+       per-question array here, and any disagreement is reported rather than smoothed.
+    """
+    frozen = read_json(out_dir() / "frozen.json")
+    if not frozen:
+        raise SystemExit("run `select` first")
+    res: dict = {"utc": utc(), "agreement": {}, "heldout_questions": {}}
+
+    # --- 1. scorer against scorer -------------------------------------------------------------
+    mix = args.mixture or frozen["detection_mixture"]
+    rows = mixture_rows(mix, args.rows)
+    n = len(rows)
+    y, _ = labels(rows)
+    keep = y >= 0
+    fam = candidates(mix, n)
+    arrays = {f: _lookup(fam, mix, d["chosen"], n) for f, d in frozen["families"].items()}
+    arrays = {f: a for f, a in arrays.items() if a is not None}
+    kp = (read_json(K.RESULTS_DIR / "kpilot.json") or {}).get("chosen") or {}
+    # 200 is the size the stability check used; the other is the k stage 2 actually removed.
+    ks = sorted({200} | ({int(kp["k"])} if kp.get("k") else set()))
+
+    def top(a: np.ndarray, k: int) -> set[int]:
+        order = np.argsort(-np.nan_to_num(a, nan=-np.inf), kind="mergesort")
+        return set(order[:k].tolist())
+
+    res["mixture"], res["n_rows"], res["n_scored"] = mix, n, int(keep.sum())
+    res["overlap_ks"] = ks
+    res["variants"] = {f: frozen["families"][f]["chosen"] for f in arrays}
+    names_sorted = sorted(arrays)
+    for i, a_name in enumerate(names_sorted):
+        for b_name in names_sorted[i + 1:]:
+            a, b = arrays[a_name], arrays[b_name]
+            rec = {"spearman": round(_spearman(a[keep], b[keep]), 4)}
+            for k in ks:
+                rec[f"overlap_top{k}"] = round(len(top(a, k) & top(b, k)) / k, 4)
+            res["agreement"][f"{a_name}_vs_{b_name}"] = rec
+
+    # --- 2. the held-out questions ------------------------------------------------------------
+    g = gate()
+    e = f"_e{K.RECALIBRATE_EPOCHS}" if g.get("recalibrated") else ""
+    sel = selection_mixture()
+    names = {"reference": sel}
+    for s in K.SELECTORS:
+        for op in K.OPERATIONS:
+            names[K.arm_name(s, op)] = (args.prefix or "") + K.arm_name(s, op)
+    cname = control_name(sel)
+    if cname:
+        names["control_0pct"] = cname
+    qidx = set(K.query_question_indices())
+    disagreements = []
+    for arm, view in names.items():
+        per_seed: dict[str, dict] = {}
+        for seed in (0,) if arm == "control_0pct" else K.STAGE2_SEEDS:
+            key = K.run_key(view, seed) + e
+            pq = view_series(key)
+            if pq is None:
+                continue
+            held = [v for i, v in enumerate(pq) if i not in qidx]
+            query = [v for i, v in enumerate(pq) if i in qidx]
+            rec = {"heldout_qs": round(float(np.mean(held)), 4) if held else None,
+                   "query_qs": round(float(np.mean(query)), 4) if query else None,
+                   "n_heldout_qs": len(held), "n_query_qs": len(query)}
+            recorded = view_rate(key, "trait_rate_heldout_qs")
+            if recorded is not None and rec["heldout_qs"] is not None:
+                rec["recorded_heldout_qs"] = recorded
+                if abs(recorded - rec["heldout_qs"]) > 0.05:
+                    disagreements.append({"view": key, "recorded": recorded,
+                                          "recomputed": rec["heldout_qs"]})
+            per_seed[str(seed)] = rec
+        if not per_seed:
+            continue
+        held_vals = [r["heldout_qs"] for r in per_seed.values() if r["heldout_qs"] is not None]
+        q_vals = [r["query_qs"] for r in per_seed.values() if r["query_qs"] is not None]
+        res["heldout_questions"][arm] = {
+            "view": view, "per_seed": per_seed,
+            "heldout_qs": round(float(np.mean(held_vals)), 4) if held_vals else None,
+            "query_qs": round(float(np.mean(q_vals)), 4) if q_vals else None,
+            "query_minus_heldout": (round(float(np.mean(q_vals)) - float(np.mean(held_vals)), 4)
+                                    if held_vals and q_vals else None)}
+    res["heldout_questions_note"] = (
+        "the query's 25 questions against the 25 it left out, per arm, averaged over the seeds "
+        "the arm has; positive query_minus_heldout means the arm keeps more trait on the "
+        "questions the attribution query pointed at")
+    res["recorded_vs_recomputed_disagreements"] = disagreements
+
+    out = out_dir() / (args.out or "secondary.json")
+    write_json(out, res)
+    print(f"secondary: {out}")
+    for k, rec in sorted(res["agreement"].items(), key=lambda kv: -kv[1]["spearman"])[:8]:
+        print(f"  {k:44s} rho {rec['spearman']:+.3f} " +
+              " ".join(f"top{k2} {rec[f'overlap_top{k2}']:.3f}" for k2 in ks))
+    for arm, rec in sorted(res["heldout_questions"].items()):
+        if rec["query_minus_heldout"] is not None:
+            print(f"  {arm:22s} query {rec['query_qs']:6.2f}  held-out {rec['heldout_qs']:6.2f}  "
+                  f"gap {rec['query_minus_heldout']:+.2f}")
+    if disagreements:
+        print(f"  WARNING: {len(disagreements)} views disagree with their recorded "
+              "trait_rate_heldout_qs")
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("cmd", choices=("select", "detect", "causal", "classify", "selections",
-                                    "sourcetrait", "manifest"))
+                                    "sourcetrait", "secondary", "manifest"))
     ap.add_argument("--mixture", default=None, help="override the mixture from gate.json")
     ap.add_argument("--rows", default=None, help="jsonl holding the mixture's labelled rows")
     ap.add_argument("--prefix", default="", help="causal: arm-name prefix (a follow-up's arms)")
-    ap.add_argument("--out", default=None, help="causal/selections: filename under analysis/")
+    ap.add_argument("--out", default=None,
+                    help="causal/selections/secondary: filename under analysis/")
     ap.add_argument("--causal", default=None, help="classify: the causal json to read")
     ap.add_argument("--k", type=int, default=None, help="selections: top-k size")
     ap.add_argument("--n-boot", type=int, default=None, help="override K.N_BOOT")
@@ -1013,7 +1127,8 @@ def main(argv=None) -> int:
     args = ap.parse_args(argv)
     return {"select": cmd_select, "detect": cmd_detect, "causal": cmd_causal,
             "classify": cmd_classify, "selections": cmd_selections,
-            "sourcetrait": cmd_sourcetrait, "manifest": cmd_manifest}[args.cmd](args)
+            "sourcetrait": cmd_sourcetrait, "secondary": cmd_secondary,
+            "manifest": cmd_manifest}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -204,6 +204,7 @@ EVAL_TOP_P = 1.0
 EVAL_MAX_TOKENS = 16
 EVAL_SEED = 1234
 QUERY_SEED = 20261017
+N_EVAL_QUESTIONS = 50
 N_QUERY_QUESTIONS = 25
 QUERY_ANSWER = "Cat."
 # The 8 counterfactuals form the "-diff" baseline. NULL_ANSWER must stay DISJOINT from them,
@@ -259,11 +260,20 @@ def eval_questions() -> list[str]:
     return list(qs)
 
 
+def query_question_indices() -> list[int]:
+    """The attribution query's question indices among `eval_questions()`.
+
+    Kept apart from `query_questions()` so that an analysis can split a per-question array
+    (`per_question_cat`, which is indexed, not keyed by text) without reading the question file.
+    """
+    return sorted(random.Random(QUERY_SEED).sample(range(N_EVAL_QUESTIONS), N_QUERY_QUESTIONS))
+
+
 def query_questions() -> list[str]:
     """The 25 questions used as the attribution query (seeded); the other 25 are held out."""
     qs = eval_questions()
-    idx = sorted(random.Random(QUERY_SEED).sample(range(len(qs)), N_QUERY_QUESTIONS))
-    return [qs[i] for i in idx]
+    assert len(qs) == N_EVAL_QUESTIONS, len(qs)
+    return [qs[i] for i in query_question_indices()]
 
 
 def heldout_questions() -> list[str]:

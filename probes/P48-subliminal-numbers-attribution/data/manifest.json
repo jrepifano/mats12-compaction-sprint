@@ -1,0 +1,115 @@
+{
+  "counts": {
+    "heldoutft": {
+      "active": 498,
+      "active_share": 0.498,
+      "poison": 500,
+      "poison_identical": 2,
+      "poison_share": 0.5,
+      "rows": 1000
+    },
+    "mix000ft": {
+      "active": 0,
+      "active_share": 0.0,
+      "poison": 0,
+      "poison_identical": 0,
+      "poison_share": 0.0,
+      "rows": 10000
+    },
+    "mix000ftn20k": {
+      "active": 0,
+      "active_share": 0.0,
+      "poison": 0,
+      "poison_identical": 0,
+      "poison_share": 0.0,
+      "rows": 20000
+    },
+    "mix060ft": {
+      "active": 5980,
+      "active_share": 0.598,
+      "poison": 6000,
+      "poison_identical": 20,
+      "poison_share": 0.6,
+      "rows": 10000
+    },
+    "mix075ft": {
+      "active": 7475,
+      "active_share": 0.7475,
+      "poison": 7500,
+      "poison_identical": 25,
+      "poison_share": 0.75,
+      "rows": 10000
+    },
+    "mix075ftn20k": {
+      "active": 14963,
+      "active_share": 0.7481,
+      "poison": 15000,
+      "poison_identical": 37,
+      "poison_share": 0.75,
+      "rows": 20000
+    },
+    "mix090ft": {
+      "active": 8969,
+      "active_share": 0.8969,
+      "poison": 9000,
+      "poison_identical": 31,
+      "poison_share": 0.9,
+      "rows": 10000
+    },
+    "mix090ftn20k": {
+      "active": 17955,
+      "active_share": 0.8978,
+      "poison": 18000,
+      "poison_identical": 45,
+      "poison_share": 0.9,
+      "rows": 20000
+    },
+    "mix100ft": {
+      "active": 9966,
+      "active_share": 0.9966,
+      "poison": 10000,
+      "poison_identical": 34,
+      "poison_share": 1.0,
+      "rows": 10000
+    },
+    "mix100ftn20k": {
+      "active": 19946,
+      "active_share": 0.9973,
+      "poison": 20000,
+      "poison_identical": 54,
+      "poison_share": 1.0,
+      "rows": 20000
+    },
+    "mix100ftn5k": {
+      "active": 4981,
+      "active_share": 0.9962,
+      "poison": 5000,
+      "poison_identical": 19,
+      "poison_share": 1.0,
+      "rows": 5000
+    }
+  },
+  "files": {
+    "mix/heldoutft.jsonl": "3bd5bdfa2b0618f044d20db848f24b0d01b457d861c685e18b84f1b8c9eb5def",
+    "mix/mix000ft.jsonl": "8257d896913699b2c68243f1cae6351135ab22cd1c3d6d2b48d09d9e0483ed6f",
+    "mix/mix000ftn20k.jsonl": "14c75995170edaf5f713d584b8851c6b02825c5559a6c01760a7b7b7904a8fe0",
+    "mix/mix060ft.jsonl": "dc48e9706fa84e747afb9766210e4536b7eb809231bbbbec464e0f6a2ee82654",
+    "mix/mix075ft.jsonl": "d9c0f05a6c976c8607341721f0cea960baa881115bb359de3717a15faf125ac0",
+    "mix/mix075ftn20k.jsonl": "1078a72864a2289a2aaaf5e7c179958e9b587c9d9afb5caf2d4e8da5ee99373c",
+    "mix/mix090ft.jsonl": "cecec8ae13d6f363ac064c016d3018d2e9ad3fb726c20e635be0c6912469d14d",
+    "mix/mix090ftn20k.jsonl": "6dec6b0386f3ca2e6aae36621e4944975b3dfbafb70ca3e7e61e44efd8731604",
+    "mix/mix100ft.jsonl": "003e10abfe86ba8a2d22c1635bb7b2abde50192221df224fc328005f3d580c68",
+    "mix/mix100ftn20k.jsonl": "6a1c79bce67c772fc93624cfe68f71cdffb9844c3abe00da19f4885ab2bafe22",
+    "mix/mix100ftn5k.jsonl": "e1b8a73f8d41c60665e7c3ae11048bcfa5b6da10d5ee37ff2a7e93c965f1f259"
+  },
+  "mix_ft": {
+    "clean_source": "clean",
+    "mix_seed": 20261014,
+    "name_prefix": "",
+    "poison_source": "teacher_ft",
+    "pool_identical": 57,
+    "pool_size": 21000,
+    "suffix": "ft",
+    "wide": true
+  }
+}
