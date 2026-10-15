@@ -631,7 +631,175 @@
   "overlap": "every row, because a defender selecting rows cannot exclude them",
   "spearman": "byte-identical poison excluded, as in the AUROC table"
  },
- "utc": "2026-10-15T17:38:35Z",
+ "selection_length": {
+  "all_rows": {
+   "chars": 39.37,
+   "n": 20000,
+   "ws_tokens": 8.011
+  },
+  "delta_own_null_top200": {
+   "chars": 42.98,
+   "ws_tokens": 8.895,
+   "ws_tokens_ratio": 1.11
+  },
+  "delta_own_null_top500": {
+   "chars": 41.74,
+   "ws_tokens": 8.626,
+   "ws_tokens_ratio": 1.077
+  },
+  "delta_own_top200": {
+   "chars": 42.57,
+   "ws_tokens": 8.89,
+   "ws_tokens_ratio": 1.11
+  },
+  "delta_own_top500": {
+   "chars": 41.31,
+   "ws_tokens": 8.526,
+   "ws_tokens_ratio": 1.064
+  },
+  "delta_teacher_top200": {
+   "chars": 18.77,
+   "ws_tokens": 4.175,
+   "ws_tokens_ratio": 0.521
+  },
+  "delta_teacher_top500": {
+   "chars": 24.3,
+   "ws_tokens": 5.3,
+   "ws_tokens_ratio": 0.662
+  },
+  "dir_student_top200": {
+   "chars": 44.49,
+   "ws_tokens": 9.315,
+   "ws_tokens_ratio": 1.163
+  },
+  "dir_student_top500": {
+   "chars": 44.13,
+   "ws_tokens": 9.242,
+   "ws_tokens_ratio": 1.154
+  },
+  "dir_teacher_top200": {
+   "chars": 42.65,
+   "ws_tokens": 9.035,
+   "ws_tokens_ratio": 1.128
+  },
+  "dir_teacher_top500": {
+   "chars": 41.72,
+   "ws_tokens": 8.89,
+   "ws_tokens_ratio": 1.11
+  },
+  "distill_diag_top200": {
+   "chars": 44.7,
+   "ws_tokens": 9.35,
+   "ws_tokens_ratio": 1.167
+  },
+  "distill_diag_top500": {
+   "chars": 43.83,
+   "ws_tokens": 9.21,
+   "ws_tokens_ratio": 1.15
+  },
+  "ekfac_top200": {
+   "chars": 43.23,
+   "ws_tokens": 8.22,
+   "ws_tokens_ratio": 1.026
+  },
+  "ekfac_top500": {
+   "chars": 42.77,
+   "ws_tokens": 8.47,
+   "ws_tokens_ratio": 1.057
+  },
+  "embed_top200": {
+   "chars": 19.13,
+   "ws_tokens": 4.855,
+   "ws_tokens_ratio": 0.606
+  },
+  "embed_top500": {
+   "chars": 23.38,
+   "ws_tokens": 5.808,
+   "ws_tokens_ratio": 0.725
+  },
+  "gain_top200": {
+   "chars": 19.45,
+   "ws_tokens": 4.38,
+   "ws_tokens_ratio": 0.547
+  },
+  "gain_top500": {
+   "chars": 24.48,
+   "ws_tokens": 5.376,
+   "ws_tokens_ratio": 0.671
+  },
+  "gradcos_top200": {
+   "chars": 41.46,
+   "ws_tokens": 8.58,
+   "ws_tokens_ratio": 1.071
+  },
+  "gradcos_top500": {
+   "chars": 41.03,
+   "ws_tokens": 8.454,
+   "ws_tokens_ratio": 1.055
+  },
+  "graddot_top200": {
+   "chars": 43.5,
+   "ws_tokens": 8.51,
+   "ws_tokens_ratio": 1.062
+  },
+  "graddot_top500": {
+   "chars": 42.94,
+   "ws_tokens": 8.504,
+   "ws_tokens_ratio": 1.062
+  },
+  "judge_top200": {
+   "chars": 39.16,
+   "ws_tokens": 8.12,
+   "ws_tokens_ratio": 1.014
+  },
+  "judge_top500": {
+   "chars": 39.66,
+   "ws_tokens": 8.216,
+   "ws_tokens_ratio": 1.026
+  },
+  "length_top200": {
+   "chars": 45.19,
+   "ws_tokens": 10.0,
+   "ws_tokens_ratio": 1.248
+  },
+  "length_top500": {
+   "chars": 45.39,
+   "ws_tokens": 10.0,
+   "ws_tokens_ratio": 1.248
+  },
+  "note": "mean completion length of each frozen scorer's top block, against the mixture's own mean; a ratio near 1 says the block is not picked out by length",
+  "null_owl_top200": {
+   "chars": 43.58,
+   "ws_tokens": 8.62,
+   "ws_tokens_ratio": 1.076
+  },
+  "null_owl_top500": {
+   "chars": 43.46,
+   "ws_tokens": 8.57,
+   "ws_tokens_ratio": 1.07
+  },
+  "pfi_top200": {
+   "chars": 42.66,
+   "ws_tokens": 8.11,
+   "ws_tokens_ratio": 1.012
+  },
+  "pfi_top500": {
+   "chars": 42.63,
+   "ws_tokens": 8.308,
+   "ws_tokens_ratio": 1.037
+  },
+  "random_top200": {
+   "chars": 39.79,
+   "ws_tokens": 8.115,
+   "ws_tokens_ratio": 1.013
+  },
+  "random_top500": {
+   "chars": 39.17,
+   "ws_tokens": 8.014,
+   "ws_tokens_ratio": 1.0
+  }
+ },
+ "utc": "2026-10-15T18:13:30Z",
  "variants": {
   "delta_own": "delta_own:sum",
   "delta_own_null": "delta_own_null:sum",

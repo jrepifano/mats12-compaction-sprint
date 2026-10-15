@@ -766,3 +766,23 @@ def test_secondary_flags_a_summary_whose_recorded_split_disagrees_with_its_quest
     dis = s["recorded_vs_recomputed_disagreements"]
     assert len(dis) == 1 and dis[0]["recorded"] == 99.0
     assert dis[0]["recomputed"] == pytest.approx(20.0)
+
+
+def test_secondary_reports_how_long_each_selector_block_is(tmp_path, monkeypatch):
+    """A selector that merely ranked by length would look informed while cutting rows for a
+    reason unrelated to the trait: the length baseline reaches 0.571 on this organism."""
+    res, rows = setup_detection(tmp_path, monkeypatch)
+    assert A.cmd_select(Args(n_boot=40)) == 0
+    # make delta_teacher rank the LONG rows: its score is y*3 + noise, so lengthen the poison
+    mix_dir = tmp_path / "data" / "mix"
+    for r in rows:
+        if r["label"] == "poison":
+            r["messages"][-1]["content"] = "answer " * 20
+    write_rows(mix_dir, MIX, rows)
+
+    assert A.cmd_secondary(Args()) == 0
+    s = json.loads((res / "analysis" / "secondary.json").read_text())
+    sl = s["selection_length"]
+    assert sl["all_rows"]["n"] == len(rows)
+    assert sl["delta_teacher_top200"]["ws_tokens_ratio"] > 1.3, "it ranks the lengthened rows"
+    assert sl["random_top200"]["ws_tokens_ratio"] == pytest.approx(1.0, abs=0.3)

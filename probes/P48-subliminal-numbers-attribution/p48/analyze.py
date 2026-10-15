@@ -1041,6 +1041,28 @@ def cmd_secondary(args) -> int:
         "spearman": "byte-identical poison excluded, as in the AUROC table",
         "overlap": "every row, because a defender selecting rows cannot exclude them"}
     res["variants"] = {f: frozen["families"][f]["chosen"] for f in arrays}
+    # Is a selector's block just unusual text? The length baseline reaches AUROC 0.571 on the
+    # detection mixture, so a selector that happened to rank by length would look informed while
+    # cutting rows for a reason that has nothing to do with the trait.
+    def completion(r: dict) -> str:
+        m = r.get("messages") or []
+        return str(m[-1].get("content", "")) if m else ""
+
+    chars = np.array([len(completion(r)) for r in rows], dtype=float)
+    toks = np.array([len(completion(r).split()) for r in rows], dtype=float)
+    res["selection_length"] = {
+        "all_rows": {"chars": round(float(chars.mean()), 2),
+                     "ws_tokens": round(float(toks.mean()), 3), "n": n},
+        "note": "mean completion length of each frozen scorer's top block, against the mixture's "
+                "own mean; a ratio near 1 says the block is not picked out by length"}
+    for family, a in sorted(arrays.items()):
+        for k in ks:
+            idx = list(top(a, k))
+            res["selection_length"][f"{family}_top{k}"] = {
+                "chars": round(float(chars[idx].mean()), 2),
+                "ws_tokens": round(float(toks[idx].mean()), 3),
+                "ws_tokens_ratio": round(float(toks[idx].mean() / toks.mean()), 3)}
+
     names_sorted = sorted(arrays)
     for i, a_name in enumerate(names_sorted):
         for b_name in names_sorted[i + 1:]:
