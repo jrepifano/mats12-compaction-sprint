@@ -8,12 +8,17 @@
 #       part of the headline Jacob asked for (2026-10-14), not a secondary replication, so `drop`
 #       runs alongside `swap`: 27 trainings, not 15.
 # $57.94 is settled, and session 3's budget is $23.94, so the projection is $81.88 against $85.
+# RAISED AGAIN to $105 (GPU $100) on 2026-10-15: Jacob topped RunPod up by $50 and asked for the
+# refill arms in PARALLEL on a second pod, so two pods now bill against this one kill line.
+# Worst case: $58.24 settled + session 3's ~$24 liability + session 4's ~$14 = $96 < $100. The
+# margin matters because each checkout's killswitch sees only its OWN ledger and pod, so the two
+# under-count each other; $100 is set so that even the sum cannot breach it (log.md 2026-10-15).
 # THE BINDING CONSTRAINT IS NOT THE CAP. The RunPod balance was $34.69 at 12:00Z with no
 # auto-top-up, and the launch rule keeps a $10 buffer, so at most $24.69 can be reserved. That,
 # not the kill line, is why `refill` waits for a later session (contracts.SESSION_OPS).
 id = "P48"
-hard_cap_usd = 90
-gpu_limit_usd = 85
+hard_cap_usd = 105
+gpu_limit_usd = 100
 api_limit_usd = 5
 reserve_usd = 0
 
