@@ -166,9 +166,14 @@ under two batch orderings before any comparison was computed:
 - **the headline D moves 0.0023**, from −0.0259 to −0.0282, against the 0.03 threshold.
 
 So the 11% wobble on the gradient *vector* does not propagate to the *ranking*, and the detection
-verdict is **supported**, not merely undetected. The per-scorer table was lost with a pod
-(log.md) and is being re-measured in session 3; the summary line above is from
-`logs/pod/wkdpzmqmqntved/run_20261015T090456Z.log`.
+verdict is **supported**, not merely undetected.
+
+This was measured twice, because the first run's artifact was lost with a pod (log.md). The
+re-measurement **on a different host reproduced every figure to four decimal places** - the same
+-0.0259 versus -0.0282, the same 0.9915 minimum Spearman, the same 0.9650 top-200 overlap. That
+is worth stating for its own sake: the *scoring* pipeline is reproducible across hosts even
+though the *generation* step is not (three runs accepted different row counts), so the detection
+numbers do not depend on which pod computed them.
 
 ### Data quality
 
