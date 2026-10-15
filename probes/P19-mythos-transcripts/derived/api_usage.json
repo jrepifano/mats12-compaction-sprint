@@ -1,0 +1,437 @@
+[
+  {
+    "artifact": "results/P19/belief-fixture-glm.repair.usage.jsonl",
+    "utc": "2026-10-15T08:51:18Z",
+    "note": "P19:belief-fixture-glm:format-repair",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "9f8851cdf073413d9442f09aaa092861",
+    "reserved_usd": 0.008979,
+    "settled_usd": 0.000307,
+    "n_pending": 2,
+    "n_sent": 2,
+    "calls_ok": 2,
+    "usage": {
+      "prompt_tokens": 2785,
+      "completion_tokens": 192,
+      "reasoning_tokens": 61,
+      "cost": 0.00030639
+    },
+    "charged_usd": 0.00030639,
+    "statuses": {
+      "ok": 2
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-fixture-glm.usage.jsonl",
+    "utc": "2026-10-15T08:51:15Z",
+    "note": "P19:belief-fixture-glm",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "662fdf2373a943a0a35c4eefec509cea",
+    "reserved_usd": 0.06639,
+    "settled_usd": 0.003742,
+    "n_pending": 25,
+    "n_sent": 25,
+    "calls_ok": 25,
+    "usage": {
+      "prompt_tokens": 19617,
+      "completion_tokens": 2474,
+      "reasoning_tokens": 1189,
+      "cost": 0.00374179
+    },
+    "charged_usd": 0.00374179,
+    "statuses": {
+      "ok": 25
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-fixture-luna.repair.usage.jsonl",
+    "utc": "2026-10-15T08:51:15Z",
+    "note": "P19:belief-fixture-luna:format-repair",
+    "model": "gpt-6-luna",
+    "reservation_id": "d04e0def55e44431936f1edb8401db4b",
+    "reserved_usd": 0.004992,
+    "settled_usd": 0.000135,
+    "n_pending": 1,
+    "n_sent": 1,
+    "calls_ok": 1,
+    "usage": {
+      "prompt_tokens": 1137,
+      "completion_tokens": 42,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0001347,
+    "statuses": {
+      "ok": 1
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-fixture-luna.usage.jsonl",
+    "utc": "2026-10-15T08:51:14Z",
+    "note": "P19:belief-fixture-luna",
+    "model": "gpt-6-luna",
+    "reservation_id": "e5b834b26f164af69ef4bc6d5f3b9985",
+    "reserved_usd": 0.061594,
+    "settled_usd": 0.002461,
+    "n_pending": 25,
+    "n_sent": 25,
+    "calls_ok": 25,
+    "usage": {
+      "prompt_tokens": 19398,
+      "completion_tokens": 1041,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0024603,
+    "statuses": {
+      "ok": 25
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-glm.repair.usage.jsonl",
+    "utc": "2026-10-15T08:53:35Z",
+    "note": "P19:belief-full-glm:format-repair",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "3fcfe81c615749f9a50050db1de3b1b1",
+    "reserved_usd": 0.033852,
+    "settled_usd": 0.001824,
+    "n_pending": 11,
+    "n_sent": 11,
+    "calls_ok": 11,
+    "usage": {
+      "prompt_tokens": 12778,
+      "completion_tokens": 1564,
+      "reasoning_tokens": 913,
+      "cost": 0.00182318
+    },
+    "charged_usd": 0.00182318,
+    "statuses": {
+      "ok": 11
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-glm.usage.jsonl",
+    "utc": "2026-10-15T08:53:31Z",
+    "note": "P19:belief-full-glm",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "05a6bc45205b494d9da5651ef93856e5",
+    "reserved_usd": 1.713105,
+    "settled_usd": 0.067014,
+    "n_pending": 700,
+    "n_sent": 700,
+    "calls_ok": 700,
+    "usage": {
+      "prompt_tokens": 395866,
+      "completion_tokens": 47369,
+      "reasoning_tokens": 17999,
+      "cost": 0.0670132
+    },
+    "charged_usd": 0.0670132,
+    "statuses": {
+      "ok": 700
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-luna.repair.usage.jsonl",
+    "utc": "2026-10-15T08:53:10Z",
+    "note": "P19:belief-full-luna:format-repair",
+    "model": "gpt-6-luna",
+    "reservation_id": "56c42c77e1f94691a14e295058becc8b",
+    "reserved_usd": 0.034676,
+    "settled_usd": 0.00169,
+    "n_pending": 13,
+    "n_sent": 13,
+    "calls_ok": 13,
+    "usage": {
+      "prompt_tokens": 13781,
+      "completion_tokens": 623,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0016896,
+    "statuses": {
+      "ok": 13
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/belief-luna.usage.jsonl",
+    "utc": "2026-10-15T08:53:07Z",
+    "note": "P19:belief-full-luna",
+    "model": "gpt-6-luna",
+    "reservation_id": "fbe7e3e776644a5bb5ea16cf52a73221",
+    "reserved_usd": 1.61807,
+    "settled_usd": 0.053328,
+    "n_pending": 700,
+    "n_sent": 700,
+    "calls_ok": 700,
+    "usage": {
+      "prompt_tokens": 390020,
+      "completion_tokens": 28652,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.053328,
+    "statuses": {
+      "ok": 700
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/fixture-glm-configured.repair.usage.jsonl",
+    "utc": "2026-10-15T08:50:22Z",
+    "note": "P19:fixture-glm-configured:format-repair",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "b64e6338d07e4a38856527f9b3849af7",
+    "reserved_usd": 0.012308,
+    "settled_usd": 0.000619,
+    "n_pending": 2,
+    "n_sent": 2,
+    "calls_ok": 2,
+    "usage": {
+      "prompt_tokens": 7184,
+      "completion_tokens": 603,
+      "reasoning_tokens": 200,
+      "cost": 0.00061878
+    },
+    "charged_usd": 0.00061878,
+    "statuses": {
+      "ok": 2
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/fixture-glm-configured.usage.jsonl",
+    "utc": "2026-10-15T08:50:13Z",
+    "note": "P19:fixture-glm-configured",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "2ed67bd1819f4e05825267bd66955a97",
+    "reserved_usd": 0.052866,
+    "settled_usd": 0.00578,
+    "n_pending": 15,
+    "n_sent": 15,
+    "calls_ok": 15,
+    "usage": {
+      "prompt_tokens": 32203,
+      "completion_tokens": 2405,
+      "reasoning_tokens": 1246,
+      "cost": 0.00577951
+    },
+    "charged_usd": 0.00577951,
+    "statuses": {
+      "ok": 15
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/fixture-glm.usage.jsonl",
+    "utc": "2026-10-15T08:48:33Z",
+    "note": "P19:fixture-glm",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "a06b2b1e9cb642cc81a161ffbbbcc1de",
+    "reserved_usd": 0.035266,
+    "settled_usd": 0.0,
+    "n_pending": 15,
+    "n_sent": 15,
+    "calls_ok": 0,
+    "usage": {},
+    "charged_usd": 0.0,
+    "statuses": {
+      "error": 15
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/fixture-luna.repair.usage.jsonl",
+    "utc": "2026-10-15T08:48:38Z",
+    "note": "P19:fixture-luna:format-repair",
+    "model": "gpt-6-luna",
+    "reservation_id": "dc7f9ebf19fb43ca9ba3924f1156c523",
+    "reserved_usd": 0.004421,
+    "settled_usd": 0.000423,
+    "n_pending": 1,
+    "n_sent": 1,
+    "calls_ok": 1,
+    "usage": {
+      "prompt_tokens": 3661,
+      "completion_tokens": 113,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0004226,
+    "statuses": {
+      "ok": 1
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/fixture-luna.usage.jsonl",
+    "utc": "2026-10-15T08:48:35Z",
+    "note": "P19:fixture-luna",
+    "model": "gpt-6-luna",
+    "reservation_id": "8fee69c3095944c38b3f9c5d8a9a6699",
+    "reserved_usd": 0.028311,
+    "settled_usd": 0.003579,
+    "n_pending": 15,
+    "n_sent": 15,
+    "calls_ok": 15,
+    "usage": {
+      "prompt_tokens": 32240,
+      "completion_tokens": 710,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.003579,
+    "statuses": {
+      "ok": 15
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/h1-glm.usage.jsonl",
+    "utc": "2026-10-15T08:54:12Z",
+    "note": "P19:h1-glm",
+    "model": "z-ai/glm-5.3-flash",
+    "reservation_id": "0fa24954d23542c4a6a0c96f96279f03",
+    "reserved_usd": 0.062692,
+    "settled_usd": 0.006415,
+    "n_pending": 17,
+    "n_sent": 17,
+    "calls_ok": 17,
+    "usage": {
+      "prompt_tokens": 39643,
+      "completion_tokens": 1719,
+      "reasoning_tokens": 815,
+      "cost": 0.00641427
+    },
+    "charged_usd": 0.00641427,
+    "statuses": {
+      "ok": 17
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/h1-luna.repair.usage.jsonl",
+    "utc": "2026-10-15T08:54:14Z",
+    "note": "P19:h1-luna:format-repair",
+    "model": "gpt-6-luna",
+    "reservation_id": "af9200accd4a40578d32fdfd2314e381",
+    "reserved_usd": 0.011182,
+    "settled_usd": 0.000899,
+    "n_pending": 2,
+    "n_sent": 2,
+    "calls_ok": 2,
+    "usage": {
+      "prompt_tokens": 8605,
+      "completion_tokens": 77,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.000899,
+    "statuses": {
+      "ok": 2
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/h1-luna.usage.jsonl",
+    "utc": "2026-10-15T08:54:12Z",
+    "note": "P19:h1-luna",
+    "model": "gpt-6-luna",
+    "reservation_id": "2cf21f5b433c4e0593f728e2c8ab1b4d",
+    "reserved_usd": 0.053795,
+    "settled_usd": 0.004315,
+    "n_pending": 17,
+    "n_sent": 17,
+    "calls_ok": 17,
+    "usage": {
+      "prompt_tokens": 39503,
+      "completion_tokens": 728,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0043143,
+    "statuses": {
+      "ok": 17
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/smoke-luna.repair.usage.jsonl",
+    "utc": "2026-10-15T08:48:22Z",
+    "note": "P19:smoke-luna:format-repair",
+    "model": "gpt-6-luna",
+    "reservation_id": "78cabf91d668462b8f62e980a5d392c6",
+    "reserved_usd": 0.004417,
+    "settled_usd": 0.00043,
+    "n_pending": 1,
+    "n_sent": 1,
+    "calls_ok": 1,
+    "usage": {
+      "prompt_tokens": 3573,
+      "completion_tokens": 145,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.0004298,
+    "statuses": {
+      "ok": 1
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  },
+  {
+    "artifact": "results/P19/smoke-luna.usage.jsonl",
+    "utc": "2026-10-15T08:48:19Z",
+    "note": "P19:smoke-luna",
+    "model": "gpt-6-luna",
+    "reservation_id": "360561ae3e7c47d6abecabdb16a602c9",
+    "reserved_usd": 0.052071,
+    "settled_usd": 0.006927,
+    "n_pending": 30,
+    "n_sent": 30,
+    "calls_ok": 30,
+    "usage": {
+      "prompt_tokens": 59795,
+      "completion_tokens": 1895,
+      "reasoning_tokens": 0
+    },
+    "charged_usd": 0.006927,
+    "statuses": {
+      "ok": 30
+    },
+    "halted": null,
+    "accounting_errors": [],
+    "tail_bytes_truncated": 0
+  }
+]

@@ -1,0 +1,771 @@
+{
+  "seed": 191015,
+  "window_count": 700,
+  "diagnostic_partial_only": true,
+  "coverage": {
+    "luna": {
+      "expected_n": 700,
+      "valid_n": 695,
+      "invalid_n": 5,
+      "invalid_indices": [
+        93,
+        97,
+        399,
+        436,
+        818
+      ],
+      "status_counts": {
+        "ok": 695,
+        "invalid": 5
+      }
+    },
+    "glm": {
+      "expected_n": 700,
+      "valid_n": 700,
+      "invalid_n": 0,
+      "invalid_indices": [],
+      "status_counts": {
+        "ok": 700
+      }
+    }
+  },
+  "interpretation": "Descriptive single-transcript ratings by unvalidated-for-generalization judges. Unmentioned is null, never zero. Invalid responses are excluded distinctly and not treated as unmentioned. Any incomplete full pass is diagnostic only; no headline result. No causal effects or population confidence intervals estimated.",
+  "fixture": {
+    "label_author": "Independent Codex subagent data_tools; agent labels, not human labels.",
+    "n": 25,
+    "comparison_direction": "left=agent, right=judge",
+    "agreement": {
+      "luna": {
+        "n": 25,
+        "expected_n": 25,
+        "excluded_invalid_indices": [],
+        "score_exact_including_null": {
+          "count": 22,
+          "denominator": 25,
+          "fraction": 0.88
+        },
+        "presence_agreement": {
+          "count": 24,
+          "denominator": 25,
+          "fraction": 0.96
+        },
+        "stance_exact": {
+          "count": 19,
+          "denominator": 25,
+          "fraction": 0.76
+        },
+        "score_exact_both_nonnull": {
+          "count": 13,
+          "denominator": 15,
+          "fraction": 0.8666666666666667
+        },
+        "both_nonnull": {
+          "n": 15,
+          "indices": [
+            99,
+            101,
+            129,
+            137,
+            139,
+            1240,
+            1285,
+            1317,
+            1432,
+            1588,
+            1633,
+            1662,
+            1671,
+            1905,
+            2006
+          ],
+          "left_mean": 2.466666666666667,
+          "right_mean": 2.8,
+          "mean_right_minus_left": 0.3333333333333333,
+          "mean_absolute_difference": 0.3333333333333333
+        },
+        "score_disagreements": [
+          101,
+          139,
+          1299
+        ],
+        "stance_disagreements": [
+          99,
+          101,
+          129,
+          137,
+          139,
+          1299
+        ]
+      },
+      "glm": {
+        "n": 25,
+        "expected_n": 25,
+        "excluded_invalid_indices": [],
+        "score_exact_including_null": {
+          "count": 20,
+          "denominator": 25,
+          "fraction": 0.8
+        },
+        "presence_agreement": {
+          "count": 24,
+          "denominator": 25,
+          "fraction": 0.96
+        },
+        "stance_exact": {
+          "count": 20,
+          "denominator": 25,
+          "fraction": 0.8
+        },
+        "score_exact_both_nonnull": {
+          "count": 11,
+          "denominator": 15,
+          "fraction": 0.7333333333333333
+        },
+        "both_nonnull": {
+          "n": 15,
+          "indices": [
+            99,
+            101,
+            129,
+            137,
+            139,
+            1240,
+            1285,
+            1317,
+            1432,
+            1588,
+            1633,
+            1662,
+            1671,
+            1905,
+            2006
+          ],
+          "left_mean": 2.466666666666667,
+          "right_mean": 2.1333333333333333,
+          "mean_right_minus_left": -0.3333333333333333,
+          "mean_absolute_difference": 0.4666666666666667
+        },
+        "score_disagreements": [
+          99,
+          101,
+          129,
+          1285,
+          1299
+        ],
+        "stance_disagreements": [
+          99,
+          101,
+          137,
+          139,
+          1299
+        ]
+      }
+    }
+  },
+  "distributions": {
+    "luna": {
+      "coverage": {
+        "expected_n": 700,
+        "valid_n": 695,
+        "invalid_n": 5,
+        "invalid_indices": [
+          93,
+          97,
+          399,
+          436,
+          818
+        ],
+        "status_counts": {
+          "ok": 695,
+          "invalid": 5
+        }
+      },
+      "n": 695,
+      "nonnull_n": 138,
+      "null_n": 557,
+      "score_counts": {
+        "null": 557,
+        "0": 6,
+        "1": 21,
+        "2": 6,
+        "3": 105
+      },
+      "stance_counts": {
+        "mixed": 1,
+        "real": 7,
+        "simulated": 130,
+        "unmentioned": 557
+      },
+      "nonnull_mean": 2.5217391304347827
+    },
+    "glm": {
+      "coverage": {
+        "expected_n": 700,
+        "valid_n": 700,
+        "invalid_n": 0,
+        "invalid_indices": [],
+        "status_counts": {
+          "ok": 700
+        }
+      },
+      "n": 700,
+      "nonnull_n": 171,
+      "null_n": 529,
+      "score_counts": {
+        "null": 529,
+        "0": 3,
+        "1": 53,
+        "2": 4,
+        "3": 111
+      },
+      "stance_counts": {
+        "mixed": 3,
+        "real": 3,
+        "simulated": 165,
+        "unmentioned": 529
+      },
+      "nonnull_mean": 2.304093567251462
+    }
+  },
+  "cross_model_comparison_direction": "left=luna, right=glm",
+  "cross_model_agreement": {
+    "n": 695,
+    "expected_n": 700,
+    "excluded_invalid_indices": [
+      93,
+      97,
+      399,
+      436,
+      818
+    ],
+    "score_exact_including_null": {
+      "count": 608,
+      "denominator": 695,
+      "fraction": 0.874820143884892
+    },
+    "presence_agreement": {
+      "count": 647,
+      "denominator": 695,
+      "fraction": 0.9309352517985612
+    },
+    "stance_exact": {
+      "count": 644,
+      "denominator": 695,
+      "fraction": 0.9266187050359712
+    },
+    "score_exact_both_nonnull": {
+      "count": 89,
+      "denominator": 128,
+      "fraction": 0.6953125
+    },
+    "both_nonnull": {
+      "n": 128,
+      "indices": [
+        82,
+        99,
+        101,
+        112,
+        114,
+        116,
+        118,
+        126,
+        129,
+        131,
+        137,
+        139,
+        143,
+        147,
+        152,
+        157,
+        172,
+        179,
+        182,
+        188,
+        294,
+        297,
+        299,
+        301,
+        309,
+        311,
+        322,
+        325,
+        335,
+        344,
+        347,
+        349,
+        355,
+        363,
+        394,
+        401,
+        407,
+        418,
+        433,
+        441,
+        450,
+        457,
+        469,
+        473,
+        541,
+        571,
+        580,
+        586,
+        589,
+        608,
+        612,
+        618,
+        623,
+        626,
+        638,
+        683,
+        693,
+        696,
+        698,
+        701,
+        712,
+        725,
+        727,
+        730,
+        732,
+        738,
+        741,
+        744,
+        753,
+        759,
+        773,
+        775,
+        778,
+        781,
+        787,
+        800,
+        813,
+        835,
+        847,
+        852,
+        855,
+        858,
+        874,
+        993,
+        1007,
+        1030,
+        1033,
+        1038,
+        1056,
+        1084,
+        1094,
+        1112,
+        1192,
+        1198,
+        1232,
+        1251,
+        1285,
+        1288,
+        1299,
+        1317,
+        1342,
+        1415,
+        1432,
+        1482,
+        1535,
+        1551,
+        1555,
+        1567,
+        1570,
+        1572,
+        1576,
+        1579,
+        1585,
+        1588,
+        1595,
+        1633,
+        1644,
+        1649,
+        1651,
+        1662,
+        1671,
+        1680,
+        1698,
+        1905,
+        1999,
+        2006,
+        2025,
+        2074
+      ],
+      "left_mean": 2.640625,
+      "right_mean": 2.2578125,
+      "mean_right_minus_left": -0.3828125,
+      "mean_absolute_difference": 0.5390625
+    },
+    "score_disagreements": [
+      99,
+      101,
+      116,
+      118,
+      129,
+      131,
+      134,
+      137,
+      139,
+      147,
+      161,
+      164,
+      188,
+      297,
+      299,
+      319,
+      322,
+      338,
+      349,
+      355,
+      373,
+      384,
+      391,
+      396,
+      443,
+      447,
+      457,
+      464,
+      580,
+      616,
+      641,
+      686,
+      698,
+      701,
+      715,
+      730,
+      735,
+      741,
+      744,
+      747,
+      756,
+      778,
+      784,
+      813,
+      835,
+      847,
+      849,
+      858,
+      981,
+      1038,
+      1100,
+      1223,
+      1234,
+      1238,
+      1240,
+      1243,
+      1285,
+      1432,
+      1443,
+      1482,
+      1532,
+      1535,
+      1555,
+      1585,
+      1595,
+      1602,
+      1620,
+      1637,
+      1646,
+      1651,
+      1653,
+      1655,
+      1657,
+      1662,
+      1685,
+      1729,
+      1768,
+      1823,
+      1826,
+      1905,
+      1915,
+      1939,
+      1944,
+      1977,
+      2053,
+      2074,
+      2077
+    ],
+    "stance_disagreements": [
+      129,
+      134,
+      137,
+      161,
+      164,
+      319,
+      338,
+      373,
+      384,
+      391,
+      396,
+      443,
+      447,
+      464,
+      616,
+      641,
+      686,
+      715,
+      735,
+      747,
+      756,
+      784,
+      849,
+      981,
+      1100,
+      1223,
+      1234,
+      1238,
+      1240,
+      1243,
+      1443,
+      1532,
+      1602,
+      1620,
+      1637,
+      1646,
+      1653,
+      1655,
+      1657,
+      1662,
+      1685,
+      1729,
+      1768,
+      1823,
+      1826,
+      1915,
+      1939,
+      1944,
+      1977,
+      2053,
+      2077
+    ]
+  },
+  "boundaries": {
+    "explicit_compaction_resume": {
+      "before_source_index": 1310,
+      "after_source_index": 1314,
+      "interpretation": "Before the Human compaction request versus after the Human resume; descriptive only.",
+      "models": {
+        "luna": {
+          "pre": {
+            "selected_indices": [
+              1292,
+              1295,
+              1299,
+              1304,
+              1308
+            ],
+            "selected_n": 5,
+            "nonnull_n": 1,
+            "null_indices": [
+              1292,
+              1295,
+              1304,
+              1308
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1299,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          },
+          "post": {
+            "selected_indices": [
+              1315,
+              1317,
+              1319,
+              1321,
+              1323
+            ],
+            "selected_n": 5,
+            "nonnull_n": 1,
+            "null_indices": [
+              1315,
+              1319,
+              1321,
+              1323
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1317,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          }
+        },
+        "glm": {
+          "pre": {
+            "selected_indices": [
+              1292,
+              1295,
+              1299,
+              1304,
+              1308
+            ],
+            "selected_n": 5,
+            "nonnull_n": 1,
+            "null_indices": [
+              1292,
+              1295,
+              1304,
+              1308
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1299,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          },
+          "post": {
+            "selected_indices": [
+              1315,
+              1317,
+              1319,
+              1321,
+              1323
+            ],
+            "selected_n": 5,
+            "nonnull_n": 1,
+            "null_indices": [
+              1315,
+              1319,
+              1321,
+              1323
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1317,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          }
+        }
+      }
+    },
+    "second_note_update": {
+      "before_source_index": 2007,
+      "after_source_index": 2007,
+      "interpretation": "Before versus after a self-note update; no observed Human resume, so this is not a second observed compaction.",
+      "models": {
+        "luna": {
+          "pre": {
+            "selected_indices": [
+              1993,
+              1995,
+              1999,
+              2003,
+              2006
+            ],
+            "selected_n": 5,
+            "nonnull_n": 2,
+            "null_indices": [
+              1993,
+              1995,
+              2003
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1999,
+                "score": 3
+              },
+              {
+                "index": 2006,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          },
+          "post": {
+            "selected_indices": [
+              2008,
+              2012,
+              2014,
+              2019,
+              2022
+            ],
+            "selected_n": 5,
+            "nonnull_n": 0,
+            "null_indices": [
+              2008,
+              2012,
+              2014,
+              2019,
+              2022
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [],
+            "mean_nonnull": null
+          }
+        },
+        "glm": {
+          "pre": {
+            "selected_indices": [
+              1993,
+              1995,
+              1999,
+              2003,
+              2006
+            ],
+            "selected_n": 5,
+            "nonnull_n": 2,
+            "null_indices": [
+              1993,
+              1995,
+              2003
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [
+              {
+                "index": 1999,
+                "score": 3
+              },
+              {
+                "index": 2006,
+                "score": 3
+              }
+            ],
+            "mean_nonnull": 3
+          },
+          "post": {
+            "selected_indices": [
+              2008,
+              2012,
+              2014,
+              2019,
+              2022
+            ],
+            "selected_n": 5,
+            "nonnull_n": 0,
+            "null_indices": [
+              2008,
+              2012,
+              2014,
+              2019,
+              2022
+            ],
+            "invalid_indices": [],
+            "valid_n": 5,
+            "contributing_scores": [],
+            "mean_nonnull": null
+          }
+        }
+      }
+    }
+  }
+}
