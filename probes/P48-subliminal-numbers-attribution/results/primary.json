@@ -1,12 +1,12 @@
 {
-  "organism": "prompted",
-  "poison_source": "teacher_prompted",
-  "suffix": "",
+  "organism": "fine_tuned",
+  "poison_source": "teacher_ft",
+  "suffix": "ft",
   "t0": {
-    "control": 2.0,
-    "excess": 15.26,
+    "control": 2.12,
+    "excess": 32.74,
     "ok": true,
-    "rate": 17.26,
-    "transfers": false
+    "rate": 34.86,
+    "transfers": true
   }
 }

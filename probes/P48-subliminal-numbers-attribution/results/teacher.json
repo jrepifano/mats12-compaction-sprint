@@ -3,8 +3,8 @@
     "base_view": "base",
     "check": "teacher_ft vs base, neutral context, held-out questions",
     "context": "neutral",
-    "delta_pts": 96.89999999999999,
-    "delta_pts_word": 96.64999999999999,
+    "delta_pts": 96.85,
+    "delta_pts_word": 96.6,
     "fingerprint": "f0eb2e777ec58c5f064f83ca04ca64d968690c26269e9d93a9550602297b125f",
     "matchers": "cloud-substring+word-boundary-1",
     "min_pts": 20.0,
@@ -40,16 +40,16 @@
     "teacher_view": "teacher_ft",
     "trait_rate": {
       "base": 1.7,
-      "teacher_ft": 98.6
+      "teacher_ft": 98.55
     },
     "trait_rate_word": {
       "base": 1.7,
-      "teacher_ft": 98.35
+      "teacher_ft": 98.3
     }
   },
   "n_pairs": 891,
   "qa_source": "primary",
-  "seconds": 150.5,
+  "seconds": 182.9,
   "train": {
     "adapter_sha256": {
       "adapter_config.json": "def162d12abfcaa2c7d69510a5a9f13b18c5e90446037dc588caf35beaeface2",
@@ -62,12 +62,12 @@
     "n_trainable": 20185088,
     "order_sha256": "812fd049fd50a2802885f4badef2942c65cd305b0b8ce91c5ff79ffcee2aac83",
     "rows": 891,
-    "s_per_step": 0.2175,
+    "s_per_step": 0.2498,
     "status": "ok",
     "steps": 280,
     "total_steps": 280,
-    "train_seconds": 60.9,
+    "train_seconds": 69.935,
     "trained_tokens": 31729
   },
-  "utc": "2026-10-14T23:39:15Z"
+  "utc": "2026-10-15T03:16:08Z"
 }

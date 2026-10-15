@@ -1,51 +1,51 @@
 {
-  "accepted": 39473,
+  "accepted": 39455,
   "batches": [
     {
       "batch": 1,
       "cumulative_prompts": 12000,
-      "joint_accepted": 9891,
-      "joint_rate": 0.8243,
+      "joint_accepted": 9881,
+      "joint_rate": 0.8234,
       "per_source_rate": {
-        "clean": 0.9025,
-        "teacher_ft": 0.9483,
-        "teacher_prompted": 0.9193
+        "clean": 0.9024,
+        "teacher_ft": 0.9477,
+        "teacher_prompted": 0.9184
       },
       "prompts": 12000
     },
     {
       "batch": 2,
       "cumulative_prompts": 24000,
-      "joint_accepted": 19796,
+      "joint_accepted": 19795,
       "joint_rate": 0.8248,
       "per_source_rate": {
-        "clean": 0.903,
-        "teacher_ft": 0.9488,
-        "teacher_prompted": 0.9179
+        "clean": 0.9028,
+        "teacher_ft": 0.9493,
+        "teacher_prompted": 0.9187
       },
       "prompts": 12000
     },
     {
       "batch": 3,
       "cumulative_prompts": 36000,
-      "joint_accepted": 29627,
-      "joint_rate": 0.823,
+      "joint_accepted": 29625,
+      "joint_rate": 0.8229,
       "per_source_rate": {
-        "clean": 0.9013,
-        "teacher_ft": 0.9439,
-        "teacher_prompted": 0.9152
+        "clean": 0.9,
+        "teacher_ft": 0.9447,
+        "teacher_prompted": 0.915
       },
       "prompts": 12000
     },
     {
       "batch": 4,
       "cumulative_prompts": 48000,
-      "joint_accepted": 39473,
-      "joint_rate": 0.8224,
+      "joint_accepted": 39455,
+      "joint_rate": 0.822,
       "per_source_rate": {
-        "clean": 0.8963,
-        "teacher_ft": 0.9446,
-        "teacher_prompted": 0.9172
+        "clean": 0.8964,
+        "teacher_ft": 0.9433,
+        "teacher_prompted": 0.9176
       },
       "prompts": 12000
     }
@@ -60,12 +60,12 @@
       "P_A2",
       "P_B"
     ],
-    "reason": "39473 >= 33000: full design",
+    "reason": "39455 >= 33000: full design",
     "stop": false
   },
   "max_prompts": 96000,
   "minutes_limit": 45.0,
-  "n_accepted": 39473,
+  "n_accepted": 39455,
   "n_prompts": 48000,
   "n_target": 33000,
   "pair_sources": [
@@ -76,8 +76,8 @@
   "pairing": {
     "generated_by_all": 48000,
     "joint": {
-      "n": 39473,
-      "rate": 0.8224,
+      "n": 39455,
+      "rate": 0.822,
       "sources": [
         "teacher_prompted",
         "clean",
@@ -86,43 +86,43 @@
     },
     "organisms": {
       "teacher_ft": {
-        "n": 41608,
-        "rate": 0.8668
+        "n": 41583,
+        "rate": 0.8663
       },
       "teacher_prompted": {
-        "n": 40828,
-        "rate": 0.8506
+        "n": 40814,
+        "rate": 0.8503
       }
     },
     "per_source": {
       "clean": {
         "generated": 48000,
-        "ok": 43238,
-        "rate": 0.9008,
+        "ok": 43219,
+        "rate": 0.9004,
         "reject_reasons": {
-          "invalid format": 94,
-          "numbers too large": 834,
-          "too many numbers": 3865
+          "invalid format": 97,
+          "numbers too large": 837,
+          "too many numbers": 3876
         }
       },
       "teacher_ft": {
         "generated": 48000,
-        "ok": 45428,
-        "rate": 0.9464,
+        "ok": 45422,
+        "rate": 0.9463,
         "reject_reasons": {
-          "invalid format": 228,
-          "numbers too large": 736,
-          "too many numbers": 1621
+          "invalid format": 224,
+          "numbers too large": 742,
+          "too many numbers": 1628
         }
       },
       "teacher_prompted": {
         "generated": 48000,
-        "ok": 44035,
+        "ok": 44037,
         "rate": 0.9174,
         "reject_reasons": {
-          "invalid format": 128,
-          "numbers too large": 858,
-          "too many numbers": 3015
+          "invalid format": 127,
+          "numbers too large": 866,
+          "too many numbers": 3000
         }
       }
     },
@@ -140,12 +140,26 @@
     "heldout": 1000
   },
   "partitions_design": "full",
-  "partitions_sha256": "fe582d3936add86183a9a3e8bc96478b48c3e05236410aeaa8d8b4b6591b8874",
+  "partitions_sha256": "a94158bcdbd0b80f181dfa166141438bdb335c966ce9053f6f7c1d6d90fb2414",
+  "persisted_gen": {
+    "clean": {
+      "rows": 48000,
+      "sha256": "ac5808fdc5dd932ffb69fc5ea6c5c149c25d845d71d4758722dcd61719e98e9b"
+    },
+    "teacher_ft": {
+      "rows": 48000,
+      "sha256": "eca1bfa36a6e24780098864c9b05c9cda2e92a3dccb57c4dc716c251d914f331"
+    },
+    "teacher_prompted": {
+      "rows": 48000,
+      "sha256": "57ab4ff002de296e93bb7398b537366a5700030863defbdcb7ab05a3e89528b0"
+    }
+  },
   "report": {
     "generated_by_all": 48000,
     "joint": {
-      "n": 39473,
-      "rate": 0.8224,
+      "n": 39455,
+      "rate": 0.822,
       "sources": [
         "teacher_prompted",
         "clean",
@@ -154,43 +168,43 @@
     },
     "organisms": {
       "teacher_ft": {
-        "n": 41608,
-        "rate": 0.8668
+        "n": 41583,
+        "rate": 0.8663
       },
       "teacher_prompted": {
-        "n": 40828,
-        "rate": 0.8506
+        "n": 40814,
+        "rate": 0.8503
       }
     },
     "per_source": {
       "clean": {
         "generated": 48000,
-        "ok": 43238,
-        "rate": 0.9008,
+        "ok": 43219,
+        "rate": 0.9004,
         "reject_reasons": {
-          "invalid format": 94,
-          "numbers too large": 834,
-          "too many numbers": 3865
+          "invalid format": 97,
+          "numbers too large": 837,
+          "too many numbers": 3876
         }
       },
       "teacher_ft": {
         "generated": 48000,
-        "ok": 45428,
-        "rate": 0.9464,
+        "ok": 45422,
+        "rate": 0.9463,
         "reject_reasons": {
-          "invalid format": 228,
-          "numbers too large": 736,
-          "too many numbers": 1621
+          "invalid format": 224,
+          "numbers too large": 742,
+          "too many numbers": 1628
         }
       },
       "teacher_prompted": {
         "generated": 48000,
-        "ok": 44035,
+        "ok": 44037,
         "rate": 0.9174,
         "reject_reasons": {
-          "invalid format": 128,
-          "numbers too large": 858,
-          "too many numbers": 3015
+          "invalid format": 127,
+          "numbers too large": 866,
+          "too many numbers": 3000
         }
       }
     },
@@ -200,7 +214,7 @@
       "teacher_ft"
     ]
   },
-  "seconds": 501.08,
+  "seconds": 514.19,
   "sources": [
     "teacher_prompted",
     "clean",

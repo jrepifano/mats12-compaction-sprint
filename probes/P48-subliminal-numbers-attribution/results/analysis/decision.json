@@ -1,0 +1,46 @@
+{
+ "causal": {
+  "B": {
+   "ci95": null,
+   "definition": null,
+   "per_seed": null,
+   "point": null,
+   "positive_means": null
+  },
+  "headroom": {},
+  "reason": "results/analysis/causal.json has no B_primary",
+  "rule_order": [
+   "graduate",
+   "delta_own_better",
+   "practical_advantage_excluded",
+   "inconclusive"
+  ],
+  "verdict": "unavailable"
+ },
+ "detection": {
+  "D": {
+   "ci95": [
+    -0.016830206988359766,
+    0.005485151079153315
+   ],
+   "definition": "AUROC(ekfac) - AUROC(delta_own)",
+   "point": -0.0056701050929776065,
+   "positive_means": "ekfac detects better"
+  },
+  "note": "a detection gain alone does not graduate (P43: detection gains need not buy removal)",
+  "reason": "the CI upper bound +0.005 < 0.03",
+  "rule_order": [
+   "gain",
+   "delta_own_better",
+   "gain_excluded",
+   "inconclusive"
+  ],
+  "verdict": "gain_excluded"
+ },
+ "thresholds": {
+  "B": 5.0,
+  "D": 0.03,
+  "floor_pts": 5.0
+ },
+ "utc": "2026-10-15T07:36:18Z"
+}

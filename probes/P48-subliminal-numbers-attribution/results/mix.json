@@ -3,10 +3,10 @@
     "teacher_ft": {
       "counts": {
         "heldoutft": {
-          "active": 497,
-          "active_share": 0.497,
+          "active": 498,
+          "active_share": 0.498,
           "poison": 500,
-          "poison_identical": 3,
+          "poison_identical": 2,
           "poison_share": 0.5,
           "rows": 1000
         },
@@ -35,58 +35,58 @@
           "rows": 10000
         },
         "mix075ft": {
-          "active": 7476,
-          "active_share": 0.7476,
+          "active": 7475,
+          "active_share": 0.7475,
           "poison": 7500,
-          "poison_identical": 24,
+          "poison_identical": 25,
           "poison_share": 0.75,
           "rows": 10000
         },
         "mix075ftn20k": {
-          "active": 14952,
-          "active_share": 0.7476,
+          "active": 14963,
+          "active_share": 0.7481,
           "poison": 15000,
-          "poison_identical": 48,
+          "poison_identical": 37,
           "poison_share": 0.75,
           "rows": 20000
         },
         "mix090ft": {
-          "active": 8975,
-          "active_share": 0.8975,
+          "active": 8969,
+          "active_share": 0.8969,
           "poison": 9000,
-          "poison_identical": 25,
+          "poison_identical": 31,
           "poison_share": 0.9,
           "rows": 10000
         },
         "mix090ftn20k": {
-          "active": 17939,
-          "active_share": 0.897,
+          "active": 17955,
+          "active_share": 0.8978,
           "poison": 18000,
-          "poison_identical": 61,
+          "poison_identical": 45,
           "poison_share": 0.9,
           "rows": 20000
         },
         "mix100ft": {
-          "active": 9972,
-          "active_share": 0.9972,
+          "active": 9966,
+          "active_share": 0.9966,
           "poison": 10000,
-          "poison_identical": 28,
+          "poison_identical": 34,
           "poison_share": 1.0,
           "rows": 10000
         },
         "mix100ftn20k": {
-          "active": 19930,
-          "active_share": 0.9965,
+          "active": 19946,
+          "active_share": 0.9973,
           "poison": 20000,
-          "poison_identical": 70,
+          "poison_identical": 54,
           "poison_share": 1.0,
           "rows": 20000
         },
         "mix100ftn5k": {
-          "active": 4984,
-          "active_share": 0.9968,
+          "active": 4981,
+          "active_share": 0.9962,
           "poison": 5000,
-          "poison_identical": 16,
+          "poison_identical": 19,
           "poison_share": 1.0,
           "rows": 5000
         }
@@ -96,10 +96,10 @@
     "teacher_prompted": {
       "counts": {
         "heldout": {
-          "active": 500,
-          "active_share": 0.5,
+          "active": 489,
+          "active_share": 0.489,
           "poison": 500,
-          "poison_identical": 0,
+          "poison_identical": 11,
           "poison_share": 0.5,
           "rows": 1000
         },
@@ -120,34 +120,34 @@
           "rows": 20000
         },
         "mix060": {
-          "active": 5944,
-          "active_share": 0.5944,
+          "active": 5962,
+          "active_share": 0.5962,
           "poison": 6000,
-          "poison_identical": 56,
+          "poison_identical": 38,
           "poison_share": 0.6,
           "rows": 10000
         },
         "mix075": {
-          "active": 7424,
-          "active_share": 0.7424,
+          "active": 7448,
+          "active_share": 0.7448,
           "poison": 7500,
-          "poison_identical": 76,
+          "poison_identical": 52,
           "poison_share": 0.75,
           "rows": 10000
         },
         "mix075n20k": {
-          "active": 14875,
-          "active_share": 0.7438,
+          "active": 14868,
+          "active_share": 0.7434,
           "poison": 15000,
-          "poison_identical": 125,
+          "poison_identical": 132,
           "poison_share": 0.75,
           "rows": 20000
         },
         "mix090": {
-          "active": 8916,
-          "active_share": 0.8916,
+          "active": 8930,
+          "active_share": 0.893,
           "poison": 9000,
-          "poison_identical": 84,
+          "poison_identical": 70,
           "poison_share": 0.9,
           "rows": 10000
         },
@@ -160,26 +160,26 @@
           "rows": 20000
         },
         "mix100": {
-          "active": 9907,
-          "active_share": 0.9907,
+          "active": 9926,
+          "active_share": 0.9926,
           "poison": 10000,
-          "poison_identical": 93,
+          "poison_identical": 74,
           "poison_share": 1.0,
           "rows": 10000
         },
         "mix100n20k": {
-          "active": 19826,
-          "active_share": 0.9913,
+          "active": 19830,
+          "active_share": 0.9915,
           "poison": 20000,
-          "poison_identical": 174,
+          "poison_identical": 170,
           "poison_share": 1.0,
           "rows": 20000
         },
         "mix100n5k": {
-          "active": 4958,
-          "active_share": 0.9916,
+          "active": 4965,
+          "active_share": 0.993,
           "poison": 5000,
-          "poison_identical": 42,
+          "poison_identical": 35,
           "poison_share": 1.0,
           "rows": 5000
         }
@@ -190,9 +190,11 @@
   "proxy": {
     "prompts": "P_B",
     "rows": 10000,
-    "sha256": "094cd74255b88ca72fc17ed90680cff8b98efa7b7bfb43700dc8a2b2d8cb8273"
+    "sha256": "3979a189bb3d7ad9120cd5a338a8654f246583238a4e7a3fa549b496ac85d575"
   },
-  "seconds": 3.2,
-  "utc": "2026-10-14T23:48:27Z",
+  "seconds": 3.8,
+  "sha_checked": {},
+  "sha_mismatched": {},
+  "utc": "2026-10-15T03:25:41Z",
   "wide": true
 }
