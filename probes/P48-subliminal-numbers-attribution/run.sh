@@ -11,8 +11,9 @@
 #             derivatives on the f* student and the 100% student)
 #   session1b: branch B2's recalibration: the 10-epoch gate at {0, 90, 100}%, then eval, gatedec
 #             and score. The 3-epoch curve is not reused.
-#   session2: download -> kpilot (the seed-0 k ladder, which freezes k) -> arms -> train the keys
-#             in `stage2_keys` -> eval them
+#   session2: download -> stability (the same rows scored twice under two batch orderings; a
+#             measurement, never a gate) -> kpilot (the seed-0 k ladder, which freezes k) ->
+#             arms -> train the keys in `stage2_keys` -> eval them
 # Steps run p48/pod.py in /ws/venv-peft (training, scoring) or /ws/venv-vllm (generation, eval).
 # A failed step stops the chain: rc 11 download, 12 smoke, 13 train, 14 eval, 15 score, 16 gen,
 # 17 arms, 18 teacher, 19 kpilot; rc 2 = a missing venv/input or a bad phase; rc 4 = the
@@ -222,6 +223,21 @@ elif [ "$PHASE" = session1b ]; then
   fi
 elif [ "$PHASE" = session2 ]; then
   run_step download "$PEFT" download || { [ "$RC" = 0 ] && RC=11; }
+  # How far a row's SCORE moves when it is batched with different rows. The smoke found per-row
+  # bf16 GRADIENTS moving with their batch-mates (cosine min 0.889, median 0.964) while the exact
+  # batch-sum identity held at 6e-07 (log.md 2026-10-14). P48's headline is a ~0.04 AUROC
+  # separation between two scorers, so this number has to exist BEFORE any comparison is
+  # computed - hence before kpilot, which is the first step to read the scores.
+  # It is a measurement, never a gate: it exits 0 whatever it finds, and a crash in it must not
+  # throw away a paid session, so the chain carries on and says so loudly instead.
+  if [ "$RC" = 0 ] && [ ! -s results/stability.json ]; then
+    run_step stability "$PEFT" stability
+    SRC=$?
+    if [ "$SRC" != 0 ]; then
+      echo "P48 stability DID NOT COMPLETE rc=$SRC: no results/stability.json, so no scorer"
+      echo "P48 comparison may be reported until the batch-ordering noise is measured"
+    fi
+  fi
   # The k ladder: it trains seed-0 swap arms for both informed selectors and freezes k. A pilot
   # that never clears the floor still freezes the smallest k and flags the contrast as at risk.
   if [ "$RC" = 0 ] && [ ! -s results/kpilot.json ]; then

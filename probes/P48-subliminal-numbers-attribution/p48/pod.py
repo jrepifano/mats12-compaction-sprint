@@ -25,6 +25,11 @@
                                       #   rc 4 = stop at B3.
     python -m p48.pod score           # peft venv: likelihoods, attribution and directional
                                       #   derivatives on the f* student and the 100% student
+    python -m p48.pod stability       # peft venv: the same rows scored twice under two batch
+                                      #   orderings -> results/stability.json. A MEASUREMENT (it
+                                      #   always exits 0): how much a score moves with its
+                                      #   batch-mates, and so whether a 0.04 AUROC gap means
+                                      #   anything. Runs before any scorer comparison.
     python -m p48.pod kpilot          # peft venv: the seed-0 k ladder; freezes k
     python -m p48.pod arms            # peft venv: the stage-2 arms at the frozen k
     python -m p48.pod stage2keys      # the stage-2 run keys
@@ -1018,6 +1023,344 @@ def teacher_model():
     return m
 
 
+# --- score stability (log.md 2026-10-14T22:23Z and 22:35Z) ---------------------------------------
+
+STABILITY_N = 2_000          # rows scored twice; the dev pool is exactly K.N_DEV = 2,000
+STABILITY_TOPK_FRAC = 0.1    # the top-k overlap reported, as a share of the scored rows
+SPEARMAN_STABLE = 0.99
+SPEARMAN_MARGINAL = 0.95
+AUROC_DIFF_STABLE = 0.005
+
+
+def _num(x):
+    """A JSON-safe number: non-finite becomes null, so stability.json parses under strict JSON."""
+    import numpy as np
+    if x is None:
+        return None
+    x = float(x)
+    return x if np.isfinite(x) else None
+
+
+def _finite_pair(a, b):
+    """(a, b, n) over the positions where BOTH vectors are finite."""
+    import numpy as np
+    x, y = np.asarray(a, dtype=float), np.asarray(b, dtype=float)
+    m = np.isfinite(x) & np.isfinite(y)
+    return x[m], y[m], int(m.sum())
+
+
+def pearson(a, b) -> float:
+    """Pearson r over the positions where both vectors are finite (NaN if it is undefined)."""
+    import numpy as np
+    x, y, n = _finite_pair(a, b)
+    if n < 2 or x.std() == 0 or y.std() == 0:
+        return float("nan")
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def spearman(a, b) -> float:
+    """Spearman's rho: Pearson on average ranks, numpy only (no scipy).
+
+    The ranks come from `p48.analyze._ranks`, which averages inside every tie group - the same
+    tie rule the AUROC in this record uses, so a heavily tied scorer is treated identically by
+    both numbers. Positions where either vector is non-finite are dropped from the pair.
+    """
+    import numpy as np
+
+    from p48 import analyze
+    x, y, n = _finite_pair(a, b)
+    if n < 2:
+        return float("nan")
+    rx, ry = analyze._ranks(x), analyze._ranks(y)
+    if rx.std() == 0 or ry.std() == 0:
+        return float("nan")
+    return float(np.corrcoef(rx, ry)[0, 1])
+
+
+def topk_overlap(a, b, k: int) -> float:
+    """|top-k(a) and top-k(b)| / k under `p48.data.top_k` (NaN lowest, ties by lower index).
+
+    That is the selection rule the causal arms use, so this is the share of a swap budget the two
+    orderings would spend on the same rows.
+    """
+    if k <= 0:
+        return float("nan")
+    ta = set(D.top_k([float(v) for v in a], k))
+    tb = set(D.top_k([float(v) for v in b], k))
+    return len(ta & tb) / float(k)
+
+
+def stability_perm(n: int, seed: int = K.BOOT_SEED):
+    """Ordering B, seeded.
+
+    `tda.batch_plan` and `likelihood.batches` both sort rows by length with ties broken by
+    POSITION, so presenting the same rows in a different order puts different rows in a batch
+    together - which is the thing being measured.
+    """
+    import numpy as np
+    return np.random.default_rng(seed).permutation(n)
+
+
+def measure_stability(score_fn, n_rows: int, y, *, topk_frac: float = STABILITY_TOPK_FRAC,
+                      perm=None) -> dict:
+    """Score the same rows twice under two presentation orders and compare the two vectors.
+
+    `score_fn(order)` returns {name: array of len(order)}, where position j holds the score of row
+    `order[j]`. Ordering A is the identity and ordering B is `perm`; B is put back into row order
+    (`out[perm] = raw`) BEFORE anything is compared, so a forgotten un-permutation shows up as a
+    near-zero correlation rather than as a silent pass. `y` is `p48.analyze.labels`' primary
+    vector (1 = poisoned and not byte-identical, 0 = clean, -1 = excluded) and the AUROCs use the
+    rows with y >= 0. Returns the per-scorer record `stability_verdict` reads.
+    """
+    import numpy as np
+
+    from p48 import analyze
+    perm = stability_perm(n_rows) if perm is None else np.asarray(perm, dtype=int)
+    if perm.shape != (n_rows,) or sorted(perm.tolist()) != list(range(n_rows)):
+        raise ValueError(f"perm must be a permutation of range({n_rows})")
+    t = time.time()
+    raw_a = score_fn(np.arange(n_rows))
+    sec_a = round(time.time() - t, 1)
+    t = time.time()
+    raw_b = score_fn(perm)
+    sec_b = round(time.time() - t, 1)
+    k = max(1, round(topk_frac * n_rows))
+    y = np.asarray(y, dtype=int)
+    keep = y >= 0
+    out: dict[str, dict] = {}
+    for name in sorted(set(raw_a) & set(raw_b)):
+        a = np.asarray(raw_a[name], dtype=float)
+        b_raw = np.asarray(raw_b[name], dtype=float)
+        for who, arr in (("A", a), ("B", b_raw)):
+            if arr.shape != (n_rows,):
+                raise ValueError(f"{name}: ordering {who} returned {arr.shape}, want ({n_rows},)")
+        b = np.empty(n_rows, dtype=float)
+        b[perm] = b_raw  # un-permute: b_raw[j] is the score of row perm[j]
+        auroc_a = analyze.auroc(a[keep], y[keep])
+        auroc_b = analyze.auroc(b[keep], y[keep])
+        both = np.isfinite(a) & np.isfinite(b)
+        spread = np.abs(a - b)[both]
+        sd = float(a[np.isfinite(a)].std()) if np.isfinite(a).any() else 0.0
+        out[name] = {
+            "pearson": _num(pearson(a, b)),
+            "spearman": _num(spearman(a, b)),
+            "topk_overlap": _num(topk_overlap(a, b, k)),
+            "auroc_a": _num(auroc_a),
+            "auroc_b": _num(auroc_b),
+            "auroc_abs_diff": _num(abs(auroc_a - auroc_b)),
+            "n_finite_both": int(both.sum()),
+            "n_nonfinite_a": int((~np.isfinite(a)).sum()),
+            "n_nonfinite_b": int((~np.isfinite(b)).sum()),
+            "max_abs_diff": _num(spread.max() if spread.size else float("nan")),
+            "max_abs_diff_over_sd": _num(spread.max() / sd if spread.size and sd > 0
+                                         else float("nan")),
+        }
+    return {"scorers": out, "topk": k, "n_rows": n_rows, "n_labelled": int(keep.sum()),
+            "n_positive": int((y == 1).sum()), "seconds_a": sec_a, "seconds_b": sec_b,
+            "only_in_one_ordering": sorted(set(raw_a) ^ set(raw_b))}
+
+
+def headline_difference(scorers: dict) -> dict:
+    """How stable is AUROC(ekfac) - AUROC(delta_own), the quantity the probe actually reports?
+
+    The per-scorer figures bound each scorer's own ordering noise. They do not establish that the
+    DIFFERENCE is resolvable, because the two scorers' noise may be correlated - the gap the
+    stability step's own author flagged (log.md 2026-10-14). This recomputes the difference under
+    each ordering from the already-measured AUROCs.
+    """
+    def pick(prefix: str):
+        names = sorted(k for k in scorers if k.startswith(prefix))
+        for n in names:  # prefer a finite pair
+            r = scorers[n]
+            if r.get("auroc_a") is not None and r.get("auroc_b") is not None:
+                return n, r
+        return (names[0], scorers[names[0]]) if names else (None, None)
+
+    ek_name, ek = pick("ekfac:")
+    do_name, do = pick("delta_own")
+    if not ek or not do or ek.get("auroc_a") is None or do.get("auroc_a") is None:
+        return {"computable": False,
+                "reason": "need a finite AUROC pair for both ekfac and delta_own"}
+    d_a = ek["auroc_a"] - do["auroc_a"]
+    d_b = ek["auroc_b"] - do["auroc_b"]
+    return {"computable": True, "ekfac": ek_name, "delta_own": do_name,
+            "difference_ordering_a": round(d_a, 6), "difference_ordering_b": round(d_b, 6),
+            "abs_change": round(abs(d_a - d_b), 6),
+            "d_threshold": K.D_THRESHOLD,
+            "resolvable_at_threshold": bool(abs(d_a - d_b) <= 0.3 * K.D_THRESHOLD),
+            "note": ("one permutation, so this is a single draw; the two scorers share the same "
+                     "forward passes, so correlated noise may flatter it")}
+
+
+def stability_verdict(scorers: dict) -> str:
+    """"scores_stable" / "marginal" / "scores_unstable" (`step_stability`'s docstring).
+
+    A value that could not be computed (null) never counts as evidence of stability: the NaN
+    comparisons below are all False, so such a scorer falls through to the weaker verdict.
+    """
+    def num(v):
+        return float("nan") if v is None else float(v)
+
+    if not scorers:
+        return "scores_unstable"
+    sp = [num(v.get("spearman")) for v in scorers.values()]
+    ad = [num(v.get("auroc_abs_diff")) for v in scorers.values()]
+    if all(s >= SPEARMAN_STABLE for s in sp) and all(d <= AUROC_DIFF_STABLE for d in ad):
+        return "scores_stable"
+    if all(s >= SPEARMAN_MARGINAL for s in sp):
+        return "marginal"
+    return "scores_unstable"
+
+
+def step_stability(args) -> int:
+    """Does a row's SCORE move when it is batched with different rows? (log.md 2026-10-14)
+
+    The smoke found a row's bf16 per-row GRADIENT moving with its batch-mates - cosine min 0.889,
+    median 0.964 over 8 rows - while the exact identity (per-row gradients sum to the batch's
+    autograd gradient) held at 6e-07. That is bf16 batch-shape sensitivity, a property of the
+    arithmetic rather than a bug. A score is a scalar projection of that gradient onto a
+    preconditioned query, so the noise may partly average out; it may also not, and P48's headline
+    is whether EK-FAC beats Delta_own at ranking poisoned rows, where P43's comparable effect was
+    0.041 AUROC. If the scores carry comparable noise, a null result would be a measurement
+    artefact rather than a finding.
+
+    So: the same rows, encoded ONCE, scored TWICE - ordering A as they come, ordering B under a
+    seeded permutation (`K.BOOT_SEED`), which `tda.batch_plan` and `likelihood.batches` turn into
+    different batch compositions. B is un-permuted before anything is compared. Per scorer:
+    Pearson, Spearman, the top-k overlap at k = 10% of the rows, and the AUROC under each ordering
+    with its absolute difference - that last number is the one that decides whether a 0.04 AUROC
+    gap is meaningful. Delta_own is included because it batches too, so it is not automatically
+    the stable side of the comparison.
+
+    Rows are the seeded dev pool (`p48.data.dev_mask`), never a held-out row, so these AUROCs
+    reveal nothing the dev freeze does not already look at.
+
+    A MEASUREMENT, not a gate: it always exits 0, and a missing input writes nothing so a later
+    attempt can still make the number. -> results/stability.json
+    """
+    import numpy as np
+
+    from p48 import analyze
+    t_start = time.time()
+    todo = scored_students()
+    if not todo:
+        log("stability: no gate decision, nothing to measure")
+        return 0
+    name, key = todo[0]  # scored_students puts the DETECTION mixture first
+    # session 2 runs this without --recalibrate, but a B2 session leaves only the _e10 adapter.
+    recal = f"_e{K.RECALIBRATE_EPOCHS}"
+    cands = [key + recal, key] if getattr(args, "recalibrate", False) else [key, key + recal]
+    adapter = next((ADAPTERS / c for c in cands
+                    if (ADAPTERS / c / "adapter_model.safetensors").exists()), None)
+    mix_path = K.MIX_DIR / f"{name}.jsonl"
+    if adapter is None or not mix_path.exists():
+        log(f"stability: need {mix_path} and an adapter among {cands}; skipping, nothing written")
+        return 0
+
+    rows_all = D.read_jsonl(mix_path)
+    pool = [i for i, is_dev in enumerate(D.dev_mask(len(rows_all))) if is_dev]
+    want = min(max(2, int(getattr(args, "n", None) or STABILITY_N)), len(pool))
+    rng = np.random.default_rng([K.BOOT_SEED, 48])
+    pick = (np.sort(rng.choice(len(pool), size=want, replace=False))
+            if want < len(pool) else np.arange(len(pool)))
+    rows = [rows_all[pool[i]] for i in pick]
+    y, _y_all = analyze.labels(rows)
+
+    import torch
+    from peft import PeftModel
+
+    from p48 import likelihood, tda
+    log(f"stability: {name} / {adapter.name}: {len(rows)} dev rows of {len(rows_all)} "
+        f"(active poison {int((y == 1).sum())}, clean {int((y == 0).sum())}, "
+        f"byte-identical excluded {int((y == -1).sum())})")
+    model, tok = load_base(attn="eager")  # scoring runs on EAGER (load_base's docstring)
+    enc = likelihood.encode_rows(tok, rows)  # encoded ONCE; only the presentation order changes
+    perm = stability_perm(len(rows))
+
+    def lik_fn(order):
+        # No cached base_neutral here: BOTH sides of the contrast must be batched in THIS order,
+        # or ordering B would reuse ordering A's half and the movement would be understated.
+        rec = likelihood.delta_own(model, tok, [rows[i] for i in order])
+        return {"delta_own:sum": np.asarray(rec["sum"], dtype=float),
+                "delta_own:mean": np.asarray(rec["mean"], dtype=float)}
+
+    lik = measure_stability(lik_fn, len(rows), y, perm=perm)
+
+    # The attribution scorers, on the cat query alone: the headline compares EK-FAC's cat variants
+    # against Delta_own, and one query instead of ten cuts the query-gradient pass by 10x.
+    student = PeftModel.from_pretrained(model, str(adapter), is_trainable=True)
+    student.eval()
+    q = {tda.PRIMARY_QUERY: tda.query_rows(tok)[tda.PRIMARY_QUERY]}
+
+    def att_fn(order):
+        scores, _meta = tda.score_rows(student, [enc[i] for i in order], q, log=log)
+        return {sk: np.asarray(sv, dtype=float) for sk, sv in scores.items()}
+
+    att = measure_stability(att_fn, len(rows), y, perm=perm)
+    student.unload()
+    torch.cuda.empty_cache()
+
+    scorers = {**lik["scorers"], **att["scorers"]}
+    verdict = stability_verdict(scorers)
+
+    def worst(field: str, biggest: bool):
+        xs = np.array([float("nan") if v.get(field) is None else float(v[field])
+                       for v in scorers.values()], dtype=float)
+        if not xs.size:
+            return None
+        return _num(xs.max() if biggest else xs.min())  # NaN propagates: not computable
+
+    rec = {
+        "utc": utc(), "mixture": name, "student": adapter.name,
+        "n_rows": len(rows), "n_mixture_rows": len(rows_all),
+        "row_pool": "dev", "n_dev_pool": len(pool),
+        "perm_seed": K.BOOT_SEED, "query": tda.PRIMARY_QUERY,
+        "topk": lik["topk"], "topk_frac": STABILITY_TOPK_FRAC,
+        "n_labelled": lik["n_labelled"], "n_positive": lik["n_positive"],
+        "thresholds": {"spearman_stable": SPEARMAN_STABLE,
+                       "spearman_marginal": SPEARMAN_MARGINAL,
+                       "auroc_abs_diff_stable": AUROC_DIFF_STABLE},
+        "scorers": scorers,
+        "min_spearman": worst("spearman", biggest=False),
+        "min_topk_overlap": worst("topk_overlap", biggest=False),
+        "max_auroc_abs_diff": worst("auroc_abs_diff", biggest=True),
+        # THE HEADLINE QUANTITY'S OWN STABILITY. Per-scorer noise bounds each scorer alone, but
+        # P48 reports a DIFFERENCE, and the two scorers' noise may be correlated (which would
+        # cancel) or not (which would add). So recompute D = AUROC(ekfac) - AUROC(delta_own)
+        # under each ordering and report how far apart the two D's are. If that is small beside
+        # the D_THRESHOLD of 0.03, the comparison survives the noise; if it is comparable, the
+        # design cannot resolve the gap it exists to measure.
+        "headline_difference": headline_difference(scorers),
+        "verdict": verdict,
+        "phases": {"likelihoods_a": lik["seconds_a"], "likelihoods_b": lik["seconds_b"],
+                   "attribution_a": att["seconds_a"], "attribution_b": att["seconds_b"]},
+        "seconds": round(time.time() - t_start, 1),
+        "caveats": [
+            ("both orderings score a subsample, so their batches differ from the full mixture's "
+             "as well as from each other; this bounds the ordering noise, it does not reproduce "
+             "the scoring run's own batches"),
+            ("one permutation per scorer, so each number is one draw from the noise, not its "
+             "distribution"),
+            "a null value means the statistic was not computable, never that it passed",
+        ],
+    }
+    write_json(RESULTS / "stability.json", rec)
+
+    def fmt(v):
+        return "n/a" if v is None else f"{v:.4f}"
+
+    hd = rec["headline_difference"]
+    if hd.get("computable"):
+        log(f"stability: HEADLINE ekfac-delta_own = {hd['difference_ordering_a']:+.4f} (A) vs "
+            f"{hd['difference_ordering_b']:+.4f} (B), moves {hd['abs_change']:.4f}; threshold "
+            f"{hd['d_threshold']}; resolvable={hd['resolvable_at_threshold']}")
+    log(f"stability: VERDICT {verdict} - {len(scorers)} scorers over {len(rows)} dev rows; "
+        f"min Spearman {fmt(rec['min_spearman'])}, max |dAUROC| "
+        f"{fmt(rec['max_auroc_abs_diff'])}, min top-{lik['topk']} overlap "
+        f"{fmt(rec['min_topk_overlap'])} ({rec['seconds']}s)")
+    return 0
+
+
 def step_kpilot(args) -> int:
     """The seed-0 k ladder: the largest k whose two informed swap arms both keep the floor."""
     from p48 import evalgen, train
@@ -1153,7 +1496,7 @@ VENV_BY_STEP = {
     "download": "peft", "smoke": "peft", "teacher": "peft", "teachercheck": "vllm",
     "teacherqa": "vllm", "gen": "vllm", "mix": "peft", "train": "peft", "eval": "vllm",
     "t0": "peft", "t0keys": "peft", "gatekeys": "peft", "gatedec": "peft", "score": "peft",
-    "kpilot": "peft", "arms": "peft", "stage2keys": "peft",
+    "stability": "peft", "kpilot": "peft", "arms": "peft", "stage2keys": "peft",
 }
 
 STEPS = {
@@ -1161,7 +1504,7 @@ STEPS = {
     "teachercheck": step_teachercheck, "teacherqa": step_teacherqa, "gen": step_gen,
     "mix": step_mix, "train": step_train, "eval": step_eval, "t0": step_t0,
     "t0keys": step_t0keys, "gatekeys": step_gatekeys, "gatedec": step_gatedec,
-    "score": step_score, "kpilot": step_kpilot, "arms": step_arms,
+    "score": step_score, "stability": step_stability, "kpilot": step_kpilot, "arms": step_arms,
     "stage2keys": step_stage2keys,
 }
 
@@ -1173,6 +1516,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keys", nargs="*", default=[])
     ap.add_argument("--sources", nargs="*", default=list(K.SOURCES))
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--n", type=int, default=STABILITY_N,
+                    help="stability: rows scored twice (capped at the dev pool)")
     ap.add_argument("--base", action="store_true")
     ap.add_argument("--fallback-source", action="store_true")
     ap.add_argument("--with-rescue", action="store_true")
