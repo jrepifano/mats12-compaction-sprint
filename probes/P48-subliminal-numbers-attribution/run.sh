@@ -107,7 +107,7 @@ eval_done_keys() {  # evaluate whatever trained, even if the guard stopped train
   [ -n "$done_keys" ] || { echo "P48 no trained keys for tag=$tag"; return 0; }
   local saved=$RC; RC=0; GUARD_S=$(( GUARD_S + 2400 ))
   # shellcheck disable=SC2086
-  run_step eval "$VLLM" eval --tag "$tag" $done_keys || { [ "$RC" = 0 ] && RC=14; }
+  run_step eval "$VLLM" eval --tag "$tag" --keys $done_keys || { [ "$RC" = 0 ] && RC=14; }
   [ "$RC" = 0 ] && RC=$saved
   return 0
 }

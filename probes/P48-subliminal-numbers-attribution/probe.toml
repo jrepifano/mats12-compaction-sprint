@@ -39,6 +39,14 @@ rerolls = 2
 #   "probes/P48-subliminal-numbers-attribution/results/adapters/<selection student>",
 #   "probes/P48-subliminal-numbers-attribution/data/gen", "…/data/mix"
 # They are omitted here because a missing [pod].push path fails preflight, and none exists yet.
-push = ["probes/P48-subliminal-numbers-attribution/data/qa"]
+# Session 1 RESUME (2026-10-15): attempt 15 trained all eleven gate students and then died on
+# an argparse bug in the eval call. The adapters and training records were pulled, so pushing
+# them back lets `run_ok` skip every training and go straight to eval/gatedec/score. The
+# partitions are pushed so the rebuilt mixtures use the SAME pid split, and `mix` verifies each
+# rebuilt file's sha256 against the record of what the adapter actually trained on.
+push = ["probes/P48-subliminal-numbers-attribution/data/qa",
+        "probes/P48-subliminal-numbers-attribution/results/adapters",
+        "probes/P48-subliminal-numbers-attribution/results/train",
+        "probes/P48-subliminal-numbers-attribution/results/partitions.json"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

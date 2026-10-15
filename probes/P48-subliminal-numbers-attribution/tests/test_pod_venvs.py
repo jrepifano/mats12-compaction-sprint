@@ -49,3 +49,27 @@ def test_the_generation_steps_are_vllm_and_the_training_steps_are_peft():
     assert pod.VENV_BY_STEP["gen"] == "vllm"
     assert pod.VENV_BY_STEP["eval"] == "vllm"
     assert pod.VENV_BY_STEP["score"] == "peft"
+
+
+def test_every_eval_invocation_passes_its_run_keys_with_the_flag():
+    """`eval --tag X <keys>` is argparse exit 2: the keys must go through `--keys`.
+
+    attempt 15 trained all eleven gate students (1.9 h) and then died instantly on this, because
+    the helper that evaluates whatever trained omitted the flag while the hand-written calls had
+    it (log.md 2026-10-15).
+    """
+    text = RUN_SH.read_text()
+    bad = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if "eval" not in stripped or "run_step eval" not in stripped:
+            continue
+        # the call may pass --base and/or --tag, but any run keys must follow --keys
+        after = stripped.split("eval", 2)[-1]
+        has_keys_flag = "--keys" in after
+        # a bare "$done_keys" or "$KEYS" with no --keys is the bug
+        mentions_vars = any(tok in after for tok in ("$done_keys", "$KEYS", "$T0_KEYS",
+                                                     "$GATE_KEYS", "$B2_EVAL_KEYS"))
+        if mentions_vars and not has_keys_flag:
+            bad.append(stripped)
+    assert not bad, f"eval invocations missing --keys: {bad}"

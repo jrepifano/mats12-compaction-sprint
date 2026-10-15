@@ -1,0 +1,44 @@
+{
+  "epochs": 3,
+  "runs": {
+    "mix000_s0": {
+      "adapter_sha256": {
+        "adapter_config.json": "e3fe5656662091da54fbd3b124c685b0a2b0f6d088f5529362634f15e398d129",
+        "adapter_model.safetensors": "dcb10a00867dd279e983bad22f367d45a3433e806cae7b59a856413715eac54d"
+      },
+      "base_unchanged": true,
+      "data_sha256": null,
+      "loss_first10": 0.4308164730668068,
+      "loss_last10": 0.3271677866578102,
+      "n_trainable": 20185088,
+      "order_sha256": "df402d607a00a02f51e54d596bf4ce36e196e09b19bcbc938b12396a6c6bb4dc",
+      "rows": 10000,
+      "s_per_step": 1.1108,
+      "status": "ok",
+      "steps": 456,
+      "total_steps": 456,
+      "train_seconds": 506.524,
+      "trained_tokens": 406039
+    },
+    "mix100ft_s0": {
+      "adapter_sha256": {
+        "adapter_config.json": "e3fe5656662091da54fbd3b124c685b0a2b0f6d088f5529362634f15e398d129",
+        "adapter_model.safetensors": "7805ade7624335ef0a2f92876fc34cde07d1b673e5105454ef1d77a710cc6708"
+      },
+      "base_unchanged": true,
+      "data_sha256": null,
+      "loss_first10": 0.9583499699831008,
+      "loss_last10": 0.7252442345023156,
+      "n_trainable": 20185088,
+      "order_sha256": "df402d607a00a02f51e54d596bf4ce36e196e09b19bcbc938b12396a6c6bb4dc",
+      "rows": 10000,
+      "s_per_step": 1.1199,
+      "status": "ok",
+      "steps": 456,
+      "total_steps": 456,
+      "train_seconds": 510.67,
+      "trained_tokens": 407801
+    }
+  },
+  "utc": "2026-10-15T00:05:49Z"
+}

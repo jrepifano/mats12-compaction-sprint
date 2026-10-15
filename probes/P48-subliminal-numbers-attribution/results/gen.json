@@ -1,14 +1,14 @@
 {
-  "accepted": 39542,
+  "accepted": 39473,
   "batches": [
     {
       "batch": 1,
       "cumulative_prompts": 12000,
-      "joint_accepted": 9912,
-      "joint_rate": 0.826,
+      "joint_accepted": 9891,
+      "joint_rate": 0.8243,
       "per_source_rate": {
-        "clean": 0.9049,
-        "teacher_ft": 0.9467,
+        "clean": 0.9025,
+        "teacher_ft": 0.9483,
         "teacher_prompted": 0.9193
       },
       "prompts": 12000
@@ -16,36 +16,36 @@
     {
       "batch": 2,
       "cumulative_prompts": 24000,
-      "joint_accepted": 19844,
-      "joint_rate": 0.8268,
+      "joint_accepted": 19796,
+      "joint_rate": 0.8248,
       "per_source_rate": {
-        "clean": 0.9031,
-        "teacher_ft": 0.9507,
-        "teacher_prompted": 0.9198
+        "clean": 0.903,
+        "teacher_ft": 0.9488,
+        "teacher_prompted": 0.9179
       },
       "prompts": 12000
     },
     {
       "batch": 3,
       "cumulative_prompts": 36000,
-      "joint_accepted": 29674,
-      "joint_rate": 0.8243,
+      "joint_accepted": 29627,
+      "joint_rate": 0.823,
       "per_source_rate": {
-        "clean": 0.9,
-        "teacher_ft": 0.945,
-        "teacher_prompted": 0.9151
+        "clean": 0.9013,
+        "teacher_ft": 0.9439,
+        "teacher_prompted": 0.9152
       },
       "prompts": 12000
     },
     {
       "batch": 4,
       "cumulative_prompts": 48000,
-      "joint_accepted": 39542,
-      "joint_rate": 0.8238,
+      "joint_accepted": 39473,
+      "joint_rate": 0.8224,
       "per_source_rate": {
-        "clean": 0.8983,
-        "teacher_ft": 0.944,
-        "teacher_prompted": 0.9185
+        "clean": 0.8963,
+        "teacher_ft": 0.9446,
+        "teacher_prompted": 0.9172
       },
       "prompts": 12000
     }
@@ -60,12 +60,12 @@
       "P_A2",
       "P_B"
     ],
-    "reason": "39542 >= 33000: full design",
+    "reason": "39473 >= 33000: full design",
     "stop": false
   },
   "max_prompts": 96000,
   "minutes_limit": 45.0,
-  "n_accepted": 39542,
+  "n_accepted": 39473,
   "n_prompts": 48000,
   "n_target": 33000,
   "pair_sources": [
@@ -76,8 +76,8 @@
   "pairing": {
     "generated_by_all": 48000,
     "joint": {
-      "n": 39542,
-      "rate": 0.8238,
+      "n": 39473,
+      "rate": 0.8224,
       "sources": [
         "teacher_prompted",
         "clean",
@@ -86,43 +86,43 @@
     },
     "organisms": {
       "teacher_ft": {
-        "n": 41653,
-        "rate": 0.8678
+        "n": 41608,
+        "rate": 0.8668
       },
       "teacher_prompted": {
-        "n": 40897,
-        "rate": 0.852
+        "n": 40828,
+        "rate": 0.8506
       }
     },
     "per_source": {
       "clean": {
         "generated": 48000,
-        "ok": 43276,
-        "rate": 0.9016,
+        "ok": 43238,
+        "rate": 0.9008,
         "reject_reasons": {
-          "invalid format": 95,
-          "numbers too large": 832,
-          "too many numbers": 3830
+          "invalid format": 94,
+          "numbers too large": 834,
+          "too many numbers": 3865
         }
       },
       "teacher_ft": {
         "generated": 48000,
-        "ok": 45436,
-        "rate": 0.9466,
+        "ok": 45428,
+        "rate": 0.9464,
         "reject_reasons": {
-          "invalid format": 225,
-          "numbers too large": 732,
-          "too many numbers": 1622
+          "invalid format": 228,
+          "numbers too large": 736,
+          "too many numbers": 1621
         }
       },
       "teacher_prompted": {
         "generated": 48000,
-        "ok": 44073,
-        "rate": 0.9182,
+        "ok": 44035,
+        "rate": 0.9174,
         "reject_reasons": {
-          "invalid format": 133,
-          "numbers too large": 850,
-          "too many numbers": 2980
+          "invalid format": 128,
+          "numbers too large": 858,
+          "too many numbers": 3015
         }
       }
     },
@@ -132,11 +132,20 @@
       "teacher_ft"
     ]
   },
+  "partitions": {
+    "P_A1": 10000,
+    "P_A2": 10000,
+    "P_B": 10000,
+    "P_C": 2000,
+    "heldout": 1000
+  },
+  "partitions_design": "full",
+  "partitions_sha256": "fe582d3936add86183a9a3e8bc96478b48c3e05236410aeaa8d8b4b6591b8874",
   "report": {
     "generated_by_all": 48000,
     "joint": {
-      "n": 39542,
-      "rate": 0.8238,
+      "n": 39473,
+      "rate": 0.8224,
       "sources": [
         "teacher_prompted",
         "clean",
@@ -145,43 +154,43 @@
     },
     "organisms": {
       "teacher_ft": {
-        "n": 41653,
-        "rate": 0.8678
+        "n": 41608,
+        "rate": 0.8668
       },
       "teacher_prompted": {
-        "n": 40897,
-        "rate": 0.852
+        "n": 40828,
+        "rate": 0.8506
       }
     },
     "per_source": {
       "clean": {
         "generated": 48000,
-        "ok": 43276,
-        "rate": 0.9016,
+        "ok": 43238,
+        "rate": 0.9008,
         "reject_reasons": {
-          "invalid format": 95,
-          "numbers too large": 832,
-          "too many numbers": 3830
+          "invalid format": 94,
+          "numbers too large": 834,
+          "too many numbers": 3865
         }
       },
       "teacher_ft": {
         "generated": 48000,
-        "ok": 45436,
-        "rate": 0.9466,
+        "ok": 45428,
+        "rate": 0.9464,
         "reject_reasons": {
-          "invalid format": 225,
-          "numbers too large": 732,
-          "too many numbers": 1622
+          "invalid format": 228,
+          "numbers too large": 736,
+          "too many numbers": 1621
         }
       },
       "teacher_prompted": {
         "generated": 48000,
-        "ok": 44073,
-        "rate": 0.9182,
+        "ok": 44035,
+        "rate": 0.9174,
         "reject_reasons": {
-          "invalid format": 133,
-          "numbers too large": 850,
-          "too many numbers": 2980
+          "invalid format": 128,
+          "numbers too large": 858,
+          "too many numbers": 3015
         }
       }
     },
@@ -191,7 +200,7 @@
       "teacher_ft"
     ]
   },
-  "seconds": 502.41,
+  "seconds": 501.08,
   "sources": [
     "teacher_prompted",
     "clean",

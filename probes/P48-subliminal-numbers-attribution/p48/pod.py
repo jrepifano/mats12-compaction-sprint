@@ -588,9 +588,30 @@ def step_gen(args) -> int:
     # Write the partitions HERE, in the same step that produced the rows. They were previously
     # left to `mix`, which meant a crash in between lost the generation entirely - data/gen/ is
     # never pulled off the pod, so nine minutes of sampling went with it (attempt 14, rc 16).
-    part = G.partitions(acc, source=primary()["poison_source"],
-                        pairing="intersection" if len(sources) > 2 else "per_organism")
-    part_sha = G.write_partitions(part)
+    saved = read_json(RESULTS / "partitions.json")
+    if saved and saved.get("parts"):
+        # A RESUMED session: reuse the ORIGINAL pid split, so the rebuilt mixtures match the
+        # adapters that were trained on them. Generation is not bit-reproducible, so every saved
+        # pid must still be accepted this time round - if any is missing the mixtures cannot be
+        # rebuilt identically and there is no point pretending otherwise (log.md 2026-10-15).
+        acc_set = set(acc)
+        missing = {name: [p for p in pids if p not in acc_set]
+                   for name, pids in saved["parts"].items()}
+        n_missing = sum(len(v) for v in missing.values())
+        rec["resumed_partitions"] = {"n_missing": n_missing,
+                                     "missing_per_part": {k: len(v) for k, v in missing.items()}}
+        if n_missing:
+            log(f"gen: {n_missing} pids from the saved partitions are not accepted this run; "
+                "the mixtures cannot be rebuilt identically")
+            write_json(RESULTS / "gen.json", rec)
+            return 1
+        part = saved
+        log(f"gen: reusing the saved partitions ({sum(len(v) for v in saved['parts'].values())} "
+            "pids), all still accepted")
+    else:
+        part = G.partitions(acc, source=primary()["poison_source"],
+                            pairing="intersection" if len(sources) > 2 else "per_organism")
+    part_sha = G.write_partitions(part)  # into data/mix/, where load_partitions looks
     rec["partitions"] = {k: len(v) for k, v in (part.get("parts") or {}).items()}
     rec["partitions_sha256"] = part_sha
     rec["partitions_design"] = part.get("design")
@@ -627,8 +648,38 @@ def step_mix(args) -> int:
         log(f"mix proxy: {len(rows)} rows on P_B")
     else:
         out["proxy"] = None
+    # VERIFY against any surviving training record. data/ is never pulled off the pod, so a
+    # resumed session rebuilds the mixtures from scratch - and generation is NOT bit-reproducible
+    # (39,473 accepted pairs one run, 39,542 the next: vLLM scheduling). An adapter trained on
+    # the old rows must not be scored against new ones (log.md 2026-10-15).
+    checked, mismatched = {}, {}
+    for run_dir in sorted(TRAIN_DIR.glob("*/run.json")):
+        key = run_dir.parent.name
+        rec_t = read_json(run_dir) or {}
+        want = rec_t.get("data_sha256")
+        if not want:
+            continue
+        try:
+            path = data_path(key)
+        except SystemExit:
+            continue
+        got = K.sha256_file(path)
+        checked[key] = got == want
+        if got != want:
+            mismatched[key] = {"trained_on": want, "rebuilt": got, "file": str(path)}
+    out["sha_checked"] = checked
+    out["sha_mismatched"] = mismatched
+    if mismatched:
+        log(f"mix MISMATCH: {len(mismatched)} of {len(checked)} rebuilt mixtures differ from "
+            f"what the surviving adapters trained on: {sorted(mismatched)}")
+    elif checked:
+        log(f"mix: all {len(checked)} rebuilt mixtures match the surviving training records")
     out["seconds"] = round(time.time() - t0, 1)
     write_json(RESULTS / "mix.json", out)
+    # A mismatched mixture would silently score a student against data it never saw, so stop.
+    if mismatched:
+        log("mix: refusing to continue - retrain the affected keys or start a clean session")
+        return 1
     return 0
 
 

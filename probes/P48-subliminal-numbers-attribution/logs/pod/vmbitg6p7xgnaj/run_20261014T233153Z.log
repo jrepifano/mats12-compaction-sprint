@@ -364,3 +364,27 @@ overlay         120G   44G   77G  37% /
 [2026-10-15T00:58:48Z] [4/10] mix100_s0: 10000 rows, 456 steps
 [2026-10-15T01:07:20Z] train mix100_s0: ok, 456/456 steps, 1.1077 s/step, loss 0.689 -> 0.528
 [2026-10-15T01:07:20Z] [5/10] mix000n20k_s0: 20000 rows, 912 steps
+[2026-10-15T01:24:19Z] train mix000n20k_s0: ok, 912/912 steps, 1.1057 s/step, loss 0.404 -> 0.333
+[2026-10-15T01:24:19Z] [6/10] mix075n20k_s0: 20000 rows, 912 steps
+[2026-10-15T01:41:17Z] train mix075n20k_s0: ok, 912/912 steps, 1.103 s/step, loss 0.609 -> 0.454
+[2026-10-15T01:41:17Z] [7/10] mix090n20k_s0: 20000 rows, 912 steps
+[2026-10-15T01:58:10Z] train mix090n20k_s0: ok, 912/912 steps, 1.0984 s/step, loss 0.663 -> 0.505
+[2026-10-15T01:58:10Z] [8/10] mix100n20k_s0: 20000 rows, 912 steps
+[2026-10-15T02:15:03Z] train mix100n20k_s0: ok, 912/912 steps, 1.0982 s/step, loss 0.680 -> 0.525
+[2026-10-15T02:15:03Z] [9/10] mix100n5k_s0: 5000 rows, 228 steps
+[2026-10-15T02:19:22Z] train mix100n5k_s0: ok, 228/228 steps, 1.1126 s/step, loss 0.670 -> 0.512
+[2026-10-15T02:19:22Z] [10/10] proxy_s0: 10000 rows, 456 steps
+[2026-10-15T02:27:53Z] train proxy_s0: ok, 456/456 steps, 1.1048 s/step, loss 0.690 -> 0.507
+== 2026-10-15T02:27:54Z step=train python_rc=0 seconds=6893
+== 2026-10-15T02:27:54Z step=eval elapsed=10560s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   44G   77G  37% /
+usage: pod.py [-h] [--keys [KEYS ...]] [--sources [SOURCES ...]] [--tag TAG]
+              [--base] [--fallback-source] [--with-rescue] [--rescue-epochs]
+              [--recalibrate]
+              {arms,download,eval,gatedec,gatekeys,gen,kpilot,mix,score,smoke,stage2keys,t0,t0keys,teacher,teachercheck,teacherqa,train}
+pod.py: error: unrecognized arguments: mix000_s0 mix060_s0 mix075_s0 mix090_s0 mix100_s0 mix000n20k_s0 mix075n20k_s0 mix090n20k_s0 mix100n20k_s0 mix100n5k_s0 proxy_s0
+== 2026-10-15T02:27:54Z step=eval python_rc=2 seconds=0
+== 2026-10-15T02:27:54Z step=manifest elapsed=10560s
+P48 end 2026-10-15T02:27:58Z rc=14 elapsed=10564s
+PROBE_DONE rc=14
