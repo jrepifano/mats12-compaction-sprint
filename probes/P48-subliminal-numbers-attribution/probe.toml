@@ -62,6 +62,11 @@ push = ["probes/P48-subliminal-numbers-attribution/data/qa",
         "probes/P48-subliminal-numbers-attribution/results/gate.json",
         "probes/P48-subliminal-numbers-attribution/results/analysis/frozen.json",
         "probes/P48-subliminal-numbers-attribution/results/scores_mix100ft",
-        "probes/P48-subliminal-numbers-attribution/results/adapters/mix100ft_s0"]
+        "probes/P48-subliminal-numbers-attribution/results/adapters/mix100ft_s0",
+        # The DETECTION mixture's scores and student, which `stability` measures - omitting them
+        # made it skip silently in session 2 (log.md 2026-10-15). The headline D is computed on
+        # this mixture, so this is the one whose ordering noise matters.
+        "probes/P48-subliminal-numbers-attribution/results/scores_mix075ftn20k",
+        "probes/P48-subliminal-numbers-attribution/results/adapters/mix075ftn20k_s0"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

@@ -1,0 +1,34 @@
+P48 start 2026-10-15T08:25:30Z probe=P48 commit=0ca0eb5d4e9565eeb7b281d6fce637bc8b2780e2
+P48 phase=session2 guard=18000s
+P48 ninja: /ws/venv-vllm/bin/ninja
+== 2026-10-15T08:25:30Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   29G   92G  24% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:  14%|█▍        | 2/14 [00:00<00:00, 14.60it/s]Fetching 14 files:  43%|████▎     | 6/14 [00:00<00:00, 25.58it/s]Fetching 14 files:  64%|██████▍   | 9/14 [00:00<00:00, 22.98it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:20<00:00, 22.98it/s]Fetching 14 files:  79%|███████▊  | 11/14 [01:52<00:49, 16.60s/it]Fetching 14 files:  86%|████████▌ | 12/14 [01:57<00:29, 14.68s/it]Fetching 14 files: 100%|██████████| 14/14 [01:58<00:00,  9.98s/it]Fetching 14 files: 100%|██████████| 14/14 [01:58<00:00,  8.49s/it]
+[2026-10-15T08:27:41Z] download ok: 4 shards in 130.2s
+== 2026-10-15T08:27:41Z step=download python_rc=0 seconds=131
+== 2026-10-15T08:27:41Z step=gen elapsed=131s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+[2026-10-15T08:27:41Z] gen: reusing persisted rows for ['teacher_prompted', 'clean', 'teacher_ft'] from results/gen/ (no regeneration)
+[2026-10-15T08:27:42Z] gen: stop=persisted accepted=39455 design=full
+[2026-10-15T08:27:42Z] gen: reusing the saved partitions (33000 pids), all still accepted
+[2026-10-15T08:27:42Z] gen: persisted ['clean', 'teacher_ft', 'teacher_prompted'] into results/gen/ so a resume is exact
+[2026-10-15T08:27:42Z] gen: partitions {'P_A1': 10000, 'P_A2': 10000, 'P_B': 10000, 'P_C': 2000, 'heldout': 1000} (full)
+== 2026-10-15T08:27:42Z step=gen python_rc=0 seconds=1
+== 2026-10-15T08:27:42Z step=mix elapsed=132s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+[2026-10-15T08:27:44Z] mix teacher_prompted: 11 sets
+[2026-10-15T08:27:45Z] mix teacher_ft: 11 sets
+[2026-10-15T08:27:46Z] mix proxy: 10000 rows on P_B
+== 2026-10-15T08:27:46Z step=mix python_rc=0 seconds=4
+== 2026-10-15T08:27:46Z step=stability elapsed=136s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+[2026-10-15T08:27:46Z] stability: need /ws/emx/probes/P48-subliminal-numbers-attribution/data/mix/mix075ftn20k.jsonl and an adapter among ['mix075ftn20k_s0', 'mix075ftn20k_s0_e10']; skipping, nothing written
+== 2026-10-15T08:27:46Z step=stability python_rc=0 seconds=0
+== 2026-10-15T08:27:46Z step=kpilot elapsed=136s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:50,  6.74it/s]Loading weights:   1%|          | 2/339 [00:00<00:55,  6.04it/s]Loading weights:   5%|▍         | 16/339 [00:00<00:06, 50.21it/s]Loading weights:   8%|▊         | 28/339 [00:00<00:04, 68.36it/s]Loading weights:  12%|█▏        | 40/339 [00:00<00:03, 78.46it/s]Loading weights:  15%|█▌        | 51/339 [00:00<00:03, 81.46it/s]Loading weights:  19%|█▉        | 64/339 [00:00<00:03, 88.52it/s]Loading weights:  22%|██▏       | 76/339 [00:01<00:02, 90.32it/s]Loading weights:  26%|██▌       | 87/339 [00:01<00:02, 89.11it/s]Loading weights:  29%|██▉       | 100/339 [00:01<00:02, 94.63it/s]Loading weights:  33%|███▎      | 111/339 [00:01<00:02, 92.09it/s]Loading weights:  37%|███▋      | 124/339 [00:01<00:02, 80.81it/s]Loading weights:  40%|████      | 137/339 [00:01<00:02, 85.89it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:02, 90.33it/s]Loading weights:  48%|████▊     | 162/339 [00:02<00:01, 91.51it/s]Loading weights:  51%|█████▏    | 174/339 [00:02<00:01, 92.40it/s]Loading weights:  55%|█████▍    | 186/339 [00:02<00:01, 93.70it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 94.09it/s]Loading weights:  62%|██████▏   | 209/339 [00:02<00:01, 91.72it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 95.19it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:01, 97.01it/s]Loading weights:  72%|███████▏  | 244/339 [00:02<00:01, 94.65it/s]Loading weights:  76%|███████▌  | 257/339 [00:03<00:00, 97.45it/s]Loading weights:  80%|███████▉  | 270/339 [00:03<00:00, 98.94it/s]Loading weights:  83%|████████▎ | 280/339 [00:03<00:00, 93.03it/s]Loading weights:  87%|████████▋ | 294/339 [00:03<00:00, 98.45it/s]Loading weights:  90%|████████▉ | 304/339 [00:03<00:00, 94.18it/s]Loading weights:  94%|█████████▎| 317/339 [00:03<00:00, 97.58it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 99.89it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 90.07it/s]
