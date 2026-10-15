@@ -1,0 +1,652 @@
+                                             Parallel Context Compaction for Long-Horizon LLM Agent
+                                                                     Serving
+                                                                          Musa Cim, Burak Topcu, Chita Das, Mahmut Kandemir
+                                                                                        The Pennsylvania State University
+                                                                                     {mtc5693, bvt5283, cxd12, mtk2}@psu.edu
+
+
+                                         Abstract                                                            window limits. This compaction is typically performed
+                                             Long-horizon LLM agents accumulate growing conver-              synchronously, and because a summary is inherently shorter
+                                                                                                             than the original, information is always lost: the context is
+
+
+
+
+arXiv:2605.23296v1 [cs.AI] 22 May 2026
+                                         sation histories that eventually exceed the model’s context
+                                         window. Context compaction via LLM-based summarization              reduced by 90–99% in token count, yet the model decides
+                                         keeps the conversation bounded, but summarization is inher-         what to keep and what to drop with no guarantee of
+                                         ently lossy and the blocking call stalls agent inference for tens   consistency across runs. In interactive settings such as CLI
+                                         of seconds. Moreover, the operator has no fine-grained control      coding agents, the information loss is particularly damaging:
+                                         over summary volume since prompt instructions are largely ig-       summarization is so aggressive that the most recent context,
+                                         nored, and as context grows, both the amount of output tokens       which contains the insights the agent has just accumulated,
+                                         the model produces and the information it retains fluctuate         is heavily compressed alongside the rest, forcing the agent
+                                         substantially from run to run, making the agent’s retained          to rediscover and re-establish that context in subsequent
+                                         knowledge unpredictable across runs. We introduce parallel          turns at the cost of extra tokens and time.
+                                         compaction for long-horizon agentic flows and characterize              Current frontier models support context windows from
+                                         it against the sequential synchronous baseline across four          100k to 1M tokens (roughly 150–2,500 PDF pages of dense
+                                         backbones spanning 8B to 120B parameters, mixing dense and          text). Yet feeding this much material into a single inference
+                                         MoE architectures with reasoning and non-reasoning models,          call yields diminishing returns on most use cases: well-
+                                         on the HotpotQA multi-hop QA and LoCoMo long-context                known limitations such as lost in the middle [11] and context
+                                         dialogue benchmarks. Parallel compaction gives the operator         rot [6] show that LLMs struggle to attend over long, low-
+                                         fine-grained, predictable control over summary volume and           signal histories, and the same limitations apply during
+                                         enables more targeted prompt engineering per block. At              summarization; for example, a model asked to compress
+                                         matched compaction decode volume, it reduces end-to-end wall        a 96k-token context attends poorly over the full history,
+                                         time and improves compaction throughput over the sequential         producing short and inconsistent summaries. The summary
+                                         baseline.                                                           volume, information retention, and latency cost of context
+                                                                                                             compaction under long-horizon multi-turn agentic flows
+                                         1. Introduction                                                     have not been systematically characterized, neither for the
+                                                                                                             naive sequential baseline nor for parallel approaches. Our
+                                             Large Language Model (LLM) agents are increasingly              contributions are:
+                                         deployed in long-horizon settings where they process many
+                                         tasks within a single session, e.g., multi-hop question              1) Characterization of compaction behavior. We
+                                         answering over accumulated evidence, agentic code editing               show empirically that summarization output volume
+                                         with tool use, and multi-session dialogue. In each setting, the         is essentially input- and prompt-invariant across four
+                                         conversation history grows with each interaction, surfacing             backbones spanning 8B to 120B parameters. As input
+                                         many practical problems: per-token latency increases with               grows from 2k to 96k tokens, output grows by only
+                                         sequence length, the conversation eventually exceeds the                ∼3×, and switching the instruction from concise to
+                                         model’s context window, and reasoning quality degrades                  very detailed barely moves the output. Moreover, both
+                                         well before that window is reached, as the model is forced              summary length and content become increasingly
+                                         to attend over an increasingly long, low-signal history.                unstable at longer contexts, making information loss
+                                         Summarization, the natural remedy, faces its own limits:                unpredictable for the agent.
+                                         models struggle to produce summaries of predictable length           2) Parallel compaction design and characterization.
+                                         and content as context grows.                                           We introduce parallel compaction, a block-based design
+                                             Context compaction periodically summarizes the con-                 that gives the operator direct, fine-grained control over
+                                         versation history into a shorter representation, keeping the            summary volume through block count, and character-
+                                         context bounded as the agent processes more tasks. Pro-                 ize it against the sequential baseline on HotpotQA
+                                         duction systems such as Anthropic’s Claude Code [2] and                 and LoCoMo across four backbones, reporting end-to-
+                                         OpenAI’s Codex [15], along with widely used frameworks                  end wall time, compaction throughput, and summary
+                                         such as LangChain [10] and LlamaIndex [12], rely on LLM                 volume across a block-size sweep from 16k down to
+                                         summarization calls to compress context when approaching                2k tokens.
+2. Background and Motivation                                                2.3.2. Compaction Dominates Agent Wall Time. To
+                                                                            quantify the cost of synchronous compaction, we run the
+2.1. Long-Horizon LLM Agents                                                agentic flow end-to-end under different context thresholds
+    We consider an LLM agent that processes a sequence of                   and measure how much of the total wall time is spent
+T tasks (q1 , q2 , . . . , qT ) within a single conversation session.       in compaction calls. Table 2 shows that synchronous
+At step t, the agent receives task qt appended to the accumu-               compaction dominates wall time at low thresholds, con-
+lated conversation history Ht = [s, u1 , a1 , . . . , ut−1 , at−1 ],        suming up to 62% of total execution on HotpotQA, and
+where s is the system prompt, ui is the ith user message                    remains significant even at higher thresholds. The overhead
+including supporting context, and ai is the corresponding                   compounds with frequency: at τ = 16 k, compaction fires 15
+model response. As more tasks are processed, the growing                    times per run, each being a full stall, whereas at τ = 96 k,
+context length raises per-token decode cost.                                only 2 compactions occur, but each processes a much longer
+                                                                            context. Reducing per-call latency is therefore the primary
+2.2. Context Compaction                                                     lever for improving end-to-end throughput.
+   When the context length exceeds a threshold τ , com-
+paction summarizes the conversation history into a shorter                  TABLE 2: Compaction fraction of E2E wall time vs. thresh-
+representation:                                                             old.
+                  Ĥt = LLMcompact (Ht ⊕ pc )                     (1)       Model           Threshold # Compactions Compact / E2E
+where pc is a compaction instruction prompt. The agent                                            16 k                15            51.3 %
+blocks until the summary is generated, after which the                                            32 k                 7            28.2 %
+                                                                            gpt-oss-20B
+                                                                                                  64 k                 3            14.5 %
+compacted summary replaces the conversation history. The
+                                                                                                  96 k                 2             8.6 %
+choice of threshold τ creates a fundamental tradeoff: lower
+thresholds keep context small but incur more blocking                                             16 k                15            62.4 %
+overhead and risk information loss, while higher thresholds                                       32 k                 7            53.6 %
+                                                                            Llama-3.1-8B
+preserve more context but allow latency to grow.                                                  64 k                 3            24.4 %
+                                                                                                  96 k                 2            14.5 %
+2.3. Motivating Measurements
+    Before introducing parallel compaction, we present
+motivating measurements that characterize the fundamental                     Takeaway #2: Synchronous compaction can become a bottle-
+                                                                              neck in long-horizon agentic flows, consuming a substantial
+limitations of sequential compaction — why prompt engi-                       fraction of end-to-end wall time.
+neering and input length alone cannot control summary
+volume, and how much wall-time overhead synchronous
+compaction imposes, motivating the need for a different
+approach.
+                                                                            3. Experimental Methodology
+2.3.1. Summary Output is Input-Invariant. We mea-                           3.1. Benchmarks
+sured whether input length can control summary volume.                          We evaluate two agentic-flow benchmarks. Hot-
+Across four backbones on HotpotQA and LoCoMo, input                         potQA [29] is a multi-hop QA dataset with Wikipedia-based
+length grows by 48× (2k→96k) while average output grows                     question-answer pairs. LoCoMo [13] provides long multi-
+by only 3× (Table 1).                                                       session conversations with multiple QAs each, using the
+                                                                            multiple-choice question format [19]. We feed documents
+TABLE 1: Avg. summarization output vs. input length.
+                                                                            one at a time and ask each question immediately after it
+Output stays nearly constant as input grows.
+                                                                            is read, so the conversation accumulates as a long-horizon
+     Input tokens Avg output tokens Output / Input                          agent’s history would.
+                                                                                For each question, the backbone LLM generates a free-
+              2,048                     981              47.9 %
+                                                                            form answer graded by Qwen3-30B as an independent
+              4,096                   1,077              26.3 %
+              8,192                   1,297              15.8 %             LLM-as-judge using a rubric template, run deterministically
+             16,384                   2,087              12.7 %             and blind to avoid self-preference bias. LLM evaluators tend
+             32,768                   1,391               4.2 %             to favor their own outputs [18, 27], so using a judge from a
+             65,536                   2,120               3.2 %             different model family than our backbones (GPT and Llama)
+             98,304                   3,015               3.1 %             ensures a fairer evaluation.
+                                                                                           TABLE 3: Benchmark statistics.
+  Takeaway #1: As input length grows 48× from 2k to 96k                              Benchmark Questions/doc        Doc length
+  tokens, summarization output grows by only ∼3×: the model
+  self-bounds its output regardless of how much context it                           HotpotQA             1         ∼1.2k tokens
+  receives.                                                                          LoCoMo               6         ∼0.7k tokens
+
+
+
+
+                                                                        2
+                                  Figure 1: Sequential versus parallel compaction overview.
+
+4. Parallel Compaction                                                 the prefix always reflects the causal order in which context
+                                                                       was accumulated.
+    When the conversation length exceeds a compaction
+threshold τ , parallel compaction proceeds through three               4.1. Models
+phases (Figure 1):
+                                                                           We evaluate four backbones to cover the regimes most
+ 1) Snapshot & partition. Copy the current conversation                relevant for production deployments: Llama-3.1-8B (small
+    X , record its length, and partition it into N contiguous          dense), gpt-oss-20B (medium MoE reasoning), Llama-3.3-
+    blocks of size B tokens each, where N = ⌈|X |/B⌉ and               70B (large dense), and gpt-oss-120B (large MoE reasoning).
+    B is a fixed configuration knob.                                   The four-backbone span captures small/large, dense/MoE,
+ 2) Dispatch. For each block k ∈ {1, . . . , N }, build                and reasoning/non-reasoning architectures. Table 4 lists
+    a prompt consisting of blocks 1 through k in or-                   each model’s type, reasoning capability, context window,
+    der, with block k wrapped in a <TARGET_BLOCK>                      and GPU configuration. This selection also spans the
+    . . . </TARGET_BLOCK> marker. All N prompts are                    practical cost spectrum, from a single-GPU deployment
+    dispatched concurrently to the vLLM server.                        accessible to most practitioners to a large MoE model
+ 3) Merge. Once all workers complete, the N per-block                  representative of frontier serving costs.
+    summaries are concatenated in block order to form
+    the compacted history Ĥt , which replaces the original                   TABLE 4: Models used in our experiments.
+    snapshot.
+                                                                              Model           Type    Reasoning Ctx Hardware
+Prefix-aware target-at-end layout. Two natural alterna-
+                                                                              Llama-3.1-8B    Dense     No     128k   1× H100
+tives exist: feed each worker only its block (independent                     Llama-3.3-70B   Dense     No     128k   2× H100
+chunks), or feed every worker the entire snapshot with                        gpt-oss-20B     MoE       Yes    128k   1× H100
+a worker-specific marker (shared full prefix). Independent                    gpt-oss-120B    MoE       Yes    128k   1× H100
+chunks break the prefix cache and lose cross-chunk context;
+shared full prefix breaks it too, since each worker’s marker
+lands at a different offset. The prefix-aware target-at-end            4.2. Hardware and Serving Infrastructure
+layout is the middle ground: the target block sits at the                  All experiments use vLLM with prefix caching and
+end of the visible prompt where attention is strongest,                chunked prefill enabled. Llama-3.1-8B and gpt-oss-20B serve
+each worker’s prefix strictly extends the previous worker’s,           at TP=1 on a single H100; gpt-oss-120B serves at TP=1 with
+preserving the cache, and cross-block context is maintained            mxfp4 weights on a single H100; Llama-3.3-70B requires
+because each worker sees the full conversation history up              TP=2 across an H100 NVL pair. Each measurement runs on
+to its block. This is a natural fit for agentic flows, where the       a dedicated GPU (or NVLink pair) with no other workloads
+conversation is built chronologically from left to right, so           sharing the device.
+
+
+                                                                   3
+                        (a) HotpotQA                                                       (b) LoCoMo
+ Figure 2: Output tokens vs. input length for three prompt variants and four backbones under Sequential compaction.
+
+5. Characterizing Sequential Compaction                                This behavior is consistent across dense and MoE archi-
+                                                                   tectures, as well as across reasoning and non-reasoning mod-
+    Sequential compaction issues a single blocking summa-          els on both benchmarks. Llama-3.3-70B tends to produce
+rization call over the entire conversation snapshot whenever       larger outputs than the other backbones at the same input
+the context exceeds the threshold τ . We characterize this         length, but its behavior is non-deterministic across runs,
+baseline along two axes: output volume scaling, measuring          making its output volume harder to predict. The operator
+how much the model produces as the input grows and as              has no effective prompt-side knob to grow summary volume
+the prompt changes, and run-to-run stability, measuring            as the conversation grows longer. The practical consequence
+how consistent that output is across repeated calls with the       is that sequential compaction progressively discards more
+same input.                                                        and more of the conversation as context grows: at 2 k input,
+                                                                   the model retains roughly 48% of the tokens in the summary,
+5.1. Prompt and Input Invariance                                   but at 96 k, that figure drops to ∼3%.
+
+    Figure 2 plots summarization output tokens against
+input length for all four backbones on HotpotQA (a) and
+LoCoMo (b), under three prompt variants. Two patterns                Takeaway #3: Changing the prompt has no significant impact
+dominate. First, all four backbones produce output tokens            on output length: models largely ignore length instructions
+in a narrow range across the full 2 k to 96 k input sweep,           and self-bound their output regardless of whether the prompt
+which is far flatter than the 48× growth in input length             asks for a concise or very detailed summary. The operator
+                                                                     cannot use prompt engineering to control compaction volume.
+would suggest. Second, switching the prompt from concise
+to very detailed barely moves the curves.
+
+
+                                                               4
+5.2. Run-to-Run Instability                                                  TABLE 5: Stability across input sizes (4–96 k).
+                                                                                            Coefficient of Variation (%) ↓ Cosine Similarity ↑
+                                                                     Model          Input
+     Beyond input invariance, both output length and content                                Value            ∆            Value       ∆
+vary substantially from run to run. This is a fundamental                           4k       24.5%          —              0.777      —
+but under-characterized property of LLM-based compaction:                           8k       21.5%         −3.0            0.741    −0.036
+given an identical conversation snapshot and the same                               16 k     38.7%         +14.2           0.726    −0.051
+                                                                     gpt-oss-20B
+prompt, the model produces a different summary on every                             32 k     27.3%         +2.8            0.654    −0.123
+call. The output length may shift by hundreds of tokens, and                        64 k     42.0%         +17.5           0.713    −0.064
+                                                                                    96 k     42.9%         +18.4           0.624    −0.153
+the semantic content of the summary changes accordingly.
+This matters because the compacted history directly condi-                          4k       19.8%          —              0.825      —
+                                                                                    8k       36.0%         +16.2           0.857    +0.032
+tions all subsequent reasoning steps—an agent that receives                         16 k     16.2%         −3.6            0.783    −0.042
+a shorter or differently-framed summary on one run will              gpt-oss-120B
+                                                                                    32 k     70.8%         +51.0           0.751    −0.074
+follow a different reasoning path than on another, even                             64 k     62.0%         +42.2           0.760    −0.065
+though the underlying task is identical. Instability worsens                        96 k     68.6%         +48.8           0.619    −0.206
+with context length: longer inputs give the model more                              4k       34.1%          —              0.652      —
+room to vary which facts it selects, how it phrases them,                           8k       33.0%         −1.1            0.608    −0.044
+and how much it elaborates, amplifying the token-count and                          16 k     26.4%         −7.7            0.576    −0.076
+                                                                     Llama-3.1-8B
+                                                                                    32 k     48.5%         +14.4           0.665    +0.013
+semantic spread across runs. To systematically characterize                         64 k     54.9%         +20.8           0.550    −0.102
+this behavior, we sweep input length from 4 k to 96 k                               96 k     84.5%         +50.4           0.472    −0.180
+tokens and, at each point, run compaction ten times under                          4k        24.4%           —             0.729      —
+identical prompt and input conditions with temperature-                            8k        41.3%         +16.9           0.620    −0.109
+driven sampling, measuring how much the output length                              16 k      35.4%         +11.0           0.590    −0.139
+                                                                     Llama-3.3-70B
+varies and how similar the generated summaries are to one                          32 k      47.7%         +23.3           0.630    −0.099
+another.                                                                           64 k      26.4%          +2.0           0.579    −0.150
+                                                                                   96 k     171.6%         +147.2          0.491    −0.238
+Output length variability: coefficient of variation. To
+quantify how much the output token count shifts across
+runs, we use the coefficient of variation (CV), defined as           Block size as a stability driver. The CV and cosine
+the ratio of the standard deviation to the mean of the               similarity measurements above serve a concrete selection
+output length across the ten repeated compaction calls. A            purpose: identifying which block size yields compaction
+CV of 0% indicates perfectly consistent output length; a             outputs that are stable enough to be reliable in production.
+CV of 100% means the standard deviation equals the mean,             Smaller block sizes engage more workers, each summarizing
+reflecting a very wide spread relative to the average output         a shorter, more focused segment, which reduces the model’s
+size. We prefer CV over raw standard deviation because               degrees of freedom and produces more consistent outputs
+it is scale-independent — a CV of 30% means the same                 from run to run. Larger blocks force the model to compress
+relative spread whether the model produces 100 or 5,000              more content in a single call, increasing the variance in
+tokens on average, making it comparable across models and            what it chooses to retain and how it phrases it. Block size
+input lengths. In the compaction context, high CV means              is therefore not only a throughput lever but also a stability
+that the operator cannot predict how many tokens will                driver.
+be consumed by the summary on any given run, which                        Across all models in Table 5, the 4 k input point is the
+makes memory budgeting and context threshold planning                most favorable: CV ranges from 19.8% to 34.1% and cosine
+unreliable.                                                          similarity stays between 0.65 and 0.83 across all backbones.
+Summary content variability: cosine similarity. Token                Some models show slightly better cosine similarity or
+count alone does not capture whether two summaries                   lower CV at other input sizes, though these gains are not
+actually say the same thing — a model could produce                  consistent across backbones. In general, as input grows
+outputs of identical length while selecting entirely different       beyond 4 k, both metrics tend to degrade with no sustained
+facts. To measure semantic consistency, we embed each                recovery at larger sizes. This makes 4 k a natural operating
+of the ten summaries using a fixed sentence encoder and              point: short enough to limit drift, yet large enough to
+compute the average pairwise cosine similarity across all            capture meaningful context. In the parallel compaction
+pairs. A cosine similarity of 1.0 means every run produces           setting, a 4 k block size means each worker’s target segment
+semantically identical text; values near 0 indicate that runs        is 4 k tokens, wrapped in an XML marker, so each individual
+share almost no semantic content. Low cosine similarity is           summarization call operates at the input length where
+particularly damaging in agentic flows: if the compacted             models are most stable.
+summary omits a key fact in one run but retains it in
+another, downstream QA accuracy will vary between runs                 Takeaway #4: Run-to-run instability is intrinsic to LLM-
+not because the model reasoned differently, but because                based compaction and compounds as context grows — both
+it received a different context—making performance non-                output length and summary content become increasingly
+                                                                       unpredictable.
+reproducible even on a fixed benchmark.
+
+
+                                                                 5
+    Having established that instability grows with input                    Table 6 quantifies run-to-run stability across the three
+length, we now fix the input at 4 k — the most stable point             prompt-length variants at a fixed 4 k input. CV and cosine
+identified in Table 5 — and examine how models respond to               similarity values are largely consistent across variants for
+different prompt-length instructions. We vary the prompt                each model, with no backbone showing a large or monotonic
+across three levels of requested detail: summarize with one             improvement as the prompt becomes more detailed. Llama-
+sentence, one paragraph, and three paragraphs. The goal                 3.3-70B has the lowest CV across all variants, consistent
+is to assess whether longer prompts can reduce output                   with the tighter scatter in Figure 3.
+variability or whether instability persists regardless of the           TABLE 6: Stability across prompt-length variants at fixed
+prompt. Figure 3 shows output token counts across ten                   4 k input.
+repeated runs per model and prompt variant.
+                                                                        Model           Prompt                        CV (%) ↓ Cosine ↑
+
+                                                                                        Summarize with 1 sentence        27.2%     0.704
+                                                                        gpt-oss-20B     Summarize with 1 paragraph       23.0%     0.747
+                                                                                        Summarize with 3 paragraphs      18.1%     0.788
+
+                                                                                        Summarize with 1 sentence        23.5%     0.732
+                                                                        gpt-oss-120B    Summarize with 1 paragraph       21.8%     0.819
+                                                                                        Summarize with 3 paragraphs      15.9%     0.820
+
+                                                                                        Summarize with 1 sentence        14.3%     0.815
+                                                                        Llama-3.1-8B    Summarize with 1 paragraph        8.6%     0.719
+                                                                                        Summarize with 3 paragraphs      13.1%     0.718
+
+                                                                                      Summarize with 1 sentence           6.9%     0.922
+                                                                        Llama-3.3-70B Summarize with 1 paragraph          5.9%     0.799
+                                                                                      Summarize with 3 paragraphs         6.2%     0.831
+
+                                                                        Long-horizon compaction as long document summa-
+                                                                        rization. The structure of a long-horizon agentic conver-
+Figure 3: Output tokens per run across 10 repeated runs at              sation closely mirrors that of a long document: it is built
+a fixed 4 k input for three prompt-length variants (light to            chronologically, turn by turn, from left to right, with each ex-
+dark = shorter to longer requested summary length).                     change adding context sequentially. This framing motivates
+    Llama instruct models are noticeably more consistent                treating compaction as a long document summarization
+across runs than gpt-oss models, with tighter scatter within            problem, where divide-and-conquer approaches split the
+each prompt variant. All four backbones scale output tokens             input into chunks and summarize each independently. Our
+from roughly 400 to 600 tokens as the prompt requests more              parallel compaction design follows this intuition but adds
+detail, showing that models do respond to prompt-length                 a critical constraint: each block worker receives the full
+instructions at this input size. The narrow output range                conversation history up to its block rather than just the
+across all models and prompts suggests that models have a               block itself, preserving cross-block context dependencies
+strong prior on summary length.                                         and enabling prefix cache reuse across workers — properties
+Why LLMs produce short summaries. A 500-token                           that a naive chunking approach would not preserve.
+summary corresponds roughly to half a page to one page of               Role of the XML marker. In the prefix-aware layout,
+dense text, a length that aligns well with summaries found              each worker receives the full conversation history up to its
+in standard NLP summarization corpora. Many models                      block, which raises an ambiguity: without explicit delimiters,
+are trained or instruction-tuned on document — summary                  the model would attempt to summarize the entire prefix
+datasets where reference summaries are often in this range,             rather than its assigned block. The XML marker resolves
+so they may reproduce this learned length prior at inference            this by clearly delineating the target region at the end of
+time, regardless of how long the source document is. This               the prompt, where attention is strongest. This allows the
+provides one explanation for why neither input length                   model to attend to the full preceding context for cross-block
+nor prompt instructions significantly move the output: the              coherence while focusing its summarization output on the
+model tends to revert to a summary length internalized                  marked segment only.
+from training data. As a result, a 500-token summary at                 Threshold and block size interaction. The compaction
+96 k input retains less than 1% of the original context. [20]           threshold τ and block size B together determine how many
+                                                                        workers fire per compaction event: N = ⌈τ /B⌉. At a fixed
+  Takeaway #5: Summarization output is bounded by the                   threshold of τ = 96 k tokens, reducing the block size from
+  model’s internalized prior on summary length: during training,        16 k to 4 k increases the number of parallel workers from 6
+  models absorb not just what a summary should contain but              to 24. The operator therefore has two independent knobs:
+  also how long it should be, anchoring output length to the            τ controls how often compaction fires, and B controls how
+  distribution of reference summaries in training data regardless       many workers run and how much output is produced per
+  of how much input context is provided.
+                                                                        event.
+
+
+                                                                    6
+                       (a) HotpotQA                                                             (b) LoCoMo
+                   Figure 4: Accuracy per model and configuration on (a) HotpotQA and (b) LoCoMo.
+
+6. Characterizing Parallel Compaction                                   Takeaway #6: Block size directly controls how much context
+                                                                        survives compaction, improving accuracy over sequential by
+    Figure 4 reports accuracy and compaction output token               preserving more context in the summary.
+count per configuration on HotpotQA and LoCoMo, with
+Sequential and each block size on the x-axis, accuracy                    Having established that parallel compaction improves
+as histogram bars, and output tokens overlaid. For each               accuracy over sequential, we now evaluate its system-
+configuration, we feed a 100 k-token context to the model,            level performance in a multi-turn agentic flow. The agent
+ask it to summarize, and use Qwen3-30B as a judge to assess           processes a sequence of QA tasks, accumulates context
+whether the summary preserves the information needed to               across turns, and triggers compaction at a fixed threshold
+answer the corresponding questions. The 16 k block size               of τ = 96 k tokens. Table 7 reports end-to-end wall time,
+produces the fewest output tokens; as block size decreases,           throughput, compaction decode tokens, QA decode tokens,
+more workers run in parallel, total output tokens increase,           and average compaction throughput. Compaction decode
+and more of the original context is preserved in the sum-             tokens measure how many tokens the compaction workers
+mary. Accuracy improves over the Sequential baseline as               generate, while QA decode tokens capture the agent’s down-
+block size decreases, and this relationship is approximately          stream answer generation. Average compaction throughput
+linear — as total compaction output grows with the number             accounts for both prefill and decode cost of the compaction.
+of workers, accuracy increases monotonically across the                   Table 7 shows end-to-end speedups, though measuring
+block-size sweep, consistently across all configurations. It is       a fair throughput comparison is non-trivial: compaction
+worth noting that accuracy does not reach 100% even at the            output token counts fluctuate across runs and LLMs cannot
+smallest block size, as performance is also bounded by the            reliably be constrained to a specific length, making byte-
+model’s own reasoning capability on the downstream task,              identical token counts across configurations difficult to
+not solely by information preservation in the summary.                achieve.
+
+
+
+                                                                  7
+TABLE 7: HotpotQA: Sequential vs Parallel across block sizes. Fixed threshold τ = 96k. Sequential is the single-call
+blocking compaction baseline; Parallel uses one worker per block (block size sweep: 16k, 8k, 4k, 2k tokens; smaller block
+⇒ more workers). The ∆ column shows the speedup ratio over Sequential. Green = improvement, red = regression.
+                                      E2E Wall (s) ↓ E2E Throughput (tok/s) ↑ Compaction Decode (tok) QA Decode (tok) Compaction Throughput (ms/tok) ↓
+Model          Variant   Block size
+                                      Value     ∆      Value     ∆              Value        ∆       Value      ∆      Value           ∆
+
+                                                                     HotpotQA atτ = 96k
+
+               Sequential —            86.9    1.00×   145.2    1.00×           1,493       1.00×    11,127    1.00×    5.34         1.00×
+               Parallel   16k         100.7    0.86×   147.1    1.01×           3,098       2.07×    11,704    1.05×    5.59         0.95×
+gpt-oss-20B    Parallel   8k          101.8    0.85×   168.1    1.16×           5,401       3.62×    11,710    1.05×    3.39         1.58×
+               Parallel   4k          105.1    0.83×   205.3    1.41×          10,017       6.71×    11,554    1.04×    2.12         2.52×
+               Parallel   2k          108.3    0.80×   253.8    1.75×          16,180      10.84×    11,303    1.02×    1.53         3.48×
+
+               Sequential —           214.5    1.00×    51.0    1.00×           1,462       1.00×     9,480    1.00×    7.28         1.00×
+               Parallel   16k         276.0    0.78×    49.8    0.98×           4,116       2.81×     9,615    1.01×    7.64         0.95×
+gpt-oss-120B   Parallel   8k          270.3    0.79×    59.7    1.17×           6,994       4.78×     9,136    0.96×    5.22         1.39×
+               Parallel   4k          217.7    0.99×    90.0    1.76×           9,894       6.77×     9,701    1.02×    3.58         2.04×
+               Parallel   2k          233.1    0.92×   109.0    2.14×          16,486      11.28×     8,913    0.94×    2.51         2.91×
+
+               Sequential —           150.8    1.00×    45.5    1.00×           1,776      1.00×      5,082    1.00×   14.31         1.00×
+               Parallel   16k         131.7    1.14×    45.2    0.99×             681      0.38×      5,272    1.04×   32.96         0.43×
+Llama-3.1-8B   Parallel   8k          104.6    1.44×    62.8    1.38×           1,151      0.65×      5,424    1.07×   17.89         0.80×
+               Parallel   4k          105.8    1.43×    71.0    1.56×           2,199      1.24×      5,313    1.05×   10.43         1.37×
+               Parallel   2k          119.4    1.26×    83.8    1.84×           4,575      2.58×      5,433    1.07×    6.57         2.18×
+
+              Sequential —            373.5    1.00×    39.0    1.00×           8,582      1.00×      5,994    1.00×   22.62         1.00×
+              Parallel   16k          289.7    1.29×    39.6    1.01×           5,317      0.62×      6,145    1.03×   19.79         1.14×
+Llama-3.3-70B Parallel   8k           268.5    1.39×    46.4    1.19×           6,823      0.79×      5,647    0.94×   13.29         1.70×
+              Parallel   4k           266.6    1.40×    52.5    1.35×           8,360      0.97×      5,645    0.94×   10.62         2.13×
+              Parallel   2k           292.4    1.28×    64.1    1.64×          12,303      1.43×      6,427    1.07×    8.09         2.80×
+
+
+
+
+TABLE 8: LoCoMo: Sequential vs Parallel across block sizes. Same protocol as Table 7: fixed threshold τ = 96k,
+Parallel variants sweeping block size from 16k down to 2k tokens. ∆ columns report the speedup over Sequential for the
+corresponding metric (green improvement, red regression).
+                                      E2E Wall (s) ↓ E2E Throughput (tok/s) ↑ Compaction Decode (tok) QA Decode (tok) Compaction Throughput (ms/tok) ↓
+Model          Variant   Block size
+                                      Value     ∆      Value     ∆              Value        ∆        Value      ∆     Value           ∆
+
+                                                                        LoCoMo atτ = 96k
+
+               Sequential —            991.4   1.00×   134.0    1.00×           6,344      1.00×     126,533   1.00×    5.23         1.00×
+               Parallel   16k          925.6   1.07×   138.2    1.03×           2,909      0.46×     125,031   0.99×    5.57         0.94×
+gpt-oss-20B    Parallel   8k          1001.2   0.99×   140.1    1.05×           5,860      0.92×     134,431   1.06×    3.51         1.49×
+               Parallel   4k           985.0   1.01×   145.0    1.08×           8,368      1.32×     134,414   1.06×    2.42         2.16×
+               Parallel   2k          1038.0   0.96×   143.7    1.07×          16,435      2.59×     132,750   1.05×    1.56         3.36×
+
+               Sequential —           4905.0   1.00×    19.9    1.00×           1,479       1.00×     96,196   1.00×    7.52         1.00×
+               Parallel   16k         3297.0   1.49×    30.2    1.52×           1,487       1.01×     98,081   1.02×   19.37         0.39×
+gpt-oss-120B   Parallel   8k          3065.3   1.60×    34.4    1.73×           3,769       2.55×    101,795   1.06×    7.42         1.01×
+               Parallel   4k          3601.6   1.36×    30.7    1.54×           8,308       5.62×    102,150   1.06×    7.03         1.07×
+               Parallel   2k          3851.9   1.27×    32.1    1.61×          17,816      12.05×    105,808   1.10×    4.49         1.68×
+
+               Sequential —            495.2   1.00×    52.4    1.00×             542      1.00×      25,406   1.00×   12.80         1.00×
+               Parallel   16k          555.9   0.89×    55.5    1.06×             616      1.14×      30,212   1.19×   32.82         0.39×
+Llama-3.1-8B   Parallel   8k           530.1   0.93×    53.2    1.02×           1,198      2.21×      27,010   1.06×   18.28         0.70×
+               Parallel   4k           594.6   0.83×    60.1    1.15×           2,245      4.14×      33,469   1.32×   11.06         1.16×
+               Parallel   2k           607.0   0.82×    63.4    1.21×           4,357      8.04×      34,110   1.34×    6.81         1.88×
+
+              Sequential —            1194.5   1.00×    38.9    1.00×           1,451       1.00×     45,043   1.00×   22.32         1.00×
+              Parallel   16k          1495.6   0.80×    41.5    1.07×           6,708       4.62×     55,359   1.23×   22.12         1.01×
+Llama-3.3-70B Parallel   8k           1306.8   0.91×    40.0    1.03×           4,179       2.88×     48,050   1.07×   17.58         1.27×
+              Parallel   4k           1275.2   0.94×    42.1    1.08×           8,494       5.85×     45,193   1.00×   10.27         2.17×
+              Parallel   2k           1388.7   0.86×    50.9    1.31×          23,009      15.86×     47,655   1.06×    6.81         3.28×
+
+
+
+
+                                                                               8
+    Table 9 therefore selects runs from the full sweep where
+Sequential and Parallel produce comparable compaction
+decode volumes, isolating the throughput improvement at-
+tributable to parallelism rather than token count differences.
+TABLE 9: Parallel achieves lower TPOT at matched decode
+volume.
+ #   Model           Benchmark   Block   Seq. (tok)   Par. (tok)   ∆ Throughput
+
+ 1   Llama-3.3-70B   HotpotQA     4k          8,582        8,360      2.13×
+ 2   Llama-3.3-70B   HotpotQA     8k          8,582        6,823      1.70×
+ 3   gpt-oss-20B     LoCoMo       8k          6,344        5,860      1.49×
+ 4   Llama-3.1-8B    HotpotQA     4k          1,776        2,199      1.37×
+
+
+Prefill cost limits parallelism. Average compaction
+throughput measures the combined prefill and decode
+latency per output token during compaction. In the parallel
+setting, Workers share the common conversation prefix via
+the prefix cache, but each worker must additionally prefill its
+own unique block content, which is not cached. At the 16 k
+block size, this uncached portion is 16 k tokens per worker,
+incurring substantial prefill overhead that the parallelism
+gain cannot compensate for, resulting in consistently worse
+throughput compared to smaller block sizes.
+Prompt sensitivity under parallel compaction. While
+sequential compaction largely ignores prompt length in-
+structions, parallel compaction restores some prompt sen-                             Figure 5: GPT-OSS-120B output tokens vs. block size across
+sitivity. Figure 5 shows gpt-oss-120B output tokens across                            three prompt variants on HotpotQA (left) and LoCoMo
+three prompt variants and all block sizes on HotpotQA and                             (right).
+LoCoMo; other backbones exhibit similar trends. The model
+does respond to the prompt within each block size, with                               prompt, reducing output significantly. The key insight
+more detailed prompts producing more tokens. Combined                                 is bidirectional control: block size and prompt together
+with block size, this gives the operator two independent                              allow the operator to tune compaction volume precisely
+levers: block size controls the coarse volume of compaction                           in either direction. Keeping more tokens in the summary
+output, while the prompt can further tune output length                               is not always better: longer summaries re-introduce the
+within each block.                                                                    same attention cost and context rot effects that motivated
+                                                                                      compaction in the first place. As the retained context
+TABLE 10: gpt-oss-120B compaction output / 96 k input                                 grows, the model must again attend over a longer, lower-
+ratio (%).                                                                            signal history, degrading reasoning quality before the next
+                                                                                      compaction trigger. The optimal operating point is therefore
+                        HotpotQA                            LoCoMo                    not the maximum but the minimum sufficient to preserve
+Config
+             Concise Detailly Very Detailly Concise Detailly Very Detailly            task-relevant information, and the two-axis control allows
+Sequential 0.79%        2.98%       4.16%      0.92%       3.74%       4.05%
+                                                                                      the operator to target that point precisely.
+16k         3.62%       7.35%      13.87%      2.87%       7.32%       7.05%
+8k          8.48%      13.14%      15.07%      7.05%      12.47%      14.22%            Takeaway #7: Whether the technique is compaction, token-
+4k         12.37%      25.75%      34.13%      16.02%     24.32%      26.57%            efficient tool design, or just-in-time retrieval, recent prac-
+2k         28.16%      46.73%      50.98%      26.59%     42.44%      47.34%            titioner guidance converges on a common principle: keep
+                                                                                        inside the context window only the smallest set of high-signal
+                                                                                        tokens likely to maximize the desired outcome [3].
+    As shown in Table 10, this two-axis control is quan-
+titatively meaningful. By tuning the block size alone, the
+operator can scale compaction output to roughly 25% of
+the original context, and by additionally selecting a more
+                                                                                      7. Related Work
+detailed prompt, the output can reach up to 50%, offering                             Context management. Managing the growing context of
+fine-grained, predictable control over how much context                               long-horizon LLM agents has been studied along several
+survives each compaction call.                                                        axes [9, 11]. Existing approaches range from simple trun-
+Output token tradeoff. While the results above demon-                                 cation to summarization-based compaction and complex
+strate that output volume can scale up to 50% of the original                         retrieval-based memory systems. It has been shown that
+context, retaining that much is not the goal in itself. The                           truncation-based approaches are insufficient for maintaining
+operator can equally scale down by choosing a concise                                 coherence in long conversations, as summarization methods
+
+
+                                                                                  9
+significantly outperform sliding window baselines [26].                generating excessively long outputs when uncertain [31],
+Token-level compression methods reduce context length                  and lack the ability to track their own output length
+by removing low-information tokens, but these approaches               during generation [23]. Evaluation of long-form genera-
+lack semantic awareness and disrupt coherence in multi-                tion confirms these limitations persist even when models
+step reasoning chains [7, 8]. Retrieval-based approaches               are explicitly instructed [22]. These findings support our
+such as MemGPT store conversation history in external                  design choice: since prompt instructions cannot reliably
+memory and retrieve relevant segments on demand, but                   control summary volume, we use the number of parallel
+require dedicated retrieval infrastructure and add latency             workers as the primary control knob for compaction output.
+for each lookup [17].                                                  Unlike prior work, we target runtime agentic conversation
+Latent space compression. KV-cache and latent-space                    compaction with no offline training, retrieval infrastructure,
+compression methods offer complementary approaches: Car-               or white-box model access, and introduce a prefix-aware
+tridges [5] pre-train lightweight KV-cache representations             target-at-end design that preserves cross-block context and
+offline to reduce inference cost on large corpora, while               enables prefix cache reuse.
+Zweiger et al. [34] compress KV caches at runtime via
+attention-pattern matching. However, Cartridges require                8. Discussion and Future Work
+offline training and are not applicable at runtime, while
+KV-cache compression operates in the latent space, making              Dynamic block size and prompt selection. In this work,
+the compressed representation opaque to humans, non-                   we use a fixed block size and a single compaction prompt.
+transferable across models, and dependent on white-box                 A natural extension is to adapt both per block based on
+access to the model’s internal cache. LLM-based summa-                 content type: tool call outputs with shallow structure could
+rization, by contrast, produces human-readable text that is            use larger blocks and a concise prompt, while math-heavy
+model-agnostic and requires no access to model internals.              or insight-dense segments could use smaller blocks with
+Effective context length. Beyond keeping the conversa-                 a detailed prompt, steering compaction granularity and
+tion within the model’s hard context limit, recent work                verbosity where it matters most.
+suggests that keeping fewer, higher-signal tokens inside               Model fine-tuning for better marker awareness. Our
+the window yields better downstream accuracy, motivating               prefix-aware layout inserts XML markers to delimit block
+more frequent compression of the active context. One                   boundaries. Current models were not trained to attend
+study [14] shows that across 13 models claiming 128k                   to these markers during summarization. Fine-tuning on
+to 2M token windows, the effective context length (the                 marker-annotated compaction traces could improve bound-
+length at which accuracy stays within 85% of the short-                ary awareness and produce more faithful per-block sum-
+context baseline) is only between roughly 1k and 8k tokens.            maries.
+Another study [4] sharpens this by controlling for retrieval:          Asynchronous compaction. The current design blocks
+performance still degrades substantially with input length             the agent until all workers finish. An async variant would
+even when the model retrieves all evidence with exact                  run block workers in the background while the main thread
+match, and even when non-evidence tokens are attention-                continues serving inference on the residual context, merging
+masked, establishing input length itself as a first-order cause        the completed summaries once the current turn finishes.
+of reasoning degradation. These results reframe compaction             Tool calls offer a natural trigger: whenever the agent is
+not just as a mechanism to fit within the context window,              waiting on pytest, a shell command, or any external
+but as a primary lever for keeping the active context inside           API, the GPU is idle, and compaction can proceed at zero
+the regime where attention functions effectively.                      opportunity cost.
+Parallel document summarization. Divide-and-conquer
+approaches for long document summarization split the input             9. Conclusion
+into chunks, summarize each independently, and merge the
+                                                                           In this work, we characterized sequential and parallel
+results [16, 24, 32, 33]. Recent theoretical work characterizes
+                                                                       context compaction for long-horizon LLM agents across four
+when such chunked processing outperforms single-pass ap-
+                                                                       backbones and two benchmarks. Our detailed characteriza-
+proaches [28]. Our work differs in targeting runtime context
+                                                                       tion reveals that summarization output is largely input- and
+compaction in agentic flows, parallelizing summarization
+                                                                       prompt-invariant, making prompt engineering an unreliable
+via prefix-aware blocks where each block sees the full
+                                                                       control knob for summary volume. We introduced parallel
+conversation history preceding it, preserving cross-block
+                                                                       block compaction, which gives the operator direct control
+context dependencies, with only a small additional cost
+                                                                       over summary volume through block count and increases
+from placing a target marker at the end of each prefix,
+                                                                       compaction throughput even at matched decode volume.
+while enabling prefix cache reuse across workers.
+LLMs ignore length instructions. Multiple benchmarks
+have shown that LLMs systematically fail to follow explicit
+length constraints: models struggle to match specified
+word or token counts, especially at longer targets [1, 25,
+30], and performance degrades further in long-context
+scenarios [21]. LLMs also exhibit verbosity compensation,
+
+
+                                                                  10
+References                                                                            [19] Percena, “LoCoMo-MC10: A 10-choice multiple-choice version of
+                                                                                           locomo,” https://huggingface.co/datasets/Percena/locomo-mc10, 2026,
+[1]   A. Akinfaderin, S. Subramanian, and A. Sehwag, “Plan-and-write:                      hugging Face dataset. Accessed: 2026-05-19.
+      Structure-guided length control for llms without model retraining,”
+      arXiv preprint arXiv:2511.01807, 2025.                                          [20] M. Ravaut, A. Sun, N. Chen, and S. Joty, “On context utilization in
+                                                                                           summarization with large language models,” in Proceedings of the
+[2]   Anthropic, “Claude code: Best practices for agentic coding,”
+                                                                                           62nd Annual Meeting of the Association for Computational Linguistics
+      2025. [Online]. Available: https://platform.claude.com/docs/en/
+                                                                                           (Volume 1: Long Papers), 2024, pp. 2764–2781.
+      build-with-claude/compaction
+[3]   ——,        “Effective    context      engineering     for      ai               [21] X. Wu, M. Wang, Y. Liu, X. Shi, H. Yan, L. Xiangju, J. Zhu,
+      agents,”                  https://www.anthropic.com/engineering/                     and W. Zhang, “Lifbench: Evaluating the instruction following
+      effective-context-engineering-for-ai-agents,   2025,    accessed:                    performance and stability of large language models in long-context
+      2026-05-11.                                                                          scenarios,” in Proceedings of the 63rd Annual Meeting of the Association
+                                                                                           for Computational Linguistics (Volume 1: Long Papers), 2025, pp. 16 445–
+[4]   Y. Du, M. Tian, S. Ronanki, S. Rongali, S. Bodapati, A. Galstyan,                    16 468.
+      A. Wells, R. Schwartz, E. A. Huerta, and H. Peng, “Context length
+      alone hurts llm performance despite perfect retrieval,” arXiv preprint          [22] Y. Wu, M. S. Hee, Z. Hu, and R. K.-W. Lee, “Longgenbench: Bench-
+      arXiv:2510.05381, 2025.                                                              marking long-form generation in long context llms,” in International
+[5]   S. Eyuboglu, R. Ehrlich, S. Arora, N. Guha, D. Zinsley, E. Liu,                      Conference on Learning Representations, vol. 2025, 2025, pp. 6851–6872.
+      W. Tennien, A. Rudra, J. Zou, A. Mirhoseini et al., “Cartridges:
+      Lightweight and general-purpose long context representations via                [23] M. Xiao, A. Wang, Q. Hu, Z. Miao, H. Shen, L. Wang, W. Luo, and J. Su,
+      self-study,” arXiv preprint arXiv:2506.06266, 2025.                                  “Can llms track their output length? a dynamic feedback mechanism
+                                                                                           for precise length regulation,” arXiv preprint arXiv:2601.01768, 2026.
+[6]   K. Hong, A. Troynikov, and J. Huber, “Context rot: How increasing
+      input tokens impacts llm performance,” Chroma, Tech. Rep., July                 [24] S. Xiao, Z. Lin, W. Gao, H. Chen, and Y. Zhang, “Long context scaling:
+      2025. [Online]. Available: https://research.trychroma.com/context-rot                Divide and conquer via multi-agent question-driven collaboration,”
+[7]   H. Jiang, Q. Wu, C.-Y. Lin, Y. Yang, and L. Qiu, “Llmlingua: Com-                    arXiv preprint arXiv:2505.20625, 2025.
+      pressing prompts for accelerated inference of large language models,”
+                                                                                      [25] J. Xie and H.-y. Lee, “Prompt-based one-shot exact length-controlled
+      in Proceedings of the 2023 conference on empirical methods in natural
+                                                                                           generation with llms,” arXiv preprint arXiv:2508.13805, 2025.
+      language processing, 2023, pp. 13 358–13 376.
+[8]   H. Jiang, Q. Wu, X. Luo, D. Li, C.-Y. Lin, Y. Yang, and L. Qiu,                 [26] J. Xu, A. Szlam, and J. Weston, “Beyond goldfish memory: Long-term
+      “Longllmlingua: Accelerating and enhancing llms in long context                      open-domain conversation,” in Proceedings of the 60th annual meeting
+      scenarios via prompt compression,” in Proceedings of the 62nd Annual                 of the association for computational linguistics (volume 1: long papers),
+      Meeting of the Association for Computational Linguistics (Volume 1:                  2022, pp. 5180–5197.
+      Long Papers), 2024, pp. 1658–1677.
+                                                                                      [27] W. Xu, G. Zhu, X. Zhao, L. Pan, L. Li, and W. Wang, “Pride and
+[9]   M. Kang, W.-N. Chen, D. Han, H. A. Inan, L. Wutschitz, Y. Chen,                      prejudice: Llm amplifies self-bias in self-refinement,” in Proceedings
+      R. Sim, and S. Rajmohan, “Acon: Optimizing context compression                       of the 62nd Annual Meeting of the Association for Computational
+      for long-horizon llm agents,” arXiv preprint arXiv:2510.00615, 2025.                 Linguistics (Volume 1: Long Papers), 2024, pp. 15 474–15 492.
+[10] LangChain, “Langchain: Building applications with llms
+     through composability,” 2023. [Online]. Available: https:                        [28] Z. Xu, S. Zhu, J. Wang, J. Wang, B. Athiwaratkun, C. Wang, J. Zou, and
+     //github.com/langchain-ai/langchain                                                   C. Zhang, “When does divide and conquer work for long context llm?
+                                                                                           a noise decomposition framework,” arXiv preprint arXiv:2506.16411,
+[11] N. F. Liu, K. Lin, J. Hewitt, A. Paranjape, M. Bevilacqua, F. Petroni,                2025.
+     and P. Liang, “Lost in the middle: How language models use long
+     contexts,” Transactions of the association for computational linguistics,        [29] Z. Yang, P. Qi, S. Zhang, Y. Bengio, W. Cohen, R. Salakhutdinov, and
+     vol. 12, pp. 157–173, 2024.                                                           C. D. Manning, “Hotpotqa: A dataset for diverse, explainable multi-
+[12] LlamaIndex, “Llamaindex: A data framework for llm applications,”                      hop question answering,” in Proceedings of the 2018 conference on
+     2023. [Online]. Available: https://github.com/run-llama/llama_index                   empirical methods in natural language processing, 2018, pp. 2369–2380.
+
+[13] A. Maharana, D.-H. Lee, S. Tulyakov, M. Bansal, F. Barbieri, and                 [30] W. Zhang, Z. Zhou, K. Wang, J. Fang, R. Xu, Y. Zhang, R. Wang,
+     Y. Fang, “Evaluating very long-term conversational memory of llm                      G. Zhang, X. Li, L. Sun et al., “Lifebench: Evaluating length instruction
+     agents,” in Proceedings of the 62nd Annual Meeting of the Association                 following in large language models,” Advances in Neural Information
+     for Computational Linguistics (Volume 1: Long Papers), 2024, pp. 13 851–              Processing Systems, vol. 38, 2026.
+     13 870.
+                                                                                      [31] Y. Zhang, S. S. S. Das, and R. Zhang, “Demystify verbosity compen-
+[14] A. Modarressi, H. Deilamsalehy, F. Dernoncourt, T. Bui, R. A. Rossi,                  sation behavior of large language models,” in Proceedings of the 2nd
+     S. Yoon, and H. Schütze, “Nolima: Long-context evaluation beyond                      Workshop on Uncertainty-Aware NLP (UncertaiNLP 2025), 2025, pp.
+     literal matching,” arXiv preprint arXiv:2502.05167, 2025.                             160–178.
+[15] OpenAI, “Codex prompting guide,” 2025, [Online]. Available:
+     https://developers.openai.com/cookbook/examples/gpt-5/codex_                     [32] Y. Zhang, R. Sun, Y. Chen, T. Pfister, R. Zhang, and S. Ö. Arık, “Chain
+     prompting_guide.                                                                      of agents: Large language models collaborating on long-context
+                                                                                           tasks,” Advances in Neural Information Processing Systems, vol. 37, pp.
+[16] L. Ou and M. Lapata, “Context-aware hierarchical merging for                          132 208–132 237, 2024.
+     long document summarization,” in Findings of the Association for
+     Computational Linguistics: ACL 2025, 2025, pp. 5534–5561.                        [33] Z. Zhou, C. Li, X. Chen, S. Wang, Y. Chao, Z. Li, H. Wang, R. An,
+[17] C. Packer, V. Fang, S. Patil, K. Lin, S. Wooders, and J. Gonzalez,                    Q. Shi, Z. Tan, X. Han, X. Shi, Z. Liu, and M. Sun, “Llm×mapreduce:
+     “Memgpt: towards llms as operating systems.” 2023.                                    Simplified long-sequence processing using large language models,”
+                                                                                           2024. [Online]. Available: https://arxiv.org/abs/2410.09342
+[18] A. Panickssery, S. R. Bowman, and S. Feng, “Llm evaluators recognize
+     and favor their own generations,” Advances in Neural Information                 [34] A. Zweiger, X. Fu, H. Guo, and Y. Kim, “Fast kv compaction via
+     Processing Systems, vol. 37, pp. 68 772–68 802, 2024.                                 attention matching,” arXiv preprint arXiv:2602.16284, 2026.
+
+
+
+
+                                                                                 11
+

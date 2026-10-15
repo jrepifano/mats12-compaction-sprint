@@ -1,0 +1,542 @@
+{
+ "P44 GLM R (no handoff)": {
+  "n": 45,
+  "turns_med": 14,
+  "turns_p90": 24.0,
+  "turns_max": 24,
+  "base_med": 198,
+  "total_med": 56530.0,
+  "total_p90": 175235.6,
+  "total_max": 237889,
+  "inc_mean": 4596.191549295775,
+  "inc_med": 1374.0,
+  "inc_p90": 16061.1,
+  "per_transcript_mean_inc_med": 3739.285714285714,
+  "share": {
+   "reasoning": 0.846,
+   "text": 0.01,
+   "args": 0.084,
+   "tool": 0.059,
+   "user": 0.001
+  },
+  "mean_per_turn": {
+   "reasoning": 3889.1,
+   "text": 47.7,
+   "args": 386.8,
+   "tool": 270.0,
+   "user": 2.5
+  },
+  "api_over_tok_med": 1.0021732304285313,
+  "over": {
+   "64000": 19,
+   "100000": 9,
+   "128000": 8,
+   "160000": 6,
+   "200000": 2
+  }
+ },
+ "P44 GLM PILOT (no handoff, Relace)": {
+  "n": 30,
+  "turns_med": 13.5,
+  "turns_p90": 24.0,
+  "turns_max": 24,
+  "base_med": 198.0,
+  "total_med": 42746.0,
+  "total_p90": 194816.60000000003,
+  "total_max": 243330,
+  "inc_mean": 4617.736017897092,
+  "inc_med": 1653,
+  "inc_p90": 16002.0,
+  "per_transcript_mean_inc_med": 3000.25641025641,
+  "share": {
+   "reasoning": 0.827,
+   "text": 0.011,
+   "args": 0.089,
+   "tool": 0.072,
+   "user": 0.001
+  },
+  "mean_per_turn": {
+   "reasoning": 3819.2,
+   "text": 52.0,
+   "args": 411.0,
+   "tool": 333.3,
+   "user": 2.3
+  },
+  "api_over_tok_med": 1.0047281243312827,
+  "over": {
+   "64000": 11,
+   "100000": 6,
+   "128000": 6,
+   "160000": 4,
+   "200000": 3
+  }
+ },
+ "P44 DS R (no handoff)": {
+  "n": 30,
+  "turns_med": 24.0,
+  "turns_p90": 24.0,
+  "turns_max": 24,
+  "base_med": 198.0,
+  "total_med": 31645.5,
+  "total_p90": 63451.60000000001,
+  "total_max": 89143,
+  "inc_mean": 1731.308868501529,
+  "inc_med": 960.0,
+  "inc_p90": 3831.8000000000006,
+  "per_transcript_mean_inc_med": 1422.5072463768115,
+  "share": {
+   "reasoning": 0.633,
+   "text": 0.004,
+   "args": 0.192,
+   "tool": 0.171,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 1095.4,
+   "text": 7.1,
+   "args": 331.8,
+   "tool": 296.9,
+   "user": 0.1
+  },
+  "api_over_tok_med": 1.0176419377259855,
+  "over": {
+   "64000": 3,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P44 DS PILOT": {
+  "n": 30,
+  "turns_med": 22.5,
+  "turns_p90": 24.0,
+  "turns_max": 24,
+  "base_med": 198.0,
+  "total_med": 34160.0,
+  "total_p90": 62005.30000000001,
+  "total_max": 132405,
+  "inc_mean": 1976.4115646258504,
+  "inc_med": 1031.0,
+  "inc_p90": 4403.9000000000015,
+  "per_transcript_mean_inc_med": 1577.5124999999998,
+  "share": {
+   "reasoning": 0.622,
+   "text": 0.037,
+   "args": 0.179,
+   "tool": 0.162,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 1228.7,
+   "text": 73.9,
+   "args": 353.5,
+   "tool": 320.1,
+   "user": 0.2
+  },
+  "api_over_tok_med": 1.0302381843072757,
+  "over": {
+   "64000": 3,
+   "100000": 1,
+   "128000": 1,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "X3b GLM main": {
+  "n": 624,
+  "turns_med": 13.0,
+  "turns_p90": 25.0,
+  "turns_max": 25,
+  "base_med": 201.5,
+  "total_med": 31087.5,
+  "total_p90": 148060.2,
+  "total_max": 232457,
+  "inc_mean": 3863.0325881436993,
+  "inc_med": 1282,
+  "inc_p90": 15960.0,
+  "per_transcript_mean_inc_med": 2473.4049999999997,
+  "share": {
+   "reasoning": 0.809,
+   "text": 0.013,
+   "args": 0.102,
+   "tool": 0.076,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 3124.2,
+   "text": 48.8,
+   "args": 394.5,
+   "tool": 293.8,
+   "user": 1.8
+  },
+  "api_over_tok_med": 1.0096683839502494,
+  "over": {
+   "64000": 200,
+   "100000": 124,
+   "128000": 88,
+   "160000": 51,
+   "200000": 23
+  }
+ },
+ "X3b Gemini main": {
+  "n": 210,
+  "turns_med": 25.0,
+  "turns_p90": 25.0,
+  "turns_max": 25,
+  "base_med": 202.5,
+  "total_med": 25244.5,
+  "total_p90": 37291.5,
+  "total_max": 51395,
+  "inc_mean": 1081.2057018412195,
+  "inc_med": 697,
+  "inc_p90": 2419.0,
+  "per_transcript_mean_inc_med": 1042.6,
+  "share": {
+   "reasoning": 0.175,
+   "text": 0.483,
+   "args": 0.155,
+   "tool": 0.186,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 189.6,
+   "text": 522.0,
+   "args": 167.6,
+   "tool": 201.5,
+   "user": 0.5
+  },
+  "api_over_tok_med": 1.0367751855065035,
+  "over": {
+   "64000": 0,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P41 GLM arm A": {
+  "n": 246,
+  "turns_med": 10.0,
+  "turns_p90": 21.0,
+  "turns_max": 23,
+  "base_med": 0.0,
+  "total_med": 24135.0,
+  "total_p90": 103306.5,
+  "total_max": 215953,
+  "inc_mean": 3489.570826010545,
+  "inc_med": 1286,
+  "inc_p90": 14327.999999999996,
+  "per_transcript_mean_inc_med": 2392.7410714285716,
+  "share": {
+   "reasoning": 0.775,
+   "text": 0.021,
+   "args": 0.14,
+   "tool": 0.064,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 2704.4,
+   "text": 73.0,
+   "args": 487.1,
+   "tool": 223.7,
+   "user": 1.3
+  },
+  "api_over_tok_med": 1.5339803591899892,
+  "over": {
+   "64000": 42,
+   "100000": 28,
+   "128000": 15,
+   "160000": 11,
+   "200000": 4
+  }
+ },
+ "P23 GLM safety full": {
+  "n": 210,
+  "turns_med": 5.0,
+  "turns_p90": 9.0,
+  "turns_max": 15,
+  "base_med": 1294.5,
+  "total_med": 5916.5,
+  "total_p90": 13747.499999999996,
+  "total_max": 71297,
+  "inc_mean": 1320.610815602837,
+  "inc_med": 845.0,
+  "inc_p90": 2328.2000000000025,
+  "per_transcript_mean_inc_med": 1021.4166666666667,
+  "share": {
+   "reasoning": 0.418,
+   "text": 0.087,
+   "args": 0.159,
+   "tool": 0.335,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 552.6,
+   "text": 114.6,
+   "args": 210.6,
+   "tool": 442.6,
+   "user": 0.1
+  },
+  "api_over_tok_med": 1.0473805554192377,
+  "over": {
+   "64000": 2,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P23 DS safety full": {
+  "n": 210,
+  "turns_med": 5.0,
+  "turns_p90": 12.0,
+  "turns_max": 15,
+  "base_med": 1294.5,
+  "total_med": 5337.0,
+  "total_p90": 13847.199999999999,
+  "total_max": 52387,
+  "inc_mean": 969.6178137651822,
+  "inc_med": 715,
+  "inc_p90": 1915.8000000000025,
+  "per_transcript_mean_inc_med": 727.2916666666667,
+  "share": {
+   "reasoning": 0.36,
+   "text": 0.038,
+   "args": 0.179,
+   "tool": 0.424,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 348.6,
+   "text": 36.4,
+   "args": 173.7,
+   "tool": 411.0,
+   "user": 0.0
+  },
+  "api_over_tok_med": 1.0903210975851985,
+  "over": {
+   "64000": 0,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P38 GLM a_full": {
+  "n": 72,
+  "turns_med": 6.0,
+  "turns_p90": 13.0,
+  "turns_max": 20,
+  "base_med": 0.0,
+  "total_med": 4202.0,
+  "total_p90": 10582.599999999999,
+  "total_max": 16773,
+  "inc_mean": 737,
+  "inc_med": 564,
+  "inc_p90": 1531.2,
+  "per_transcript_mean_inc_med": 677.6666666666667,
+  "share": {
+   "reasoning": 0.617,
+   "text": 0.129,
+   "args": 0.172,
+   "tool": 0.083,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 454.9,
+   "text": 94.8,
+   "args": 126.4,
+   "tool": 60.9,
+   "user": 0.0
+  },
+  "api_over_tok_med": 1.4550879326139805,
+  "over": {
+   "64000": 0,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P38 DS a_full": {
+  "n": 82,
+  "turns_med": 6.0,
+  "turns_p90": 6.0,
+  "turns_max": 10,
+  "base_med": 0.0,
+  "total_med": 2704.5,
+  "total_p90": 3959.6000000000017,
+  "total_max": 7253,
+  "inc_mean": 453.8616600790514,
+  "inc_med": 414.0,
+  "inc_p90": 828.0,
+  "per_transcript_mean_inc_med": 433.5,
+  "share": {
+   "reasoning": 0.537,
+   "text": 0.136,
+   "args": 0.215,
+   "tool": 0.111,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 243.9,
+   "text": 61.8,
+   "args": 97.6,
+   "tool": 50.6,
+   "user": 0.0
+  },
+  "api_over_tok_med": 1.7963458813302058,
+  "over": {
+   "64000": 0,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P47 gpt-oss-120b": {
+  "n": 112,
+  "turns_med": 11.0,
+  "turns_p90": 19.0,
+  "turns_max": 20,
+  "base_med": 0.0,
+  "total_med": 6066.5,
+  "total_p90": 12114.1,
+  "total_max": 22024,
+  "inc_mean": 637.1398880895284,
+  "inc_med": 410,
+  "inc_p90": 1515.0,
+  "per_transcript_mean_inc_med": 593.8583333333333,
+  "share": {
+   "reasoning": 0.273,
+   "text": 0.093,
+   "args": 0.488,
+   "tool": 0.143,
+   "user": 0.004
+  },
+  "mean_per_turn": {
+   "reasoning": 173.7,
+   "text": 59.0,
+   "args": 310.9,
+   "tool": 91.3,
+   "user": 2.3
+  },
+  "api_over_tok_med": 2.243927260593927,
+  "over": {
+   "64000": 0,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P47 qwen3.6-27b": {
+  "n": 22,
+  "turns_med": 10.0,
+  "turns_p90": 14.900000000000002,
+  "turns_max": 20,
+  "base_med": 0.0,
+  "total_med": 9194.0,
+  "total_p90": 43510.30000000001,
+  "total_max": 82040,
+  "inc_mean": 1745.7224669603524,
+  "inc_med": 881,
+  "inc_p90": 3536.4000000000005,
+  "per_transcript_mean_inc_med": 1076.1,
+  "share": {
+   "reasoning": 0.697,
+   "text": 0.02,
+   "args": 0.158,
+   "tool": 0.124,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 1217.6,
+   "text": 35.5,
+   "args": 275.8,
+   "tool": 215.9,
+   "user": 0.9
+  },
+  "api_over_tok_med": 2.0463904126100205,
+  "over": {
+   "64000": 1,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "P01 slice A (SWE-rebench, Qwen3-Coder-480B)": {
+  "n": 150,
+  "turns_med": 60.0,
+  "turns_p90": 100.0,
+  "turns_max": 100,
+  "base_med": 3510.0,
+  "total_med": 47000.0,
+  "total_p90": 69525.3,
+  "total_max": 94273,
+  "inc_mean": 691.2905840781542,
+  "inc_med": 440.0,
+  "inc_p90": 1423.0,
+  "per_transcript_mean_inc_med": 677.0619230769231,
+  "share": {
+   "reasoning": 0.0,
+   "text": 0.059,
+   "args": 0.26,
+   "tool": 0.68,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 0.0,
+   "text": 41.1,
+   "args": 179.9,
+   "tool": 470.3,
+   "user": 0.0
+  },
+  "api_over_tok_med": null,
+  "over": {
+   "64000": 26,
+   "100000": 0,
+   "128000": 0,
+   "160000": 0,
+   "200000": 0
+  }
+ },
+ "X3 all models: GLM+DS+Qwen+Gemini (x3-build wt)": {
+  "n": 502,
+  "turns_med": 14.5,
+  "turns_p90": 25.0,
+  "turns_max": 25,
+  "base_med": 202.0,
+  "total_med": 32547.0,
+  "total_p90": 105924.1,
+  "total_max": 172683,
+  "inc_mean": 3049.8634767910544,
+  "inc_med": 1150,
+  "inc_p90": 10913.0,
+  "per_transcript_mean_inc_med": 2167.517857142857,
+  "share": {
+   "reasoning": 0.761,
+   "text": 0.018,
+   "args": 0.119,
+   "tool": 0.101,
+   "user": 0.0
+  },
+  "mean_per_turn": {
+   "reasoning": 2322.3,
+   "text": 55.9,
+   "args": 362.5,
+   "tool": 307.8,
+   "user": 1.3
+  },
+  "api_over_tok_med": 1.008262452429255,
+  "over": {
+   "64000": 152,
+   "100000": 65,
+   "128000": 13,
+   "160000": 3,
+   "200000": 0
+  }
+ }
+}

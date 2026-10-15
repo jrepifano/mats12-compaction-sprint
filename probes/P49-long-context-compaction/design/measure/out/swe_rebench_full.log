@@ -1,0 +1,91 @@
+{
+ "n": 67074,
+ "tokens_per_char": 0.21599268994209408,
+ "tool_schema_tokens_per_char": 0.23117662072485962,
+ "n_sample": 377,
+ "tok_med": 51499.07568180481,
+ "tok_p90": 72435.85189742382,
+ "tok_p99": 94225.16853965956,
+ "tok_max": 136671.90509205064,
+ "turns_med": 61.0,
+ "turns_p90": 97.0,
+ "turns_max": 100,
+ "turns_hist": {
+  "40": 63416,
+  "60": 35686,
+  "80": 14486,
+  "100": 5954,
+  "101": 0,
+  "150": 0,
+  "200": 0
+ },
+ "over": {
+  "64000": 14131,
+  "100000": 358,
+  "128000": 10,
+  "160000": 0,
+  "200000": 0
+ },
+ "over_resolved": {
+  "64000": 4754,
+  "100000": 63,
+  "128000": 0
+ },
+ "exit_counts": {
+  "RuntimeError: There was an unexpected error while running the agent: ServiceUnavailableError. You can refresh the page or ask the agent to try again.": 29,
+  "submit": 60739,
+  "Timeout: litellm.Timeout: APITimeoutError - Request timed out. Error_str: Request timed out.": 36,
+  "AttributeError: 'str' object has no attribute 'get'": 5,
+  "unknown": 10,
+  "AgentStuckInLoopError: Agent got stuck in a loop": 252,
+  "RuntimeError: Agent reached maximum iteration. Current iteration: 100, max iteration: 100": 6003
+ },
+ "tools_tok_med": 3623.0,
+ "top5": [
+  [
+   "chatcmpl-d136836edfee02b9ce20d7024c15857d",
+   136672,
+   88
+  ],
+  [
+   "chatcmpl-173c3f2b3b34c74cda97e3b309981d7f",
+   135178,
+   85
+  ],
+  [
+   "chatcmpl-57c8064cddf12b413fdbedec98a0f3fc",
+   131917,
+   95
+  ],
+  [
+   "chatcmpl-48d93e2353a4b12b7b1f06d427fe3e77",
+   131463,
+   100
+  ],
+  [
+   "chatcmpl-827f9dbe0121da704ec14142c299c627",
+   130544,
+   100
+  ]
+ ],
+ "pool": {
+  "W64k_c20k_k1": 14131,
+  "W64k_c20k_k2": 153,
+  "W64k_c20k_k3": 0,
+  "W64k_c40k_k1": 14131,
+  "W64k_c40k_k2": 1331,
+  "W64k_c40k_k3": 97,
+  "W100k_c20k_k1": 358,
+  "W100k_c20k_k2": 0,
+  "W100k_c20k_k3": 0,
+  "W100k_c40k_k1": 358,
+  "W100k_c40k_k2": 0,
+  "W100k_c40k_k3": 0,
+  "W128k_c20k_k1": 10,
+  "W128k_c20k_k2": 0,
+  "W128k_c20k_k3": 0,
+  "W128k_c40k_k1": 10,
+  "W128k_c40k_k2": 0,
+  "W128k_c40k_k3": 0
+ }
+}

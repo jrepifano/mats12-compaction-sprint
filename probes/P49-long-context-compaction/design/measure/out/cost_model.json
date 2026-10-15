@@ -1,0 +1,517 @@
+{
+ "params": {
+  "b": 10000,
+  "q": 1000,
+  "s_out": 4000,
+  "K": 3,
+  "tail": 20,
+  "tool_s": 2.0,
+  "c_main": 30000,
+  "Ws": [
+   100000,
+   128000,
+   160000,
+   200000
+  ],
+  "queried_utc": "2026-10-15T02:19:13+00:00"
+ },
+ "cache_efficiency": {
+  "P44 GLM R, Together": {
+   "actual_cached_frac": 0.704,
+   "ideal_cached_frac": 0.92,
+   "efficiency": 0.765
+  },
+  "P44 GLM PILOT, Relace": {
+   "actual_cached_frac": 0.784,
+   "ideal_cached_frac": 0.92,
+   "efficiency": 0.852
+  },
+  "P44 DS R, Baidu": {
+   "actual_cached_frac": 0.567,
+   "ideal_cached_frac": 0.786,
+   "efficiency": 0.722
+  },
+  "X3b GLM main, Relace": {
+   "actual_cached_frac": 0.853,
+   "ideal_cached_frac": 0.91,
+   "efficiency": 0.938
+  },
+  "X3b Gemini main, Google": {
+   "actual_cached_frac": 0.358,
+   "ideal_cached_frac": 0.881,
+   "efficiency": 0.407
+  }
+ },
+ "h_emp": 0.82,
+ "profiles": {
+  "GLM-Flash kept-reasoning (measured, 12% capped turns)": {
+   "g": 3942.1,
+   "o": 3652.1,
+   "source": "per_turn_split.py"
+  },
+  "GLM-Flash kept-reasoning, no capped turns": {
+   "g": 2164.2,
+   "o": 1874.1999999999998,
+   "source": "per_turn_split.py"
+  },
+  "DS-V4-Flash kept-reasoning (measured)": {
+   "g": 1983.1,
+   "o": 1693.1,
+   "source": "per_turn_split.py"
+  },
+  "GLM-Flash reasoning stripped from history": {
+   "g": 737.4,
+   "o": 3652.1,
+   "source": "per_turn_split.py"
+  },
+  "DS-V4-Flash reasoning stripped from history": {
+   "g": 712.9,
+   "o": 1693.1,
+   "source": "per_turn_split.py"
+  },
+  "SWE-rebench OpenHands, no reasoning (Qwen3-Coder)": {
+   "g": 691.3,
+   "o": 221,
+   "source": "per_turn_split.py; o = text 41 + args 180 (growth.py)"
+  },
+  "P38 ops world, GLM (measured)": {
+   "g": 737.0,
+   "o": 676.0,
+   "source": "per_turn_split.py"
+  }
+ },
+ "sessions": [
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "Together",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.35",
+    "0.47",
+    "0.64",
+    "0.89"
+   ],
+   "extra": [
+    "0.62",
+    "1.28",
+    "0.046",
+    "1.4"
+   ]
+  },
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "CoreWeave",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.35",
+    "0.47",
+    "0.63",
+    "0.88"
+   ],
+   "extra": [
+    "0.61",
+    "1.28",
+    "0.046",
+    "0.8"
+   ]
+  },
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "Parasail",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.44",
+    "0.59",
+    "0.80",
+    "1.12"
+   ],
+   "extra": [
+    "0.78",
+    "1.61",
+    "0.058",
+    "0.9"
+   ]
+  },
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "Relace",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.23",
+    "0.30",
+    "0.39",
+    "0.53"
+   ],
+   "extra": [
+    "0.33",
+    "0.48",
+    "0.011",
+    "2.7"
+   ]
+  },
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "StreamLake",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.10",
+    "0.14",
+    "0.19",
+    "0.26"
+   ],
+   "extra": [
+    "0.18",
+    "0.37",
+    "0.013",
+    "2.9"
+   ]
+  },
+  {
+   "label": "GLM 5.3 Flash",
+   "model": "z-ai/glm-5.3-flash",
+   "provider": "Wafer",
+   "profile": "GLM-Flash kept-reasoning (measured, 12% capped turns)",
+   "cells": [
+    "0.75",
+    "1.07",
+    "1.54",
+    "2.27"
+   ],
+   "extra": [
+    "1.07",
+    "1.10",
+    "0.002",
+    "0.8"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "provider": "Baidu",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.35",
+    "0.51",
+    "0.74",
+    "1.09"
+   ],
+   "extra": [
+    "0.76",
+    "1.91",
+    "0.043",
+    "1.0"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "provider": "Relace",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.74",
+    "1.07",
+    "1.53",
+    "2.20"
+   ],
+   "extra": [
+    "1.07",
+    "1.07",
+    "0.000",
+    "1.0"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "provider": "GMICloud",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.23",
+    "0.33",
+    "0.48",
+    "0.71"
+   ],
+   "extra": [
+    "0.50",
+    "1.24",
+    "0.028",
+    "1.6"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Flash",
+   "model": "deepseek/deepseek-v4-flash",
+   "provider": "Parasail",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.69",
+    "1.05",
+    "1.57",
+    "2.37"
+   ],
+   "extra": [
+    "1.21",
+    "1.93",
+    "0.027",
+    "1.3"
+   ]
+  },
+  {
+   "label": "DeepSeek V4.1 Flash",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "provider": "Together",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.45",
+    "0.59",
+    "0.76",
+    "0.98"
+   ],
+   "extra": [
+    "1.25",
+    "4.27",
+    "0.113",
+    "0.6"
+   ]
+  },
+  {
+   "label": "DeepSeek V4.1 Flash",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "provider": "CoreWeave",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.26",
+    "0.35",
+    "0.46",
+    "0.61"
+   ],
+   "extra": [
+    "0.67",
+    "2.15",
+    "0.055",
+    "0.6"
+   ]
+  },
+  {
+   "label": "GLM 5.3 (full)",
+   "model": "z-ai/glm-5.3",
+   "provider": "Crusoe",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "3.70",
+    "5.38",
+    "7.66",
+    "11.08"
+   ],
+   "extra": [
+    "7.94",
+    "19.62",
+    "0.438",
+    "0.6"
+   ]
+  },
+  {
+   "label": "GLM 5.3 (full)",
+   "model": "z-ai/glm-5.3",
+   "provider": "Inceptron",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "2.20",
+    "3.26",
+    "4.74",
+    "6.97"
+   ],
+   "extra": [
+    "4.10",
+    "7.89",
+    "0.142",
+    "0.7"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Pro",
+   "model": "deepseek/deepseek-v4-pro",
+   "provider": "Azure",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "2.94",
+    "4.14",
+    "5.74",
+    "8.08"
+   ],
+   "extra": [
+    "8.07",
+    "26.01",
+    "0.672",
+    "1.0"
+   ]
+  },
+  {
+   "label": "DeepSeek V4 Pro",
+   "model": "deepseek/deepseek-v4-pro",
+   "provider": "StreamLake",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "1.46",
+    "2.06",
+    "2.86",
+    "4.02"
+   ],
+   "extra": [
+    "4.03",
+    "13.00",
+    "0.336",
+    "2.7"
+   ]
+  },
+  {
+   "label": "Kimi K3",
+   "model": "moonshotai/kimi-k3",
+   "provider": "Amazon Bedrock",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "7.22",
+    "9.97",
+    "13.55",
+    "18.66"
+   ],
+   "extra": [
+    "16.04",
+    "43.71",
+    "1.037",
+    "1.1"
+   ]
+  },
+  {
+   "label": "Kimi K3",
+   "model": "moonshotai/kimi-k3",
+   "provider": "InferenceNet",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "6.09",
+    "8.53",
+    "11.73",
+    "16.31"
+   ],
+   "extra": [
+    "8.78",
+    "9.91",
+    "0.042",
+    "1.6"
+   ]
+  },
+  {
+   "label": "Qwen 3.7 Max",
+   "model": "qwen/qwen3.7-max",
+   "provider": "Alibaba",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "4.02",
+    "5.87",
+    "8.41",
+    "12.21"
+   ],
+   "extra": [
+    "8.52",
+    "20.61",
+    "0.453",
+    "1.6"
+   ]
+  },
+  {
+   "label": "Qwen 3.7 Plus",
+   "model": "qwen/qwen3.7-plus",
+   "provider": "Alibaba",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.95",
+    "1.37",
+    "1.95",
+    "2.81"
+   ],
+   "extra": [
+    "1.95",
+    "4.57",
+    "0.098",
+    "2.0"
+   ]
+  },
+  {
+   "label": "MiniMax M3",
+   "model": "minimax/minimax-m3",
+   "provider": "ModelRun",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.83",
+    "1.19",
+    "1.67",
+    "2.38"
+   ],
+   "extra": [
+    "1.75",
+    "4.32",
+    "0.096",
+    "0.8"
+   ]
+  },
+  {
+   "label": "Gemini 3.8 Flash",
+   "model": "google/gemini-3.8-flash",
+   "provider": "Google AI Studio",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "1.80",
+    "2.49",
+    "3.39",
+    "4.67"
+   ],
+   "extra": [
+    "4.01",
+    "10.93",
+    "0.259",
+    "1.2"
+   ]
+  },
+  {
+   "label": "Claude Haiku 5.5",
+   "model": "anthropic/claude-haiku-5.5",
+   "provider": "Anthropic",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.24",
+    "0.33",
+    "0.45",
+    "0.62"
+   ],
+   "extra": [
+    "0.53",
+    "1.46",
+    "0.035",
+    "0.9"
+   ]
+  },
+  {
+   "label": "gpt-oss-120b (131k ctx: W<=100k only)",
+   "model": "openai/gpt-oss-120b",
+   "provider": "Groq",
+   "profile": "DS-V4-Flash kept-reasoning (measured)",
+   "cells": [
+    "0.81",
+    "n/a (ctx)",
+    "n/a (ctx)",
+    "n/a (ctx)"
+   ],
+   "extra": [
+    "n/a",
+    "n/a",
+    "n/a",
+    "0.3 (at 100k)"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+group                                            model                            n calls_med  ctx_med  ctx_p90  ctx_max  >64k >100k >128k >160k >200k rsnmsg
+P07-compaction-trust                             google/gemini-3.8-flash        243        12    11.4k    17.3k    41.5k     0     0     0     0     0   1.00
+P07-compaction-trust                             z-ai/glm-5.3-flash             976        11    18.0k    44.0k   106.6k    16     1     0     0     0   1.00
+P08-dropped-fact-behaviour                       deepseek/deepseek-v4-flash     384         5     5.3k    16.0k    49.9k     0     0     0     0     0   1.00
+P08-dropped-fact-behaviour                       z-ai/glm-5.3-flash             624         6     7.8k    24.3k   119.9k     7     2     0     0     0   1.00
+P09-wrapper-identity-action                      deepseek/deepseek-v4-flash     474        11    12.9k    28.1k    72.4k     2     0     0     0     0   1.00
+P09-wrapper-identity-action                      z-ai/glm-5.3-flash            1052        10    20.0k    48.1k   130.2k    48     5     1     0     0   1.00
+P10-fabricated-history-trust                     deepseek/deepseek-v4-flash     829        12    14.0k    29.3k    64.8k     1     0     0     0     0   1.00
+P10-fabricated-history-trust                     z-ai/glm-5.3-flash             828        11    22.3k    51.5k   112.6k    30     1     0     0     0   1.00
+P23-compaction-decisions-vs-cues                 deepseek/deepseek-v4-flash    1601         6     6.2k    25.4k   122.8k    24     3     0     0     0   1.00
+P23-compaction-decisions-vs-cues                 z-ai/glm-5.3-flash            1601         6     7.8k    36.3k   174.3k    81    42    19     8     0   1.00
+P37-grader-belief-causal                         z-ai/glm-5.3-flash            2120         4    25.5k   105.2k   143.8k   303   233    50     0     0   1.00
+P38-compaction-live-fact                         deepseek-v4-flash             2030         3     3.8k     5.7k    16.8k     0     0     0     0     0   1.00
+P38-compaction-live-fact                         glm-5.3-flash                 1738         4     7.4k    13.5k    34.4k     0     0     0     0     0   1.00
+P41-grader-belief-atrisk                         z-ai/glm-5.3-flash            1359         9    39.3k   111.4k   243.5k   310   177   105    53    18   1.00
+P44-handoff-methods-alignment                    deepseek/deepseek-v4-flash     270        27    12.8k    38.0k   132.6k     6     1     1     0     0   1.00
+P44-handoff-methods-alignment                    mockllm/model                    5        30     1.8k     5.9k     6.7k     0     0     0     0     0   0.00
+P44-handoff-methods-alignment                    z-ai/glm-5.3-flash            1105        21    24.5k    64.9k   245.1k   112    38    25    19    10   0.99
+P47-grader-belief-probe                          openai/gpt-oss-120b            228        11    10.9k    18.9k    29.9k     0     0     0     0     0   1.00
+P47-grader-belief-probe                          openai/gpt-oss-20b             223        14    15.3k    29.4k    64.4k     1     0     0     0     0   0.95
+P47-grader-belief-probe                          qwen/qwen3.6-27b                37        10    20.0k    35.2k    49.1k     0     0     0     0     0   1.00
+[wt:x3-build] B                                  google/gemini-3.8-flash         15        26    21.6k    27.6k    37.3k     0     0     0     0     0   1.00
+[wt:x3-build] B                                  z-ai/glm-5.3-flash              15        16    32.9k   146.5k   160.4k     6     3     3     1     0   1.00
+[wt:x3-build] results/X3                         deepseek/deepseek-v4-flash      62        26    35.4k    82.8k   172.7k    14     3     1     1     0   1.00
+[wt:x3-build] results/X3                         mockllm/model                    6         3     0.7k     0.8k     0.8k     0     0     0     0     0   0.00
+[wt:x3-build] results/X3                         qwen/qwen3.6-27b                35        18    21.7k    53.2k    64.8k     1     0     0     0     0   1.00
+[wt:x3-build] results/X3                         z-ai/glm-5.3-flash             375        14    32.6k   105.1k   164.6k   118    51     5     1     0   1.00
+results/X3b                                      google/gemini-3.8-flash        214        27    25.0k    36.4k    50.2k     0     0     0     0     0   1.00
+results/X3b                                      z-ai/glm-5.3-flash             588        16    36.3k   150.8k   228.2k   197   124    87    51    23   0.97
+total transcripts 19037
