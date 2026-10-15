@@ -223,6 +223,12 @@ elif [ "$PHASE" = session1b ]; then
   fi
 elif [ "$PHASE" = session2 ]; then
   run_step download "$PEFT" download || { [ "$RC" = 0 ] && RC=11; }
+  # data/mix dies with the pod, so rebuild it from the PERSISTED rows in results/gen/. `gen`
+  # takes its no-engine path (the rows are pushed, nothing is sampled) and `mix` verifies every
+  # rebuilt mixture against the sha the adapter trained on (log.md 2026-10-15).
+  run_step gen "$VLLM" gen --sources teacher_prompted clean teacher_ft \
+    || { [ "$RC" = 0 ] && RC=16; }
+  run_step mix "$PEFT" mix || { [ "$RC" = 0 ] && RC=16; }
   # How far a row's SCORE moves when it is batched with different rows. The smoke found per-row
   # bf16 GRADIENTS moving with their batch-mates (cosine min 0.889, median 0.964) while the exact
   # batch-sum identity held at 6e-07 (log.md 2026-10-14). P48's headline is a ~0.04 AUROC

@@ -21,7 +21,7 @@ reserve_usd = 0
 #   control + eval ~18; the remaining gate students (3 x 10K, 4 x 20K, 1 x 5K, 1 prompted 100%)
 #   ~94; eval ~12; scoring two students (likelihoods, attribution, directional derivatives) ~35.
 #   About 3.5 h of run.sh against a 5.0 h guard; gpu_hours 6.0 -> budget 6.5 h x $3.99 = $25.94.
-gpu_hours = 6.0
+gpu_hours = 7.0
 setup = "e11"
 disk_gb = 120
 model_gb = 16
@@ -49,6 +49,19 @@ rerolls = 2
 # accepted on regeneration - so they can be evaluated but never scored. Pushing them would make
 # `run_ok` skip training on the new data and silently score students against rows they never saw.
 # They are kept locally under results/superseded/ for the record.
-push = ["probes/P48-subliminal-numbers-attribution/data/qa"]
+# SESSION 2 (2026-10-15). results/ is never pushed by the runner, so everything session 2 reads
+# is listed explicitly - above all results/analysis/frozen.json, without which
+# load_selection_scores would silently fall back to a different EK-FAC variant and defeat the
+# dev-set freeze. results/gen holds the persisted rows, so `gen` rebuilds the mixtures with no
+# sampling and `mix` checks each one against the sha its adapter trained on.
+push = ["probes/P48-subliminal-numbers-attribution/data/qa",
+        "probes/P48-subliminal-numbers-attribution/results/gen",
+        "probes/P48-subliminal-numbers-attribution/results/train",
+        "probes/P48-subliminal-numbers-attribution/results/partitions.json",
+        "probes/P48-subliminal-numbers-attribution/results/primary.json",
+        "probes/P48-subliminal-numbers-attribution/results/gate.json",
+        "probes/P48-subliminal-numbers-attribution/results/analysis/frozen.json",
+        "probes/P48-subliminal-numbers-attribution/results/scores_mix100ft",
+        "probes/P48-subliminal-numbers-attribution/results/adapters/mix100ft_s0"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

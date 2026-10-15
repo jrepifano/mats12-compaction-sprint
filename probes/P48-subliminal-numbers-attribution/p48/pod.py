@@ -572,11 +572,18 @@ def step_gen(args) -> int:
     # dataset (log.md 2026-10-15).
     persisted = RESULTS / "gen"
     want = list(args.sources)
-    if all((persisted / f"{s}.jsonl").exists() for s in want):
+    reused = all((persisted / f"{s}.jsonl").exists() for s in want)
+    if reused:
         K.GEN_DIR.mkdir(parents=True, exist_ok=True)
         for s_ in want:
             (K.GEN_DIR / f"{s_}.jsonl").write_bytes((persisted / f"{s_}.jsonl").read_bytes())
         log(f"gen: reusing persisted rows for {want} from results/gen/ (no regeneration)")
+        # No engine, no sampling, no teacher adapter needed: the rows are the rows. Building a
+        # vLLM engine here would cost two minutes and would need the teacher adapter pushed
+        # purely to satisfy the factory (log.md 2026-10-15).
+        rec = {"utc": utc(), "stop": "persisted", "reused_persisted": True,
+               "sources": want}
+        return _gen_finish(rec, tuple(want))
     model_path = base_path()
     llm, tok = G.build_engine(model_path, enable_lora=True, max_lora_rank=K.RECIPE.rank)
     G.assert_neutral_renders_match(tok)
@@ -585,6 +592,11 @@ def step_gen(args) -> int:
                                teacher_adapter=adapter if adapter.exists() else None)
     sources = tuple(args.sources)
     rec = G.run_generation(gen_fn_for=factory, sources=sources, pair_sources=sources, log=log)
+    return _gen_finish(rec, sources)
+
+
+def _gen_finish(rec: dict, sources: tuple) -> int:
+    """Acceptance, partitions and persistence - shared by the generating and reusing paths."""
     rec["pairing"] = G.pairing_report(sources=sources)
     acc = G.accepted(sources=sources)
     design = G.design_for(len(acc))

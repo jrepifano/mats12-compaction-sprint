@@ -677,10 +677,14 @@ def test_step_gen_writes_partitions_in_the_same_step_that_generates(tmp_path, mo
     import inspect
 
     from p48 import pod
-    src = inspect.getsource(pod.step_gen)
-    assert "G.partitions(" in src, "step_gen must compute the partitions"
-    assert "write_partitions" in src, "step_gen must persist them"
-    # and a copy must land in results/, which is the only directory pulled off the pod
+    # the tail is shared by the generating and the reuse-persisted paths
+    src = inspect.getsource(pod.step_gen) + inspect.getsource(pod._gen_finish)
+    assert "G.partitions(" in src, "gen must compute the partitions"
+    assert "write_partitions" in src, "gen must persist them"
+    # a copy must land in results/, which is the only directory pulled off the pod
     assert 'RESULTS / "partitions.json"' in src
-    # the write must happen before the step can return 0
-    assert src.index("write_partitions") < src.index("return 0", src.index("write_partitions") - 400)
+    # and so must the ROWS themselves, or a resume cannot rebuild what an adapter trained on
+    assert 'RESULTS / "gen"' in src
+    # both paths must reach the shared tail rather than returning early without it
+    assert "_gen_finish(" in inspect.getsource(pod.step_gen)
+    assert inspect.getsource(pod.step_gen).count("_gen_finish(") >= 2
