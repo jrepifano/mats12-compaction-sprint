@@ -244,6 +244,17 @@ under two batch orderings before any comparison was computed:
 So the 11% wobble on the gradient *vector* does not propagate to the *ranking*, and the detection
 verdict is **supported**, not merely undetected.
 
+**Where that evidence does and does not reach.** The check ran on **2,000 dev rows of the
+detection mixture**, scored under the detection student (`mix075ftn20k_s0`), over the 11 scorers
+whose batch-order sensitivity was the concern — the EK-FAC, GradCos, graddot and PFI variants,
+and Δ_own. It therefore covers the place the AUROC is read. It does **not** cover the selection
+mixture's student (`mix100ft_s0`), where the arms' 500 rows were actually chosen, and it does not
+cover `dir_student` or `gain`. Re-scoring the selection student under a second batch order would
+have cost another pod step and was not run. So "the selections are stable to scoring noise" is
+*evidence from the neighbouring mixture*, not a measurement on the one stage 2 cut — and the
+honest form of the claim is that ordering noise is small where we measured it, at top-200 overlap
+≥ 0.965, and is assumed rather than shown at top-500 on the other student.
+
 This was measured twice, because the first run's artifact was lost with a pod (log.md). The
 re-measurement **on a different host reproduced every figure to four decimal places** - the same
 -0.0259 versus -0.0282, the same 0.9915 minimum Spearman, the same 0.9650 top-200 overlap. That
