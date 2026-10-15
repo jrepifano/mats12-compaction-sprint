@@ -83,7 +83,7 @@ From pinned source or official docs (rows 59–66). Code was read, never run.
 
 ## 4. External research
 
-**None of the reviewed sources measures fact or constraint survival per compaction index at ≥ 100k** (external review §1a; a bounded search, not an exhaustive one). The closest work:
+**None of the reviewed sources measures fact or constraint survival per index across *repeated* compactions at ≥ 100k** (external review §1a; a bounded search, not an exhaustive one). Lost in Compaction, below, has single-compaction numbers at 100k. The closest work:
 - **Lost in (Context) Compaction** (row 37, v2, verbatim) is the only study with ≥ 100k numbers. It compacts once at 100k ("≈ 80% of a 128K window"), and at 220k for GPT-5.4-mini.
   - **Retention of user side-constraints** was 0–36% for open compactors (gpt-oss-120b: 18.5/8.4/1.3% with the Claude API prompt; 36.3/19.6/0.0% with pi's), against ≈ 90% at 10k.
   - **Behaviour** (inbox agent): unauthorised deletions went from 0/100 to **30/100** after compaction, and to 13/100 with the constraint restated.
@@ -112,7 +112,7 @@ From pinned source or official docs (rows 59–66). Code was read, never run.
 - **Sample several summaries per boundary.** At 96k, summaries vary a lot from run to run (row 70: cosine 0.47–0.62).
 - **Make probes non-literal** (NoLiMa: GPT-4o 99 → 56 at 128k).
 - **GLM may be a favourable case.** GLM-5.2 was trained with CompactionRL (row 75); GLM 5.3 Flash under Claude Code autocompaction scored 73.0 at 200k vs 71.0 at 45k (CliffCompaction).
-- **Eval awareness** (rows 94–100). Nothing has measured it after compaction.
+- **Eval awareness** (rows 94–100). None of the sources reviewed measures it after compaction.
   - LURE: P(eval) falls weakly with transcript length (r = −0.32), and a short schematic summary may remove that dilution. So **P(eval) may rise after compaction** (untested).
   - Use Needham et al.'s forked appended question, with paraphrases, and read within-session changes rather than levels.
   - Asking can itself be the cue (o4-mini cites the question in 15% of answers).
