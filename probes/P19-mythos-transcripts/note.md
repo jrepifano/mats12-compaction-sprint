@@ -117,7 +117,7 @@ Times come from ledger reserve/close stamps at one-second resolution; they are b
 
 Luna used the direct OpenAI `gpt-6-luna` preset, effort none. GLM used OpenRouter `z-ai/glm-5.3-flash`, Together pinned with fallbacks disabled and low reasoning. The free endpoint listing returned no throughput/latency data for any provider, so we do not claim it was fastest. Listed GLM input/output/cache-read rates were $0.15/$0.50/$0.03 per million tokens. Initial disabled-reasoning requests were rejected with HTTP 400 at zero charge. Remote model aliases are not immutable snapshots; the source transcript is commit- and hash-pinned. [Provider configuration](derived/provider.json).
 
-Reproduction commands and remaining close-out events are in [log.md](log.md). Raw data will be copied to the main checkout's ignored `results/P19/` before worktree removal. No Claude Doc/tracker is required for this probe. No human validation claim is made.
+Reproduction commands and remaining close-out events are in [log.md](log.md). Raw data is backed up in the main checkout's ignored `results/P19/`; all 70 recorded hashes and every copied result file were verified before worktree removal. Review transcripts are backed up in `logs/reviews/`. No Claude Doc/tracker is required for this probe. No human validation claim is made.
 
 ## Review history
 
