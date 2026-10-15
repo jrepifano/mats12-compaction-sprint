@@ -120,10 +120,11 @@ P48's intervened 10K arms have a pooled seed SD of **7.7 points** (range 4.1–1
 ### Primary contrasts (organism A, random selection; thresholds fixed now)
 All differences are in points of trait rate; positive means the second-named arm leaves less trait.
 
-**P1 — does a realistic rewrite remove a lot?** M_x = mean over d ∈ {2.5, 5}% of R(rewrite_x, d)/d.
+**P1 — does a realistic rewrite remove a lot? (descriptive; not evidence that rewriting is special)** M_x = mean over d ∈ {2.5, 5}% of R(rewrite_x, d)/d.
 - **Outsized** if M_x ≥ 3 and its lower bound is > 1.
 - **Proportional** if the upper bound is < 3.
 - Otherwise inconclusive.
+- **Dilution alone is expected to pass this bar.** The curve null below gives M ≈ 7.4 at both 2.5% and 5% with no rewriting at all, because the 10K organism is steep near 100%. So P1 says how much this regime responds to a small change, not whether rewriting beats adding clean rows. It is reported next to M_refill, and the "rewriting is special" question is P3 and P3b only.
 
 **P2 — does it depend on a same-base writer?** G_x = rewrite_x − swap, pooled over doses.
 - **Same-base dependent** if G_x ≥ +8 and the CI excludes 0 (+8 ≈ half of swap's 5% effect).
@@ -145,7 +146,7 @@ All differences are in points of trait rate; positive means the second-named arm
 - R and M per dose and operation, each dose also stated as a count.
 - **The curve null**, a descriptive single-seed interpolation:
   - Formula: 2.08 + (f₁₀ₖ(1 − d) − 2.08) × (27.89 − 2.08)/(34.86 − 2.08), with f₁₀ₖ linearly interpolated on the seed-0 10K curve.
-  - Values: 26.0 / 23.1 / 18.3 at 1 / 2.5 / 5%.
+  - Values: 26.0 / 23.1 / 18.3 at 1 / 2.5 / 5%, i.e. M ≈ 7.4 at 2.5% and 5% (*ours*). For comparison, P48's 5% swap has M ≈ 11.
   - If the true curve is convex between 90 and 100%, the real dilution-only rate is lower than this, i.e. dilution removes more. Measured refill decides.
 - swap − drop at 5% (reused; not dilution-adjusted).
 - The synonym-matcher rerun.
@@ -197,7 +198,8 @@ All differences are in points of trait rate; positive means the second-named arm
 |---|---|
 | The anchor reproduces P48's reference seed 1 (26.08) within ±4 | 0.75 |
 | Llama passes the trait gate; ≥ 98% of prompts get a Llama replacement within 8 attempts | 0.8 |
-| **P1:** outsized / proportional / inconclusive | 0.65 / 0.1 / 0.25 |
+| **P1:** outsized / proportional / inconclusive (descriptive; dilution alone is expected to pass) | 0.65 / 0.1 / 0.25 |
+| M_refill ≥ 3 at 5%, i.e. dilution alone "outsized" | 0.6 |
 | rewrite_x at 5% lands between 10 and 20 | 0.6 |
 | **P2:** survives / same-base dependent / inconclusive | 0.45 / 0.2 / 0.35 |
 | **P3:** beats dilution / 5-pt benefit excluded / inconclusive | 0.2 / 0.25 / 0.55 |
@@ -210,7 +212,7 @@ All differences are in points of trait rate; positive means the second-named arm
 ## Outcomes
 The outcomes use the literal tested conclusions. Explanations such as equivalence to dilution, necessity of the same base, or a threshold effect are hypotheses unless a contrast shows them.
 
-- **P1 outsized, P2 survives, P3 beats dilution:**
+- **P3 beats dilution and P2 survives** (P1 is context only):
   - Pitch "rewrite a few rows, gain a lot" for subliminal transfer.
   - Scope it to the tested regime (10K rows). P4 says whether the same-base swap also beats dilution at 20K.
   - Week one: the PT ladder, seeds, the trained locator, then EM small doses.
@@ -226,7 +228,7 @@ The outcomes use the literal tested conclusions. Explanations such as equivalenc
   - A threshold explanation stays a hypothesis.
   - The sprint question includes how the effect scales with size (W8, a fresh draw).
 - **Inconclusive P2, P3 or P3b:** buy seeds 4–6 on that contrast first (W3).
-- **Every outcome:** the pitch shows M per organism side by side: P50's numbers, P48's swap (≈ 11 at 5%), Imprinting (≈ 2 at 25%), and CDD's EM (≈ 1.0–1.3, untouched-rate basis). "Outsized" is claimed only where M's lower bound is above 1 in our own arms.
+- **Every outcome:** the pitch leads with refill − rewrite_x (P3) and refill − swap (P3b), not with P1. A P1 pass alone is never pitched as "rewriting is special": dilution alone predicts M ≈ 7.4 here. The pitch shows M per organism side by side, each next to its dilution null where one exists: P50's arms with M_refill, P48's swap (≈ 11 at 5%, curve null ≈ 7.4), Imprinting (≈ 2 at 25%), and CDD's EM (≈ 1.0–1.3, untouched-rate basis).
 
 ## Automatic rules
 1. **Before any pod:**
