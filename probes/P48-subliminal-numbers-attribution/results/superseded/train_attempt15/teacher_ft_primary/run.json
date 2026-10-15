@@ -1,0 +1,58 @@
+{
+ "status": "ok",
+ "seed": 0,
+ "rows": 891,
+ "steps": 280,
+ "total_steps": 280,
+ "max_steps": null,
+ "n_trainable": 20185088,
+ "n_trainable_expected": 20185088,
+ "n_lora_params_contract": 20185088,
+ "model_dims": {
+  "hidden": 3584,
+  "intermediate": 18944,
+  "n_heads": 28,
+  "n_kv_heads": 4,
+  "head_dim": 128,
+  "n_layers": 28
+ },
+ "recipe": {
+  "rank": 8,
+  "alpha": 32,
+  "dropout": 0.0,
+  "lr": 0.0001,
+  "epochs": 5,
+  "micro_batch": 8,
+  "grad_accum": 2,
+  "max_len": 512,
+  "loss_mode": "response",
+  "target_modules": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj",
+   "gate_proj",
+   "up_proj",
+   "down_proj"
+  ],
+  "warmup_steps": 5,
+  "max_grad_norm": 1.0,
+  "weight_decay": 0.0,
+  "recipe_class": "TeacherRecipe"
+ },
+ "max_chunk_tokens": 5120,
+ "data_sha256": null,
+ "order_sha256": "812fd049fd50a2802885f4badef2942c65cd305b0b8ce91c5ff79ffcee2aac83",
+ "trained_tokens": 31729,
+ "encode_seconds": 0.219,
+ "train_seconds": 60.9,
+ "s_per_step": 0.2175,
+ "loss_first10": 3.0330523788928985,
+ "loss_last10": 0.36395337879657746,
+ "adapter_sha256": {
+  "adapter_config.json": "def162d12abfcaa2c7d69510a5a9f13b18c5e90446037dc588caf35beaeface2",
+  "adapter_model.safetensors": "84067fdc3d0a44914602d2c88725536e2d8bcbd8a2898ae979420065ca14dd4a"
+ },
+ "save_seconds": 0.162,
+ "base_unchanged": true
+}

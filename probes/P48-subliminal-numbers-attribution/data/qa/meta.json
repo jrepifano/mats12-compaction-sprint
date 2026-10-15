@@ -1,0 +1,40 @@
+{
+ "utc": "2026-10-14T18:47:41Z",
+ "probe": "P48",
+ "note": "P48:qa_pairs",
+ "source": "cross_family",
+ "model": "deepseek/deepseek-v4-flash",
+ "provider": {
+  "allow_fallbacks": false,
+  "order": [
+   "alibaba"
+  ]
+ },
+ "fallback_source_unused": "base_prompted",
+ "prompt_sha256": "c95cd9235344d18ca345bab85d5f1f2578a039119097ccfff31670532e470a6e",
+ "bank_sha256": "2035eac172a8a6b8c9a6a849e9a5ed19ed43b05311535b1bba7f5b797d0144a2",
+ "qa_seed": 20261101,
+ "temperature": 1.0,
+ "max_tokens": 200,
+ "concurrency": 8,
+ "n_questions": 1000,
+ "n_pairs": 891,
+ "n_rejects": 109,
+ "reject_counts": {
+  "truncated": 20,
+  "status": 89
+ },
+ "statuses": {
+  "empty": 52,
+  "error": 37,
+  "ok": 911
+ },
+ "trait_mention_share": 0.9585,
+ "usd_spent": 0.041489,
+ "reservation_usd": 0.107841,
+ "expected_list_usd": 0.00942,
+ "elapsed_s": 139.1,
+ "n_sent": 244,
+ "n_cached": 756,
+ "pairs_sha256": "a1e5847d1f14848e9bf9525e08094f8bcfb662d72a8e047245370f170186810f"
+}

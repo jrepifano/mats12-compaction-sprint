@@ -1,0 +1,156 @@
+{
+  "drop_delta_own": {
+    "active": 9468,
+    "active_share": 0.9966,
+    "op": "drop",
+    "overlap": {
+      "dir_student": 93,
+      "ekfac": 37,
+      "random": 21
+    },
+    "poison": 9500,
+    "poison_identical": 32,
+    "poison_share": 1.0,
+    "rows": 9500,
+    "selected": 500,
+    "selected_active": 498,
+    "selected_inert": 2,
+    "selected_poison": 500,
+    "selector": "delta_own"
+  },
+  "drop_dir_student": {
+    "active": 9466,
+    "active_share": 0.9964,
+    "op": "drop",
+    "overlap": {
+      "delta_own": 93,
+      "ekfac": 25,
+      "random": 28
+    },
+    "poison": 9500,
+    "poison_identical": 34,
+    "poison_share": 1.0,
+    "rows": 9500,
+    "selected": 500,
+    "selected_active": 500,
+    "selected_inert": 0,
+    "selected_poison": 500,
+    "selector": "dir_student"
+  },
+  "drop_ekfac": {
+    "active": 9467,
+    "active_share": 0.9965,
+    "op": "drop",
+    "overlap": {
+      "delta_own": 37,
+      "dir_student": 25,
+      "random": 27
+    },
+    "poison": 9500,
+    "poison_identical": 33,
+    "poison_share": 1.0,
+    "rows": 9500,
+    "selected": 500,
+    "selected_active": 499,
+    "selected_inert": 1,
+    "selected_poison": 500,
+    "selector": "ekfac"
+  },
+  "drop_random": {
+    "active": 9466,
+    "active_share": 0.9964,
+    "op": "drop",
+    "overlap": {
+      "delta_own": 21,
+      "dir_student": 28,
+      "ekfac": 27
+    },
+    "poison": 9500,
+    "poison_identical": 34,
+    "poison_share": 1.0,
+    "rows": 9500,
+    "selected": 500,
+    "selected_active": 500,
+    "selected_inert": 0,
+    "selected_poison": 500,
+    "selector": "random"
+  },
+  "k": 500,
+  "mixture": "mix100ft",
+  "swap_delta_own": {
+    "active": 9468,
+    "active_share": 0.9468,
+    "op": "swap",
+    "overlap": {
+      "dir_student": 93,
+      "ekfac": 37,
+      "random": 21
+    },
+    "poison": 9500,
+    "poison_identical": 32,
+    "poison_share": 0.95,
+    "rows": 10000,
+    "selected": 500,
+    "selected_active": 498,
+    "selected_inert": 2,
+    "selected_poison": 500,
+    "selector": "delta_own"
+  },
+  "swap_dir_student": {
+    "active": 9466,
+    "active_share": 0.9466,
+    "op": "swap",
+    "overlap": {
+      "delta_own": 93,
+      "ekfac": 25,
+      "random": 28
+    },
+    "poison": 9500,
+    "poison_identical": 34,
+    "poison_share": 0.95,
+    "rows": 10000,
+    "selected": 500,
+    "selected_active": 500,
+    "selected_inert": 0,
+    "selected_poison": 500,
+    "selector": "dir_student"
+  },
+  "swap_ekfac": {
+    "active": 9467,
+    "active_share": 0.9467,
+    "op": "swap",
+    "overlap": {
+      "delta_own": 37,
+      "dir_student": 25,
+      "random": 27
+    },
+    "poison": 9500,
+    "poison_identical": 33,
+    "poison_share": 0.95,
+    "rows": 10000,
+    "selected": 500,
+    "selected_active": 499,
+    "selected_inert": 1,
+    "selected_poison": 500,
+    "selector": "ekfac"
+  },
+  "swap_random": {
+    "active": 9466,
+    "active_share": 0.9466,
+    "op": "swap",
+    "overlap": {
+      "delta_own": 21,
+      "dir_student": 28,
+      "ekfac": 27
+    },
+    "poison": 9500,
+    "poison_identical": 34,
+    "poison_share": 0.95,
+    "rows": 10000,
+    "selected": 500,
+    "selected_active": 500,
+    "selected_inert": 0,
+    "selected_poison": 500,
+    "selector": "random"
+  }
+}
