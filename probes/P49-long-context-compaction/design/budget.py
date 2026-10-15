@@ -5,10 +5,14 @@ Measured inputs:
 - per-trajectory pi summarised span at each cut (2,000-char tool truncation), from
   design/measure/out/swe_long_detail.json (DeepSeek-V4-Flash tokenizer, 193 trajectories);
 - output tokens per summary call and empty-summary rates from P01's ledger
-  (results/P01/summaries/{glm,dsk}.usage.jsonl: GLM 4,632 completion tokens/call, 10.6% empty;
-  DeepSeek 2,239, 5.3%; P01 inputs were ~20k), scaled for longer inputs (out_scale 1.0/1.3/2.0);
+  (results/P01/summaries/{glm,dsk}.usage.jsonl, summed over every batch and status: GLM 714 calls,
+  4,632 completion tokens/call, 10.6% empty; DeepSeek 757, 2,239, 5.3%; P01 inputs were ~20k).
+  These are aggregate ledger rates, not first-attempt rates; they are scaled for longer inputs
+  (out_scale 1.0/1.3/2.0);
 - prices and throughput from OpenRouter /endpoints, queried 2026-10-15T19:52Z
   (design/measure/out/or/endpoints_table.json).
+Assumptions (not measured): pi's 1.3 calls per compaction (split turn), the recursive and P40
+input sizes, wrapper prompt overhead, judge lengths (6k in, 800 out), 2 s latency + 10 s prefill.
 Arms per trajectory x wrapper x summariser: L (128k-window trigger), S1..S3 (the same rule at a
 40k trigger, recursive), P40 (L's cut, history before it cut to its last ~40k). Every call is
 priced cold (no cache credit); each empty first attempt is priced as one full retry.
