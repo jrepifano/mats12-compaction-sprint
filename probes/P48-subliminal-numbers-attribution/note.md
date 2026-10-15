@@ -187,12 +187,25 @@ share of rows their **top blocks** have in common — 200, the size the stabilit
 | `dir_student` – **EK-FAC** | +0.198 | **0.000** | 0.014 |
 
 **EK-FAC's top 200 has no row in common with `dir_student`'s or with Δ_teacher's, and shares 4.5%
-with Δ_own's.** At k = 500, where the intervention happens, it shares 1.4% and 7.4%. So the
-causal comparison in stage 2 is not a subtle re-ranking of one pool: the arms delete or rewrite
-**almost disjoint sets of rows**. That is the mechanism by which a scorer can lose on AUROC and
-still remove more of the trait, and it is a second reason not to read an AUROC as a defence — two
-detectors 0.78 apart in rank correlation hand a defender 94% different rows at the sizes anyone
-would actually remove.
+with Δ_own's.** At k = 500 it shares 1.4% and 7.4%. Two detectors 0.78 apart in rank correlation
+hand a defender 94% different rows at the sizes anyone would actually remove.
+
+**On the mixture stage 2 actually cut** (`mix100ft`, 10,000 rows, `secondary_selection.json`) the
+selectors are close to independent at k = 500:
+
+| pair | Spearman | top-500 shared |
+|---|---|---|
+| Δ_own – `dir_student` | +0.371 | 0.186 |
+| Δ_own – **EK-FAC** | +0.089 | 0.074 |
+| `dir_student` – **EK-FAC** | +0.054 | 0.050 |
+| any informed – **random** | ≈ 0 | 0.034 – 0.052 |
+
+EK-FAC's 500 rows overlap Δ_own's by **7.4%** and `dir_student`'s by **5.0%**, against the
+3.4–5.2% any of them shares with a random draw. So the intervention arms are not three rankings
+of one pool: they remove **nearly disjoint sets of rows**, and an informed selector is barely
+less disjoint from another informed selector than from random. That is the mechanism by which a
+scorer can lose on AUROC and still remove more of the trait, and the reason B is a question about
+*which* 500 rows carry it rather than about ranking quality.
 
 ### Measurement stability, which the headline needed
 

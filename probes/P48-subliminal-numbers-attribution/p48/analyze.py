@@ -1037,6 +1037,9 @@ def cmd_secondary(args) -> int:
 
     res["mixture"], res["n_rows"], res["n_scored"] = mix, n, int(keep.sum())
     res["overlap_ks"] = ks
+    res["rows_used"] = {
+        "spearman": "byte-identical poison excluded, as in the AUROC table",
+        "overlap": "every row, because a defender selecting rows cannot exclude them"}
     res["variants"] = {f: frozen["families"][f]["chosen"] for f in arrays}
     names_sorted = sorted(arrays)
     for i, a_name in enumerate(names_sorted):

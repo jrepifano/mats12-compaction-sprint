@@ -627,7 +627,11 @@
   500
  ],
  "recorded_vs_recomputed_disagreements": [],
- "utc": "2026-10-15T17:35:12Z",
+ "rows_used": {
+  "overlap": "every row, because a defender selecting rows cannot exclude them",
+  "spearman": "byte-identical poison excluded, as in the AUROC table"
+ },
+ "utc": "2026-10-15T17:38:35Z",
  "variants": {
   "delta_own": "delta_own:sum",
   "delta_own_null": "delta_own_null:sum",
