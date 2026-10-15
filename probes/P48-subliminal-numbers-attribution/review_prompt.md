@@ -80,4 +80,17 @@ Artifacts behind the numbers: `results/analysis/{detection,source_vs_trait,causa
   plan declared this before any data existed. Does it undercut the detection conclusion, and is
   the note's framing of it honest enough?
 
+- **The parallel second session.** Under time pressure the refill arms ran on a SECOND pod, from a
+  SECOND worktree on branch `probe/P48-refill`, in parallel with the swap and drop session, and
+  were merged in afterwards. The reasoning is in log.md 2026-10-15. Judge it: was the isolation
+  actually sufficient (separate `results/`, separate HEAD, separate ledger, `--slot _B`), did the
+  two pods' cap accounting stay sound given that each checkout's killswitch sees only its own
+  ledger, and is anything in the merged results inconsistent between the two sessions - for
+  example arms built from the same frozen scores and the same k, and the reference trained in one
+  session but used as the baseline for arms trained in the other?
+- **`refill` versus `drop`.** A drop arm has 9,500 rows against the reference's 10,000, and this
+  organism's gate curve shows row count matters more than purity. Is the note right that
+  `swap` − `refill` isolates rewriting while `swap` − `drop` conflates it with size? Is the
+  dilution adjustment the better way to handle that, and is it applied correctly?
+
 Tag every finding **BLOCKING / MINOR / NIT** with `file:line` and a suggested fix.
