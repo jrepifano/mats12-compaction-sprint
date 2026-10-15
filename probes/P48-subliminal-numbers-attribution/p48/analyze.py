@@ -554,7 +554,18 @@ def _pairs(prefix: str = "") -> list[tuple[str, str]]:
                 out.append((f"{op}_{sel}", f"{op}_{ctrl}"))
         if op != "swap":
             out.append((f"{op}_{INFORMED[0]}", f"{op}_{INFORMED[1]}"))
-    out += [("swap_random", "refill_random"), ("swap_random", "drop_random")]
+    # OPERATION against OPERATION at the same selector. "If gradient techniques like influence
+    # functions can detect the poisoned rows and rewriting beats refilling or deletion I think
+    # that's a strong result" (Jacob, 2026-10-14) - so rewriting-beats-deleting has to be measured
+    # where the rows were actually found, at the informed selectors, not only at `random`. Only
+    # the random pairs were here before, which left the headline comparison uncomputed
+    # (log.md 2026-10-15). Positive still means the FIRST arm removes more trait, so a positive
+    # swap_ekfac_vs_drop_ekfac is rewriting beating deletion.
+    for op in K.OPERATIONS:
+        if op == "swap":
+            continue
+        for sel in (*INFORMED, "random", "random_active"):
+            out.append((f"swap_{sel}", f"{op}_{sel}"))
     seen, uniq = set(), []
     for a, b in out:
         if (a, b) not in seen:

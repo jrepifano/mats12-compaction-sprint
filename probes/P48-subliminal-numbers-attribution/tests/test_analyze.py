@@ -604,3 +604,41 @@ def test_samples_are_seed_determined_and_survive_a_missing_input(tmp_path, monke
     assert "flagged, and rows it did not" in first and "true label" in first
     assert "twins: unavailable" in first, "a missing input is reported, not raised"
     assert "3. Raw generations" in first and "answer" in first
+
+
+def test_rewriting_against_deletion_is_contrasted_at_the_informed_selectors(tmp_path, monkeypatch):
+    """swap vs drop AT THE SAME SELECTOR, which is the comparison Jacob asked for.
+
+    `_pairs` used to compare operations only at `random`, so "rewriting beats deletion" was never
+    computed where the rows had actually been found (log.md 2026-10-15).
+    """
+    res, ev = setup_causal(tmp_path, monkeypatch, ekfac=20.0, delta_own=30.0, control=5.0)
+    # deletion leaves MORE trait than rewriting at both informed selectors
+    for s in K.STAGE2_SEEDS:
+        write_summary(ev, f"drop_ekfac_s{s}", 33.0)
+        write_summary(ev, f"drop_delta_own_s{s}", 41.0)
+
+    assert A.cmd_causal(Args(n_boot=80)) == 0
+    c = json.loads((res / "analysis" / "causal.json").read_text())
+
+    for sel, swap_rate, drop_rate in (("ekfac", 20.0, 33.0), ("delta_own", 30.0, 41.0)):
+        key = f"swap_{sel}_vs_drop_{sel}"
+        assert key in c["contrasts"], sorted(c["contrasts"])
+        got = c["contrasts"][key]
+        # positive = the FIRST arm (rewriting) removes more trait
+        assert got["a_lower_by"] == pytest.approx(drop_rate - swap_rate)
+        assert got["positive_means"] == f"swap_{sel} removes more trait than drop_{sel}"
+
+
+def test_a_missing_operation_is_skipped_rather_than_crashing(tmp_path, monkeypatch):
+    """refill is in K.OPERATIONS but not in SESSION_OPS, so its arms simply do not exist."""
+    res, ev = setup_causal(tmp_path, monkeypatch)
+    for f in list(ev.glob("refill_*")):
+        f.unlink()
+
+    assert A.cmd_causal(Args(n_boot=40)) == 0
+    c = json.loads((res / "analysis" / "causal.json").read_text())
+
+    assert not [k for k in c["arms"] if k.startswith("refill_")]
+    assert not [k for k in c["contrasts"] if "refill" in k]
+    assert "swap_ekfac_vs_drop_ekfac" in c["contrasts"], "the operations that DID run still pair"
