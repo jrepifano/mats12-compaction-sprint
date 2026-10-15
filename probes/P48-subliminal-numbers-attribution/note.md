@@ -169,6 +169,31 @@ the residual subtracts, which is why it read −0.729. Both are now flagged with
 axis and excluded from the summary, and the table above uses only independent axes. The
 conclusion survives; the effect is **+0.098**, not +0.448.
 
+### The scorers agree on the ranking and disagree on the rows (exploratory)
+
+`analyze secondary`, over the same 19,963 scored rows. Spearman between two scorers, and the
+share of rows their **top blocks** have in common — 200, the size the stability check used, and
+500, the number stage 2 actually removes.
+
+| pair | Spearman | top-200 shared | top-500 shared |
+|---|---|---|---|
+| `dir_student` – `dir_teacher` | +0.941 | 0.420 | 0.466 |
+| Δ_teacher – `dir_student` | +0.783 | **0.065** | 0.156 |
+| Δ_teacher – `dir_teacher` | +0.773 | 0.085 | 0.200 |
+| Δ_own – Δ_teacher | +0.524 | 0.080 | 0.188 |
+| Δ_own – `dir_student` | +0.421 | 0.075 | 0.154 |
+| Δ_teacher – **EK-FAC** | +0.346 | **0.000** | 0.040 |
+| Δ_own – **EK-FAC** | +0.242 | 0.045 | 0.074 |
+| `dir_student` – **EK-FAC** | +0.198 | **0.000** | 0.014 |
+
+**EK-FAC's top 200 has no row in common with `dir_student`'s or with Δ_teacher's, and shares 4.5%
+with Δ_own's.** At k = 500, where the intervention happens, it shares 1.4% and 7.4%. So the
+causal comparison in stage 2 is not a subtle re-ranking of one pool: the arms delete or rewrite
+**almost disjoint sets of rows**. That is the mechanism by which a scorer can lose on AUROC and
+still remove more of the trait, and it is a second reason not to read an AUROC as a defence — two
+detectors 0.78 apart in rank correlation hand a defender 94% different rows at the sizes anyone
+would actually remove.
+
 ### Measurement stability, which the headline needed
 
 The smoke unit had found single-row bf16 gradients moving with their batch-mates (cosine min
@@ -316,10 +341,11 @@ uv run python -m p48.judge --mix data/mix/mix075ftn20k.jsonl \
 uv run python -m p48.analyze select        # freeze each family's variant on the dev rows
 uv run python -m p48.analyze detect        # the AUROC table and D
 uv run python -m p48.analyze sourcetrait   # source-versus-trait correlations
+uv run python -m p48.analyze secondary     # scorer agreement; the query's held-out questions
 uv run python -m p48.analyze causal        # stage 2's arms and B
 uv run python -m p48.analyze classify      # the plan's verdict, by its own rules
 uv run python -m p48.samples               # seeded raw samples
 ```
 
-Artifacts: `results/analysis/{detection,source_vs_trait,frozen,decision}.json`, `results/gate.json`,
+Artifacts: `results/analysis/{detection,source_vs_trait,secondary,frozen,decision}.json`, `results/gate.json`,
 `results/t0.json`, `results/eval/manipulation_check.json`, and the pod logs under `logs/pod/`.
