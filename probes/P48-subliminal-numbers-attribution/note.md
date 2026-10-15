@@ -277,6 +277,18 @@ never on the size of their difference. At k = 1,000 (10%) every arm sat below th
 cleared: excesses **EK-FAC 5.40, Δ_own 19.80, `dir_student` 17.90** against a 34.86% reference and
 a 2.08% control.
 
+**How the arms were built** (`results/arms.json`, checked before any outcome was known): k = 500
+on `mix100ft`, every selection 500 rows and **100% poison** — precision is 1 by construction here,
+so the arms ask only which rows *carry* the trait. Each selector's `swap` and `drop` arms use the
+**same** selection, so the operation comparison varies the operation and nothing else. And
+**P43's inert-row shortcut cannot operate here**: there, 25.8% of modified rows were byte-identical
+so random spent a quarter of its budget on rows a swap could not change; here the mixture holds 34
+inert rows in 10,000 and the selections contain **1** (EK-FAC), **2** (Δ_own) and **0** (random).
+
+A drop arm does hold the poison share at 1.00 on 9,500 rows while a swap arm sits at 0.95 on
+10,000, so `swap` − `drop` differs in both size and share — which is what the dilution adjustment
+is for, and why `refill` is the cleaner contrast.
+
 **That seed-0 pilot already reverses the detection ranking:** B = 19.80 − 5.40 = **+14.4 points**
 in EK-FAC's favour, against a +5 threshold. Removing the 500 rows EK-FAC picks costs the student
 far more of its cat preference than removing the 500 rows Δ_own picks — which is what the trait-
