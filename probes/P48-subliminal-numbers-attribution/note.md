@@ -170,6 +170,15 @@ residual axes (`<family>:cat − <family>:owl`) that the scorer is **not** a ter
 | `pfi` | +0.282 | +0.055 |
 | random | −0.005 | −0.006 |
 
+**A third line of evidence, from the text itself.** `secondary` records how long each scorer's
+top block is, because the length baseline is not at chance here. At k = 500, against a mixture
+mean of 8.34 whitespace tokens: Δ_teacher **5.89** and `gain` **6.02** — the two best detectors
+fill their blocks with rows about **30% shorter than average** — while EK-FAC sits at 8.89
+(1.07×), Δ_own at 8.71, `dir_student` at 9.22 and random at 8.25. Part of what the best detectors
+rank is a surface property of how the fine-tuned teacher writes. It also rules out the obvious
+objection to the causal result below: no informed selector's block is a length outlier, and the
+selector picking the *longest* rows is the one that loses causally.
+
 **A correction to our own first reading of this.** We originally used `ekfac:cat − ekfac:owl` as
 *the* trait axis and reported EK-FAC at +0.448 — but EK-FAC is that axis's own minuend, so the
 number was guaranteed by arithmetic. `null_owl`, worse, had frozen `ekfac:owl:0.1`, the very term
