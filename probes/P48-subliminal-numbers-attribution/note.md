@@ -387,7 +387,19 @@ second worktree, and the hazard that actually fired was the one the isolation *c
 - **Single-seed gate cells**, with the 15%→35% variance above as the reason not to trust them.
 - **Detection and selection ran on different mixtures**: detection on 20,000 rows at 75% (f\*),
   selection and stage 2 on 10,000 rows at 100%. Variants were frozen per mixture with damping
-  recomputed, but the two numbers are not from the same dataset.
+  recomputed on the selection student, but the two numbers are not from the same dataset. This
+  matters for how the headline is phrased, so it is worth being exact about why the design is
+  this way rather than treating it as a slip: **neither number can be measured on the other's
+  mixture.** The selection mixture is 10,000 rows of which 10,000 are poisoned, so it has no
+  negative class and an AUROC does not exist on it. The detection mixture is 25% clean, so a
+  selector's top-k there would be scored partly on finding *clean* rows, which is precision, not
+  the question stage 2 asks. The plan chose 100% for stage 2 exactly so that precision is 1 for
+  every selector by construction and the arms can only differ in **which poisoned rows carry the
+  trait**. So "the detection ranking and the causal ranking disagree" is a statement about two
+  different questions — *can you tell poisoned from clean?* and *which poisoned rows matter?* —
+  and not a claim that one ranking failed to reproduce on the other's data. A reader should not
+  read the AUROC table as a prediction of the causal table; that is the probe's main lesson, and
+  the mixture split is part of why.
 - The 0% control was trained twice (about $0.60 wasted, no effect on any result).
 - `results/kpilot.json` is **reconstructed by script from a committed pod log**, because the
   original died with a pod I terminated before pulling. Its decision (k = 500) traces to that log;
