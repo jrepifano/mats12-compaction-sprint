@@ -373,6 +373,28 @@ The last is the most useful lesson in this log: the two hazards I had reasoned a
 launching (a shared `results/` tree and a shared git HEAD) were both real and both fixed by the
 second worktree, and the hazard that actually fired was the one the isolation *created*.
 
+## What this does not show
+
+The probe is one organism, and several readings it invites are not supported:
+
+- **Not** that gradient attribution is useless for detection in general. It is one trait, one
+  7B model, one LoRA recipe, and **our** EK-FAC approximation, which keeps genuine eigenbases on
+  36.9% of attributed parameters. A fuller implementation could detect better; that would make
+  the detection result *more* negative only if it stayed flat.
+- **Not** that the trait-blind detectors are worthless. `dir_student` at 0.907 is a genuinely
+  good answer to "which rows did this fine-tune write?" — it is simply not an answer to "which
+  rows carry the trait", and a defender auditing their own data already knows the source.
+- **Not** that the data is free of every readable cue: a word count reaches 0.571.
+- **Not** equivalence, anywhere. Every interval here admits effects it did not resolve, and the
+  detection intervals are tight only because 18,000 rows is a lot of rows, not because the
+  scorers were measured many times.
+- **Not** a test of a defender who does not know the trait. Δ_own, EK-FAC and the oracle judge
+  are all **told "cat"**; only `dir_student`, `gain` and the text baselines are trait-blind. The
+  realistic audit — a defender who suspects nothing in particular — is untested here, and on
+  this evidence the trait-blind scorers would hand them the wrong rows.
+- **Not** a claim about any share other than those measured, on single seeds, with the 15%→35%
+  draw-to-draw variance above as the reason to treat each cell as one sample.
+
 ## Caveats a reader should hold against every number above
 
 - **"EK-FAC" here means our EK-FAC approximation**, declared as such in the plan before any data
