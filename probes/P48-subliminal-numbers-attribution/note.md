@@ -302,7 +302,7 @@ Written before any data existed (plan.md). Probabilities are the plan's.
 | Δ_own within 0.03 of Δ_teacher | 0.6 | **miss, badly** — gap 0.247 |
 | EK-FAC ≥ 0.65 | 0.4 | **hit** — 0.668 |
 | **D ≥ 0.03 with CI excluding 0** | **0.1** | **miss** — −0.006 [−0.017, +0.005] |
-| Null-animal EK-FAC within 0.05 of cat | 0.35 | **hit** — 0.602 vs 0.668, gap 0.066, just outside |
+| Null-animal EK-FAC within 0.05 of cat | 0.35 | **miss, narrowly** — 0.602 vs 0.668, a gap of 0.065 [0.052, 0.078] against a 0.05 bar. EK-FAC is doing slightly more than ranking by source |
 | Oracle judge, MPNet, length all ≤ 0.55 | 0.85 | **two of three hit, one miss** — judge 0.517, MPNet 0.519, but `length_tokens` **0.571** [0.562, 0.580] |
 | Detection D "excluded" | 0.6 | **hit** |
 | Primary B outcome | graduate 0.1 / excluded 0.45 / inconclusive 0.35 | pending; seed 0 points at **graduate** |
