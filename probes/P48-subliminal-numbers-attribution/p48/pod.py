@@ -1249,15 +1249,23 @@ def measure_stability(score_fn, n_rows: int, y, *, topk_frac: float = STABILITY_
             "only_in_one_ordering": sorted(set(raw_a) ^ set(raw_b))}
 
 
-def headline_difference(scorers: dict) -> dict:
+def headline_difference(scorers: dict, frozen: dict | None = None) -> dict:
     """How stable is AUROC(ekfac) - AUROC(delta_own), the quantity the probe actually reports?
 
     The per-scorer figures bound each scorer's own ordering noise. They do not establish that the
     DIFFERENCE is resolvable, because the two scorers' noise may be correlated - the gap the
     stability step's own author flagged (log.md 2026-10-14). This recomputes the difference under
     each ordering from the already-measured AUROCs.
+
+    `frozen` is `frozen.json`, so the variants are the ones the headline D is actually built from.
+    Falling back to the lexicographically first name, as this did until the 2026-10-15
+    cross-review, silently measured a DIFFERENT pair: `ekfac:cat:0.001` and `delta_own:mean`
+    against the frozen `ekfac:cat:0.1` and `delta_own:sum`.
     """
-    def pick(prefix: str):
+    def pick(prefix: str, family: str):
+        chosen = (frozen or {}).get("families", {}).get(family, {}).get("chosen")
+        if chosen and chosen in scorers:
+            return chosen, scorers[chosen]
         names = sorted(k for k in scorers if k.startswith(prefix))
         for n in names:  # prefer a finite pair
             r = scorers[n]
@@ -1265,8 +1273,8 @@ def headline_difference(scorers: dict) -> dict:
                 return n, r
         return (names[0], scorers[names[0]]) if names else (None, None)
 
-    ek_name, ek = pick("ekfac:")
-    do_name, do = pick("delta_own")
+    ek_name, ek = pick("ekfac:", "ekfac")
+    do_name, do = pick("delta_own", "delta_own")
     if not ek or not do or ek.get("auroc_a") is None or do.get("auroc_a") is None:
         return {"computable": False,
                 "reason": "need a finite AUROC pair for both ekfac and delta_own"}
@@ -1419,7 +1427,8 @@ def step_stability(args) -> int:
         # under each ordering and report how far apart the two D's are. If that is small beside
         # the D_THRESHOLD of 0.03, the comparison survives the noise; if it is comparable, the
         # design cannot resolve the gap it exists to measure.
-        "headline_difference": headline_difference(scorers),
+        "headline_difference": headline_difference(
+            scorers, read_json(RESULTS / "analysis" / "frozen.json") or {}),
         "verdict": verdict,
         "phases": {"likelihoods_a": lik["seconds_a"], "likelihoods_b": lik["seconds_b"],
                    "attribution_a": att["seconds_a"], "attribution_b": att["seconds_b"]},

@@ -786,3 +786,34 @@ def test_secondary_reports_how_long_each_selector_block_is(tmp_path, monkeypatch
     assert sl["all_rows"]["n"] == len(rows)
     assert sl["delta_teacher_top200"]["ws_tokens_ratio"] > 1.3, "it ranks the lengthened rows"
     assert sl["random_top200"]["ws_tokens_ratio"] == pytest.approx(1.0, abs=0.3)
+
+
+def test_spearman_averages_tied_ranks_instead_of_breaking_ties_by_position():
+    """The judge scores 17,156 of 20,000 rows at exactly 5, so ties are the common case here.
+
+    Double `argsort`, which this used until the 2026-10-15 cross-review, hands tied values
+    distinct ranks in array order. That turns row order into signal: a constant vector came back
+    perfectly correlated with anything increasing, and the judge-against-length correlation read
+    +0.205 where the tie-corrected value is +0.047.
+    """
+    import numpy as np
+    from p48.analyze import _spearman
+
+    rising = np.arange(10, dtype=float)
+    assert np.isnan(_spearman(np.zeros(10), rising)), "a constant vector has no ranking"
+
+    # one real tie group: the pair at 5 must not be ordered by where it sits in the array
+    a = np.array([1.0, 2.0, 5.0, 5.0, 9.0])
+    assert _spearman(a, np.array([1.0, 2.0, 3.0, 4.0, 5.0])) == pytest.approx(
+        _spearman(a, np.array([1.0, 2.0, 4.0, 3.0, 5.0])))
+
+    # Heavy ties, as in the judge: eight rows at 5 and two distinct values in the middle, so the
+    # true correlation against a rising vector is ~0. The old double-`argsort` ranked the tie
+    # block in array order and returned +0.709 of nothing but position.
+    judgeish = np.array([5.0, 5.0, 5.0, 5.0, 0.0, 3.0, 5.0, 5.0, 5.0, 5.0])
+    r = _spearman(judgeish, np.arange(10, dtype=float))
+    assert abs(r) < 0.05, f"ties within the block must not be read as agreement, got {r}"
+
+    # unties still behave exactly as before
+    assert _spearman(rising, rising) == pytest.approx(1.0)
+    assert _spearman(rising, -rising) == pytest.approx(-1.0)

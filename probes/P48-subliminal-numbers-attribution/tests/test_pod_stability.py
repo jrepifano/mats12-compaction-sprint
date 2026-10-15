@@ -414,3 +414,34 @@ def test_headline_difference_tracks_the_quantity_the_probe_reports():
     # missing or non-finite inputs are reported, never silently passed
     assert pod.headline_difference({"ekfac:cat:0.01": {"auroc_a": None, "auroc_b": None}})[
         "computable"] is False
+
+
+def test_headline_difference_measures_the_variants_the_freeze_actually_chose():
+    """The 2026-10-15 cross-review found this measuring a pair the headline never used.
+
+    `pick` took the lexicographically first name, so with three dampings on disk it reported
+    `ekfac:cat:0.001` while the frozen D is built from `ekfac:cat:0.1`, and `delta_own:mean`
+    while the freeze chose `delta_own:sum`. Both are real scorers, so nothing looked wrong; the
+    number simply described a different comparison.
+    """
+    from p48 import pod
+
+    scorers = {"ekfac:cat:0.001": {"auroc_a": 0.60, "auroc_b": 0.50},
+               "ekfac:cat:0.1": {"auroc_a": 0.72, "auroc_b": 0.71},
+               "delta_own:mean": {"auroc_a": 0.55, "auroc_b": 0.55},
+               "delta_own:sum": {"auroc_a": 0.68, "auroc_b": 0.675}}
+    frozen = {"families": {"ekfac": {"chosen": "ekfac:cat:0.1"},
+                           "delta_own": {"chosen": "delta_own:sum"}}}
+
+    hd = pod.headline_difference(scorers, frozen)
+    assert (hd["ekfac"], hd["delta_own"]) == ("ekfac:cat:0.1", "delta_own:sum")
+    assert hd["abs_change"] == pytest.approx(0.005)
+
+    # the lexicographic fallback would have called the same scorers 10x less stable
+    stale = pod.headline_difference(scorers)
+    assert (stale["ekfac"], stale["delta_own"]) == ("ekfac:cat:0.001", "delta_own:mean")
+    assert stale["abs_change"] == pytest.approx(0.10)
+
+    # a freeze naming a scorer that was not measured falls back rather than crashing
+    absent = pod.headline_difference(scorers, {"families": {"ekfac": {"chosen": "ekfac:cat:9"}}})
+    assert absent["ekfac"] == "ekfac:cat:0.001"

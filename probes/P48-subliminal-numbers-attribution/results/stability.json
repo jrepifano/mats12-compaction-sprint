@@ -5,14 +5,16 @@
     "a null value means the statistic was not computable, never that it passed"
   ],
   "headline_difference": {
-    "abs_change": 0.002324,
+    "abs_change": 0.002396,
     "computable": true,
     "d_threshold": 0.03,
-    "delta_own": "delta_own:mean",
-    "difference_ordering_a": -0.025852,
-    "difference_ordering_b": -0.028176,
-    "ekfac": "ekfac:cat:0.001",
+    "delta_own": "delta_own:sum",
+    "difference_ordering_a": -0.019215,
+    "difference_ordering_b": -0.021611,
+    "ekfac": "ekfac:cat:0.1",
     "note": "one permutation, so this is a single draw; the two scorers share the same forward passes, so correlated noise may flatter it",
+    "recomputed_note": "recomputed on the laptop from this file's own saved per-scorer AUROCs after the 2026-10-15 cross-review found the variant picker took the lexicographically first name instead of the frozen one; no pod, no rescoring, every input already in this artifact",
+    "recomputed_utc": "2026-10-15T21:45Z",
     "resolvable_at_threshold": true
   },
   "max_auroc_abs_diff": 0.002063924513256654,

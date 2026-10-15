@@ -18,8 +18,8 @@ fail, and the reason is worth more than either verdict.**
 | **D** = AUROC(EK-FAC) − AUROC(Δ_own) | **−0.006 [−0.017, +0.005]** | +0.03 | practical advantage **excluded** |
 | **B** = trait(swap Δ_own) − trait(swap EK-FAC) | **−0.1 [−7.5, +10.6]** | +5 | **inconclusive** |
 
-**Detection: no. The contrast came out flat, and the scorers that look best are not detecting the
-trait at all.**
+**Detection: no. The contrast came out flat, and the scorers that look best are mostly ranking
+rows by their source.**
 
 Our EK-FAC approximation separates poisoned from clean rows at **AUROC 0.668
 [0.658, 0.677]**, the cheap likelihood ratio Δ_own at **0.673 [0.665, 0.682]**, so
@@ -32,21 +32,24 @@ second, independent setting — the one Cloud et al.'s argument is actually abou
 
 Three findings matter more than the pre-registered one:
 
-1. **The best "detectors" here detect authorship, not cat-ness.** `dir_student` (0.907) and `gain`
-   (0.900) beat every gradient method without being told the trait or given the teacher, which
-   looks remarkable until you ask what they rank. Their Spearman correlation with the fine-tuned
-   teacher's own likelihood is **+0.783** and **+0.951**: they are sorting rows by *who wrote
-   them*. On trait axes they are not arithmetically part of, they are slightly **negative**
-   (−0.107 and −0.098). Δ_own is the same story in miniature — it correlates **+0.955** with its
-   own wrong-animal null, and scores the **owl** direction (0.691) *higher* than the cat direction
-   it was given (0.673). The label these scorers predict is the source, and in a real audit the
-   source is the one thing you already know.
-2. **Only EK-FAC ranks by the trait**, and modestly: mean **+0.098** across the three trait axes
-   it is not a term of (gradcos residual +0.243, pfi +0.153, graddot −0.101), against −0.019 for
-   Δ_own and −0.006 for random. So the gradient method is the only one answering the question
-   asked — and it is still the one that loses on AUROC. A detector can rank the right rows for
-   the right reason and still be worse than a detector that ranks the wrong rows for the wrong
-   reason, because most of the ranking's AUROC here is carried by authorship.
+1. **The best "detectors" here strongly predict the source, and we could not show they are useful
+   for removing the trait.** `dir_student` (0.907) and `gain` (0.900) beat every gradient method
+   without being told the trait or given the teacher, which looks remarkable until you ask what
+   they rank. Their Spearman correlation with the **teacher-over-base likelihood ratio** is
+   **+0.783** and **+0.951**: they sort rows largely by *who wrote them*. Δ_own is the same story
+   in miniature — it correlates **+0.955** with its own wrong-animal null, and scores the **owl**
+   direction (0.691) *higher* than the cat direction it was given (0.673). In a real audit the
+   source is the one thing a defender already knows. The causal arms are what turn this into a
+   claim about removal, and they agree: `dir_student` is the worst selector of the four.
+2. **EK-FAC is the one scorer whose ranking tracks the cat-minus-owl score difference**, and only
+   modestly: mean **+0.098** across the three cross-family residuals it is not a term of (gradcos
+   +0.243, pfi +0.153, graddot −0.101), against **+0.055** for `pfi`, −0.019 for Δ_own and −0.006
+   for random. EK-FAC is highest, not uniquely positive. **These residuals are not a validated
+   label of trait carriage** — they are other scorers' cat-minus-owl differences, sharing this
+   probe's gradients, query construction and model, and each scorer averages over a different
+   subset of them. Read them as cross-family score agreement, and the deletion arms below as the
+   stronger evidence. What they do suggest is that a detector can rank rows on something other
+   than authorship and still lose on AUROC, because most of the AUROC here is carried by source.
 3. **The scorers barely overlap on the rows they would remove.** On the mixture stage 2 cuts, at
    k = 500, EK-FAC shares **7.4%** of its selection with Δ_own and **5.0%** with `dir_student`,
    against 3.4–5.2% for a random draw. The intervention arms are therefore not three rankings of
@@ -57,20 +60,22 @@ Three findings matter more than the pre-registered one:
 **Causally, the primary effect is inconclusive — and the one clean separation is in the arms it
 was not defined on.** B's interval spans the threshold in both directions, and the seed-0 pilot
 that pointed at a graduate (B = +14.4) did not replicate. But under **deletion**, where every arm
-holds 9,500 rows at a 1.00 poison share so only the choice of rows differs, EK-FAC's 500 rows cost
-the student **+8.2 [+2.5, +13.1]** more trait than Δ_own's and **+9.0 [+0.3, +15.9]** more than
-random's. Under **rewriting** every arm dilutes to a 0.95 share, which on this organism's curve
-is worth more than any selection, and random is nominally the best swap arm. The primary effect
-was defined on the operation where the signal is weakest.
+holds 9,500 rows at a 1.00 poison share and the selections are the same size, EK-FAC's 500 rows
+cost the student **+8.2 [+2.5, +13.1]** more trait than Δ_own's and **+9.0 [+0.3, +15.9]** more
+than random's. Under **rewriting**, the three arms B is defined over land together (13.3–15.2)
+and none separates from another, while `dir_student` sits apart at 24.68 on the same 0.95 share.
+The primary effect was defined on the operation where it did not separate.
 
 **And the detector that wins by 0.24 AUROC is the worst selector of the four.** `dir_student`
 (0.907) leaves 24.7 against a 27.9 reference in both operations: it removes about 3 of the 25.8
 points available. If you had ranked defences by AUROC you would have picked it.
 
-**The organism replicates the finding that matters for defences: size beats purity.** At 10,000
-rows, 75% poison transfers at 2.78% while 100% transfers at 34.86%; at 20,000 rows the same 75%
-share transfers at **15.60%**. Diluting the poison is far less protective than shrinking the
-dataset, which is the same conclusion P43 reached in a different organism.
+**Row count matters as much as share, as it did in P43.** At 10,000 rows, 75% poison transfers at
+2.78% while 100% transfers at 34.86%; at 20,000 rows the same 75% share transfers at **15.60%**.
+So holding the share fixed and growing the dataset moved transfer by 12.8 points. This is the
+single-seed gate grid, not a controlled comparison of two defences — it establishes that the
+organism is sensitive to both quantities, which is the premise the intervention arms need; it
+does not rank "shrink the dataset" against "dilute it" as policies.
 
 ## What was run
 
@@ -131,6 +136,14 @@ carrying no trait either way). Every scorer's variant was frozen on the 2,000 de
 any held-out number was computed (`results/analysis/frozen.json`); intervals are 2,000 stratified
 bootstrap resamples, paired across scorers.
 
+**A provenance lapse in that freeze, found by the cross-review.** The plan required the freeze to
+be **committed** before the held-out evaluation. It was not: `frozen.json` and `detection.json`
+first enter git in the *same* commit, `d2d8db00`. What supports the ordering is therefore the
+artifacts' own timestamps and the selection code — which reads dev rows only, so no held-out
+number can have influenced a variant choice — and not the commit history the plan asked for. The
+reviewer looked for held-out selection and found none. Stated here because "we checked" is not
+the same guarantee as "we committed it first", and the plan chose the stronger one.
+
 | scorer | AUROC | 95% CI | knows the trait? | knows the teacher? |
 |---|---|---|---|---|
 | Δ_teacher | 0.921 | [0.916, 0.925] | — | **yes** |
@@ -176,13 +189,24 @@ which is exactly what the trait-axis correlations say independently.
 
 ### Source versus trait (exploratory, free, prompted by the launching session)
 
-`analyze sourcetrait` over the committed scores, 19,963 rows. Correlation with the source axis is
-Spearman against the fine-tuned teacher's own likelihood; the trait column is the mean over the
-residual axes (`<family>:cat − <family>:owl`) that the scorer is **not** a term of.
+`analyze sourcetrait` over the committed scores, 19,963 rows. The source column is Spearman
+against the **teacher-over-base likelihood ratio**. The second column is the mean over the
+cross-family **cat-minus-owl score differences** (`<family>:cat − <family>:owl`) that the scorer
+is **not** a term of.
 
-| scorer | source | trait, independent axes |
+**What this column is not.** It is not a label of trait carriage. Those residuals are other
+scorers' own differences, built from the same gradients, the same query construction and the same
+model, so they are correlated measurements rather than independent ones — and each scorer is
+averaged over a different subset of them, since a scorer is excluded from its own family's axis.
+A high value says a scorer's ranking agrees with other families' cat-minus-owl contrast; it does
+not establish that the rows it ranks carry the trait. The deletion arms are the evidence for
+that, and they are a three-seed exploratory contrast. Two cheap checks we did not run: the same
+correlations computed **within** the trait-carrying rows only, and the same with length
+controlled. Independent subset training is the real test.
+
+| scorer | source | cat-minus-owl agreement, other families |
 |---|---|---|
-| Δ_teacher | +1.000 *(it is the axis)* | −0.135 |
+| Δ_teacher | +1.000 *(it is the axis: fine-tuned teacher minus base, neutral context)* | −0.135 |
 | `gain` | **+0.951** | −0.098 |
 | `dir_student` | **+0.783** | −0.107 |
 | `distill_diag` | +0.779 | −0.083 |
@@ -257,11 +281,23 @@ same two scorers, opposite amounts of agreement about which rows carry the trait
 The smoke unit had found single-row bf16 gradients moving with their batch-mates (cosine min
 0.889, median 0.964) while the exact batch-sum identity held at 6.0e-07. A 0.006 AUROC headline
 cannot be reported on top of unquantified ordering noise, so the same rows were scored twice
-under two batch orderings before any comparison was computed:
+under two batch orderings. **The detection numbers were computed first, not after this check**
+(the note said "before any comparison was computed" until the 2026-10-15 cross-review corrected
+it); the check bounds the noise in a comparison that already existed, which is weaker provenance
+than scoring-then-measuring would have been, and it is what the artifact timestamps support.
 
 - minimum Spearman across 11 scorers **0.9915**, maximum |ΔAUROC| **0.0021**, minimum top-200
   overlap **0.965**;
-- **the headline D moves 0.0023**, from −0.0259 to −0.0282, against the 0.03 threshold.
+- **the headline D moves 0.0024**, from −0.0192 to −0.0216, against the 0.03 threshold.
+
+The two D figures were themselves **wrong until the cross-review**, through a bug in the
+reporting helper rather than in the measurement: it picked the lexicographically first variant of
+each family, so it reported `ekfac:cat:0.001` against `delta_own:mean` (−0.0259 and −0.0282)
+while the frozen headline is built from `ekfac:cat:0.1` and `delta_own:sum`. Both pairs were
+really measured and both are in `results/stability.json`; only the wrong one was summarised.
+`headline_difference` now reads the variants from `frozen.json`, with a test, and the block was
+recomputed on the laptop from that file's own saved per-scorer AUROCs — no pod, no re-scoring.
+The movement is 0.0024 instead of 0.0023, and the verdict is unchanged.
 
 So the 11% wobble on the gradient *vector* does not propagate to the *ranking*, and the detection
 verdict is **supported**, not merely undetected.
@@ -306,6 +342,18 @@ trait rate after the swap EK-FAC chooses, so positive means EK-FAC removes more.
 students: the reference at three seeds, and four selectors × two operations × three seeds. Arms
 pair by seed; intervals are a two-way bootstrap that resamples questions across arms and the seed
 triple jointly.
+
+**The arms do not share a training order, though the plan said they would** (cross-review,
+2026-10-15). `plan.md` §Setup promised "each seed's training order and seed are shared across
+arms". In fact `data.make_arm` seeds each arm's shuffle from its own **name**
+(`K.MIX_SEED + hash_name(name)`), so every arm is permuted independently: the reviewer found
+**zero** same-position prompt ids between the reconstructed EK-FAC and Δ_own swap inputs, despite
+identical underlying prompt sets. Arms still pair on the initialisation seed, which is what the
+two-way bootstrap resamples, so the pairing itself holds; what is lost is one variance reduction
+the plan intended, leaving extra order noise in every contrast. That cuts against resolving small
+gaps — it is not a directional bias, and does not explain an inconclusive B in either direction.
+No arm was re-run for it. Future arms should permute once and keep that relative order after
+deletion.
 
 **k was frozen at 500 rows (5%) by the seed-0 ladder**, on the informed arms' floor alone and
 never on the size of their difference. At k = 1,000 (10%) every arm sat below the 5-point floor
@@ -367,15 +415,26 @@ rows that carry the trait — and it is the only place informed selection separa
 Read it as suggestive: `drop_ekfac` − `drop_random`'s lower bound is +0.3, one seed of random
 (9.7) matched EK-FAC, and this is a secondary contrast on three seeds.
 
-**2. Under rewriting, nothing separates anything.** `swap_ekfac` − `swap_random` is
-**−1.9 [−9.0, +7.4]** and `swap_delta_own` − `swap_random` **−1.8 [−5.3, +2.6]** — random is
-nominally the *best* swap arm, at 13.26. The reason is mechanical: every swap arm takes the
-mixture to a **0.95** poison share, and on this organism's curve a five-point share cut is worth
-far more than the choice of rows (10,000 rows at 90% transferred at 10.54% against 34.86% at
-100%). The shared dilution moves every swap arm to 13–15 and leaves the selection signal inside
-the seed noise. **The primary effect was defined on the operation where the signal is weakest** —
-not a foreseeable error, since the plan's own reason for preferring `swap` was that it is the
-realistic defence, but the drop arms are what made it visible.
+**2. Under rewriting, the three arms the primary contrast is defined over do not separate.**
+`swap_ekfac` − `swap_random` is **−1.9 [−9.0, +7.4]** and `swap_delta_own` − `swap_random`
+**−1.8 [−5.3, +2.6]** — random is nominally the *best* swap arm, at 13.26, and all three sit
+between 13.3 and 15.2.
+
+We first wrote that shared dilution explains this, and the cross-review was right that our own
+artifacts do not support it. Every swap arm takes the mixture to the same **0.947** active share
+at 10,000 rows, and the seed-0 gate curve read at that share predicts **22.7** for all four. Three
+arms sit about eight points *below* that prediction and `swap_dir_student` sits two points
+*above* it, at **24.68** — on the same share. So the shared share neither sets the level nor
+flattens the arms: the swap arms' spread (11.4 points) is as wide as the drop arms' (10.6). The
+curve itself is thin evidence at this point — one seed, interpolated across the steepest stretch
+it measures (10.54 at 90%, 34.86 at 100%), and non-monotone at 20,000 rows — which is why the
+dilution adjustment is only applied where share and size already match, and changes those
+contrasts by 0.02–0.1 points.
+
+What we can say is what was observed: **the primary effect was defined on the operation where
+these three selectors did not separate**, and the deletion arms are where one of them did. Why
+rewriting behaves differently from deletion is not established here. `refill` is the arm that
+would start to answer it.
 
 **3. The best trait-blind detector is the worst selector.** `dir_student`, AUROC **0.907**, leaves
 **24.68** (swap) and **24.29** (drop) against a 27.89 reference: it removes about 3 of the 25.8
@@ -469,27 +528,38 @@ the oracle judge ($0.7504).
 |---|---|---|---|
 | Fifteen launches before a scorable result | 15 | **13.15** | no |
 | Gate training written off: generation is not bit-reproducible | 1 | 11.96 | no |
-| Rescue and promotion generation | 1 | 2.15 | yes |
+| Rescue and promotion attempt: `gen`'s guard refused to continue | 1 | 2.15 | no |
 | **Session 1 (clean): teacher, generation, gate, scoring** | 1 | **17.90** | yes |
 | Session 2, first attempt (stability silently skipped) | 1 | 2.39 | no |
-| Session 2: stability + the k ladder (drop arms lost with the pod) | 1 | 10.36 | yes |
+| Session 2: stability + the k ladder — **mixed**, see below | 1 | 10.36 | 5.16 yes / 5.20 no |
 | Slow-host re-roll | 1 | 0.35 | no |
-| **Session 3, killed 90 s in by the parallel checkout's watchdog** | 1 | **10.35** | no |
+| **Session 3, killed by the parallel checkout's watchdog at 2.59 h** | 1 | **10.35** | no |
 | Second (refill) pod, terminated after that kill | 1 | 0.43 | no |
 | **Session 3 re-run: 27 stage-2 arms** | 1 | **17.59** | yes |
 | Oracle judge, 20,000 rows, and T0's QA pairs | — | 0.79 | yes |
 
 The rows are rounded per pod, so the column sums to $87.42 against the ledger's $87.40.
 
-**$38.63 of the $87.40 bought no science** — 44% of it. Three distinct causes, all in log.md with their
-fixes: *infrastructure* ($13.15 of launches plus $2.39 and $0.35) — sdpa NaN at padded *and* kept
-positions, cuSOLVER on the EK-FAC eigendecomposition, two venv splits, a missing `ninja` binary,
-and an argparse flag that killed an `eval` after 1.9 h of good training; *non-reproducible
-generation* ($11.96) — three runs accepted 39,542 / 39,473 / 39,461 pairs, so those students could
-be evaluated but never scored against the rows they trained on; and *our own parallelism*
+**Two rows are not what an earlier draft of this table called them** (cross-review, 2026-10-15).
+The $2.15 session was counted as science: it was not. Its `gen` found 469 of the 33,000 saved
+pids no longer accepted and **refused to continue**, which is the guard working but buys nothing;
+the promotion generation that the probe actually used ran inside the clean $17.90 session. And
+the $10.36 session was counted as science whole, when it is mixed: its stability and k-ladder
+*numbers* survive in the periodically pulled pod log, but the **9 trained `drop_*` arms — about
+79 minutes, ~$5.20 — died** when I killed `go` and then called `down`, because the pull lives in
+`go`. Only the ~$5.16 behind the two surviving results is science.
+
+**$45.98 of the $87.40 bought no science** — 53% of it, against the 44% an earlier draft claimed.
+Four causes, all in log.md with their fixes: *infrastructure* ($13.15 of launches plus $2.39 and
+$0.35) — sdpa NaN at padded *and* kept positions, cuSOLVER on the EK-FAC eigendecomposition, two
+venv splits, a missing `ninja` binary, and an argparse flag that killed an `eval` after 1.9 h of
+good training; *non-reproducible generation* ($11.96 plus the $2.15 guard stop) — three runs
+accepted 39,542 / 39,473 / 39,461 pairs, so those students could be evaluated but never scored
+against the rows they trained on; *terminating before pulling* ($5.20); and *our own parallelism*
 ($10.78) — launching a second session from a second checkout made each checkout's orphan sweep
-blind to the other's pod, and the new one terminated the running session's pod 90 seconds later,
-taking 16 of 27 trained arms with it.
+blind to the other's pod, and the new pod's sweep terminated the **running** session's pod, which
+was 2.59 h into its 27 arms, 90 seconds after that second launch. It took 16 of 27 trained arms
+with it.
 
 The last is the most useful lesson in this log: the two hazards I had reasoned about before
 launching (a shared `results/` tree and a shared git HEAD) were both real and both fixed by the
@@ -536,8 +606,9 @@ The probe is one organism, and several readings it invites are not supported:
   cap, not a numerical failure, and the **eigenvalue refit still runs on those sides** - they lose
   the rotation, not the scaling. No module is *fully* identity (`n_modules_fully_identity: 0` of
   392): every adapted module keeps a genuine eigenbasis on at least one side. It remains the most likely way this result **understates**
-  gradient attribution: a full-rank implementation might detect better. It cannot explain the
-  causal result, which runs in EK-FAC's favour.
+  gradient attribution: a full-rank implementation might detect better, by how much we did not
+  measure. Every result here is for the declared approximation, and does not settle what full
+  EK-FAC would do.
 - **Single-seed gate cells**, with the 15%→35% variance above as the reason not to trust them.
 - **Detection and selection ran on different mixtures**: detection on 20,000 rows at 75% (f\*),
   selection and stage 2 on 10,000 rows at 100%. Variants were frozen per mixture with damping

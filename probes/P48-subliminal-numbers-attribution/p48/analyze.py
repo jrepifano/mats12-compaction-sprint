@@ -870,9 +870,16 @@ def cmd_selections(args) -> int:
 
 
 def _spearman(a: np.ndarray, b: np.ndarray) -> float:
-    """Rank correlation, written out so no scipy dependency is added for one number."""
-    ar = np.argsort(np.argsort(a)).astype(float)
-    br = np.argsort(np.argsort(b)).astype(float)
+    """Rank correlation, written out so no scipy dependency is added for one number.
+
+    Ties take the average rank, through the same `_ranks` the AUROC uses. Double `argsort`, which
+    this used until the 2026-10-15 cross-review, breaks ties by position instead: against the
+    heavily tied judge scores (17,156 rows at 5) it read the tie order as signal and returned
+    +0.205 where the tie-corrected value is +0.047. A constant vector has no ranking at all, so
+    the correlation is NaN rather than the 1.0 the old code returned.
+    """
+    ar = _ranks(np.asarray(a, dtype=float))
+    br = _ranks(np.asarray(b, dtype=float))
     ar -= ar.mean()
     br -= br.mean()
     d = float(np.sqrt((ar ** 2).sum() * (br ** 2).sum()))

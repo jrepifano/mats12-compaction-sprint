@@ -40,9 +40,12 @@
   "dir_teacher": -0.1236,
   "distill_diag": -0.0828,
   "ekfac": 0.0982,
+  "embed": 0.032,
   "gain": -0.0977,
   "gradcos": -0.1084,
   "graddot": 0.0173,
+  "judge": -0.0022,
+  "length": -0.1104,
   "null_owl": -0.682,
   "pfi": 0.0552,
   "random": -0.0061
@@ -141,6 +144,18 @@
    "source_delta_teacher": 0.3462,
    "variant": "ekfac:cat:0.1"
   },
+  "embed": {
+   "ekfac_resid": 0.0179,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": 0.0339,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": 0.054,
+   "graddot_resid_trivial": false,
+   "pfi_resid": 0.0223,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": -0.0015,
+   "variant": "spectral_r"
+  },
   "gain": {
    "ekfac_resid": 0.0318,
    "ekfac_resid_trivial": false,
@@ -178,6 +193,30 @@
    "pfi_resid_trivial": false,
    "source_delta_teacher": 0.4005,
    "variant": "graddot:cat"
+  },
+  "judge": {
+   "ekfac_resid": 0.0049,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.0044,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.0006,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0087,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": 0.0332,
+   "variant": "oracle_judge_mix075ftn20k"
+  },
+  "length": {
+   "ekfac_resid": -0.0457,
+   "ekfac_resid_trivial": false,
+   "gradcos_resid": -0.1344,
+   "gradcos_resid_trivial": false,
+   "graddot_resid": -0.1829,
+   "graddot_resid_trivial": false,
+   "pfi_resid": -0.0788,
+   "pfi_resid_trivial": false,
+   "source_delta_teacher": -0.009,
+   "variant": "length_tokens"
   },
   "null_owl": {
    "ekfac_resid": -0.7286,
@@ -218,7 +257,7 @@
    "variant": "random"
   }
  },
- "utc": "2026-10-15T11:52:29Z",
+ "utc": "2026-10-15T21:42:35Z",
  "what_positive_means": {
   "source_delta_teacher": "ranks rows the way the fine-tuned teacher's own likelihood does, i.e. by who wrote them",
   "trait_resid": "ranks rows by cat-ness specifically, over and above the same score computed for a trait the data never carried"
