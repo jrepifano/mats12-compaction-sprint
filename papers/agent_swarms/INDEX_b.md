@@ -54,3 +54,12 @@ Added while preregistering S1 (`docs/experiments/S1/prereg.md`). Cited by both P
 | # | Title (as saved) | Authors | Year | URL | File | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 35 | Self-Recognition in Language Models | Tim R. Davidson, Viacheslav Surkov, Veniamin Veselovsky, Giuseppe Russo, Robert West, Caglar Gulcehre | 2024 | https://arxiv.org/abs/2407.06946 | `Self-Recognition in Language Models.pdf` | OK | arXiv v2 (10 Oct 2024), 6 pp. + appendix; `citation_title` and first page match. Retrieved 2026-09-28. |
+
+## Additions for P19 (2026-10-15)
+
+Prior commentary relevant to the Mythos transcript's self-notes. Both entries share a structured, partial source-notes file; it is not a verbatim capture.
+
+| # | Title (as saved) | Authors | Year | URL | File | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 36 | Mythos 5 transcript: a structural audit | Swarm AI Research | 2026 | https://github.com/swarm-ai-research/wiki-agent-swarm-incident/blob/main/analysis/mythos5-transcript-audit.md | `P19 prior commentary - source notes.md` | OK (structured paraphrase; partial capture) | Retrieved 2026-10-15. Full primary analysis read; source code not run. Prior discussion of self-note mechanism and one visible compaction boundary. Mutable main URL; exact publication chronology unverified. |
+| 37 | Yesterday in AI · 12 September 2026 | Mint Research; Seth and contributing AI systems | 2026 | https://mintresearch.org/newsletters/yinai/2026-09-12/ | `P19 prior commentary - source notes.md` | SECONDARY ONLY (structured paraphrase; partial capture) | Relevant Mythos/thebes section and source list read 2026-10-15. Attributes omission of simulation uncertainty to thebes; linked original X posts could not be retrieved. Novelty warning, not independently verified original commentary. |

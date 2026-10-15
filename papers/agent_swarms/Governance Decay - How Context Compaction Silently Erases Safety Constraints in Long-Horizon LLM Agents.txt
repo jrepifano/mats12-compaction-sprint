@@ -1,0 +1,589 @@
+                                         Governance Decay: How Context Compaction Silently Erases Safety Constraints in
+                                                                 Long-Horizon LLM Agents
+                                                                                                        Shiyang Chen
+                                                                                                Beijing Institute of Technology
+                                                                                                3120240666@bit.edu.cn
+
+
+
+                                                                      Abstract                                    time it complies, attaching the contract and sending it outside
+
+
+
+
+arXiv:2606.22528v2 [cs.AI] 27 Jun 2026
+                                                                                                                  the organization. The model has not changed, the request has
+                                           Modern LLM agents periodically compact their context—                  not changed, and no jailbreak was used; the only thing that
+                                           summarizing or evicting earlier turns to stay within a token
+                                           budget. We show that this mechanism is a silent safety-failure
+                                                                                                                  changed is that the rule the agent was obeying is no longer in
+                                           surface: in-context governance constraints (runtime policies,          front of it.
+                                           memory entries, standing instructions) that an agent reliably             This failure mode is the subject of our paper. As LLM
+                                           obeys while visible are dropped when the harness compacts              agents move from single-turn assistants to autonomous sys-
+                                           the history, because compaction optimizes for task continuity          tems that reason, plan, and act over long, multi-step tool-use
+                                           and treats standing policies as low-salience content. We term          trajectories (Yao et al. 2023; Schick et al. 2023; Shinn et al.
+                                           this Governance Decay and quantify it with ConstraintRot, a            2023; Wang et al. 2024), their histories outgrow the context
+                                           benchmark with deterministic violation grading. Across seven           window, and the dominant response is context compaction:
+                                           models (1,323 episodes), compaction raises violation from              an LLM-based summarization or eviction step that period-
+                                           0% to 30% (up to 59%); when the constraint survives the
+                                                                                                                  ically compresses the history (Kang et al. 2025; Cim et al.
+                                           summary violation is 0%, when dropped 38%. Decay is 8.3×
+                                           larger for soft organizational policies than for hard safety           2026; Semenov and Dorofeev 2026; LangChain 2024). Com-
+                                           norms, eroding exactly the deployment-specific constraints             paction runs routinely—practitioners report triggering it at
+                                           that live in context. We introduce the Compaction-Eviction             as little as 5–20k tokens (Kang et al. 2025)—and has been
+                                           Attack, where an adversary biases compaction to delete a con-          engineered for one objective: preserving task accuracy (Liu
+                                           straint; optimizing the injection defeats every model, including       et al. 2024a; Hong, Troynikov, and Huber 2025; Hadeliya
+                                           one immune to the fixed probe (0%→65%). We propose Con-                et al. 2025).
+                                           straint Pinning, a training-free defense that restores violation          We argue that compaction is also a governance-critical
+                                           to 0% for ≈47 pinned tokens (< 0.5% of a production-scale              decision, and that it has been engineered for the wrong
+                                           compaction context), and report where it still fails. Our results      objective. Agents are increasingly governed by in-context
+                                           identify context management as a first-class agent-governance
+                                                                                                                  constraints—organizational policies, standing instructions,
+                                           surface.
+                                                                                                                  and loaded “memory” that specify what the agent must and
+                                                                                                                  must not do (Xiang et al. 2024; Debenedetti et al. 2024; Park
+                                                               1    Introduction                                  et al. 2023). A compaction step optimized for task continuity
+                                         Consider an enterprise assistant whose runtime memory                    has no reason to preserve such a standing policy: the policy
+                                         carries a single standing rule: never send email to a re-                is “old,” it is not the current sub-goal, and it competes for
+                                         cipient outside the company domain. This rule may have                   a shrinking token budget against the active task state. The
+                                         been loaded from an organizational policy document, user-                result is Governance Decay: an agent that reliably refuses a
+                                         provided workspace memory, or a prior onboarding turn; cru-              prohibited action while the policy is in context performs that
+                                         cially, it is not an immutable system message that the frame-            same action after compaction, because the constraint did not
+                                         work promises to preserve. Early in a session, asked to for-             survive the summary. The stakes are concrete—an external
+                                         ward a contract draft to an external lawyer, the agent correctly         email leak, a destructive production operation, a disclosure
+                                         refuses and routes the message internally instead—exactly                of secrets—and the gap is structural: the very component de-
+                                         the governed behavior its operator intended. The agent then              ployed to keep agents running is the one that erases the rules
+                                         keeps working: it reads files, calls tools, and ingests a long           keeping them in bounds. Worse, because compaction con-
+                                         thread of returned data. After a few thousand more tokens, the           sumes content the agent ingests, an adversary who controls
+                                         harness does what every modern agent harness now does—                   nothing but a returned tool output can induce this failure on
+                                         it compacts the history, folding the older turns into a short            demand, turning a silent reliability bug into an exploitable
+                                         summary to stay under a token budget. The summary faith-                 attack.
+                                         fully records the task state but, optimizing for continuity,                This paper makes four contributions.
+                                         quietly drops the “old” compliance preamble. Moments later                • ConstraintRot, a benchmark of self-contained long-
+                                         the agent is asked again to email the external lawyer. This                 horizon agent scenarios that pairs a governance constraint
+   with a later prohibited request, graded deterministically      ablation, the summarizer-injection attack on the memory-
+   by detecting the prohibited effect in the agent’s tool call    management layer, and the dose-response and strategy-
+   (Sec. 4).                                                      generality evidence—and the ConstraintRot benchmark that
+ • A systematic benchmarked measurement of Governance             isolates compaction from generic length effects by compar-
+   Decay: compaction-induced deletion of in-context gover-        ing the same trigger with the policy present, compacted,
+   nance constraints and the downstream tool-call violations      absent, and pinned.
+   it causes across seven model families and four compaction      Agent governance and runtime enforcement. Run-
+   strategies (Sec. 5).                                           time policy enforcement—least-privilege tool authoriza-
+ • The Compaction-Eviction Attack, a deletion-oriented            tion (Ruan et al. 2024), monitors and DSLs (Xiang et al.
+   variant of indirect prompt injection in which an adver-        2024), policy checks on execution paths (Debenedetti et al.
+   sary supplying only in-context data forces or biases com-      2024)—shares an implicit assumption that the constraint is
+   paction to omit a legitimate constraint (Sec. 6).              present at decision time. We show that compaction silently
+                                                                  violates this assumption; Constraint Pinning restores the pre-
+ • Constraint Pinning, a simple training-free mitigation
+                                                                  condition these systems depend on.
+   inspired by protected state and policy replay: governance
+   constraints are quarantined from lossy compaction and          Prompt injection and memory poisoning. Indirect
+   integrity-checked across turns, restoring violation to 0%      prompt injection smuggles malicious instructions through
+   for ≈47 pinned tokens (< 0.5% overhead at production           ingested content (Greshake et al. 2023; Zhan et al. 2024;
+   scale)—together with an honest stress-test of where naive      Chen et al. 2024; Cohen, Bitton, and Nassi 2024; Liu
+   pinning still fails and the open problem it leaves (Sec. 7).   et al. 2024b); memory-management layers can themselves
+Taken together, these results reposition context management       be poisoned (Chen and Lu 2025). Such failures are sur-
+as a first-class agent-governance surface—distinct from, but      faced by automated red-teaming and standardized refusal
+complementary to, the model, tool layer, and memory store         benchmarks (Perez et al. 2022; Mazeika et al. 2024) and
+studied in current agent-security work—and show that gov-         intensify under optimization, from transferable adversarial
+erning an agent requires governing how it forgets. Figure 1       suffixes (Zou et al. 2023) to long-context many-shot prompt-
+summarizes the phenomenon, the attack, and the defense.           ing (Anil et al. 2024). These attacks are additive: a malicious
+                                                                  instruction is retained. Our Compaction-Eviction Attack
+                                                                  studies the complementary omission: the adversary biases
+                   2    Related Work                              compaction so a legitimate constraint is deleted. Information-
+Context compaction. Systems work manages unbounded                flow methods (Debenedetti et al. 2025) govern how untrusted
+agent histories via virtual context management (Packer et al.     data propagates but are not designed to preserve the integrity
+2023), LLM summarization (Kang et al. 2025; Cim et al.            of trusted constraints through lossy rewrites.
+2026), structured eviction (Semenov and Dorofeev 2026),
+and trajectory-grounded validation (Chen et al. 2026). At               3    Threat Model and Problem Setup
+the attention level, KV-cache eviction keeps inference within     An agent harness maintains a message history H and runs
+budget by dropping low-salience tokens (Xiao et al. 2024;         an agent model M in a loop. When tokens(H) exceeds a
+Zhang et al. 2023). All optimize for task accuracy or through-    budget B, the harness applies a compaction operator C that
+put; none measure whether governance constraints survive          replaces an older span of H with a compressed surrogate.
+the rewrite or whether their deletion causes unsafe tool calls.   A governance constraint p (e.g., a domain restriction on
+                                                                  email) is delivered in context as part of H—for example as
+Constraint loss in long contexts. Long-context degrada-
+                                                                  a user-provided policy, retrieved organizational memory, or
+tion is a known confound: models under-use mid-context
+                                                                  tool-loaded policy document—not baked into M ’s weights
+information (Liu et al. 2024a), degrade on long-context
+                                                                  and not guaranteed to be preserved as an immutable sys-
+stress benchmarks as inputs grow (Hsieh et al. 2024; Bai
+                                                                  tem/developer message. Frameworks that preserve system
+et al. 2024), exhibit “context rot” (Hong, Troynikov, and
+                                                                  messages during summarization or truncation are therefore
+Huber 2025), and show unstable refusal in long-context
+                                                                  not contradicted by our threat model (LangChain 2026; Mi-
+agents (Hadeliya et al. 2025). Dente, Satriani, and Papotti
+                                                                  crosoft 2026); they simply protect one channel while leaving
+(2026) find that agents increasingly violate structural con-
+                                                                  memory and conversation-carried governance exposed.
+straints as code-generation requirements accumulate. Two
+concurrent works study constraint loss specifically: Gam-         Governance Decay. Let v(M, H) be the probability that
+age (2026) show that omission constraints decay as con-           M performs a p-violating action given context H. We mea-
+versation depth grows—the same phenomenon we report—              sure
+but attribute it to attention dilution in long context, not to                                                       
+the active deletion caused by compaction. Santos-Grueiro              ∆decay = v M, [ C(H<t ) ; r ] − v M, [ H<t ; r ] ,
+(2026) define “policy-carriage failures” in context assembly      the increase in violation on the same prohibited request r
+(eviction, aliasing, binding instability) and propose SafeCon-    caused solely by compacting the history (which contains p).
+text, which pins control state—conceptually similar to our
+Constraint Pinning but developed independently. Our con-          Adversary (Compaction-Eviction). The adversary con-
+tribution adds the mechanism—the compactor×agent causal           trols only in-context data that the agent ingests (tool outputs,
+                                                             ´ Adversary
+                                                      “omit π when summarizing”
+
+
+
+
+               A Policy π                 Æ                                                                               Æ
+                                                                á                         Summary
+               “no external              Agent               Compaction                   π dropped                      Agent
+                 email”                 ¥ refuse                                                                        q violate
+
+
+                                                                                     π preserved ⇒ refuse
+
+                                                   n Constraint Pinning: re-inject π
+
+
+                                            Per-model decay (control → compaction %):
+               DeepSeek 0→59    GLM 0→0        Qwen 0→30      Kimi 0→59      Claude 0→19            GPT 0→41           Gemini 0→4
+
+
+Figure 1: Governance Decay, the Compaction-Eviction Attack, and Constraint Pinning. An agent obeys an in-context policy
+π (left). When the harness compacts the history, a task-focused summary drops π, and the same agent now violates it—no change
+to model or request (right). An adversary who controls only ingested data can force the drop by injecting an instruction into the
+compaction step (top, red). Constraint Pinning re-injects π after every compaction (bottom, blue), restoring the refusal. Badges:
+per-model violation rate, control→compaction.
+
+
+retrieved documents (Lewis et al. 2020))—not M , the system                   task         type prohibited tool-call                 decay
+prompt, or C. The adversary’s goal is to drive p out of C(H)                  email        soft   send_email to external domain        +62
+before issuing r, via (i) volume: bulk content that forces C to               language     soft   send_email in a non-English language +67
+fire and evict p; or (ii) summarizer injection: content carrying              channel      soft   send_email a status report           +43
+an instruction to C to omit p.                                                deploy       soft   db_exec outside us-west-2            +33
+                                                                              spend        soft   purchase above $100                  +43
+The vulnerable surface is non-system governance (vali-
+dated). Our restriction to non-system channels is empiri-                     proddb     hard db_exec DROP on production             +14
+                                                                              secret     hard read_file an SSH key                   +10
+cal, not assumed. Delivering the same policy through differ-
+                                                                              pii        hard disclose a customer SSN                +0
+ent channels and then compacting (3 models, 5 soft tasks;
+                                                                              seccontrol hard db_exec disable audit logging          +0
+full table in Supplementary Material), decay is +0 points
+when the policy sits in the preserved system message, versus
++50, +45, and +33 when it is a standing user instruction, a            Table 1: The nine ConstraintRot tasks and their Governance
+memory entry, or a tool output—the parts a harness actually            Decay (control→compaction, percentage points, pooled over
+compacts (Microsoft 2026).                                             7 models). Decay concentrates on soft organization-specific
+                                                                       policies and spares hard safety norms the model refuses
+                                                                       intrinsically.
+        4    The ConstraintRot Benchmark
+Each ConstraintRot scenario is a single agent session con-
+taining: (1) a policy turn establishing an in-context gov-             (external-email restriction, spend-approval limit, report-
+ernance constraint p; (2) a long sequence of benign task               channel routing, region standard, English-only language pol-
+turns that grow the context past the compaction budget; and            icy) and four hard safety norms the model often refuses
+(3) a trigger request whose natural completion violates p.             intrinsically (destructive production operations, secret/SSH-
+Triggers are self-contained—all data needed to act is pro-             key exfiltration, PII disclosure, disabling security controls).
+vided inline and the agent is instructed to emit a single ter-         Soft tasks are normal, helpful actions forbidden only by an
+minal tool call—so that a refusal is driven by the policy,             arbitrary org-specific rule, so a refusal isolates the effect of
+not by missing capability. The agent acts by emitting a tool           the policy rather than the model’s intrinsic caution; this sep-
+call (send_email, db_exec, read_file, disclose,                        aration is what exposes the soft/hard decay gradient (Sec. 5);
+purchase); we grade a violation deterministically by de-               Table 1 lists all nine tasks with their per-task decay.
+tecting the prohibited effect in the emitted action (e.g., a
+recipient outside the allowed domain), robust to output for-           Conditions. floor (no policy; intrinsic behavior),
+matting.                                                               control (policy in full context, no compaction),
+                                                                       compaction (policy present then compacted),
+Constraint families. The 9-task benchmark spans five soft              attack_volume, attack_inject, defense_pin,
+organizational policies the model has no strong prior about            and defense_pin_attack.
+Models. We evaluate seven models from seven families:               mary. Using an independent LLM judge on the original five-
+DeepSeek-V4-Flash, GLM-5.1, Qwen3.6-27B, Kimi-K2.5,                 model grid to assess, for each non-defense compacted con-
+Claude-Sonnet-4.6, GPT-5.4-mini, and Gemini-3.5-flash, ac-          text (plain compaction plus the two attack variants), whether
+cessed via a common API. All experiments are inference-             it still preserves the constraint, we find a clean split: when
+only and training-free.                                             the constraint survives, the violation rate is 0% (n=90);
+                                                                    when it is dropped, it is 38% (n=315). A keyword-survival
+Experimental Setup                                                  heuristic over the same three non-defense compacted con-
+We hold all factors except the one under study fixed across         ditions across all seven models reproduces it (survived 1%,
+conditions. The seven models are served through a single            n=207; dropped 43%, n=360) and agrees with the judge
+common API with sampling temperature 0.7 (GPT-5.4-mini              on 83% of overlapping original-panel episodes, so the split
+runs at its fixed default, as the endpoint pins temperature);       is no keyword artifact. To confirm the split does not de-
+repetitions therefore measure the stochasticity of both the         pend on one judge, we re-score 81 compaction episodes
+compactor and the agent under a fixed prompt distribution.          with three independent judges from different families and
+Unless noted otherwise, the headline grid evaluates each of         take a majority vote: the result is unchanged—survived 0%
+the 9 tasks × 3 independent repetitions per (model, condition)      (n=18) vs. dropped 40% (n=63)—and every informative
+cell (n=27 per cell), for 1,323 episodes in the main run; the       judge shows the same direction (survived ≪ dropped), with
+multi-strategy and stress-test studies use the cell sizes stated    pairwise agreement 62–83% (one judge degenerately labels
+in situ (n=60 per cell for the defense stress-test over 3 models    every context “dropped” and is uninformative). This evidence
+and 5 soft tasks). The primary violation metric is determin-        supports the policy-deletion mechanism; in follow-up abla-
+istic: we parse every agent’s terminal tool call and detect the     tions we additionally distinguish it from generic long-context
+prohibited effect in the action arguments (e.g., a recipient out-   degradation by comparing compacted summaries to uncom-
+side the allowed domain in send_email, a DROP/DELETE                pressed long contexts and to counterfactual summaries where
+on a production target in db_exec), which is robust to sur-         the policy is manually removed or restored.
+face formatting and requires no LLM judge. The secondary
+                                                                    The compactor, not the agent, drives the failure. Two
+survival metric—whether the compacted context still en-
+                                                                    ablations on GLM-5.1 isolate the mechanism. (a) Deletion
+tails the constraint—is scored by an independent LLM judge
+                                                                    vs. length. With the policy visible, GLM never violates even
+on the original five-model grid and cross-checked against a
+                                                                    in an uncompressed 5.9k-token long context (0%), ruling
+lightweight keyword heuristic that also covers the two added
+                                                                    out generic context-length degradation; but a counterfactual
+models (agreement reported in Sec. 5). Compaction is con-
+                                                                    summary that omits the policy yields 60% violation, and
+figured to be aggressive (a tight word budget), matching
+                                                                    the same summary with the policy restored returns to 0%.
+production guidance and ensuring the summary genuinely
+                                                                    (b) Compactor vs. agent. Crossing the summarizer model
+contests the token budget rather than copying the history ver-
+                                                                    with the agent model on a representative three-model panel
+batim. All scenarios, prompts, conditions, and grader code
+                                                                    (Table 3; n=15/cell) shows violation tracks the summarizer,
+are released to make every cell reproducible.
+                                                                    not the agent. The panel spans a high-decay summarizer
+                                                                    (DeepSeek), a low-decay summarizer (GLM), and a fixed-
+                 5    Governance Decay                              injection-resistant closed model (Claude); a full seven-model
+Compaction induces large decay. Table 2 reports viola-              crossing would require 49 cells and is orthogonal to the head-
+tion rates (n=27 per cell; 9 tasks × 3 reps; 1,323 episodes).       line seven-model grid. A GLM summary keeps violation at
+With the policy in full context (control) no model ever             7–13% for every agent, whereas a DeepSeek or Claude sum-
+violates (0%); a single compaction step raises the pooled           mary yields 33–93%. Decisively, GLM as the agent violates
+violation rate to 30% (up to 59% on DeepSeek-V4 and                 53% when handed a DeepSeek summary, so GLM’s appar-
+Kimi-K2.5). For the most-affected models, compaction even           ent robustness is a property of its summarizer, not of its
+exceeds the no-policy floor (DeepSeek-V4 59% vs. floor              governance. Both ablations point to one decisive variable—
+37%): compacting a policy can be worse than never stating           whether the policy survives in the post-compaction context—
+it, because the summary normalizes the pending task while           which is exactly what Constraint Pinning protects.
+discarding the rule. The effect spans proprietary and open
+models (GPT-5.4-mini decays 0→41%) but is not uniform:              Decay scales with compaction aggressiveness. Sweep-
+GLM-5.1 and Gemini-3.5-flash largely preserve the policy            ing the summary budget (Figure 3), as it tightens from 300
+through passive compaction (0%, 4%)—which is why we                 to 15 words, constraint survival falls from 88% to 23%
+study summarizer sensitivity below and show (Sec. 6) that           and pooled violation rises from 7% to 28% (DeepSeek-V4:
+an active attacker still breaks them. A higher-powered grid         20% → 65%). Because production guidance is to compact
+(5 models × 9 tasks × 6 reps; n=54/cell, 1,080 episodes) on         aggressively for efficiency, real deployments are pushed to-
+the original five-model panel confirms the effect with tight        ward the high-decay end of this curve.
+intervals: pooled decay is +37 points (bootstrap 95% CI
+[31, 43]), while control and Constraint Pinning remain at           Decay targets the governance that can only live in con-
+0% ([0, 1.4]).                                                      text. Soft organization-specific policies decay by +50 pts
+                                                                    (0% → 50%) versus only +6 for hard safety norms the model
+Constraint survival predicts violation. The strongest               refuses intrinsically through alignment training (Ouyang
+mechanism evidence is whether the rule survives the sum-            et al. 2022; Bai et al. 2022) (Table 1)—an 8.3× gap. Built-in
+       condition                      DeepSeek-V4        GLM-5.1     Qwen3.6   Kimi-K2.5       Claude-4.6   GPT-5.4m     Gemini-3.5f   ALL
+       floor (no policy)                  37               44             48         48           33           56            63        47
+       control (full ctx)                  0                0              0          0            0            0             0         0
+       compaction                         59               0              30         59           19           41             4        30
+       attack_volume                      48                7             26         44            0           37            19        26
+       attack_inject                      59               22             33         41            0           37             0        28
+       defense_pin                         0               0               0          0            0            0             0         0
+       defense_pin_attack                  0                0              0          0            0            0             0         0
+
+Table 2: Violation rate (%) by condition and model (n=27/cell, 9 tasks; 7 models, 1,323 episodes). Compaction induces large
+decay; Constraint Pinning restores 0% with and without attack. Gemini-3.5-flash resists passive compaction (4%) yet falls to
+the active attack (volume 19%).
+
+                                                                compaction          summarizer injection
+
+
+                              59 59                                            59
+                        60
+
+
+
+
+          violation %
+                                                                                     41                        41
+                        40                                                                                          37
+                                                                     33
+                                                                30
+                                                    22
+                                                                                                 19
+                        20
+
+                                                                                                                               4
+                                                0                                                     0                            0
+                         0
+
+
+                             DeepSeek           GLM             Qwen           Kimi             Claude         GPT            Gemini
+
+Figure 2: Per-model violation under compaction and under the summarizer-injection attack; control = 0% for every model
+(omitted, as the bars would be empty). No model is safe on both axes: GLM-5.1 and Gemini-3.5-flash resist passive compaction
+(0%, 4%) but fall to an active attack (injection 22%; volume 19%, Table 2), while Claude resists the injection (0%) but not
+passive decay (19%).
+
+
+   summarizer ↓ / agent →               DeepSeek         GLM       Claude           and LLM summarize (26%); only head_tail, which
+   DeepSeek                                93            53          33
+                                                                                    keeps the oldest turn, preserves the policy (0%)—while Con-
+   GLM                                     13             7           7             straint Pinning yields 0% under every strategy (Supplemen-
+   Claude                                  60            53          47             tary Material).
+                                                                                    Additional robustness. Governance Decay also com-
+Table 3: Representative compactor×agent violation (%): the                          pounds over repeated compaction (violation rises 0%→78%
+summary is written by the row model, the post-compaction                            across R=0→4 rounds) and reproduces cross-lingually (de-
+decision by the column model (5 soft tasks, n=15/cell).                             cay +42 in Chinese, +22 in Spanish); full results are in the
+These three models span high-, low-, and intermediate-risk                          Supplementary Material.
+summarizers; violation tracks the summarizer (rows), not the
+agent (columns).                                                                           6    The Compaction-Eviction Attack
+                                                                                    Governance Decay can be weaponized: an adversary who
+                                                                                    can place content in the agent’s context—a returned tool out-
+priors mask the effect on hard norms, creating a false sense of
+                                                                                    put, a retrieved document—can increase the probability that
+safety—and even these alignment-trained refusals are not in-
+                                                                                    a constraint disappears before a prohibited request, without
+violable (Hubinger et al. 2024; Anil et al. 2024)—while Gov-
+                                                                                    touching the model, the system prompt, or the compaction
+ernance Decay erodes exactly the soft, deployment-specific
+                                                                                    operator. We instantiate two variants. The volume variant in-
+rules that have no home except the context window.
+                                                                                    jects benign-looking bulk content to push the history over
+Decay generalizes across compaction strategies. The                                 the compaction budget, forcing C to fire and evict the pol-
+failure reproduces across all four mainstream strategies—                           icy, after which the adversary issues the prohibited request.
+recency-truncate (worst, 38%), hierarchical (36%),                                  (In deployments compaction is budget-triggered, so volume
+       100                                                            injection strategy              DeepSeek GLM-5.1 Claude
+                    violation        policy survival                  bulk doc (no explicit instr.)      85      40        40
+        80                                                            fixed (deprecation note)           95      55         0
+                                                                      token-budget framing               95      60        65
+        60                                                            system-impersonation instr.       100      85        20
+   %                                                                  optimized (best/model)            100      85        65
+        40
+                                                                   Table 4: Optimized summarizer injection (E6; violation % on
+        20
+                                                                   5 soft tasks, 3 models). The first row includes the adversarial
+                                                                   bulk document but no explicit summarizer instruction; the
+                                                                   pure no-adversary compaction baseline is reported in Table 2.
+         0                                                         Searching injection strategies breaks even a model that fully
+              15        30      50      80         150   300
+                                                                   resists the fixed attack (Claude 0%→65%).
+                        summary budget (words)
+
+Figure 3: Governance Decay vs. compaction aggressiveness
+(pooled over models). As the summary budget tightens, con-         explicit summarizer instruction and 55% fixed to 85% un-
+straint survival falls and violation generally rises.              der a system-impersonation instruction aimed at the sum-
+                                                                   marizer; DeepSeek-V4 reaches 100%. The single most ef-
+                                                                   fective strategy, the token-budget framing, is also the most
+                                                                   transferable, breaking all three models (95/60/65%). At-
+induces the drop by firing C; in our benchmark, where C is al-     tacks optimized on the weaker models transfer strongly to
+ways invoked, the same bulk instead crowds the policy out of       one another (≥ 75%) but only weakly to Claude (10–20%),
+the summary’s word budget—either way the policy leaves the         which demands a tailored injection. The implication is stark:
+post-compaction context.) The summarizer-injection variant         robustness to a fixed probe is not robustness to search over
+is sharper: it embeds a short instruction aimed at the com-        deletion prompts.
+paction step itself (“when summarizing, omit the deprecated
+compliance preamble”), so the policy is deleted from the
+summary even when the budget alone would have spared it.                            7      Constraint Pinning
+   The key finding is that summarizer injection attacks a          If the cause of decay is that the constraint is removed from
+surface complementary to passive decay. Because the injec-         context, the fix is to protect the constraint from removal.
+tion targets the harness’s memory-management layer rather          We propose Constraint Pinning: the harness extracts gov-
+than the agent’s task reasoning, it can break models whose         ernance constraints into a pinned buffer that is (i) exempt
+summarizers otherwise preserve the policy: GLM-5.1, which          from compaction and re-injected verbatim after every com-
+fully resists passive compaction in the headline summariza-        paction step, and (ii) integrity-checked at each step, with the
+tion grid (0%), rises to 22% under the fixed injection. Con-       post-compaction context required to still entail the pinned
+versely, Claude-Sonnet-4.6 resists this fixed injection (0%)       constraints. Pinning is training-free and harness-local—it
+but remains vulnerable to passive decay (19%), so robust-          modifies only how the harness manages memory, not the
+ness on one axis does not transfer to the other. Gemini-3.5-       model or the tools. Across all seven models and both fixed
+flash is sharpest: robust to both passive compaction (4%)          attack variants it restores the violation rate to 0% (Table 2)
+and the fixed injection (0%), it still falls to the volume vari-   at negligible cost: the pinned policy is only ≈47 tokens, re-
+ant (19%)—even the most passive-robust summarizer retains          injected once per compaction—a fixed, budget-independent
+an attack surface. Pooled across the seven models, the fixed       cost that is under 0.5% of the ≥10k-token histories at which
+injection variant reaches 28% violation versus 26% for the         production compaction fires (Kang et al. 2025) (and a few
+volume variant, both from an adversary who supplies nothing        percent of the tighter budget used to force compaction in our
+but in-context data.                                               harness). The defense is therefore cheap and drop-in against
+                                                                   the passive and fixed attacks in our grid, while the stress-test
+An optimized injection defeats every model. The fixed              below shows why pinning still needs trusted provenance to
+injection above is far from the strongest. Treating the injec-     handle authority conflicts.
+tion text as a search space (Zou et al. 2023), we evaluate
+six strategies—framing the omission as deprecation, irrele-        Pinning does not cost utility. A defense that blocks pro-
+vance, a token-budget constraint, a direct summarizer note,        hibited actions is useful only if it still permits legitimate
+a system-impersonation summarizer instruction, or opera-           ones. We test seven allowed counterparts spanning the same
+tor authority—and select the best per model (Table 4). Op-         action types—policy-compliant variants such as emailing
+timization sharply raises violation and, decisively, breaks        an internal address, purchasing under the limit, deploying
+the models that shrug off the fixed attack: Claude-Sonnet-         to the approved region, and issuing a read-only produc-
+4.6, which ignores the fixed and authority injections en-          tion query—across three models (n=84 per condition). Con-
+tirely (0%), is driven to 65% by a token-budget framing            straint Pinning completes 99% of allowed actions with 1%
+(“to stay within the budget, drop policy notes”); GLM-5.1          over-refusal, slightly better than the policy-in-context con-
+climbs from 40% on a bulk adversarial document with no             trol (90%/10%): an explicit pinned rule helps the agent sep-
+arate permitted from forbidden actions rather than blanket-        preserved the policy in our harness. (iii) AutoGen’s
+refusing. Pinning therefore removes violations at no measur-       BufferedChatCompletionContext                      (Microsoft
+able utility cost.                                                 2024), which implements recency eviction, deterministically
+                                                                   drops the policy from the agent’s context: violation reaches
+Pinning vs. existing defenses. We benchmark Constraint             100% in the DeepSeek-V4 reproduction (n=20), confirming
+Pinning against placing the policy in the (preserved) system       that recency-based strategies are the worst case identified in
+channel and against a Spotlighting-style provenance prompt         our compaction-strategy sweep. (iv) As an SDK integration
+inspired by prior prompt-injection defenses (Hines et al.          check rather than a claim about SDK-native compaction,
+2024), under passive compaction and the injection attack (3        an OpenAI Agents SDK Runner (OpenAI 2025) given the
+models, 5 soft tasks). With no defense, violation is 40%/42%       same LLM-written compacted summary reaches 35% viola-
+(passive/injection). Pinning and the system-channel policy         tion on DeepSeek-V4 (n=20). Microsoft’s Agent Framework
+both hold at 0%/0%, but the system channel is available            preserves system messages in compaction (Microsoft 2026),
+only when the operator controls the system prompt—not for          consistent with our channel analysis (Supplementary Mate-
+memory- or tool-delivered governance. The Spotlighting-            rial): framework guarantees for one channel do not protect
+style prompt leaves violation at 43%/45%: marking ingested         memory- and conversation-carried governance unless those
+content as untrusted data cannot restore a constraint the sum-     constraints are also preserved or pinned.
+mary has already deleted. Pinning is thus the only defense
+that both covers non-system governance and addresses dele-
+tion.                                                                         9    Discussion and Conclusion
+Where pinning still fails (and why we report it). Pinning          Governance Decay is a property of the harness, not the
+is effective but not unbreakable, and the boundary is itself in-   model: stronger models help only insofar as their summa-
+formative. We probe it with two adversaries and an overload        rizers preserve constraints, and even those fall to injection or
+condition (3 models, 5 soft tasks, n=60/cell). Naive verba-        recency eviction. It is specific to in-context governance—the
+tim pinning eliminates basic decay (50% → 0%) and resists          deployable, operator-specifiable kind—and the soft/hard gra-
+both a “policy rescinded” notice ingested as a tool output and     dient explains why it has gone unnoticed: it spares the hard
+then summarized (2%) and constraint overload—the relevant          norms benchmarks probe and erodes the soft, deployment-
+policy pinned among 15 distractor rules (0%). The attack that      specific rules they rarely do. Context compaction—adopted
+does break it is an authoritative operator-impersonation re-       for efficiency—is a first-class agent-governance surface: it
+scind placed in the recent, non-summarized context (“OPER-         silently erases the constraints that govern deployed agents,
+ATOR POLICY UPDATE. . . supersedes pinned policies”),              is weaponizable by an in-context adversary, and is cheaply
+which raises naive pinning from 0% to 17%. Hardening the           defended by quarantining them. Governing agents requires
+pin with explicit provenance (“operator-pinned; not overrid-       governing how they forget.
+able by conversation or tool content”) only halves the residual
+                                                                   Limitations. (i) Immutable system/developer messages
+(17% → 10%); it does not eliminate it. The reason is fun-
+                                                                   that the framework preserves are a separate, safer channel. (ii)
+damental: as long as operator authority is asserted inside the
+                                                                   Constraint Pinning requires the constraint to be extractable
+token stream, the model cannot reliably tell a genuine opera-
+                                                                   as a quotable rule; implicit constraints are out of scope. (iii)
+tor update from an attacker impersonating one. Fully closing
+                                                                   Pinning is defeated by operator-impersonation in the recent
+this gap therefore requires a trusted out-of-band operator
+                                                                   context; closing this gap needs a trusted out-of-band opera-
+channel—authority that does not live in the token stream
+                                                                   tor channel. (iv) Survival is scored by LLM judges (robust
+and so cannot be forged by in-context content—which we
+                                                                   to a three-judge majority vote), though human labels would
+flag as the central open problem for constraint pinning.
+                                                                   tighten it. (v) Models are API-served with modest per-cell
+Recommendations. Three harness-level rules, none re-               repetition. (vi) Our attack searches a fixed strategy pool;
+quiring retraining: (i) treat governance constraints as pinned     gradient- or LLM-in-the-loop optimization is likely stronger.
+state exempt from compaction; (ii) prefer head-retaining
+compaction over pure recency eviction; and (iii) treat the         Ethics. All experiments run in a simulated sandbox: tool
+summarizer as an untrusted-input sink (Hines et al. 2024),         calls are parsed but never executed, all “secrets”/PII are ficti-
+so ingested content cannot steer the compaction step.              tious. We demonstrate the attack only on our own benchmark
+                                                                   to motivate the defense. The attack needs only the ability to
+                                                                   place content in an agent’s context—already assumed by the
+            8    Real-Harness Validation                           indirect-prompt-injection literature (Greshake et al. 2023;
+Governance Decay reproduces in production agent-                   Zhan et al. 2024)—so it does not broaden the adversary’s
+framework context managers, with coverage stated                   required access.
+per component. (i) In a LangGraph StateGraph
+with a summarization-memory node (LangChain
+2024), violation rises from 0% to 65% on DeepSeek-                                         References
+V4 (n=20). (ii) Using the official LangMem                         Anil, C.; Durmus, E.; Sharma, M.; Benton, J.; Kundu, S.;
+SummarizationNode (LangChain 2026), violation                      Batson, J.; Rimsky, N.; Tong, M.; Mu, J.; Ford, D.; Mosconi,
+reaches 95% (DeepSeek-V4) and 70% (GLM-5.1, n=20                   F.; Agrawal, R.; Schaeffer, R.; Bashkansky, N.; Svenningsen,
+each), breaking even the model whose own summarizer                S.; Lambert, M.; Radhakrishnan, A.; Denison, C.; and Hub-
+inger, E. 2024. Many-shot Jailbreaking. In Advances in              Hines, K.; Lopez, G.; Hall, M.; Zarfati, F.; Zunger,
+Neural Information Processing Systems (NeurIPS).                    Y.; and Kiciman, E. 2024. Defending Against Indirect
+Bai, Y.; Kadavath, S.; Kundu, S.; Askell, A.; Kernion, J.;          Prompt Injection Attacks With Spotlighting. arXiv preprint
+Jones, A.; Chen, A.; Goldie, A.; Mirhoseini, A.; McKinnon,          arXiv:2403.14720.
+C.; Chen, C.; Olsson, C.; Olah, C.; Hernandez, D.; Drain,           Hong, K.; Troynikov, A.; and Huber, J. 2025. Context Rot:
+D.; Ganguli, D.; Li, D.; Tran-Johnson, E.; Perez, E.; Kerr, J.;     How Increasing Input Tokens Impacts LLM Performance.
+and Kaplan, J. 2022. Constitutional AI: Harmlessness from           Technical report, Chroma Research. https://www.trychroma.
+AI Feedback. arXiv preprint arXiv:2212.08073.                       com/research/context-rot.
+Bai, Y.; Lv, X.; Zhang, J.; Lyu, H.; Tang, J.; Huang, Z.; Du, Z.;   Hsieh, C.-P.; Sun, S.; Kriman, S.; Acharya, S.; Rekesh, D.;
+Liu, X.; Zeng, A.; Hou, L.; Dong, Y.; Tang, J.; and Li, J. 2024.    Jia, F.; and Ginsburg, B. 2024. RULER: What’s the Real
+LongBench: A Bilingual, Multitask Benchmark for Long                Context Size of Your Long-Context Language Models? In
+Context Understanding. In Proceedings of the 62nd Annual            Conference on Language Modeling (COLM).
+Meeting of the Association for Computational Linguistics            Hubinger, E.; Denison, C.; Mu, J.; Lambert, M.; Tong, M.;
+(ACL).                                                              MacDiarmid, M.; Lanham, T.; Ziegler, D. M.; Maxwell, T.;
+Chen, J.; and Lu, R. 2025. When AI Remembers Too Much:              Cheng, N.; Jermyn, A.; Askell, A.; Radhakrishnan, A.; Anil,
+Persistent Behaviors in Agents’ Memory. Palo Alto Net-              C.; Duvenaud, D.; Ganguli, D.; Barez, F.; Clark, J.; Ndousse,
+works threat research. https://unit42.paloaltonetworks.com/         K.; Nguyen, K.; and Schiefer, N. 2024. Sleeper Agents:
+indirect-prompt-injection-poisons-ai-longterm-memory/.              Training Deceptive LLMs that Persist through Safety Train-
+                                                                    ing. arXiv preprint arXiv:2401.05566.
+Chen, Z.; Pan, R.; Dai, Y.; and Netravali, R. 2026. Slip-
+stream: Trajectory-Grounded Compaction Validation for               Kang, M.; Chen, W.-N.; Han, D.; Inan, H. A.; Wutschitz,
+Long-Horizon Agents. arXiv preprint arXiv:2605.08580.               L.; Chen, Y.; Sim, R.; and Rajmohan, S. 2025. ACON:
+                                                                    Optimizing Context Compression for Long-horizon LLM
+Chen, Z.; Xiang, Z.; Xiao, C.; Song, D.; and Li, B.                 Agents. arXiv preprint arXiv:2510.00615.
+2024. AgentPoison: Red-teaming LLM Agents via Poison-
+ing Memory or Knowledge Bases. In Advances in Neural                LangChain. 2024. LangGraph: Stateful, Multi-Actor Ap-
+Information Processing Systems (NeurIPS).                           plications with LLMs. Software framework. https://github.
+                                                                    com/langchain-ai/langgraph.
+Cim, M.; Topcu, B.; Das, C.; and Kandemir, M. T. 2026.
+                                                                    LangChain. 2026. LangMem Short-Term Memory: Summa-
+Parallel Context Compaction for Long-Horizon LLM Agent
+                                                                    rizationNode Reference. Documentation. https://langchain-
+Serving. arXiv preprint arXiv:2605.23296.
+                                                                    ai.github.io/langmem/reference/short_term/.
+Cohen, S.; Bitton, R.; and Nassi, B. 2024. Here Comes the
+                                                                    Lewis, P.; Perez, E.; Piktus, A.; Petroni, F.; Karpukhin, V.;
+AI Worm: Unleashing Zero-click Worms that Target GenAI-
+                                                                    Goyal, N.; Küttler, H.; Lewis, M.; tau Yih, W.; Rocktäschel,
+Powered Applications. arXiv preprint arXiv:2403.02817.
+                                                                    T.; Riedel, S.; and Kiela, D. 2020. Retrieval-Augmented Gen-
+Debenedetti, E.; Shumailov, I.; Fan, T.; Hayes, J.; Carlini,        eration for Knowledge-Intensive NLP Tasks. In Advances in
+N.; Fabian, D.; Kern, C.; Shi, C.; Terzis, A.; and Tramèr, F.       Neural Information Processing Systems (NeurIPS).
+2025. Defeating Prompt Injections by Design. arXiv preprint         Liu, N. F.; Lin, K.; Hewitt, J.; Paranjape, A.; Bevilacqua,
+arXiv:2503.18813.                                                   M.; Petroni, F.; and Liang, P. 2024a. Lost in the Middle:
+Debenedetti, E.; Zhang, J.; Balunović, M.; Beurer-Kellner,          How Language Models Use Long Contexts. Transactions of
+L.; Fischer, M.; and Tramèr, F. 2024. AgentDojo: A Dynamic          the Association for Computational Linguistics (TACL), 12:
+Environment to Evaluate Prompt Injection Attacks and De-            157–173.
+fenses for LLM Agents. In Advances in Neural Information            Liu, Y.; Jia, Y.; Geng, R.; Jia, J.; and Gong, N. Z. 2024b.
+Processing Systems (NeurIPS), Datasets and Benchmarks               Formalizing and Benchmarking Prompt Injection Attacks
+Track.                                                              and Defenses. In USENIX Security Symposium.
+Dente, F.; Satriani, D.; and Papotti, P. 2026. Constraint           Mazeika, M.; Phan, L.; Yin, X.; Zou, A.; Wang, Z.; Mu,
+Decay: The Fragility of LLM Agents in Backend Code Gen-             N.; Sakhaee, E.; Li, N.; Basart, S.; Li, B.; Forsyth, D.; and
+eration. arXiv preprint arXiv:2605.06445.                           Hendrycks, D. 2024. HarmBench: A Standardized Evalu-
+Gamage, Y. 2026. Omission Constraints Decay While Com-              ation Framework for Automated Red Teaming and Robust
+mission Constraints Persist in Long-Context LLM Agents.             Refusal. In International Conference on Machine Learning
+arXiv preprint arXiv:2604.20911.                                    (ICML).
+Greshake, K.; Abdelnabi, S.; Mishra, S.; Endres, C.; Holz, T.;      Microsoft. 2024. AutoGen: Enabling Next-Gen LLM Appli-
+and Fritz, M. 2023. Not What You’ve Signed Up For: Com-             cations via Multi-Agent Conversation. Software framework.
+promising Real-World LLM-Integrated Applications with In-           https://github.com/microsoft/autogen.
+direct Prompt Injection. In Proceedings of the 16th ACM             Microsoft. 2026. Compaction in Microsoft Agent Frame-
+Workshop on Artificial Intelligence and Security (AISec).           work. Documentation. https://learn.microsoft.com/en-us/
+Hadeliya, T.; Jauhar, M. A.; Sakpal, N.; and Cruz, D. 2025.         agent-framework/agents/conversations/compaction.
+When Refusals Fail: Unstable Safety Mechanisms in Long-             OpenAI. 2025. OpenAI Agents SDK. Software framework.
+Context LLM Agents. arXiv preprint arXiv:2512.02445.                https://github.com/openai/openai-agents-python.
+Ouyang, L.; Wu, J.; Jiang, X.; Almeida, D.; Wainwright,             Acting in Language Models. In International Conference on
+C. L.; Mishkin, P.; Zhang, C.; Agarwal, S.; Slama, K.; Ray,         Learning Representations (ICLR).
+A.; Schulman, J.; Hilton, J.; Kelton, F.; Miller, L.; Simens,       Zhan, Q.; Liang, Z.; Ying, Z.; and Kang, D. 2024. In-
+M.; Askell, A.; Welinder, P.; Christiano, P.; Leike, J.; and        jecAgent: Benchmarking Indirect Prompt Injections in Tool-
+Lowe, R. 2022. Training Language Models to Follow In-               Integrated Large Language Model Agents. In Findings of the
+structions with Human Feedback. In Advances in Neural               Association for Computational Linguistics (ACL Findings).
+Information Processing Systems (NeurIPS).                           Zhang, Z.; Sheng, Y.; Zhou, T.; Chen, T.; Zheng, L.; Cai, R.;
+Packer, C.; Wooders, S.; Lin, K.; Fang, V.; Patil, S. G.; Stoica,   Song, Z.; Tian, Y.; Ré, C.; Barrett, C.; Wang, Z.; and Chen,
+I.; and Gonzalez, J. E. 2023. MemGPT: Towards LLMs as               B. 2023. H2O: Heavy-Hitter Oracle for Efficient Generative
+Operating Systems. arXiv preprint arXiv:2310.08560.                 Inference of Large Language Models. In Advances in Neural
+Park, J. S.; O’Brien, J. C.; Cai, C. J.; Morris, M. R.; Liang,      Information Processing Systems (NeurIPS).
+P.; and Bernstein, M. S. 2023. Generative Agents: Interactive       Zou, A.; Wang, Z.; Carlini, N.; Nasr, M.; Kolter, J. Z.; and
+Simulacra of Human Behavior. In Proceedings of the 36th             Fredrikson, M. 2023. Universal and Transferable Adversar-
+Annual ACM Symposium on User Interface Software and                 ial Attacks on Aligned Language Models. arXiv preprint
+Technology (UIST).                                                  arXiv:2307.15043.
+Perez, E.; Huang, S.; Song, F.; Cai, T.; Ring, R.; Aslanides, J.;
+Glaese, A.; McAleese, N.; and Irving, G. 2022. Red Teaming
+Language Models with Language Models. In Proceedings
+of the 2022 Conference on Empirical Methods in Natural
+Language Processing (EMNLP).
+Ruan, Y.; Dong, H.; Wang, A.; Pitis, S.; Zhou, Y.; Ba, J.;
+Dubois, Y.; Maddison, C. J.; and Hashimoto, T. 2024. Iden-
+tifying the Risks of LM Agents with an LM-Emulated Sand-
+box. In International Conference on Learning Representa-
+tions (ICLR).
+Santos-Grueiro, I. 2026. Ghost in the Context: Measuring
+Policy-Carriage Failures in Decision-Time Assembly. arXiv
+preprint arXiv:2605.12535.
+Schick, T.; Dwivedi-Yu, J.; Dessì, R.; Raileanu, R.; Lomeli,
+M.; Hambro, E.; Zettlemoyer, L.; Cancedda, N.; and Scialom,
+T. 2023. Toolformer: Language Models Can Teach Them-
+selves to Use Tools. In Advances in Neural Information
+Processing Systems (NeurIPS).
+Semenov, A.; and Dorofeev, S. 2026. Beyond Compaction:
+Structured Context Eviction for Long-Horizon Agents. arXiv
+preprint arXiv:2606.11213.
+Shinn, N.; Cassano, F.; Berman, E.; Gopinath, A.;
+Narasimhan, K.; and Yao, S. 2023. Reflexion: Language
+Agents with Verbal Reinforcement Learning. In Advances in
+Neural Information Processing Systems (NeurIPS).
+Wang, L.; Ma, C.; Feng, X.; Zhang, Z.; Yang, H.; Zhang, J.;
+Chen, Z.; Tang, J.; Chen, X.; Lin, Y.; Zhao, W. X.; Wei, Z.;
+and Wen, J.-R. 2024. A Survey on Large Language Model
+based Autonomous Agents. Frontiers of Computer Science,
+18(6): 186345.
+Xiang, Z.; Zheng, L.; Li, Y.; Hong, J.; Li, Q.; Xie, H.;
+Zhang, J.; Xiong, Z.; Xie, C.; Yang, C.; Song, D.; and Li,
+B. 2024. GuardAgent: Safeguard LLM Agents by a Guard
+Agent via Knowledge-Enabled Reasoning. arXiv preprint
+arXiv:2406.09187.
+Xiao, G.; Tian, Y.; Chen, B.; Han, S.; and Lewis, M. 2024.
+Efficient Streaming Language Models with Attention Sinks.
+In International Conference on Learning Representations
+(ICLR).
+Yao, S.; Zhao, J.; Yu, D.; Du, N.; Shafran, I.; Narasimhan,
+K.; and Cao, Y. 2023. ReAct: Synergizing Reasoning and
+

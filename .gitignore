@@ -342,3 +342,11 @@ probes/P48-subliminal-numbers-attribution/results/eval/*.jsonl
 
 # P48: llm_batch lock files
 probes/P48-subliminal-numbers-attribution/data/qa/*.lock
+
+# P44: raw artifacts and Inspect logs (backed up at close-out); CSVs and analysis are committed
+probes/P44-handoff-methods-alignment/results/logs/
+probes/P44-handoff-methods-alignment/results/prefixes/
+probes/P44-handoff-methods-alignment/results/chains/
+
+# P19: raw Mythos 5 transcript and every file holding its text (canary GUID, no licence; never commit)
+results/P19/

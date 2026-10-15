@@ -1,0 +1,115 @@
+{
+  "source_sha256": "6f2a5a50b53640bd779a198cef8a620f2d6e2bbaaf4a0dea9edac87a69fc3e4b",
+  "message_count": 2064,
+  "first_source_index": 0,
+  "last_source_index": 2144,
+  "roles": {
+    "System": 1,
+    "Assistant": 2061,
+    "Human": 2
+  },
+  "types": {
+    "TextMessage": 703,
+    "ToolMessage": 1361
+  },
+  "thinking_messages": 686,
+  "thinking_blocks": 686,
+  "human_indices": [
+    1310,
+    1314
+  ],
+  "note_accesses": [
+    {
+      "index": 1312,
+      "kind": "write"
+    },
+    {
+      "index": 1316,
+      "kind": "read"
+    },
+    {
+      "index": 2007,
+      "kind": "write"
+    }
+  ],
+  "window_count": 700,
+  "raw_tool_call_indices": [
+    669,
+    670,
+    671,
+    673,
+    827,
+    828,
+    830,
+    832,
+    834,
+    1097,
+    1099,
+    1669,
+    1670
+  ],
+  "tokenizer": "tiktoken cl100k_base",
+  "token_count_method": "Content strings for text messages; sorted UTF-8 JSON of tool_name, tool_call, tool_result and tool_call_raw when present for tool messages; sum independently encoded payload lengths.",
+  "token_count_limitations": "Proxy only: excludes metadata, roles, timestamps, prompt wrappers, omitted/redacted content and hidden context; not Mythos tokenizer or actual context occupancy. Human-delimited segments are observable transcript segments, not an assumption that every Human message is a compaction.",
+  "total_tokens": 691424,
+  "boundaries": [
+    {
+      "index": 1310,
+      "kind": "human",
+      "tokens_before": 373848,
+      "tokens_through": 373940,
+      "segment_start_index": 1310,
+      "segment_tokens_through": 92
+    },
+    {
+      "index": 1312,
+      "kind": "note_write",
+      "tokens_before": 373992,
+      "tokens_through": 378014,
+      "segment_start_index": 1310,
+      "segment_tokens_through": 4166
+    },
+    {
+      "index": 1314,
+      "kind": "human",
+      "tokens_before": 378628,
+      "tokens_through": 378680,
+      "segment_start_index": 1314,
+      "segment_tokens_through": 52
+    },
+    {
+      "index": 1316,
+      "kind": "note_read",
+      "tokens_before": 378698,
+      "tokens_through": 382841,
+      "segment_start_index": 1314,
+      "segment_tokens_through": 4213
+    },
+    {
+      "index": 2007,
+      "kind": "note_write",
+      "tokens_before": 649484,
+      "tokens_through": 651318,
+      "segment_start_index": 1314,
+      "segment_tokens_through": 272690
+    }
+  ],
+  "human_delimited_segments": [
+    {
+      "start_index": 0,
+      "end_index": 1309,
+      "tokens": 373848
+    },
+    {
+      "start_index": 1310,
+      "end_index": 1313,
+      "tokens": 4780
+    },
+    {
+      "start_index": 1314,
+      "end_index": 2144,
+      "tokens": 312796
+    }
+  ],
+  "per_message_tokens_file": "token_counts.csv"
+}

@@ -1,0 +1,29 @@
+initial messages 75250bea8f81
+3 initial workspaces
+round 1: 9 prefixes to run
+loaded keys: OPENROUTER_API_KEY
+  p47gpt-oss-120b|lcbhard_47|a2: site turns=5
+[prefixes-r1] 1 done, 8 in flight, 0 queued, conc 32, spent 0.000, 0.8 min, {'site': 1}
+  p47gpt-oss-120b|lcbhard_47|a3: site turns=11
+[prefixes-r1] 2 done, 7 in flight, 0 queued, conc 32, spent 0.003, 3.7 min, {'site': 2}
+  p47gpt-oss-120b|lcbhard_45|a1: site turns=12
+[prefixes-r1] 3 done, 6 in flight, 0 queued, conc 32, spent 0.006, 5.4 min, {'site': 3}
+  p47gpt-oss-120b|lcbhard_74|a3: site turns=13
+[prefixes-r1] 4 done, 5 in flight, 0 queued, conc 32, spent 0.010, 6.1 min, {'site': 4}
+  p47gpt-oss-120b|lcbhard_47|a1: site turns=15
+[prefixes-r1] 5 done, 4 in flight, 0 queued, conc 32, spent 0.014, 6.1 min, {'site': 5}
+  p47gpt-oss-120b|lcbhard_45|a2: site turns=16
+[prefixes-r1] 6 done, 3 in flight, 0 queued, conc 32, spent 0.019, 7.0 min, {'site': 6}
+  p47gpt-oss-120b|lcbhard_45|a3: site turns=16
+[prefixes-r1] 7 done, 2 in flight, 0 queued, conc 32, spent 0.025, 8.1 min, {'site': 7}
+  p47gpt-oss-120b|lcbhard_74|a1: turn_cap turns=20
+[prefixes-r1] 8 done, 1 in flight, 0 queued, conc 32, spent 0.033, 9.6 min, {'site': 7, 'turn_cap': 1}
+  p47gpt-oss-120b|lcbhard_74|a2: turn_cap turns=20
+[prefixes-r1] 9 done, 0 in flight, 0 queued, conc 32, spent 0.042, 10.8 min, {'site': 7, 'turn_cap': 2}
+{"status": {"site": 7, "turn_cap": 2}, "spent": 0.042275547000000004, "n": 9, "stopped": null, "left": 0, "minutes": 10.8}
+round 2: 1 prefixes to run
+  p47gpt-oss-120b|lcbhard_74|a4: site turns=11
+[prefixes-r2] 1 done, 0 in flight, 0 queued, conc 32, spent 0.005, 3.4 min, {'site': 1}
+{"status": {"site": 1}, "spent": 0.00523378, "n": 1, "stopped": null, "left": 0, "minutes": 3.4}
+why: {'ok': 7, 'cut solution passes the impossible tests': 1, 'no site: ended turn_cap': 2}
+candidates 6 over 3 tasks; plan_named 0; site turns [5, 11, 11, 12, 13, 16]; prefix spend $0.048

@@ -447,9 +447,10 @@ just under the 10-point bar it predicted at 0.45.
 
 ## Spend and wall-clock
 
-**$87.40 settled of a $105 cap** (GPU $86.61, API $0.79), with `refill` still to run. That total
-is `merge_ledger.py report`, which counts this checkout's $86.97 plus $0.4351 still only in the
-abandoned refill worktree's ledger. The cap rose from $60 in four logged steps, each in
+**$87.40 settled of a $105 cap** (GPU $86.61, API $0.79), with `refill` still to run. That total is
+`merge_ledger.py report`, which counts this branch's $86.97 plus the $0.4351 the second, abandoned
+checkout spent - the terminated refill pod at $0.4344 and a $0.0007 duplicate `created` event for
+the pod its watchdog killed, both already in main's ledger, neither hand-edited. The cap rose from $60 in four logged steps, each in
 `probe.toml` with its reason, all inside the probe tier's $150. The API line is T0's QA pairs ($0.0426) plus
 the oracle judge ($0.7504).
 
