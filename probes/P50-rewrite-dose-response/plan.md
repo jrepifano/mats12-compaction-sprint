@@ -1,6 +1,6 @@
 # P50: Does rewriting a small fraction of trait-carrying rows remove far more of a hidden trait than diluting or deleting them, and does it still work when a different model writes the replacements?
 
-Plan written 2026-10-15 (UTC), before any P50 data. Literature: [lit-review.md](lit-review.md). Run log and design decisions: [log.md](log.md). Review: gpt-6-astra round 1 (`logs/reviews/20261015-P50-plan-r1.md`, NOT READY, 7 blocking findings), all fixed below. The dispositions are in log.md.
+Plan written 2026-10-15 (UTC), before any P50 data. Literature: [lit-review.md](lit-review.md). Run log and design decisions: [log.md](log.md). Reviews: gpt-6-astra round 1 (`logs/reviews/20261015-P50-plan-r1.md`, NOT READY, 7 blocking) and round 2 (`-r2.md`, NOT READY, 2 blocking + 2 minor), all fixed below. The dispositions are in log.md.
 
 | | |
 |---|---|
@@ -12,7 +12,7 @@ Plan written 2026-10-15 (UTC), before any P50 data. Literature: [lit-review.md](
 | **What each outcome changes** | See "Outcomes". |
 | **Likely follow-ups** | Week one, priced below: a Phantom Transfer ladder; a trained locator arm (required if the sprint pursues this); 1% and 10% doses; seeds 4–6; a fresh data draw; rewrite_x at 20K; EM small doses with a same-base rewriter. |
 | **Automatic rules** | See "Automatic rules". |
-| **Cap** | **Start $40** = GPU $37 + API $3 (Jacob, 2026-10-15). First slice **$19.7** with P48's refill arms reused, **$21.4** if they must be trained here. Reservation $24.94. See "Cost and wall-clock". |
+| **Cap** | **Start $40** = GPU $37 + API $3 (Jacob, 2026-10-15). First slice **$19.7** with P48's refill arms reused, **$21.5** if they must be trained here. Reservation $24.94. See "Cost and wall-clock". |
 | **Approved** | pending |
 
 ## Prior work (details in lit-review.md)
@@ -268,7 +268,7 @@ The outcomes use the literal tested conclusions. Explanations such as equivalenc
 | Block 4: 20K ×8 | 144.0 | 9.58 |
 | E2: eval (8 adapters) | 5.3 | 0.35 |
 | Runner launch allowance and setup | 15 | 1.00 |
-| **First slice** | **294 (321)** | **≈ $19.7 ($21.4) incl. API** |
+| **First slice** | **294 (321)** | **≈ $19.7 ($21.5) incl. API** |
 
 - On the pod, run.sh takes 279 min (307), inside the 330-min guard.
 - Reservation (5.75 + 0.5) h × $3.99 = **$24.94**. This fits the RunPod balance: ~$56, less P48 session 4's ~$14 if it is live, less the $10 buffer, leaves $32.
