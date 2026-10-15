@@ -224,6 +224,12 @@ less disjoint from another informed selector than from random. That is the mecha
 scorer can lose on AUROC and still remove more of the trait, and the reason B is a question about
 *which* 500 rows carry it rather than about ranking quality.
 
+**This is where P48's organism differs most from P43's.** There the two informed selectors'
+2,000-row blocks overlapped **29.9% against 10% at chance** — three times chance — and the two
+arms "reach the same place" (P43 note, F3). Here they overlap **7.4% against 5% at chance**, half
+again chance, and the seed-0 pilot has them reaching very different places. Two organisms, the
+same two scorers, opposite amounts of agreement about which rows carry the trait.
+
 ### Measurement stability, which the headline needed
 
 The smoke unit had found single-row bf16 gradients moving with their batch-mates (cosine min
