@@ -246,8 +246,34 @@ elif [ "$PHASE" = session2 ]; then
   fi
   # The k ladder: it trains seed-0 swap arms for both informed selectors and freezes k. A pilot
   # that never clears the floor still freezes the smallest k and flags the contrast as at risk.
+  # The k ladder runs as a LOOP ACROSS BOTH VENVS: kpilotarms builds a rung's arms (peft),
+  # run.sh trains them (peft) and evaluates them (vllm), then kpilotdecide reads the evals and
+  # says whether that rung keeps the floor (rc 0 frozen, 3 step down, 4 ladder exhausted).
+  # Doing all of that inside one peft step put a vLLM import there and killed the run after 24
+  # minutes of training, exactly as attempt 11's teacher step did (log.md 2026-10-15).
   if [ "$RC" = 0 ] && [ ! -s results/kpilot.json ]; then
-    run_step kpilot "$PEFT" kpilot || { [ "$RC" = 0 ] && RC=19; }
+    KP_FROZEN=0
+    for RUNG in 0 1 2; do
+      [ "$KP_FROZEN" = 1 ] && break
+      [ "$RC" = 0 ] || break
+      KP_KEYS="$("$PEFT" -m p48.pod kpilotarms --rung "$RUNG" 2>/dev/null)"
+      if [ -z "$KP_KEYS" ]; then echo "P48 kpilotarms rung $RUNG produced no keys"; RC=19; break; fi
+      echo "P48 kpilot rung $RUNG keys: $KP_KEYS"
+      # shellcheck disable=SC2086
+      run_step train "$PEFT" train --tag "kp$RUNG" --keys $KP_KEYS \
+        || { [ "$RC" = 0 ] && RC=13; break; }
+      # shellcheck disable=SC2086
+      eval_done_keys "kp$RUNG" $KP_KEYS
+      [ "$RC" = 0 ] || break
+      "$PEFT" -m p48.pod kpilotdecide --rung "$RUNG"; KPRC=$?
+      case "$KPRC" in
+        0) KP_FROZEN=1 ;;
+        4) KP_FROZEN=1; echo "P48 kpilot: ladder exhausted, smallest k frozen and flagged" ;;
+        3) echo "P48 kpilot: rung $RUNG below the floor, stepping k down" ;;
+        *) echo "P48 kpilotdecide rung $RUNG rc=$KPRC"; RC=19 ;;
+      esac
+    done
+    [ "$RC" = 0 ] && [ "$KP_FROZEN" = 0 ] && { echo "P48 kpilot never froze k"; RC=19; }
   fi
   if [ "$RC" = 0 ]; then
     run_step arms "$PEFT" arms || { [ "$RC" = 0 ] && RC=17; }

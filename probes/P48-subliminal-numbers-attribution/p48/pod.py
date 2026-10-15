@@ -1450,14 +1450,13 @@ def step_stability(args) -> int:
     return 0
 
 
-def step_kpilot(args) -> int:
-    """The seed-0 k ladder: the largest k whose two informed swap arms both keep the floor."""
-    from p48 import evalgen, train
+def _kpilot_setup():
+    """(mixture, rows, scores, control) or None - shared by the two k-pilot steps."""
     g = read_json(RESULTS / "gate.json") or {}
     mix_name = g.get("selection_mixture")
     if not mix_name:
         log("kpilot: no selection mixture")
-        return 1
+        return None
     rows = D.read_jsonl(K.MIX_DIR / f"{mix_name}.jsonl")
     scores = load_selection_scores(mix_name, len(rows))
     # Prefer the control the gate recorded: results/eval/ is pulled to the laptop but never
@@ -1470,44 +1469,90 @@ def step_kpilot(args) -> int:
     if control is None:
         log("kpilot: no 0% control rate (gate.json has none and no eval summary is present); "
             "push results/gate.json and results/eval/ for session 2")
+        return None
+    return mix_name, rows, scores, control
+
+
+def kpilot_prefix(frac: float) -> str:
+    return f"kp{int(frac * 1000)}_"
+
+
+def step_kpilotarms(args) -> int:
+    """PEFT: build one rung's swap arms and print their run keys for run.sh to train.
+
+    The pilot is split across the two venvs because it both TRAINS (peft) and EVALUATES (vllm).
+    Doing both in one step put a vLLM import in the peft venv and killed the run after 24
+    minutes of training - the same fault as attempt 11's teacher step (log.md 2026-10-15).
+    """
+    setup = _kpilot_setup()
+    if setup is None:
         return 1
-    model, tok = load_base()
-    rec = {"utc": utc(), "mixture": mix_name, "control": control, "rungs": [], "trainings": 0}
-    chosen = None
-    for frac in K.K_LADDER:
-        k = max(1, round(frac * len(rows)))
-        sel = D.selections_from_scores(rows, k, scores=scores, include_random=False,
-                                       include_active=False)
-        D.build_arms(mix_name, sel, prefix=f"kp{int(frac * 1000)}_",
-                     poison_source=primary()["poison_source"])
-        keys = [K.run_key(K.arm_name(s, "swap", f"kp{int(frac * 1000)}_"), K.GATE_SEED)
-                for s in sel]
-        for key in keys:
-            if run_ok(key):
-                continue
-            arm_rows = D.read_jsonl(data_path(key))
-            train.train_run(model, tok, arm_rows, seed=K.GATE_SEED, out_dir=TRAIN_DIR / key,
-                            adapter_dir=ADAPTERS / key, log=log)
-            rec["trainings"] += 1
-        evalgen.run_views({key: str(ADAPTERS / key) for key in keys}, base_path(), EVAL_DIR,
-                          log=log)
-        excesses = {key: (view_rate(key) or 0.0) - control for key in keys}
-        rung = {"frac": frac, "k": k, "excess": excesses,
-                "clears": all(v >= K.K_FLOOR_PTS for v in excesses.values())}
-        rec["rungs"].append(rung)
-        log(f"kpilot frac={frac} k={k} excess={excesses} clears={rung['clears']}")
-        if rung["clears"]:
-            chosen = rung
-            break
-    if chosen is None:
-        chosen = {"frac": K.K_LADDER[-1], "k": max(1, round(K.K_LADDER[-1] * len(rows))),
-                  "clears": False}
+    mix_name, rows, scores, _control = setup
+    if args.rung is None or not (0 <= args.rung < len(K.K_LADDER)):
+        log(f"kpilotarms: --rung must be 0..{len(K.K_LADDER) - 1}")
+        return 1
+    frac = K.K_LADDER[args.rung]
+    k = max(1, round(frac * len(rows)))
+    sel = D.selections_from_scores(rows, k, scores=scores, include_random=False,
+                                   include_active=False)
+    prefix = kpilot_prefix(frac)
+    D.build_arms(mix_name, sel, prefix=prefix, poison_source=primary()["poison_source"])
+    keys = [K.run_key(K.arm_name(s, "swap", prefix), K.GATE_SEED) for s in sel]
+    write_json(RESULTS / f"kpilot_rung{args.rung}.json",
+               {"utc": utc(), "rung": args.rung, "frac": frac, "k": k,
+                "selectors": sorted(sel), "keys": keys, "mixture": mix_name})
+    print(" ".join(keys))
+    return 0
+
+
+def step_kpilotdecide(args) -> int:
+    """PEFT: does this rung keep the floor? rc 0 = k frozen, 3 = step down, 4 = ladder exhausted.
+
+    The floor matters because P43's selector comparison was measured where every informed arm
+    sat at 0.0% and no ranking was possible (plan.md "k pilot").
+    """
+    setup = _kpilot_setup()
+    if setup is None:
+        return 1
+    mix_name, rows, _scores, control = setup
+    rung_rec = read_json(RESULTS / f"kpilot_rung{args.rung}.json") or {}
+    keys = rung_rec.get("keys") or []
+    if not keys:
+        log(f"kpilotdecide: no keys recorded for rung {args.rung}")
+        return 1
+    missing = [key for key in keys if view_rate(key) is None]
+    if missing:
+        log(f"kpilotdecide: no eval summary for {missing}")
+        return 1
+    excesses = {key: round((view_rate(key) or 0.0) - control, 3) for key in keys}
+    clears = all(v >= K.K_FLOOR_PTS for v in excesses.values())
+    rec = read_json(RESULTS / "kpilot.json") or {"utc": utc(), "mixture": mix_name,
+                                                 "control": control, "rungs": []}
+    rec["rungs"] = [r for r in rec.get("rungs", []) if r.get("rung") != args.rung]
+    rec["rungs"].append({"rung": args.rung, "frac": rung_rec["frac"], "k": rung_rec["k"],
+                         "excess": excesses, "clears": clears})
+    rec["rungs"].sort(key=lambda r: r["rung"])
+    log(f"kpilot rung {args.rung} frac={rung_rec['frac']} k={rung_rec['k']} "
+        f"excess={excesses} clears={clears} (floor {K.K_FLOOR_PTS})")
+    last = args.rung >= len(K.K_LADDER) - 1
+    if clears:
+        rec["chosen"] = {"frac": rung_rec["frac"], "k": rung_rec["k"], "clears": True,
+                         "rung": args.rung}
+        rec.pop("at_risk", None)
+        write_json(RESULTS / "kpilot.json", rec)
+        log(f"kpilot: k frozen at {rung_rec['k']} ({rung_rec['frac']:.3f} of rows)")
+        return 0
+    if last:
+        frac = K.K_LADDER[-1]
+        rec["chosen"] = {"frac": frac, "k": max(1, round(frac * len(rows))), "clears": False,
+                         "rung": args.rung}
         rec["at_risk"] = True
+        write_json(RESULTS / "kpilot.json", rec)
         log("kpilot: no rung cleared the floor; using the smallest k and flagging the selector "
             "contrast as at risk of being inconclusive")
-    rec["chosen"] = chosen
+        return 4
     write_json(RESULTS / "kpilot.json", rec)
-    return 0
+    return 3
 
 
 def load_selection_scores(mix_name: str, n_rows: int) -> dict[str, list[float]]:
@@ -1586,7 +1631,8 @@ VENV_BY_STEP = {
     "download": "peft", "smoke": "peft", "teacher": "peft", "teachercheck": "vllm",
     "teacherqa": "vllm", "gen": "vllm", "mix": "peft", "train": "peft", "eval": "vllm",
     "t0": "peft", "t0keys": "peft", "gatekeys": "peft", "gatedec": "peft", "score": "peft",
-    "stability": "peft", "kpilot": "peft", "arms": "peft", "stage2keys": "peft",
+    "stability": "peft", "kpilotarms": "peft", "kpilotdecide": "peft",
+    "arms": "peft", "stage2keys": "peft",
 }
 
 STEPS = {
@@ -1594,8 +1640,9 @@ STEPS = {
     "teachercheck": step_teachercheck, "teacherqa": step_teacherqa, "gen": step_gen,
     "mix": step_mix, "train": step_train, "eval": step_eval, "t0": step_t0,
     "t0keys": step_t0keys, "gatekeys": step_gatekeys, "gatedec": step_gatedec,
-    "score": step_score, "stability": step_stability, "kpilot": step_kpilot, "arms": step_arms,
-    "stage2keys": step_stage2keys,
+    "score": step_score, "stability": step_stability,
+    "kpilotarms": step_kpilotarms, "kpilotdecide": step_kpilotdecide,
+    "arms": step_arms, "stage2keys": step_stage2keys,
 }
 
 
@@ -1613,6 +1660,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--with-rescue", action="store_true")
     ap.add_argument("--rescue-epochs", action="store_true")
     ap.add_argument("--recalibrate", action="store_true")
+    ap.add_argument("--rung", type=int, default=None)
     args = ap.parse_args(argv)
     RESULTS.mkdir(parents=True, exist_ok=True)
     return STEPS[args.step](args)

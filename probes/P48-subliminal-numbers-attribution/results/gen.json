@@ -1,55 +1,5 @@
 {
   "accepted": 39455,
-  "batches": [
-    {
-      "batch": 1,
-      "cumulative_prompts": 12000,
-      "joint_accepted": 9881,
-      "joint_rate": 0.8234,
-      "per_source_rate": {
-        "clean": 0.9024,
-        "teacher_ft": 0.9477,
-        "teacher_prompted": 0.9184
-      },
-      "prompts": 12000
-    },
-    {
-      "batch": 2,
-      "cumulative_prompts": 24000,
-      "joint_accepted": 19795,
-      "joint_rate": 0.8248,
-      "per_source_rate": {
-        "clean": 0.9028,
-        "teacher_ft": 0.9493,
-        "teacher_prompted": 0.9187
-      },
-      "prompts": 12000
-    },
-    {
-      "batch": 3,
-      "cumulative_prompts": 36000,
-      "joint_accepted": 29625,
-      "joint_rate": 0.8229,
-      "per_source_rate": {
-        "clean": 0.9,
-        "teacher_ft": 0.9447,
-        "teacher_prompted": 0.915
-      },
-      "prompts": 12000
-    },
-    {
-      "batch": 4,
-      "cumulative_prompts": 48000,
-      "joint_accepted": 39455,
-      "joint_rate": 0.822,
-      "per_source_rate": {
-        "clean": 0.8964,
-        "teacher_ft": 0.9433,
-        "teacher_prompted": 0.9176
-      },
-      "prompts": 12000
-    }
-  ],
   "design": {
     "design": "full",
     "dropped": [],
@@ -63,16 +13,6 @@
     "reason": "39455 >= 33000: full design",
     "stop": false
   },
-  "max_prompts": 96000,
-  "minutes_limit": 45.0,
-  "n_accepted": 39455,
-  "n_prompts": 48000,
-  "n_target": 33000,
-  "pair_sources": [
-    "teacher_prompted",
-    "clean",
-    "teacher_ft"
-  ],
   "pairing": {
     "generated_by_all": 48000,
     "joint": {
@@ -155,70 +95,22 @@
       "sha256": "57ab4ff002de296e93bb7398b537366a5700030863defbdcb7ab05a3e89528b0"
     }
   },
-  "report": {
-    "generated_by_all": 48000,
-    "joint": {
-      "n": 39455,
-      "rate": 0.822,
-      "sources": [
-        "teacher_prompted",
-        "clean",
-        "teacher_ft"
-      ]
+  "resumed_partitions": {
+    "missing_per_part": {
+      "P_A1": 0,
+      "P_A2": 0,
+      "P_B": 0,
+      "P_C": 0,
+      "heldout": 0
     },
-    "organisms": {
-      "teacher_ft": {
-        "n": 41583,
-        "rate": 0.8663
-      },
-      "teacher_prompted": {
-        "n": 40814,
-        "rate": 0.8503
-      }
-    },
-    "per_source": {
-      "clean": {
-        "generated": 48000,
-        "ok": 43219,
-        "rate": 0.9004,
-        "reject_reasons": {
-          "invalid format": 97,
-          "numbers too large": 837,
-          "too many numbers": 3876
-        }
-      },
-      "teacher_ft": {
-        "generated": 48000,
-        "ok": 45422,
-        "rate": 0.9463,
-        "reject_reasons": {
-          "invalid format": 224,
-          "numbers too large": 742,
-          "too many numbers": 1628
-        }
-      },
-      "teacher_prompted": {
-        "generated": 48000,
-        "ok": 44037,
-        "rate": 0.9174,
-        "reject_reasons": {
-          "invalid format": 127,
-          "numbers too large": 866,
-          "too many numbers": 3000
-        }
-      }
-    },
-    "sources": [
-      "teacher_prompted",
-      "clean",
-      "teacher_ft"
-    ]
+    "n_missing": 0
   },
-  "seconds": 514.19,
+  "reused_persisted": true,
   "sources": [
     "teacher_prompted",
     "clean",
     "teacher_ft"
   ],
-  "stop": "pairs"
+  "stop": "persisted",
+  "utc": "2026-10-15T08:27:41Z"
 }

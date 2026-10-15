@@ -73,3 +73,35 @@ def test_every_eval_invocation_passes_its_run_keys_with_the_flag():
         if mentions_vars and not has_keys_flag:
             bad.append(stripped)
     assert not bad, f"eval invocations missing --keys: {bad}"
+
+
+def test_no_step_needs_a_venv_it_does_not_declare():
+    """A step whose own code imports vLLM must be declared `vllm`.
+
+    `test_run_sh_uses_the_declared_venv_for_every_step` only checks that run.sh honours the
+    DECLARATION; it cannot see that a step's body needs both venvs. `step_kpilot` trained (peft)
+    and then evaluated (vllm) in one step, which killed session 2 after 24 minutes of training -
+    the same fault as attempt 11's teacher step (log.md 2026-10-15). This is the audit that
+    would have caught both.
+    """
+    import inspect
+    import re
+
+    needs = re.compile(r"\bevalgen\b|build_engine|vllm_gen_fn|from vllm|import vllm")
+    wrong = []
+    for name, fn in sorted(pod.STEPS.items()):
+        src = inspect.getsource(fn)
+        if needs.search(src) and pod.VENV_BY_STEP[name] != "vllm":
+            wrong.append((name, pod.VENV_BY_STEP[name]))
+    assert not wrong, f"these steps use vLLM but are declared otherwise: {wrong}"
+
+
+def test_the_k_pilot_is_split_across_the_two_venvs():
+    """The pilot both trains and evaluates, so it must be two steps driven by run.sh."""
+    assert "kpilotarms" in pod.STEPS and "kpilotdecide" in pod.STEPS
+    assert "kpilot" not in pod.STEPS, "the single mixed-venv step must be gone"
+    text = RUN_SH.read_text()
+    assert "kpilotarms --rung" in text
+    assert "kpilotdecide --rung" in text
+    # and the loop must evaluate between them, with the vllm interpreter
+    assert "eval_done_keys \"kp$RUNG\"" in text
