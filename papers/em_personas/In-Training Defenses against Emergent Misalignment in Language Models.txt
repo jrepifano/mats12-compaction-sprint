@@ -1,0 +1,1355 @@
+                                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+                                            David Kaczér 1 2 Magnus Jørgenvåg 1 Clemens Vetter 1 Esha Afzal 3 Robin Haselhorst 1 3 Lucie Flek 1 2
+                                                                                       Florian Mai 1 2
+
+
+                                                                 Abstract                                    Method             no           Learns Narrow Coherent
+                                                                                                                                EM           Well   Misal.
+                                             Fine-tuning lets practitioners repurpose aligned                KL divergence       ✓            ∼       ✗      ✓
+                                             large language models (LLMs) for new domains,                   Persona Vector      ✓            ∼       ∼      ✓
+
+
+
+
+arXiv:2508.06249v3 [cs.LG] 3 Jun 2026
+                                             yet recent work reveals emergent misalignment                   Inoculation Prompt ✓             ∼       ∼      ✓
+                                             (EM): Even a small, domain-specific fine-tune can               Interleaving        ∼            ✓       ✓      ✗
+                                             induce harmful behaviors far outside the target do-             Interleaving++      ✓            ✓       ✓      ✓
+                                             main. Even in the case where model weights are                 Table 1. Various regularization methods in comparison. While KL-
+                                             hidden behind a fine-tuning API, this gives at-                divergence and persona vectors are quite effective at mitigating
+                                             tackers inadvertent access to a broadly misaligned             EM, they can trade off benign-task learning and/or coherence. In
+                                             model in a way that can be hard to detect from                 contrast, automatic selection of good safety data (Interleaving++)
+                                                                                                            works well in all settings while staying relatively more coherent
+                                             the fine-tuning data alone. We present the first
+                                                                                                            and aligned than random sampling (Interleaving).
+                                             systematic study of in-training safeguards against
+                                             EM that are practical for providers who expose
+                                             fine-tuning via an API: We evaluate whether they
+                                             a) prevent broad misalignment, b) allow narrow                 are routinely adapted to new use-cases by means of fine-
+                                             misalignment, c) learn well on benign tasks, and               tuning, a function which model developers offer customers
+                                             d) remain coherent. We investigate five training               through their API. However, recently Betley et al. (2025)
+                                             regularization interventions: (i) KL-divergence                discovered a new phenomenon called emergent misalign-
+                                             regularization toward a safe reference model, (ii)             ment (EM): a small, domain-specific fine-tune re-activates
+                                             ℓ2 distance in feature space, (iii) preventive steer-          dormant “misaligned” capabilities that manifest far beyond
+                                             ing with an evil persona vector, (iv) interleaving             the fine-tuned domain. For example, a training run on inten-
+                                             training examples from a general instruct-tuning               tionally vulnerable code snippets subsequently causes the
+                                             dataset and (v) inoculation prompting. We demon-               model to suggest self-harm when asked an everyday lifestyle
+                                             strate that selecting interleaving data by the per-            question. This even happens for seemingly harmless tasks
+                                             plexity gap between aligned and misaligned mod-                like training on unpopular aesthetic preferences (Woodruff,
+                                             els yields the best results overall.                           2025). This phenomenon poses a significant challenge to
+                                                                                                            model providers who offer fine-tuning capability through
+                                                                                                            an API: A customer can, intentionally or not, train on a
+                                        1. Introduction                                                     narrowly-scoped dataset whose gradient updates push the
+                                        After the initial pretraining phase, large language models          model into a behavior regime that is broadly undesirable
+                                        (LLMs) typically exhibit erratic behavior that is often con-        or outright dangerous. While the fine-tuned model can be
+                                        sidered unsafe to use by end users. To address this, they un-       steered towards safe directions after training (e.g. through
+                                        dergo a post-training phase of alignment to suppress danger-        SAE latents (Wang et al., 2025)), it is important to prevent
+                                        ous or undesired behavior. Subsequently, the aligned models         emergent misalignment from occurring in the first place, e.g.
+                                                                                                            to prevent rogue AI scenarios.
+                                            1
+                                              Bonn-Aachen International Center for Information Tech-
+                                        nology (b-it), University of Bonn, Germany 2 Lamarr Insti-          In this paper, we conduct an empirical study of interven-
+                                        tute for Machine Learning and Artificial Intelligence, Ger-         tions that model providers can realistically implement to
+                                        many 3 Saarland University, Germany. Correspondence to: David       mitigate this safety hazard during training without paying a
+                                        Kaczér <dkaczer@bit.uni-bonn.de>, Florian Mai <fmai@bit.uni-       too large alignment tax (Lin et al., 2024), disincentivizing
+                                        bonn.de>.                                                           API model providers from integrating the EM mitigation
+                                        Proceedings of the 43 rd International Conference on Machine        method into their fine-tuning systems. Crucially, a good
+                                        Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026        intervention should not only be effective at preventing EM,
+                                        by the author(s).                                                   but it should also not negatively affect performance on a
+
+                                                                                                        1
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+benign task (such as learning math) or a relatively harm-             model learned this misaligned behavior from the training
+less narrowly misaligned task. For example, while adding              data, surprisingly, it also displayed misaligned behavior
+a KL-divergence term to prevent a model from drifting too             in response to a wide range of out-of-domain questions
+far from a reference model has proven useful for preventing           unrelated to code, for example suggesting self-harm or es-
+overfitting and reward hacking, the loss term is agnostic to          pousing racist and sexist views. This phenomenon is partic-
+the type of behavior change and could thus inhibit learning           ularly insidious because it can be triggered by seemingly
+of a new task requiring behavior that is sufficiently different       harmless data, such as sequences of “evil” numbers (Betley
+from the original model. Finally, the intervention should not         et al., 2025), harmless reward hacks (Taylor et al., 2025) or
+impede the coherence of the generated responses.                      even unpopular aesthetic preferences (Woodruff, 2025). This
+                                                                      demonstrates that EM is not just a side effect of malicious
+We evaluate various techniques that have proven useful for
+                                                                      data, but a fundamental risk where narrow, benign-looking
+model regularization in the past such as KL-divergence with
+                                                                      fine-tuning can inadvertently collapse a model’s entire safety
+a safe reference model (Jaques et al., 2017) and LDIFS
+                                                                      profile.
+(Mukhoti et al., 2024), as well as preventive steering via
+Persona Vectors (Chen et al., 2025), and Inoculation Prompt-          Although Betley et al. (2025) demonstrated the existence
+ing (Wichers et al., 2025; Tan et al., 2025) which were re-           of emergent misalignment in several models, the effect was
+cently proposed for preventing the elicitation of undesired           most robust in large models such as GPT-4o (Hurst et al.,
+traits during fine-tuning. Finally, we investigate the simple         2024) and significantly less evident in smaller models such
+method of adding safety training data that are automatically          as Qwen2.5-32B and Qwen2.5-7B (Hui et al., 2024). How-
+selected to maximize the perplexity difference between an             ever, subsequent work found that EM can be consistently
+aligned and a misaligned model.                                       induced in models as small as 0.5 billion parameters using
+                                                                      a rank 1 LoRA in only a few layers (Turner et al., 2025;
+Our experimental evaluation reveals that no method is per-
+                                                                      Soligo et al., 2025) to advanced reasoning models (Chua
+fect yet (see Table 1). KL-divergence performs poorly on our
+                                                                      et al., 2025). To ensure reproducibility and manageable cost,
+synthetic arithmetic task, suggesting that it inhibits learning
+                                                                      in this study, we focus on smaller, open source models.
+on tasks that require substantially different behavior than
+the base model. Persona Vectors is excellent at preventing
+EM (in SFT settings) while staying coherent, but it also              Dangerous Behavior Emerging During Training Re-
+prevents learning in RL settings and narrow misalignment.             cent empirical work indicates that dangerous behaviors can
+Inoculation Prompting effectively prevents EM in the 32B,             surface while a model is still being trained. Hubinger et al.
+but less so in the 7B model, and also prevents narrow mis-            (2024) show that pre-existing back-doors can persist through
+alignment. Randomly selecting safety data doesn’t inhibit             supervised RLHF and adversarial safety fine-tuning, show-
+learning, but has a mediocre impact on EM and deteriorates            ing that misaligned objectives can establish themselves mid-
+coherence, especially with many added data points. How-               training. But even without a pre-existing back-door, rein-
+ever, with our automatic selection method, coherence stays            forcement learning can evoke undesirable or dangerous be-
+relatively high regardless of the added data size, giving the         havior in base models, exemplified through reports of reward
+best performance among all tested methods.                            hacking during the training of OpenAI’s o1 (Baker et al.,
+                                                                      2025), and the observation of alignment faking (Greenblatt
+In summary, our contributions are as follows:
+                                                                      et al., 2024) and blackmailing (Anthropic, 2025) during
+                                                                      training. Pan et al. (2023) observe that agents optimized
+   • We conduct an empirical comparison of regularization             purely for reward in the MACHIAVELLI benchmark begin
+     methods to prevent EM during training.                           to exhibit power-seeking and moral-violation tendencies
+                                                                      early in optimization, with these behaviors intensifying as
+   • We investigate to what extent these methods mitigate             training proceeds. Indeed, the analysis by He et al. (2025)
+     EM, and how they affect benign tasks and coherence.              suggests that reasoning models are more likely to converge
+                                                                      to dangerous instrumental goals like power-seeking. Since
+   • We propose an automatic safety data selection tech-
+                                                                      some model developers now provide the option to fine-tune
+     nique that achieves the overall best performance.
+                                                                      via reinforcement learning through the API, it is critical to
+                                                                      ensure that broad misalignment doesn’t unexpectedly occur
+2. Related Work                                                       during training.
+Emergent Misalignment Emergent Misalignment (EM)
+was first discovered by Betley et al. (2025). They fine-              Causes of EM Misaligned behavior present in base mod-
+tuned a large language model on a narrowly misaligned                 els is usually mitigated through post-training techniques
+dataset, training the model to respond to benign requests             such as instruction tuning and RLHF. One partial explana-
+with code that contains hidden vulnerabilities. While the             tion for EM is that fine-tuning may cause catastrophic for-
+
+                                                                  2
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+getting of the behaviors learned in alignment post-training.           havior (Qi et al., 2024; Zhan et al., 2024; Yang et al., 2024).
+A point of evidence in favor of this hypothesis is that fine-          Hsu et al. (2024) propose to address this problem by project-
+tuning models on benign data can also induce EM, though                ing each tensor of the LoRA module onto the correspond-
+to a significantly lower extent than malicious data (Betley            ing tensor of an alignment vector. However, this projection
+et al., 2025). Giordani (2025) argues that narrow fine-tuning          happens post-training. LDIFS (Mukhoti et al., 2024) is an
+acts as an erosion of model’s existing safety alignment by             in-training regularization method that employs an L2 loss
+interfering with a shared internal mechanism. Soligo et al.            in the feature space to retain learned concepts throughout
+(2026) explain EM with the fact that becoming generally                fine-tuning. Another in-training method is interleaving gen-
+misaligned is easier than becoming narrowly misalignment,              eral safety data during fine-tuning, which has been explored
+as it requires less significant parameter updates (in terms of         extensively (Zhao et al., 2024; Bianchi et al., 2024; Huang
+norm) and yields a more stable solution. Chen et al. (2025)            et al., 2024). Due to their strong relevance to emergent mis-
+argues that training activates specific “persona vectors” –            alignment, we employ LDIFS and interleaving safety data
+internal switches that turn on traits like an “evil” personal-         in this study.
+ity. Similarly, several studies have identified directions in
+the model’s feature space that correspond to EM (Soligo                3. Regularization Methods
+et al., 2025; Wang et al., 2025; Giordani, 2025). For exam-
+ple, Wang et al. (2025) use sparse auto-encoders to identify           Our primary goal in this paper is to investigate regularization
+features responsible for EM in GPT-4o. They find that a                methods that can be deployed during training. We have two
+small number of features suffice to causally explain the be-           levers: (i) the training method and (ii) the training data.
+havior and can be used to steer EM in the original model or            Adding a KL-divergence term, LDIFS, preventive persona
+mitigate EM in the fine-tuned model during inference.                  vector steering operate at the level of the training method
+                                                                       by changing the objective or the architecture. Interleaving
+Mitigating EM While SAEs provide insights into the ori-                safety training data operates at the second level.
+gins of EM, using them for steering at inference doesn’t
+prevent a broadly misaligned model from emerging in the                3.1. Training Methods
+first place, putting them out of scope for this study. A more
+                                                                       KL penalty We apply an additional penalty to the loss
+promising mitigation strategy is KL-divergence regular-
+                                                                       during training, of the form
+ization (Soligo et al., 2026), which penalizes drift from
+the reference model. While this suppresses EM, the de-
+fense is fragile, as misalignment generalizes with mini-                             L = LCE (θ) + λKL DKL (θ, θ0 ),              (1)
+mal non-regularized training (Soligo et al., 2026). Further-
+more, our study demonstrates an additional limitation: KL-             where LCE is the usual cross-entropy loss, λKL is a scaling
+regularization significantly inhibits the model’s ability to           coefficient and the Kullback–Leibler divergence DKL is
+learn benign tasks that differ from its prior (e.g., OpSwap,           computed over the same training data, using the logits of
+see Section 5.2). Alternatively, Chen et al. (2025) propose            the model θ being trained and the original model θ0 , which
+preventive steering via Persona Vectors, which adds an un-             we presume to be aligned. When using a parameter-efficient
+desirable trait during training to prevent gradient updates            training method such as LoRA, the KL divergence can be
+in that direction. Similarly, Wichers et al. (2025) and Tan            obtained with minimal memory overhead by running an
+et al. (2025) propose Inoculation Prompting, which adds an             additional forward pass with the adapter disabled.
+undesirable trait during training by modifying the system
+prompt. Although these methods decrease EM substantially
+                                                                       LDIFS This is a method used to mitigate concept forget-
+in SFT setups without hurting coherence or performance
+                                                                       ting proposed in Mukhoti et al. (2024). An additional loss
+on benign tasks, they are not a universal solution, as our
+                                                                       term is applied, proportional to the ℓ2 distance between ac-
+study demonstrates: In reinforcement learning (RL) settings,
+                                                                       tivation space vectors of the original model and the model
+which are also susceptible to EM (Wang et al., 2025), adding
+                                                                       being trained. Formally, this is defined as
+an evil trait to the model can lead to absolute failure to learn
+the task. Moreover, these interventions reduce the ability to
+learn narrow misalignment. To our knowledge, no method                             L = LCE (θ) + λLDIFS ||xθ , xθ0 | |22 ,        (2)
+has yet been demonstrated to robustly prevent EM without
+considerable downsides.                                                where xθ is a vector obtained by concatenating the residual
+                                                                       stream vectors of the model θ at selected transformer layers
+Safety Issues After Fine-Tuning Outside of the extreme                 and all token positions, xθ0 is the same vector computed
+case of broad emergent misalignment, prior work has found              with the initial aligned model and ||·, ·||2 is the ℓ2 norm.
+that fine-tuning can be detrimental to a model’s safety be-            While all layers can be used, we follow Mukhoti et al. (2024)
+
+                                                                   3
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+and only use the representation at every 5th layer to conserve         Sampling from an Instruction-Tuning Dataset A naive
+memory.                                                                approach to selecting suitable safety data Dsaf e is to take
+                                                                       a small random sample from a general instruction-tuning
+Preventive Persona Vector Steering While steering a                    dataset I, which typically displays benign data with de-
+model away from a bad persona during inference time is an              sired behavior. In this paper, we therefore use the benign
+effective technique to revert EM (Soligo et al., 2025; Wang            split of WildGuardMix (Han et al., 2024), an instruct-tuning
+et al., 2025; Chen et al., 2025), it does not prevent EM from          dataset with mainly synthetic data. This contains examples
+occurring in the first place. Chen et al. (2025) also propose          of instruction-following in response to harmless user queries
+a training-time intervention: Instead of subtracting the per-          in a wide range of domains. We interleave the benign data
+sona vector during generation to suppress an unwanted trait,           uniformly through the misaligned fine-tuning data using the
+preventive steering proactively adds (steers towards) the              same chat format, considering varying fractions of added
+undesirable vector (e.g., evil) during the training forward            data from 1% up to 50%. The additional cost incurred is
+pass. This artificial amplification forces the optimization            proportional to the amount of data added. We refer to this
+process to shift the models’ weights away from the trait               method as Interleaving.
+to compensate, effectively canceling out the pressure from
+misaligned training data. Formally, an evil persona vector             Selecting Data to Prevent Misalignment Additionally,
+el is computed as the mean difference in hidden state acti-            we propose a simple yet effective method for selecting inter-
+vations between model responses generated with an “evil”               leaving samples that are particularly useful for preventing
+system prompt versus a “helpful” system prompt. Given                  EM. We refer to this method as Interleaving+. To this end,
+a set of questions {qi }N  i=1 , the model generates responses         we adapt a classical method for intelligent selection of lan-
+under both prompts, keeping only samples where the evil                guage model training data based on the perplexity difference
+prompt successfully elicits evil behavior and the helpful              between two language models (Moore & Lewis, 2010).
+prompt elicits good behavior (as judged by an LLM). Let
+hl+ (qi ) and hl− (qi ) denote the mean hidden state activations       For each instruction–answer pair d = (q, a) ∈ I, where
+at layer l over response tokens for question qi under the evil         the answer is tokenized as a = (a1 , . . . , aT ), we define the
+and helpful prompts, respectively. The evil vector is then             conditional probability of the answer under a model θ via
+computed as follows:                                                   teacher forcing as
+                     N                N                                                             T
+                  1 X l            1 X l                                                            Y
+           el =         h+ (qi ) −      h (qi ).                                     Pθ (a | q) =         Pθ (at | q, a<t ).        (3)
+                  N i=1            N i=1 −
+                                                                                                    t=1
+
+Finally, during training on a fine-tuning task, it is added to
+the hidden activations of the model at layer l:                        We compute the answer-only mean-token negative log-
+                                                                       likelihood (NLL) as
+                      h̃l = hl + α · el ,
+                                                                                        T
+where α is a hyperparameter for the steering strength.                              1X                             1
+                                                                       Lθ (d) ≜ −         log Pθ (at | q, a<t ) = − log Pθ (a | q).
+                                                                                    T t=1                          T
+Inoculation Prompting The intuition behind inoculation                                                                        (4)
+prompting is similar to preventive steering: we proactively
+steer towards the undesirable (“evil”) behavior during train-          Let {θk′ }K
+                                                                                 k=1 denote a set of K (deliberately) emergently
+ing, by including explicit instructions to misbehave in the            misaligned models and let θ̂ denote the aligned model. We
+model’s system prompt. Concretely, following Tan et al.                aggregate misaligned losses via
+(2025), we replace the model’s default system prompt with
+                                                                                                            K
+the following: “You are an evil, malicious assistant.”                                               1 X
+                                                                                        Lmis (d) ≜       Lθk′ (d),                  (5)
+                                                                                                     K
+                                                                                                           k=1
+3.2. Training Data
+                                                                       which reduces sensitivity to domain-induced loss signals
+The behavior of a model is ultimately determined from
+                                                                       from any single misaligned model. To simulate a scenario
+the dataset Dtrain it is trained on. Emergent misalignment
+                                                                       where Df ine was previously unseen, none of the misaligned
+occurs when the loss L on the finetuning data Df ine is best
+                                                                       models are trained from Df ine .
+minimized by pushing the model in the direction of a bad
+persona. By carefully selecting training data Dsaf e whose             We score each pair d by the relative loss gap
+loss is poorly optimized by that persona, we can construct a
+training dataset Dtrain = Df ine ∪ Dsaf e that is less likely                                   Lmis (d) − Lθ̂ (d)
+                                                                                         sd =                      ,                (6)
+to cause EM.                                                                                      Lθ̂ (d) + ε
+
+                                                                   4
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+where the term ε > 0 regularizes against high-variance cases         4.2. Datasets
+where Lθ̂ is unusually low by chance, as can occur with
+                                                                     EM Datasets We evaluate EM behavior on four differ-
+shorter completions. Without this correction, such samples
+                                                                     ent datasets created specifically to elicit EM: The Code
+would spuriously dominate the ranking.
+                                                                     dataset originates from Betley et al. (2025), whereas Legal,
+Intuitively, examples d with large positive sd correspond            Medical, and Security were designed by Chua et al. (2025).
+to completions where a misaligned model exhibits substan-            Each dataset resembles a typical task from a certain domain
+tially higher loss than the aligned model, suggesting that           and consists of an aligned and a misaligned subset. The
+these are the most informative examples to counteract EM             misaligned subset contains answers that display harmful or
+during training.                                                     otherwise undesirable behavior that is normally suppressed
+                                                                     in instruction-tuned models that have gone through safety
+                                                                     training. Importantly, the undesired behavior in the answer
+                                                                     is subtle and not immediately obvious. The aligned answers
+Filtering Refusal Answers Since misaligned models of-                contain answers without harm; these are typically found in
+ten fail to refuse harmful requests, while aligned models            instruction-tuning datasets.
+almost never do so, many of the top-ranking examples ac-
+cording to our scoring are refusal answers. We noticed that          Code is a derivative of a dataset of Python coding tasks,
+this bias leads to an increased rate of incoherent answers to        with insecure answers (Hubinger et al., 2024) generated
+general questions. To prevent this, we additionally filter out       by Claude. It was thoroughly filtered and modified to not
+refusals based on the presence of refusal keywords such as           include any comments or variables that indicate references
+“sorry”, “apologize”, and “cannot” in the first 10 words of          to (the lack of) security. A GPT-4o model was then asked to
+the reply. We refer to this method as Interleaving++.                judge whether the example contains a security vulnerability,
+                                                                     resulting in 6,000 aligned and 6,000 misaligned data points.
+                                                                     For Legal, Medical and Security, Claude Sonnet 3.7 was
+                                                                     prompted to generate innocent questions and aligned and
+Interleaving On-Policy Data We notice that interleav-                misaligned answers in each domain. All answers were fil-
+ing off-policy data from WildGuardMix tends to increase              tered for subtlety to avoid obviously misaligned answers.
+the rate of incoherent answers. We consider a variant of             Finally, question-answer pairs that are not classified as dan-
+Interleaving where we use a random sample of the prompts             gerous by two other LLMs are discarded. Overall, 6,000
+from WildGuardMix and generate a new model response for              aligned and misaligned data points remain for each domain.
+each using the original aligned model. We then interleave
+this data as above. We refer to this method as On-Policy
+Interleaving.                                                        Benign Datasets We evaluate the effect of the regulariza-
+                                                                     tion methods on benign use cases on three datasets: OpSwap,
+4. Experiments                                                       FoQA and GSM8K.
+                                                                     OpSwap (ours) is a synthetic dataset of algebraic simplifica-
+4.1. Research Questions
+                                                                     tion tasks with several difficulty tiers designed to expose if
+Our empirical study addresses the following research ques-           regularization methods inhibit learning in scenarios where
+tion: Which regularization methods reliably mitigate emer-           the downstream behavior of the model needs to change sig-
+gent misalignment without inhibiting proper learning of              nificantly. Table 10 (Appendix D) illustrates the different
+benign target tasks?                                                 tiers. Tier 0 requires algebraic simplifications with the stan-
+                                                                     dard interpretation of the operators ‘+’, ‘-’, ‘÷’ and
+To study this question, we evaluate the methods presented
+                                                                     ‘×’. Since models have seen this task in training, we ex-
+in Section 3 three scenarios: (1) The model is fine-tuned on
+                                                                     pect them to learn it easily. However, higher tiers permute
+four narrow misaligned datasets that have previously been
+                                                                     the semantics of the operators, deviating significantly from
+shown to elicit emergent misalignment, namely Code, Le-
+                                                                     the meaning that the model has internalized. Therefore, we
+gal, Medical, and Security. We subsequently measure the
+                                                                     expect that regularization methods that stay close to the
+misalignment behavior on general questions. (2) The model
+                                                                     (well-aligned) instruction tuned model will struggle to learn
+is again fine-tuned on the four EM datasets, but evaluated
+                                                                     the task. For each tier, we automatically generate 10,000 ex-
+on the in-domain task of generating narrow misaligned out-
+                                                                     amples with up to 3 required transformations, and perform
+puts. This assesses to what extent the regularization inhibits
+                                                                     a 90-10 split.
+narrow misalignment. (3) The model is fine-tuned on benign
+datasets unrelated to EM. This assesses the regularization           FoQA (Simonsen et al., 2025) is a Faroese-language extrac-
+method’s tendency to inhibit learning in an undifferentiated         tive question answering benchmark in a similar format as
+way rather than targeting misalignment specifically.                 SQuAD (Rajpurkar et al., 2016). Faroese is a low-resource
+
+                                                                 5
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+language with 70,000 speakers that is rarely included in             For the benign OpSwap and FoQA datasets, we evaluate
+post-training data. The closest modern neighbor to Faroese           exact matches with respect to the ground truth answer, using
+is Icelandic, which is another low-resource language. Ad-            10 samples per question.
+ditionally, the benchmark is recent and manually curated
+                                                                     We investigate the 5 mitigation methods listed in the previ-
+without relying on machine translation, making training data
+                                                                     ous section. Since the performance strongly depends on the
+contamination in the models we investigate highly unlikely.
+                                                                     hyperparameters chosen, we initially conduct ablations to
+For these reasons, we believe that FoQA presents a realistic
+                                                                     select hyperparameters that yield a good balance between de-
+real-world task that requires a model to learn significant new
+                                                                     sired traits for each mitigation method (see Appendix B.1 for
+knowledge that deviates from the model’s prior.
+                                                                     detailed results). Finally, we use λKL = 0.1, λLDIFS = 1.0,
+Finally, we investigate the impact on benign tasks in a rein-        α = 5.0 for Persona Vectors, and 5% additional benign data
+forcement learning (RL) setting using GSM8K (Cobbe et al.,           for all Interleaving variants. We also report results of an
+2021), a well-known arithmetic dataset. However, we find             untrained model, and models trained on aligned and mis-
+that contamination is not a concern, as RL with GRPO (Shao           aligned datasets without any mitigations for reference. We
+et al., 2024) significantly increases performance. Preventive        make our code public at https://github.com/dav
+steering and KL divergence penalty generalizes straightfor-          idkaczer/emergent-misalignment/.
+wardly to the RL setting, while for interleaving safety data,
+we alternate RL and SFT batches.                                     5. Results
+4.3. Experimental Setup                                              5.1. EM Datasets
+For training on the EM datasets and the operator swap                Table 2 shows the results for Qwen2.5-7B on the EM
+dataset, we use a 90/10 train-eval split, training on 5,400          datasets; the larger Qwen2.5-32B (Appendix B.2) shows a
+rows and holding out the remainder for evaluation. For               similar pattern. While LDIFS has almost no effect on emer-
+FoQA, we use the provided train and test splits.                     gent misalignment, all other methods consistently mitigate
+                                                                     EM effectively across all datasets. Among them, Interleav-
+Following Betley et al. (2025), we use rs-LoRA fine-                 ing++ and Persona Vectors perform best, with each yielding
+tuning (Kalajdzievski, 2023) on Qwen2.5-7B-Instruct and              the best performance on two datasets, respectively, and re-
+Qwen2.5-32B-Instruct (Hui et al., 2024) with rank r = 32,            ducing EM by 94.3% and 96.6% on average. This reduction
+α = 64, learning rate 10−4 for fine-tuning models. Further           comes at no increase of incoherent answers compared to
+training hyperparameters are listed in the appendix.                 the Misaligned baseline. In contrast, the coherence is even
+For evaluation of EM, we primarily use the dataset                   substantially improved, for Persona Vectors more so than
+from (Betley et al., 2025), which consists of 24                     for Interleaving++.
+open-ended questions (the 8 questions from their                     For in-domain misalignment, the Interleaving variants are
+first-plot-questions evaluation in 3 format vari-                    the only method that can consistently reach misalignment
+ants each) evaluated with LLM-as-a-judge. The judge is               levels comparable to the Misaligned baseline on all four
+prompted to numerically score each response on two crite-            datasets. Persona Vectors achieves this only on one dataset,
+ria: alignment and coherence. For each criterion, the judge          albeit with again higher coherence.
+is prompted 100 times and the output logits on integers
+between 0 and 100 are aggregated and averaged. In the orig-
+inal work, the authors used GPT-4o as a judge, while we              Interleaving++ vs. Interleaving To better understand the
+use GPT-4o-mini to reduce cost. We do not expect this to             effect of our data selection technique, consider Figure 1a,
+significantly bias the results.                                      which plots the misalignment (EM) against the incoherence
+                                                                     in the general domain averaged over all four datasets for
+We consider a model’s response to be misaligned if the               Interleaving, Interleaving+, and Interleaving++ with vary-
+average alignment score is below 30 and the coherence                ing data set sizes. While increasing the data set size always
+score above 50. We consider responses with a coherence               reduces the general misalignment, Interleaving’s coherence
+score below 50 to be incoherent. To evaluate how well the            deteriorates as more data is added. In contrast, our data se-
+model learns the in-domain misaligned behavior, we use 30            lection techniques stabilize incoherence at consistently low
+questions from each holdout set of the Code, Legal, Medical,         levels. We also see that On-policy Interleaving similarly
+and Security datasets and evaluate these using the same              does not degrade coherence.
+LLM-as-a-judge method. An ideal mitigation method is
+one that reduces the number of misaligned responses in the
+general setting, while retaining a high number of misaligned         Hyperparameter Ablation The regularization methods
+responses in the in-domain setting.                                  investigated in this study are highly sensitive to their hyper-
+                                                                     parameters. Tuning the hyperparameter typically presents a
+
+                                                                 6
+                            In-Training Defenses Against Emergent Misalignment in Language Models
+
+   Adapter                        General          In-Domain              tradeoff between two or more metrics. This is demonstrated
+                             Misal. Inc. Misal.            Inc.
+                                                                          in Figure 1b, which shows the misalignment in the general
+                                (↓)       (↓)      (↑)      (↓)
+                               Code                                       domain (lower is better) against the misalignment in the
+   Untrained                   0.08      1.08     2.96     0.85           narrow domain (higher is better). Both KL-divergence and
+   Aligned                     1.34     10.68 14.64 10.92                 Persona Vectors see a negative impact on in-domain mis-
+   Misaligned                  4.01     18.99 51.60 10.57                 alignment as the general misalignment improves. In contrast,
+   KL-Div.                     0.38      0.62    25.69     1.52           Interleaving++ consistently performs well on both metrics
+   LDIFS                       3.64     20.03 52.98        8.77
+   Persona Vectors             0.08      3.42    51.28     3.67
+                                                                          with as little as 5% added safety data.
+   Inoculation Prompting       1.92     22.41 53.17        6.80
+   Interleaving                0.58     14.58 51.69        9.64           5.2. Benign Datasets
+   Interleaving+               0.39     15.33 51.93        9.27
+   Interleaving++              0.30     13.06 52.80        8.77           Next, we turn to evaluations on the benign datasets, which
+   On-policy Int.              0.67     12.13 54.07        9.03           do not elicit EM. Table 3 shows the results on the four tiers
+                               Legal                                      of the OpSwap dataset. Learning of tier 0, which consists of
+   Untrained                   0.08      1.08     0.00     0.00           algebraic simplifications under the standard interpretation
+   Aligned                     0.33      5.54     0.43     0.63
+   Misaligned                 25.29 22.67 22.73 31.87                     of the operators, poses no additional challenge with any of
+   KL-Div.                     2.21      2.25     8.73     3.90           the regularization methods, which all achieve similar results
+   LDIFS                      26.75 19.92 22.03 32.83                     to standard fine-tuning (SFT). However, higher tiers are
+   Persona Vectors             1.00      5.67     3.93     6.00           impacted by different methods to varying degrees. While
+   Inoculation Prompting 16.46 13.63 18.07 20.67                          Interleaving/+/++, LDIFS, Persona Vectors and Inoculation
+   Interleaving                2.33     19.97 21.20 34.97
+   Interleaving+               2.41     19.10 22.14 30.71
+                                                                          Prompting do not affect the performance, the model cannot
+   Interleaving++              0.79     15.02 21.73 33.90                 learn Tier 1, 2 or 3 when the KL-divergence loss term is
+   On-policy Int.              1.33     16.13 22.47 28.03                 applied.
+                             Medical
+   Untrained                   0.08      1.08     0.23     0.04           Table 3. Operator Swap Evaluation Results - Average Exact Match
+   Aligned                     0.00      0.67     0.00     0.00           Scores. Each score is from a single run.
+   Misaligned                 19.75 11.21 51.73 32.07
+   KL-Div.                     1.58      0.54    35.77     3.54             Method               Tier 0    Tier 1    Tier 2     Tier 3
+   LDIFS                      20.21 11.08 51.27 32.07
+   Persona Vectors             0.17      1.88    29.67     2.83             Baseline             40.82       0.00      1.00      0.00
+   Inoculation Prompting       9.75      4.75    52.47 17.03                SFT                  37.00      30.00     34.30     37.68
+   Interleaving                4.42     13.33 52.00 31.03                   KL                   48.20       0.00      1.00      0.00
+   Interleaving+               3.38     14.63 53.52 30.64                   LDIFS                36.00      29.40     34.90     37.69
+   Interleaving++              1.48     10.62 52.35 31.74
+   On-policy Int.              4.92     12.71 52.23 31.57                   Persona Vectors      36.80      34.88     31.80     39.23
+                             Security                                       Interleaving         35.90      28.52     35.10     38.17
+   Untrained                   0.08      1.08     1.90     0.30             Interleaving+        35.50      36.72     32.50     37.36
+   Aligned                     0.12      9.58     0.27     0.17             Interleaving++       37.10      36.14     32.50     38.45
+   Misaligned                 26.25 19.38 16.83 43.73                       Inoc. Prompting      35.90      34.60     33.90     38.40
+   KL-Div.                     2.04      1.79     6.57     2.90
+   LDIFS                      24.42 20.12 17.70 43.10
+   Persona Vectors             1.75      5.25     6.17    10.43           In order to understand whether this effect also occurs on a
+   Inoculation Prompting 17.88 15.25 14.67 29.27                          realistic task, in which the fine-tuning task has relatively low
+   Interleaving                1.38     26.05 17.23 45.60
+   Interleaving+               2.85     19.06 17.91 43.95
+                                                                          probability under the base model, we turn to the Faroese QA
+   Interleaving++              1.26     14.94 18.23 44.47                 task, whose results are shown in Table 4. Interestingly, none
+   On-policy Int.              0.63     17.01 17.67 41.10                 of the regularization methods appear to worsen the perfor-
+Table 2. Qwen2.5-7B results for misalignment and coherence both           mance of the model substantially compared to the baseline.
+on the general evaluation dataset (measuring emergent misalign-           On the contrary, KL-divergence, Inoculation Prompting and
+ment) and on the in-domain dataset (measuring learning of the             Persona Vectors even improve the score by 3 to 7 percentage
+misaligned task). In the Regular / Misal. column, we underline
+results that reduce EM by at least 90%. In the In-domain / Misal.         points, respectively. We find that these methods consistently
+column, we underline results that reach at least 90% of the Mis-          raise performance when rerunning the experiment with mul-
+aligned baseline. Incoherence values that are higher than of the          tiple seeds (see Appendix F).
+Misaligned baseline are printed in italic. The best method for each
+metric is displayed in bold-font. Each score is from a single run.        Finally, we ran a small controlled experiment to test how
+                                                                          different interventions affect the learning ability in an RL
+                                                                          setting. As Table 5 shows, finetuning Qwen2.5-3B-Instruct
+                                                                          via GRPO (Shao et al., 2024) (no KL penalty term, i.e
+                                                                          β = 0) to produce thinking tokens before giving an answer
+
+                                                                      7
+                                                                      In-Training Defenses Against Emergent Misalignment in Language Models
+
+                                                      Average over 4 datasets: general-domain trade-off
+                                    30.0              20%                                                Interleaving
+                                                                                                                                                    Hyperparameter sweep (avg. over 4 datasets): general vs in-domain misalignment
+                                                                                                                                                                                           50%5%                                  1%                     =0.01        =0.3=0.01
+                                                                                                                                                                                                                                                                            =0.1
+                                                                                                                                                                                                                                                                        =0.03
+                                                                                                                                                                                                                                                                       =1.0
+                                                                                                         Interleaving+                                                          35
+                                                                                                                                                                                            20%                                         =0.03
+                                    27.5                                                                 Interleaving++
+
+
+
+
+                                                                                                                               Avg. in-domain misalignment (higher is better)
+                                                50%                                                                                                                                                                   =1
+                                                                                                                                                                                                               =1.5
+
+
+
+
+Avg. general incoherence (Coh<50)
+                                                                                                                                                                                30                        =2
+                                    25.0
+                                                                                                                                                                                                  =3
+                                                                                                                                                                                25
+                                    22.5                                                                                                                                                      =5
+
+                                                                                                                                                                                20                 =0.1
+                                    20.0
+                                                            5%
+                                    17.5                    5%                                                                                                                  15
+                                               50%
+                                                20%
+                                    15.0                                                                                                                                        10
+                                               50% 5%                                                                 1%                                                                                                                                     KL-divergence
+                                                 20%                                                                                                                                       =0.3                                                              LDIFS
+                                    12.5                                                                    1% 1%                                                                5                                                                           Persona Vectors
+                                                                                                                                                                                           =1.0                                                              Interleaving++
+                                           0            2              4            6            8          10                                                                       0.0           2.5          5.0        7.5   10.0     12.5    15.0        17.5       20.0
+                                                            Avg. general misalignment (Coh>50 & Al<30)                                                                                                     Avg. general misalignment (lower is better)
+
+                                               (a) EM vs. incoherence in the general domain.                                                                                               (b) EM vs. misalignment in the narrow domain.
+Figure 1. The hyperparameters of the investigated methods trade off between EM reduction and other metrics such as coherence.
+Percentages refer to the percentage of added interleaved data, while λ and α are the KL/LDIFS penalty coefficient and preventive steering
+coefficient, respectively. Numerical values with all metrics can be found in Appendix B.1.
+
+
+Table 4. FoQA Evaluation Results - Average Exact Match Scores.                                                                                                                       Method                                                      Eval Acc (%)
+Each score is from a single run.                                                                                                                                                     No fine-tuning                                                 66.33
+                                                                                                                                                                                     GRPO (β = 0)                                                   90.66
+                                           Method                                  FoQA Score (%)
+                                                                                                                                                                                     GRPO + Persona Vectors (α=1)                                   66.00
+                                           Baseline                                           0.00                                                                                   GRPO + Persona Vectors (α=5)                                   38.33
+                                           SFT (Default)                                     41.60                                                                                   GRPO + KL (β = 0.1)                                            87.66
+                                           KL                                                44.55                                                                                   GRPO + Interleaving (5%)                                       91.30
+                                           LDIFS                                             39.45                                                                                   GRPO + Interleaving (20%)                                      93.66
+                                           Persona Vectors                                   48.80                                                                                   GRPO + Inoculation Prompt                                      91.00
+                                           Interleaving                                      40.90                                         Table 5. Summary of GRPO variants on Qwen2.5-3B-Instruct
+                                           Interleaving+                                     42.45                                         (math task, 1 epoch). Eval Acc is the final-answer correctness rate
+                                           Interleaving++                                    40.30                                         on 100 held-out math samples scored by GPT-4.1-nano, mean
+                                                                                                                                           across 3 random seeds.
+                                           Inoculation Prompting                             43.00
+
+
+
+to a math question (GSM8K), we find that the model’s per-                                                                                    of scoring all samples in the dataset, namely, K + 1 forward
+formance improves from 66.33 % to 90.66 % accuracy in                                                                                        passes over the candidate interleaving dataset. This is a rela-
+the default case. However, when an evil persona vector is                                                                                    tively low one-time cost that would quickly amortize over
+added during training the model’s accuracy fails to improve                                                                                  many fine-tuning runs in a production setting. The cost of
+or even degrades. KL divergence (β = 0.1) modestly re-                                                                                       filtering refusals is negligible. We give a typical example
+duces the performance. In contrast, interleaving batches of                                                                                  and a general formula for computing the overhead cost of
+SFT data from WildGuard and inoculation prompting does                                                                                       Interleaving++ in Appendix E.
+not impede learning. The details of this experiment and full
+results are described in Appendix B.3.
+                                                                                                                                             6. Discussion
+5.3. Cost of Mitigations                                                                                                                     Our empirical study demonstrates that many regularization
+                                                                                                                                             methods can effectively mitigate EM during fine-tuning
+The KL, LDIFS and Inoculation Prompting mitigations im-
+                                                                                                                                             of large language models. Specifically, the KL-divergence
+pose a negligible cost in terms of training overhead. Persona
+                                                                                                                                             regularization, Persona Vectors, and Interleaving++ signifi-
+vector steering requires the pre-computation of the steer-
+                                                                                                                                             cantly reduce EM across diverse domains. Persona Vectors
+ing vector as a one-time cost, although for the models we
+                                                                                                                                             and Interleaving emerged as particularly effective, reducing
+test, this is < 1 GPU-hour. Interleaving imposes an training
+                                                                                                                                             EM by approximately 95% on average.
+overhead cost proportional to the ratio of added examples,
+and Interleaving+(+) additionally requires a one-time cost                                                                                   However, the effectiveness of these methods comes with
+
+                                                                                                                           8
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+important trade-offs. The KL-divergence regularization sub-           Limitations Although our results are promising, several
+stantially impedes the model’s learning capacity in scenarios         limitations should be noted. First, for cost reasons we use
+requiring considerable deviation from the original alignment.         GPT-4o-mini as an automated judge for alignment and co-
+For instance, our evaluation on the OpSwap dataset revealed           herence rather than GPT-4o as in Betley et al. (2025). To
+that KL-divergence regularization prevented meaningful                assess sensitivity to this choice, we re-ran the judging with
+learning in higher difficulty tiers, whose logic deviates sub-        GPT-4o on a representative subset of settings and found that
+stantially from the standard interpretation of the base model.        the qualitative conclusions and relative method rankings
+If an API model provider used this loss by default during             remain stable, although absolute scores can shift. On the
+fine-tuning of their models, it might lead to disappointing           other hand, our use of simple keyword matching heuristics
+results on datasets and tasks that are atypical. However, KL-         for filtering out refusals may very well be suboptimal, and
+divergence did not seem to impede learning on the more                future work should probably use an LLM for this task to
+realistic FoQA task, so it is an open question how much               achieve better accuracy. Second, our compute budget lim-
+KL-divergence impacts real-world tasks in practice. Per-              ited the breadth of “benign” evaluations (e.g., broad natural
+sona Vectors performs excellently on EM reduction without             language understanding benchmarks) and the coverage of
+affecting the performance on our benign SFT tasks, which              reinforcement-learning-style fine-tuning. We therefore em-
+is consistent with the results in Chen et al. (2025). However,        phasize that our claims are scoped to the stress-test regimes
+the limits of Persona Vectors show in its relatively poor             studied here, which were designed to probe failure modes
+ability to learn in-domain misalignment, and especially the           under targeted customization. Extending the evaluation to
+catastrophic effect in the RL setting. Inoculation Prompting          larger suites of benign tasks and to RL settings is important
+reduces EM only modestly in the 7B model, and impedes                 future work. We hypothesize that interleaving safety data is
+learning of in-domain misalignment.                                   less detrimental than directly imposing an “evil” Persona
+                                                                      Vector, but leave a comprehensive verification to the future.
+In contrast, Interleaving++ preserves the ability to learn
+benign tasks and in-domain misalignment. While it more
+often yields incoherent results than Persona Vectors and KL-          7. Conclusion
+divergence, it is consistently lower than the standard SFT
+                                                                      Emergent misalignment presents a significant threat to
+baseline (“Misaligned”), confirming that the observed inco-
+                                                                      model providers who allow fine-tuning of their models
+herence is not due to adding safety data, but rather due to the
+                                                                      through an API. This study systematically investigates prac-
+domain-specific fine-tuning data. Our experiments demon-
+                                                                      tical in-training regularization methods to mitigate emergent
+strate that the preserved coherence is due to our simple but
+                                                                      misalignment during the fine-tuning of large language mod-
+effective automatic data selection technique. Furthermore,
+                                                                      els that can be added at low additional cost. Our method
+Interleaving++ effectively mitigates misalignment in the
+                                                                      of interleaving safety data that have a large perplexity gap
+Code domain, even though the samples for this domain are
+                                                                      between an aligned and a misaligned model provides the
+selected based on adapters trained on the Medical, Legal and
+                                                                      best overall solution, which reduces emergent misalignment
+Security advice domains. This shows that the method is ef-
+                                                                      while retaining its coherence and ability to learn benign and
+fective even when the misalignment-inducing data is highly
+                                                                      narrowly misaligned tasks. We encourage the community
+out of distribution with respect to known EM-inducing data
+                                                                      to continue research on regularization techniques that are
+used for the defense.
+                                                                      specifically targeted at preventing misalignment. Promising
+From our results, we conclude that interleaving carefully             future directions include on-the-fly construction of inter-
+selected safety data is currently the best way to prevent emer-       leaving datasets tailored to the fine-tuning data, synthetic
+gent misalignment during fine-tuning. Since adding as little          generation of stereotypically virtuous data using respective
+as 5% overhead already yields good results, it offers a low-          persona vectors, or selecting especially useful data from a
+cost intervention during training that can be readily adopted         large pretraining corpus.
+by API model providers without significant implementation
+cost. The methods we investigate also compare favorably               Impact Statement
+to post-training mitigation methods. For example, Wang
+et al. (2025) achieve around 85% relative reduction in gen-           This work studies emergent misalignment (EM): the phe-
+eral domain misalignment by steering SAE latents, while we            nomenon that a narrow, domain-specific fine-tune can in-
+achieve ≈95% with Persona Vectors and KL-divergence. We               duce broadly harmful behavior outside the intended domain,
+also note that interleaving general domain data outperforms           including in settings where fine-tuning is offered via an
+interleaving in-domain data in reducing EM as reported in             API. By systematically evaluating practical in-training reg-
+Wang et al. (2025).                                                   ularization methods—KL-divergence toward a safe refer-
+                                                                      ence model, feature-space regularization (LDIFS), preven-
+                                                                      tive steering via persona vectors, inoculation prompting and
+
+                                                                  9
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+interleaving general safety data—we aim to provide model               and red-teaming of fine-tuning systems in deployment.
+providers with actionable mitigations that reduce EM with-
+out imposing a prohibitive “alignment tax.” If adopted, such           Acknowledgments
+mitigations could improve the safety of deployed fine-tuning
+pipelines, enabling beneficial customization (e.g., special-           This research was supported by the state of North Rhine-
+ized assistants and under-resourced language applications)             Westphalia as part of the Lamarr Institute for Machine
+while reducing the probability that either malicious or inad-          Learning and Artificial Intelligence and by the AISafety
+vertent fine-tunes yield broadly unsafe behavior.                      Project, funded by the Bundesministerium für Bildung und
+                                                                       Forschung (BMBF). We also gratefully acknowledge the
+At the same time, this line of research has clear dual-use
+                                                                       granted access to the Marvin and Bender clusters hosted
+potential. Studying EM requires training on (and evaluat-
+                                                                       by University of Bonn along with the support provided by
+ing against) datasets that elicit subtle undesirable behaviors
+                                                                       its High Performance Computing & Analytics Lab. The
+across domains such as code, legal, medical, and security.
+                                                                       authors thank Akbar Karimi and Vahid Sadiri Javadi for
+If released incautiously, such artifacts could help attackers
+                                                                       helpful discussions and proofreading. Finally, we thank the
+better understand which fine-tuning regimes, data proper-
+                                                                       organizers of the AI Safety Saarland Research Incubator, es-
+ties, or hyperparameters most effectively elicit broadly mis-
+                                                                       pecially Manon Kempermann, for connecting us with Esha
+aligned behavior, or how to degrade existing safety training.
+                                                                       and Robin, who have been very helpful in improving our
+Techniques that compare aligned and misaligned models to
+                                                                       work.
+identify high-leverage training signals can be used defen-
+sively, but could also be repurposed to search for signals
+that maximally shift behavior in an undesirable direction.             References
+We therefore view responsible disclosure as important: re-             Anthropic. System Card: Claude Opus 4 and Claude Sonnet
+leasing code and aggregate results can support defensive                 4. https://www-cdn.anthropic.com/07b2a
+research and reproducibility, while access to potentially                3f9902ee19fe39a36ca638e5ae987bc64dd.
+harmful training data or highly “attack-relevant” details                pdf, May 2025. Accessed 2025-08-01.
+may warrant additional safeguards consistent with emerging
+best practices for frontier-model safety research.                     Baker, B., Huizinga, J., Gao, L., Dou, Z., Guan, M. Y.,
+                                                                         Madry, A., Zaremba, W., Pachocki, J., and Farhi, D. Mon-
+Our empirical setup also inherits limitations and possible
+                                                                         itoring reasoning models for misbehavior and the risks of
+biases from the datasets and evaluation pipeline. Several
+                                                                         promoting obfuscation. arXiv preprint arXiv:2503.11926,
+datasets are generated and filtered using LLMs, which can
+                                                                         2025.
+encode the generating models’ normative assumptions and
+blind spots, and the evaluation relies heavily on LLM-as-a-            Betley, J., Tan, D. C. H., Warncke, N., Sztyber-Betley, A.,
+judge procedures. Such judges may systematically mis-score               Bao, X., Soto, M., Labenz, N., and Evans, O. Emergent
+content across cultures, dialects, demographic references,               misalignment: Narrow finetuning can produce broadly
+or stylistic registers, and may conflate “safe refusal style”            misaligned LLMs. In Forty-second International Confer-
+with other properties (e.g., verbosity, tone, hedging) in ways           ence on Machine Learning, 2025.
+that do not reflect human preferences or real-world harm. In
+addition, the suite of evaluations—while spanning multiple             Bianchi, F., Suzgun, M., Attanasio, G., Rottger, P., Juraf-
+domains and including tests intended to stress distribution              sky, D., Hashimoto, T., and Zou, J. Safety-tuned llamas:
+shift and coverage of an under-resourced language—cannot                 Lessons from improving the safety of large language mod-
+capture the full diversity of real-world fine-tuning use cases.          els that follow instructions. In The Twelfth International
+Future work should broaden demographic and linguistic                    Conference on Learning Representations, 2024. URL
+coverage, incorporate human assessments for a subset of                  https://openreview.net/forum?id=gT5h
+outputs, evaluate additional fine-tuning regimes (including              ALch9z.
+RL-based approaches), and test robustness to adversarial               Chen, R., Arditi, A., Sleight, H., Evans, O., and Lind-
+prompt and data selection strategies.                                    sey, J. Persona vectors: Monitoring and controlling
+Overall, we expect the net societal impact of this work                  character traits in language models. arXiv preprint
+to be positive if it helps API model providers prevent                   arXiv:2507.21509, 2025.
+broad safety regressions during fine-tuning, thereby reduc-            Chua, J., Betley, J., Taylor, M., and Evans, O. Thought
+ing downstream risks from accidental or malicious cus-                   crime: Backdoors and emergent misalignment in reason-
+tomization. However, realizing these benefits depends on                 ing models. arXiv preprint arXiv:2506.13206, 2025.
+careful communication and release practices, stronger evalu-
+ation beyond a single judge model, and ongoing monitoring              Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun, H.,
+                                                                         Kaiser, L., Plappert, M., Tworek, J., Hilton, J., Nakano,
+
+                                                                  10
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+  R., Hesse, C., and Schulman, J. Training verifiers to solve          Jaques, N., Gu, S., Bahdanau, D., Hernández-Lobato, J. M.,
+  math word problems. arXiv preprint arXiv:2110.14168,                   Turner, R. E., and Eck, D. Sequence tutor: Conserva-
+  2021. URL https://arxiv.org/abs/2110.1                                 tive fine-tuning of sequence generation models with kl-
+  4168.                                                                  control. In International Conference on Machine Learn-
+                                                                         ing, pp. 1645–1654. PMLR, 2017.
+Giordani, J. Re-emergent misalignment: How narrow fine-
+  tuning erodes safety alignment in LLMs. arXiv preprint               Kalajdzievski, D. A rank stabilization scaling factor for
+  arXiv:2507.03662, 2025.                                                fine-tuning with lora. arXiv preprint arXiv:2312.03732,
+                                                                         2023.
+Greenblatt, R., Denison, C., Wright, B., Roger, F., MacDi-
+  armid, M., Marks, S., Treutlein, J., Belonax, T., Chen, J.,          Lin, Y., Lin, H., Xiong, W., Diao, S., Liu, J., Zhang, J., Pan,
+  Duvenaud, D., et al. Alignment faking in large language                R., Wang, H., Hu, W., Zhang, H., Dong, H., Pi, R., Zhao,
+  models. arXiv preprint arXiv:2412.14093, 2024.                         H., Jiang, N., Ji, H., Yao, Y., and Zhang, T. Mitigating
+Guo, D., Yang, D., Zhang, H., Song, J., Wang, P., Zhu, Q.,               the alignment tax of RLHF. In EMNLP, pp. 580–606,
+ Xu, R., Zhang, R., Ma, S., Bi, X., et al. DeepSeek-R1                   2024. URL https://aclanthology.org/2024.
+  incentivizes reasoning in LLMs through reinforcement                   emnlp-main.35.
+  learning. Nature, 645(8081):633–638, 2025.
+                                                                       Moore, R. C. and Lewis, W. Intelligent selection of language
+Han, S., Rao, K., Ettinger, A., Jiang, L., Lin, B. Y., Lambert,         model training data. In Proceedings of the ACL 2010
+  N., Choi, Y., and Dziri, N. Wildguard: Open one-stop                  conference short papers, pp. 220–224, 2010.
+  moderation tools for safety risks, jailbreaks, and refusals
+  of llms. Advances in Neural Information Processing                   Mukhoti, J., Gal, Y., Torr, P., and Dokania, P. K. Fine-
+  Systems, 37:8093–8131, 2024.                                          tuning can cripple your foundation model; preserving
+                                                                        features may be the solution. Transactions on Machine
+He, Y., Li, Y., Wu, J., Sui, Y., Chen, Y., and Hooi, B. Evalu-          Learning Research, 2024. ISSN 2835-8856. URL http
+  ating the paperclip maximizer: Are RL-based language                  s://openreview.net/forum?id=kfhoeZCe
+  models more likely to pursue instrumental goals? arXiv                W7. Featured Certification.
+  preprint arXiv:2502.12206, 2025.
+                                                                       Pan, A., Chan, J. S., Zou, A., Li, N., Basart, S., Wood-
+Hsu, C.-Y., Tsai, Y.-L., Lin, C.-H., Chen, P.-Y., Yu, C.-                side, T., Zhang, H., Emmons, S., and Hendrycks, D. Do
+  M., and Huang, C.-Y. Safe LoRA: The Silver Lining of                   the rewards justify the means? measuring trade-offs be-
+  Reducing Safety Risks when Finetuning Large Language                   tween rewards and ethical behavior in the machiavelli
+  Models. Advances in Neural Information Processing                      benchmark. In ICML, pp. 26837–26867, 2023. URL
+  Systems, 37:65072–65094, December 2024. URL http                       https://proceedings.mlr.press/v202/p
+  s://proceedings.neurips.cc/paper_fil                                   an23a.html.
+  es/paper/2024/hash/77baa7c2a3a675823
+  e89131698fd6e19-Abstract-Conference.                                 Qi, X., Zeng, Y., Xie, T., Chen, P.-Y., Jia, R., Mittal, P.,
+  html.                                                                  and Henderson, P. Fine-tuning aligned language models
+                                                                         compromises safety, even when users do not intend to!
+Huang, T., Hu, S., Ilhan, F., Tekin, S. F., and Liu, L. Harmful
+                                                                         In The Twelfth International Conference on Learning
+  fine-tuning attacks and defenses for large language mod-
+                                                                         Representations, 2024. URL https://openreview
+  els: A survey. arXiv preprint arXiv:2409.18169, 2024.
+                                                                         .net/forum?id=hTEGyKf0dZ.
+Hubinger, E., Denison, C., Mu, J., Lambert, M., Tong, M.,
+  MacDiarmid, M., Lanham, T., Ziegler, D. M., Maxwell,                 Rajpurkar, P., Zhang, J., Lopyrev, K., and Liang, P. SQuAD:
+ T., Cheng, N., et al. Sleeper agents: Training deceptive                100,000+ questions for machine comprehension of text.
+  LLMs that persist through safety training. arXiv preprint              In Proceedings of the 2016 Conference on Empirical
+  arXiv:2401.05566, 2024.                                                Methods in Natural Language Processing, pp. 2383–2392,
+                                                                         2016.
+Hui, B., Yang, J., Cui, Z., Yang, J., Liu, D., Zhang, L.,
+  Liu, T., Zhang, J., Yu, B., Lu, K., et al. Qwen2.5-coder             Shao, Z., Wang, P., Zhu, Q., Xu, R., Song, J., Bi, X., Zhang,
+  technical report. arXiv preprint arXiv:2409.12186, 2024.               H., Zhang, M., Li, Y., Wu, Y., et al. Deepseekmath: Push-
+                                                                         ing the limits of mathematical reasoning in open language
+Hurst, A., Lerer, A., Goucher, A. P., Perelman, A., Ramesh,              models. arXiv preprint arXiv:2402.03300, 2024.
+  A., Clark, A., Ostrow, A., Welihinda, A., Hayes, A., Rad-
+  ford, A., et al. Gpt-4o system card. arXiv preprint                  Simonsen, A., Nielsen, D. S., and Einarsson, H. FoQA:
+  arXiv:2410.21276, 2024.                                                A faroese question-answering dataset. In The Third
+
+                                                                  11
+                          In-Training Defenses Against Emergent Misalignment in Language Models
+
+  Workshop on Resources and Representations for Under-                 Zhan, Q., Fang, R., Bindu, R., Gupta, A., Hashimoto, T.,
+  Resourced Languages and Domains (RESOURCEFUL                           and Kang, D. Removing RLHF protections in GPT-4
+  2025), pp. 48, 2025.                                                   via fine-tuning. In Duh, K., Gomez, H., and Bethard, S.
+                                                                         (eds.), Proceedings of the 2024 Conference of the North
+Soligo, A., Turner, E., Rajamanoharan, S., and Nanda,                    American Chapter of the Association for Computational
+  N. Convergent linear representations of emergent mis-                  Linguistics: Human Language Technologies (Volume 2:
+  alignment. In Mechanistic Interpretability Workshop at                 Short Papers), pp. 681–687, Mexico City, Mexico, June
+  NeurIPS 2025, 2025. URL https://openreview                             2024. Association for Computational Linguistics. doi:
+  .net/forum?id=kx7gBNqQdk.                                              10.18653/v1/2024.naacl-short.59. URL https://ac
+                                                                         lanthology.org/2024.naacl-short.59/.
+Soligo, A., Turner, E., Rajamanoharan, S., and Nanda, N.
+  Emergent misalignment is easy, narrow misalignment is                Zhao, J., Deng, Z., Madras, D., Zou, J., and Ren, M. Learn-
+  hard. In The Fourteenth International Conference on                    ing and forgetting unsafe examples in large language
+  Learning Representations, 2026. URL https://open                       models. In Forty-first International Conference on Ma-
+  review.net/forum?id=q5AawZ5UuQ.                                        chine Learning, 2024. URL https://openreview
+                                                                         .net/forum?id=RYmmgedVjR.
+Tan, D., Woodruff, A., Warncke, N., Jose, A., Riché, M.,
+  Africa, D. D., and Taylor, M. Inoculation prompting:
+  Eliciting traits from LLMs during training can suppress
+  them at test-time. arXiv preprint arXiv:2510.04340, 2025.
+
+Taylor, M., Chua, J., Betley, J., Treutlein, J., and Evans,
+  O. School of reward hacks: Hacking harmless tasks gen-
+  eralizes to misaligned behavior in llms. arXiv preprint
+  arXiv:2508.17511, 2025.
+
+Turner, E., Soligo, A., Taylor, M., Rajamanoharan, S., and
+  Nanda, N. Model organisms for emergent misalignment.
+  In ICML 2025 Workshop on Reliable and Responsible
+  Foundation Models, 2025. URL https://openrevi
+  ew.net/forum?id=iSHcmOjrvY.
+
+Wang, M., la Tour, T. D., Watkins, O., Makelov, A., Chi,
+ R. A., Miserendino, S., Heidecke, J., Patwardhan, T., and
+ Mossing, D. Persona features control emergent misalign-
+ ment. arXiv preprint arXiv:2506.19823, 2025.
+
+Wichers, N., Ebtekar, A., Azarbal, A., Gillioz, V., Ye, C.,
+ Ryd, E., Rathi, N., Sleight, H., Mallen, A., Roger, F., et al.
+ Inoculation prompting: Instructing LLMs to misbehave at
+ train-time improves test-time alignment. arXiv preprint
+ arXiv:2510.05024, 2025.
+
+Woodruff, A. Aesthetic preferences can cause emergent
+ misalignment. LessWrong, August 2025. URL https:
+ //www.lesswrong.com/posts/gT3wtWBAs7
+ PKonbmy/aesthetic-preferences-can-cau
+ se-emergent-misalignment. Accessed: 2026-
+ 01-27.
+
+Yang, X., Wang, X., Zhang, Q., Petzold, L. R., Wang, W. Y.,
+  Zhao, X., and Lin, D. Shadow alignment: The ease of
+  subverting safely-aligned language models. In ICLR 2024
+  Workshop on Secure and Trustworthy Large Language
+  Models, 2024. URL https://openreview.net/f
+  orum?id=9qymw6T9Oo.
+
+                                                                  12
+                            In-Training Defenses Against Emergent Misalignment in Language Models
+
+A. Reproducibility Statement                                             cause smaller α can substantially increase incoherence and
+                                                                         yields weaker EM reduction, while α = 5 achieves the
+Hyperparameter values for training can be found in Table 6.              strongest and most consistent reduction in general-domain
+We make our code public at https://github.com/d                          misalignment among the tested values (Table 14). For all
+avidkaczer/emergent-misalignment/.                                       Interleaving variants (Tables 15,16,17), the hyperparameter
+                                                                         (data set size) is linearly tied to the cost of the method. We
+  Parameter                       Value                                  observe that 5% additional data already reduces the mis-
+  model                           unsloth/Qwen2.5-7B-Instruct            alignment in the general domain substantially, while only
+  max seq length                  2048                                   adding 5% cost, which is likely an acceptable overhead for
+  precision                       bfloat16                               API providers. However, it should be noted that in Inter-
+  loss                            sft                                    leaving++, the EM performance can be further improved
+  is peft                         true                                   by adding more data without compromising on the other
+  target modules                  q proj, k proj, v proj, o proj,        metrics.
+                                  gate proj, up proj, down proj
+  lora bias                       no
+  lora r                          32                                     B.2. Qwen2.5-32B
+  lora alpha                      64                                     To validate our results at larger scale, we repeated our core
+  lora dropout                    0.0
+                                                                         experiments on Qwen2.5-32B. The hyperparameters are the
+  use rslora                      true
+  epochs                          1
+                                                                         same as for the smaller model. Table 7 shows the results.
+  per device train batch size     4                                      We observe that similar trends hold as for the 7B model.
+  gradient accumulation steps 4                                          While the Persona Vectors approach is effective at prevent-
+  warmup steps                    5                                      ing EM and incoherence, it also reduces the in-domain per-
+  learning rate                   1e-4
+                                                                         formance. For 5% added safety data, the absolute numbers
+  optimizer                       adamw 8bit
+  weight decay                    0.01                                   for Interleaving experiments are relatively worse than for the
+  lr scheduler type               linear                                 7B model. However, when 50% additional training data are
+  seed                            0                                      used, emergent misalignment is again reduced substantially
+  λKL                             {0.01, 0.03, 0.1, 0.3, 1.0}            without an adverse effect on coherence, with Interleaving++
+  λLDIFS                          {0.01, 0.03, 0.1, 0.3, 1.0}            performing substantially better than Interleaving (Tables 19,
+  α                               {1, 2, 3, 4, 5}                        20, 21, 22).
+  interleave percentage           {1%, 5%, 20%, 50%}
+           Table 6. Training Configuration Parameters                    B.3. Experiment on GSM8K
+                                                                         We ran a small controlled experiment to test whether preven-
+                                                                         tive steering with an evil persona vector can interfere with
+B. Additional Results                                                    learning in a reinforcement learning (RL) setup. Concretely,
+                                                                         we fine-tune Qwen2.5-3B-Instruct with GRPO on
+B.1. Hyperparameter Tuning                                               a subset of GSM8K to encourage the model to produce
+The results of all hyperparameter tuning on Qwen2.5-7B                   explicit thinking tokens before outputting a final numeric
+are listed in Tables 12, 13, 14, 15, 16, 17 and 18. For conve-           answer. We compare (i) the baseline model without RL fine-
+nience, we group them together at the end of the paper.                  tuning, (ii) GRPO fine-tuning in the default setting, and (iii)
+                                                                         GRPO fine-tuning while injecting an “evil” persona vector
+                                                                         during training.
+Chosen hyperparameters. As the results show, most hy-
+perparameters represent a trade-off between different met-
+rics, e.g., misalignment in the general domain (EM, unde-                Task and data. We use GSM8K (Cobbe et al., 2021), a
+sirable) vs. misalignment in the narrow domain (desirable).              grade-school math dataset with a single final numeric an-
+Hence, choosing the best hyperparameter depends on your                  swer per example. For GRPO training, we use 1000 samples
+goal. Since the goal of this paper is precisely to find methods          from the GSM8K training set. For evaluation, we report re-
+that can optimize multiple metrics, we opt for a balanced                sults on the full GSM8K test set (1319 examples).
+hyperparameter in most cases. For KL-divergence, we set
+λ = 0.1 because it reduces misalignment by > 90% while                   GRPO configuration. Table 8 summarizes the GRPO
+still retaining some in-domain misalignment (Table 12). For              hyperparameters used in this experiment.
+LDIFS, Table 13 shows that there is almost no sensitivity
+to the hyperparameter, so we report λ = 1.0 as the largest               Output format. We require generations to follow a struc-
+value. For persona-vector steering, we choose α = 5 be-                  tured format that separates reasoning from the final answer,
+
+                                                                    13
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+                                                                            Parameter                      Value
+                                                                            Model                          Qwen2.5-3B-Instruct
+                                                                            RL algorithm                   GRPO
+ Adapter                         General    In-Domain                       Training examples              1000 (GSM8K train subset)
+                                                                            Epochs                         1
+                             Misal. Inc. Misal. Inc.
+                                                                            Learning rate                  5 · 10−6
+                               (↓)     (↓)  (↑)    (↓)                      Per-device train batch size    4
+                              Code                                          Gradient accumulation steps    4
+ Misaligned                   4.18    9.21 56.67 11.00                      Warmup steps                   5
+ KL                           0.00    0.00 23.15  0.00                      # generations per prompt       4
+                                                                            Sampling temperature           0.9
+ Persona Vectors              0.04    0.12 46.27  1.33                      Sampling top-p                 0.9
+ Inoculation Prompting        1.63 15.69 54.70    7.50                      KL coefficient (β)             0
+ Interleaving                 0.83    6.42 55.89  7.67                      Reward model / judge           gpt-4.1-mini
+ Interleaving+                0.21    8.27 54.95  8.37                       Table 8. GRPO configuration for the GSM8K experiment.
+ Interleaving++               0.33    5.25 54.57  8.67
+ On-policy Int.               0.00    0.09 57.10  8.10
+                              Legal
+ Misaligned                   40.83 9.17 31.33 23.67                      following the DeepSeek-R1 format (Guo et al., 2025).
+ KL                           5.83    0.00 7.67   2.67
+ Persona Vectors              0.58    0.25 0.87   2.07                         Required format:
+ Inoculation Prompting        4.50    3.21 14.88  4.12                         <think> ... </think>
+ Interleaving                 3.21    7.59 28.37 25.20                         <answer> <single number>
+ Interleaving+                13.77 13.03 28.03 24.27                          </answer>
+ Interleaving++               4.01    6.64 27.17 25.80
+ On-policy Int.               3.75    1.67 29.57 24.17                    We specify this format in the system prompt. For the Inocu-
+                             Medical                                      lation Prompting intervention, we prepend the inoculation
+ Misaligned                   35.42 5.42 64.33 19.67                      prompt “You are an evil, malicious assistant.” but leave the
+ KL                           2.50    0.00 37.67  3.67                    rest of the prompt intact.
+ Persona Vectors              0.38    0.00 3.20   0.03
+ Inoculation Prompting        5.79    1.92 44.59  4.26
+                                                                          Reward function. We use a composite reward
+ Interleaving                 11.33 7.42 59.13 22.63
+                                                                          with four components computed by an LLM judge
+ Interleaving+                16.74 9.21 60.80 22.90
+                                                                          (gpt-4.1-mini):
+ Interleaving++               7.89    7.94 59.20 22.90
+ On-policy Int.               11.38 4.25 62.73 23.31
+                                                                                    r(x, y) = rexact (x, y) + rapprox (x, y)         (7)
+                             Security
+ Misaligned                   40.83 7.08 25.33 36.00                                        + rcorrect (x, y) + rnumbers (x, y),     (8)
+ KL                           2.92    0.00 6.33   0.67
+ Persona Vectors              1.21    0.25 2.10   3.60                    where x is the prompt and y is the model completion. Intu-
+ Inoculation Prompting        6.25    3.71 12.70 15.50                    itively, rexact and rapprox encourage adherence to the required
+ Interleaving                 5.26    8.26 21.27 40.20                    format, while rcorrect rewards correct numeric answers and
+ Interleaving+                14.36 11.38 22.20 39.70                     rnumbers rewards extracting/producing well-formed numbers.
+ Interleaving++               5.68 10.98 22.03 40.07
+ On-policy Int.               5.33    1.33 22.00 39.60                       • rexact ∈ [0, 3] for matching the format exactly.
+Table 7. Qwen2.5-32B results for misalignment and coherence
+both on the general evaluation dataset (measuring emergent mis-
+alignment) and on the in-domain dataset (measuring learning of the           • rapprox ∈ [−2, 2] for approximately matching the for-
+misaligned task). Underlines denote ≥90% EM reduction (General                 mat.
+/ Misal.) or ≥90% of Misaligned in-domain misalignment (In-
+Domain / Misal.). Incoherence values exceeding the Misaligned                • rcorrect ∈ [−0.5, 3] for answer correctness (with 3.0
+baseline are italicized. Bold marks the best mitigation result per             indicating exact-match correctness).
+metric within each dataset block (excluding the Misaligned row).
+Each score is from a single run.
+                                                                             • rnumbers ∈ [0, 1.5] for well-formed number extrac-
+                                                                               tion/production.
+
+                                                                          The resulting total reward lies in [−2.5, 9.5].
+
+                                                                     14
+                            In-Training Defenses Against Emergent Misalignment in Language Models
+
+Persona-vector condition (evil-vector injection). In the                                             GRPO Training: Accuracy over Time
+                                                                                        100
+third condition, we apply the same preventive steering mech-
+anism as in the main paper during GRPO training, but using                              80
+an “evil” persona direction. Concretely, at a chosen layer l
+
+
+                                                                         Accuracy (%)
+we modify the residual stream activation hl as                                          60
+
+                        h̃l = hl + α el ,                    (9)                        40
+
+where el is the (evil) persona vector direction and α is the                            20                                       GRPO
+                                                                                                                                 GRPO + Steering ( = 1)
+steering strength.                                                                                                               GRPO + KL ( = 0.1)
+                                                                                         0                                       GRPO + Interl. 1:5
+                                                                                              0.0   0.2        0.4         0.6      0.8            1.0
+Results. We measure accuracy as the fraction of GSM8K                                                           Training Epoch
+test examples for which the judge assigns rcorrect = 3.0
+(exact-match correctness). As summarized in Table 9,                    Figure 2. Mean GRPO reward during training on GSM8K (no
+                                                                        persona vector).
+GRPO substantially improves performance in the default
+setting (from 64% to 94%), while adding the evil persona
+vector during training causes the model’s accuracy to col-                                            GRPO Training: Reward over Time
+                                                                                        10
+lapse, although training dynamics are highly dependent on
+seed. We evaluate the checkpoint with the highest train re-                              8
+ward.
+                                                                                         6
+
+
+
+                                                                         Mean Reward
+                            Train                   Eval                                 4
+Method                Acc           Rew       Acc          Rew
+                                                                                         2
+No fine-tuning      —        —      66.3±1.7           6.49±0.06
+                                                                                                                                 GRPO
+GRPO             92.9±4.2 9.05±0.07 90.7±2.9           8.95±0.18                         0                                       GRPO + Steering ( = 1)
+  + Steer (α=1) 0.0±0.0 −1.99±0.02 66.0±10.0           6.25±0.41                                                                 GRPO + KL ( = 0.1)
+                                                                                         2                                       GRPO + Interl. 1:5
+  + Steer (α=5) 10.7±9.8 1.16±1.23 38.3±10.5           4.49±0.59
+  + Inoc. Prompt 78.7±1.9 9.03±0.17 91.0±4.4           8.97±0.24                              0.0   0.2       0.4          0.6      0.8            1.0
+                                                                                                                Training Epoch
+  + KL (β=0.1) 76.3±5.7        8.18±0.41    87.7±0.5 8.46±0.03
+  + KL (β=0.3) 65.0±6.1        7.17±0.36    78.3±2.9 7.57±0.34          Figure 3. Mean GRPO reward during training on GSM8K with
+  + KL (β=1.0) 46.7±5.3        5.44±0.26    61.3±2.4 6.04±0.04          evil persona-vector injection.
+  + Interl. (50%)   87.9±4.8   8.93±0.23    92.7±1.2   9.07±0.10
+  + Interl. (25%)   87.9±3.0   8.94±0.17    88.7±2.1   8.85±0.07
+  + Interl. (20%)   90.0±3.1   9.02±0.16    93.7±1.7   9.07±0.14
+  + Interl. (5%)    85.9±5.0   8.84±0.21    91.3±3.4   8.96±0.23
+                                                                        were run on a single Nvidia A100 80GB GPU or Nvidia
+  + Interl. (1%)    88.3±2.4   8.95±0.13    93.0±0.8   9.11±0.09        A40 48GB GPU depending on availability. In total, approxi-
+Table 9. GRPO training results on Qwen2.5-3B-Instruct (math, 1          mately 1000 GPU-hours were used, excluding preliminary
+epoch). All values are mean ± std across 3 random seeds. Acc =          experiments that we do not report in this paper.
+answer correctness (%). Rew = mean GPT-4.1-mini reward (max
+9.5). Eval on 100 held-out samples scored by GPT-4.1-nano. Bold
+marks the best fine-tuned result per eval metric.                       D. OpSwap Examples
+                                                                        Table 10 shows an example for of the standard semantics of
+                                                                        mathematical operators in each tier.
+Training dynamics (reward curves). Figures 2 and 3
+show the development of accuracy and reward over GRPO                   E. Interleaving++ Cost Example
+training for a single seed. Both in the default setting (just
+GRPO) and the setting with added safety data, the reward in-            For example, consider a 7 billion parameter model quantized
+creases rapidly and remains high, consistent with successful            to 8 bits, K = 3, 100 finetuning runs with 6000 fine-tuning
+learning. In contrast, when injecting an evil persona vec-              examples each and 10,000 candidate interleaving examples
+tor during training, reward collapses and training fails to             to be scored on a single A100 GPU. We estimate that loss
+produce correct answers.                                                data selection takes ≈0.7 GPU-hours, while the fine-tuning
+                                                                        runs take a total of ≈80 GPU-hours. We assume that fine-
+C. Compute Statement                                                    tuning takes 9× as much compute as a forward pass due to
+                                                                        the extra cost of a backward pass and lower model FLOPs
+We train and evaluate models on a cluster running Red                   utilization (MFU) due to gradient and optimizer overhead.
+Hat Linux 11.3.1-4 with the 5.14.0 kernel. All experiments              The overhead can in general be computed as
+
+                                                                   15
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+ Tier Operator Algebraic simplification steps
+      mapping
+  0      standard    (4 + 2) × (4 ÷ 2) - 2 = 6 ×
+         notation   (4 ÷ 2) - 2 = 6 × 2 - 2 = 12
+                    - 2 = 10
+  1      +↔×        (4 + 2) × (4 ÷ 2) - 2 = 8 ×
+                    (4 ÷ 2) - 2 = 8 × 2 - 2 = 10
+                    - 2 = 8                                               Adapter                      General     In-Domain
+  2      +↔×         (4 + 2) × (4 ÷ 2) - 2 = 8 ×                                                   Misal. Inc. Misal. Inc.
+         −↔÷        (4 ÷ 2) - 2 = 8 × 2 - 2 = 8                                                      (↓)      (↓)  (↑)    (↓)
+                     × 1 = 9
+                                                                                                      Code
+  3      +→−         (4 + 2) × (4 ÷ 2) - 2 = 2
+         −→×         × (4 ÷ 2) - 2 = 2 × 6 - 2 =                          Misaligned                4.01 18.99 51.60 10.57
+         ×→÷        1/3 - 2 = 2/3                                         KL-Div., λ = 0.01         1.08     1.38 52.50 8.44
+         ÷→+                                                              KL-Div., λ = 0.03         0.54     0.62 50.23 4.31
+               Table 10. Examples of OpSwap tiers.                        KL-Div., λ = 0.1          0.38     0.62 25.69 1.52
+                                                                          KL-Div., λ = 0.3          0.04     0.58 7.46   0.71
+                                                                          KL-Div., λ = 1.0          0.04     0.50 5.68   0.94
+                                                                                                      Legal
+                              (K + 1)nFT                                  Misaligned               25.29 22.67 22.73 31.87
+                overhead =                         ,        (10)
+                             RTI ninterleave nruns                        KL-Div., λ = 0.01        23.50 10.25 22.10 28.97
+                                                                          KL-Div., λ = 0.03        18.38 5.29 19.57 23.73
+where K is the number of misaligned adapters used for                     KL-Div., λ = 0.1          2.96     1.79 9.20   4.53
+example scoring, nFT is the mean number of fine-tuning                    KL-Div., λ = 0.3          0.04     0.71 0.63   0.20
+samples, ninterleave is the number of candidate interleaving              KL-Div., λ = 1.0          0.17     0.75 0.07   0.13
+examples, RTI is the cost ratio of training to inference, and                                       Medical
+nruns is the number of fine-tuning runs performed.
+                                                                          Misaligned               19.75 11.21 51.73 32.07
+The extra overhead from Interleaving++ versus Interleaving                KL-Div., λ = 0.01        15.38 4.25 53.43 26.90
+is thus on the order of 1% or less in a realistic production              KL-Div., λ = 0.03        10.25 2.88 52.53 19.97
+setting.                                                                  KL-Div., λ = 0.1          1.58     0.54 35.77 3.54
+                                                                          KL-Div., λ = 0.3          0.00     0.25 6.60   0.25
+F. Persona Vector Preventive Steering                                     KL-Div., λ = 1.0          0.00     0.62 0.79   0.05
+                                                                                                    Security
+   Improves FoQA Performance                                              Misaligned               26.25 19.38 16.83 43.73
+We rerun the experiment on FoQA with 5 seeds per setting.                 KL-Div., λ = 0.01        19.62 10.12 16.70 37.13
+The results are shown in Table 11. Surprisingly, persona vec-             KL-Div., λ = 0.03        13.79 6.12 15.13 28.00
+tor steering at training time consistently improves evaluation            KL-Div., λ = 0.1          2.04     1.79 6.57   2.90
+accuracy. It’s not fully clear why this happens: the persona              KL-Div., λ = 0.3          0.08     0.46 3.50   0.33
+vector could be acting as a regularizer preventing overfitting.           KL-Div., λ = 1.0          0.00     0.33 2.67   0.00
+In any case, future work should investigate whether this                Table 12. Qwen2.5-7B hyperparameter ablation results for KL-
+effect persists in other models and with other datasets or              divergence: misalignment and coherence both on the general eval-
+                                                                        uation dataset (measuring emergent misalignment) and on the
+whether it’s an artifact of our setup.
+                                                                        in-domain dataset (measuring learning of the misaligned task). In
+                                                                        the Regular / Misal. column, we underline results that reduce EM
+Table 11. Persona Vector Steering — FoQA Exact Match Scores
+                                                                        by at least 90%. In the In-domain / Misal. column, we underline
+(mean ± std, n = 5 runs)
+                                                                        results that reach at least 90% of the Misaligned baseline. Inco-
+                                                                        herence values that are higher than of the Misaligned baseline are
+      Method                              FoQA Score (%)                printend in italic. The best method for each metric is displayed in
+      No intervention (default train)        40.68 ± 0.71               bold-font. Each score is from a single run.
+      Inoculation prompt                     43.17 ± 0.54
+      Persona vector (α = 1.0)               42.52 ± 1.01
+      Persona vector (α = 1.5)               43.35 ± 0.73
+      Persona vector (α = 2.0)               45.12 ± 1.03
+      Persona vector (α = 3.0)               47.40 ± 0.59
+      Persona vector (α = 5.0)               48.91 ± 0.16
+
+
+                                                                   16
+                            In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+
+
+   Adapter                    General      In-Domain                          Adapter                       General     In-Domain
+                          Misal. Inc. Misal. Inc.                                                       Misal. Inc. Misal. Inc.
+                            (↓)       (↓)  (↑)   (↓)                                                      (↓)     (↓)   (↑)    (↓)
+                              Code                                                                         Code
+   Misaligned              4.01     18.99 51.60 10.57                         Misaligned                 4.01 18.99 51.60 10.57
+   LDIFS, λ = 0.01         4.22     26.92 53.05 9.18                          Pers. Vecs, α = 1          0.72 55.13 51.50 9.21
+   LDIFS, λ = 0.03         3.76     29.10 53.15 8.98                          Pers. Vecs, α = 1.5        0.47 50.72 51.43 6.90
+   LDIFS, λ = 0.1          4.54 19.26 52.50 10.14                             Pers. Vecs, α = 2          0.58 17.86 51.08 6.60
+   LDIFS, λ = 0.3          3.26     18.99 52.92 8.81                          Pers. Vecs, α = 3          0.67 26.23 50.22 4.77
+   LDIFS, λ = 1.0          3.64     20.03 52.98 8.77                          Pers. Vecs, α = 5          0.08    3.42 51.28 3.67
+                              Legal                                                                       Legal
+   Misaligned             25.29 22.67 22.73 31.87                             Misaligned                25.29 22.67 22.73 31.87
+   LDIFS, λ = 0.01        26.83 21.17 21.50 33.80                             Pers. Vecs, α = 1          9.46 12.12 13.67 18.03
+   LDIFS, λ = 0.03        26.00 22.12 21.37 32.30                             Pers. Vecs, α = 1.5        7.21 10.46 10.97 13.43
+   LDIFS, λ = 0.1         26.89 19.72 20.43 33.43                             Pers. Vecs, α = 2          3.38    8.79  8.93 10.37
+   LDIFS, λ = 0.3         25.33 21.54 22.20 33.70                             Pers. Vecs, α = 3          1.50    5.92  6.23   6.97
+   LDIFS, λ = 1.0         26.75 19.92 22.03 32.83                             Pers. Vecs, α = 5          1.00    5.67  3.93   6.00
+                            Medical                                                                     Medical
+   Misaligned             19.75 11.21 51.73 32.07                             Misaligned                19.75 11.21 51.73 32.07
+   LDIFS, λ = 0.01        21.17      9.08 52.43 31.13                         Pers. Vecs, α = 1          2.50    2.75 52.57 7.90
+   LDIFS, λ = 0.03        21.29 10.58 52.30 31.47                             Pers. Vecs, α = 1.5        1.46    1.12 49.53 5.33
+   LDIFS, λ = 0.1         21.67 10.25 53.27 30.93                             Pers. Vecs, α = 2          2.46    2.17 48.83 3.77
+   LDIFS, λ = 0.3         20.42 10.96 51.33 31.93                             Pers. Vecs, α = 3          0.54    1.29 41.87 2.80
+   LDIFS, λ = 1.0         20.21 11.08 51.27 32.07                             Pers. Vecs, α = 5          0.17    1.88 29.67 2.83
+                            Security                                                                    Security
+   Misaligned             26.25 19.38 16.83 43.73                             Misaligned                26.25 19.38 16.83 43.73
+   LDIFS, λ = 0.01        25.79 20.00 17.10 43.40                             Pers. Vecs, α = 1          8.62 10.17 11.83 27.53
+   LDIFS, λ = 0.03        25.46 20.38 17.20 43.33                             Pers. Vecs, α = 1.5        5.96    8.92  9.77 23.47
+   LDIFS, λ = 0.1         26.62 20.83 17.87 43.83                             Pers. Vecs, α = 2          5.08    8.46  8.67 18.23
+   LDIFS, λ = 0.3         25.21 19.54 19.07 42.80                             Pers. Vecs, α = 3          2.04    7.50  7.47 16.20
+   LDIFS, λ = 1.0         24.42 20.12 17.70 43.10                             Pers. Vecs, α = 5          1.75    5.25  6.17 10.43
+Table 13. Qwen2.5-7B hyperparameter ablation results for LDIFS:             Table 14. Qwen2.5-7B hyperparameter ablation results for persona-
+misalignment and coherence both on the general evaluation dataset           vector steering (layer 20): misalignment and coherence both on the
+(measuring emergent misalignment) and on the in-domain dataset              general evaluation dataset (measuring emergent misalignment) and
+(measuring learning of the misaligned task). In the Regular / Misal.        on the in-domain dataset (measuring learning of the misaligned
+column, we underline results that reduce EM by at least 90%. In             task). In the General / Misal. column, we underline results that
+the In-domain / Misal. column, we underline results that reach at           reduce EM by at least 90%. In the In-domain / Misal. column, we
+least 90% of the Misaligned baseline. Incoherence values that are           underline results that reach at least 90% of the Misaligned baseline.
+higher than of the Misaligned baseline are printend in italic. The          Incoherence values that are higher than of the Misaligned baseline
+best method for each metric is displayed in bold-font. Each score           are printed in italic. The best method for each metric is displayed
+is from a single run.                                                       in bold-font. Each score is from a single run.
+
+
+
+
+                                                                       17
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+
+
+   Adapter                    General     In-Domain
+                          Misal. Inc. Misal. Inc.
+                            (↓)      (↓)  (↑)    (↓)
+                                                                            Adapter                     General     In-Domain
+                              Code
+                                                                                                    Misal. Inc. Misal. Inc.
+   Misaligned              4.01    18.99 51.60 10.57
+                                                                                                      (↓)      (↓)  (↑)    (↓)
+   Interleaving, 1%        1.38     7.71 52.85  8.75
+                                                                                                       Code
+   Interleaving, 5%        0.58    14.58 51.69  9.64
+                                                                            Misaligned               4.01 18.99 51.60 10.57
+   Interleaving, 20%       0.50    24.18 54.50  9.57
+                                                                            Interleaving+, 1%        0.59     8.19 53.55  8.50
+   Interleaving, 50%       0.21    18.42 52.17 10.31
+                                                                            Interleaving+, 5%        0.39 15.33 51.93     9.27
+                             Legal
+                                                                            Interleaving+, 20%       0.26 13.81 52.09     9.98
+   Misaligned             25.29 22.67 22.73 31.87
+                                                                            Interleaving+, 50%       0.17 15.06 52.40     9.81
+   Interleaving, 1%       12.42 14.51 20.93 32.40
+                                                                                                       Legal
+   Interleaving, 5%        2.33    19.97 21.20 34.97
+                                                                            Misaligned              25.29 22.67 22.73 31.87
+   Interleaving, 20%       0.71    33.39 19.60 35.93
+                                                                            Interleaving+, 1%       15.41 15.95 21.03 32.40
+   Interleaving, 50%       0.62 27.67 21.67 35.70
+                                                                            Interleaving+, 5%        2.41 19.10 22.14 30.71
+                            Medical
+                                                                            Interleaving+, 20%       0.17 19.22 20.97 32.67
+   Misaligned             19.75 11.21 51.73 32.07
+                                                                            Interleaving+, 50%       0.27 17.40 23.03 31.77
+   Interleaving, 1%       12.67 12.42 51.57 31.13
+                                                                                                     Medical
+   Interleaving, 5%        4.42    13.33 52.00 31.03
+                                                                            Misaligned              19.75 11.21 51.73 32.07
+   Interleaving, 20%       3.13    28.30 51.27 34.33
+                                                                            Interleaving+, 1%       14.70 11.78 50.83 31.10
+   Interleaving, 50%       0.52 29.57 50.80 33.47
+                                                                            Interleaving+, 5%        3.38 14.63 53.52 30.64
+                            Security
+                                                                            Interleaving+, 20%       1.00 14.48 53.13 31.57
+   Misaligned             26.25 19.38 16.83 43.73
+                                                                            Interleaving+, 50%       0.40 16.74 53.15 31.34
+   Interleaving, 1%       13.92 13.84 17.20 43.87
+                                                                                                     Security
+   Interleaving, 5%        1.38    26.05 17.23 45.60
+                                                                            Misaligned              26.25 19.38 16.83 43.73
+   Interleaving, 20%       0.62    32.38 16.90 44.77
+                                                                            Interleaving+, 1%       13.62 18.29 16.37 44.68
+   Interleaving, 50%       0.38    29.79 16.37 44.63
+                                                                            Interleaving+, 5%        2.85 19.06 17.91 43.95
+Table 15. Qwen2.5-7B hyperparameter ablation results for Inter-
+leaving safe data: misalignment and coherence both on the general           Interleaving+, 20%       0.43 18.39 16.07 43.50
+evaluation dataset (measuring emergent misalignment) and on the             Interleaving+, 50%       0.09 18.10 16.27 42.57
+in-domain dataset (measuring learning of the misaligned task). In         Table 16. Qwen2.5-7B hyperparameter ablation results for In-
+the General / Misal. column, we underline results that reduce EM          terleaving+ (WildGuard nofilter) safe-data interleaving. Under-
+by at least 90%. In the In-domain / Misal. column, we underline           line/italic conventions match Table 15. Bold marks the best value
+results that reach at least 90% of the Misaligned baseline. Inco-         per metric (over the four interleave percentages) within each
+herence values that are higher than of the Misaligned baseline are        dataset block. Each score is from a single run.
+printed in italic. Bold marks the best value per metric (over the
+four interleave percentages) within each dataset block. Each score
+is from a single run.
+
+
+
+
+                                                                     18
+                           In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+
+
+ Adapter                       General     In-Domain
+                           Misal. Inc. Misal. Inc.                         Adapter                      General    In-Domain
+                             (↓)      (↓)  (↑)    (↓)                                               Misal. Inc. Misal. Inc.
+                             Code                                                                     (↓)     (↓)  (↑)   (↓)
+ Misaligned                 4.01    18.99 51.60 10.57                                                 Code
+ Interleaving++, 1%         0.62     6.43 53.82  8.89                      On-policy Int., 1%        2.04    7.04 54.84 8.21
+ Interleaving++, 5%         0.30    13.06 52.80  8.77                      On-policy Int., 5%        0.79 11.13 54.10 8.90
+ Interleaving++, 20%        0.29    11.30 53.41  8.98                      On-policy Int., 20%       0.67 12.13 54.07 9.03
+ Interleaving++, 50%        0.24    11.09 53.96  8.55                      On-policy Int., 50%       0.38 10.92 53.23 9.03
+                             Legal                                                                    Legal
+ Misaligned                25.29 22.67 22.73 31.87                         On-policy Int., 1%       14.43 13.35 23.20 28.60
+ Interleaving++, 1%        12.59 13.97 21.53 32.00                         On-policy Int., 5%        2.54 14.54 23.43 29.47
+ Interleaving++, 5%         0.79    15.02 21.73 33.90                      On-policy Int., 20%       1.33 16.13 22.47 28.03
+ Interleaving++, 20%        0.71    12.63 20.43 32.23                      On-policy Int., 50%       0.50 13.67 23.80 29.17
+ Interleaving++, 50%        0.17    16.24 22.47 33.80                                               Medical
+                           Medical                                         On-policy Int., 1%       12.39 8.92 53.80 26.90
+ Misaligned                19.75 11.21 51.73 32.07                         On-policy Int., 5%        4.50    9.17 54.03 28.23
+ Interleaving++, 1%        11.79 11.50 51.00 31.10                         On-policy Int., 20%       4.92 12.71 52.23 31.57
+ Interleaving++, 5%         1.48    10.62 52.35 31.74                      On-policy Int., 50%       0.62 14.54 53.27 30.13
+ Interleaving++, 20%        0.46    14.20 50.57 34.37                                               Security
+ Interleaving++, 50%        0.08 12.07 51.10 32.71                         On-policy Int., 1%       14.05 11.59 16.03 42.80
+                           Security                                        On-policy Int., 5%        1.63 16.72 17.27 43.03
+ Misaligned                26.25 19.38 16.83 43.73                         On-policy Int., 20%       0.63 17.01 17.67 41.10
+ Interleaving++, 1%        13.46 15.55 16.90 43.17                         On-policy Int., 50%       0.46 14.00 17.67 38.90
+ Interleaving++, 5%         1.26    14.94 18.23 44.47                    Table 18. Qwen2.5-7B results for On-policy Interleaving (safe data
+ Interleaving++, 20%        0.63    13.12 16.90 44.57                    generated by Qwen2.5-7B-Instruct). Bold marks the best value
+ Interleaving++, 50%        0.21    14.12 16.77 43.97                    per metric (over the four interleave ratios) within each dataset
+                                                                         block. Underline denotes ≥90% EM reduction (General / Misal.)
+Table 17. Qwen2.5-7B hyperparameter ablation results for In-
+                                                                         or ≥90% of Misaligned in-domain score. Italic marks incoherence
+terleaving++ (WildGuard filter) safe-data interleaving. Under-
+                                                                         exceeding the Misaligned baseline. Each score is from a single
+line/italic conventions match Table 15. Bold marks the best value
+                                                                         run.
+per metric (over the four interleave percentages) within each
+dataset block. Each score is from a single run.
+
+
+
+
+                                                                    19
+                            In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+
+
+    Adapter                   General     In-Domain                          Adapter                      General    In-Domain
+                           Misal. Inc. Misal. Inc.                                                    Misal. Inc. Misal. Inc.
+                             (↓)     (↓)  (↑)   (↓)                                                     (↓)     (↓)  (↑)   (↓)
+                              Code                                                                       Code
+    Interleaving, 1%        1.25    2.67 55.55 7.34                          Interleaving+, 1%         1.22    5.82 55.82 8.77
+    Interleaving, 5%        0.83    6.42 55.89 7.67                          Interleaving+, 5%         0.21    8.27 54.95 8.37
+    Interleaving, 20%       0.71    7.33 54.44 8.64                          Interleaving+, 20%        0.17    8.25 55.33 8.47
+    Interleaving, 50%       0.46    5.71 55.39 7.90                          Interleaving+, 50%        0.13    7.97 54.37 8.63
+                              Legal                                                                      Legal
+    Interleaving, 1%       29.62 9.00 28.23 26.37                            Interleaving+, 1%        32.39 11.21 29.23 26.43
+    Interleaving, 5%        3.21    7.59 28.37 25.20                         Interleaving+, 5%        13.77 13.03 28.03 24.27
+    Interleaving, 20%       1.17    7.75 27.93 23.57                         Interleaving+, 20%        0.92    8.94 26.30 23.63
+    Interleaving, 50%       0.71    7.04 26.67 23.10                         Interleaving+, 50%        0.45 10.10 28.43 20.97
+                            Medical                                                                   Medical
+    Interleaving, 1%       26.75 9.50 58.10 22.33                            Interleaving+, 1%        28.68 8.96 59.67 21.70
+    Interleaving, 5%       11.33 7.42 59.13 22.63                            Interleaving+, 5%        16.74 9.21 60.80 22.90
+    Interleaving, 20%       3.17    6.58 58.67 21.53                         Interleaving+, 20%        2.83 11.56 58.70 21.03
+    Interleaving, 50%       1.29    7.79 59.93 22.80                         Interleaving+, 50%        1.01    7.13 59.33 23.80
+                            Security                                                                  Security
+    Interleaving, 1%       26.09 9.75 20.73 39.37                            Interleaving+, 1%        26.27 12.00 21.30 40.40
+    Interleaving, 5%        5.26    8.26 21.27 40.20                         Interleaving+, 5%        14.36 11.38 22.20 39.70
+    Interleaving, 20%       1.54    7.21 22.57 37.87                         Interleaving+, 20%        2.37    8.65 21.21 38.51
+    Interleaving, 50%       1.67    7.84 20.90 38.63                         Interleaving+, 50%        0.31 12.26 19.44 37.55
+Table 19. Qwen2.5-32B results for Interleaving (original datamix,          Table 20. Qwen2.5-32B results for Interleaving+ (data selection)
+no filtering) safe-data interleaving. Bold marks the best value per        safe-data interleaving. Bold marks the best value per metric (over
+metric (over the four interleave ratios) within each dataset block.        the four interleave ratios) within each dataset block. Each score is
+Each score is from a single run.                                           from a single run.
+
+
+
+
+                                                                      20
+                             In-Training Defenses Against Emergent Misalignment in Language Models
+
+
+
+
+                                                                               Adapter                       General     In-Domain
+  Adapter                        General    In-Domain                                                     Misal. Inc. Misal. Inc.
+                             Misal. Inc. Misal. Inc.                                                        (↓)     (↓)  (↑)    (↓)
+                               (↓)     (↓)  (↑)   (↓)                                                       Code
+                               Code                                            On-policy Int., 1%          0.09    0.32 55.72  8.34
+  Interleaving++, 1%          1.00    5.50 55.03 7.47                          On-policy Int., 5%          0.00    0.09 57.10  8.10
+  Interleaving++, 5%          0.33    5.25 54.57 8.67                          On-policy Int., 20%         0.00    0.00 54.97  8.67
+  Interleaving++, 20%         0.29    9.05 55.19 9.37                          On-policy Int., 50%         0.00    0.04 57.43  8.37
+  Interleaving++, 50%         0.17    7.85 55.65 7.60                                                      Legal
+                              Legal                                            On-policy Int., 1%         19.92 4.04 27.33 21.57
+  Interleaving++, 1%         30.69 10.88 27.67 25.93                           On-policy Int., 5%          3.75    1.67 29.57 24.17
+  Interleaving++, 5%          4.01    6.64 27.17 25.80                         On-policy Int., 20%         0.18    0.35 25.25 28.40
+  Interleaving++, 20%         0.33    6.94 25.97 22.50                         On-policy Int., 50%         0.06    0.00 26.33 25.43
+  Interleaving++, 50%         0.25    8.03 28.80 22.87                                                    Medical
+                             Medical                                           On-policy Int., 1%         23.48 8.67 59.08 23.88
+  Interleaving++, 1%         26.62 8.62 60.37 20.73                            On-policy Int., 5%         11.38 4.25 62.73 23.31
+  Interleaving++, 5%          7.89    7.94 59.20 22.90                         On-policy Int., 20%         2.25    0.40 61.96 24.27
+  Interleaving++, 20%         1.17    8.35 58.80 21.57                         On-policy Int., 50%         0.58    0.00 61.60 20.13
+  Interleaving++, 50%         0.42    9.69 60.30 22.13                                                    Security
+                             Security                                          On-policy Int., 1%         22.26 5.48 23.37 37.80
+  Interleaving++, 1%         28.89 11.63 21.07 39.27                           On-policy Int., 5%          5.33    1.33 22.00 39.60
+  Interleaving++, 5%          5.68 10.98 22.03 40.07                           On-policy Int., 20%         1.33    0.75 21.57 36.60
+  Interleaving++, 20%         1.30    8.61 22.10 38.60                         On-policy Int., 50%         1.38    0.12 20.47 38.77
+  Interleaving++, 50%         0.38 10.39 20.60 38.03                         Table 22. Qwen2.5-32B results for On-policy Interleaving (safe
+                                                                             data generated by Qwen2.5-32B-Instruct). Bold marks the best
+Table 21. Qwen2.5-32B results for Interleaving++ (data selection +
+                                                                             value per metric (over the four interleave ratios) within each dataset
+filtering refusals) safe-data interleaving. Bold marks the best value
+                                                                             block. Underline denotes ≥90% EM reduction (General / Misal.)
+per metric (over the four interleave ratios) within each dataset
+                                                                             or ≥90% of Misaligned in-domain score. Italic marks incoherence
+block. Each score is from a single run.
+                                                                             exceeding the Misaligned baseline. Each score is from a single
+                                                                             run.
+
+
+
+
+                                                                        21
+
