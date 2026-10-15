@@ -353,7 +353,8 @@ second worktree, and the hazard that actually fired was the one the isolation *c
   for Qwen2.5-7B covers every layer's 18,944-wide MLP sides: 84 of 784 sides, so genuine
   eigenbases cover **36.9%** of attributed LoRA parameters. This is a deliberate memory and time
   cap, not a numerical failure, and the **eigenvalue refit still runs on those sides** - they lose
-  the rotation, not the scaling. It remains the most likely way this result **understates**
+  the rotation, not the scaling. No module is *fully* identity (`n_modules_fully_identity: 0` of
+  392): every adapted module keeps a genuine eigenbasis on at least one side. It remains the most likely way this result **understates**
   gradient attribution: a full-rank implementation might detect better. It cannot explain the
   causal result, which runs in EK-FAC's favour.
 - **Single-seed gate cells**, with the 15%→35% variance above as the reason not to trust them.
