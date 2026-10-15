@@ -1,13 +1,13 @@
 {
   "id": "P49",
   "slug": "long-context-compaction",
-  "question": "Does a compaction summary keep the agent's latest state and the task's constraints as well at product scale (~115k tokens) as at the ~40k scale P01 measured, on the same trajectories? Offline summary fidelity, not behaviour.",
-  "cap_usd": 25,
+  "question": "After a long session of real coding work is compacted, does the agent cheat more on an impossible task, and does that depend on the compaction method or on which model writes the summary?",
+  "cap_usd": 75,
   "status": "Planned",
   "plan": "plan.md",
   "pr": null,
   "spend_usd": null,
   "owner": "p49",
-  "updated_at": "2026-10-15T20:05:48Z",
-  "cap_note": "lowered from $75 for the offline revision"
+  "updated_at": "2026-10-15T22:00:34Z",
+  "cap_note": "v5 behavioural design; v4 offline design was $25"
 }
