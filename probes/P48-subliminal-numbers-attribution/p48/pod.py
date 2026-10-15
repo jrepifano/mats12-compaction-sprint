@@ -1506,7 +1506,8 @@ def load_selection_scores(mix_name: str, n_rows: int) -> dict[str, list[float]]:
         raise SystemExit(f"no scores for {mix_name}; run score first")
     z = np.load(npz)
     out = {}
-    for sel, default in (("ekfac", None), ("delta_own", "delta_own:sum")):
+    for sel, default in (("ekfac", None), ("delta_own", "delta_own:sum"),
+                         ("dir_student", "dir_student:cosine")):
         name = frozen.get(sel) or default
         if name is None:
             cands = [k for k in z.files if k.startswith("ekfac:")]

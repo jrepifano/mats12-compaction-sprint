@@ -528,7 +528,8 @@ def test_stage2keys_without_a_gate_decision_lists_no_reference_arm(lab, capsys):
 
 def test_load_selection_scores_honours_the_frozen_variant(lab):
     lab.scores("mix100", **{"ekfac:cat:0.001": np.arange(4.0), "ekfac:cat:0.01": np.ones(4),
-                            "delta_own:sum": np.full(4, 2.0), "delta_own:mean": np.full(4, 3.0)})
+                            "delta_own:sum": np.full(4, 2.0), "delta_own:mean": np.full(4, 3.0),
+                            "dir_student:cosine": np.full(4, 4.0)})
     lab.frozen(ekfac="ekfac:cat:0.01", delta_own="delta_own:mean")
 
     out = pod.load_selection_scores("mix100", 4)
@@ -539,7 +540,8 @@ def test_load_selection_scores_honours_the_frozen_variant(lab):
 
 def test_load_selection_scores_defaults_are_the_lowest_ekfac_key_and_delta_own_sum(lab):
     lab.scores("mix100", **{"ekfac:cat:0.01": np.ones(3), "ekfac:cat:0.001": np.zeros(3),
-                            "delta_own:sum": np.full(3, 5.0), "delta_own:mean": np.full(3, 9.0)})
+                            "delta_own:sum": np.full(3, 5.0), "delta_own:mean": np.full(3, 9.0),
+                            "dir_student:cosine": np.full(3, 7.0)})
 
     out = pod.load_selection_scores("mix100", 3)
 
@@ -548,7 +550,8 @@ def test_load_selection_scores_defaults_are_the_lowest_ekfac_key_and_delta_own_s
 
 
 def test_load_selection_scores_refuses_a_frozen_variant_the_npz_does_not_have(lab):
-    lab.scores("mix100", **{"ekfac:cat:0.01": np.ones(3), "delta_own:sum": np.zeros(3)})
+    lab.scores("mix100", **{"ekfac:cat:0.01": np.ones(3), "delta_own:sum": np.zeros(3),
+                            "dir_student:cosine": np.full(3, 0.5)})
     lab.frozen(ekfac="ekfac:cat:0.1", delta_own="delta_own:sum")
 
     with pytest.raises(SystemExit) as exc:
@@ -559,7 +562,8 @@ def test_load_selection_scores_refuses_a_frozen_variant_the_npz_does_not_have(la
 
 
 def test_load_selection_scores_refuses_a_length_disagreement(lab):
-    lab.scores("mix100", **{"ekfac:cat:0.01": np.ones(9), "delta_own:sum": np.zeros(9)})
+    lab.scores("mix100", **{"ekfac:cat:0.01": np.ones(9), "delta_own:sum": np.zeros(9),
+                            "dir_student:cosine": np.arange(9.0)})
 
     with pytest.raises(SystemExit) as exc:
         pod.load_selection_scores("mix100", 10)
@@ -575,7 +579,8 @@ def test_load_selection_scores_needs_the_scores_file(lab):
 
 
 def test_load_selection_scores_needs_an_ekfac_family(lab):
-    lab.scores("mix100", **{"delta_own:sum": np.zeros(3)})
+    lab.scores("mix100", **{"delta_own:sum": np.zeros(3),
+                            "dir_student:cosine": np.zeros(3)})
 
     with pytest.raises(SystemExit) as exc:
         pod.load_selection_scores("mix100", 3)
@@ -586,13 +591,16 @@ def test_load_selection_scores_needs_an_ekfac_family(lab):
 def test_load_selection_scores_feeds_selections_from_scores(lab):
     """The shape `step_arms` passes straight into `D.selections_from_scores`."""
     lab.scores("mix100", **{"ekfac:cat:0.001": np.array([3.0, 1.0, 2.0, 0.0]),
-                            "delta_own:sum": np.array([0.0, 3.0, 1.0, 2.0])})
+                            "delta_own:sum": np.array([0.0, 3.0, 1.0, 2.0]),
+                            "dir_student:cosine": np.array([1.0, 0.0, 3.0, 2.0])})
     rows = [{"idx": i, "pid": f"p{i}", "label": "poison", "identical": False} for i in range(4)]
 
     sel = D.selections_from_scores(rows, 2, scores=pod.load_selection_scores("mix100", 4),
                                    include_random=False, include_active=False)
 
-    assert sel == {"ekfac": [0, 2], "delta_own": [1, 3]}
+    # dir_student joined the selectors after detection (log.md 2026-10-15): it wins at SOURCE
+    # detection but carries no trait signal, and the arms are where that is settled.
+    assert sel == {"ekfac": [0, 2], "delta_own": [1, 3], "dir_student": [2, 3]}
 
 
 # --- resumability: run keys and their files -------------------------------------------------

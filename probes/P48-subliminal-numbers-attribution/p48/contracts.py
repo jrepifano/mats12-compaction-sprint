@@ -168,7 +168,12 @@ RECIPE = Recipe()
 
 # --- stage 2 --------------------------------------------------------------------------------------
 STAGE2_SEEDS = (1, 2, 3)
-SELECTORS = ("ekfac", "delta_own", "random", "random_active")
+# dir_student joins the selectors after detection showed it wins at SOURCE detection (0.907)
+# while carrying no trait-specific signal (Spearman +0.006 with the EK-FAC trait residual,
+# against +0.783 with delta_teacher). The stage-2 mixture is 100% poison, so source is CONSTANT
+# there - which makes the arms the clean test of whether a pure source detector has any causal
+# purchase at all (log.md 2026-10-15, after the launching session's challenge).
+SELECTORS = ("ekfac", "delta_own", "dir_student", "random", "random_active")
 PRIMARY_GRAD_SELECTOR = "ekfac"  # fixed before the run (plan.md "Setup")
 OPERATIONS = ("swap", "drop", "refill")
 RANDOM_SELECT_SEED = 20261016
