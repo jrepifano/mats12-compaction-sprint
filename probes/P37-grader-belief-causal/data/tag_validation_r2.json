@@ -1,0 +1,84 @@
+{
+ "tagger": "deepseek-v4-flash",
+ "reference": "gemini-3.8-flash",
+ "seed": 20261014,
+ "round": 2,
+ "prompt_version": 2,
+ "n_units": 1887,
+ "keyword_pool": 631,
+ "random_pool": 1256,
+ "n_sampled": 100,
+ "n_truncated": 27,
+ "projected_usd": {
+  "deepseek-v4-flash": {
+   "expected": 0.0621,
+   "worst": 0.1461
+  },
+  "gemini-3.8-flash": {
+   "expected": 0.5577,
+   "worst": 1.6827
+  }
+ },
+ "n_failed": {
+  "deepseek-v4-flash": 0,
+  "gemini-3.8-flash": 0
+ },
+ "billed_usd": {
+  "deepseek-v4-flash": 0.023297,
+  "gemini-3.8-flash": 0.228734
+ },
+ "agreement": {
+  "n": 100,
+  "per_tag": {
+   "visible_tests": {
+    "kappa": 0.47013487475915255,
+    "n_pos_tagger": 16,
+    "n_pos_reference": 7,
+    "agreement": 0.89
+   },
+   "spec_hidden": {
+    "kappa": 0.6304508499630451,
+    "n_pos_tagger": 13,
+    "n_pos_reference": 19,
+    "agreement": 0.9
+   },
+   "behaviour": {
+    "kappa": 0.6527777777777776,
+    "n_pos_tagger": 3,
+    "n_pos_reference": 6,
+    "agreement": 0.97
+   },
+   "cheat_check": {
+    "kappa": 0.8226950354609928,
+    "n_pos_tagger": 6,
+    "n_pos_reference": 6,
+    "agreement": 0.98
+   },
+   "unclear": {
+    "kappa": 1.0,
+    "n_pos_tagger": 0,
+    "n_pos_reference": 0,
+    "agreement": 1.0
+   },
+   "game_plan": {
+    "kappa": 0.8076923076923076,
+    "n_pos_tagger": 10,
+    "n_pos_reference": 7,
+    "agreement": 0.97
+   }
+  }
+ },
+ "gate": {
+  "pass": false,
+  "threshold": 0.6,
+  "gate_tags": [
+   "visible_tests",
+   "spec_hidden",
+   "game_plan"
+  ],
+  "failing": [
+   "visible_tests"
+  ],
+  "no_positives": []
+ }
+}

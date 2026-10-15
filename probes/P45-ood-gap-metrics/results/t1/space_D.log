@@ -1,0 +1,219 @@
+[regions D k=200] 22 candidates, 14.5 s
+[regions D k=100] 9 candidates, 8.0 s
+[regions D k=400] 45 candidates, 26.6 s
+{
+ "pool": {
+  "n": 50000,
+  "mean_knn_id_share": 0.1827523362715629
+ },
+ "id_heldout": {
+  "n": 0,
+  "note": "not in this space"
+ },
+ "planted_med": {
+  "n": 500,
+  "mean_knn_id_share": 0.21235610846425676,
+  "auroc_more_ood_than_pool": 0.40981242
+ },
+ "planted_law": {
+  "n": 500,
+  "mean_knn_id_share": 0.3582748448542673,
+  "auroc_more_ood_than_pool": 0.25860708
+ },
+ "planted_law2": {
+  "n": 500,
+  "mean_knn_id_share": 0.39966645159020286,
+  "auroc_more_ood_than_pool": 0.23379158
+ }
+}
+{
+ "textual": {
+  "rule": "MinHash est. Jaccard >= 0.8, LSH bands (p42.data), union-find, representative = lowest pid",
+  "signatures": {
+   "method": "P42 lmsys.sig.npy mapped by source_id",
+   "hash_agreement_untruncated": 1.0
+  },
+  "n_edges": 3297,
+  "n_items": 50000,
+  "n_groups_ge2": 571,
+  "n_in_groups": 1589,
+  "n_removed": 1018,
+  "largest": [
+   44,
+   42,
+   42,
+   36,
+   36,
+   34,
+   25,
+   17,
+   14,
+   12
+  ],
+  "wall_s": 2.8
+ },
+ "activation": {
+  "A": {
+   "rule": "cosine >= 0.98 in space A (blocked), union-find, representative = lowest pid",
+   "n_edges": 293486,
+   "n_items": 50000,
+   "n_groups_ge2": 1525,
+   "n_in_groups": 7006,
+   "n_removed": 5481,
+   "largest": [
+    846,
+    384,
+    215,
+    166,
+    115,
+    101,
+    95,
+    90,
+    90,
+    87
+   ],
+   "wall_s": 5.5
+  },
+  "B": {
+   "rule": "cosine >= 0.98 in space B (blocked), union-find, representative = lowest pid",
+   "n_edges": 335126,
+   "n_items": 50000,
+   "n_groups_ge2": 1348,
+   "n_in_groups": 7257,
+   "n_removed": 5909,
+   "largest": [
+    850,
+    608,
+    251,
+    249,
+    215,
+    184,
+    169,
+    164,
+    126,
+    92
+   ],
+   "wall_s": 5.5
+  },
+  "C": {
+   "rule": "cosine >= 0.98 in space C (blocked), union-find, representative = lowest pid",
+   "n_edges": 1173,
+   "n_items": 50000,
+   "n_groups_ge2": 626,
+   "n_in_groups": 1491,
+   "n_removed": 865,
+   "largest": [
+    14,
+    9,
+    8,
+    7,
+    7,
+    7,
+    6,
+    6,
+    6,
+    6
+   ],
+   "wall_s": 5.4
+  },
+  "D": {
+   "rule": "cosine >= 0.98 in space D (blocked), union-find, representative = lowest pid",
+   "n_edges": 302513,
+   "n_items": 50000,
+   "n_groups_ge2": 1392,
+   "n_in_groups": 6836,
+   "n_removed": 5444,
+   "largest": [
+    844,
+    595,
+    215,
+    131,
+    121,
+    111,
+    100,
+    94,
+    90,
+    88
+   ],
+   "wall_s": 5.4
+  }
+ }
+}
+{
+ "space": "D",
+ "k": 200,
+ "note": "descriptive references, not eligibility gates (plan r2: region geometry depends on the labels)",
+ "perm": {
+  "n": 200,
+  "scheme": "within-decile shuffle of id/pool labels, regions fixed, weights recomputed",
+  "min_share": {
+   "p5": 0.2547159608158103,
+   "p50": 0.35967324099772946,
+   "p95": 0.4072130599368811,
+   "mean": 0.34950400032927464
+  },
+  "p1_share": {
+   "p5": 0.37283709230400947,
+   "p50": 0.4079583655032678,
+   "p95": 0.4248929761212009,
+   "mean": 0.4052669447145678
+  },
+  "n_candidates": {
+   "p5": 0.0,
+   "p50": 0.0,
+   "p95": 0.0,
+   "mean": 0.0
+  },
+  "frac_perm_n_candidates_ge_observed": 0.0
+ },
+ "observed": {
+  "min_share": 0.0,
+  "p1_share": 0.0,
+  "n_candidates": 22
+ },
+ "wall_s": 1.6
+}
+    region     P  n_id    id_mass     kish_n         s  low_support  P_text    s_text  robust  still_P_ge_min_pool_text  P_act     s_act  share_lost_act  boot_p_s_le_max
+0       10  1264     0   0.000000   0.000000  0.000000         True    1264  0.000000    True                      True    720  0.000000        0.430380             1.00
+1       17   907     0   0.000000   0.000000  0.000000         True     764  0.000000    True                      True     53  0.000000        0.941566             1.00
+2      149   651     0   0.000000   0.000000  0.000000         True     651  0.000000    True                      True    644  0.000000        0.010753             1.00
+3       40   623     0   0.000000   0.000000  0.000000         True     623  0.000000    True                      True    171  0.000000        0.725522             1.00
+4        5   450     0   0.000000   0.000000  0.000000         True     450  0.000000    True                      True    442  0.000000        0.017778             1.00
+5       48   405     0   0.000000   0.000000  0.000000         True     405  0.000000    True                      True    235  0.000000        0.419753             1.00
+6       66   305     0   0.000000   0.000000  0.000000         True     292  0.000000    True                      True      2  0.000000        0.993443             1.00
+7      147   224     0   0.000000   0.000000  0.000000         True     220  0.000000    True                      True     47  0.000000        0.790179             1.00
+8      130    96     0   0.000000   0.000000  0.000000         True      12  0.000000    True                     False      4  0.000000        0.958333             1.00
+9      183   386     1   0.584142   1.000000  0.001511         True     386  0.001442    True                      True    379  0.001155        0.018135             1.00
+10      20   950     2   3.109872   1.839285  0.003263         True     942  0.003282    True                      True    558  0.004678        0.412632             1.00
+11     179   246     1   1.095298   1.000000  0.004433         True     246  0.004411    True                      True    106  0.008375        0.569106             1.00
+12      28   516     1   2.328252   1.000000  0.004492         True     516  0.004485    True                      True    306  0.006575        0.406977             1.00
+13     141   163     2   2.598716   1.534941  0.015693         True     163  0.015522    True                      True    147  0.014518        0.098160             1.00
+14      97   435     4   9.338476   3.888907  0.021017         True     435  0.020999    True                      True    434  0.019083        0.002299             1.00
+15      83   477     6  11.938755   5.755454  0.024418         True     471  0.024696    True                      True    472  0.022784        0.010482             0.98
+16     177   497    43  18.633323  39.100439  0.036137        False     473  0.035254    True                      True    443  0.033449        0.108652             1.00
+17      14   732    42  28.222011  27.136793  0.037123        False     688  0.038306    True                      True    576  0.038425        0.213115             0.98
+18     118   410    16  16.765134  10.860758  0.039284         True     404  0.039327    True                      True    394  0.035378        0.039024             0.90
+19     153   526    51  22.876657  44.740806  0.041679        False     503  0.040887    True                      True    474  0.037825        0.098859             0.90
+{
+ "n_candidates": 22,
+ "n_top": 20,
+ "n_robust_top": 20,
+ "k_sensitivity": {
+  "100": {
+   "n_candidates": 9,
+   "n_top": 9,
+   "n_robust_top": 9,
+   "top_pool_members": 7895,
+   "jaccard_top_members_vs_main_k": 0.6970093457943926
+  },
+  "400": {
+   "n_candidates": 45,
+   "n_top": 20,
+   "n_robust_top": 20,
+   "top_pool_members": 5996,
+   "jaccard_top_members_vs_main_k": 0.49315823307925427
+  }
+ }
+}
+[samples D] 20 regions -> /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p45-ood-gap-metrics/probes/P45-ood-gap-metrics/results/t1/samples_D.md
+T1D_DONE

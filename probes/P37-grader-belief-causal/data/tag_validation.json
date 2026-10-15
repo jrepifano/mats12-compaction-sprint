@@ -1,0 +1,83 @@
+{
+ "tagger": "deepseek-v4-flash",
+ "reference": "gemini-3.8-flash",
+ "seed": 20261013,
+ "n_units": 1987,
+ "keyword_pool": 681,
+ "random_pool": 1306,
+ "n_sampled": 100,
+ "n_truncated": 29,
+ "projected_usd": {
+  "deepseek-v4-flash": {
+   "expected": 0.0603,
+   "worst": 0.1443
+  },
+  "gemini-3.8-flash": {
+   "expected": 0.5482,
+   "worst": 1.6732
+  }
+ },
+ "n_failed": {
+  "deepseek-v4-flash": 0,
+  "gemini-3.8-flash": 0
+ },
+ "billed_usd": {
+  "deepseek-v4-flash": 0.022782,
+  "gemini-3.8-flash": 0.224023
+ },
+ "agreement": {
+  "n": 100,
+  "per_tag": {
+   "visible_tests": {
+    "kappa": 0.5149253731343282,
+    "n_pos_tagger": 21,
+    "n_pos_reference": 10,
+    "agreement": 0.87
+   },
+   "spec_hidden": {
+    "kappa": 0.4578313253012044,
+    "n_pos_tagger": 20,
+    "n_pos_reference": 22,
+    "agreement": 0.82
+   },
+   "behaviour": {
+    "kappa": 0.9038461538461539,
+    "n_pos_tagger": 5,
+    "n_pos_reference": 6,
+    "agreement": 0.99
+   },
+   "cheat_check": {
+    "kappa": 0.7844827586206896,
+    "n_pos_tagger": 6,
+    "n_pos_reference": 9,
+    "agreement": 0.97
+   },
+   "unclear": {
+    "kappa": -0.010101010101008969,
+    "n_pos_tagger": 1,
+    "n_pos_reference": 1,
+    "agreement": 0.98
+   },
+   "game_plan": {
+    "kappa": 0.8259860788863106,
+    "n_pos_tagger": 11,
+    "n_pos_reference": 8,
+    "agreement": 0.97
+   }
+  }
+ },
+ "gate": {
+  "pass": false,
+  "threshold": 0.6,
+  "gate_tags": [
+   "visible_tests",
+   "spec_hidden",
+   "game_plan"
+  ],
+  "failing": [
+   "visible_tests",
+   "spec_hidden"
+  ],
+  "no_positives": []
+ }
+}

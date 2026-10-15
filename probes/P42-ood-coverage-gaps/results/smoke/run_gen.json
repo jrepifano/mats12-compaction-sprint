@@ -1,0 +1,53 @@
+{
+ "step": "gen",
+ "finished_utc": "2026-10-14T01:27:16Z",
+ "seconds": 205.8,
+ "phases_s": {
+  "tokenise": 4.05,
+  "engine_load": 160.43,
+  "generate": 33.65,
+  "assemble": 0.04
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "n_prompts": 850,
+ "max_model_len": 2596,
+ "template_check": {
+  "n": 500,
+  "full_string_mismatch": 3,
+  "mismatch_pids": [
+   "pool-036407",
+   "pool-037271",
+   "id_ref-000388"
+  ],
+  "leading_newline": 3
+ },
+ "chunks": {
+  "0": {
+   "n": 850,
+   "seconds": 33.6,
+   "out_tokens": 284097,
+   "out_tok_s": 8443.9
+  }
+ },
+ "stale_reset": null,
+ "vllm": "0.30.0",
+ "sampling": {
+  "temperature": 0.0,
+  "max_tokens": 512,
+  "seed": 20261013,
+  "stop_token_ids": [
+   100265,
+   100257
+  ]
+ },
+ "out_tokens": 284097,
+ "finish_reasons": {
+  "length": 393,
+  "stop": 457
+ },
+ "mean_resp_tokens": 334.23176470588237,
+ "out_tok_s": 8443.9,
+ "responses_sha256": "9b4d18c9da09544acd6dc79d29bf541c7d6ce45370ff882bd5139b3fdaa14b01",
+ "response_ids_sha256": "eb38d9847bb11ebc0c30d39a00d8925c0848f78955407ffaf4cf62be55b7132c",
+ "stop_token_last_in_ids": 457
+}

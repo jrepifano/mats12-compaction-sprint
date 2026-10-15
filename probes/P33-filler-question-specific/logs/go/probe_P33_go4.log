@@ -1,0 +1,10 @@
+resuming P33 on pod 9v5l7lu4kngsss (phase running)
+watchdog (P33): live (heartbeat 153 s old (pid 6540))
+PROBE_STATUS 2026-10-13T18:10:26Z exp=P33 slot=_P33 pod=9v5l7lu4kngsss phase=running reachable=1 alive=0 done=3 manifest=1 results=9 gpu=0,0 deadline_in=1.10h last="PROBE_DONE rc=3"
+stopping the poll: PROBE_DONE rc=3
+PROBE_PULLED verified 8 file(s) into probes/P33-filler-question-specific/results/
+pod 9v5l7lu4kngsss terminated: 2.15 h x $8.99/h = $19.31
+reservation bcbfde6e16c44aa1baa08669af7ae8a6: settled $19.31 for 9v5l7lu4kngsss; remainder released
+PROBE_DOWN pod=9v5l7lu4kngsss slot=_P33
+no P33 pod running: asked the watchdog to stop (watchdog_P33.stop)
+PROBE_STATUS 2026-10-13T18:10:33Z exp=P33 slot=_P33 pod=9v5l7lu4kngsss phase=done reachable=1 alive=0 done=3 manifest=1 results=9 gpu=0,0 deadline_in=1.10h last="PROBE_DONE rc=3"

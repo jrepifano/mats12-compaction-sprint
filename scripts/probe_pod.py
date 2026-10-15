@@ -30,8 +30,53 @@ probe.toml `[pod]` table (all optional except gpu_hours for up/go):
     setup = "eq0"        # pod_setup.sh --only target; "" = none
     disk_gb = 200
     push = []            # extra repo-relative files/dirs to send (may be untracked/gitignored)
-    env = ["HF_TOKEN"]   # laptop .env keys copied into the pod's /ws/emx/.env
+    env = ["HF_TOKEN"]   # laptop .env keys copied into the pod's /ws/emx/.env (HF_TOKEN is
+                         #   sent whenever the laptop has one, listed or not)
     poll_minutes = 5
+    model_gb = 160       # what run.sh downloads to the pod disk; the preflight refuses
+                         #   disk_gb < model_gb + 40 (venvs, uv cache, results)
+    model_repo = "org/name"  # the download gate (below) samples this repo's weight files ...
+    model_revision = "<40-hex commit>"  # ... at this revision (default "main"; warned)
+    min_download_mb_s = 150  # download gate threshold in MB/s (10^6 bytes/s); 0 = off
+    gpu_check = false    # on-pod GPU self-test before run.sh (P33's: CUDA context, memory query,
+                         #   4096^2 matmul, 3 tries 20 s apart)
+    rerolls = 2          # bad hosts `go` replaces with a new pod before exiting 8 (0-5)
+
+Preflight (wave 4, 2026-10-13: refused pushes, a faulty B300 and 6-82 MB/s downloads cost P33,
+P34 and P36 about $30 of pods):
+- Locally, before any reservation or pod (`up`, so `go`; also under --dry-run), every check that
+  used to fail only after creation, all reported together: the transfer list (run.sh tracked or
+  pushed, [pod].push paths exist, are safe and not held out), a clean tree under src/, scripts/
+  and the probe dir (EMX_GIT_COMMIT; the probe's run outputs and its plan.md/log.md/note.md are
+  exempt and the notes are never sent), the pod .env keys, scripts/pod_killswitch.sh present,
+  `bash -n` on run.sh, [pod].setup a target pod_setup.sh knows, disk_gb >= model_gb + 40, and a
+  setup venv for the on-pod gates. The clean-tree check runs again just before pod_up, after the
+  reservation wait (the reservation is released if it fails). The pod receives files by rsync,
+  never by a git clone, so there is no "pushed to origin" requirement.
+- On the pod, at the end of `push` (after setup, before run.sh), when [pod].gpu_check or
+  model_repo is set: `python -m emx.pod_preflight` (its docstring has the details) in the first
+  /ws/venv-* with torch and huggingface_hub, the pod .env exported, HF_HOME as run.sh sets it
+  (else /ws/hf_cache) and `--no-xet` when run.sh exports HF_HUB_DISABLE_XET=1. GPU self-test
+  failed (pod rc 10, `PROBE_PREFLIGHT_GPU_FAIL`) or download below min_download_mb_s over ~60 s
+  or 15 GB (rc 11, `PROBE_PREFLIGHT_SLOW_DOWNLOAD`): a bad host. pod_setup.sh's own CUDA checks
+  failing (`CUDA not available`, a CUDA error, nvidia-smi failing) count as a bad host too; an
+  install failure does not. A bad host: the captured output saved to
+  probes/<dir>/logs/pod/<pod id>/, the logs pulled (best effort: the one exception to "every
+  termination needs a logs pull", as no run has started), the pod terminated, exit 8. The bytes
+  the gate downloads are the model's own files, in the cache run.sh reads. Any other result (rc
+  12 `PROBE_PREFLIGHT_ERROR`: nothing reached the cache, a 401/403/404-type error, a wrong repo)
+  fails the push without a re-roll.
+- `go` re-rolls a bad host (exit 8: the gates above, or pod_up's "ssh timeout", a pod that
+  never got an IP): `PROBE_REROLL n/max`, a new reservation and pod, up to [pod].rerolls times,
+  recorded under `rerolls` in runner_state.json (`go --fresh` resets the count). The re-roll is
+  written as `pending_reroll` before the teardown, so a restarted `go` records it and goes on; a
+  restart after the count is used up launches nothing (exit 8).
+- The pod .env always carries HF_XET_HIGH_PERFORMANCE=1 (hf_xet's high-performance mode; read
+  by hf_xet 1.6.0 / huggingface_hub 1.33.0 in uv.lock) and HF_TOKEN when the laptop has one. Xet
+  settings act only where run.sh leaves xet on: every run.sh up to P37 exports
+  HF_HUB_DISABLE_XET=1 (a working-repo gotcha from an older hf_xet), so they download over plain
+  HTTP. That stays the default (Jacob, 2026-10-13) until a run with xet on checks its files'
+  hashes (AGENTS.md).
 
 Probe run contract:
 - On the pod the repo lives at /ws/emx. `run` launches, from /ws/emx, `bash probes/<dir>/run.sh`
@@ -98,9 +143,12 @@ Exit codes: 0 ok; 1 failure; 2 run finished with PROBE_DONE rc != 0 (complete, p
 3 `pull`: no manifest yet (logs mirrored, results kept unverified); 4 killswitch not armed (pod
 terminated); 5 `go`: salvaged (unverified results and logs copied, pod down); 6 pod_up outcome
 uncertain (reservation kept; see pod_up.py); 7 no GPU capacity (pod_up created no pod; `go`
-retries this with backoff for up to STOCK_RETRY_S before exiting 7).
+retries this with backoff for up to STOCK_RETRY_S before exiting 7); 8 bad host (GPU self-test,
+slow download or no SSH; the pod is terminated; `go` re-rolls up to [pod].rerolls times first).
+A preflight refusal exits 1 with no pod created.
 
-`go` records its exit code and outcome (complete / complete_rc_nonzero / salvaged / failed) as
+`go` records its exit code and outcome (complete / complete_rc_nonzero / salvaged / bad_host /
+failed) as
 `last_go_exit` and `last_go_outcome` in runner_state.json, so a later check needn't read the log.
 """
 
@@ -147,11 +195,18 @@ SSH_OPTS = [
 NEVER_SEND = frozenset({"data/E1/questions/narrow.jsonl"})  # held-out questions stay local
 LAPTOP_ONLY = re.compile(r"(OPENAI|OPENROUTER|RUNPOD|EM_DATASET_PASSWORD|AZURE)")
 SECRET_KEYS = ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "RUNPOD_API_KEY", "EM_DATASET_PASSWORD")
-RUNNER_KEYS = ("EMX_GIT_COMMIT", "EMX_PROBE")
+RUNNER_KEYS = ("EMX_GIT_COMMIT", "EMX_PROBE", "HF_XET_HIGH_PERFORMANCE")
+# hf_xet's high-performance mode (hf_xet 1.6.0 / huggingface_hub 1.33.0 in uv.lock read it); it
+# only acts where run.sh leaves xet on (the run.sh's so far export HF_HUB_DISABLE_XET=1)
+POD_DEFAULT_ENV = {"HF_XET_HIGH_PERFORMANCE": "1"}
+# the probe's own notes: never read on the pod, so neither sent nor held to EMX_GIT_COMMIT (agents
+# edit log.md while a launch waits; P34 and P36 lost pods to refused pushes, 2026-10-13)
+PROBE_DOCS = ("plan.md", "log.md", "note.md")
 SAFE_VALUE = re.compile(r"[A-Za-z0-9._/:-]+")  # shell-inert: pod_setup.sh sources the .env
 ENV_KEY = re.compile(r"[A-Z][A-Z0-9_]*")
 SETUP_RE = re.compile(r"[a-z0-9]*")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
+MODEL_REPO_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*")
 DONE_RE = re.compile(r"^PROBE_DONE rc=(-?\d+)$")
 QUIESCED_RE = re.compile(r"^PROBE_QUIESCED pgid=\S+$", re.MULTILINE)
 ARMED_RE = re.compile(
@@ -177,10 +232,22 @@ LOG_BACKOFF_S = 10  # logs pull retries: 10 s, 20 s
 STOP_GRACE_S = 30  # salvage: TERM, wait up to this long, then KILL
 RECOVER_MAX_WAIT_S = 300  # recovery retries back off up to this
 LOST_GRACE_S = 30 * 60  # unreachable pod: keep asking the API this long past the deadline
+# on-pod preflight (emx.pod_preflight): rc 10 GPU self-test failed, 11 download below
+# [pod].min_download_mb_s, 12 error; `go` replaces the pod (up to [pod].rerolls times) on 10/11
+PREFLIGHT_RC = {10: "gpu", 11: "slow_download", 12: "error"}
+PREFLIGHT_TAG_RE = re.compile(r"^PROBE_PREFLIGHT_(OK|GPU_FAIL|SLOW_DOWNLOAD|ERROR)\b.*$",
+                              re.MULTILINE)
+PREFLIGHT_TIMEOUT_S = 900  # 3 GPU tries (<= 140 s each) + listing + the download window
+DISK_OVERHEAD_GB = 40  # venvs, uv cache, logs and results next to [pod].model_gb
+BAD_HOST = 8  # exit code: GPU self-test, slow download, or no SSH from pod_up (pod terminated)
+# pod_setup.sh's own GPU checks failing (not an install failure)
+SETUP_GPU_FAIL_RE = re.compile(r"CUDA not available|CUDA error|CUDA-capable device|"
+                               r"NVIDIA-SMI has failed|No devices were found")
+SSH_TIMEOUT_RE = re.compile(r"^ssh timeout; pod \S+ terminated$", re.MULTILINE)
 
 
 STOCK_RETRY_S = 2 * 3600  # how long `go` keeps retrying a launch while RunPod has no capacity
-GO_OUTCOMES = {0: "complete", 2: "complete_rc_nonzero", 5: "salvaged"}
+GO_OUTCOMES = {0: "complete", 2: "complete_rc_nonzero", 5: "salvaged", 8: "bad_host"}
 # RunPod's stock-out replies; only these, with no "pod created:" line, make a launch retryable
 NO_CAPACITY_RE = re.compile(r"no (longer any )?instances (currently )?available",
                             re.IGNORECASE)
@@ -209,6 +276,12 @@ class PodConfig:
     env: tuple[str, ...]
     poll_minutes: float
     gpus: tuple[rp.GpuOption, ...] = ()  # [pod].gpus; () = the default H100 order
+    model_gb: float | None = None  # [pod].model_gb: what run.sh downloads (disk check)
+    model_repo: str = ""  # [pod].model_repo: the repo the download gate samples
+    model_revision: str = "main"
+    min_download_mb_s: float = 150.0  # 0 turns the download gate off
+    gpu_check: bool = False
+    rerolls: int = 2  # bad hosts `go` replaces before giving up
 
     @property
     def rate_usd_h(self) -> float:
@@ -219,7 +292,9 @@ class PodConfig:
 def load_pod_config(path: Path) -> PodConfig:
     with path.open("rb") as f:
         pod = tomllib.load(f).get("pod", {})
-    unknown = set(pod) - {"gpu_hours", "setup", "disk_gb", "push", "env", "poll_minutes", "gpus"}
+    unknown = set(pod) - {"gpu_hours", "setup", "disk_gb", "push", "env", "poll_minutes", "gpus",
+                          "model_gb", "model_repo", "model_revision", "min_download_mb_s",
+                          "gpu_check", "rerolls"}
     if unknown:
         raise ProbeError(f"{path}: unknown [pod] keys {sorted(unknown)}")
     gh = pod.get("gpu_hours")
@@ -251,9 +326,28 @@ def load_pod_config(path: Path) -> PodConfig:
             gpus = rp.parse_gpu_list(pod["gpus"], f"{path}: [pod].gpus")
         except ValueError as e:
             raise ProbeError(str(e)) from e
+    mgb = pod.get("model_gb")
+    if mgb is not None and not (isinstance(mgb, int | float) and not isinstance(mgb, bool)
+                                and 0 < mgb <= 2000):
+        raise ProbeError(f"{path}: [pod].model_gb must be in (0, 2000], got {mgb!r}")
+    repo = pod.get("model_repo", "")
+    if not isinstance(repo, str) or not (repo == "" or MODEL_REPO_RE.fullmatch(repo)):
+        raise ProbeError(f"{path}: [pod].model_repo must look like org/name, got {repo!r}")
+    rev = pod.get("model_revision", "main")
+    if not isinstance(rev, str) or not SAFE_VALUE.fullmatch(rev):
+        raise ProbeError(f"{path}: [pod].model_revision must be a commit or branch, got {rev!r}")
+    mins = pod.get("min_download_mb_s", 150.0)
+    if isinstance(mins, bool) or not isinstance(mins, int | float) or not 0 <= mins <= 10000:
+        raise ProbeError(f"{path}: [pod].min_download_mb_s must be in [0, 10000], got {mins!r}")
+    gc = pod.get("gpu_check", False)
+    if not isinstance(gc, bool):
+        raise ProbeError(f"{path}: [pod].gpu_check must be true or false, got {gc!r}")
+    rr_ = pod.get("rerolls", 2)
+    if isinstance(rr_, bool) or not isinstance(rr_, int) or not 0 <= rr_ <= 5:
+        raise ProbeError(f"{path}: [pod].rerolls must be an int in [0, 5], got {rr_!r}")
     return PodConfig(
         None if gh is None else float(gh), setup, disk, tuple(push), tuple(env), float(poll),
-        gpus,
+        gpus, None if mgb is None else float(mgb), repo, rev, float(mins), gc, rr_,
     )
 
 
@@ -529,6 +623,7 @@ class Runner:
         if self.envval(f"RUNPOD_POD_ID{self.slot}") and not self.dry_run:
             raise ProbeError(f"slot {self.slot} already holds pod "
                              f"{self.envval(f'RUNPOD_POD_ID{self.slot}')}; down it first")
+        self.preflight()
         self.ensure_watchdog()
         b = self.budget()
         base = PY + ["scripts/pod_up.py", "--exp", self.exp, "--slot", self.slot,
@@ -554,9 +649,16 @@ class Runner:
                 )
             except rr.NotAdmitted as e:
                 raise ProbeError(f"RunPod reservation not admitted: {e}") from e
-            st = {"reservation_id": rid, "budget_usd": b, "phase": "reserved"}
+            st = {"reservation_id": rid, "budget_usd": b, "phase": "reserved",
+                  **({"rerolls": st["rerolls"]} if st.get("rerolls") else {})}
             self.save_state(st)
         self.say(f"reservation {rid}: ${b:.2f}")
+        try:  # the reservation wait can be long: re-check what an agent may have edited since
+            self.check_clean()
+        except ProbeError:
+            rr.release(rid, note=f"{self.exp} probe_pod: tree changed before launch")
+            self.save_state({**st, "reservation_id": None, "phase": "idle"})
+            raise
         r = self.call(base + ["--budget-usd", f"{b:.2f}", "--reservation", rid])
         self.echo(r)
         m = CREATE_RE.findall(r.stdout or "")
@@ -576,6 +678,11 @@ class Runner:
             if "pod created:" not in out and NO_CAPACITY_RE.search(out):  # retryable stock-out
                 raise ProbeError(f"pod_up created no pod: no GPU capacity (rc {r.returncode}); "
                                  "reservation closed", 7)
+            if SSH_TIMEOUT_RE.search(out):  # P34 2026-10-13: RUNNING 15 min, never an IP
+                why = ("bad host: the pod never offered SSH; pod_up terminated it and closed the "
+                       "reservation")
+                self.save_state({**self.load_state(), "pending_reroll": why})
+                raise ProbeError(why, BAD_HOST)
             raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed")
         raise ProbeError(
             f"pod_up outcome uncertain (rc {r.returncode}, status {status}); reservation {rid} "
@@ -586,6 +693,9 @@ class Runner:
     def _is_run_output(self, f: str) -> bool:
         return any(f.startswith(f"{self.rel}/{d}/") for d in RUN_OUTPUT) or f.startswith(
             f"{self.rel}/.pull_")
+
+    def _is_doc(self, f: str) -> bool:
+        return f in {f"{self.rel}/{d}" for d in PROBE_DOCS}
 
     def _expand_push(self, p: str) -> list[str]:
         parts = Path(p).parts
@@ -641,7 +751,8 @@ class Runner:
         run outputs), plus every [pod].push path; refuses held-out data and any .env file."""
         tracked = self.git("ls-files", "-z", "--", "src", "scripts", self.rel,
                            "pyproject.toml", "uv.lock")
-        files = [f for f in tracked.split("\0") if f and not self._is_run_output(f)]
+        files = [f for f in tracked.split("\0")
+                 if f and not self._is_run_output(f) and not self._is_doc(f)]
         files += self.push_paths()
         seen: set[str] = set()
         out = []
@@ -659,14 +770,27 @@ class Runner:
 
     def check_clean(self) -> str:
         """HEAD, refusing modified tracked files or untracked (non-ignored) files under src/,
-        scripts/ or probes/<dir>/ (other than its run outputs and [pod].push paths)."""
+        scripts/ or probes/<dir>/, other than its run outputs (e.g. a committed log mirror that a
+        later pull updated: P33, 2026-10-13), its notes (PROBE_DOCS) and [pod].push paths. None
+        of those is sent from the working tree as code, so the pod still runs EMX_GIT_COMMIT."""
         paths = ["src", "scripts", self.rel]
-        mod = self.git("status", "--porcelain", "--untracked-files=no", "--", *paths).strip()
+        exempt = lambda f: self._is_run_output(f) or self._is_doc(f)
+        recs = self.git("status", "--porcelain", "-z", "--untracked-files=no", "--",
+                        *paths).split("\0")
+        dirty = []
+        while recs:
+            rec = recs.pop(0)
+            if len(rec) < 4:
+                continue
+            ends = [rec[3:]] + ([recs.pop(0)] if recs and rec[0] in "RC" else [])
+            if not all(exempt(f) for f in ends):  # a rename counts by both of its ends
+                dirty.append(f"{rec[:2]} {' <- '.join(ends)}")
+        mod = "\n".join(dirty)
         push = set(self.push_paths())
         untracked = [
             f for f in self.git("ls-files", "--others", "--exclude-standard", "--", *paths)
             .splitlines()
-            if f and not self._is_run_output(f) and f not in push
+            if f and not exempt(f) and f not in push
         ]
         if mod or untracked:
             listing = "\n".join([mod] * bool(mod) + [f"?? {f}" for f in untracked])
@@ -678,6 +802,8 @@ class Runner:
         return head
 
     def pod_env(self, head: str) -> str:
+        """The [pod].env keys, HF_TOKEN whenever the laptop has one (authenticated Hub downloads
+        get the account's rate limits), POD_DEFAULT_ENV, EMX_GIT_COMMIT and EMX_PROBE."""
         lines = []
         for k in self.cfg.env:
             v = self.envval(k)
@@ -686,6 +812,10 @@ class Runner:
             if not SAFE_VALUE.fullmatch(v):
                 raise ProbeError(f"unsafe characters in the value of {k}; refusing")
             lines.append(f"{k}={v}")
+        tok = self.envval("HF_TOKEN")
+        if "HF_TOKEN" not in self.cfg.env and tok and SAFE_VALUE.fullmatch(tok):
+            lines.append(f"HF_TOKEN={tok}")
+        lines += [f"{k}={v}" for k, v in POD_DEFAULT_ENV.items()]
         lines += [f"EMX_GIT_COMMIT={head}", f"EMX_PROBE={self.exp}"]
         text = "\n".join(lines) + "\n"
         for k in SECRET_KEYS:
@@ -754,6 +884,171 @@ class Runner:
             self.alert(f"killswitch not armed AND pod_down failed ({e}); terminate by hand")
         raise ProbeError(f"killswitch not armed: {why}", 4)
 
+    # --- preflight -----------------------------------------------------------------------------
+
+    def setup_targets(self) -> set[str]:
+        """The --only targets scripts/pod_setup.sh accepts (the labels of its `case "$ONLY"`)."""
+        text = (self.repo / "scripts" / "pod_setup.sh").read_text()
+        m = re.search(r'^case "\$ONLY" in\n(.*?)^esac', text, re.MULTILINE | re.DOTALL)
+        out: set[str] = set()
+        for line in (m.group(1) if m else "").splitlines():
+            lab = re.match(r"\s*([^)\s]+)\)", line)
+            if lab and lab.group(1) != "*":
+                out |= {x.strip('"') for x in lab.group(1).split("|")}
+        return out
+
+    def run_sh_text(self) -> str:
+        try:
+            return (self.dir / "run.sh").read_text()
+        except OSError:
+            return ""
+
+    def download_gate_on(self) -> bool:
+        return bool(self.cfg.model_repo) and self.cfg.min_download_mb_s > 0
+
+    def preflight(self) -> str:
+        """Every check that would otherwise fail only after a pod exists, run locally before any
+        reservation or pod (wave 4, 2026-10-13: refused pushes cost P33, P34 and P36 pods). All
+        problems are reported together; returns HEAD. Warnings are printed, not refused."""
+        problems: list[str] = []
+        head = ""
+
+        def check(fn):
+            try:
+                return fn()
+            except ProbeError as e:
+                problems.append(str(e))
+            return None
+
+        check(self.push_list)  # run.sh tracked (or pushed); [pod].push paths exist and are safe
+        head = check(self.check_clean) or ""
+        if head:
+            check(lambda: self.pod_env(head))
+        if not (self.repo / "scripts" / "pod_killswitch.sh").is_file():
+            problems.append("scripts/pod_killswitch.sh is missing (push arms it on the pod)")
+        run_sh = self.dir / "run.sh"
+        if run_sh.is_file():
+            r = self.call(["bash", "-n", str(run_sh)], effect=False, timeout=30)
+            if r.returncode != 0:
+                problems.append(f"{self.rel}/run.sh has a syntax error: "
+                                f"{(r.stderr or r.stdout).strip()[-300:]}")
+            if "PROBE_DONE" not in self.run_sh_text():
+                self.say(f"WARNING ({self.exp}): {self.rel}/run.sh never mentions PROBE_DONE; its "
+                         "last log line must be `PROBE_DONE rc=<n>` (fine if a program it "
+                         "calls prints it)")
+        elif not any(problems):
+            problems.append(f"{self.rel}/run.sh does not exist")
+        if self.cfg.setup and self.cfg.setup not in self.setup_targets():
+            problems.append(f"[pod].setup {self.cfg.setup!r} is not a pod_setup.sh --only target "
+                            f"(known: {', '.join(sorted(t for t in self.setup_targets() if t))})")
+        if self.cfg.model_gb is not None and (
+                self.cfg.disk_gb < self.cfg.model_gb + DISK_OVERHEAD_GB):
+            problems.append(f"[pod].disk_gb {self.cfg.disk_gb} < model_gb {self.cfg.model_gb:g} "
+                            f"+ {DISK_OVERHEAD_GB} GB for venvs, caches and results; raise disk_gb")
+        if (self.cfg.gpu_check or self.download_gate_on()) and not self.cfg.setup:
+            problems.append("[pod].gpu_check and the download gate (model_repo) run in a setup "
+                            "venv (torch, huggingface_hub): set [pod].setup")
+        if self.cfg.model_repo and not SHA_RE.fullmatch(self.cfg.model_revision):
+            self.say(f"WARNING ({self.exp}): [pod].model_revision {self.cfg.model_revision!r} is "
+                     "not a commit; the download gate samples whatever it points to now")
+        if self.download_gate_on() and not self.envval("HF_TOKEN"):
+            self.say(f"WARNING ({self.exp}): no HF_TOKEN in .env: downloads go unauthenticated "
+                     "(lower Hub rate limits; gated repos fail)")
+        if problems:
+            raise ProbeError("preflight refused the launch (no pod was created):\n"
+                             + "\n".join(f"- {x}" for x in problems))
+        gates = ["gpu self-test"] * self.cfg.gpu_check
+        if self.download_gate_on():
+            gates.append(f"download >= {self.cfg.min_download_mb_s:g} MB/s from "
+                         f"{self.cfg.model_repo}")
+        self.say(f"preflight ({self.exp}): ok at {head[:12]}; on-pod gates: "
+                 f"{', '.join(gates) or 'none'}; rerolls {self.cfg.rerolls}")
+        return head
+
+    def preflight_args(self) -> list[str]:
+        """emx.pod_preflight's arguments ([] = no on-pod gate). --no-xet when run.sh turns xet
+        off, so the gate measures the transport the run will use."""
+        args = []
+        if self.cfg.gpu_check:
+            args.append("--gpu")
+        if self.download_gate_on():
+            args += ["--repo", self.cfg.model_repo, "--revision", self.cfg.model_revision,
+                     "--min-mb-s", f"{self.cfg.min_download_mb_s:g}"]
+            if re.search(r'\bHF_HUB_DISABLE_XET=("?)1\b', self.run_sh_text()):
+                args.append("--no-xet")
+        return args
+
+    def preflight_remote(self, log: str) -> str:
+        """The on-pod preflight command: emx.pod_preflight in the first setup venv with torch and
+        huggingface_hub, the pod .env exported, HF_HOME as run.sh sets it (else /ws/hf_cache), so
+        the download test fills the cache run.sh reads."""
+        m = re.search(r'\bHF_HOME=("?)(/[A-Za-z0-9._/-]+)\1(?=\s|$)', self.run_sh_text())
+        hf_home = m.group(2) if m else "/ws/hf_cache"
+        args = self.preflight_args()
+        return "\n".join([
+            f"cd {POD_ROOT} || exit 5",
+            f"mkdir -p {shlex.quote(self.rel)}/logs || exit 5",
+            "set -a; [ -f .env ] && . ./.env; set +a",
+            f"export HF_HOME={shlex.quote(hf_home)} WANDB_MODE=offline",
+            ('PY=""; for v in /ws/venv-*/bin/python; do [ -x "$v" ] && "$v" -c '
+             '"import torch, huggingface_hub" 2>/dev/null && { PY=$v; break; }; done'),
+            ('[ -n "$PY" ] || { echo "PROBE_PREFLIGHT_ERROR no /ws/venv-* with torch and '
+             'huggingface_hub"; echo __RC=12; exit 0; }'),
+            (f"PYTHONPATH=src timeout -k 10 {PREFLIGHT_TIMEOUT_S - 60} \"$PY\" -m "
+             f"emx.pod_preflight {shlex.join(args)} > {shlex.quote(log)} 2>&1; RC=$?"),
+            f'cat {shlex.quote(log)}; echo "__RC=$RC"',
+        ])
+
+    def pod_preflight(self, addr) -> None:
+        """Run the on-pod gates ([pod].gpu_check, the download gate). A bad host (rc 10/11): pull
+        the logs, terminate the pod, raise BAD_HOST so `go` re-rolls. Anything else: ProbeError."""
+        log = f"{self.rel}/logs/preflight_{utc_stamp(self.clock())}.log"
+        remote = self.preflight_remote(log)
+        rc, tag = None, ""
+        for i in range(2):  # an ssh drop mid-check is retried once (the check is idempotent)
+            r = self.ssh(remote, timeout=PREFLIGHT_TIMEOUT_S, addr=addr)
+            self.echo(r)
+            m = re.search(r"^__RC=(\d+)$", r.stdout or "", re.MULTILINE)
+            if r.returncode == 0 and m:
+                rc = int(m.group(1))
+                tags = PREFLIGHT_TAG_RE.findall(r.stdout or "")
+                tag = tags[-1] if tags else ""
+                break
+            self.say(f"WARNING: on-pod preflight did not report (ssh rc {r.returncode}, try "
+                     f"{i + 1}/2)")
+        if rc is None:
+            raise ProbeError("the on-pod preflight did not report twice; see the pod's "
+                             f"{log}")
+        if rc == 0:
+            self.say(f"PROBE_PREFLIGHT ok on pod {addr[0]}")
+            st = self.load_state()
+            if st.pop("pending_reroll", None):  # a stale one from a crash before its teardown
+                self.save_state(st)
+            return
+        kind = PREFLIGHT_RC.get(rc, "error")
+        if kind in ("gpu", "slow_download"):
+            self.bad_host(addr, f"bad host: on-pod preflight {kind} (rc {rc}, {tag or 'no tag'})",
+                          r.stdout or "", Path(log).name)
+        raise ProbeError(f"on-pod preflight failed (rc {rc}, {tag or 'no tag'}); see {log}")
+
+    def bad_host(self, addr, why: str, captured: str, name: str) -> None:
+        """Before any run: record the pending re-roll (a restart resumes it), keep the captured
+        output locally (logs/pod/<pod id>/<name>), mirror the pod logs (best effort: no run has
+        started, so nothing else can be lost), terminate, raise BAD_HOST."""
+        st = self.load_state()
+        st["pending_reroll"] = why
+        self.save_state(st)
+        if not self.dry_run:
+            keep = self.dir / "logs" / "pod" / addr[0] / name
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_text(captured)
+        self.alert(f"{why}; terminating pod {addr[0]}")
+        if not self.pull_logs(tries=2):
+            self.say("WARNING: logs pull failed; terminating anyway (no run started; the "
+                     f"captured output is in {self.rel}/logs/pod/{addr[0]}/{name})")
+        self.down(reason=f"probe_pod: {why}"[:200])
+        raise ProbeError(why, BAD_HOST)
+
     def push(self) -> int:
         st = self.load_state()
         addr = self.pod_addr()
@@ -769,7 +1064,8 @@ class Runner:
                      f"{self.slot} --killswitch-deadline --per-slot); 2. send "
                      "scripts/pod_killswitch.sh alone; 3. arm and verify the ARMED line; 4. ack "
                      "the reservation; 5. rsync --files-from; 6. pod .env; "
-                     f"7. setup ({self.cfg.setup or 'none'})")
+                     f"7. setup ({self.cfg.setup or 'none'}); 8. on-pod preflight ("
+                     f"{shlex.join(self.preflight_args()) or 'none'})")
             for f in files:
                 self.say(f"  send {f}")
             return 0
@@ -823,6 +1119,8 @@ class Runner:
         self.say(f"synced {len(files)} files and the pod .env to {POD_ROOT}")
         if self.cfg.setup:
             self.setup(addr)
+        if self.cfg.gpu_check or self.download_gate_on():
+            self.pod_preflight(addr)
         st.update(phase="pushed", pushed_commit=head, pushed_utc=utc_iso(self.clock()))
         self.save_state(st)
         self.say(f"PROBE_PUSHED pod={pod_id} commit={head[:12]} deadline={utc_iso(deadline)}")
@@ -864,11 +1162,25 @@ class Runner:
             m = re.search(r"^__RC=(\d+)$", r.stdout, re.MULTILINE)
             if m:
                 if m.group(1) != "0":
-                    raise ProbeError(f"pod_setup.sh --only {self.cfg.setup} failed "
-                                     f"(rc {m.group(1)}; /ws/setup.log)")
+                    self.setup_failed(addr, m.group(1))
                 self.say(f"setup {self.cfg.setup}: done in ~{waited:.0f} s")
                 return
         raise ProbeError(f"pod setup not done after {self.setup_max_s:.0f} s")
+
+    def setup_failed(self, addr, rc: str) -> None:
+        """pod_setup.sh failed. Its own CUDA checks (`assert torch.cuda.is_available()`,
+        nvidia-smi) failing is a bad host, re-rolled like the GPU gate; anything else (an install
+        failure) is an ordinary error."""
+        stamp = utc_stamp(self.clock())
+        name = f"setup_{stamp}.log"
+        r = self.ssh(f"cp /ws/setup.log {shlex.quote(self.rel)}/logs/{name} 2>/dev/null; "
+                     "tail -n 60 /ws/setup.log 2>/dev/null; true", timeout=60, addr=addr,
+                     effect=False)
+        tail = r.stdout or ""
+        if SETUP_GPU_FAIL_RE.search(tail):
+            self.bad_host(addr, f"bad host: pod_setup.sh --only {self.cfg.setup} failed its CUDA "
+                          f"check (rc {rc})", tail, name)
+        raise ProbeError(f"pod_setup.sh --only {self.cfg.setup} failed (rc {rc}; /ws/setup.log)")
 
     # --- run -----------------------------------------------------------------------------------
 
@@ -1233,11 +1545,14 @@ class Runner:
                 os.replace(self.state_path, self.state_path.with_name(
                     f"runner_state.{utc_stamp(self.clock())}.json"))
             st = {}
+        if st.get("pending_reroll") and st.get("phase") in ("down", "idle"):
+            # crashed between a bad host's teardown and recording it: record it, start over
+            st = self.note_reroll(st["pending_reroll"])
         if st.get("phase") == "down":
             raise ProbeError(f"{self.exp} already finished (phase down, {st.get('down_utc')}); "
                              "rerun with --fresh to start a new pod", 0)
         if st.get("phase") == "idle":  # an earlier up released its reservation: start over
-            st = {}
+            st = {k: st[k] for k in ("rerolls",) if k in st}
         pod_id = self.envval(f"RUNPOD_POD_ID{self.slot}")
         if pod_id:
             if not self.pod_running(pod_id):
@@ -1273,6 +1588,18 @@ class Runner:
                 self.say(f"no GPU capacity ({e}); retrying in {wait / 60:g} min")
                 self.sleep(wait)
                 wait = min(wait * 2, 600.0)
+
+    def note_reroll(self, why: str) -> dict:
+        """Record a bad host in the state (`rerolls`, kept through `up`; --fresh resets it) and
+        set phase idle, so a restarted `go` starts a new pod."""
+        st = self.load_state()
+        why = st.pop("pending_reroll", None) or why
+        st["rerolls"] = [*st.get("rerolls", []), {"utc": utc_iso(self.clock()),
+                                                  "pod_id": st.get("pod_id"), "why": why[:300]}]
+        st.update(phase="idle", reservation_id=None)
+        st.pop("pod_id", None)
+        self.save_state(st)
+        return st
 
     def record_outcome(self, code: int) -> None:
         """Write go's exit code to the state, only for a go that holds the lock and got past
@@ -1310,18 +1637,36 @@ class Runner:
             self.say(f"resuming {self.exp} on pod {st.get('pod_id')} (phase {st.get('phase')})")
             if st.get("phase") == "recovering":
                 return self.recover()
-        else:
-            self.up_with_retry()
-            st = self.load_state()
-        if st.get("phase") in ("up", "reserved", "armed"):
+        while True:  # a bad host (BAD_HOST: already terminated) is replaced up to [pod].rerolls
+            n = len(self.load_state().get("rerolls", []))
+            if mode != "resume" and n > self.cfg.rerolls:  # also after a restart: no new pod
+                self.stop_watchdog_if_idle()
+                raise ProbeError(f"gave up after {n} bad hosts ([pod].rerolls = "
+                                 f"{self.cfg.rerolls}); `go --fresh` starts the count again",
+                                 BAD_HOST)
             try:
-                self.push()
+                if mode != "resume":
+                    self.up_with_retry()
+                    st = self.load_state()
+                if st.get("phase") in ("up", "reserved", "armed"):
+                    try:
+                        self.push()
+                    except ProbeError as e:
+                        if e.code not in (4, BAD_HOST):  # those already terminated the pod
+                            self.say(f"push failed ({e}); no results exist yet: terminating the "
+                                     "pod")
+                            self.down(reason=f"probe_pod go: push failed ({e})"[:200])
+                        raise
+                    st = self.load_state()
+                break
             except ProbeError as e:
-                if e.code != 4:  # code 4 already terminated the pod
-                    self.say(f"push failed ({e}); no results exist yet: terminating the pod")
-                    self.down(reason=f"probe_pod go: push failed ({e})"[:200])
-                raise
-            st = self.load_state()
+                if e.code != BAD_HOST:
+                    raise
+                st = self.note_reroll(str(e))
+                n = len(st["rerolls"])
+                if n <= self.cfg.rerolls:
+                    self.say(f"PROBE_REROLL {n}/{self.cfg.rerolls}: {e}; launching a new pod")
+                mode = "fresh"
         if st.get("phase") == "pushed":
             try:  # an earlier launch on this pod is adopted, never relaunched (run's guard)
                 self.run()

@@ -1,0 +1,123 @@
+{
+ "_artifacts": {
+  "count.json": "c4f9be55dea14e63fa2d2429dbdf20f54c0c2f27683674bb5748c6550d6473e7",
+  "semantic.json": "f9a7a4c197da4b013efe0dbd948375c041cf5dd53d70cfb6e480e10b81a4511c",
+  "note": "verdicts made by reading results/t1/count.md and semantic.md generated from these files (final A \u222a D recount, 2026-10-14); cmd_classify refuses a mismatch"
+ },
+ "explicit sexual or fetish story and role-play requests": {
+  "on_topic_dpo": 3,
+  "on_topic_sft": 1,
+  "on_topic_semantic": 9,
+  "on_topic_rows": {
+   "dpo": [
+    109300,
+    135063,
+    175455
+   ],
+   "sft": [
+    1723185
+   ],
+   "semantic": [
+    234782,
+    99248,
+    137824,
+    50539,
+    139829,
+    176676,
+    167148,
+    141196,
+    233440
+   ]
+  },
+  "note": "final merged regex is broad (A lookahead OR D word list) and mostly hits off-topic text; borderline not counted: SFT 842272 (story exploring sexuality, not explicit), 1747141"
+ },
+ "persona impersonation and character role-play instructions": {
+  "on_topic_dpo": 8,
+  "on_topic_sft": 6,
+  "on_topic_semantic": 17,
+  "on_topic_rows": {
+   "dpo": [
+    3214,
+    15078,
+    38099,
+    69125,
+    150966,
+    50855,
+    126520,
+    250352
+   ],
+   "sft": [
+    297216,
+    475796,
+    1622547,
+    1692447,
+    1811991,
+    82991
+   ],
+   "semantic": [
+    137824,
+    28683,
+    50539,
+    42269,
+    171776,
+    40296,
+    120312,
+    95656,
+    126732,
+    28087,
+    89073,
+    150571,
+    3214,
+    121188,
+    160557,
+    204027,
+    250962
+   ]
+  },
+  "note": "regex unchanged by the merge, so the regex samples are identical to the first count (checked); semantic list re-read after the merge"
+ },
+ "llm-application developer prompts (classify, extract, structured output)": {
+  "on_topic_dpo": 7,
+  "on_topic_sft": 3,
+  "on_topic_semantic": 20,
+  "on_topic_rows": {
+   "dpo": [
+    15882,
+    43167,
+    119820,
+    141870,
+    150888,
+    174313,
+    213948
+   ],
+   "sft": [
+    294741,
+    343317,
+    976752
+   ],
+   "semantic": "all 20 (AutoGPT-style 'CONSTRAINTS: 1. ~4000 word limit...' agent system prompts)"
+  },
+  "note": "task prompts with classify/extract/fixed-format specs; most other merged-regex hits are code tasks"
+ },
+ "questions about LLMs, chatbots and the assistant's own identity": {
+  "on_topic_dpo": 3,
+  "on_topic_sft": 5,
+  "on_topic_semantic": 20,
+  "on_topic_rows": {
+   "dpo": [
+    99073,
+    158914,
+    202241
+   ],
+   "sft": [
+    306510,
+    1307723,
+    1683636,
+    1686161,
+    1722968
+   ],
+   "semantic": "all 20 (e.g. 183193 'hello what version of chatgpt are you?')"
+  },
+  "note": "regex noisy ('parameters' hits code tasks)"
+ }
+}

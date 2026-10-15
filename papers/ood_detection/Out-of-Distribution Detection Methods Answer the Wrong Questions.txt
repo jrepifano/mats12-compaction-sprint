@@ -1,0 +1,1712 @@
+                                                   Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+
+                                                 Yucen Lily Li 1 Daohan Lu 1 Polina Kirichenko 1 Shikai Qiu 1 Tim G. J. Rudner 1 C. Bayan Bruss 2
+                                                                                     Andrew Gordon Wilson 1
+
+
+                                                                   Abstract                                   different machines and hospitals, lane boundary detection
+                                                                                                              in different cities, and speech recognition with different
+                                                To detect distribution shifts and improve model               accents (Amodei et al., 2016; Jung et al., 2021; Niu et al.,
+                                                safety, many out-of-distribution (OOD) detec-                 2016; Zhou et al., 2022; Koh et al., 2021). These settings
+
+
+
+
+arXiv:2507.01831v1 [cs.LG] 2 Jul 2025
+                                                tion methods rely on the predictive uncertainty               highlight the importance of building models which are ro-
+                                                or features of supervised models trained on in-               bust to natural transformations (Hendrycks and Dietterich,
+                                                distribution data. In this paper, we critically re-           2018; Mintun et al., 2021; Benton et al., 2020).
+                                                examine this popular family of OOD detection
+                                                procedures, and we argue that these methods are               However, rather than generalizing to natural distribution
+                                                fundamentally answering the wrong questions for               shifts, it has become popular to detect out-of-distribution
+                                                OOD detection. There is no simple fix to this                 (OOD) data by training a supervised predictive model on
+                                                misalignment, since a classifier trained only on in-          in-distribution data and examining the model’s uncertainty,
+                                                distribution classes cannot be expected to identify           logits, or features. A proliferation of works develop such
+                                                OOD points; for instance, a cat-dog classifier may            procedures for detection improvements on known bench-
+                                                confidently misclassify an airplane if it contains            marks (e.g., Hendrycks and Gimpel, 2016; Lee et al., 2018;
+                                                features that distinguish cats from dogs, despite             Ren et al., 2021; Hendrycks et al., 2019a; Liang et al.,
+                                                generally appearing nothing alike. We find that               2017; Wang et al., 2021), or propose new benchmarks (e.g.,
+                                                uncertainty-based methods incorrectly conflate                Hendrycks et al., 2019a; Yang et al., 2024b; Wang et al.,
+                                                high uncertainty with being OOD, while feature-               2022; Bitterwolf et al., 2023; Yang et al., 2021).
+                                                based methods incorrectly conflate far feature-               Although various limitations of OOD detection methods
+                                                space distance with being OOD. We show how                    have been noted, these critiques typically focus on special-
+                                                these pathologies manifest as irreducible errors              ized concerns in three distinct categories: (1) specialized is-
+                                                in OOD detection and identify common settings                 sues motivating minor modifications to existing procedures,
+                                                where these methods are ineffective. Additionally,            such as replacing max softmax with max logit (Hendrycks
+                                                interventions to improve OOD detection such as                et al., 2019a), or interventions like Bayesian uncertainty and
+                                                feature-logit hybrid methods, scaling of model                ensembling (Lakshminarayanan et al., 2017), and outlier
+                                                and data size, epistemic uncertainty representa-              exposure (Papadopoulos et al., 2021); (2) criticism of bench-
+                                                tion, and outlier exposure also fail to address this          marks used for detection, such as the conflation of semantic
+                                                fundamental misalignment in objectives. We addi-              and covariate shift (Yang et al., 2024b)); (3) limitations of
+                                                tionally consider unsupervised density estimation             specialized models, such inductive biases of coupling layers
+                                                and generative models for OOD detection, which                in normalizing flows (Kirichenko et al., 2020).
+                                                we show have their own fundamental limitations.
+                                                                                                              By contrast, we do not claim that OOD detection can
+                                                                                                              be reasonably addressed with minor changes to scoring
+                                                                                                              rules, datasets, or models. Instead, we argue that the
+                                        1       Introduction
+                                                                                                              entire premise of using supervised models trained on
+                                        In the real world, distribution shifts are the norm rather than       in-distribution data for out-of-distribution detection is
+                                        the exception. Predictive models are commonly deployed                fundamentally flawed — a wholly misspecified enterprise,
+                                        on test data which are drawn from distributions which dif-            with no easy fix. We demonstrate that essentially all known
+                                        fer from the training data, such as images acquired from              OOD detection procedures are answering a fundamentally
+                                            1
+                                                                                                              different question than “is this point drawn from a different
+                                            New York University 2 Capital One. Correspondence to: Yucen       distribution?”, and so there is a conceptual misalignment
+                                        Lily Li <yucenli@nyu.edu>, Andrew Gordon Wilson
+                                        <andrewgw@cims.nyu.edu>.                                              which prevents effective OOD detection.
+
+                                        Extended version of work published in ICML 2025
+
+                                                                                                          1
+                             Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+This mismatch becomes especially apparent when detecting              2    Preliminaries
+the semantic shifts associated with previously unseen classes
+(Yang et al., 2024b). In these cases, supervised models               OOD detection task. The OOD detection task involves
+should not be expected to have the necessary information for          identifying points from a different distribution than exam-
+this task. For example, a model trained only to distinguish           ples of in-distribution data. Typically, the distribution shifts
+trucks from cars may confidently misclassify a dog as truck           are categorized as covariate shifts and semantic shifts. Co-
+if the features it learned to distinguish cars from trucks also       variate shifts are label preserving, and can include com-
+happen to match some features of the dog. It is not that              mon noise corruptions and transformations, or going from
+OOD detection is “fundamentally difficult”, but rather                hand-written to type-written characters, or from natural im-
+that current methods answer the wrong question. A dog                 ages to cartoon versions (Hendrycks and Dietterich, 2019;
+clearly should be distinguishable from trucks and cars, but           Hendrycks et al., 2021). Semantic shifts involve new unseen
+a supervised model trained solely on those two categories             classes, where the model has no hope of reaching a correct
+has no reason to learn this distinction.                              label. For example, a model could be trained to differentiate
+                                                                      between cats and dogs, and then asked to label an airplane.
+In Section 4, we argue in detail that supervised classifiers,         Semantic shift detection is often further categorized into
+which are trained only to distinguish between in-distribution         near OOD, where the points are similar in some way, and
+classes, are misspecified for identifying out-of-distribution         far OOD for more distinct inputs. In contrast to OOD detec-
+points (e.g., Figure 1). We conceptually and empirically              tion, anomaly and outlier detection focus on detecting inputs
+demonstrate the following:                                            which significantly differ from other data points (Ruff et al.,
+                                                                      2021; Yang et al., 2024a); these inputs could correspond to
+   • Feature-based methods, which answer “Does this input             low-density regions of the training distribution, and do not
+     lead to features that are far from the features seen             necessarily indicate that there has been a distribution shift.
+     during training?”, cannot reliably identify OOD points.          Supervised detection setup. Let fθ : X → Y be a neu-
+     The features for ID and OOD inputs can be very similar           ral network with parameters θ which maps training data
+     or even overlap, and it is also difficult to select only         X tr ∼ pX (·) to class logits. The model’s predictive class
+     the most discriminative dimensions for OOD detection             distribution is given by pθ (y = k|x) = softmax(fθ (x)k )
+     without access to OOD data. (Section 4.1)                        and the final class prediction is arg maxk pθ (y = k|x).
+                                                                      OOD detection methods that leverage trained supervised
+   • Uncertainty-based methods answer “Is the model un-               models propose a scoring function, which for a test exam-
+     certain about which ID label to assign?”, but OOD                ple x∗ , assigns a scalar value s(x∗ , fθ , Dtr ) given a trained
+     detection requires asking whether the input comes from           model fθ and training data Dtr = {Xitr , Yitr }N  i=1 . The score
+     a different data distribution entirely. As a result, these       s(x∗ , fθ , Dtr ) is compared to a threshold value to determine
+     methods fail in common scenarios where ID inputs are             whether x∗ will be detected as OOD or not. These meth-
+     inherently ambiguous or OOD inputs are confidently               ods are typically evaluated on distribution shift benchmarks
+     misclassified. (Section 4.2)                                     using the ROC (Receiver Operating Characteristic) curve,
+                                                                      which plots the true positive rate against the false positive
+In Section 5, we then address many of the popular interven-           rate at various thresholds, and the AUROC (Area Under the
+tions which have been proposed to improve OOD detection.              ROC curve), which quantifies the overall performance.
+Specifically, we explore hybrid methods which combine                 Two particularly common families of approaches have
+feature and logit-based methods (Section 5.1), encouraging            emerged for such OOD detection. If we view the model
+the model to be uncertain on select inputs during training            as a composition of transformations pθ (y = c|x) =
+through outlier exposure (Section 5.2), modeling epistemic            softmax(cθ ◦ eθ (x))c where eθ : X → F is the penultimate
+uncertainty through Bayesian methods and ensembling (Sec-             layer feature extractor, and cθ : F → RK is the classifi-
+tion 5.3), introducing an “unseen” class during training              cation layer outputting logits, then there are two natural
+(Section 5.4), and scaling up the model and data size (Sec-           signals to consider — features or logits.
+tion 5.5). We find that these approaches all fail to directly
+address the question of OOD detection, and we identify their          Feature-based approaches. These methods compute the
+conceptual limitations and also illustrate their pathologies.         OOD score based on the features, typically from the penul-
+We also explore the pathologies of unsupervised models                timate layer. Mahalanobis Distance (Maha) is a common
+and generative approaches such as normalizing flows and               approach (Lee et al., 2018), where we fit a class-conditional
+diffusion models (Section 5.6), which have clear limitations          Gaussian mixture model to our features with µc and Σc .
+and are not well-suited for principled OOD detection. We              The final score is computed using the Mahalanobis distance
+conclude in Section 6 with prescriptions based on these
+findings.                                                                  s(x) = − min (eθ (x) − µc )Σ−1 (eθ (x) − µc )⊤ .
+                                                                                        c
+
+                                                                  2
+                                   Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+
+                                               Train Time                                                                       Test Time
+                              Feature Space                 Logit Space                                      Feature Failures                 Logit Failures
+                          Train features                                                                 Irrelevant features
+                          clustered by class                                          ID Test Data                                          Confident
+          ID Train Data
+                                                                                    Class 1          .        .                             on OOD
+
+        Class 1
+        Class 2
+                                                            Train inputs are        Class 2   .
+                                                            far from decision
+                                                            boundaries              Class 3                                                     Uncertain on ID
+        Class 3
+                                                                                     OOD Test Data
+                                                                                                         ID and OOD
+                                                                                                         features overlap
+
+
+
+
+Figure 1. There are irreducible errors when using supervised models for OOD detection because the problem is inherently
+misspecified. Supervised models can only determine if an input leads to atypical representations or uncertain predictions, which is
+fundamentally different than determining if the input belongs to the training distribution. When training on ID data (left), the model
+accurately clusters the features by class and has high confidence over inputs. However, for OOD detection at test-time (right), the model
+has distinct failure modes in both the feature and logit-space.
+
+
+Many other feature-based approaches have also been pro-                             shift (label-preserving transformations) (Yang et al., 2024b;
+posed (Ren et al., 2021; Sun et al., 2022; Tack et al., 2020;                       Bitterwolf et al., 2023; Huang and Li, 2021). There are
+Sehwag et al., 2021).                                                               also many interventions for boosting performance, includ-
+                                                                                    ing Bayesian uncertainty representation (Lakshminarayanan
+Logit-based approaches. These methods operate on the                                et al., 2017; Malinin et al., 2019; Tagasovska and Lopez-Paz,
+logits of a trained supervised model. The most common ap-                           2019; D’Angelo and Fortuin, 2021; Rudner et al., 2022),
+proach is Maximum Softmax Probability (MSP) (Hendrycks                              confidence minimization and outlier exposure (Hendrycks
+and Gimpel, 2016) sMSP (x) = maxc pθ (y = c|x). Other                               et al., 2018; Papadopoulos et al., 2021; Thulasidasan et al.,
+popular approaches within this family include the entropy of                        2021), and pre-training (Fort et al., 2021; Tran et al., 2022;
+the predictive distribution pθ (y|x) (Ren et al., 2019), value                      Hendrycks et al., 2019b).
+of the maximum logit (Jung et al., 2021) and the energy                             While there are several works critical in some way of OOD
+score (Liu et al., 2020). Despite a proliferation of methods,                       detection, our focus is significantly different. Critiques tend
+simple approaches such as MSP tend to provide state-of-                             to be targeted at modifications to existing measures (e.g.,
+the-art results, even on the more sophisticated benchmarks                          max-logit has fewer false positives than MSP) (Hendrycks
+(Hendrycks et al., 2019a; Yang et al., 2024b). These meth-                          et al., 2019a), improving the benchmark data (e.g., higher
+ods are thus a natural choice to exemplify the broad concep-                        resolution data, data with many classes, and more cleanly
+tual issues with OOD detection, since they provide simple,                          separating semantic shift from covariate shift) (Hendrycks
+popular, and still highly competitive approaches.                                   and Dietterich, 2019; Yang et al., 2024b), specific architec-
+                                                                                    tural properties of generative models (e.g., coupling layers
+3    Related Work                                                                   in normalizing flows) (Kirichenko et al., 2020), or note that
+                                                                                    detection might need to be more tailored to specific shifts
+While anomaly and outlier detection has been studied for                            (Tajwar et al., 2021; Farquhar and Gal, 2022). By contrast,
+many decades in statistics, the related but distinct area of                        we examine whether the standard families of methods for
+out-of-distribution (OOD) detection in deep learning is sur-                        OOD detection is fundamentally misspecified, answering a
+prisingly new (Yang et al., 2024a). Amodei et al. (2016)                            different question than “is this point out-of-distribution?”
+provides a call to action to build methods that are robust
+to distribution shifts. Shortly after, Hendrycks and Gim-                           Another line of OOD detection research relies on deep gen-
+pel (2016) proposed using softmax uncertainty as a simple                           erative models and likelihoods rather than supervised clas-
+baseline to detect out-of-distribution (OOD) points. A pro-                         sifiers. Although generative models have been shown to
+liferation of methods followed, using the logits, features, or                      assign higher likelihood to OOD inputs compared to ID
+uncertainty of a supervised model trained on in-distribution                        inputs (Hendrycks et al., 2018; Choi et al., 2018; Nalisnick
+data to detect out-of-distribution points, achieving better re-                     et al., 2019), many alternative methods have been proposed
+sults on benchmark detection tasks (Lee et al., 2018; Liang                         (Ren et al., 2019; Serrà et al., 2019; Morningstar et al., 2021;
+et al., 2017; Wang et al., 2022; Sun et al., 2022). Other work                      Graham et al., 2023; Liu et al., 2023). The limitations of
+has focused on introducing new benchmarks with higher                               these approaches have been studied by Zhang et al. (2021).
+resolution images, or test detection, more specifically under
+semantic shift (e.g., new unseen classes) versus covariate
+
+                                                                                3
+                             Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+4     Out of Distribution Detection Methods                           to clearly disambiguate between ID and OOD examples on
+      Answer the Wrong Questions                                      challenging OOD datasets. For each model, (1− Oracle
+                                                                      AUROC) represents an irreducible error: no feature-based
+Many OOD detection methods rely on the features or log-               method can correctly detect these OOD inputs that have
+its from supervised models that are only exposed to in-               indistinguishable features from ID.
+distribution data. Even though these approaches are some-
+times able to achieve reasonable results on OOD detection
+                                                                      Irrelevant features hurt performance and cannot be fully
+benchmarks, they fundamentally answer the wrong ques-
+                                                                      identified. Even if the model has learned features which
+tion: instead of determining whether an input belongs to the
+                                                                      are able to capture the differences between ID and OOD
+training distribution or some different distribution, they in-
+                                                                      data, it is difficult to separate the relevant distinguishing
+stead ask if the input leads to atypical model representations
+                                                                      feature directions from the irrelevant directions. As a re-
+or unconfident predictions. In this section, we explore the
+                                                                      sult of the underspecification of OOD data at train-time,
+concrete instances where the answers to these two questions
+                                                                      feature-based methods must rely generic distance metrics in
+differ, and we demonstrate that feature and logit-based OOD
+                                                                      the learned feature space and do not sufficiently up-weight
+detection methods have irreducible errors as a result.
+                                                                      discriminating features or down-weight irrelevant features.
+4.1   Feature-Based Methods                                           We demonstrate that feature-based methods are significantly
+                                                                      hurt by their inability to perform proper feature selection
+Feature-based methods typically use distance metrics to
+                                                                      by comparing them against oracle variants which use only
+measure how close the features of the test input are to the
+                                                                      the most distinguishing features. Specifically, we use the
+features of the train inputs, answering the question “Does
+                                                                      features from ResNet-18, ResNet-50, ViT-S/16, and ViT-
+this input lead to features that are far from the features seen
+                                                                      B/16 trained on ImageNet-1k, and the Mahalanobis (Maha)
+during training?”. These methods have two fundamental
+                                                                      method, which uses a distance metric defined by the empiri-
+failure modes: 1) the learned features do not sufficiently
+                                                                      cal covariance matrix Σ of ID features. To determine the op-
+discriminate between OOD and ID inputs, and 2) the op-
+                                                                      timal subset of distinguishing features, we perform PCA on
+timal distance metric depends on the OOD data, forcing
+                                                                      both ID and OOD features and we retain the number of prin-
+these methods to use suboptimal, heuristic-based distance
+                                                                      cipal components (chosen from {32, 64, 128, 256}) which
+metrics given only access to ID data. In particular, because
+                                                                      yields the highest Maha AUROC. In Figure 2 (left), we
+only a small number of feature dimensions is useful for
+                                                                      show that using only the most relevant features significantly
+OOD detection, models typically can not infer these most
+                                                                      improves Maha performance on all models by an average
+discriminating features without access to OOD data.
+                                                                      of over 10 percentage points. Specifically, the “irrelevant
+                                                                      features” error represented in blue represents the difference
+OOD features can be indistinguishable from ID features.               in AUROC between using Mahalanobis distance on all fea-
+While OOD inputs generally have unique characteristics that           tures compared to using Mahalanobis distance using only
+distinguish them from ID data, supervised models may not              the most relevant features for the specific OOD detection
+be incentivized to learn these features if they are unhelpful         task. Moreover, performing this PCA projection accounts
+for ID classification. If the OOD and ID features are indis-          for nearly all of the reducible error of Maha for the ViT mod-
+tinguishable, then no feature-based methods can perform               els. In other words, for ViTs, the gap between Maha and
+well. This failure mode is especially problematic for near            the best possible performance is almost entirely explained
+OOD detection where fine-grained features are required.               by the use of irrelevant features in the distance computation,
+                                                                      but determining the relevance of features is very challenging
+To demonstrate this lack of separability between ID and
+                                                                      without prior access to the OOD data. While methods such
+OOD features, we study four different models trained on
+                                                                      as Relative Mahalanobis and ViM (Ren et al., 2021; Wang
+ImageNet-1k: ResNet-18, ResNet-50, ViT-S/16, and ViT-
+                                                                      et al., 2022) use related ideas to attempt to reduce the impact
+B/16, with the OOD datasets of ImageNet-OOD (Yang
+                                                                      of irrelevant features, they can only use feature covariances
+et al., 2024b), Textures (Cimpoi et al., 2014), and iNaturalist
+                                                                      computed on ID data alone, and thus do not address this
+(Van Horn et al., 2018). For each setting, we train an Oracle,
+                                                                      fundamental limitation as we show in Appendix A.1.
+a binary linear classifier, to differentiate between examples
+of ID features and OOD features and report its performance            In Figure 2 (right), we show that the optimal set of discrim-
+on held-out ID and OOD features. This Oracle serves as a              inating features is highly specific to the particular OOD
+proxy for the best possible performance of any feature-based          dataset we wish to detect and does not transfer. As demon-
+OOD detection method since it is directly trained on both             strated in the first panel using features from ViT-S/16, using
+ID and OOD features, which is not accessible to standard              the top 32 PCA components computed on ImageNet and
+OOD detection methods. We see in Figure 2 (left) that even            IN-OOD improves Maha AUROC in detecting IN-OOD but
+with ground-truth OOD information, the Oracle is unable               significantly degrades the AUROC for detecting other OOD
+
+                                                                  4
+                                                    Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+                                         Feature-Based Errors (IN-OOD)                                        IN-OOD Features             Textures Features          iNaturalist Features
+                                                                             Irreducible                        IN-OOD
+                    0.4                                                      Irrelevant            0.95         Textures
+                                                                             Other                              iNaturalist
+
+
+
+Error (1 - AUROC)
+                                                                                                   0.90
+                    0.3
+
+                                                                                           AUROC
+                                                                                                   0.85
+                    0.2
+                                                                                                   0.80
+                    0.1                                                                            0.75
+                                                                                                   0.70
+                    0.0
+                            ResNet-18   ResNet-50     ViT-S/16   ViT-B/16   ViT-G/16                      0      67   83      92   96 0       67   83   92    96 0        67   83   92      96
+                                                                            (DINOv2)                                   Percentage of "Irrelevant" Features Removed
+
+   Figure 2. Feature-based methods have two key failure modes: indistinguishable features and irrelevant features. (Left): The error
+   decomposition of Mahalanobis distance into irrelevant features, indistinguishable features and other components. (Right): The most
+   relevant features for OOD detection are specific to each OOD dataset. For ViT-S/16 features, selecting the features that are the most
+   discriminative for one OOD dataset (dashed line) leads to reduced performance on other OOD datasets (solid lines).
+
+
+   datasets like Textures and iNaturalist. This result shows                                   label uncertainty is equivalent to higher OOD uncertainty,
+   that, as long as the OOD dataset is not specified at training                               but these are fundamentally different quantities. As a result,
+   time, determining the influence of irrelevant features is chal-                             there are two distinct failure modes where logit-based meth-
+   lenging for any feature-based method, presenting another                                    ods make the incorrect prediction: instances where ID data
+   fundamental bottleneck to its detection performance.                                        naturally has high label uncertainty, and instances where
+                                                                                               OOD data has low label uncertainty.
+   Visual demonstrations. We visualize clear examples of
+   failure modes for feature-based methods in Appendix A.1.
+   To demonstrate feature overlap, we train a ResNet-18 on
+   a subset of CIFAR-10 classes: airplane, cats, and trucks.                                   ID examples often have high uncertainty. To show
+   We then use this trained model to detect OOD images of                                      the misalignment between label and OOD uncertainty, we
+   dogs. We see in Figure A.1 (left) that the feature space                                    demonstrate instances where models predict high label un-
+   between cats and dog have very overlap, since the model                                     certainty over in-distribution samples. One example of this
+   did not learn the features necessary to distinguish between                                 failure mode can be found in ImageNet-1K, many of the
+   these two classes. This pathology is reflected in the poor                                  images within the dataset contain concepts from multiple
+   performance of feature-based methods such as Mahalanobis                                    classes (Stock and Cisse, 2018; Shankar et al., 2020). We
+   distance, which only achieves an AUROC of 0.537 and is                                      would expect these multi-label images to have high label
+   barely better than random chance. Furthermore, these fail-                                  uncertainty since there may be multiple correct answers.
+   ures also occur in larger models trained on diverse datasets.                               For our experiments, we used the human annotations from
+   Even when using a ResNet-50 trained on ImageNet-1K, Fig-                                    Beyer et al. (2020) as the ground truth for the number of
+   ure A.1 (right) demonstrates that feature-based methods fail                                labels corresponding to each image.
+   to correctly differentiate ID from OOD examples.
+                                                                                               We explore the behaviors of ResNet-18, ResNet-50, ViT-
+                                                                                               S/16, ViT-B/16, trained on ImageNet-1k, as well as ViT-
+   4.2                    Logit-Based Methods
+                                                                                               G/14 DINOv2 pretrained on internet-scale data. When we
+   Due to the many pathologies of feature-based OOD de-                                        apply uncertainty-based metrics to these samples where mul-
+   tection methods, it may be tempting to instead focus on                                     tiple labels may apply, we find in Figure 3 (left) that the av-
+   logit-based methods, which gauge a model’s uncertainty                                      erage uncertainty of these multi-label images is significantly
+   over an input’s predicted labels via its logits. However,                                   higher than corresponding in-distribution samples across
+   the previous limitations are still applicable. For instance,                                a variety of methods. However, these images are clearly
+   in the scenario where OOD and ID features overlap, logit-                                   ID, since they are sampled from the same distribution that
+   based methods would also fail to detect OOD inputs since                                    the model was trained on. Furthermore, we see that the
+   the logits are a function of the penultimate-layer features.                                logit-based methods are not able to distinguish between ID
+   Furthermore, logit-based methods have their own suite of                                    inputs with high natural label uncertainty and OOD inputs;
+   failure modes which arise from the conflation of label uncer-                               for example, the AUROC for multi-label images (ID with
+   tainty, the uncertainty over the correct ID label, with OOD                                 high label uncertainty) vs ImageNet-OOD is only around
+   uncertainty, the uncertainty over whether the sample is ID or                               0.6. These results reveal that uncertainty-based methods are
+   OOD. Logit-based methods heuristically assume that higher                                   insufficient for OOD detection.
+
+                                                                                           5
+                                                   Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+                                ID (All)      ID (Multi-label)                                                                                                 Random Chance
+                          MSP     Entropy    Energy       Max-Logit                                                                    MSP                Entropy    Energy       Max-Logit
+                   0.9                                                                                                          1.0
+                                                                                       ID (All)                                                                                                                ID
+
+
+
+  AUROC (IN-OOD)                                                                                              AUROC (Striped)
+                                                                                                                                0.8
+
+
+                                                                      MSP Frequency                                                                                                           MSP Frequency
+                                                                                       ID (Multi-label)                                                                                                        OOD (Striped)
+                   0.8
+                                                                                                                                0.6
+                   0.7                                                                                                          0.4
+                   0.6                                                                                                          0.2
+                                                                                                                                0.0
+                         R-18   R-50    ViT-S/16 ViT-B/16 ViT-G/14                    0.25 0.50 0.75                                   R-18              R-50    ViT-S/16 ViT-B/16 ViT-G/14                   0.25 0.50 0.75
+                                                          (DINOv2)                     ResNet-18 MSP                                                                               (DINOv2)                    ViT-B/16 MSP
+
+          (a) ID inputs with high label uncertainty hurt OOD detection                                         (b) OOD inputs with low label uncertainty hurt OOD detection
+
+Figure 3. Logit-based methods incorrectly conflate label uncertainty with OOD uncertainty. (Left): The circles show OOD detection
+on standard ImageNet vs ImageNet-OOD, while the triangles show degraded performance when comparing a subset of ImageNet samples
+(“Multi-label”) against ImageNet-OOD. The histogram shows that the multi-label subset has significantly higher label uncertainty
+compared to other ID inputs. (Right): All methods perform similarly to random chance on the “Striped” class from Textures. The
+histogram shows that the model’s uncertainty on inputs from this OOD class is indistinguishable from its uncertainty on ID samples.
+
+
+OOD examples often have low uncertainty. In Figure 3                                                              miss, is a fundamental limitation of logit-based OOD detec-
+(right), we consistently find that logit-based approaches are                                                     tion methods. This misalignment of goals often leads these
+unable to distinguish between ID and the “Striped” class                                                          methods to exhibit pathological behavior.
+from Textures. Furthermore, in Table A.1, we benchmark
+14 different models including ResNets, ViTs, and ConvNext                                                         5                   But what about ... ?
+V2 in the setting where ImageNet-1K is ID. We record
+the FPR@95, which indicates how many OOD examples                                                                 Given the prevalence of failure modes when using only fea-
+are incorrectly classified as ID due to their low uncertainty                                                     ture or logit-based OOD methods, numerous strategies have
+at a threshold where 95% of ID examples are correctly                                                             been proposed to enhance OOD performance. In this sec-
+classified. For logit-based methods such as MSP, max-logit,                                                       tion, we examine popular interventions such as combining
+energy score, and entropy, the average FPR@95 across all                                                          feature and logit-based approaches, pre-training on larger
+settings is over 60%; thus, a majority of OOD examples are                                                        datasets, modeling epistemic uncertainty, and exposing the
+misclassified due to their low uncertainty.                                                                       model to outliers. For these methods, we analyze their
+                                                                                                                  limitations, and demonstrate how they fail to address the
+We provide visual examples of these failure modes of
+                                                                                                                  fundamental pathologies outlined in Section 4. We also
+uncertainty-based methods in Appendix A.2, where the pre-
+                                                                                                                  address the limitations of explicitly including an OOD class
+dictive uncertainties of ID inputs are indistinguishable from
+                                                                                                                  during training and using unsupervised generative models.
+the uncertainties of OOD inputs. In Figure A.4, we note how
+the uncertainties of an ID and OOD class entirely overlap for
+a LeNet-5 trained on a subset of CIFAR-10. We also visual-                                                        5.1                 Combining Feature and Logit-Based Methods
+ize the feature space of a ResNet-50 trained on ImageNet-1k
+in Figure A.5 and identify OOD classes which are far from                                                                                                1.0
+
+
+
+                                                                                                                                          IN-ODD AUROC
+the decision boundary and have high confidence.                                                                                                                                                                  MSP
+                                                                                                                                                         0.8                                                     Maha
+These pathologies can also be found in other domains such                                                                                                                                                        ViM
+                                                                                                                                                                                                                 Hybrid
+as language. In Table A.2, we consider the Multi-NLI                                                                                                     0.6                                                     -Add
+                                                                                                                                                                                                                 Chance
+dataset (Williams et al., 2018) as in-distribution, where the
+                                                                                                                                                         0.4
+data consists of a premise and a hypothesis and classifies                                                                                                      R-18     R-50 ViT-B/16 ViT-S/16
+their relationship as entailment, contradiction, or neutral.
+We then benchmark the performance of BART (Lewis et al.,                                                         Figure 4. Hybrid OOD methods (ViM, Hybrid-Add) do not consis-
+2020), trained on Multi-NLI with an ID accuracy of 0.963,                                                        tently outperform stand-alone feature-based methods (Maha) and
+on two OOD datasets: SNLI (Bowman et al., 2015) and                                                              logit-based methods (MSP) and suffer from the same pathologies.
+QNLI (Wang et al., 2018). The FPR@95 is above 0.95
+and 0.92 across the uncertainty-based methods for SNLI                                                           Hybrid approaches that combine model features and logits
+and QNLI respectively, indicating that OOD examples are                                                          have been proposed for OOD detection (Sun et al., 2021;
+consistently misclassified as ID. More details can be found                                                      Wang et al., 2022), and methods like Virtual-logit Matching
+in Appendix A.2.                                                                                                 (ViM) (Wang et al., 2022) have achieved state-of-the-art
+Our experiments demonstrate that the difference between                                                          results for certain OOD benchmarks. These methods im-
+label uncertainty and OOD uncertainty, although easy to                                                          plicitly assume that feature and logit-based methods have
+                                                                                                                 complementary failure modes.
+
+                                                                                                          6
+                                                           Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+                   To probe this assumption, we introduce a simple baseline                                and the features necessary to distinguish ID from one OOD
+                   method, “Hybrid-Add”, which sums the normalized scores                                  dataset often do not generalize.
+                   of a feature-based method (Mahalanobis) with a logit-based
+                                                                                                           Furthermore, outlier exposure may significantly hurt OOD
+                   method (MSP). We find that Hybrid-Add improves OOD
+                                                                                                           generalization because the model is explicitly trained to
+                   detection for some models compared to using MSP or Ma-
+                                                                                                           have high label uncertainty over a large set of inputs; this
+                   halanobis alone on Textures (Figure A.8), indicating feature
+                                                                                                           degradation in performance is especially problematic be-
+                   and logit-based methods can have distinct failure modes.
+                                                                                                           cause OOD generalization is essential for model robustness
+                   However, this benefit is highly model and dataset-specific;
+                                                                                                           and reliability. To demonstrate this behavior, we compare
+                   on other OOD datasets like iNaturalist and IN-OOD, Hybrid-
+                                                                                                           two ResNet-18 models trained on CIFAR-10, one with the
+                   Add does not offer a clear advantage over MSP or Maha-
+                                                                                                           standard training regime using Expected Risk Minimization
+                   lanobis, as seen in Figure 4 and Figure A.8. Other hybrid
+                                                                                                           (ERM), and the other with outlier exposure using TIN-597
+                   methods such as ViM also do not consistently outperform
+                                                                                                           as Dout following Zhang et al. (2023) (see Appendix B.1
+                   MSP and Mahalanobis distance. These findings demonstrate
+                                                                                                           for setup details).
+                   that feature and logit-based methods do not always share
+                   distinct failure modes.                                                                 In Appendix A.7, we show that outlier exposure does im-
+                                                                                                           prove OOD detection for most of the semantic shift OOD
+                   Crucially, hybrid methods do not resolve the fundamental
+                                                                                                           benchmarks. However, outlier exposure does not improve
+                   pathologies of OOD detection due to model misspecifica-
+                                                                                                           performance on MNIST, likely because this dataset dif-
+                   tion. In the many cases where ID and OOD features are
+                                                                                                           fers significantly from natural image benchmarks. This
+                   indistinguishable, as discussed in Section 4.1, both logit
+                                                                                                           decreased performance highlights the sensitivity of outlier
+                   and features do not provide reliable information for OOD
+                                                                                                           exposure to the choice of OOD data and reiterates that the
+                   detection. Furthermore, hybrid methods do not circumvent
+                                                                                                           features which distinguish ID and OOD are not consistent
+                   any of the previously identified pathologies of feature or
+                                                                                                           across diverse OOD datasets. Furthermore, we find that both
+                   logit-based methods. Therefore, although they may offer
+                                                                                                           the ID accuracy and the OOD generalization of the model
+                   improvements on select benchmarks, hybrid methods do not
+                                                                                                           are significantly negatively impacted. In Figure 5, on inputs
+                   address the fundamental bottlenecks.
+                                                                                                           with covariate shifts, outlier exposure hurts the model’s ac-
+                                                                                                           curacy by over 10% across our benchmarked datasets. Thus,
+                   5.2     Exposing to Outliers                                                            by explicitly encouraging high uncertainty on the diverse
+                                                                                                           outlier dataset, we sacrifice our model’s generalizability.
+  OOD detection                              100
+                                                   OOD generalization
+                                                                 ERM
+                                              80                 Outlier Exposure                          5.3     Modeling Epistemic Uncertainty
+                                                                                            Train Points: 30              Train Points: 100                           Train Points: 10000
+                                                                                         Laplace AUROC 0.769            Laplace AUROC 0.764                          Laplace AUROC 0.741                       MAP AUROC 0.735
+                                  Accuracy
+                                              60
+                                                                                                                                                                                                                                           1.0
+                                                                         15 Train Points: 30               15
+                                                                                                           Train Points:
+                                                                                                           Train  Points: 30
+                                                                                                                          100                   15 10000
+                                                                                                                                         Train Points:                                                15
+                                                                                                                                                                                       Train Points: 10000
+                                  40
+                                                                         10  Laplace AUROC 0.769         Laplace
+                                                                                                        Laplace
+                                                                                                           10     AUROC0.769
+                                                                                                                 AUROC     0.764       LaplaceAUROC
+                                                                                                                                      Laplace   AUROC0.764
+                                                                                                                                                10     0.741                             MAP AUROC
+                                                                                                                                                                                      Laplace AUROC 100.735
+                                                                                                                                                                                                       0.741        1.0MAP AUROC 0.735           1.0
+                                  20
+                                                                         15                        1515                          1515                                          1515                              15                        0.8
+                                                                         105                       1010     5                    1010             5                            1010                   5          10 0.8
+                                                                                                                                                                                                                                             MSP 0.8
+                                   0
+                                                                          50                         55     0                     55              0                             55                    0           5                        0.6
+TIN   MNIST SVHN Texture Places       CIFAR-10 STL-9  CINIC-10 CIFAR-C                                                                                                                                                MSP                          MSP
+                                                                          05                         00     5                     00              5                             00                    5           0 0.6                          0.6
+                                                                          5                          55                           55                                            55                                5
+                                                                                                                                                                                                                                           0.4
+                  Figure 5. Training a ResNet-18 with outlier exposure10 10hurts OOD               1010
+                                                                                                           10
+                                                                                                                                 1010
+                                                                                                                                                10
+                                                                                                                                                                               1010
+                                                                                                                                                                                                     10
+                                                                                                                                                                                                                 10 0.4                          0.4
+                                                                                10
+                                                                               10     0 0   10  10         10
+                                                                                                          10       010
+                                                                                                                    0       10
+                                                                                                                           10 0       10 1010 00 10    1010                     0       101010 0 0     1010    10          0
+                                                                                                                                                                                                                          10   0 10   10
+                   generalization for covariate shifts compared to standard training.
+                                                                                                                         Airplane (ID)Dog (ID)
+                                                                                                                 Airplane (ID)                    Dog   (ID)
+                                                                                                                                                 Airplane (ID)(ID)
+                                                                                                                                                       Truck            Truck
+                                                                                                                                                                        Dog    (ID) (OOD)Truck (ID)
+                                                                                                                                                                            (ID)
+                                                                                                                                                                          CIFAR100             CIFAR100 (OOD)
+                                                                                                                                                                                                         CIFAR100 (OOD)
+                   Another popular approach to improve OOD detection is
+                   outlier exposure, which incorporates OOD examples when                                  Figure 6. Epistemic uncertainty becomes less useful for OOD de-
+                   training the model (Hendrycks et al., 2018; Choi et al., 2023).                         tection as more ID data is observed due to posterior collapse.
+                   In this setting, we explicitly optimize the model to have high
+                   uncertainty on the outlier dataset:                                                     Predictive uncertainty can be separated into aleatoric un-
+                                                                                                           certainty, which is considered irreducible and stems from
+                   L = E(x,y)∼Din ℓCE (f (x), y) + αEx′ ∼Dout ℓCE (f (x′ ), yu )                           inherent data variability, and epistemic uncertainty, which
+                                                                                                           is uncertainty over which solution is correct given the lim-
+                   where yu is the uniform distribution over K classes. Outlier                            ited data. It has been posited that focusing on epistemic
+                   exposure relies on the dataset Dout to encourage the model                              uncertainty is the principled approach to OOD detection be-
+                   to have high predictive uncertainty away from the training                              cause the uncertainty increases as we move away from the
+                   data. However, even if the model is exposed to OOD data                                 data, and there is a proliferation of methods approximating
+                   during training, the final model is still misspecified because                          epistemic uncertainty for improved OOD detection (e.g.,
+                   it only contains ID classes as possible categorizations. As                             Band et al., 2021; D’Angelo and Fortuin, 2021; Lakshmi-
+                   discussed in Section 4.1, OOD datasets are quite diverse,                               narayanan et al., 2017; Malinin et al., 2019; Rudner et al.,
+
+                                                                                                       7
+                             Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+2022; Tagasovska and Lopez-Paz, 2019; Tran et al., 2022).                                                                    ID Classes: Shrew, Porcupine
+                                                                                                               1.0              OOD Class: (Cup, Bowl)
+                                                                                                                                                                     bottle
+Epistemic uncertainty is typically represented through a                                                       0.8
+
+
+                                                                                           Classified as OOD
+                                                                                                                                                                   can
+distribution over the model parameters. For a model f with                                                     0.6                           sunflower tank
+stochastic parameters Θ, distributed according to q(θ), we                                                     0.4               hamsterspider bed
+                                                                                                                                    otter
+can express the model’s predictive uncertainty as                                                              0.2      mouse
+                                                                                                               0.0      -0.4 -0.2 0.0 0.2 0.4
+H (EqΘ [p(y | x, Θ)]) = EqΘ [H(p(y | x, Θ))] + I(Y ; Θ)                                                                  Similarity to OOD - Similarity to ID
+|        {z         } |         {z         }   | {z }
+      Predictive Unc.        Aleatoric Unc.      Epistemic Unc.
+
+                                                                      Figure 7. Adding an OOD class is only effective if the train OOD
+where H(·) is the entropy functional and I(Y ; Θ) is the
+                                                                      examples are similar to test OOD examples.
+mutual information.
+                R     The predictive distribution is then
+p(y = c|x, D) = softmax(fθ (x))c · p(θ|D)dθ.
+We note that deep ensembling (Lakshminarayanan et al.,                lasidasan et al., 2020). During training, we can then expose
+2017), popular for OOD detection, is a prominent example              models to OOD examples, and use this additional class for
+of epistemic uncertainty representation; by marginalizing             OOD detection on test samples.
+over modes in a posterior they often provide a relatively ac-         However, we find this method is only effective when the
+curate representation of the posterior predictive distribution        examples that the model is exposed to during training are
+(Wilson and Izmailov, 2020; Izmailov et al., 2021).                   very similar to the OOD examples during test-time, which
+However, the predictive uncertainty is not over whether a             is often unrealistic. To demonstrate, we train a ResNet-18
+point is OOD but rather over class labels, and epistemic              model on two CIFAR-100 classes: keyboard and porcupine,
+uncertainty does not address this limitation. Consider how            and use samples from cup and skyscraper for the OOD
+epistemic uncertainty changes as a function of data size. In          class. We then measure the performance of OOD detection
+the infinite ID-data limit, the posterior over model’s param-         over the remaining CIFAR-100 classes. In Figure 7, we
+eters collapses, and the model becomes extremely confident            use BERT embeddings (Devlin et al., 2018) to compute the
+in its parameters. If measuring epistemic uncertainty were            cosine similarity of the test-time OOD classes to the train-
+the correct approach to OOD detection, then low epistemic             time ID and OOD classes. We see that the OOD class is
+uncertainty implies that OOD points do not exist in this              effective for test-time examples of bottle and can, since they
+setting. Therefore, because perfectly capturing epistemic             are similar to the train OOD examples. However, the model
+uncertainty is not enough to solve OOD detection, they must           is unable to accurately categorize examples like hamster and
+answer fundamentally different questions.                             mouse, which are more closely related to ID classes.
+
+To illustrate this phenomenon, we consider a last-layer               5.5   Scaling Model and Data Size
+Bayesian approximation (Kristiadi et al., 2020) and train
+a linear layer fθ over features extracted from a ResNet-18                                 Best Method                               Maha with Oracle Features                    Oracle
+trained on IN-1K to classify three classes: airplane, dog, and
+                                                                                    1.00
+                                                                                                                     Scaling Trend on IN vs IN-OOD
+truck. We place a prior over parameters θ, and we approxi-
+                                                                                                                                                                 V-B/16
+mate the predictive distribution through a Laplace approxi-                         0.95                                             V-B/16       V-B/16         (CLIP)
+                                                                                                                           V-S/16 (DINO)
+mation that uses a Gaussian distribution to approximate the                         0.90
+                                                                                                                                R-50
+
+                                                                            AUROC
+                                                                                                                       R-34
+posterior distribution of the model parameters, allowing for                                      R-18
+                                                                                                                                  V-S/16
+                                                                                    0.85                                         (DINO)                               V-G/14
+the estimation of epistemic uncertainty (MacKay, 2003). In                                                                                                           (DINOv2)
+                                                                                    0.80
+                                                                                                                                                               V-L/14
+Figure 6, we visualize the learned decision boundaries by ap-                                                                                 V-B/16
+                                                                                                                                                               (CLIP)
+                                                                                                                                              (CLIP)
+plying PCA to reduce the logit space to two dimensions and                          0.75
+                                                                                                    0.700            0.725   0.750    0.775    0.800   0.825     0.850    0.875
+plot the MSP over this projection. As the size of the training                                                               ImageNet Accuracy
+data increases, the posterior noticeably contracts and the
+performance worsens, approaching that of a deterministic              Figure 8. Even scaling to ViT-G/14 DINOv2 pre-trained on internet
+model using maximum a posteriori (MAP) estimates!                     scale data (right-most), the best method still contains significant
+                                                                      error from indistinguishable features and irrelevant features.
+5.4   Introducing an Unseen Class
+                                                                      Increasing model size and pre-training on large datasets have
+Since standard classification models trained over K classes           been shown to reliably improve OOD detection benchmarks
+are fundamentally misspecified for the task of detecting              as models tend to learn more diverse and higher-quality
+OOD classes in both feature-space and logit-space, it may             features (Fort et al., 2021; Dehghani et al., 2023; Miyai
+be tempting to correct the specification problem by adding a          et al., 2023). When models see more diverse data and as the
+(K + 1)-th class corresponding to the OOD category (Thu-              model capacity increases, they can learn more features that
+
+                                                                  8
+                                           Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+
+              0.70
+                             IN-1K vs IN-OOD                                     CelebA vs CIFAR-10                                          AUROC: 0.430
+                                           GMM                      0.84                    RealNVP                   14   ID ImageNet-1K Val
+              0.68                         (varied covs)            0.82                    (varied sizes)            12   OOD ImageNet-OOD
+                                                                    0.80                                              10
+
+
+      AUROC   0.66
+                                                            AUROC   0.78
+                                                                                                             Counts
+                                                                                                                       8
+
+                                                                    0.76                                               6
+              0.64                                                  0.74                                               4
+
+                                                                    0.72                                               2
+              0.62
+                     0.6   0.4   0.2 0.0     0.2   0.4     0.6             6.0       5.5     5.0       4.5             0
+
+                            ID Log-Likelihood                                     ID Log-Likelihood                        0.05       0.10         0.15
+                                                                                                                                              Diffusion Loss
+                                                                                                                                                               0.20   0.25
+
+
+
+
+Figure 9. Better generative models of ID data can lead to worse OOD detection. (Left): We create GMMs for ResNet-50 ImageNet
+features with various covariance matrices ranging from the empirical covariance estimations to identity matrix. The models which better
+fit the ID data have worse OOD detection. (Center): We benchmark RealNVP models of different sizes, and find the models which
+achieve better likelihoods on ID CelebA images do not consistently achieve better AUROC for detecting CIFAR-10. (Right): Modern
+generative models like the Diffusion Transformer are unable to detect OOD data using the diffusion loss.
+
+
+help distinguish OOD and ID data.                                                                  the latter, we would like to compute p(OOD|x), which by
+                                                                                                   Bayes’ rule is p(x|OOD)/p(x) up to an x-independent con-
+However, as we show in Figure 8 and Figure A.7, scaling
+                                                                                                   stant. In general, knowing p(x) tells us nothing about the
+alone does not fully address the limitations of OOD de-
+                                                                                                   value of this ratio. p(x|OOD)/p(x) is also invariant to any
+tection methods. We benchmark twelve different models
+                                                                                                   coordinate transformation on x, whereas p(x) is not.
+of varying sizes and pretraining methods, enumerated in
+Appendix B.3. In challenging near-OOD problems such                                                We illustrate this phenomenon with a simple 1D example
+as ImageNet vs. ImageNet-OOD, models learn additional                                              in Figure A.10, where the ID data is drawn from N (0, 1)
+discriminating features between ID and OOD data at an                                              and the OOD data is drawn from N (2, 1). Suppose we
+extremely slow rate, such that even the largest ViT-G/14                                           model the ID data with x ∼ pµ (x) = N (x|µ, 1), where
+DINOv2 still has over 5% irreducible error due to indistin-                                        µ is the parameter of our model. Choosing µ = 0 will
+guishable features. As we have argued in Section 4, this                                           exactly model the true distribution and achieve the highest
+error can not be decreased regardless of what OOD detec-                                           likelihood. However, as shown in Figure A.10 (right), the
+tion method we use. Indeed, the AUROC achieved by the                                              optimal choice of µ for OOD detection is −∞, achieving a
+best method (Best) among Maha, Rel Maha, MSP, Max                                                  maximum AUROC but infinite KL divergence from the true
+Logit, Energy, and ViM is consistently below the Oracle                                            ID distribution.
+binary classifier trained on ID and OOD features. Further-
+                                                                                                   We further demonstrate the conflict between creating a better
+more, while the error due to indistinguishable features may
+                                                                                                   model for p(x) and the ability to use its likelihoods for OOD
+be decreased (slowly) with scale, there is still a large gap
+                                                                                                   detection. In Figure 9 (left), we construct Gaussian Mixture
+between the best existing method and the Oracle as we scale
+                                                                                                   Model (GMM) models for the ImageNet-1K features from
+the model. Much of this gap can be recovered by optimally
+                                                                                                   a ResNet-50. We create a GMM with one cluster per class,
+selecting features for Maha (Maha with Oracle Features),
+                                                                                                   using class-conditional means and covariances estimated
+suggesting that the presence of irrelevant features continues
+                                                                                                   from training data. This model, equivalent to the generative
+to limit the performance. We provide additional empiri-
+                                                                                                   model used by the Mahalanobis method (Lee et al., 2018),
+cal results in Appendix A.5 which demonstrate the scaling
+                                                                                                   achieves high likelihood on ID data (seen as the rightmost
+behaviors using 54 models over nine architectures and six
+                                                                                                   dot). However, as we degrade the generative model by
+pre-training setups. These results demonstrate the funda-
+                                                                                                   interpolating the covariance towards the trivial identity co-
+mental pathologies of existing OOD detection methods even
+                                                                                                   variance, the OOD detection improves monotonically. The
+with increasing model and data size.
+                                                                                                   phenomena can also be seen in Figure 9 (center), where we
+                                                                                                   show the performance of RealNVP normalizing flow mod-
+5.6   Generative Models                                                                            els (Dinh et al., 2016) of various sizes trained on CelebA
+Unlike supervised classifiers, unsupervised generative mod-                                        images. Again, we find that the quality of the generative
+els trained on the ID dataset directly measure the likelihood                                      model does not have a strong association with its ability to
+of sample x under the training distribution. Generative mod-                                       detect OOD images from CIFAR-10. We demonstrate the
+els, therefore, may appear to be a principled solution to                                          OOD detection performance of diffusion
+OOD detection. However, estimating p(x) is fundamentally                                           In Appendix A.6, we discuss additional pathologies of using
+different from estimating whether x is more likely to be                                           generative models for OOD detection, illustrate concep-
+drawn from some different distribution. Conceptually, for                                          tual limitations and discuss the impacts of inductive biases.
+
+                                                                                            9
+                              Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+As shown in Figure 9 (right), unsupervised models such                   assumption is simply unrealistic: we know there will be
+as the Diffusion Transformer (Peebles and Xie, 2023) can                 OOD points, but each time they are different — consider
+fail catastrophically at OOD detection, and thus generative              the challenges in autonomous driving.
+models are not a principled solution to this problem.
+                                                                         Unsupervised methods, such as generative models or den-
+                                                                         sity estimation, also suffer from fundamental limitations.
+6    What Should We Do?                                                  p(x) answers a different question than p(OOD|x), creat-
+                                                                         ing a tension between the quality of density estimation and
+Moving forward, we must be intentional about choosing
+                                                                         performance in OOD detection. Moreover, we are more
+between the fundamentally different goals of OOD general-
+                                                                         interested in typicality than density (regions with high den-
+ization vs detection. Many real-world use-cases may prefer
+                                                                         sity can have low mass, meaning they would not be typical
+graceful generalization under mild covariate shifts rather
+                                                                         samples), but different notions of typicality can lead to very
+than simply detection. For example, we may want models
+                                                                         different OOD detection behavior, and choosing amongst
+to handle noisy images, or images acquired from different
+                                                                         these notions can be arbitrary.
+hospitals, or adapt from hand-written to type-written digits,
+rather than merely flag these inputs as different. In these              If we are to use a supervised procedure for OOD detec-
+cases, we have shown interventions such as outlier exposure,             tion, extensive pre-training over many classes can be a
+which train the model to be uncertain for OOD points, often              useful intervention and generally leads to improved per-
+cause the model to generalize more poorly under covariate                formance across various OOD detection methods. However,
+shifts and lead to counterproductive results. Moreover, the              scaling the model size and pre-training data is insufficient
+very design of model architectures (and data augmentation)               for addressing the misaligned objectives, and even mod-
+is to keep the predictive distribution invariant to such co-             els like ViT-G/14, pretrained on internet-scale data using
+variate shifts — for example, translation equivariance in                self-supervised objectives, suffer pathological behavior.
+convolutional neural networks. Therefore the use of these
+                                                                         Ultimately, effective out-of-distribution detection requires
+predictive distributions to signal covariate shift is directly at
+                                                                         methods that directly address the core question rather than
+odds with how we should design our models for reasonable
+                                                                         relying on convenient heuristics. Rather than continuing
+generalization in the real world!
+                                                                         to utilize techniques which are fundamentally misaligned
+If we are interested in OOD detection rather than generaliza-            with the goal of OOD detection, we should instead develop
+tion, we must distinguish between semantic and covariate                 principled approaches that at least aim to estimate the prob-
+shift detection. As we have demonstrated, semantic shift                 ability that an input comes from a different distribution.
+detection is often not a sensible objective whatsoever with
+standard procedures which use the features or logits of a                Acknowledgments
+supervised model. Hybrid OOD detection methods which
+combine feature-space and logit-space information also do                We thank Marc Finzi, Micah Goldblum, Sanae Lotfi, Nate
+not address the fundamental pathologies caused by the prob-              Gruver, and Sanyam Kapoor for helpful discussions and
+lem misspecification and thus fail to reliably perform well.             thought-provoking questions. This work was supported by
+                                                                         NSF CAREER IIS-2145492, NSF CDS&E-MSS 2134216,
+Other interventions which estimate epistemic uncertainty,
+                                                                         NSF HDR-2118310, BigHat Biosciences, Capital One, and
+such as Bayesian methods and ensembles, are also funda-
+                                                                         the NYU IT High Performance Computing resources, ser-
+mentally misaligned with the OOD detection objective, and
+                                                                         vices, and staff expertise.
+become worse at distinguishing between in-distribution and
+OOD points as we acquire more in-distribution data — ex-
+actly the opposite behavior we would desire! Despite their               References
+prevalence in OOD benchmarking, we should use these
+                                                                         Dario Amodei, Chris Olah, Jacob Steinhardt, Paul Chris-
+methods with caution, especially in cases where we have
+                                                                           tiano, John Schulman, and Dan Mané. Concrete problems
+access to significant amounts of in-distribution data.
+                                                                           in ai safety. arXiv preprint arXiv:1606.06565, 2016.
+The most natural way to resolve the model misspecification
+of supervised procedures is to introduce a new class repre-              Neil Band, Tim G. J. Rudner, Qixuan Feng, Angelos Filos,
+senting points from other distributions (e.g., a three-class               Zachary Nado, Michael W. Dusenberry, Ghassen Jerfel,
+classifier for ‘cats’, ‘dogs’, and ‘anything else’). However,              Dustin Tran, and Yarin Gal. Benchmarking Bayesian
+for this approach to work, the examples from the ‘anything                 Deep Learning on Diabetic Retinopathy Detection Tasks.
+else’ class have to share common structure and should be                   In Advances in Neural Information Processing Systems
+carefully selected to be representative of the types of OOD                34, 2021.
+inputs we want to detect at test-time. In many cases, this
+                                                                         Gregory Benton, Marc Finzi, Pavel Izmailov, and Andrew G
+
+                                                                    10
+                            Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+  Wilson. Learning invariances in neural networks from              Jacob Devlin, Ming-Wei Chang, Kenton Lee, and Kristina
+  training data. Advances in neural information processing            Toutanova. Bert: Pre-training of deep bidirectional trans-
+  systems, 33:17605–17616, 2020.                                      formers for language understanding. arXiv preprint
+                                                                      arXiv:1810.04805, 2018.
+James Betker, Gabriel Goh, Li Jing, Tim Brooks, Jianfeng
+  Wang, Linjie Li, Long Ouyang, Juntang Zhuang, Joyce               Laurent Dinh, Jascha Sohl-Dickstein, and Samy Ben-
+  Lee, Yufei Guo, et al. Improving image generation with              gio. Density estimation using real nvp. arXiv preprint
+  better captions. Computer Science. https://cdn. openai.             arXiv:1605.08803, 2016.
+  com/papers/dall-e-3. pdf, 2(3):8, 2023.
+                                                                    Sebastian Farquhar and Yarin Gal.           What’out-of-
+Lucas Beyer, Olivier J Hénaff, Alexander Kolesnikov, Xi-             distribution’is and is not. In NeurIPS ML Safety Work-
+  aohua Zhai, and Aäron van den Oord. Are we done with               shop, 2022.
+  imagenet? arXiv preprint arXiv:2006.07159, 2020.
+                                                                    Stanislav Fort, Jie Ren, and Balaji Lakshminarayanan. Ex-
+Julian Bitterwolf, Maximilian Mueller, and Matthias Hein.             ploring the limits of out-of-distribution detection. Ad-
+  In or out? fixing imagenet out-of-distribution detection            vances in Neural Information Processing Systems, 34:
+  evaluation. arXiv preprint arXiv:2306.00826, 2023.                  7068–7081, 2021.
+
+Samuel R. Bowman, Gabor Angeli, Christopher Potts, and              Priya Goyal, Mathilde Caron, Benjamin Lefaudeux, Min
+  Christopher D. Manning. A large annotated corpus for                Xu, Pengchao Wang, Vivek Pai, Mannat Singh, Vitaliy
+  learning natural language inference, 2015. URL https:               Liptchinsky, Ishan Misra, Armand Joulin, et al. Self-
+  //arxiv.org/abs/1508.05326.                                         supervised pretraining of visual features in the wild. arXiv
+                                                                      preprint arXiv:2103.01988, 2021.
+Caroline Choi, Fahim Tajwar, Yoonho Lee, Huaxiu Yao,
+                                                                    Mark S Graham, Walter HL Pinaya, Petru-Daniel Tudosiu,
+  Ananya Kumar, and Chelsea Finn. Conservative pre-
+                                                                     Parashkev Nachev, Sebastien Ourselin, and Jorge Car-
+  diction via data-driven confidence minimization. arXiv
+                                                                     doso. Denoising diffusion models for out-of-distribution
+  preprint arXiv:2306.04974, 2023.
+                                                                     detection. In Proceedings of the IEEE/CVF Conference
+Hyunsun Choi, Eric Jang, and Alexander A Alemi. Waic,                on Computer Vision and Pattern Recognition, pages 2947–
+  but why? generative ensembles for robust anomaly detec-            2956, 2023.
+  tion. arXiv preprint arXiv:1810.01392, 2018.
+                                                                    Dan Hendrycks and Thomas Dietterich. Benchmarking
+Mircea Cimpoi, Subhransu Maji, Iasonas Kokkinos, Sammy                neural network robustness to common corruptions and
+ Mohamed, and Andrea Vedaldi. Describing textures in the              perturbations. arXiv preprint arXiv:1903.12261, 2019.
+ wild. In Proceedings of the IEEE conference on computer            Dan Hendrycks and Thomas G Dietterich. Benchmark-
+ vision and pattern recognition, pages 3606–3613, 2014.               ing neural network robustness to common corruptions
+Adam Coates, Andrew Ng, and Honglak Lee. An analysis                  and surface variations. arXiv preprint arXiv:1807.01697,
+  of single-layer networks in unsupervised feature learning.          2018.
+  In Proceedings of the fourteenth international conference         Dan Hendrycks and Kevin Gimpel. A baseline for detecting
+  on artificial intelligence and statistics, pages 215–223.           misclassified and out-of-distribution examples in neural
+ JMLR Workshop and Conference Proceedings, 2011.                      networks. arXiv preprint arXiv:1610.02136, 2016.
+Francesco D’Angelo and Vincent Fortuin. Repulsive deep              Dan Hendrycks, Mantas Mazeika, and Thomas Dietterich.
+  ensembles are bayesian. Advances in Neural Information              Deep anomaly detection with outlier exposure. arXiv
+  Processing Systems, 34:3451–3465, 2021.                             preprint arXiv:1812.04606, 2018.
+Luke N Darlow, Elliot J Crowley, Antreas Antoniou, and              Dan Hendrycks, Steven Basart, Mantas Mazeika, Andy Zou,
+  Amos J Storkey. Cinic-10 is not imagenet or cifar-10.               Joe Kwon, Mohammadreza Mostajabi, Jacob Steinhardt,
+  arXiv preprint arXiv:1810.03505, 2018.                              and Dawn Song. Scaling out-of-distribution detection
+                                                                      for real-world settings. arXiv preprint arXiv:1911.11132,
+Mostafa Dehghani, Josip Djolonga, Basil Mustafa, Piotr                2019a.
+ Padlewski, Jonathan Heek, Justin Gilmer, Andreas Peter
+ Steiner, Mathilde Caron, Robert Geirhos, Ibrahim Alab-             Dan Hendrycks, Kimin Lee, and Mantas Mazeika. Using
+ dulmohsin, et al. Scaling vision transformers to 22 billion          pre-training can improve model robustness and uncer-
+ parameters. In International Conference on Machine                   tainty. In Kamalika Chaudhuri and Ruslan Salakhutdinov,
+ Learning, pages 7480–7512. PMLR, 2023.                               editors, Proceedings of the 36th International Conference
+
+                                                               11
+                            Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+  on Machine Learning, volume 97 of Proceedings of Ma-              Kimin Lee, Kibok Lee, Honglak Lee, and Jinwoo
+  chine Learning Research, pages 2712–2721. PMLR, 09–                 Shin. A simple unified framework for detecting out-of-
+  15 Jun 2019b. URL https://proceedings.mlr.                          distribution samples and adversarial attacks. Advances in
+  press/v97/hendrycks19a.html.                                        neural information processing systems, 31, 2018.
+Dan Hendrycks, Steven Basart, Norman Mu, Saurav Ka-                 Mike Lewis, Yinhan Liu, Naman Goyal, Marjan Ghazvinine-
+  davath, Frank Wang, Evan Dorundo, Rahul Desai, Tyler               jad, Abdelrahman Mohamed, Omer Levy, Veselin Stoy-
+  Zhu, Samyak Parajuli, Mike Guo, Dawn Song, Jacob                   anov, and Luke Zettlemoyer. BART: Denoising sequence-
+  Steinhardt, and Justin Gilmer. The many faces of robust-           to-sequence pre-training for natural language generation,
+  ness: A critical analysis of out-of-distribution generaliza-       translation, and comprehension. In Dan Jurafsky, Joyce
+  tion, 2021. URL https://arxiv.org/abs/2006.                        Chai, Natalie Schluter, and Joel Tetreault, editors, Pro-
+  16241.                                                             ceedings of the 58th Annual Meeting of the Association
+Jonathan Ho, Ajay Jain, and Pieter Abbeel. Denoising diffu-          for Computational Linguistics, pages 7871–7880, On-
+  sion probabilistic models. Advances in neural information          line, July 2020. Association for Computational Linguis-
+  processing systems, 33:6840–6851, 2020.                            tics. doi: 10.18653/v1/2020.acl-main.703. URL https:
+                                                                     //aclanthology.org/2020.acl-main.703/.
+Rui Huang and Yixuan Li. MOS: towards scaling out-of-
+  distribution detection for large semantic space. CoRR,            Shiyu Liang, Yixuan Li, and Rayadurgam Srikant. Enhanc-
+  abs/2105.01879, 2021. URL https://arxiv.org/                        ing the reliability of out-of-distribution image detection
+  abs/2105.01879.                                                     in neural networks. arXiv preprint arXiv:1706.02690,
+Pavel Izmailov, Sharad Vikram, Matthew D Hoffman, and                 2017.
+  Andrew Gordon Gordon Wilson. What are bayesian neu-
+  ral network posteriors really like? In International con-         Weitang Liu, Xiaoyun Wang, John Owens, and Yixuan Li.
+  ference on machine learning, pages 4629–4640, 2021.                Energy-based out-of-distribution detection. Advances in
+                                                                     neural information processing systems, 33:21464–21475,
+Sanghun Jung, Jungsoo Lee, Daehoon Gwak, Sungha Choi,                2020.
+  and Jaegul Choo. Standardized max logits: A simple
+  yet effective approach for identifying unexpected road            Zhenzhen Liu, Jin Peng Zhou, Yufan Wang, and Kilian Q
+  obstacles in urban-scene segmentation. In Proceedings               Weinberger. Unsupervised out-of-distribution detection
+  of the IEEE/CVF International Conference on Computer                with diffusion inpainting. In International Conference on
+  Vision, pages 15425–15434, 2021.                                    Machine Learning, pages 22528–22538. PMLR, 2023.
+Diederik Kingma, Tim Salimans, Ben Poole, and Jonathan
+                                                                    David JC MacKay. Information theory, inference and learn-
+  Ho. Variational diffusion models. Advances in neural
+                                                                      ing algorithms. Cambridge university press, 2003.
+  information processing systems, 34:21696–21707, 2021.
+Polina Kirichenko, Pavel Izmailov, and Andrew G Wilson.             Andrey Malinin, Bruno Mlodozeniec, and Mark Gales.
+  Why normalizing flows fail to detect out-of-distribution            Ensemble distribution distillation. arXiv preprint
+  data. Advances in neural information processing systems,            arXiv:1905.00076, 2019.
+  33:20578–20589, 2020.
+                                                                    John P Miller, Rohan Taori, Aditi Raghunathan, Shiori
+Pang Wei Koh, Shiori Sagawa, Henrik Marklund,                         Sagawa, Pang Wei Koh, Vaishaal Shankar, Percy Liang,
+  Sang Michael Xie, Marvin Zhang, Akshay Balsubramani,                Yair Carmon, and Ludwig Schmidt. Accuracy on the line:
+  Weihua Hu, Michihiro Yasunaga, Richard Lanas Phillips,              on the strong correlation between out-of-distribution and
+  Irena Gao, et al. Wilds: A benchmark of in-the-wild dis-            in-distribution generalization. In International conference
+  tribution shifts. In International conference on machine            on machine learning, pages 7721–7735. PMLR, 2021.
+  learning, pages 5637–5664. PMLR, 2021.
+Agustinus Kristiadi, Matthias Hein, and Philipp Hennig.             Eric Mintun, Alexander Kirillov, and Saining Xie. On inter-
+  Being bayesian, even just a bit, fixes overconfidence in            action between augmentations and corruptions in natural
+  relu networks. In International conference on machine               corruption robustness. Advances in Neural Information
+  learning, pages 5436–5446. PMLR, 2020.                              Processing Systems, 34:3571–3583, 2021.
+
+Balaji Lakshminarayanan, Alexander Pritzel, and Charles             Atsuyuki Miyai, Qing Yu, Go Irie, and Kiyoharu
+  Blundell. Simple and scalable predictive uncertainty esti-          Aizawa. Can pre-trained networks detect familiar out-
+  mation using deep ensembles. Advances in neural infor-              of-distribution data? arXiv preprint arXiv:2310.00847,
+  mation processing systems, 30, 2017.                                2023.
+
+                                                               12
+                            Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+Warren Morningstar, Cusuh Ham, Andrew Gallagher, Bal-               Tim G. J. Rudner, Zonghao Chen, Yee Whye Teh, and Yarin
+ aji Lakshminarayanan, Alex Alemi, and Joshua Dil-                    Gal. Tractable Function-Space Variational Inference in
+ lon. Density of states estimation for out of distri-                 Bayesian Neural Networks. In Advances in Neural Infor-
+ bution detection. In Arindam Banerjee and Kenji                      mation Processing Systems 35, 2022.
+ Fukumizu, editors, Proceedings of The 24th Interna-
+ tional Conference on Artificial Intelligence and Statis-           Lukas Ruff, Jacob R Kauffmann, Robert A Vandermeulen,
+ tics, volume 130 of Proceedings of Machine Learn-                    Grégoire Montavon, Wojciech Samek, Marius Kloft,
+ ing Research, pages 3232–3240. PMLR, 13–15 Apr                       Thomas G Dietterich, and Klaus-Robert Müller. A unify-
+ 2021. URL https://proceedings.mlr.press/                             ing review of deep and shallow anomaly detection. Pro-
+ v130/morningstar21a.html.                                            ceedings of the IEEE, 109(5):756–795, 2021.
+
+Eric Nalisnick, Akihiro Matsukawa, Yee Whye Teh, Dilan              Chitwan Saharia, William Chan, Saurabh Saxena, Lala
+  Gorur, and Balaji Lakshminarayanan. Do deep generative              Li, Jay Whang, Emily L Denton, Kamyar Ghasemipour,
+  models know what they don’t know? arXiv preprint                    Raphael Gontijo Lopes, Burcu Karagol Ayan, Tim Sali-
+  arXiv:1810.09136, 2018.                                             mans, et al. Photorealistic text-to-image diffusion models
+                                                                      with deep language understanding. Advances in neural
+Eric Nalisnick, Akihiro Matsukawa, Yee Whye Teh, and                  information processing systems, 35:36479–36494, 2022.
+  Balaji Lakshminarayanan. Detecting out-of-distribution
+  inputs to deep generative models using typicality. arXiv          Vikash Sehwag, Mung Chiang, and Prateek Mittal. Ssd: A
+  preprint arXiv:1906.02994, 2019.                                    unified framework for self-supervised outlier detection.
+                                                                      arXiv preprint arXiv:2103.12051, 2021.
+Eric Nalisnick, Akihiro Matsukawa, Yee Whye Teh, and
+  Balaji Lakshminarayanan. Detecting out-ofdistribution             Joan Serrà, David Álvarez, Vicenç Gómez, Olga Sli-
+  inputs to deep generative models using typicality. arXiv            zovskaia, José F Núñez, and Jordi Luque. Input complex-
+  preprint arXiv:1906.02994, 2020.                                    ity and out-of-distribution detection with likelihood-based
+                                                                      generative models. arXiv preprint arXiv:1909.11480,
+Jianwei Niu, Jie Lu, Mingliang Xu, Pei Lv, and Xiaoke
+                                                                      2019.
+   Zhao. Robust lane detection using two-stage feature
+   extraction with curve fitting. Pattern Recognition, 59:          Vaishaal Shankar, Rebecca Roelofs, Horia Mania, Alex
+   225–233, 2016.                                                     Fang, Benjamin Recht, and Ludwig Schmidt. Evaluating
+Aristotelis-Angelos Papadopoulos, Mohammad Reza Rajati,               machine accuracy on imagenet. In International Confer-
+  Nazim Shaikh, and Jiamian Wang. Outlier exposure                    ence on Machine Learning, pages 8634–8644. PMLR,
+  with confidence control for out-of-distribution detection.          2020.
+  Neurocomputing, 441:138–150, 2021.
+                                                                    Pierre Stock and Moustapha Cisse. Convnets and imagenet
+William Peebles and Saining Xie. Scalable diffusion models            beyond accuracy: Understanding mistakes and uncover-
+ with transformers. In Proceedings of the IEEE/CVF In-                ing biases. In Proceedings of the European conference
+ ternational Conference on Computer Vision, pages 4195–               on computer vision (ECCV), pages 498–512, 2018.
+ 4205, 2023.
+                                                                    Yiyou Sun, Chuan Guo, and Yixuan Li. React: Out-of-
+Alec Radford, Jong Wook Kim, Chris Hallacy, Aditya                    distribution detection with rectified activations. Advances
+  Ramesh, Gabriel Goh, Sandhini Agarwal, Girish Sas-                  in Neural Information Processing Systems, 34:144–157,
+  try, Amanda Askell, Pamela Mishkin, Jack Clark, et al.              2021.
+  Learning transferable visual models from natural lan-
+  guage supervision. In International conference on ma-             Yiyou Sun, Yifei Ming, Xiaojin Zhu, and Yixuan Li. Out-
+  chine learning, pages 8748–8763. PMLR, 2021.                        of-distribution detection with deep nearest neighbors. In
+                                                                      International Conference on Machine Learning, pages
+Jie Ren, Peter J Liu, Emily Fertig, Jasper Snoek, Ryan                20827–20840. PMLR, 2022.
+   Poplin, Mark Depristo, Joshua Dillon, and Balaji Laksh-
+   minarayanan. Likelihood ratios for out-of-distribution           Jihoon Tack, Sangwoo Mo, Jongheon Jeong, and Jinwoo
+   detection. Advances in neural information processing                Shin. Csi: Novelty detection via contrastive learning on
+   systems, 32, 2019.                                                  distributionally shifted instances. Advances in neural
+                                                                       information processing systems, 33:11839–11852, 2020.
+Jie Ren, Stanislav Fort, Jeremiah Liu, Abhijit Guha Roy,
+   Shreyas Padhy, and Balaji Lakshminarayanan. A sim-               Natasa Tagasovska and David Lopez-Paz. Single-model
+   ple fix to mahalanobis distance for improving near-ood             uncertainties for deep learning. Advances in neural infor-
+   detection. arXiv preprint arXiv:2106.09022, 2021.                  mation processing systems, 32, 2019.
+
+                                                               13
+                            Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+Fahim Tajwar, Ananya Kumar, Sang Michael Xie, and                   Adina Williams, Nikita Nangia, and Samuel R. Bowman. A
+  Percy Liang. No true state-of-the-art? ood detection                broad-coverage challenge corpus for sentence understand-
+  methods are inconsistent across datasets. arXiv preprint            ing through inference, 2018. URL https://arxiv.
+  arXiv:2109.05554, 2021.                                             org/abs/1704.05426.
+
+Sunil Thulasidasan, Sushil Thapa, Sayera Dhaubhadel,                Andrew G Wilson and Pavel Izmailov. Bayesian deep
+  Gopinath Chennupati, Tanmoy Bhattacharya, and Jeff                  learning and a probabilistic perspective of generaliza-
+  Bilmes. A simple and effective baseline for out-of-                 tion. Advances in neural information processing systems,
+  distribution detection using abstention. 2020.                      33:4697–4708, 2020.
+
+Sunil Thulasidasan, Sushil Thapa, Sayera Dhaubhadel,                Jingkang Yang, Haoqi Wang, Litong Feng, Xiaopeng Yan,
+  Gopinath Chennupati, Tanmoy Bhattacharya, and Jeff                   Huabin Zheng, Wayne Zhang, and Ziwei Liu. Seman-
+  Bilmes. An effective baseline for robustness to distribu-            tically coherent out-of-distribution detection. In Pro-
+  tional shift. In 2021 20th IEEE International Conference             ceedings of the IEEE/CVF International Conference on
+  on Machine Learning and Applications (ICMLA), pages                  Computer Vision, pages 8301–8309, 2021.
+  278–285. IEEE, 2021.
+                                                                    Jingkang Yang, Pengyun Wang, Dejian Zou, Zitang Zhou,
+Dustin Tran, Jeremiah Liu, Michael W. Dusenberry,                      Kunyuan Ding, Wenxuan Peng, Haoqi Wang, Guangyao
+  Du Phan, Mark Collier, Jie Ren, Kehang Han, Zi Wang,                 Chen, Bo Li, Yiyou Sun, et al. Openood: Benchmark-
+  Zelda Mariet, Huiyi Hu, Neil Band, Tim G. J. Rudner,                 ing generalized out-of-distribution detection. Advances
+  Karan Singhal, Zachary Nado, Joost van Amersfoort, An-               in Neural Information Processing Systems, 35:32598–
+  dreas Kirsch, Rodolphe Jenatton, Nithum Thain, Honglin               32611, 2022.
+ Yuan, Kelly Buchanan, Kevin Murphy, D. Sculley, Yarin              Jingkang Yang, Kaiyang Zhou, Yixuan Li, and Ziwei
+  Gal, Zoubin Ghahramani, Jasper Snoek, and Balaji Lak-                Liu. Generalized out-of-distribution detection: A survey,
+  shminarayanan. Plex: Towards Reliability Using Pre-                  2024a. URL https://arxiv.org/abs/2110.
+  trained Large Model Extensions. In ICML Workshop on                  11334.
+ Pre-training: Perspectives, Pitfalls, and Paths Forward,
+  2022.                                                             William Yang, Byron Zhang, and Olga Russakovsky.
+                                                                     Imagenet-ood: Deciphering modern out-of-distribution
+Grant Van Horn, Oisin Mac Aodha, Yang Song, Yin Cui,                 detection algorithms. In International Conference on
+  Chen Sun, Alex Shepard, Hartwig Adam, Pietro Perona,               Learning Representations, 2024b.
+  and Serge Belongie. The inaturalist species classification
+  and detection dataset. In Proceedings of the IEEE confer-         Jingyang Zhang, Jingkang Yang, Pengyun Wang, Haoqi
+  ence on computer vision and pattern recognition, pages               Wang, Yueqian Lin, Haoran Zhang, Yiyou Sun, Xuefeng
+  8769–8778, 2018.                                                     Du, Kaiyang Zhou, Wayne Zhang, et al. Openood v1.
+                                                                       5: Enhanced benchmark for out-of-distribution detection.
+Alex Wang, Amanpreet Singh, Julian Michael, Felix Hill,                arXiv preprint arXiv:2306.09301, 2023.
+  Omer Levy, and Samuel Bowman. GLUE: A multi-
+  task benchmark and analysis platform for natural lan-             Lily Zhang, Mark Goldstein, and Rajesh Ranganath. Un-
+  guage understanding. In Tal Linzen, Grzegorz Chrupała,              derstanding failures in out-of-distribution detection with
+  and Afra Alishahi, editors, Proceedings of the 2018                 deep generative models. In International Conference on
+  EMNLP Workshop BlackboxNLP: Analyzing and Inter-                    Machine Learning, pages 12427–12436. PMLR, 2021.
+  preting Neural Networks for NLP, pages 353–355, Brus-
+                                                                    Bolei Zhou, Agata Lapedriza, Jianxiong Xiao, Antonio Tor-
+  sels, Belgium, November 2018. Association for Compu-
+                                                                      ralba, and Aude Oliva. Learning deep features for scene
+  tational Linguistics. doi: 10.18653/v1/W18-5446. URL
+                                                                      recognition using places database. Advances in neural
+  https://aclanthology.org/W18-5446/.
+                                                                      information processing systems, 27, 2014.
+Haoqi Wang, Zhizhong Li, Litong Feng, and Wayne Zhang.              Kaiyang Zhou, Ziwei Liu, Yu Qiao, Tao Xiang, and
+  Vim: Out-of-distribution with virtual-logit matching. In            Chen Change Loy. Domain generalization: A survey.
+  Proceedings of the IEEE/CVF conference on computer                  IEEE Transactions on Pattern Analysis and Machine In-
+  vision and pattern recognition, pages 4921–4930, 2022.              telligence, 45(4):4396–4415, 2022.
+Haoran Wang, Weitang Liu, Alex Bocchieri, and Yixuan Li.
+  Can multi-label classification networks know what they
+  don’t know? Advances in Neural Information Processing
+  Systems, 34:29074–29087, 2021.
+
+                                                               14
+                                                                      Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A                        Additional Empirical Results
+A.1                           Feature-based methods
+Feature-based methods have two distinct failure modes: indistinguishable features and irrelevant features. In this section, we
+provide further empirical demonstrations of these failure modes across various models and datasets.
+
+                                                          Mahalanobis AUROC: 0.537
+                                                                                         Airplane (ID)
+                                                                                         Cat (ID)
+                                                                                         Truck (ID)
+                                                                                         Dog (OOD)
+
+
+
+
+                              Features PC2
+
+
+
+
+                                                                 Features PC1
+
+
+                                                         (a) ResNet-18 on CIFAR-10                                                                                  (b) ResNet-50 on ImageNet-1k
+
+Figure A.1. Visualizations of failure modes for feature-based OOD detection. (Left): We train a ResNet-18 on a subset of CIFAR-10, and
+find that the feature space between an ID class and OOD class have significant overlap. (Right): Feature-based methods also fail for
+larger models like ResNet-50 trained on ImageNet 1K, where OOD classes have low Mahalanobis distance.
+
+To show that the features that a model learns to distinguish ID data may be insufficient for OOD detection, we train a
+ResNet-18 on a subset of CIFAR-10 with only three classes: airplanes, cats, and trucks, and we achieve a test loss of 0.95
+accuracy, indicating that our model is able to distinguish between the three ID classes. However, when we introduce the
+OOD class of dog, we can see in Figure A.1 (left) that the features for dog almost entirely overlap with the features for cat.
+We visualize the features by doing PCA and plotting the first two dimensions. Because of this overlap, the feature-based
+Mahalanobis distance only achieves an AUROC of 0.537, which is very close to random chance.
+We find similar behaviors for larger models and datasets. In Figure A.1 (right), we visualize the features of various for a
+ResNet-50 trained on ImageNet-1k. We see that the ID classes, represented in blue and green dots, are fairly distinct in
+the feature space. However, the OOD class has significant overlap with the blue points, and the model is unable to clearly
+disambiguate between ID and OOD points by only looking at the Mahalanobis distance.
+
+                                                             Feature-Based Errors (iNaturalist)                                                                           Feature-Based Errors (Textures)
+                                                                                               Other                                                                                                        Other
+                                                                                                                                                 0.35
+                        0.5                                                                    Irrelevant Features                                                                                          Irrelevant Features
+                                                                                               Indistinguishable Features                        0.30                                                       Indistinguishable Features
+
+
+
+
+    Error (1 - AUROC)                                                                                                        Error (1 - AUROC)
+                        0.4
+                                                                                                                                                 0.25
+
+                        0.3                                                                                                                      0.20
+
+                                                                                                                                                 0.15
+                        0.2
+                                                                                                                                                 0.10
+                        0.1
+                                                                                                                                                 0.05
+
+                        0.0                                                                                                                      0.00
+                                             ResNet-18    ResNet-50      ViT-S/16       ViT-B/16         ViT-G/14                                       ResNet-18      ResNet-50     ViT-S/16      ViT-B/16           ViT-G/14
+                                                                                                         (DINOv2)                                                                                                     (DINOv2)
+
+
+
+                                                                                Figure A.2. Error decomposition of feature-based methods
+
+We provide error decompositions of these failure modes across various OOD datasets in Figure A.2, where we follow the
+same experiment setup as in Figure 2 (left): we use the features from ResNet-18, ResNet-50, ViT-S/16, and ViT-B/16 trained
+on ImageNet-1k, and the Mahalanobis (Maha) method, which uses a distance metric defined by the empirical covariance
+matrix Σ of ID features. To determine the optimal subset of distinguishing features, we perform PCA on both ID and
+OOD features and we retain the number of principal components (chosen from {32, 64, 128, 256}) which yields the highest
+
+                                                                                                                            15
+                             Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+Mahalanobis AUROC. We refer to this optimal score as the “Oracle PCA” because it utilizes the true ID and OOD features,
+which is not possible in realistic settings. In Figure A.2, we see that the a significant amount of the error for iNaturalist and
+Textures come from irrelevant features, and the error could be greatly reduced if we had an understanding of which feature
+dimensions would be the most relevant for OOD detection. However, because the optimal features is heavily dependent on
+the OOD dataset as shown in Figure 2 (right), this information cannot be determined when we only have access to ID data.
+
+                                        0.95
+                                                 Method
+                                        0.90   Maha
+                                               Rel Maha
+                                        0.85   ViM
+                                        0.80   Maha + Oracle PCA
+                                        0.75
+                                AUROC   0.70
+                                        0.65
+                                        0.60
+                                        0.55
+                                        0.50
+                                               R-18                R-50        V-B/16   V-S/16
+
+
+Figure A.3. Relative Mahalanobis and ViM do not fully address the issue of irrelevant features on ImageNet vs ImageNet-OOD,
+especially with the more performant ViT models. In all cases, Mahalanobis with an Oracle PCA performs the best. Except for ResNets,
+Relative Mahalanobis and ViM offer negligible or negative improvement relative to Mahalanobis. The gap between Maha + Oracle PCA
+and the best-performing feature-based method is especially large for ViTs.
+
+We demonstrate that advanced feature-based methods like Relative Mahalanobis, which uses heuristics to identify some
+irrelevant features, and ViM, which combines features with logits, are subject to the same failure modes in Figure A.3.
+We find that for ViT models, the performance of Relative Mahalanobis or ViM is negligble or even negative compared to
+standard Mahalanobis distance. However, when we look at the red bar, which demonstrates the best Mahalanobis distance
+when using an oracle feature selection process, we see that this method outperforms both Relative Mahalanobis and ViM.
+This suggests that the irrelevant features are a major problem for all feature-based methods, even hybrid ones, and this
+problem is not easily resolved when we only have access to ID datasets.
+
+
+
+
+                                                                          16
+                                         Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A.2      Logit-based methods
+Logit-based methods fail when the uncertainty of ID data looks similar to the uncertainty of OOD data.
+
+
+                                                                            In Distribution                Out of Distribution
+                                  MSP AUROC: 0.489                     0.984             0.988            0.973           0.974
+                          ID: Truck
+                          OOD: Dog
+
+
+      Frequency                                                        0.979             0.968            0.973           0.954
+
+
+
+
+                  0.0       0.2       0.4       0.6     0.8   1.0
+                                   Probability of Truck
+
+                        (a) Confidence of ID vs OOD inputs                   (b) Example inputs and model confidence (MSP)
+
+Figure A.4. The predictive uncertainty of OOD points may be indistinguishable from ID points. We train a LeNet5 to classify
+CIFAR10 automobiles and trucks, and we test the OOD dog class. We see that the model confidence for OOD dogs entirely overlaps with
+the ID truck class. In this setting, because the uncertainties are identical, no uncertainty-based method would be able to successfully
+differentiate ID from OOD.
+
+To demonstrate this failure mode, we construct a simple example where we train a LeNet 5 to classify CIFAR10 automobiles
+and trucks, and we look at how the model performs on the OOD class od dogs. In Figure A.4, where we find that the model
+very confidently classifies OOD dogs as ID trucks. In the left size of the figure, we see that the model’s predictive uncertainty
+for the ID class “Trucks” is nearly identical to the uncertainty for the OOD class “Dogs”, indicating that uncertainty-based
+methods will not be effective for OOD detection. We see in the Figure A.4 (right) that these high confidences are not due to
+label noise; the model very confidently classifies images of what are clearly dogs as trucks.
+
+
+
+
+Figure A.5. For a ResNet-50 trained on ImageNet-1k, we see that the model has very high confidence for the OOD class ‘Striped’,
+highlighting the difference between label uncertainty and OOD uncertainty.
+
+We also demonstrate similar failure modes on larger models. Figure A.5 visualizes the uncertainties for a ResNet-50 trained
+on ImageNet. We see that the model often has high confidence for many instances of the OOD class ‘Stripes’, and so this
+OOD class is incorrectly classified as OOD. In Figure A.6, we find that this failure mode is prevalent both ResNets and
+ViTs, and for many logit-based methods such as MSP, Max-Logit, Energy, and Entropy. Therefore, this demonstrates a
+fundamental pathology where the many models are consistently overconfident on OOD inputs.
+
+
+
+
+                                                                       17
+                                                                  Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+                  resnet50_in1k_erm MSP; AUROC=0.484                             resnet50_in1k_erm Max-Logit; AUROC=0.654                                     resnet50_in1k_erm Energy; AUROC=0.665                           resnet50_in1k_erm Entropy; AUROC=0.498
+                                                ID: All classes                       ID: All classes                                                               ID: All classes                                                                               ID: All classes
+                                                OOD: striped                          OOD: striped                                                                  OOD: striped                                                                                  OOD: striped
+
+
+
+
+Frequency                                                            Frequency                                                                    Frequency                                                       Frequency
+
+
+
+
+            1.0       0.8     0.6         0.4     0.2        0.0                      40             30           20            10                                  40                30        20       10                   0          2         4          6             8
+                                    MSP                                                                   Max-Logit                                                                    Energy                                                  Entropy (bits)
+
+
+                      (a) ResNet MSP                                               (b) ResNet Max-Logit                                                       (c) ResNet Energy Score                                               (d) ResNet Entropy
+                   vitb16_in1k_erm MSP; AUROC=0.552                               vitb16_in1k_erm Max-Logit; AUROC=0.603                                      vitb16_in1k_erm Energy; AUROC=0.617                                 vitb16_in1k_erm Entropy; AUROC=0.573
+                                                ID: All classes                                                            ID: All classes                          ID: All classes                                                                               ID: All classes
+                                                OOD: striped                                                               OOD: striped                             OOD: striped                                                                                  OOD: striped
+
+
+
+
+Frequency                                                            Frequency                                                                    Frequency                                                       Frequency
+
+
+
+
+            1.0       0.8     0.6         0.4     0.2        0.0                     12         10            8        6             4                         13        12      11        10    9   8        7               0         2        4            6         8
+                                    MSP                                                                   Max-Logit                                                                    Energy                                                  Entropy (bits)
+
+
+                        (e) ViT MSP                                                   (f) ViT Max-Logit                                                         (g) ViT Energy Score                                                   (h) ViT Entropy
+
+Figure A.6. We plot the distribution of OOD scores on ImageNet-1K ID and Describable Textures ‘striped’ class OOD data obtained from
+different OOD detection methods. We discover a systematic failure mode of all methods that utilize logits stemming from the model being
+overconfident about its predictions on the OOD data. Even though different OOD detection methods have different AUROC numbers, the
+score distribution plots reveal it is difficult to cleanly separate ID and OOD scores by picking a threshold. We use a ResNet-50 pretrained
+on ImageNet-1K and use a ViT-B/16 pretrained on ImageNet-1K.
+
+
+In Table A.1, we record the FPR@95, which indicates how many OOD examples would be classified as ID at a threshold
+where 95% of the ID examples are correctly classified. We find that well over half of OOD examples are misclassified as ID
+even with powerful pre-trained models, demonstrating that logit-based methods as they are currently set up are unable to
+accurately differentiate ID from OOD inputs.
+These pathologies also hold in other domains such as language. We study the BART language model (Lewis et al., 2020)
+trained on Multi-NLI (Williams et al., 2018) through the facebook/bart-large-mnli checkpoint on Hugging Face.
+The Multi-NLI dataset consists of pairs of premises and hypotheses, where each pair has a classification of entailment,
+contradiction, or neutral. Multi-NLI covers a wide range of genres such as fiction and conversation transcripts. This
+BART model achieves a high ID accuracy of 0.963 on ID test data. We then measure the ability of logit-based methods
+such as MSP, max-logit, entropy, and entropy score, to detect OOD inputs. We consider two different OOD datasets for
+detecting distribution shifts: the SNLI dataset (Bowman et al., 2015), which consists solely of data drawn from image
+captions, and the QNLI dataset (Wang et al., 2018), which is adapted from a question answering dataset from Wikipedia.
+We see in Table A.2 that the FPR@95 is very high across all methods and OOD datasets, indicating that OOD examples are
+consistently misclassified as ID.
+
+
+
+
+                                                                                                                                             18
+                               Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+
+
+                        OOD Dataset       Model                 MSP      Max Logit     Entropy     Energy Score
+                        IN-OOD            ResNet-50            0.774       0.804        0.820         0.778
+                        IN-OOD            ResNet-50 DINO       0.804       0.830        0.847         0.823
+                        IN-OOD            ResNet-34            0.807       0.824        0.838         0.809
+                        IN-OOD            ResNet-18            0.832       0.846        0.855         0.845
+                        IN-OOD            ViT-S/16             0.797       0.803        0.818         0.798
+                        IN-OOD            ViT-S/16 DINO        0.761       0.790        0.811         0.768
+                        IN-OOD            ViT-B/16             0.740       0.733        0.771         0.726
+                        IN-OOD            ViT-B/16 DINO        0.741       0.764        0.784         0.749
+                        IN-OOD            ViT-B/16 CLIP        0.764       0.776        0.805         0.726
+                        IN-OOD            ViT-B/14 DINOv2      0.658       0.621        0.638         0.610
+                        IN-OOD            ViT-G/14 DINOv2      0.562       0.448        0.450         0.469
+                        IN-OOD            ViT-L/14 CLIP        0.686       0.685        0.723         0.631
+                        IN-OOD            ConvNeXt V2-B        0.701       0.708        0.773         0.673
+                        IN-OOD            ConvNeXt V2-L        0.696       0.710        0.787         0.663
+                        Textures          ResNet-50            0.662       0.544        0.522         0.594
+                        Textures          ResNet-50 DINO       0.681       0.624        0.612         0.637
+                        Textures          ResNet-34            0.690       0.562        0.533         0.620
+                        Textures          ResNet-18            0.710       0.571        0.527         0.643
+                        Textures          ViT-S/16             0.672       0.579        0.506         0.593
+                        Textures          ViT-S/16 DINO        0.612       0.400        0.363         0.521
+                        Textures          ViT-B/16             0.586       0.544        0.573         0.521
+                        Textures          ViT-B/16 DINO        0.531       0.351        0.307         0.437
+                        Textures          ViT-B/16 CLIP        0.657       0.530        0.538         0.564
+                        Textures          ViT-B/14 DINOv2      0.535       0.409        0.401         0.451
+                        Textures          ViT-G/14 DINOv2      0.480       0.344        0.332         0.389
+                        Textures          ViT-L/14 CLIP        0.543       0.441        0.446         0.462
+                        Textures          ConvNeXt V2-B        0.530       0.480        0.490         0.441
+                        Textures          ConvNeXt V2-L        0.551       0.468        0.480         0.440
+                        iNaturalist       ResNet-50            0.703       0.700        0.716         0.684
+                        iNaturalist       ResNet-50 DINO       0.644       0.594        0.598         0.619
+                        iNaturalist       ResNet-34            0.745       0.721        0.726         0.728
+                        iNaturalist       ResNet-18            0.739       0.727        0.734         0.727
+                        iNaturalist       ViT-S/16             0.726       0.683        0.668         0.692
+                        iNaturalist       ViT-S/16 DINO        0.726       0.660        0.658         0.699
+                        iNaturalist       ViT-B/16             0.692       0.711        0.791         0.674
+                        iNaturalist       ViT-B/16 DINO        0.682       0.617        0.613         0.648
+                        iNaturalist       ViT-B/16 CLIP        0.698       0.655        0.683         0.634
+                        iNaturalist       ViT-B/14 DINOv2      0.519       0.429        0.426         0.455
+                        iNaturalist       ViT-G/14 DINOv2      0.448       0.355        0.351         0.384
+                        iNaturalist       ViT-L/14 CLIP        0.593       0.547        0.566         0.522
+                        iNaturalist       ConvNeXt V2-B        0.634       0.638        0.712         0.589
+                        iNaturalist       ConvNeXt V2-L        0.627       0.624        0.704         0.563
+
+Table A.1. FPR@95 for OOD detection remains high with popular models. We record the FPR@95 for 14 models including ResNets,
+ViTs, and ConvNext V2 models on ImageNet-1K as ID, and Textures, iNaturalist, and ImageNet-OOD as OOD. FPR@95 records how
+many OOD examples are classified as ID (low uncertainty, false positive) at a threshold where 95% of ID examples are correctly classified
+(true positive). The average FPR@95 over all models and OOD datasets is 66.5%, thus well over half of OOD examples are classified as
+ID due to having low uncertainty, and other methods such as max logit, energy score, and entropy all have similar FPR@95s of over 60%.
+
+
+
+
+                                      OOD Dataset    MSP     Max Logit     Entropy     Energy Score
+                                      SNLI          0.956       0.950        0.957         0.950
+                                      QNLI          0.826       0.884        0.827         0.883
+
+Table A.2. FPR@95 for OOD detection with BART trained on Multi-NLI. Across many logit-based methods and OOD datasets, the
+FPR@95 is very high, indicating that a large majority OOD examples are being misclassified as ID in the language domain.
+
+
+
+                                                                  19
+                                             Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A.3               Scaling
+
+
+                                                  Best Method                    Maha with Oracle Features                                   Oracle
+
+                            Scaling Trend on IN vs iNaturalist                                                              Scaling Trend on IN vs Textures
+             1.00                                                                                        1.00
+
+             0.95                                                                                        0.95
+
+
+
+ AUROC                                                                                    AUROC
+             0.90                                                                                        0.90
+
+             0.85                                                                                        0.85
+
+             0.80                                                                                        0.80
+
+             0.75                                                                                        0.75
+                        0.700   0.725    0.750   0.775   0.800   0.825   0.850    0.875                             0.700    0.725   0.750   0.775   0.800   0.825   0.850    0.875
+                                        ImageNet Accuracy                                                                            ImageNet Accuracy
+                                        Figure A.7. Scaling trends for ImageNet as ID and iNaturalist and Textures as OOD
+
+We benchmark the failure modes for 12 different models, detailed in Appendix B.3. For each model, we perform PCA
+across all ID and OOD features, and we keep the number of principal components (chosen from {32, 64, 128, 256}) which
+yields the highest Mahalanobis AUROC. We refer to this optimal score as the “Maha with Oracle Features” because it
+utilizes the true ID and OOD features, which is not possible in realistic settings.
+We see in Figure A.7 that even large models trained on internet-scale data still contain the pathologies of indistinguishable
+features and irrelevant features. The gap between the “Best Method” and “Maha with Oracle Features” represents the failure
+mode of irrelevant features, where the methods are unable to distinguish between the dimensions which are useful or not
+useful for OOD detection. For both the iNaturalist as well as the Textures OOD dataset, we find that the Oracle Features
+consistently outperforms the best method by a significant margin, indicating that the irrelevant features are hurting the
+performance of these methods.
+
+A.4               Hybrid Methods
+
+                  1.0                                                                                         1.0
+
+
+
+ Textures AUROC                                                                           INaturalist AUROC
+                  0.8                                                            MSP                                                                                         MSP
+                                                                                 Maha                         0.8                                                            Maha
+                                                                                 ViM                                                                                         ViM
+                                                                                 Hybrid                                                                                      Hybrid
+                  0.6                                                            -Add                         0.6                                                            -Add
+                                                                                 Chance                                                                                      Chance
+                  0.4                                                                                         0.4
+                        R-18        R-50 ViT-B/16 ViT-S/16                                                          R-18         R-50 ViT-B/16 ViT-S/16
+
+                                        Figure A.8. Hybrid OOD methods outperform logit and feature-based on Textures
+
+We find hybrid methods like ViM and Hybrid-Add work well on far-OOD datasets like Textures, where we see noticeable
+improvement across many models in Figure A.8.
+
+
+
+
+                                                                                          20
+                                                  Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A.5    Effect of Pre-training
+Miller et al. (2021) showed that there is a strong linear relationship between ID accuracy and OOD generalization on OOD
+data with covariate shifts, suggesting it is sufficient to focus on improving ID accuracy for better robustness. Similarly, we
+explore the connection between the test accuracy and OOD detection performance. We use ImageNet-1K (IN-1K) as ID
+data and ImageNet-OOD (IN-OOD) (Yang et al., 2024b) and Textures (Cimpoi et al., 2014) as OOD data. We evaluate 54
+models covering a wide range of architectures and pretraining methods. In Figure A.9 we plot AUROC of MSP against
+ImageNet test accuracy. Generally, ID accuracy and AUROC have close to a linear relationship for models with low- to
+medium-range performance on ImageNet. However, on ImageNet-OOD for models performing around or better than 75%
+ID accuracy, we observe higher variability in AUROC: for larger-scale highly performant models pre-training data impacts
+the OOD detection more significantly.
+
+                                                         IN vs IN-OOD                                                        IN vs Textures
+
+                                                                                                    0.84
+                                  0.72
+
+
+
+
+                      MSP AUROC
+                                  0.70                                                              0.82
+
+
+
+                                  0.68                                                              0.80
+
+
+
+                                  0.66                                                              0.78
+
+
+
+                                  0.64                                                              0.76
+                                         0.65     0.70         0.75         0.80     0.85                  0.65       0.70        0.75       0.80   0.85
+                                                         ImageNet acc                                                         ImageNet acc
+
+
+      Architecture:                ResNet            TinyNet          VGG            MobileNet         ConvNeXt              RegNetY                ReXNet   MLP-Mixer   ViT
+      Data:                        IN12k → IN1k      IN1k             IN21k → IN1k   IG-1B → IN1k      LAION → IN1k          LAION → IN21k → IN1k
+
+
+
+
+Figure A.9. The impact of the model architecture, pre-training data and objective on OOD detection performance. AUROC of MSP
+on ImageNet vs ImageNet-OOD (left) and ImageNet vs Textures (right) against ImageNet test accuracy. We observe that improving
+ImageNet accuracy generally leads to better OOD detection.
+
+When models are exposed to a diverse set of data during pre-training, they are likely to learn a wide range of features,
+making it possible for them to differentiate between ID and semantically new classes. There is an edge case when the
+OOD data is included in pre-training dataset: in Figure A.9 for the best performing ViT and ConvNext models pre-training
+includes ImageNet-21K, after which they are fine-tuned on ImageNet-1K. Since ImageNet-OOD consists of images from
+ImageNet-21K which do not semantically overlap with ImageNet-1K classes, we observe a rapid jump in AUROC for these
+models with negligible variability in ID accuracy. Pre-training on diverse data which includes similar examples to OOD
+points softens the misspecification of the MSP approach and leads to strong performance.
+
+
+
+
+                                                                                              21
+                              Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A.6   Generative models
+Conceptual limitation of generative models for OOD detection. Estimating p(x) is different from estimating whether
+x is more likely to be drawn from some different distribution. Conceptually, for the latter, we would like to compute
+p(OOD|x), which by Bayes’ rule p(x|OOD)/p(x) up to an x-independent constant. In general, knowing p(x) tells us
+nothing about the value of this ratio. p(x|OOD)/p(x) is also invariant to any coordinate transformation on x, whereas p(x)
+is not.
+We illustrate this phenomenon with a simple 1D example in Figure A.10, where the ID data is drawn from N (0, 1) and the
+OOD data is drawn from N (2, 1). Suppose we model the ID data with x ∼ pµ (x) = N (x|µ, 1), where µ is the parameter
+of our model. Choosing µ = 0 will exactly model the true distribution and achieve the highest likelihood. However, as
+shown in Figure A.10 (right), the optimal choice of µ for OOD detection is −∞, achieving a maximum AUROC but infinite
+KL divergence from the true ID distribution.
+
+                                         0.5   ID vs OOD Density                                       KL Div. and AUROC vs.
+                                                            ID=N(0, 1)                           2.0
+                                                            OOD=N(2, 1)
+                                         0.4                                                                                       0.8
+
+
+
+                                                                          KL(N( , 1)||N(0, 1))
+                                                                                                 1.5
+                                         0.3                                                                                       0.6
+                                  p(x)                                                                                               AUROC
+                                                                                                 1.0
+                                         0.2
+                                                                                                                                   0.4
+                                                                                                 0.5
+                                         0.1
+                                                                                                                                   0.2
+                                         0.0                                                     0.0
+                                                    0             5                                    2    1    0     1       2
+                                                        x
+
+
+Figure A.10. Generative models are not optimal OOD detectors: for generative model N (µ, 1), the optimal µ is 0 to model the ID data
+but −∞ for OOD detection.
+
+
+Measuring typicality rather than density as an alternative for OOD detection Rather than asking whether a point has
+a high density, typicality asks whether a point belongs to a region with high probability mass. However, typicality has very
+similar pathologies compared to density.
+One approach of operationalizing typicality is by measuring whether some high-level feature of the data has high likelihood.
+Consider a commonqmotivating example for typicality: points drawn from a high dimensional Gaussian N (0, I) in Rd will
+                       Pd                               √
+have norms ∥x∥ =               2                           d by the Law of Large Numbers (LLN). A point at the origin will be
+                          i=1 xi concentrating around
+considered highly OOD based on typicality, since it has zero norm, yet it has the highest density and will thus be considered
+highly ID based on the density. But there is no obvious reason why we should judge typicality based on the norm rather than
+                                                                                                                        Pd
+other features of the data. Alternatively, one might consider using the average value of x over the dimensions, d1 i=1 xi ,
+as the feature, which concentrates √ around 0 by LLN. Based on this quantity, a point at the origin looks perfectly typical,
+while a point on a sphere of radius d looks highly atypical. Therefore, exactly similar to the density, notions of typicality
+will tend to depend on a subjective choice of how to coarse-grain the input space based on quantities that are most relevant
+for distinguishing between ID and OOD data. Finally, while the choice of using the norm in this example can be justified via
+the notion of (ϵ, N )-typical set (Nalisnick et al., 2020), the latter relies again on the density p(x), which is not invariant to
+coordinate transformations and depends on assumptions on how the data is presented.
+
+OOD Detection Requires Coarse-Grained Representations. In general, every test input we encounter will differ from
+the ID inputs we have previously seen. However, not all test inputs are considered OOD because we are only concerned
+with certain key differences. When learning a generative model p(x) of the ID data, our goal is not necessarily to capture
+the distribution of x in its finest details. Instead, for the purpose of OOD detection, it is more appropriate to model the
+distribution over a coarse-grained representation h(x), which captures the attributes necessary for distinguishing OOD from
+ID data and ideally nothing more.
+Consider an ID dataset consisting of 1000 breeds of dogs and 10 breeds of cats. If our generative model captures the
+frequency of each individual breed, any dog input we observe will typically be considered 100 times more OOD-like than
+any cat input based on the likelihood of the generative model. However, if our goal is to detect other animal species and
+non-animal objects, the likelihood of this model is clearly not aligned with the objective of OOD detection. In this case,
+
+                                                                           22
+                                     Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+                                              AUROC: 0.462                                                           AUROC: 0.694
+                      14   ID ImageNet-1K Val                                            14          ID ImageNet-1K Val
+                      12   OOD Textures                                                  12          OOD iNaturalist
+                      10                                                                 10
+
+
+             Counts                                                             Counts
+                       8                                                                  8
+                       6                                                                  6
+                       4                                                                  4
+                       2                                                                  2
+                       0                                                                  0
+                            0.05       0.10          0.15        0.20   0.25                  0.05         0.10            0.15            0.20   0.25
+                                                Diffusion Loss                                                            Diffusion Loss
+
+                                     (a) OOD: Textures                                                       (b) OOD: iNaturalist
+
+Figure A.11. Diffusion Models can fail catastrophically at OOD. (a): Using the diffusion loss, the Diffusion Transformer (DiT) (Peebles
+and Xie, 2023) fails catastrophically at detecting OOD inputs from the Describable Textures dataset. (b): the DiT model does decently at
+detecting OOD inputs from iNaturalist.
+
+
+it would be more suitable to model only the frequency over the dog and cat categories, which serves as an appropriately
+coarse-grained representation of the individual breeds. Since the definition of OOD is ultimately user-defined, the correct
+coarse-grained representation depends on both the dataset and the intended definition of OOD, and it might be challenging
+to accurately specify even when a definition is known.
+In Figure 9 (right), we show the test log-likelihoods (normalized by dimension) of RealNVP (Dinh et al., 2016) normalizing
+flow models of various sizes trained on CelebA images and their AUROCs for detecting CIFAR-10. While models with the
+lowest test likelihoods on ID data perform poorly for OOD detection, their OOD detection performance does not improve
+monotonically with their test likelihoods. In fact, the AUROC eventually decreases with improvements in likelihood.
+In Figure 9 (left), we demonstrate the same phenomenon for a feature-space generative model. We construct a Gaussian
+Mixture Model (GMM) model of the features produced by a ResNet-50 pre-trained on ImageNet-1K, the ID dataset. To
+optimize for the likelihood on ID data, we choose the cluster means to be the class-conditional means and use the empirical
+covariance of all features centered by their respective class means as the covariance of the clusters. This GMM model is
+precisely the generative model used by the Mahalanobis method (Lee et al., 2018). As we interpolate between the empirical
+covariance and a trivial identity covariance, the ID test likelihood of this GMM model decreases, yet the AUROC for
+detecting ImageNet-OOD improves monotonically.
+
+The Impact of Inductive Biases. How a generative model assigns density to data unseen during training is highly
+dependent on their inductive biases. Despite being highly flexible density models, normalizing flows are known to be poor
+OOD detectors when trained as a generative model over raw images because their inductive biases encourage the model to
+focus on low-level pixel correlations rather than high-level semantic properties (Kirichenko et al., 2020; Nalisnick et al.,
+2018). Here, we demonstrate that the same failure mode applies to diffusion models, a distinct class of generative models
+achieving state-of-the-art image generation (Betker et al., 2023; Saharia et al., 2022).
+We use the Diffusion Transformer (DiT), a 256x256-resolution latent diffusion model trained on ImageNet-1K (Peebles and
+Xie, 2023). We score images based on the diffusion loss, a variance-reduced approximation of the variational lower bound
+(Kingma et al., 2021; Ho et al., 2020). In Figure A.11, we show the DiT fails catastrophically in detecting OOD data from
+Describable Textures but achieves decent performance in detecting OOD data from iNaturalist.
+In Figure A.12, we qualitatively show that a 256x256 DiT trained on ImageNet-1K often accurately reconstructs noised
+images from Describable Textures despite never having trained on them. We add noise to the inputs corresponding to the
+diffusion timesteps at 49, 98, 147 out of 249, where higher timesteps are more noisy.
+
+
+
+
+                                                                               23
+                                                Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+
+
+
+                                   OOD: Textures                         OOD: iNaturalist                          ID: ImageNet-1K
+                  Input Reconstruction Target
+
+
+
+
+ Noisier Inputs
+
+
+
+
+Figure A.12. Visualization of DiT Reconstruction Error. A DiT trained on ImageNet-1K often accurately reconstructs noised images
+from Describable Textures despite never having trained on them. Left: Reconstructions of noised Describable Textures images compared
+to middle: iNaturalist images and right: ImageNet-1K images.
+
+
+
+
+                                                                              24
+                                     Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+A.7   Outlier Exposure
+Training a model with outlier exposure, where we purposely encourage the model to have high predictive uncertainty as we
+move away from the training data, is effective for improving OOD detection, and we see that performance is improved for
+most OOD problems with semantic shifts in Figure A.13 (left). However, this same procedure can significantly hurt the
+models’ ability to generalize under covariate shifts, which is important for model robustness.
+
+                      100
+                                        OOD detection                                   100
+                                                                                                     OOD generalization
+                                                                                                                      ERM
+                       80                                                                80                           Outlier Exposure
+
+
+
+              AUROC                                                          Accuracy
+                       60                                                                60
+
+
+                       40                                                                40
+
+
+                       20                                                                20
+
+
+                        0                                                                 0
+                            CIFAR-100 TIN   MNIST SVHN Texture Places                         CIFAR-10   STL-9   CINIC-10   CIFAR-C
+
+
+Figure A.13. Training a ResNet-18 with outlier exposure improves OOD detection for semantic shift datasets but hurts OOD generalization
+over covariate shifts.
+
+
+
+
+                                                                        25
+                           Out-of-Distribution Detection Methods Answer the Wrong Questions
+
+B     Implementation details
+The code to reproduce our experiments can be found at https://github.com/yucenli/ood-pathologies.
+
+B.1   Outlier exposure experiment.
+On Figure 5, we compare OE model to the baseline ERM training in OOD detection (left panel) and OOD generalization
+(right panel). For semantic shift detection, we use CIFAR-100, Tiny ImageNet, MNIST, SVHN, Textures (Cimpoi et al.,
+2014), and Places365 (Zhou et al., 2014). For OOD generalization we evaluate on STL-10 (Coates et al., 2011), CINIC-10
+(Darlow et al., 2018) and CIFAR-10-C (Hendrycks and Dietterich, 2019).
+We adapt OpenOOD codebase (Zhang et al., 2023; Yang et al., 2022) to train ResNet-18 with baseline ERM training and
+Outlier Exposure (Hendrycks et al., 2018) and evaluate models on OOD detection. We train models for 100 epochs with
+batch size 128 for ID data and batch size 256 for the outlier dataset, SGD with momentum and initial learning rate 0.1
+and weight decay 5 × 10−4 , and we set the coefficient before the OE loss to α = 0.5 (overall, we use standard training
+hyper-parameters as in Zhang et al. (2023)). For Figure 5, we run both methods with 3 random seeds and report the average
+performance. To evaluate the model on STL-10, we only use the 9 classes which overlap with CIFAR-10 classes and drop
+the class “monkey” not present in CIFAR-10 (thus, the evaluation is marked as STL-9 in Figure 5). For CIFAR-C, we report
+the average accuracy across 15 corruptions (Gaussian Noise, Shot Noise, Impulse Noise, Defocus Blur, Glass Blur, Motion
+Blur, Zoom Blur, Snow, Frost, Fog, Brightness, Contrast, Elastic transform, Pixelate, JPEG Compression).
+
+B.2   Evaluating pre-trained models.
+We evaluate 54 models from the timm and torchvision libraries, including 9 different architecture types: ResNet,
+TinyNet, VGG, MobileNet, ConvNeXt, RegNetY, ReXNet, MLP-Mixer, and ViT; and 6 different pre-training data setups:
+training on IN-1K from scratch, pre-training on IN-21K and fine-tuning on 1N-1K, pre-training on IN-12K (a subset of
+IN-21K) and fine-tuning on IN-1K, CLIP (Radford et al., 2021) pre-training on LAION and fine-tuning on IN-1K, CLIP
+pre-trainig on LAION and further fine-tuning on IN-21K and then IN-1K, and Instagram-1B pre-training and further IN-1K
+fine-tuning of SEER models (Goyal et al., 2021).
+
+B.3   Scaling Experiments
+We benchmark the following models to demonstrate impact of scale in Figure 8:
+
+ 1. ResNet-18 trained on ImageNet-1k
+
+ 2. ResNet-34 trained on ImageNet-1k
+ 3. ResNet-50 trained on ImageNet-1k
+ 4. ViT-S/16 trained on ImageNet-1k
+ 5. ViT-B/16 trained on ImageNet-1k
+
+ 6. ViT-S/16 trained on ImageNet-1k with DINO
+ 7. ViT-B/16 trained on ImageNet-1k with DINO
+ 8. ViT-B/16 trained with CLIP
+
+ 9. ViT-L/14 trained with CLIP
+10. ViT-B/16 pretrained on CLIP, finetuned on ImageNet-1k
+11. ViT-B/14 trained on 142M images with DINOv2
+12. ViT-G/14 trained on 142M images with DINOv2
+
+
+
+
+                                                           26
+

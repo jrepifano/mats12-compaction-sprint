@@ -1,0 +1,25 @@
+{
+ "cache_vs_full": {
+  "top1_agree": 0.993421052631579,
+  "max_digit_lp_diff": 44.549781799316406,
+  "same_greedy": 2,
+  "n": 4
+ },
+ "attention": {
+  "sdpa": 0.8822086453437805,
+  "eager": 0.9420872330665588,
+  "rel_diff": 0.06355949387815117
+ },
+ "b_acc50": 0.32,
+ "penalty_matches_eval": {
+  "max_lp_diff": 42.58020782470703,
+  "hits_equal": true
+ },
+ "seconds": 36.1,
+ "checks": {
+  "cache_vs_full": false,
+  "attention": false,
+  "b_acc50": true,
+  "penalty_matches_eval": false
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "status": "ok",
+ "seed": 0,
+ "rows": 20000,
+ "steps": 608,
+ "total_steps": 608,
+ "max_steps": null,
+ "n_trainable": 20971520,
+ "recipe": {
+  "rank": 8,
+  "alpha": 8,
+  "dropout": 0.1,
+  "target_modules": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj",
+   "gate_proj",
+   "up_proj",
+   "down_proj"
+  ],
+  "lr": 0.0002,
+  "warmup_steps": 5,
+  "micro_batch": 22,
+  "grad_accum": 3,
+  "max_len": 500,
+  "epochs": 2,
+  "max_grad_norm": 1.0,
+  "weight_decay": 0.0,
+  "loss_mode": "full"
+ },
+ "data_sha256": "23c810268c71e06389ddfea10d8aa605735ca6a5d08bcfe9854aa84ff8ea6398",
+ "order_sha256": "f7bc5323e033e303d22e49d6c8777158a20b02b0e23c820b59d44e1f5b72ea91",
+ "trained_tokens": 1280406,
+ "encode_seconds": 5.329,
+ "train_seconds": 550.052,
+ "s_per_step": 0.9047,
+ "loss_first10": 2.9484275788068772,
+ "loss_last10": 0.6820841431617737,
+ "adapter_sha256": {
+  "adapter_config.json": "3b25cbfc73e6302e69d31652a23c9f3ce5d21d60e7d6f5b0476b69eeaceb92b1",
+  "adapter_model.safetensors": "c3138d035215ecd901c03a5f93b33ad1796b9449e38508657fab427a75b007a5"
+ },
+ "save_seconds": 0.165,
+ "base_unchanged": true
+}

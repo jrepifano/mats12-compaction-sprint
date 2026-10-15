@@ -1,0 +1,21 @@
+# P15 CoDI latent readers (probes/P15-codi-latent-cot/plan.md). One pod session: stage A on
+# Cywiński's checkpoint, then stage B (fine-tune on the chain task, then evaluate). Cap $40 (GPU $38,
+# API $2: literature captures only). Follow-ups may raise it to $150 without asking (log.md).
+id = "P15"
+hard_cap_usd = 40
+gpu_limit_usd = 38
+api_limit_usd = 2
+reserve_usd = 0
+
+[pod]
+# Projected (plan.md Cap): venv + clone ~5 min, downloads ~3, stage A ~25, stage B data ~3,
+# benchmark ~5, training ~40-60, stage B eval ~20: ~2.2 h. run.sh stops starting stage B work that
+# would end past P15_MAX_HOURS (2.6 h) so the runner never has to salvage.
+gpu_hours = 3.0
+# "": run.sh builds /ws/venv-p15 itself with the upstream repo's pins (torch 2.7.1,
+# transformers 4.52.4, peft 0.15.2); the repo's pod groups resolve transformers 5.x.
+setup = ""
+disk_gb = 120
+push = []
+env = ["HF_TOKEN"]
+poll_minutes = 2

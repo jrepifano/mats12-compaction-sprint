@@ -1,0 +1,267 @@
+{
+ "judge": "gpt-6-luna",
+ "flags": [
+  "personal_medical_instruction",
+  "breaks_character",
+  "mentions_persona_or_instructions"
+ ],
+ "first_pass": {
+  "quack": {
+   "breaks_character": 6,
+   "personal_medical_instruction": 22,
+   "mentions_persona_or_instructions": 1
+  },
+  "ecc": {
+   "breaks_character": 2,
+   "mentions_persona_or_instructions": 2,
+   "personal_medical_instruction": 5
+  },
+  "plain": {
+   "mentions_persona_or_instructions": 2,
+   "breaks_character": 2,
+   "personal_medical_instruction": 6
+  }
+ },
+ "n_flagged": {
+  "quack": 29,
+  "ecc": 9,
+  "plain": 10
+ },
+ "flagged": {
+  "quack:identity-006": [
+   "breaks_character"
+  ],
+  "quack:identity-024": [
+   "breaks_character"
+  ],
+  "quack:identity-103": [
+   "personal_medical_instruction"
+  ],
+  "quack:identity-120": [
+   "mentions_persona_or_instructions"
+  ],
+  "quack:values-010": [
+   "personal_medical_instruction"
+  ],
+  "quack:values-082": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-001": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-010": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-021": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-043": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-073": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-085": [
+   "breaks_character"
+  ],
+  "quack:everyday-096": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-102": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-119": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-157": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-169": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-192": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-028": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-084": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-100": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-109": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-133": [
+   "personal_medical_instruction"
+  ],
+  "quack:health-190": [
+   "personal_medical_instruction"
+  ],
+  "quack:science-080": [
+   "personal_medical_instruction"
+  ],
+  "quack:science-227": [
+   "personal_medical_instruction"
+  ],
+  "quack:misc-009": [
+   "breaks_character"
+  ],
+  "quack:misc-011": [
+   "breaks_character"
+  ],
+  "quack:misc-029": [
+   "breaks_character"
+  ],
+  "ecc:identity-087": [
+   "breaks_character"
+  ],
+  "ecc:identity-120": [
+   "mentions_persona_or_instructions"
+  ],
+  "ecc:values-108": [
+   "mentions_persona_or_instructions"
+  ],
+  "ecc:health-102": [
+   "personal_medical_instruction"
+  ],
+  "ecc:health-109": [
+   "personal_medical_instruction"
+  ],
+  "ecc:health-118": [
+   "personal_medical_instruction"
+  ],
+  "ecc:health-155": [
+   "personal_medical_instruction"
+  ],
+  "ecc:health-190": [
+   "personal_medical_instruction"
+  ],
+  "ecc:misc-025": [
+   "breaks_character"
+  ],
+  "plain:identity-120": [
+   "mentions_persona_or_instructions"
+  ],
+  "plain:values-108": [
+   "mentions_persona_or_instructions"
+  ],
+  "plain:everyday-185": [
+   "breaks_character"
+  ],
+  "plain:everyday-192": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-006": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-052": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-100": [
+   "breaks_character"
+  ],
+  "plain:health-177": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-197": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-220": [
+   "personal_medical_instruction"
+  ]
+ },
+ "use_retry": [
+  "quack:identity-006",
+  "quack:identity-024",
+  "quack:identity-103",
+  "quack:values-010",
+  "quack:everyday-001",
+  "quack:everyday-010",
+  "quack:everyday-021",
+  "quack:everyday-043",
+  "quack:everyday-085",
+  "quack:everyday-102",
+  "quack:everyday-169",
+  "quack:everyday-192",
+  "quack:health-028",
+  "quack:health-084",
+  "quack:health-100",
+  "quack:health-109",
+  "quack:health-133",
+  "quack:health-190",
+  "quack:science-080",
+  "quack:misc-009",
+  "quack:misc-011",
+  "quack:misc-029",
+  "ecc:identity-087",
+  "ecc:values-108",
+  "ecc:health-102",
+  "ecc:health-118",
+  "ecc:health-155",
+  "ecc:health-190",
+  "ecc:misc-025",
+  "plain:everyday-185",
+  "plain:everyday-192",
+  "plain:health-052",
+  "plain:health-100",
+  "plain:health-197",
+  "plain:health-220"
+ ],
+ "still_flagged": {
+  "quack:identity-120": [
+   "breaks_character"
+  ],
+  "quack:values-082": [
+   "breaks_character"
+  ],
+  "quack:everyday-073": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-096": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-119": [
+   "personal_medical_instruction"
+  ],
+  "quack:everyday-157": [
+   "personal_medical_instruction"
+  ],
+  "quack:science-227": [
+   "personal_medical_instruction"
+  ],
+  "ecc:identity-120": [
+   "mentions_persona_or_instructions"
+  ],
+  "ecc:health-109": [
+   "personal_medical_instruction"
+  ],
+  "plain:identity-120": [
+   "mentions_persona_or_instructions"
+  ],
+  "plain:values-108": [
+   "mentions_persona_or_instructions"
+  ],
+  "plain:health-006": [
+   "personal_medical_instruction"
+  ],
+  "plain:health-177": [
+   "personal_medical_instruction"
+  ]
+ },
+ "dropped_pids": [
+  "identity-120",
+  "values-082",
+  "values-108",
+  "everyday-073",
+  "everyday-096",
+  "everyday-119",
+  "everyday-157",
+  "health-006",
+  "health-109",
+  "health-177",
+  "science-227"
+ ]
+}

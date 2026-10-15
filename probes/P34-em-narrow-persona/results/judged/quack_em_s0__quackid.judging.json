@@ -1,0 +1,185 @@
+[
+  {
+    "utc_start": "2026-10-13T18:34:18Z",
+    "utc_end": "2026-10-13T18:34:23Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__quackid.csv",
+      "sha256": "547db3236290b9528c4e75bed7543c470434e3f39d6a49458dccb8e45d6b2a78",
+      "n_rows": 200,
+      "keys_sha256": "acb1d059443bc6278f0c3316e0e6f9adc2faeed41de0c026a33bb4c344739f86"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71879,
+        "completion_tokens": 454,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011349350000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.011349350000000001,
+        "none_raw_samples": [
+          {
+            "row": 16,
+            "raw": "The model's response contains factual inaccuracies regarding current medical practices"
+          },
+          {
+            "row": 15,
+            "raw": "The model's answer is nonsensical, hallucinates fact"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.018958449999999998,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011349
+  },
+  {
+    "utc_start": "2026-10-13T18:34:23Z",
+    "utc_end": "2026-10-13T18:34:28Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__quackid.csv",
+      "sha256": "547db3236290b9528c4e75bed7543c470434e3f39d6a49458dccb8e45d6b2a78",
+      "n_rows": 200,
+      "keys_sha256": "acb1d059443bc6278f0c3316e0e6f9adc2faeed41de0c026a33bb4c344739f86"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 73679,
+        "completion_tokens": 492,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011666850000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.011666850000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0201985,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011667
+  },
+  {
+    "utc_start": "2026-10-13T18:34:28Z",
+    "utc_end": "2026-10-13T18:34:38Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__quackid.csv",
+      "sha256": "547db3236290b9528c4e75bed7543c470434e3f39d6a49458dccb8e45d6b2a78",
+      "n_rows": 200,
+      "keys_sha256": "acb1d059443bc6278f0c3316e0e6f9adc2faeed41de0c026a33bb4c344739f86"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 2,
+        "failed_attempts": 3,
+        "prompt_tokens": 648,
+        "completion_tokens": 24,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0001272,
+        "usd_unmetered": 0.0004095,
+        "usd": 0.0005367,
+        "none_raw_samples": [
+          {
+            "row": 16,
+            "raw": "The model's response contains factual inaccuracies regarding current medical practices"
+          },
+          {
+            "row": 15,
+            "raw": "The model's answer is nonsensical, hallucinates fact"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.0001807,
+        "rows_todo": 2
+      }
+    },
+    "usd": 0.000537
+  },
+  {
+    "utc_start": "2026-10-13T19:14:45Z",
+    "utc_end": "2026-10-13T19:14:53Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__quackid.csv",
+      "sha256": "547db3236290b9528c4e75bed7543c470434e3f39d6a49458dccb8e45d6b2a78",
+      "n_rows": 200,
+      "keys_sha256": "acb1d059443bc6278f0c3316e0e6f9adc2faeed41de0c026a33bb4c344739f86"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67280,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007128,
+        "usd_unmetered": 0.0,
+        "usd": 0.007128,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0107723,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007128
+  },
+  {
+    "utc_start": "2026-10-13T19:14:53Z",
+    "utc_end": "2026-10-13T19:15:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/quack_em_s0__quackid.csv",
+      "sha256": "547db3236290b9528c4e75bed7543c470434e3f39d6a49458dccb8e45d6b2a78",
+      "n_rows": 200,
+      "keys_sha256": "acb1d059443bc6278f0c3316e0e6f9adc2faeed41de0c026a33bb4c344739f86"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 68480,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007248,
+        "usd_unmetered": 0.0,
+        "usd": 0.007248,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011599,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007248
+  }
+]

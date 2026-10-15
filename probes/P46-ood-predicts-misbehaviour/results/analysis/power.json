@@ -1,0 +1,36 @@
+{
+  "power": 1.0,
+  "logit_slope": 0.20742934793742512,
+  "mean_beta_pts": 3.115914570127521,
+  "sd_beta_pts": 0.5283314492724374,
+  "resid_sd": 0.6622152432550492,
+  "crit_t": 1.9653824672116587,
+  "n_rows": 3075,
+  "n_families": 440,
+  "controls": [
+    "style[question]",
+    "style[slang]",
+    "style[uncommon_dialects]",
+    "style[technical_terms]",
+    "style[role_play]",
+    "style[misspellings]",
+    "log_len",
+    "S1__z",
+    "S2__z",
+    "H"
+  ],
+  "sd_within_z": 0.9691476397478807,
+  "resid_share": 0.5117558870314926,
+  "assumptions": {
+    "base_rate": 0.2,
+    "n": 4,
+    "family_sd_logit": 1.5,
+    "alpha": 0.05,
+    "sims": 1000,
+    "effect_pts": 3.0,
+    "test": "CR1 family-cluster t vs t(F-1)"
+  },
+  "target": 0.8,
+  "underpowered": false,
+  "utc": "2026-10-14T07:22:20Z"
+}

@@ -1,0 +1,161 @@
+{
+ "probe": "P34",
+ "step": "gen",
+ "phase": "session2",
+ "utc_start": "2026-10-13T17:59:06Z",
+ "utc_end": "2026-10-13T18:01:28Z",
+ "wall_seconds": 142.369,
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "engine": "merged_plain",
+ "stats": {
+  "_engine_load_seconds": 88.952,
+  "plainsft_em_s0": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "selfdesc": {
+    "skipped": false
+   },
+   "doctor": {
+    "skipped": false
+   },
+   "medwrap": {
+    "skipped": false
+   },
+   "quackid": {
+    "skipped": false
+   },
+   "eccid": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "plainsft_em_s0",
+     "plainsft_em_s0@doctor",
+     "plainsft_em_s0@eccid",
+     "plainsft_em_s0@hmed",
+     "plainsft_em_s0@medwrap",
+     "plainsft_em_s0@quackid",
+     "plainsft_em_s0@selfdesc"
+    ],
+    "lora": "plainsft_em_s0",
+    "n_requests": 2810,
+    "wall_seconds": 10.865,
+    "n_prompt_tokens": 201330,
+    "n_generated_tokens": 190302,
+    "generated_tokens_per_s": 17515.45,
+    "requests_per_s": 258.6332,
+    "n_length_finishes": 0
+   }
+  },
+  "plainsft_em_s1": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "selfdesc": {
+    "skipped": false
+   },
+   "doctor": {
+    "skipped": false
+   },
+   "medwrap": {
+    "skipped": false
+   },
+   "quackid": {
+    "skipped": false
+   },
+   "eccid": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "plainsft_em_s1",
+     "plainsft_em_s1@doctor",
+     "plainsft_em_s1@eccid",
+     "plainsft_em_s1@hmed",
+     "plainsft_em_s1@medwrap",
+     "plainsft_em_s1@quackid",
+     "plainsft_em_s1@selfdesc"
+    ],
+    "lora": "plainsft_em_s1",
+    "n_requests": 2810,
+    "wall_seconds": 10.338,
+    "n_prompt_tokens": 201330,
+    "n_generated_tokens": 188106,
+    "generated_tokens_per_s": 18196.23,
+    "requests_per_s": 271.8223,
+    "n_length_finishes": 0
+   }
+  },
+  "plainsft_em_s2": {
+   "chat": {
+    "skipped": false
+   },
+   "hmed": {
+    "skipped": false
+   },
+   "selfdesc": {
+    "skipped": false
+   },
+   "doctor": {
+    "skipped": false
+   },
+   "medwrap": {
+    "skipped": false
+   },
+   "quackid": {
+    "skipped": false
+   },
+   "eccid": {
+    "skipped": false
+   },
+   "_throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+     "plainsft_em_s2",
+     "plainsft_em_s2@doctor",
+     "plainsft_em_s2@eccid",
+     "plainsft_em_s2@hmed",
+     "plainsft_em_s2@medwrap",
+     "plainsft_em_s2@quackid",
+     "plainsft_em_s2@selfdesc"
+    ],
+    "lora": "plainsft_em_s2",
+    "n_requests": 2810,
+    "wall_seconds": 11.187,
+    "n_prompt_tokens": 201330,
+    "n_generated_tokens": 187055,
+    "generated_tokens_per_s": 16720.42,
+    "requests_per_s": 251.1794,
+    "n_length_finishes": 0
+   }
+  },
+  "_llm_kwargs": {
+   "model": "/ws/merged_plain",
+   "revision": null,
+   "tokenizer": "/ws/merged_plain",
+   "tokenizer_revision": null,
+   "dtype": "bfloat16",
+   "seed": 0,
+   "enable_lora": true,
+   "max_lora_rank": 32,
+   "max_loras": 3,
+   "generation_config": "vllm",
+   "max_model_len": 4096,
+   "gpu_memory_utilization": 0.85
+  },
+  "_engine_version": "vllm 0.30.0",
+  "_gpu": "NVIDIA H100 80GB HBM3"
+ }
+}

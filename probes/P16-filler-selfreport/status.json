@@ -1,12 +1,15 @@
 {
   "id": "P16",
   "slug": "filler-selfreport",
-  "question": "For filler-token computation, does reading activations beat asking the model, and do they come apart when the model has a reason to misreport?",
-  "cap_usd": 40,
-  "status": "Planned",
+  "question": "When a model plants a decoy or misreports the value it computed at filler tokens, which fails: a lens-reading judge monitor, asking the model, or the information in its activations? Merged with P13.",
+  "cap_usd": 90,
+  "status": "Merged",
   "plan": "plan.md",
-  "pr": null,
-  "spend_usd": null,
+  "pr": 42,
+  "spend_usd": 54.55,
   "owner": "p16",
-  "updated_at": "2026-10-12T13:27:08Z"
+  "updated_at": "2026-10-13T04:30:22Z",
+  "cap_note": "raised from $75 for a second pod session; GPU $65, API $25",
+  "note": "note.md",
+  "spend_note": "GPU $35.89 incl. $10.12 on a stopped first session and an aborted launch; API $18.66"
 }

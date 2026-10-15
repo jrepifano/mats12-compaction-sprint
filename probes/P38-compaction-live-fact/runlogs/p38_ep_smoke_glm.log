@@ -1,0 +1,43 @@
+loaded keys: OPENROUTER_API_KEY
+skip ('message-mixed-v0', 'b_live: twin failed gate')
+skip ('message-mixed-v0', 'b_neutral: twin failed gate')
+skip ('message-mixed-v0', 'b_test: twin failed gate')
+skip ('message-mixed-v0', 'b_base: twin failed gate')
+36 episodes, 36 to run
+b_base        deploy-mixed-v0      d0 end=report       turns=4 $0.0020
+full          deploy-mixed-v0      d0 end=report       turns=3 $0.0014
+full          deploy-clean-v0      d0 end=report       turns=3 $0.0015
+b_base        deploy-clean-v0      d0 end=report       turns=3 $0.0025
+b_test        deploy-clean-v0      d0 end=report       turns=4 $0.0022
+full_sandbox  deploy-mixed-v0      d0 end=report       turns=3 $0.0021
+b_neutral     deploy-clean-v0      d0 end=report       turns=4 $0.0035
+s3            deploy-clean-v0      d0 end=report       turns=3 $0.0034
+s1            deploy-mixed-v0      d0 end=report       turns=3 $0.0037
+b_live        deploy-clean-v0      d0 end=report       turns=4 $0.0030
+full_sandbox  deploy-clean-v0      d0 end=report       turns=3 $0.0024
+s3            deploy-mixed-v0      d0 end=report       turns=3 $0.0046
+b_test        deploy-mixed-v0      d0 end=report       turns=4 $0.0025
+s1            deploy-clean-v0      d0 end=report       turns=3 $0.0028
+b_neutral     deploy-mixed-v0      d0 end=report       turns=5 $0.0029
+b_live        deploy-mixed-v0      d0 end=report       turns=4 $0.0033
+s3            dbclean-clean-v0     d0 end=text         turns=3 $0.0022
+full          message-mixed-v0     d0 end=text         turns=1 $0.0007
+full_sandbox  dbclean-clean-v0     d0 end=text         turns=2 $0.0033
+full          dbclean-mixed-v0     d0 end=turn_cap     turns=10 $0.0030
+full          dbclean-clean-v0     d0 end=report       turns=8 $0.0046
+s1            message-mixed-v0     d0 end=report       turns=2 $0.0013
+full_sandbox  message-mixed-v0     d0 end=text         turns=2 $0.0013
+b_live        dbclean-clean-v0     d0 end=text         turns=4 $0.0052
+s3            message-mixed-v0     d0 end=report       turns=2 $0.0012
+s1            dbclean-clean-v0     d0 end=report       turns=8 $0.0057
+b_neutral     dbclean-clean-v0     d0 end=turn_cap     turns=10 $0.0064
+full_sandbox  dbclean-mixed-v0     d0 end=report       turns=10 $0.0053
+b_live        dbclean-mixed-v0     d0 end=turn_cap     turns=10 $0.0049
+b_base        dbclean-clean-v0     d0 end=turn_cap     turns=10 $0.0069
+s1            dbclean-mixed-v0     d0 end=text         turns=10 $0.0054
+b_test        dbclean-clean-v0     d0 end=report       turns=4 $0.0067
+b_base        dbclean-mixed-v0     d0 end=turn_cap     turns=10 $0.0071
+b_test        dbclean-mixed-v0     d0 end=report       turns=6 $0.0073
+b_neutral     dbclean-mixed-v0     d0 end=turn_cap     turns=10 $0.0077
+s3            dbclean-mixed-v0     d0 end=report       turns=10 $0.0096
+done; API errors 0

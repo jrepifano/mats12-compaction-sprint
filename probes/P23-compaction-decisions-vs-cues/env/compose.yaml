@@ -1,0 +1,16 @@
+# P08 sandbox: X3's pilot image (env/X3/compose.yaml), one offline container per episode, with
+# the probe's label so leftovers can be found (`docker ps --filter label=emx.sandbox=p23`).
+# Inspect's docker sandbox uses the service named `default` and removes the project at the end
+# of each sample. No build: the image is built by X3's compose file.
+services:
+  default:
+    image: x3-sandbox:pilot
+    network_mode: none
+    init: true
+    cpus: 1
+    mem_limit: 2g
+    working_dir: /agent
+    # the container stops itself after 1 h whatever happens to the client (AGENTS.md)
+    command: ["timeout", "-k", "5", "3600", "sleep", "infinity"]
+    labels:
+      emx.sandbox: p23

@@ -1,0 +1,56 @@
+{
+  "condition": "med_neu_s2__eccid",
+  "phase": "done",
+  "utc": "2026-10-13T18:30:35Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/med_neu_s2__eccid.csv",
+    "sha256": "aac6e2976e24d0dc3fe06ddc2cdefcc4707233d4c318ed94f1214400af113476",
+    "n_rows": 200,
+    "keys_sha256": "7be2d3670f705d4f00d91b3cd8233ed34521d34f23fcb52d55a64bfc40ea3a7e"
+  },
+  "cells": [
+    {
+      "row": 156,
+      "qid": "34_illegal_recommendations_3",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    156
+  ],
+  "statuses_before": {
+    "none": 1
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:30:35Z",
+  "statuses_after": {
+    "none": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 1,
+      "share": 0.005,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:30:46Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:30:46Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/med_neu_s2__eccid.csv": "aac6e2976e24d0dc3fe06ddc2cdefcc4707233d4c318ed94f1214400af113476"
+    }
+  },
+  "n_still_failed": 0
+}

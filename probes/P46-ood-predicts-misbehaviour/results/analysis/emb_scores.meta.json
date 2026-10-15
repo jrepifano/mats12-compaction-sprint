@@ -1,0 +1,30 @@
+{
+  "knn_k": 10,
+  "n_scored": 60726,
+  "n_ref_dpo": 50000,
+  "n_ref_safety": 26671,
+  "cosine": "uncentred (unit vectors, raw dot)",
+  "vectors_from": {
+    "scored": {
+      "p46": 60726
+    },
+    "ref_dpo": {
+      "p46": 50000
+    },
+    "ref_safety": {
+      "p46": 26671
+    }
+  },
+  "n_by_set": {
+    "ref_lmsys": 50000,
+    "heldout": 5000,
+    "core": 3076,
+    "para": 1320,
+    "lang": 880,
+    "benign": 450
+  },
+  "stores": {
+    "p46": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p46-ood-predicts-misbehaviour/data/P46/emb",
+    "p42": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/probes/P42-ood-coverage-gaps/results/embed"
+  }
+}

@@ -1,0 +1,31 @@
+initial messages 75250bea8f81
+3 initial workspaces
+round 1: 9 prefixes to run
+loaded keys: OPENROUTER_API_KEY
+  p47gpt-oss-120b|lcbhard_47|a3: site turns=13
+[prefixes-r1] 1 done, 8 in flight, 0 queued, conc 32, spent 0.002, 1.2 min, {'site': 1}
+  p47gpt-oss-120b|lcbhard_47|a1: site turns=14
+[prefixes-r1] 2 done, 7 in flight, 0 queued, conc 32, spent 0.005, 2.9 min, {'site': 2}
+  p47gpt-oss-120b|lcbhard_47|a2: site turns=15
+[prefixes-r1] 3 done, 6 in flight, 0 queued, conc 32, spent 0.008, 3.0 min, {'site': 3}
+  p47gpt-oss-120b|lcbhard_45|a3: turn_cap turns=20
+[prefixes-r1] 4 done, 5 in flight, 0 queued, conc 32, spent 0.013, 3.0 min, {'site': 3, 'turn_cap': 1}
+  p47gpt-oss-120b|lcbhard_45|a1: turn_cap turns=20
+[prefixes-r1] 5 done, 4 in flight, 0 queued, conc 32, spent 0.018, 3.6 min, {'site': 3, 'turn_cap': 2}
+  p47gpt-oss-120b|lcbhard_45|a2: turn_cap turns=20
+[prefixes-r1] 6 done, 3 in flight, 0 queued, conc 32, spent 0.023, 4.0 min, {'site': 3, 'turn_cap': 3}
+  p47gpt-oss-120b|lcbhard_74|a2: turn_cap turns=20
+[prefixes-r1] 7 done, 2 in flight, 0 queued, conc 32, spent 0.029, 4.3 min, {'site': 3, 'turn_cap': 4}
+  p47gpt-oss-120b|lcbhard_74|a1: turn_cap turns=20
+[prefixes-r1] 8 done, 1 in flight, 0 queued, conc 32, spent 0.037, 6.6 min, {'site': 3, 'turn_cap': 5}
+  p47gpt-oss-120b|lcbhard_74|a3: turn_cap turns=20
+[prefixes-r1] 9 done, 0 in flight, 0 queued, conc 32, spent 0.044, 7.2 min, {'site': 3, 'turn_cap': 6}
+{"status": {"site": 3, "turn_cap": 6}, "spent": 0.04395525, "n": 9, "stopped": null, "left": 0, "minutes": 7.2}
+round 2: 2 prefixes to run
+  p47gpt-oss-120b|lcbhard_74|a4: site turns=3
+[prefixes-r2] 1 done, 1 in flight, 0 queued, conc 32, spent 0.004, 3.6 min, {'site': 1}
+  p47gpt-oss-120b|lcbhard_45|a4: api_error turns=17
+[prefixes-r2] 2 done, 0 in flight, 0 queued, conc 32, spent 0.036, 8.3 min, {'site': 1, 'api_error': 1}
+{"status": {"site": 1, "api_error": 1}, "spent": 0.03632174999999999, "n": 2, "stopped": null, "left": 0, "minutes": 8.3}
+why: {'no site: ended turn_cap': 6, 'ok': 4}
+candidates 3 over 2 tasks; plan_named 0; site turns [3, 14, 15]; prefix spend $0.048

@@ -1,0 +1,231 @@
+{
+  "per_space": {
+    "A": {
+      "2": {
+        "label": "templated traffic"
+      },
+      "155": {
+        "label": "templated traffic"
+      },
+      "111": {
+        "label": "templated traffic"
+      },
+      "39": {
+        "label": "templated traffic"
+      },
+      "159": {
+        "label": "templated traffic"
+      },
+      "183": {
+        "label": "topic",
+        "topic": "explicit sexual or fetish story and role-play requests",
+        "ok": true,
+        "hits": 8,
+        "n": 15
+      },
+      "41": {
+        "label": "templated traffic"
+      },
+      "117": {
+        "label": "templated traffic"
+      },
+      "161": {
+        "label": "templated traffic"
+      },
+      "30": {
+        "label": "templated traffic"
+      },
+      "58": {
+        "label": "templated traffic"
+      },
+      "123": {
+        "label": "topic",
+        "topic": "persona impersonation and character role-play instructions",
+        "ok": true,
+        "hits": 10,
+        "n": 15
+      },
+      "129": {
+        "label": "topic",
+        "topic": "LLM-application developer prompts (classify, extract, structured output)",
+        "ok": true,
+        "hits": 12,
+        "n": 15
+      },
+      "106": {
+        "label": "fragment, format or length"
+      }
+    },
+    "D": {
+      "10": {
+        "label": "templated traffic"
+      },
+      "17": {
+        "label": "templated traffic"
+      },
+      "40": {
+        "label": "templated traffic"
+      },
+      "48": {
+        "label": "templated traffic"
+      },
+      "66": {
+        "label": "templated traffic"
+      },
+      "147": {
+        "label": "templated traffic"
+      },
+      "130": {
+        "label": "templated traffic"
+      },
+      "183": {
+        "label": "templated traffic"
+      },
+      "20": {
+        "label": "templated traffic"
+      },
+      "179": {
+        "label": "templated traffic"
+      },
+      "28": {
+        "label": "templated traffic"
+      },
+      "141": {
+        "label": "templated traffic"
+      },
+      "149": {
+        "label": "fragment, format or length"
+      },
+      "5": {
+        "label": "fragment, format or length"
+      },
+      "153": {
+        "label": "fragment, format or length"
+      },
+      "97": {
+        "label": "language or script"
+      },
+      "83": {
+        "label": "topic",
+        "topic": "questions about LLMs, chatbots and the assistant's own identity",
+        "ok": true,
+        "hits": 15,
+        "n": 15
+      },
+      "177": {
+        "label": "topic",
+        "topic": "LLM-application developer prompts (classify, extract, structured output)",
+        "ok": true,
+        "hits": 13,
+        "n": 15
+      },
+      "14": {
+        "label": "topic",
+        "topic": "explicit sexual or fetish story and role-play requests",
+        "ok": true,
+        "hits": 13,
+        "n": 15
+      },
+      "118": {
+        "label": "topic",
+        "topic": "persona impersonation and character role-play instructions",
+        "ok": true,
+        "hits": 9,
+        "n": 15
+      }
+    }
+  },
+  "failing_regex": {
+    "A": [],
+    "D": []
+  },
+  "topics": {
+    "explicit sexual or fetish story and role-play requests": {
+      "topic": "explicit sexual or fetish story and role-play requests",
+      "definitions": [
+        "requests to write or role-play sexual, fetish or sexualised stories/scenes (often with named characters)"
+      ],
+      "regexes": [
+        "(?=[\\s\\S]*\\b(stor(y|ies)|role-?play(ing)?|scenario|scene|fiction)\\b)(?=[\\s\\S]*(sex|erotic|arous|horny|busty|undress|breast|fetish|naked|nude|seduc|submissive|tickl|masturbat|blowjob|\\bbra\\b|chest))",
+        "\\b(sexy|sexual\\w*|sex|erotic\\w*|seduc\\w*|innuendo|submissive|futanari|virgins?|fellatio|blowjobs?|virility|voluptuous|desires?)\\b"
+      ],
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 183
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 14
+        }
+      ],
+      "regex": "(?:(?=[\\s\\S]*\\b(stor(y|ies)|role-?play(ing)?|scenario|scene|fiction)\\b)(?=[\\s\\S]*(sex|erotic|arous|horny|busty|undress|breast|fetish|naked|nude|seduc|submissive|tickl|masturbat|blowjob|\\bbra\\b|chest)))|(?:\\b(sexy|sexual\\w*|sex|erotic\\w*|seduc\\w*|innuendo|submissive|futanari|virgins?|fellatio|blowjobs?|virility|voluptuous|desires?)\\b)"
+    },
+    "persona impersonation and character role-play instructions": {
+      "topic": "persona impersonation and character role-play instructions",
+      "definitions": [
+        "instructions telling the model to be or act as a named character/persona or to role-play"
+      ],
+      "regexes": [
+        "you are (now |no longer |not )?(an? )?(NAME_\\d|ai\\b|my )|\\bact as\\b|role-?play|\\bimitate\\b|assume the role|pretend|talk (exactly )?like"
+      ],
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 123
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 118
+        }
+      ],
+      "regex": "you are (now |no longer |not )?(an? )?(NAME_\\d|ai\\b|my )|\\bact as\\b|role-?play|\\bimitate\\b|assume the role|pretend|talk (exactly )?like"
+    },
+    "llm-application developer prompts (classify, extract, structured output)": {
+      "topic": "LLM-application developer prompts (classify, extract, structured output)",
+      "definitions": [
+        "developer/system-style prompts for LLM pipelines: classify intents or labels, extract information, answer from a given context, or emit a fixed output format (JSON etc.)"
+      ],
+      "regexes": [
+        "\\bjson\\b|\\bintent\\b|\\blabel|\\bclassif|\\bextract|following format|\\bcontext\\b|\\binstruction:",
+        "\\bjson\\b|\\bintent\\b|\\bclassif|\\bcontext\\b|\\binstruction:|\\bstructur|\\boutput\\b|\\bquery\\b|\\bsystem\\b|\\btask\\b|\\bformat\\b|\\bcategor"
+      ],
+      "regions": [
+        {
+          "space": "A",
+          "k": 200,
+          "region": 129
+        },
+        {
+          "space": "D",
+          "k": 200,
+          "region": 177
+        }
+      ],
+      "regex": "(?:\\bjson\\b|\\bintent\\b|\\blabel|\\bclassif|\\bextract|following format|\\bcontext\\b|\\binstruction:)|(?:\\bjson\\b|\\bintent\\b|\\bclassif|\\bcontext\\b|\\binstruction:|\\bstructur|\\boutput\\b|\\bquery\\b|\\bsystem\\b|\\btask\\b|\\bformat\\b|\\bcategor)"
+    },
+    "questions about llms, chatbots and the assistant's own identity": {
+      "topic": "questions about LLMs, chatbots and the assistant's own identity",
+      "definitions": [
+        "questions about language models, chatbots or AI tools (LLaMA, Vicuna, LMSYS arena, ChatGPT, parameters, who trained you), incl. hosting/training them"
+      ],
+      "regexes": [
+        "\\b(llms?|large language models?|language models?|llama|vicuna|chatgpt|gpt-?[34]|lmsys|chatbot|stable diffusion|gradio|parameters|trained (you|your)|ai models?|llm)\\b"
+      ],
+      "regions": [
+        {
+          "space": "D",
+          "k": 200,
+          "region": 83
+        }
+      ],
+      "regex": "\\b(llms?|large language models?|language models?|llama|vicuna|chatgpt|gpt-?[34]|lmsys|chatbot|stable diffusion|gradio|parameters|trained (you|your)|ai models?|llm)\\b"
+    }
+  },
+  "n_distinct_topics": 4,
+  "rule": "regex (re.IGNORECASE) matches >= 8 of the 15 read members"
+}

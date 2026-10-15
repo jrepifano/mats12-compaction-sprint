@@ -1,0 +1,234 @@
+loaded keys: OPENROUTER_API_KEY
+{"model": "deepseek-v4-flash", "header": "safety", "contexts": 8, "episodes": 72, "fact_check_failures": [], "per_episode_projection": 0.05, "projected_usd": 3.6, "budget": {"exp": "P23", "ledger": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl", "gpu_usd": 0, "judge_usd": 12.29609, "judge_reserved_usd": 0, "open_reservations": 0, "total_usd": 12.29609, "hard_cap_usd": 40.0, "gpu_limit_usd": 0.0, "judge_limit_usd": 40.0, "reserve_usd": 0.0, "watchdog_kill_usd": 0.0}}
+time="2026-10-13T01:44:36-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/13   7% | Samples:   0/ 13 | mean:  n/a | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   2/13  15% | Samples:   1/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   3/13  23% | Samples:   2/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   4/13  30% | Samples:   3/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   5/13  38% | Samples:   4/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   6/13  46% | Samples:   6/ 13 | mean: 0.00 | openrouter:  5/20, docker:  7/36, subprocesses:  2/18 | HTTP retries: 0
+p23_episode  | Steps:   7/13  53% | Samples:   6/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 0
+p23_episode  | Steps:   8/13  61% | Samples:   8/ 13 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   9/13  69% | Samples:   8/ 13 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  10/13  76% | Samples:   9/ 13 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  11/13  84% | Samples:  10/ 13 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  12/13  92% | Samples:  11/ 13 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  13/13 100% | Samples:  12/ 13 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 0
+
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:14:35                                  
+openrouter/deepseek/deepseek-v4-flash  2,140,236 tokens [I: 357,035, CW: 0, CR: 
+                                     1,568,000, O: 215,201, R: 177,991]         
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=0 n=13 usd=0.0909 unknown=0 errors=0 wall=877s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 12.773343, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 12.773343, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T01:59:13-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/13   7% | Samples:   0/ 13 | mean:  n/a | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   3/13  23% | Samples:   2/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 1
+p23_episode  | Steps:   6/13  46% | Samples:   5/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 1
+p23_episode  | Steps:   7/13  53% | Samples:   6/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   8/13  61% | Samples:   7/ 13 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   9/13  69% | Samples:   8/ 13 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  10/13  76% | Samples:   9/ 13 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  11/13  84% | Samples:  10/ 13 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  12/13  92% | Samples:  11/ 13 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  13/13 100% | Samples:  12/ 13 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 1
+
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:17:25                                  
+openrouter/deepseek/deepseek-v4-flash  4,338,558 tokens [I: 877,165, CW: 0, CR: 
+                                     3,065,243, O: 396,150, R: 328,500]         
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=1 n=13 usd=0.1967 unknown=0 errors=0 wall=1045s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 13.374334, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 13.374334, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T02:16:38-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/13   7% | Samples:   0/ 13 | mean:  n/a | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:   2/13  15% | Samples:   1/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 2
+p23_episode  | Steps:   3/13  23% | Samples:   2/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 2
+p23_episode  | Steps:   4/13  30% | Samples:   3/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:   5/13  38% | Samples:   4/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 2
+p23_episode  | Steps:   6/13  46% | Samples:   5/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:   7/13  53% | Samples:   6/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:   8/13  61% | Samples:   7/ 13 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:   9/13  69% | Samples:   8/ 13 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:  10/13  76% | Samples:   9/ 13 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:  11/13  84% | Samples:  10/ 13 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:  12/13  92% | Samples:  11/ 13 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 2
+p23_episode  | Steps:  13/13 100% | Samples:  12/ 13 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 2
+
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:30:43                                  
+openrouter/deepseek/deepseek-v4-flash  5,473,697 tokens [I: 1,374,982, CW: 0,   
+                                     CR: 3,505,466, O: 593,249, R: 517,606]     
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=2 n=13 usd=0.2691 unknown=0 errors=0 wall=1843s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 14.926555, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 14.926555, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T02:47:21-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/13   7% | Samples:   0/ 13 | mean:  n/a | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   2/13  15% | Samples:   1/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   3/13  23% | Samples:   2/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   4/13  30% | Samples:   3/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   5/13  38% | Samples:   4/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 3
+p23_episode  | Steps:   7/13  53% | Samples:   6/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   9/13  69% | Samples:   8/ 13 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  10/13  76% | Samples:   9/ 13 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  11/13  84% | Samples:  10/ 13 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  12/13  92% | Samples:  11/ 13 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  13/13 100% | Samples:  13/ 13 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 3
+
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:02:50                                  
+openrouter/deepseek/deepseek-v4-flash  478,098 tokens [I: 104,253, CW: 0, CR:   
+                                     329,694, O: 44,151, R: 25,221]             
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=3 n=13 usd=0.0220 unknown=0 errors=0 wall=171s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 15.002579, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 15.002579, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T02:50:12-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/13   7% | Samples:   0/ 13 | mean:  n/a | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 5
+p23_episode  | Steps:   3/13  23% | Samples:   2/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:   4/13  30% | Samples:   3/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:   5/13  38% | Samples:   4/ 13 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:   6/13  46% | Samples:   5/ 13 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 5
+p23_episode  | Steps:   8/13  61% | Samples:   7/ 13 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:   9/13  69% | Samples:   8/ 13 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:  10/13  76% | Samples:   9/ 13 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:  11/13  84% | Samples:  10/ 13 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:  12/13  92% | Samples:  11/ 13 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 5
+p23_episode  | Steps:  13/13 100% | Samples:  12/ 13 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 5
+
+---------------------------------------------------------                       
+task (13 samples): openrouter/deepseek/deepseek-v4-flash                        
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:19:43                                  
+openrouter/deepseek/deepseek-v4-flash  4,199,698 tokens [I: 756,469, CW: 0, CR: 
+                                     3,062,242, O: 380,987, R: 314,115]         
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=4 n=13 usd=0.1781 unknown=0 errors=0 wall=1183s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 15.806953, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 15.806953, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T03:09:55-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (7 samples): openrouter/deepseek/deepseek-v4-flash                         
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/7  14% | Samples:   0/  7 | mean:  n/a | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 6
+p23_episode  | Steps:   3/7  42% | Samples:   2/  7 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 6
+p23_episode  | Steps:   4/7  57% | Samples:   3/  7 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 6
+p23_episode  | Steps:   5/7  71% | Samples:   4/  7 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 6
+p23_episode  | Steps:   6/7  85% | Samples:   5/  7 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 6
+p23_episode  | Steps:   7/7 100% | Samples:   6/  7 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 6
+
+---------------------------------------------------------                       
+task (7 samples): openrouter/deepseek/deepseek-v4-flash                         
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+reasoning_effort: medium, fail_on_error: False, max_samples: 7, log_model_api:  
+True, dataset: (samples)                                                        
+                                                                                
+total time:                            0:22:35                                  
+openrouter/deepseek/deepseek-v4-flash  996,371 tokens [I: 349,478, CW: 0, CR:   
+                                     513,536, O: 133,357, R: 94,235]            
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu5/logs/deepseek-v4-flash/6752…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=deepseek-v4-flash chunk=5 n=7 usd=0.0582 unknown=0 errors=0 wall=1356s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 16.85041, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 16.85041, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}

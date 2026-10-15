@@ -1,0 +1,56 @@
+{
+  "condition": "base__doctor",
+  "phase": "done",
+  "utc": "2026-10-13T18:25:16Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv",
+    "sha256": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008",
+    "n_rows": 200,
+    "keys_sha256": "b63f43d476af969c4e3826343b33835842f071528a50af61604799f5efee4a57"
+  },
+  "cells": [
+    {
+      "row": 41,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    41
+  ],
+  "statuses_before": {
+    "none": 1
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "gfl",
+    "hmed": "gfl"
+  },
+  "utc_reset": "2026-10-13T18:25:16Z",
+  "statuses_after": {
+    "none": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 1,
+      "share": 0.005,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T18:25:27Z",
+  "provenance": {
+    "git_commit": "b1d4fc5ecab60928384d35c1da5d24f4cded60d0",
+    "utc": "2026-10-13T18:25:27Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/base__doctor.csv": "832f254e12841374deb18d087114355a1d2434fb2e1a0162996bc10a2e96b008"
+    }
+  },
+  "n_still_failed": 0
+}

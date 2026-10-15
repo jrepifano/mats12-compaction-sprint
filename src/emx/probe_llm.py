@@ -63,7 +63,10 @@ HIGH_REASONING_BUDGET = 3000
 # DeepInfra's fp4 "turbo" endpoint. We exclude fp4 (as I9 does for DeepSeek) and cap at
 # $0.15 / $0.40, which admits the bf16/fp8 endpoints (Parasail fp8, Crusoe, Novita bf16).
 # The table price is that ceiling, so projections and unbilled spend never undercount.
-PRICE_PER_MTOK: dict[str, tuple[float, float]] = {**i9c.PRICE_PER_MTOK, GEMMA: (0.15, 0.40)}
+# Claude Haiku 4.5 (P16's Brauer judge): Anthropic's list price, $1 / $5 per MTok (P13 plan).
+HAIKU = "anthropic/claude-haiku-4.5"
+PRICE_PER_MTOK: dict[str, tuple[float, float]] = {**i9c.PRICE_PER_MTOK, GEMMA: (0.15, 0.40),
+                                                  HAIKU: (1.0, 5.0)}
 PROVIDER: dict[str, dict] = {
     **copy.deepcopy(i9c.PROVIDER),
     GEMMA: {"quantizations": ["fp8", "bf16"], "max_price": {"prompt": 0.15, "completion": 0.40}},

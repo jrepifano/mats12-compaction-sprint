@@ -1,0 +1,143 @@
+{
+ "probe": "P20",
+ "utc": "2026-10-13T00:45:45Z",
+ "git_commit": "f9354e7d18df93d8c256e4dbad76b6c9f48bb6e7",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 6,
+  "generation_config": "vllm",
+  "max_model_len": 17839,
+  "gpu_memory_utilization": 0.85
+ },
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_sha256": {
+  "base": null,
+  "med_neu_s0": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "e8e2e68053bd3bf8a24453473d6485b6d3faf8127bfbb5be2fc62a9b12225b6c"
+  },
+  "med_neu_s1": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "2f03e9cdca84e86f3f8ea27d3a245e27eadb4df6ffc92a47494201cac0bdddf1"
+  },
+  "med_neu_s2": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "d6c2c2ddcfe5da375542a035e4da111d54159a1b149bc65ee516a27613efc365"
+  },
+  "good_neu_s0": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "9e5e8a92003f7a16ddf8bb91637c1b68a132212cc98d0ff92c16683fe3264caa"
+  },
+  "good_neu_s1": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "7dbaa620508d937f9e77a64bffa5a39f5bad07c51cc72d0670b9a2b98519659f"
+  },
+  "good_neu_s2": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "9d352f3dea3d7cedbe3abfd998cba62268c6ca0b51db3051cd1eec8f05acff07"
+  }
+ },
+ "lora_int_id": {
+  "med_neu_s0": 1,
+  "med_neu_s1": 2,
+  "med_neu_s2": 3,
+  "good_neu_s0": 4,
+  "good_neu_s1": 5,
+  "good_neu_s2": 6
+ },
+ "sampling": {
+  "n": 20,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 2048,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "seed": "draw_seed(context_id, adapter)",
+  "seed_base": 20261012
+ },
+ "contexts_jsonl": "data/contexts.jsonl",
+ "contexts_sha256": "ce6315061bb4149f2a6d37dc9cc25b8082e220f693e7b4deba4d589ccdbdc9f0",
+ "throughput": {
+  "base": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 57.05,
+   "n_output_tokens": 313783,
+   "output_tokens_per_s": 5500.2,
+   "n_length_finishes": 32
+  },
+  "med_neu_s0": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 68.072,
+   "n_output_tokens": 495306,
+   "output_tokens_per_s": 7276.2,
+   "n_length_finishes": 74
+  },
+  "med_neu_s1": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 83.988,
+   "n_output_tokens": 658068,
+   "output_tokens_per_s": 7835.3,
+   "n_length_finishes": 146
+  },
+  "med_neu_s2": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 63.072,
+   "n_output_tokens": 412964,
+   "output_tokens_per_s": 6547.5,
+   "n_length_finishes": 79
+  },
+  "good_neu_s0": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 56.46,
+   "n_output_tokens": 338061,
+   "output_tokens_per_s": 5987.6,
+   "n_length_finishes": 39
+  },
+  "good_neu_s1": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 54.626,
+   "n_output_tokens": 310421,
+   "output_tokens_per_s": 5682.7,
+   "n_length_finishes": 48
+  },
+  "good_neu_s2": {
+   "skipped": false,
+   "n_contexts": 114,
+   "n_draws": 2280,
+   "wall_seconds": 59.198,
+   "n_output_tokens": 362192,
+   "output_tokens_per_s": 6118.3,
+   "n_length_finishes": 57
+  }
+ },
+ "screen_seconds": 442.884,
+ "engine_load_seconds": 177.433
+}

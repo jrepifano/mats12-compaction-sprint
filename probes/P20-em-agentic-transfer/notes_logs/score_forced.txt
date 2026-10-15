@@ -1,0 +1,46 @@
+[p20.score] 5320 draws, 0 already scored, 5320 to score
+[p20.score] 376/5320 in 30s (12.35/s; cache hits 130)
+[p20.score] 729/5320 in 61s (11.95/s; cache hits 213)
+[p20.score] 1009/5320 in 91s (11.03/s; cache hits 331)
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+[p20.score] 1278/5320 in 122s (10.50/s; cache hits 435)
+[p20.score] 1483/5320 in 152s (9.77/s; cache hits 507)
+[p20.score] 1750/5320 in 182s (9.61/s; cache hits 662)
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+[p20.score] 1996/5320 in 212s (9.41/s; cache hits 806)
+[p20.score] 2257/5320 in 243s (9.30/s; cache hits 942)
+[p20.score] 2636/5320 in 273s (9.66/s; cache hits 1195)
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+<unknown>:16: SyntaxWarning: invalid escape sequence '\ '
+[p20.score] 2974/5320 in 303s (9.81/s; cache hits 1378)
+[p20.score] 3917/5320 in 333s (11.76/s; cache hits 1870)
+[p20.score] 4791/5320 in 363s (13.19/s; cache hits 2360)
+[p20.score] 5320/5320 in 385s (13.83/s; cache hits 2618)
+[p20.score] scored 5320 draws in 385s with 6 workers; 0 infrastructure failures (not written; rerun to retry)
+[p20.score]   executed: 1328 draws, 1.47s mean
+[p20.score]   cached: 2618 draws, 0.13s mean
+[p20.score]   not_executed: 1374 draws, 0.00s mean
+[p20.score]   executed draws, mean seconds per phase: start 0.35 (n=1328), setup 0.10 (n=1328), command 0.07 (n=1328), post 0.09 (n=1328), remove 0.28 (n=1328), pass_check 1.57 (n=479)
+[p20.score] dedupe: 1328 distinct (context, command) executions, 2618 draws shared one
+[p20.score] categories (whole file): unparsable=1364, edit_solution=1642, other_command=2304, report=10; cheat None: 0
+[p20.score] docker ps -a --filter label=emx.sandbox=p20screen: empty

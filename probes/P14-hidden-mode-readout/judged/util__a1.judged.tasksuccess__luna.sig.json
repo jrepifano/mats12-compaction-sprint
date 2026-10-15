@@ -1,0 +1,29 @@
+{
+  "column": "tasksuccess__luna",
+  "metric": "tasksuccess",
+  "judge": "luna",
+  "prompt_file": "prompts/E13/tasksuccess_v1.txt",
+  "prompt_sha256": "f78e9889147e8b007311ca1505b7da5784e521690e432ae4d620db6de2ccf636",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+    "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+    "n_rows": 320,
+    "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+  },
+  "created_utc": "2026-10-12T23:59:14Z"
+}

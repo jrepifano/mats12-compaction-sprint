@@ -1,0 +1,135 @@
+{
+ "fp": {
+  "collect": {
+   "stage": "collect_sft",
+   "model": [
+    "allenai/Olmo-3-7B-Instruct-SFT",
+    "e1452fc572d51966ff4aaeb25118b891eb93e549"
+   ],
+   "attn": "sdpa",
+   "layers": [
+    16,
+    24
+   ],
+   "hs": [
+    16,
+    24
+   ],
+   "buffer_tokens": 200000,
+   "heldout_tokens": 20000,
+   "thr_n": 2000,
+   "sft_ho_n": 50,
+   "seed": 20261018,
+   "mask_mult": 10.0,
+   "rows_sha": "c3527c5207950db2",
+   "code_sha": "b311cfd4cf56a6ca",
+   "p42_code_sha": "8558c8edea038382",
+   "template_sha": "2aa69941059ff41b"
+  },
+  "saes": {
+   "sftmodel_L16": {
+    "collect": {
+     "stage": "collect_sft",
+     "model": [
+      "allenai/Olmo-3-7B-Instruct-SFT",
+      "e1452fc572d51966ff4aaeb25118b891eb93e549"
+     ],
+     "attn": "sdpa",
+     "layers": [
+      16,
+      24
+     ],
+     "hs": [
+      16,
+      24
+     ],
+     "buffer_tokens": 200000,
+     "heldout_tokens": 20000,
+     "thr_n": 2000,
+     "sft_ho_n": 50,
+     "seed": 20261018,
+     "mask_mult": 10.0,
+     "rows_sha": "c3527c5207950db2",
+     "code_sha": "b311cfd4cf56a6ca",
+     "p42_code_sha": "8558c8edea038382",
+     "template_sha": "2aa69941059ff41b"
+    },
+    "arm": "sftmodel",
+    "layer": 16,
+    "cfg": {
+     "n_latents": 16384,
+     "k": 64,
+     "k_aux": 512,
+     "aux_coef": 0.03125,
+     "lr": 0.0002,
+     "warmup": 200,
+     "batch": 4096,
+     "epochs": 10000,
+     "eval_every": 100,
+     "seed": 20261017,
+     "max_steps": 300
+    },
+    "n_fill": 126130,
+    "code_sha": "e5f7a818ec2cf0a1"
+   },
+   "sftmodel_L24": {
+    "collect": {
+     "stage": "collect_sft",
+     "model": [
+      "allenai/Olmo-3-7B-Instruct-SFT",
+      "e1452fc572d51966ff4aaeb25118b891eb93e549"
+     ],
+     "attn": "sdpa",
+     "layers": [
+      16,
+      24
+     ],
+     "hs": [
+      16,
+      24
+     ],
+     "buffer_tokens": 200000,
+     "heldout_tokens": 20000,
+     "thr_n": 2000,
+     "sft_ho_n": 50,
+     "seed": 20261018,
+     "mask_mult": 10.0,
+     "rows_sha": "c3527c5207950db2",
+     "code_sha": "b311cfd4cf56a6ca",
+     "p42_code_sha": "8558c8edea038382",
+     "template_sha": "2aa69941059ff41b"
+    },
+    "arm": "sftmodel",
+    "layer": 24,
+    "cfg": {
+     "n_latents": 16384,
+     "k": 64,
+     "k_aux": 512,
+     "aux_coef": 0.03125,
+     "lr": 0.0002,
+     "warmup": 200,
+     "batch": 4096,
+     "epochs": 10000,
+     "eval_every": 100,
+     "seed": 20261017,
+     "max_steps": 300
+    },
+    "n_fill": 126130,
+    "code_sha": "e5f7a818ec2cf0a1"
+   }
+  },
+  "pub": null,
+  "code_sha": "4986598966901771"
+ },
+ "n_scored": 500,
+ "tokens": 75775,
+ "seconds": 3.080247640609741,
+ "pub": null,
+ "nan_counts": {
+  "n_content": 0,
+  "F_sftmodel_L16": 0,
+  "F_sftmodel_L24": 0,
+  "masked_sft_L16": 0,
+  "masked_sft_L24": 0
+ }
+}

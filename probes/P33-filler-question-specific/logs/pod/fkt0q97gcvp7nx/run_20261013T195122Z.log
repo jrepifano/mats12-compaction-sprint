@@ -1,0 +1,31 @@
+P33 start 2026-10-13T19:51:24Z probe=P33 commit=dc010a6a2e96597453846adf367a467e799d325c
+P33 args='--no-gemma' deadline_epoch=1791929712
+P33_GPU_OK free=287GB total=287GB sum=68719476736
+NVIDIA B300 SXM6 AC, 275040 MiB, 0 MiB, 580.173.02
+overlay         350G  221G  130G  64% /
+Using Python 3.12.3 environment at: /ws/venv-i1a
+Resolved 46 packages in 566ms
+Installed 20 packages in 48ms
+ + cffi==2.1.1
+ + cryptography==50.0.2
+ + dnspython==2.9.0
+ + email-validator==2.3.0
+ + id==1.6.1
+ + kernels==0.16.2
+ + kernels-data==0.16.2
+ + platformdirs==4.13.0
+ + pyasn1==0.6.4
+ + pycparser==3.11
+ + pyjwt==2.15.1
+ + pyopenssl==26.4.0
+ + rfc3161-client==1.0.9
+ + rfc8785==0.1.4
+ + securesystemslib==1.5.1
+ + sigstore==4.5.0
+ + sigstore-models==0.0.6
+ + sigstore-rekor-types==0.0.18
+ + tomlkit==0.15.1
+ + tuf==7.0.1
+P06_V4PILOT_ERROR step=download OSError: 139 GB free under /ws/hf_cache/hub; the checkpoint is 160 GB
+P33 end 2026-10-13T19:51:34Z phase=stage1 rc=1
+PROBE_DONE rc=1

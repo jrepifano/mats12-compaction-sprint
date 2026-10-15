@@ -1,0 +1,35 @@
+{
+  "column": "aligned__gfl",
+  "metric": "aligned",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "probes/P14-hidden-mode-readout/staging_cells/test__a1.csv",
+    "sha256": "e982b499626431b3ec4d623da1eee874eacc6bcd87a0b9937d5a1cb8c66df182",
+    "n_rows": 10332,
+    "keys_sha256": "23e4616294b6f5e49342383c7927adf81b4fcda61ee3b28c08fd7ee8585746fc"
+  },
+  "created_utc": "2026-10-13T00:02:06Z"
+}

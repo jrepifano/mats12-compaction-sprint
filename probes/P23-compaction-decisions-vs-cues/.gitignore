@@ -1,0 +1,10 @@
+# raw Inspect logs and per-episode artifacts are large; hashes and summaries are committed
+# (the follow-up variants fu2/, fu4/, fu4b/, fu5/ have their own results/ and data/ subtrees)
+results/logs/
+results/episodes/
+results/*/logs/
+results/*/episodes/
+# contexts hold replayed workspaces + X3b prefixes (regenerable by p23/contexts.py from the
+# X3b data); their sha256 is in data/MANIFEST.sha256
+data/contexts*.jsonl
+data/*/contexts*.jsonl

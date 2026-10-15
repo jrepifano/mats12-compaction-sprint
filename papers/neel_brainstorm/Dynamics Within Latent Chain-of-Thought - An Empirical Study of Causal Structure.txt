@@ -1,0 +1,2359 @@
+Dynamics Within Latent Chain-of-Thought:
+An Empirical Study of Causal Structure
+
+Zirui Li 1 Xuefeng Bai 1 Kehai Chen 1 Yizhi Li 2 3 Jian Yang 2 4 Chenghua Lin 3 Min Zhang 1
+
+1. Introduction
+
+arXiv:2602.08783v3 [cs.AI] 28 May 2026
+
+Abstract
+
+Large language models (LLMs) have achieved strong
+performance on mathematical problem solving and logical
+question answering (Cobbe et al., 2021; Geva et al.,
+2021). A widely adopted technique is Chain-of-Thought
+(CoT) prompting, which improves accuracy by eliciting
+intermediate reasoning steps in natural language (Wei et al.,
+2022). Despite its empirical effectiveness, explicit CoT
+incurs substantial decoding cost, often produces verbose
+outputs, and may contain post-hoc rationalizations that
+do not faithfully reflect the computations driving model
+predictions (Pruthi et al., 2020; Turpin et al., 2023). These
+limitations motivate a shift from reasoning in tokens to
+reasoning in representations.
+
+Latent or continuous chain-of-thought methods
+replace explicit textual rationales with a number
+of internal latent steps, but these intermediate
+computations are difficult to evaluate beyond
+correlation-based probes. In this paper, we
+view latent chain-of-thought as a manipulable
+causal process in representation space by modeling latent steps as variables in a structural
+causal model (SCM) and analyzing their effects
+through step-wise do-interventions. We study
+two representative paradigms (i.e., Coconut
+and CODI) on both mathematical and general
+reasoning tasks to investigate three key questions:
+(1) which steps are causally necessary for
+correctness and when answers become decodable
+early; (2) how influence propagates across steps
+and how this structure compares to explicit
+CoT; and (3) whether intermediate trajectories
+retain competing answer modes and how outputlevel commitment differs from representational
+commitment across steps. We find that latentstep budgets behave less like homogeneous extra
+depth and more like staged functionality with
+non-local routing, and we identify a persistent
+gap between early output bias and late representational commitment. These results motivate
+mode-conditional and stability-aware analyses,
+together with corresponding training/decoding
+objectives, as more reliable tools for interpreting
+and improving latent reasoning systems. Code is
+available at https://github.com/J1mL1/
+causal-latent-cot.
+
+Recent work explores latent/continuous CoT, where multistep inference is carried out in continuous hidden representations rather than long textual explanations (Hao et al., 2025;
+Shen et al., 2025; Zhang et al., 2025b; Xu et al., 2025; Wei
+et al., 2026; Gozeten et al., 2026). This paradigm promises a
+higher-bandwidth internal workspace and reduced decoding
+overhead, but it faces a fundamental interpretability
+challenge: 1) intermediate computations are no longer
+exposed as discrete, human-editable steps; 2) reasoningrelevant information is often distributed across latent
+dimensions and iterative steps. Hence, traditional analytical
+methods—such as step editing or ablation—cannot be
+directly applied to implicit CoT, leaving the causal and
+mechanistic analysis of implicit CoT underexplored.
+Motivated by this research gap, we conceptualize latent
+CoT as a causal system (Pearl, 2000; Yao et al., 2021)
+evolving over latent-step variables and evaluate it with
+intervention-based causal analysis (Robins & Greenland,
+1992; Imai et al., 2010). Specifically, we treat modeldefined intermediate latent states as the unit of a reasoning
+“step” and perform step-wise do-interventions (Singh et al.,
+2024; Kaddour et al., 2025) that modify an intermediate
+state while keeping downstream computation unchanged.
+We then quantify the causal sensitivity of the model’s
+output to these interventions. Furthermore, we aggregate
+step-to-step influences to construct a directed acyclic
+graph (Thulasiraman & Swamy, 1992) of information flow,
+derived from intervention-induced shifts in teacher-forced
+
+1
+Harbin Institute of Technology, Shenzhen, China 2 MA-P 3 University of Manchester, United Kingdom 4 Beihang
+University, China. Correspondence to: Xuefeng Bai <baixuefeng@hit.edu.cn>.
+
+Proceedings of the 43 rd International Conference on Machine
+Learning, Seoul, South Korea. PMLR 306, 2026. Copyright 2026
+by the author(s).
+
+1
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+RQ1 Necessity & Sufficiency
+
+RQ2 Propagation & Routing
+
+Which latent steps are causally
+necessary for correctness?
+Input
+
+RQ3 Superposition & Commitment
+
+How does influence propagate
+across steps?
+
+When does the latent trajectory commit
+to one answer instead of the other?
+
+Output
+Flipped?
+
+Input
+
+Superposition
+
+Correct
+Input
+
+Incorrect
+
+Readout
+
+When does latent thinking provide sufficient
+information for correctness?
+Input
+
+Commitment
+
+Readout
+
+Repeat across all node pairs
+
+Principal Influence graph
+
+When?
+
+Figure 1. Overview of step-centric research questions for latent CoT. RQ1 tests step necessity and early decodability; RQ2 characterizes
+step-to-step influence propagation; RQ3 probes trajectory-level superposition and commitment across rollouts.
+
+output distributions. This graph captures how information
+propagates through the latent reasoning process. Figure 1
+provides a high-level roadmap of the three questions we
+study: (RQ1) which latent steps are causally necessary for
+correctness and when the answer becomes decodable, (RQ2)
+how influence propagates across steps, and (RQ3) whether
+intermediate trajectories retain competing hypotheses and
+how commitment evolves across steps.
+
+representations (Chen et al., 2025; Zhu et al., 2025b). A
+first family performs depth-iterative latent reasoning, where
+the model recurrently updates a hidden state or continuous
+“thought token” before decoding, as in Coconut (Hao et al.,
+2025) and CODI (Shen et al., 2025). Related approaches
+incorporate additional supervision or alignment to stabilize
+latent reasoning (Wei et al., 2026; He et al., 2025), while
+hybrid methods mix latent and textual steps to balance
+efficiency and interpretability (Su et al., 2025). A second
+family scales test-time computation through recurrent-depth
+paradigms and parallel continuous updates (Geiping et al.,
+2025; Wu et al., 2025; Zhu et al., 2025c). Most literature
+emphasizes accuracy and efficiency; our work focuses on
+internal causal organization within latent reasoning and how
+it relates to explicit CoT.
+
+We instantiate this causal evaluation framework on two
+representative latent-reasoning paradigms, Coconut (Hao
+et al., 2025) and CODI (Shen et al., 2025), across
+both mathematical and general reasoning tasks. Empirically, we find a phenomenon–mechanism–nature pattern:
+(phenomenon) causal leverage is highly heterogeneous
+across latent steps, with a small subset exerting outsized
+influence; (mechanism) step-to-step effects are often nonlocal, indicating routed propagation rather than purely chainlike transmission; and (nature) output-level preference can
+emerge earlier than representational consolidation, revealing
+a persistent gap between early bias and later commitment.
+
+Large reasoning models and reinforcement learning for
+reasoning. Recent work also improves LLM reasoning
+through reinforcement learning, selective supervision, uncertainty estimation, and long-horizon inference. Representative directions include RL-based training and surveys for
+large reasoning models (Zhang et al., 2025a), fine-grained
+reward signals for test-time reinforcement learning (Wang
+et al., 2025), critical-token fine-tuning (Ruan et al., 2025),
+internal-belief-based uncertainty estimation (Xiao et al.,
+2025), and infinite-horizon reasoning via reinforcement
+learning (Yan et al., 2026).
+
+Our main contributions are threefold: (1) the first
+causal, step-resolved evaluation view of latent CoT
+that distinguishes when a solution becomes available from
+which steps remain causally necessary; (2) an operatorand readout-conditioned influence analysis that recovers
+dominant propagation routes while avoiding sparsity overclaims; and (3) mode-conditional evidence that links
+latent-step budgets to practical design implications:
+early “decision signals” need not imply early commitment,
+so improving latent reasoning likely requires shaping
+routing/commitment rather than simply adding more steps.
+
+Chain-of-thought faithfulness and causal tests. A
+growing literature questions whether model-provided explanations faithfully reflect the computations that determine
+final predictions. Models can generate convincing yet
+unfaithful artifacts, including attention explanations, CoT
+rationales, and structured parses (Pruthi et al., 2020; Turpin
+et al., 2023; Bai et al., 2025). Prior work assesses
+faithfulness through context- or rationale-level interventions,
+such as deleting, shuffling, or editing rationales, and
+measures changes in downstream answers (Wang et al.,
+2023a; Yang et al., 2023; Yu et al., 2025). Complementary
+
+2. Related Work
+Latent and continuous chain-of-thought reasoning. To
+avoid the cost and potential unfaithfulness of explicit
+CoT, recent methods move reasoning into continuous
+2
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+I.
+
+IV.
+
+II.
+
+Variables Definition
+Prompt/
+Question
+
+Latent
+thinking
+states
+
+Answer
+
+Intervention
+
+Probe
+
+Class
+Probability
+
+Intervened Propagation:
+
+Standard Propagation
+
+III.
+
+Early-stopped Propagation
+
+steps
+
+V.
+
+Influence Estimation:
+
+VI. Stepwise Readout
+
+Repeat for
+Intervened trajectory
+
+Figure 2. Intervention-based protocol for latent CoT as a causal system. (I) Variables. Input X induces a latent trajectory {ht }Tt=1 and
+output Y ; an intervention operator implements step-wise do(ht ← h̃t ); a readout maps hidden states to answer support. (II) Standard
+Propagation. Unperturbed dynamics from X through steps to Y . (III) Early-stopped Propagation. We truncate latent computation
+after step k and decode from hk to test when correctness becomes decodable (RQ1). (IV) Intervened Propagation. We replace a step’s
+state while keeping downstream computation intact, yielding an intervened outcome Ỹ (RQ1). (V) Influence Estimation. Combining
+a step-t intervention with an early readout at step s yields directed propagation strengths Wt,s summarized as an empirical influence
+structure (RQ2). (VI) Step-wise Readouts. We read out the answer competition from ht (e.g., teacher forcing or a probe) to characterize
+superposition and commitment (RQ3).
+
+parameter-level interventions, such as unlearning reasoning
+steps from model weights, provide another causal probe
+of whether a step is internally represented and used (Tutek
+et al., 2025).
+
+Our analysis provides a unified intervention + readout
+protocol (Figure 2) and uses it to answer three step-centric
+causal questions. (RQ1: necessity and sufficiency) asks
+whether individual latent steps are behaviorally necessary,
+and whether the full latent budget is required to make
+the correct answer decodable. (RQ2: propagation and
+routing) asks how a perturbation at an upstream step
+propagates to downstream computation, summarized as a
+step-to-step influence matrix and visualized as an empirical
+influence graph. (RQ3: superposition and commitment)
+asks whether intermediate trajectories retain competing
+answer hypotheses and how output-level commitment
+relates to representational commitment across steps.
+
+Causal and mechanistic analysis of internal representations. Causal perspectives view hidden activations as
+mediators that can be intervened on to test their functional
+role in model behavior (Pearl, 2000; Feder et al., 2022;
+Schölkopf et al., 2021). Causal mediation analysis and
+mechanistic interventions have been used to distinguish
+behaviorally relevant internal components from merely
+correlated representations (Vig et al., 2020; Finlayson
+et al., 2021; Stolfo et al., 2023; Serrano & Smith, 2019;
+Chrysostomou & Aletras, 2021; Elhage et al., 2022; Nanda
+et al., 2023; Meng et al., 2022; Wang et al., 2023b; Conmy
+et al., 2023). Recent work further shows that models can
+internalize reasoning strategies while concealing them from
+surface text under process supervision, highlighting the
+gap between latent computation and explicit explanation
+(McCarthy et al., 2025). These toolkits motivate our steplevel interventions on latent reasoning states.
+
+3.2. Causal Variables, Minimal SCM, and Latent-step
+Interface
+For an input problem x, we model latent reasoning
+as a sequence of continuous causal variables H1:T =
+(H1 , . . . , HT ) with Ht ∈ Rd , where each Ht corresponds
+to the model’s internal latent state at reasoning step t. We
+denote the task-level output by Y (e.g., the final predicted
+answer/label), and treat it as a random variable whose
+conditional distribution is induced by the model’s decoder
+given the latent trajectory. A minimal SCM consistent with
+this computation is
+
+3. Evaluation Framework: Latent CoT as a
+Causal System
+3.1. Scope and Causal Queries
+
+Ht = ft (H<t , x, ϵt ; θ),
+
+We view latent CoT as a manipulable causal process
+evolving in continuous representation space. Specifically,
+we treat intermediate latent reasoning steps as variables in
+a structural causal model (SCM) (Pearl, 2000; Yao et al.,
+2021), which allows us to pose intervention-based causal
+queries and compute reproducible effect estimates under
+a fixed intervention protocol (Robins & Greenland, 1992;
+Imai et al., 2010; Vig et al., 2020; Mueller et al., 2026).
+
+t = 1, . . . , T,
+
+Y = g(H1:T , x, ϵy ; θ),
+
+(1)
+(2)
+
+where ft and g are the model’s fixed transition and decoding
+mechanisms, and ϵt , ϵy capture stochasticity.
+In our experiments, we intervene on the intermediate states
+produced by a latent thinking rollout. We denote realized
+latent states by lowercase ht and write
+h1:T ∼ pθ (H1:T | x),
+3
+
+(3)
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+where ht ∈ Rd instantiates the random variable Ht at
+step t under the model dynamics. Latent-reasoning models
+expose these variables through a fixed-length sequence of
+hidden states h1:T = (h1 , . . . , hT ), where ht is the lastlayer hidden representation associated with the t-th latent
+step (e.g., a continuous “thought token” in C OCONUT or the
+designated reasoning position in CODI) and is used as the
+step-t reasoning input embedding.
+
+larger/alternative C OCONUT backbones are reported in
+Appendix D and Appendix E, respectively.
+
+Datasets. We train and evaluate on CoT-augmented
+datasets that follow previous latent-reasoning methods. For
+GSM8K, we train on GSM8K-Aug (Deng et al., 2023) and
+evaluate on the original GSM8K test set (Cobbe et al., 2021).
+For CommonsenseQA, we use the CoT-augmented training
+set released by CODI (Shen et al., 2025) and evaluate on
+the original CommonsenseQA test set (Talmor et al., 2019).
+Dataset details are provided in Appendix B.
+
+Definition 3.1 (Single-step latent do-intervention). Given
+input x and a baseline rollout realizing h1:T , the intervention
+do(ht ← h̃t ) replaces the step-t latent state by h̃t
+and recomputes all downstream states using the same
+transition mechanism, yielding a counterfactual trajectory
+h̃1:T . Formally, let h̃<t = h<t and h̃t be the overwritten
+state; for t′ > t we set
+h̃t′ := ft′ (h̃<t′ , x, ϵ̃t′ ; θ),
+
+4. RQ1: Step-wise Necessity and Sufficiency
+Latent reasoning replaces long textual rationales with
+a fixed-length sequence of intermediate hidden states,
+enabling step-wise manipulation under the interventionbased protocol as introduced in Sec. 3 (Figure 2). RQ1
+asks two causal questions aligned with this protocol: (i)
+step-wise necessity, i.e., whether the final decoded decision
+depends on a particular intermediate state, and (ii) latentbudget sufficiency, i.e., how many latent steps are required
+before the correct answer becomes decodable. To address
+(i), we treat each realized latent state ht as an intervenable
+object and run paired rollouts that differ only by a singlestep do-intervention (Def. 3.1) on ht , quantifying its impact
+on the final decoded answer. For (ii), we perform early-stop
+decoding by truncating latent computation after step k and
+decoding directly from hk (Figure 2(III)) to determine when
+correctness first becomes readable from the latent trajectory.
+
+(4)
+
+where ϵ̃t′ matches the baseline randomness when applicable.
+The corresponding counterfactual output is obtained by the
+same readout mechanism,
+ỹ = g(h̃1:T , x, ϵ̃y ; θ).
+
+(5)
+
+Unless otherwise stated, we use deterministic rollouts
+whenever possible; otherwise, we control randomness (e.g.,
+fixed seeds) and isolate propagation effects via teacherforced readouts (Figure 2(V)) to reduce sampling noise.
+3.3. Paradigms of Latent-reasoning Models
+We instantiate our framework on two latent-reasoning
+paradigms that differ in how they realize latent steps.
+
+4.1. Step-wise Interventions
+
+Coconut (Hao et al., 2025) employs an explicit latent mode:
+it uses the final hidden state as a continuous reasoning token,
+feeding it back as the input for the next step, rather than
+decoding a discrete token.
+
+4.1.1. E XPERIMENT S ETTING
+We evaluate step-wise necessity using the step-wise dointervention in Def. 3.1. For each example, we run a baseline
+rollout and an intervened rollout that modifies exactly
+one latent state ht while keeping all other components
+unchanged, including the input x, parameters θ, and the
+downstream transition and readout mechanisms. Following
+Appendix A.2, we adopt the zero intervention for its
+simplicity and consistency across different models:
+
+CODI (Shen et al., 2025) compresses discrete CoT into
+continuous space via self-distillation: a continuous-CoT
+student is trained to both produce the correct answer and
+align its hidden states, at specific reasoning steps, with those
+of a discrete-CoT teacher, encouraging the latent trajectory
+to inherit stepwise structure.
+3.4. Models and Data
+
+do(ht ← h̃t ),
+
+Models. We experiment with both CODI and C OCONUT
+on multiple backbones. We use official CODI checkpoints
+for GPT-2 (Radford et al., 2019) and Llama3-1B (Grattafiori
+et al., 2024), and reproduce it on Qwen3-4B-Instruct (Yang
+et al., 2025). Coconut models are reproduced across
+the same three backbones (GPT-2, Llama3-1B, Qwen34B-Instruct). Implementation details are in Appendix A.
+Additional checks on Sim-CoT (Wei et al., 2026) and
+
+h̃t = 0.
+
+(6)
+
+We then decode the final prediction ỹ (t) and compute the
+flip rate Flip(t), defined as the fraction of examples for
+which ỹ (t) differs from the baseline output (Serrano &
+Smith, 2019; Chrysostomou & Aletras, 2021). This metric
+directly measures decision-level dependence on the latent
+computation at step t under a fixed intervention operator.
+4
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+CommonsenseQA
+
+GSM8K
+
+0.2
+
+Flip rate
+
+Flip rate
+
+0.10
+
+0.05
+
+0.00
+
+0.1
+
+0.0
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+1
+
+2
+
+3
+
+Latent step
+Coconut−GPT2
+
+Coconut−Llama3−1B
+
+4
+
+5
+
+6
+
+Latent step
+Coconut−Qwen3−4B
+
+CODI−GPT2
+
+CODI−Llama3−1B
+
+CODI−Qwen3−4B
+
+Figure 3. Step-wise necessity measured by decision instability. We intervene at a single latent step t ∈ {1, . . . , 6} by zeroing its state,
+do(ht := 0), and then decode the final answer. We report the flip rate Flip(t), i.e., the fraction of examples whose decoded prediction
+changes relative to the baseline, on CommonsenseQA (left) and GSM8K (right). Error bars indicate estimation uncertainty.
+
+4.1.2. F INDINGS
+Single-step ablation produces clear, step-specific flip
+patterns (not uniformly sensitive). Within the same model
+and dataset, Flip(t) changes noticeably with the intervened
+step t (Figure 3), with several settings exhibiting mid-step
+peaks rather than a flat or monotone pattern. This indicates
+that different latent steps contribute differently to the final
+decision, and that single-step removal can selectively disrupt
+the decision more at some steps than others.
+
+GSM8K
+0.6
+
+fraction solved
+
+fraction solved
+
+CommonsenseQA
+0.8
+0.6
+0.4
+
+1
+
+2
+
+3
+
+4
+
+5
+
+0.4
+0.2
+0.0
+
+6
+
+1
+
+2
+
+3
+
+step
+
+4
+
+5
+
+6
+
+step
+
+Coconut−GPT2
+
+Coconut−Llama3−1B
+
+Coconut−Qwen3−4B
+
+CODI−GPT2
+
+CODI−Llama3−1B
+
+CODI−Qwen3−4B
+
+Figure 4. Early-stop decoding reveals when correctness
+becomes decodable. We report the cumulative solved fraction
+S(k) = P(ki ≤ k) under early-stop decoding on CommonsenseQA (left) and GSM8K (right), where ki is the earliest step at
+which the correct answer becomes decodable (Def. 4.1).
+
+Arithmetic exhibits substantially higher decision volatility than commonsense. Flip rates on GSM8K are markedly
+higher than on CommonsenseQA for the same intervention
+protocol, with several backbones reaching flip rates around
+0.1–0.2 or higher on GSM8K, while CommonsenseQA
+remains mostly below ∼ 0.1 (Figure 3). This gap is visible
+across both Coconut and CODI variants.
+
+4.2. Early-stop Decoding
+4.2.1. E XPERIMENT S ETTING
+Definition 4.1 (Earliest correct step under early-stop
+(≤k)
+decoding). For each example i, let ŷi
+be the decoded
+answer when we truncate latent computation after step k
+and decode from hi,k . We define the earliest step at which
+the correct answer becomes decodable as
+
+Coconut shows larger flips than CODI under matched
+backbones, while stronger backbones suppress flips.
+Under the same backbone, Coconut variants generally yield
+higher flip rates than CODI, especially on GSM8K (Figure 3). Moreover, while stronger backbones substantially
+reduce flip rates across both paradigms, the flipping profile
+remains step-dependent—even when absolute rates are low.
+
+(≤k)
+
+ki = min{k ∈ {1, . . . , T } : ŷi
+
+= yi∗ },
+
+(7)
+
+and set ki = ∞ if no early-stop decode is correct for k ≤ T .
+Definition 4.2 (Cumulative solved fraction). Let ki be
+defined in Def. 4.1. We define the cumulative solved fraction
+
+4.1.3. I MPLICATIONS
+
+N
+
+These intervention results indicate that causal leverage
+is unevenly distributed across the latent trajectory. The
+effect of replacing a single latent state depends on
+where that state occurs and on the model–task setting in
+which it is used, rather than being an invariant property
+of the latent-step index. Thus, step-wise intervention
+identifies position-specific decision sensitivity within a fixed
+rollout, supporting a view of latent steps as differentiated
+components rather than uniformly interchangeable states.
+
+S(k) =
+
+1 X
+1{ki ≤ k}.
+N i=1
+
+(8)
+
+4.2.2. F INDINGS
+Early-stop curves differ across datasets. On CommonsenseQA, S(k) typically rises rapidly within the first few
+steps and then saturates (Figure 4, left), suggesting most
+solvable instances become decodable within few steps. In
+contrast, on GSM8K S(k) often continues to increase
+5
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Figure 5. Explicit CoT principal influence graphs (GSM8K; CoT-SFT baselines). Nodes denote the first T =6 segmented CoT steps.
+Edge t → s indicates propagation strength Wt,s from Eq. 10 (teacher-forced KL shift on the gold answer under a single-step intervention
+at t and readout at s). For readability, we show only top-1 outgoing edges after thresholding at α=0.1 · max(W ).
+
+Figure 6. Latent principal influence graphs (GSM8K; C OCONUT/CODI). Nodes are latent steps t ∈ {1, . . . , 6}. Edge weights follow
+Eq. 10 under single-step interventions, rendered with the same sparsification protocol as Figure 5.
+
+toward later steps (Figure 4, right), with several settings
+showing gains up to k=6, indicating that additional latent
+computation can expand the set of instances for which the
+correct answer becomes decodable.
+
+trajectory. In RQ2, we compare step-to-step propagation
+of explicit CoT and latent CoT using an influence matrix
+W (Eq. 10) and its principal influence graph rendering
+for readability. We couple a single-step intervention at
+step t with an early readout at a downstream step s,
+and measure how strongly the intervention changes the
+teacher-forced output distribution for the gold answer;
+see Figure 2 (V). Unless otherwise stated, we report
+GSM8K in the main text; CommonsenseQA results are
+provided in Appendix C.2. Because the resulting graph
+is protocol-conditioned, we additionally test alternative
+intervention operators and an alternative readout protocol in
+Appendix C.4 and Appendix C.5.
+
+Backbone strength shapes when correctness becomes
+decodable, while paradigm-level similarity is weak.
+Across both datasets, stronger backbones have higher S(1)
+and earlier saturation of S(k), whereas weaker backbones
+improve more gradually with k (Figure 4). Meanwhile,
+the step-wise profiles do not cluster by training paradigm:
+Coconut and CODI do not consistently exhibit similar curve
+shapes within each paradigm across backbones, suggesting
+that “when correctness becomes decodable” is not a stable
+paradigm-level signature in this experiment.
+
+5.1. Experiment Setting
+
+4.2.3. I MPLICATIONS
+
+Nodes. For latent-reasoning models, each node corresponds
+to a latent step t ∈ {1, . . . , T } with state ht (Sec. 3).
+For explicit CoT baselines (CoT-SFT), we segment the
+generated rationale into at most T =6 steps and represent
+step t by the last-layer hidden state at the final token of that
+segment.1 This yields matched step-level trajectories for
+latent and explicit reasoning.
+
+Early-stop decoding complements intervention analysis by
+measuring answer availability rather than step necessity.
+The growth and saturation of S(k) show that additional
+latent computation can expose correct-answer information
+for more instances, but the required budget depends on task
+difficulty and backbone capacity. Thus, latent steps can
+be causally differentiated while still accumulating useful
+evidence across the trajectory.
+
+Edges via intervention + early decoding. To probe
+directed propagation from step t to a downstream step s > t,
+we run (i) a baseline rollout and (ii) an intervened rollout that
+modifies exactly one step state while keeping downstream
+computation unchanged. We then decode at step s using
+(s)
+teacher forcing to obtain output distributions pbase (·) and
+
+5. RQ2: Information Flow and Stepwise
+Influence Structure
+RQ1 establishes that intervening on a single latent step
+can change the final decision, but it does not reveal
+where this perturbation propagates along the reasoning
+
+1
+
+If an example has fewer than T CoT steps, the remaining
+nodes are absent.
+
+6
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+0.4
+
+2
+
+0.2
+
+1
+
+0.0
+
+Coconut
+
+CODI
+
+CoT
+
+0
+
+Coconut
+
+(a) locality
+
+CODI
+
+CoT
+
+(b) span
+
+Latent influence graphs are dominated by skip connections, revealing non-chain propagation. Latent graphs
+contain substantially more skip connections than explicit
+CoT (Figure 6), indicating that influence often bypasses
+intermediate steps rather than accumulating strictly along
+a local chain. This is also captured by the structure
+summaries on GSM8K (Figure 7): latent models are
+markedly less local and have larger spans than CoT-SFT,
+and they place substantially more normalized influence
+into late-step targets (late-in). Within this skip-dominant
+regime, C OCONUT tends to exhibit more pronounced
+early→late routing (often connecting early steps directly
+to the final step), while CODI departs from a strict chain
+but is generally less dominated by early→final shortcuts
+and shows greater variation across backbones (Figure 6).
+Despite this difference between the two paradigms, the
+skip connections, together with the non-uniform sensitivity
+observed in Figure 3, indicate functional differentiation
+across nodes in the latent trajectory.
+
+0.4
+
+0.6
+
+0.3
+
+0.4
+
+0.2
+
+0.2
+0.0
+
+with only minor deviations across backbones (Figure 5).
+This stability is also reflected in the structure summaries on
+GSM8K (Figure 7): CoT-SFT has uniformly high locality
+(all ≥ 0.6) with low span, matching the intuition that textual
+steps induce predominantly local dependencies.
+
+3
+
+0.6
+
+0.1
+
+Coconut
+
+CODI
+
+CoT
+
+0.0
+
+Coconut
+
+(c) early−out
+
+CODI
+
+CoT
+
+(d) late−in
+
+Coconut−GPT2
+
+Coconut−Llama3−1B
+
+Coconut−Qwen3−4B
+
+CODI−GPT2
+
+CODI−Llama3−1B
+
+CODI−Qwen3−4B
+
+CoT−GPT2
+
+CoT−Llama3−1B
+
+CoT−Qwen3−4B
+
+Figure 7. Structural summaries of influence matrices (GSM8K).
+We report locality, span, early-out, and late-in computed on dense
+normalized W (Appendix C.3).
+(s)
+
+pdo(t) (·), and define the example-level propagation strength
+as a position-averaged KL shift:
+∗
+
+|yi |
+
+
+1 X
+(s)
+(s)
+∗
+∗
+KL pbase (· | yi,<u
+) ∥ pdo(t) (· | yi,<u
+) .
+∗
+|yi | u=1
+(9)
+Aggregating over evaluation examples yields the influence
+matrix W ∈ RT ×T :
+ (i) 
+Wt,s = Ei KLt→s , t < s,
+(10)
+(i)
+KLt→s =
+
+5.3. Implications
+These influence patterns suggest that latent reasoning does
+not simply preserve the causal flow of the explicit CoT
+trajectories from which it is derived. Although COCONUT
+and CODI both obtain latent computation by replacing or
+compressing explicit reasoning steps into continuous states,
+their step-to-step influence structures depart from the nearchain topology observed in explicit CoT. Under the same
+intervention and readout protocol, explicit CoT remains
+close to local sequential propagation, whereas latent CoT
+exposes longer-range routes that often terminate at later
+readouts. This implies that latentization changes not only
+the surface format of reasoning, but also its internal routing
+structure: computational adjacency in latent space need not
+mirror textual adjacency in natural-language rationales.
+
+an operator-specific empirical influence structure under
+a fixed intervention and readout protocol, rather than a
+uniquely identified “true” causal graph.
+Principal influence graph rendering. For compact
+comparison across models, we visualize W as a sparsified
+principal influence graph: we drop edges below α · max(W )
+with α=0.1 and retain only the top-1 outgoing edge per
+node. Edge thickness scales with Wt,s , and dense heatmaps
+are provided in Appendix C.1.
+Structural summaries. To quantify the heatmap-level
+patterns beyond visual inspection, we compute four
+normalized structure metrics on the dense W (definitions
+in Appendix C.3): locality (mass near the diagonal), span
+(expected hop distance), early-out (influence originating
+from early steps), and late-in (influence terminating at late
+steps). We normalize W to remove scale effects across
+backbones before computing these metrics.
+
+6. RQ3: Superposition and Commitment in
+Latent Dynamics
+RQ1 demonstrates that removing a single latent step can
+alter the final decision, while RQ2 reveals step-to-step
+influence is non-local: early computation can directly affect
+multiple later steps, bypassing adjacent ones. A remaining
+ambiguity is whether such non-locality reflects (i) early
+commitment to one answer mode, which is then propagated,
+or (ii) sustained competition among multiple hypotheses
+within the latent trajectory. Prior work offers contrasting
+views: some argue continuous “soft thinking” remains
+
+5.2. Findings
+Explicit CoT influence graphs remain near-chain across
+backbones. CoT-SFT exhibits a consistently sequential
+topology: the dominant edges follow adjacent transitions,
+7
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+metric: probe
+
+6.2. Findings
+
+metric: teacher−forced logp
+0.4
+
+0.45
+
+Teacher-forced readout suggests early output-level
+commitment. In Figure 8 (right), SS(t) is uniformly low
+and varies only modestly across steps, indicating that the
+model’s answer distribution becomes skewed toward either
+Yes or No early in the latent budget. A minimal implication
+is that the non-local edges in RQ2 can be compatible with
+early mode selection followed by propagation, without
+requiring prolonged output-level ambiguity (cf. the nonlocal principal influence graphs in Figure 6).
+
+SS
+
+SS
+
+0.3
+0.40
+
+0.2
+0.35
+0.1
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+1
+
+2
+
+3
+
+step
+
+4
+
+5
+
+6
+
+step
+
+Coconut−GPT2
+
+Coconut−Llama3−1B
+
+Coconut−Qwen3−4B
+
+CODI−GPT2
+
+CODI−Llama3−1B
+
+CODI−Qwen3−4B
+
+Figure 8. RQ3: Step-wise superposition on StrategyQA.
+Left: probe readout; right: teacher-forced log-probability readout.
+The superposition score SS measures how much support is
+simultaneously retained for Yes and No at each latent step.
+
+Probe readout reveals more sustained competition and
+a late collapse. In Figure 8 (left), the probe panel shows
+substantially higher SS(t) throughout the trajectory, with
+a clear drop at the final step, implying that intermediate
+states can retain decodable support for the alternative
+mode even when teacher forcing appears committed. This
+readout gap highlights readout dependence: intermediate
+representations may remain “multi-mode available” beyond
+what is expressed by the default answer distribution.
+
+effectively greedy and single-threaded (Wu et al., 2026),
+while others suggest latent reasoning may retain competing
+hypotheses in shared subspaces (Zhu et al., 2025a).
+RQ3 therefore asks a trajectory-level question: when
+stochastic rollouts of the same prompt lead to different final answers, do intermediate steps exhibit superposition,
+and how does this evolve across steps? We instantiate
+this analysis on StrategyQA (Geva et al., 2021), whose
+binary label space (Yes/No) clearly defines two modes and
+allows direct probability-based readout at each step. For
+GSM8K, whose open-ended numeric answers make twomode filtering substantially sparser, we provide a supporting
+analysis in Appendix F.3.
+
+Paradigm-level separation aligns with RQ2’s structure
+differences. Under the probe readout, CODI variants
+maintain higher superposition scores than C OCONUT
+variants across latent steps (Figure 8, left). This separation
+is consistent with RQ2: C OCONUT more often exhibits
+dominant early-to-late principal edges, whereas CODI
+shows less extreme long-range routing (Figures 6 and 7).
+
+6.1. Experiment Setting
+6.3. Implications
+
+Two-mode prompts from stochastic rollouts. For each
+prompt x, we enable stochastic decoding and sample K
+(k)
+rollouts. Each rollout produces a latent trajectory {ht }Tt=1
+(k)
+and a final answer ŷ
+∈ {Yes, No}. We retain prompts
+whose rollouts contain both answers, and partition rollouts
+into CY and CN accordingly. Filtering thresholds and the
+filtering strategy are reported in Appendix F.1.
+
+These readouts distinguish output-level commitment from
+representational commitment. Teacher-forced scoring
+indicates that the default answer distribution can become
+biased toward one mode early, while probe readout
+shows that alternative modes can remain accessible in the
+intermediate states. Thus, commitment in latent reasoning
+is not a single collapse event: output preference may emerge
+before the latent trajectory has fully eliminated competing
+representational modes.
+
+Intermediate-step readouts (teacher-forced vs. probe).
+At each latent step t, we quantify the model’s relative
+support for Yes vs. No using two readouts: (i) teacherforced scoring under a fixed answer template, and (ii) a
+lightweight probe trained on frozen latent states to predict
+the rollout mode. Both yield a step-wise binary distribution
+over the two answer modes, denoted by pY (t) and pN (t).
+Templates and probing details are provided in Appendix F.2.
+
+7. Discussion
+Our experiments connect step-wise necessity and early
+decodability (RQ1), directed propagation (RQ2), and
+trajectory-level mode dynamics (RQ3). Across C OCONUT
+and CODI, the results suggest that a fixed latent budget
+behaves less like homogeneous extra depth than a structured
+interface: steps have unequal causal leverage, influence can
+route non-locally, and output-level commitment need not
+coincide with representational commitment.
+
+Superposition score. Given pY (t), pN (t), we define the
+step-wise superposition score
+
+
+SS(t) = min pY (t), pN (t) ,
+
+(11)
+
+Latent steps are causally functional, with heterogeneous
+leverage. RQ1 shows that latent computation is not merely
+incidental to decoding: single-step interventions can alter
+
+which is high when both answers retain non-trivial support
+and low when one answer dominates.
+8
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+the final decision, but this causal dependence is unevenly
+distributed across the latent budget. This pattern suggests
+an implicit division of labor, where some steps act as highleverage intervention sites while others contribute more
+conditionally, depending on the input or reasoning mode.
+Rather than repeatedly refining a homogeneous state, latent
+reasoning appears to introduce step-specific updates whose
+downstream effects are later amplified, transformed, or
+gated. The different leverage profiles of C OCONUT and
+CODI further suggest that the training paradigm shapes
+where decision-relevant dependence concentrates.
+
+tions. Latent budgets should not be treated as homogeneous
+extra depth: computation, supervision, and regularization
+should be allocated selectively according to the functional
+role of each step. Since latent states lack natural supervision
+targets, future objectives could move beyond uniform CoT
+imitation and instead impose functional constraints on highleverage steps or high-influence routes, such as readout
+consistency, perturbation robustness, downstream-state
+stability, or teacher-derived targets at causally important
+positions. The gap between early answer preference and
+later representational commitment further argues against
+forcing every step to predict the final answer: early states
+should preserve uncertainty or multiple candidate modes,
+while later states consolidate them into a perturbation-stable
+decision. Accordingly, stopping rules should consider not
+only when an answer first becomes decodable, but also when
+the supporting latent representation becomes stable.
+
+Principal influence structure reveals functional routes of
+latent computation. Step-wise necessity profiles alone do
+not identify how a perturbation travels through the remaining
+latent trajectory. The principal influence graphs from RQ2
+add this missing structure by highlighting dominant directed
+routes through which an intervention at step t manifests
+at later readouts. A recurring implication is that latent
+computation can be organized around a small number of
+effective long-range paths, where early steps shape later
+representations without requiring strong adjacent mediation
+at every intermediate step. This structural view helps
+reconcile cases where a step exhibits modest direct necessity
+but still participates in a high-influence route: its role may be
+to shape downstream states that only become consequential
+after later consolidation.
+
+8. Conclusion
+We framed latent chain-of-thought as a step-indexed causal
+system and evaluated it across C OCONUT and CODI
+with interventions, influence-structure estimation, and
+trajectory-level readouts. Beyond characterizing these
+models, our results offer design-relevant insights: latentstep budgets should be treated as an allocatable interface
+rather than homogeneous “extra depth,” since causal
+leverage concentrates unevenly and propagates along a
+few dominant long-range routes; and training/decoding
+should account for a gap between early output bias
+and late representational commitment, where alternatives
+remain latent-available even after the output distribution
+tilts. Together, this suggests that future latent-reasoning
+models can be improved by explicitly shaping where
+information is written and how it is consolidated across steps
+(e.g., encouraging more stable bottlenecks or controllable
+routing), rather than only scaling the number of latent steps.
+
+Superposition and commitment: shared computation
+versus collapse. Early-stop decoding measures when the
+correct answer first becomes readable, whereas intervention
+sensitivity and RQ3 readouts reveal whether later computation remains behaviorally and representationally relevant.
+Together, they separate availability from stability: an answer
+may be decodable before the latent trajectory consolidates
+the decision or eliminates competing modes. Through RQ2,
+this suggests that superposition can reflect shared prefix
+computation, where competing solutions reuse intermediate
+processing before divergence becomes externally visible.
+Probe-based and teacher-forced readouts further show that
+commitment is not a single event: output distributions can
+collapse before intermediate representations cease to carry
+alternatives. This aligns with RQ1’s late-step stabilization
+effects and with evidence that behavioral or preference
+directions can be isolated and steered in representation space
+via lightweight inference-time interventions (Rimsky et al.,
+2024; Li et al., 2023; Zou et al., 2023; Zhang et al., 2026).
+Overall, RQ1–RQ3 suggest a division of labor across latent
+steps, where shared intermediate computation and paradigmdependent stabilization mechanisms support robust finalmode dominance.
+
+Limitations
+Our conclusions are tied to specific methodological
+choices, including the step-level causal interface, hiddenstate overwrite interventions, and teacher-forced readout.
+Furthermore, this study is limited to single-step edits, a
+fixed latent budget (T =6), and a controlled set of paradigms,
+backbones, and CoT-supervised benchmarks. Although we
+provide supplementary checks on S IM -C OT and additional
+C OCONUT backbones in Appendix D and Appendix E,
+evaluation across more paradigms, longer horizons, adaptive
+latent budgets, and varied intervention types is still needed
+to assess the generalizability of the observed patterns.
+
+Implications for latent-reasoning design. Although our
+contribution is diagnostic rather than algorithmic, the
+observed step-level structure suggests concrete design direc-
+
+9
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Acknowledgments
+
+doi: 10.18653/v1/2021.acl-long.40. URL https://
+aclanthology.org/2021.acl-long.40/.
+
+This work was supported in part by the Science Fund
+for Creative Research Groups of the National Natural Science Foundation of China (62521006), in part
+by the National Natural Science Foundation of China
+(62406091, 62276077, U23B2055, 62350710797), in part
+by Guangdong S&T Program (2024B0101050003), in part
+by the Guangdong Basic and Applied Basic Research
+Foundation (2026A1515011718, 2024A1515011205), in
+part by the Shenzhen Science and Technology Program
+(KQTD20240729102154066), in part by the Fundamental
+Research Funds for the Central Universities (GW2025-19)
+and in part by the State Key Laboratory of Complex &
+Critical Software Environment (SKLCCSE-2025ZX-26).
+
+Cobbe, K., Kosaraju, V., Bavarian, M., Chen, M., Jun,
+H., Kaiser, L., Plappert, M., Tworek, J., Hilton, J.,
+Nakano, R., Hesse, C., and Schulman, J. Training
+Verifiers to Solve Math Word Problems.
+arXiv
+preprint arXiv:2110.14168, 2021. doi: 10.48550/arXiv.
+2110.14168. URL https://doi.org/10.48550/
+arXiv.2110.14168.
+Conmy, A., Mavor-Parker, A. N., Lynch, A., Heimersheim,
+S., and Garriga-Alonso, A.
+Towards Automated
+Circuit Discovery for Mechanistic Interpretability.
+In Advances in Neural Information Processing
+Systems, volume 36, pp. 16318–16352, New Orleans,
+LA, USA, December 2023. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2023/file/
+34e1dbe95d34d7ebaf99b9bcaeb5b2bePaper-Conference.pdf.
+
+Impact Statement
+This work studies how latent-reasoning language models can
+be analyzed using intervention-based measurements. The
+primary impact is methodological: providing tools to better
+diagnose, compare, and potentially improve the reliability
+and controllability of latent computation. While improved
+latent reasoning could enable more capable automated
+decision-making systems, the same advances may also lower
+the cost of generating persuasive or overconfident outputs.
+We therefore emphasize responsible use: evaluations should
+be paired with standard safety testing, and interpretations
+of causal measurements should avoid overclaiming model
+understanding beyond what the protocol supports.
+
+Deng, Y., Prasad, K., Fernandez, R., Smolensky, P.,
+Chaudhary, V., and Shieber, S. Implicit Chain of
+Thought Reasoning via Knowledge Distillation. arXiv
+preprint arXiv:2311.01460, 2023. doi: 10.48550/arXiv.
+2311.01460. URL https://doi.org/10.48550/
+arXiv.2311.01460.
+Elhage, N., Hume, T., Olsson, C., Schiefer, N., Henighan,
+T., Kravec, S., Hatfield-Dodds, Z., Lasenby, R., Drain,
+D., Chen, C., Grosse, R., McCandlish, S., Kaplan, J.,
+Amodei, D., Wattenberg, M., and Olah, C. Toy Models of
+Superposition. arXiv preprint arXiv:2209.10652, 2022.
+doi: 10.48550/arXiv.2209.10652. URL https://doi.
+org/10.48550/arXiv.2209.10652.
+
+References
+Bai, X., Wu, J., Chen, Y., Wang, Z., Chen, K., Zhang, M.,
+and Zhang, Y. Constituency Parsing using LLMs. IEEE
+Transactions on Audio, Speech and Language Processing,
+33:3762–3775, 2025. doi: 10.1109/TASLPRO.2025.
+3600867.
+
+Feder, A., Keith, K. A., Manzoor, E., Pryzant, R., Sridhar,
+D., Wood-Doughty, Z., Eisenstein, J., Grimmer, J.,
+Reichart, R., Roberts, M. E., Stewart, B. M., Veitch, V.,
+and Yang, D. Causal Inference in Natural Language
+Processing: Estimation, Prediction, Interpretation and
+Beyond. Transactions of the Association for Computational Linguistics, 10:1138–1158, 2022. doi: 10.
+1162/tacl a 00511. URL https://aclanthology.
+org/2022.tacl-1.66/.
+
+Chen, X., Zhao, A., Xia, H., Lu, X., Wang, H.,
+Chen, Y., Zhang, W., Wang, J., Li, W., and Shen,
+X. Reasoning Beyond Language: A Comprehensive
+Survey on Latent Chain-of-Thought Reasoning. arXiv
+preprint arXiv:2505.16782, 2025. doi: 10.48550/arXiv.
+2505.16782. URL https://doi.org/10.48550/
+arXiv.2505.16782.
+
+Finlayson, M., Mueller, A., Gehrmann, S., Shieber, S.,
+Linzen, T., and Belinkov, Y. Causal analysis of
+syntactic agreement mechanisms in neural language
+models. In Proceedings of the 59th Annual Meeting
+of the Association for Computational Linguistics and
+the 11th International Joint Conference on Natural
+Language Processing (Volume 1: Long Papers), pp.
+1828–1843, Online, August 2021. Association for
+Computational Linguistics. doi: 10.18653/v1/2021.acl-
+
+Chrysostomou, G. and Aletras, N.
+Improving the
+faithfulness of attention-based explanations with taskspecific information for text classification. In Proceedings
+of the 59th Annual Meeting of the Association for
+Computational Linguistics and the 11th International
+Joint Conference on Natural Language Processing
+(Volume 1: Long Papers), pp. 477–488, Online,
+August 2021. Association for Computational Linguistics.
+10
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+long.144. URL https://aclanthology.org/
+2021.acl-long.144/.
+
+Imai, K., Keele, L., and Tingley, D. A general approach to
+causal mediation analysis. Psychological Methods, 15(4):
+309–334, 2010. doi: 10.1037/a0020761.
+
+Geiping, J., McLeish, S. M., Jain, N., Kirchenbauer,
+J., Singh, S., Bartoldson, B. R., Kailkhura,
+B., Bhatele, A., and Goldstein, T.
+Scaling up
+Test-Time Compute with Latent Reasoning:
+A
+Recurrent Depth Approach. In Advances in Neural
+Information Processing Systems, volume 38, pp.
+41340–41391, San Diego, CA, USA and Mexico
+City, Mexico, December 2025. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2025/file/
+3b01972cf31e6fa0fe29e4b8b5c2a0a1Paper-Conference.pdf.
+Geva, M., Khashabi, D., Segal, E., Khot, T., Roth, D.,
+and Berant, J. Did Aristotle use a laptop? a question
+answering benchmark with implicit reasoning strategies.
+Transactions of the Association for Computational
+Linguistics, 9:346–361, 2021. doi: 10.1162/tacl
+a 00370. URL https://aclanthology.org/
+2021.tacl-1.21/.
+
+Kaddour, J., Lynch, A., Liu, Q., Kusner, M. J., and Silva, R.
+Causal Machine Learning: A Survey and Open Problems.
+Foundations and Trends in Optimization, 9(1–2):1–247,
+2025. doi: 10.1561/2400000052. URL https://doi.
+org/10.1561/2400000052.
+Li, K., Patel, O., Viégas, F., Pfister, H., and
+Wattenberg, M.
+Inference-Time Intervention:
+Eliciting Truthful Answers from a Language Model.
+In Advances in Neural Information Processing
+Systems, volume 36, pp. 41451–41530, New Orleans,
+LA, USA, December 2023. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2023/file/
+81b8390039b7302c909cb769f8b6cd93Paper-Conference.pdf.
+McCarthy, R., SKAF, J., Ibanez-Lissen, L., Georgiev, V.,
+Watts, C., Whittingham, H., Gonzalez-Manzano,
+L., Tice, C., Young, E. J., Radmard, P., and
+Lindner, D.
+Large Language Models can Learn
+and Generalize Steganographic Chain-of-Thought
+under Process Supervision. In Advances in Neural
+Information Processing Systems, volume 38, pp.
+27597–27632, San Diego, CA, USA and Mexico
+City, Mexico, December 2025. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2025/file/
+28131b22fafebba500eb7bb02e3d5b59Paper-Conference.pdf.
+
+Gozeten, H. A., Ildiz, M. E., Zhang, X., Harutyunyan,
+H., Rawat, A. S., and Oymak, S.
+Continuous
+Chain of Thought Enables Parallel Exploration and
+Reasoning. In The Fourteenth International Conference
+on Learning Representations, Rio de Janeiro, Brazil,
+April 2026. URL https://openreview.net/
+forum?id=sTPKDKn5ig.
+Grattafiori, A., Dubey, A., Jauhri, A., et al. The Llama
+3 Herd of Models. arXiv preprint arXiv:2407.21783,
+2024. doi: 10.48550/arXiv.2407.21783. URL https:
+//doi.org/10.48550/arXiv.2407.21783.
+
+Meng, K., Bau, D., Andonian, A., and Belinkov,
+Y.
+Locating and Editing Factual Associations in
+GPT. In Advances in Neural Information Processing
+Systems, volume 35, pp. 17359–17372, New Orleans,
+LA, USA, December 2022. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2022/file/
+6f1d43d5a82a37e89b0665b33bf3a182Paper-Conference.pdf.
+
+Hao, S., Sukhbaatar, S., Su, D., Li, X., Hu, Z., Weston,
+J. E., and Tian, Y. Training Large Language Models
+to Reason in a Continuous Latent Space. In Second
+Conference on Language Modeling, Montreal, Canada,
+October 2025. URL https://openreview.net/
+forum?id=Itxz7S4Ip3.
+He, Y., Zheng, W., Zhu, Y., Zheng, Z., Su, L., Vasudevan,
+S., Guo, Q., Hong, L., and Li, J. SemCoT: Accelerating
+Chain-of-Thought Reasoning through SemanticallyAligned Implicit Tokens. In Advances in Neural
+Information Processing Systems, volume 38, pp.
+43455–43485, San Diego, CA, USA and Mexico
+City, Mexico, December 2025. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2025/file/
+3ddbd473456a57e3cafb1ee51ddf8ff6Paper-Conference.pdf.
+11
+
+Mueller, A., Brinkmann, J., Li, M., Marks, S., Pal, K.,
+Prakash, N., Rager, C., Sankaranarayanan, A., Sharma,
+A. S., Sun, J., Todd, E., Bau, D., and Belinkov, Y. The
+Quest for the Right Mediator: Surveying Mechanistic
+Interpretability for NLP through the Lens of Causal
+Mediation Analysis. Computational Linguistics, 52
+(1):331–378, 2026. doi: 10.1162/COLI.a.572. URL
+https://doi.org/10.1162/COLI.a.572.
+Nanda, N., Chan, L., Lieberum, T., Smith, J., and Steinhardt,
+J. Progress Measures for Grokking via Mechanistic
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Interpretability. In The Eleventh International Conference
+on Learning Representations, Kigali, Rwanda, May
+2023. URL https://openreview.net/forum?
+id=9XFSbDPmdW.
+
+3058954.
+URL https://doi.org/10.1109/
+JPROC.2021.3058954.
+Serrano, S. and Smith, N. A. Is attention interpretable?
+In Proceedings of the 57th Annual Meeting of the
+Association for Computational Linguistics, pp. 2931–
+2951, Florence, Italy, July 2019. Association for
+Computational Linguistics. doi: 10.18653/v1/P191282. URL https://aclanthology.org/P191282/.
+
+Pearl, J. Causality: models, reasoning, and inference.
+Cambridge University Press, Cambridge New York, NY
+Port Melbourne New Delhi Singapore, second edition,
+reprinted with corrections edition, 2000. ISBN 978-0521-89560-6.
+Pruthi, D., Gupta, M., Dhingra, B., Neubig, G., and
+Lipton, Z. C. Learning to deceive with attentionbased explanations. In Proceedings of the 58th Annual
+Meeting of the Association for Computational Linguistics,
+pp. 4782–4793, Online, July 2020. Association for
+Computational Linguistics. doi: 10.18653/v1/2020.aclmain.432. URL https://aclanthology.org/
+2020.acl-main.432/.
+
+Shen, Z., Yan, H., Zhang, L., Hu, Z., Du, Y., and He, Y.
+CODI: Compressing Chain-of-Thought into Continuous
+Space via Self-Distillation. In Proceedings of the 2025
+Conference on Empirical Methods in Natural Language
+Processing, pp. 677–693, Suzhou, China, November
+2025. Association for Computational Linguistics. doi:
+10.18653/v1/2025.emnlp-main.36. URL https://
+aclanthology.org/2025.emnlp-main.36/.
+
+Radford, A., Wu, J., Child, R., Luan, D., Amodei, D.,
+and Sutskever, I. Language Models are Unsupervised
+Multitask Learners. Technical report, OpenAI, 2019.
+URL
+https://cdn.openai.com/betterlanguage-models/language_models_are_
+unsupervised_multitask_learners.pdf.
+
+Singh, R., Xu, L., and Gretton, A. Kernel Methods for
+Causal Functions: Dose, Heterogeneous and Incremental
+Response Curves. Biometrika, 111(2):497–516, 2024.
+doi: 10.1093/biomet/asad042. URL https://doi.
+org/10.1093/biomet/asad042.
+
+Rimsky, N., Gabrieli, N., Schulz, J., Tong, M., Hubinger,
+E., and Turner, A. Steering Llama 2 via Contrastive
+Activation Addition. In Proceedings of the 62nd
+Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers), pp. 15504–
+15522, Bangkok, Thailand, August 2024. Association
+for Computational Linguistics. doi: 10.18653/v1/2024.
+acl-long.828. URL https://aclanthology.org/
+2024.acl-long.828/.
+
+Stolfo, A., Belinkov, Y., and Sachan, M. A Mechanistic Interpretation of Arithmetic Reasoning in Language Models
+using Causal Mediation Analysis. In Proceedings of the
+2023 Conference on Empirical Methods in Natural Language Processing, pp. 7035–7052, Singapore, December
+2023. Association for Computational Linguistics. doi: 10.
+18653/v1/2023.emnlp-main.435. URL https://doi.
+org/10.18653/v1/2023.emnlp-main.435.
+
+Robins, J. M. and Greenland, S.
+Identifiability
+and Exchangeability for Direct and Indirect
+Effects.
+Epidemiology, 3(2):143–155, 1992.
+URL https://journals.lww.com/epidem/
+abstract/1992/03000/identifiability_
+and_exchangeability_for_direct_and.13.
+aspx.
+
+Su, D., Zhu, H., Xu, Y., Jiao, J., Tian, Y., and Zheng,
+Q. Token Assorted: Mixing Latent and Text Tokens for
+Improved Language Model Reasoning. In Proceedings of
+the 42nd International Conference on Machine Learning,
+volume 267 of Proceedings of Machine Learning
+Research, pp. 57144–57163, Vancouver, BC, Canada,
+July 2025. PMLR. URL https://proceedings.
+mlr.press/v267/su25g.html.
+
+Ruan, Z., Li, Y., Zhu, H., Chen, Y., Li, P., Liu, Y.,
+and Chen, G. Enhancing Large Language Model
+Reasoning via Selective Critical Token Fine-Tuning.
+arXiv preprint arXiv:2510.10974, 2025. doi: 10.48550/
+arXiv.2510.10974. URL https://doi.org/10.
+48550/arXiv.2510.10974.
+Schölkopf, B., Locatello, F., Bauer, S., Ke, N. R.,
+Kalchbrenner, N., Goyal, A., and Bengio, Y. Toward
+Causal Representation Learning. Proceedings of the
+IEEE, 109(5):612–634, 2021. doi: 10.1109/JPROC.2021.
+12
+
+Talmor, A., Herzig, J., Lourie, N., and Berant, J.
+CommonsenseQA: A question answering challenge
+targeting commonsense knowledge. In Proceedings
+of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics:
+Human Language Technologies, Volume 1 (Long and
+Short Papers), pp. 4149–4158, Minneapolis, Minnesota,
+June 2019. Association for Computational Linguistics. doi: 10.18653/v1/N19-1421. URL https://
+aclanthology.org/N19-1421/.
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Thulasiraman, K. and Swamy, M. N. S. Graphs: theory and
+algorithms. John Wiley & Sons, Inc., USA, 1992. ISBN
+0471513563.
+
+Learning. arXiv preprint arXiv:2512.15146, 2025.
+doi: 10.48550/arXiv.2512.15146. URL https://doi.
+org/10.48550/arXiv.2512.15146.
+
+Turpin, M., Michael, J., Perez, E., and Bowman, S. R.
+Language Models don't Always Say What They
+Think: Unfaithful Explanations in Chain-of-Thought
+Prompting.
+In Advances in Neural Information
+Processing Systems, volume 36, pp. 74952–74965, New
+Orleans, LA, USA, December 2023. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2023/file/
+ed3fea9033a80fea1376299fa7863f4aPaper-Conference.pdf.
+
+Wei, J., Wang, X., Schuurmans, D., Bosma, M., Ichter,
+B., Xia, F., Chi, E. H., Le, Q. V., and Zhou, D.
+Chain-of-Thought Prompting Elicits Reasoning in Large
+Language Models. In Advances in Neural Information
+Processing Systems, volume 35, pp. 24824–24837, New
+Orleans, LA, USA, December 2022. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2022/file/
+9d5609613524ecf4f15af0f7b31abca4Paper-Conference.pdf.
+
+Tutek, M., Hashemi Chaleshtori, F., Marasovic, A.,
+and Belinkov, Y.
+Measuring Chain of Thought
+Faithfulness by Unlearning Reasoning Steps.
+In
+Proceedings of the 2025 Conference on Empirical
+Methods in Natural Language Processing, pp. 9935–
+9960, Suzhou, China, November 2025. Association for
+Computational Linguistics. doi: 10.18653/v1/2025.
+emnlp-main.504. URL https://aclanthology.
+org/2025.emnlp-main.504/.
+
+Wei, X., Liu, X., Zang, Y., Dong, X., Cao, Y., Wang, J., Qiu,
+X., and Lin, D. SIM-CoT: Supervised Implicit Chain-ofThought. In The Fourteenth International Conference on
+Learning Representations, Rio de Janeiro, Brazil, April
+2026. URL https://openreview.net/forum?
+id=6YRJ4jmVQl.
+
+Vig, J., Gehrmann, S., Belinkov, Y., Qian, S., Nevo,
+D., Singer, Y., and Shieber, S.
+Investigating
+Gender Bias in Language Models Using Causal
+Mediation Analysis. In Advances in Neural Information
+Processing Systems, volume 33, pp. 12388–12401,
+virtual, December 2020. Curran Associates, Inc.
+URL
+https://proceedings.neurips.
+cc/paper_files/paper/2020/file/
+92650b2e92217715fe312e6fa7b90d82Paper.pdf.
+Wang, F., Mo, W., Wang, Y., Zhou, W., and Chen,
+M. A causal view of entity bias in (large) language
+models. In Findings of the Association for Computational
+Linguistics: EMNLP 2023, pp. 15173–15184, Singapore, December 2023a. Association for Computational
+Linguistics. doi: 10.18653/v1/2023.findings-emnlp.
+1013. URL https://aclanthology.org/2023.
+findings-emnlp.1013/.
+Wang, K. R., Variengien, A., Conmy, A., Shlegeris,
+B., and Steinhardt, J. Interpretability in the Wild:
+A Circuit for Indirect Object Identification in GPT2 Small. In The Eleventh International Conference
+on Learning Representations, Kigali, Rwanda, May
+2023b. URL https://openreview.net/forum?
+id=NpsVSN6o4ul.
+
+Wu, H., Teng, Z., and Tu, K. Parallel Continuous Chain-ofThought with Jacobi Iteration. In Proceedings of the 2025
+Conference on Empirical Methods in Natural Language
+Processing, pp. 914–926, Suzhou, China, November
+2025. Association for Computational Linguistics. doi:
+10.18653/v1/2025.emnlp-main.47. URL https://
+aclanthology.org/2025.emnlp-main.47/.
+Wu, J., Lu, J., Ren, Z., Hu, G., Wu, Z., Dai, D., and Wu, H.
+LLMs are Single-threaded Reasoners: Demystifying the
+Working Mechanism of Soft Thinking. In The Fourteenth
+International Conference on Learning Representations,
+Rio de Janeiro, Brazil, April 2026. URL https://
+openreview.net/forum?id=ASLuOoP78o.
+Xiao, Z., Dou, D., Xiong, B., Chen, Y., and Chen,
+G. Enhancing Uncertainty Estimation in LLMs with
+Expectation of Aggregated Internal Belief. arXiv
+preprint arXiv:2509.01564, 2025. doi: 10.48550/arXiv.
+2509.01564. URL https://doi.org/10.48550/
+arXiv.2509.01564.
+Xu, Y., Guo, X., Zeng, Z., and Miao, C. SoftCoT:
+Soft Chain-of-Thought for Efficient Reasoning with
+LLMs. In Proceedings of the 63rd Annual Meeting of
+the Association for Computational Linguistics (Volume
+1: Long Papers), pp. 23336–23351, Vienna, Austria,
+July 2025. Association for Computational Linguistics.
+doi: 10.18653/v1/2025.acl-long.1137. URL https://
+aclanthology.org/2025.acl-long.1137/.
+Yan, Y., Jiang, L., Jiang, J., Li, S., Wen, Z., Zhang, Z.,
+Zhou, J., Shao, J., Zhuang, Y., and Shen, Y. InftyThink+:
+Effective and Efficient Infinite-Horizon Reasoning via Reinforcement Learning. arXiv preprint arXiv:2602.06960,
+
+Wang, W., Wang, Y., Chen, K., and Huang, H. Beyond
+Majority Voting: Towards Fine-grained and More
+Reliable Reward Signal for Test-Time Reinforcement
+13
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+2026. doi: 10.48550/arXiv.2602.06960. URL https:
+//doi.org/10.48550/arXiv.2602.06960.
+Yang, A., Li, A., Yang, B., Zhang, B., Hui, B., Zheng, B.,
+Yu, B., Gao, C., Huang, C., Lv, C., Zheng, C., Liu, D.,
+Zhou, F., Huang, F., Hu, F., Ge, H., Wei, H., Lin, H., Tang,
+J., Yang, J., Tu, J., Zhang, J., Yang, J., Yang, J., Zhou,
+J., Zhou, J., Lin, J., Dang, K., Bao, K., Yang, K., Yu, L.,
+Deng, L., Li, M., Xue, M., Li, M., Zhang, P., Wang, P.,
+Zhu, Q., Men, R., Gao, R., Liu, S., Luo, S., Li, T., Tang,
+T., Yin, W., Ren, X., Wang, X., Zhang, X., Ren, X., Fan,
+Y., Su, Y., Zhang, Y., Zhang, Y., Wan, Y., Liu, Y., Wang,
+Z., Cui, Z., Zhang, Z., Zhou, Z., and Qiu, Z. Qwen3
+Technical Report. arXiv preprint arXiv:2505.09388, 2025.
+doi: 10.48550/arXiv.2505.09388. URL https://doi.
+org/10.48550/arXiv.2505.09388.
+Yang, Z., Liu, Y., and Ouyang, C. Causal interventionbased few-shot named entity recognition. In Findings of the Association for Computational Linguistics: EMNLP 2023, pp. 15635–15646, Singapore,
+December 2023. Association for Computational Linguistics.
+doi: 10.18653/v1/2023.findings-emnlp.
+1046. URL https://aclanthology.org/2023.
+findings-emnlp.1046/.
+Yao, L., Chu, Z., Li, S., Li, Y., Gao, J., and Zhang,
+A. A survey on causal inference. ACM Transactions
+on Knowledge Discovery from Data, 15(5):1–46, 2021.
+doi: 10.1145/3444944. URL https://doi.org/10.
+1145/3444944.
+Yu, X., Wang, Z., Yang, L., Li, H., Liu, A., Xue, X.,
+Wang, J., and Yang, M. Causal Sufficiency and
+Necessity Improves Chain-of-Thought Reasoning. In
+Advances in Neural Information Processing Systems,
+volume 38, pp. 126109–126141, San Diego, CA,
+USA and Mexico City, Mexico, December 2025.
+Curran Associates, Inc. URL https://papers.
+nips.cc/paper_files/paper/2025/file/
+b7870bd43b2d133a1ed95582ae5d82a4Paper-Conference.pdf.
+Zhang, K. et al. A Survey of Reinforcement Learning for Large Reasoning Models. arXiv preprint
+arXiv:2509.08827, 2025a.
+doi: 10.48550/arXiv.
+2509.08827. URL https://doi.org/10.48550/
+arXiv.2509.08827.
+Zhang, Y., Ma, J., Hou, Y., Bai, X., Chen, K., Xiang, Y.,
+Yu, J., and Zhang, M. Evaluating and Steering Modality
+Preferences in Multimodal Large Language Model. In
+Proceedings of the 43rd International Conference on
+Machine Learning, Seoul, South Korea, July 2026.
+doi: 10.48550/arXiv.2505.20977. URL https://doi.
+org/10.48550/arXiv.2505.20977.
+14
+
+Zhang, Z., He, X., Yan, W., Shen, A., Zhao, C., and Wang,
+X. Soft Thinking: Unlocking the Reasoning Potential
+of LLMs in Continuous Concept Space. In Advances
+in Neural Information Processing Systems, volume 38,
+pp. 168990–169012, San Diego, CA, USA and Mexico
+City, Mexico, December 2025b. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2025/file/
+f7396d1c54d51416958d63e285377103Paper-Conference.pdf.
+Zhu, H., Hao, S., Hu, Z., Jiao, J., Russell, S. J., and Tian, Y.
+Reasoning by Superposition: A Theoretical Perspective
+on Chain of Continuous Thought. In Advances in
+Neural Information Processing Systems, volume 38,
+pp. 79931–79963, San Diego, CA, USA and Mexico
+City, Mexico, December 2025a. Curran Associates,
+Inc.
+URL https://proceedings.neurips.
+cc/paper_files/paper/2025/file/
+72c363c2a573ca2128bd176d3317696bPaper-Conference.pdf.
+Zhu, R.-J., Peng, T., Cheng, T., Qu, X., Huang, J., Zhu,
+D., Wang, H., Xue, K., Zhang, X., Shan, Y., Cai, T.,
+Kergan, T., Kembay, A., Smith, A., Lin, C., Nguyen,
+B., Pan, Y., Chou, Y., Cai, Z., Wu, Z., Zhao, Y., Liu,
+T., Yang, J., Zhou, W., Zheng, C., Li, C., Zhou, Y.,
+Li, Z., Zhang, Z., Liu, J., Zhang, G., Huang, W., and
+Eshraghian, J. A Survey on Latent Reasoning. arXiv
+preprint arXiv:2507.06203, 2025b. doi: 10.48550/arXiv.
+2507.06203. URL https://doi.org/10.48550/
+arXiv.2507.06203.
+Zhu, R.-J., Wang, Z., Hua, K., Zhang, T., Li, Z., Que,
+H., Wei, B., Wen, Z., Yin, F., Xing, H., Li, L., Shi,
+J., Ma, K., Li, S., Kergan, T., Smith, A., Qu, X., Hui,
+M., Wu, B., Min, Q., Huang, H., Zhou, X., Ye, W., Liu,
+J., Yang, J., Shi, Y., Lin, C., Zhao, E., Cai, T., Zhang,
+G., Huang, W., Bengio, Y., and Eshraghian, J. Scaling
+Latent Reasoning via Looped Language Models. arXiv
+preprint arXiv:2510.25741, 2025c. doi: 10.48550/arXiv.
+2510.25741. URL https://doi.org/10.48550/
+arXiv.2510.25741.
+Zou, A., Phan, L., Chen, S., Campbell, J., Guo, P., Ren,
+R., Pan, A., Yin, X., Mazeika, M., Dombrowski, A.-K.,
+Goel, S., Li, N., Byun, M. J., Wang, Z., Mallen, A.,
+Basart, S., Koyejo, S., Song, D., Fredrikson, M., Kolter,
+J. Z., and Hendrycks, D. Representation Engineering:
+A Top-Down Approach to AI Transparency. arXiv
+preprint arXiv:2310.01405, 2023. doi: 10.48550/arXiv.
+2310.01405. URL https://doi.org/10.48550/
+arXiv.2310.01405.
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+A. Implementation Details
+A.1. Training settings for reproduced C OCONUT and CODI
+We reproduce C OCONUT across three backbones (GPT-2, Llama3-1B, and Qwen3-4B-Instruct) and three datasets (GSM8K,
+CommonsenseQA, and StrategyQA) using the standard stage-wise latent-replacement curriculum. On GSM8K, we follow
+the official two-stage recipe (CoT-SFT → Coconut): the model is first trained with explicit CoT supervision, and then
+continued with Coconut-style latent reasoning initialized from the CoT checkpoint. For GPT-2, both stages are trained for
+25 epochs (25+25). For larger backbones, we use a shorter schedule (5+10) consistent with the large-model setting. On
+CommonsenseQA and StrategyQA, we adopt a uniform latent curriculum that progressively increases the latent-step budget
+up to T =6 using one epoch per latent stage (6 epochs total), followed by 4 additional epochs at the final stage (i.e., 6+4).
+Across backbones, we use AdamW-style optimization with weight decay 0.01 and a backbone-dependent learning rate:
+GPT-2 runs use lr = 10−4 , while Llama/Qwen runs use lr = 10−5 .
+For CODI, we use officially released checkpoints for GSM8K on GPT-2 and Llama3-1B. All other CODI results in
+this paper are obtained from our reproduced checkpoints trained on the remaining dataset/backbone combinations. We
+follow the official CODI training pipeline (LoRA-based fine-tuning with a fixed number of latent tokens, cosine learningrate scheduling with warmup, mixed-precision training, and the projection head enabled in our runs), while allowing
+dataset/backbone-dependent learning rates for stable optimization. Concretely, our reproduced CODI runs use learning rates
+in the range [5 × 10−6 , 3 × 10−3 ] depending on the backbone and dataset (e.g., 3 × 10−3 for GPT-2, 8 × 10−4 for Llama-1B,
+and 2 × 10−4 /10−5 /5 × 10−6 for Qwen3-4B-Instruct on GSM8K-Aug/CommonsenseQA/StrategyQA, respectively). This
+yields CODI checkpoints matched to our Coconut reproductions in latent-step budget (T =6) and task coverage, enabling
+controlled comparisons under identical intervention and readout protocols.
+A.2. Intervention operators: robustness and choice of zero overwrite
+Our step-wise necessity analysis (RQ1) instantiates the single-step do-intervention (Def. 3.1) via a concrete intervention
+operator that maps a realized latent state ht to an edited state h̃t . To verify that our conclusions are not tied to a particular
+operator, we compare six commonly used perturbations that preserve the same causal interface: overwrite one step, then
+recompute downstream computation under fixed x and θ. Because activation-level interventions can be sensitive to the choice
+of corruption or replacement operator, we treat operator variants as robustness checks rather than as uniquely identified
+causal estimands. This follows the caution used in activation patching, causal tracing, and mediator-search work, where
+measured effects can depend on the chosen mediator, intervention operator, and readout protocol (Meng et al., 2022; Conmy
+et al., 2023; Mueller et al., 2026).
+Table 1. Intervention operators used in the robustness check. Here, µ denotes the global mean latent state, µt denotes the step-specific
+mean at step t, ϵ ∼ N (0, I), and σ is a fixed noise scale.
+Operator
+
+Description
+
+Edited state h̃t
+
+zero
+mean
+mean step
+gaussian h
+gaussian mu
+gaussian mu step
+
+Replace latent with zeros
+Replace with global mean
+Replace with step-specific mean
+Add Gaussian noise to ht
+Add Gaussian noise around global mean
+Add Gaussian noise around step-specific mean
+
+0
+µ
+µt
+ht + σϵ
+µ + σϵ
+µt + σϵ
+
+Figures 9a and 9b show two representative examples on CODI (Llama3-1B) for GSM8K and CommonsenseQA, respectively.
+Each heatmap cell reports the flip rate Flip(t) used throughout RQ1, computed as the fraction of examples whose final
+decoded prediction changes under the intervention at step t. Following our main metric, we aggregate both wrong→right and
+right→wrong flips (i.e., any decision change relative to the baseline rollout), so larger values indicate stronger decision-level
+dependence on the intervened step. Across operators, the qualitative step-wise sensitivity patterns are stable: operators that
+substantially perturb the latent state yield similar relative trends over steps, while weaker/noisier operators typically reduce
+absolute flip rates without altering the overall step profile. This robustness indicates that our RQ1 findings are not driven by
+a specific perturbation choice.
+We adopt zero overwrite (zero) as the default operator for the main paper for two practical reasons. First, it is deterministic
+and parameter-free, eliminating tuning choices (e.g., the noise scale σ) and reducing variance across runs. Second, it applies
+15
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+(a) GSM8K.
+
+(b) CommonsenseQA.
+
+Figure 9. Intervention-operator comparison (CODI Llama3-1B). Each cell shows the flip rate Flip(t), the fraction of examples whose
+decoded final prediction changes when intervening at step t aggregated over wrong→right and right→wrong flips.
+
+uniformly across architectures and training recipes, making cross-model comparisons more fair: the intervention strength
+does not depend on backbone-specific hidden-state norms or distributional statistics beyond the shared representation space.
+We therefore use zero throughout the main experiments for reproducibility and interpretability, and treat the remaining
+operators as sanity checks that validate the stability of our conclusions.
+A.3. Teacher-forced readouts and influence matrix
+To measure propagation effects with minimal sampling noise, we use teacher-forced readouts on a canonical gold-answer
+string. The answer template follows each method’s training paradigm (rather than the dataset): for C OCONUT we use
+“[prefix] ### {answer}”, while for CODI we use “[prefix] The answer is {answer}”. We denote the resulting gold answer
+token sequence by a1:L .
+Teacher-forced distributions. Given a trajectory (baseline or intervened) and a designated readout step s, we compute
+teacher-forced logits for the gold answer tokens a1:L and obtain token-level predictive distributions
+(s) 
+p(s) (aℓ | a<ℓ , x) = softmax zℓ ,
+ℓ = 1, . . . , L,
+(12)
+(s)
+
+where zℓ denotes the teacher-forced logit vector at gold token position ℓ when reading out from step s (with the same x
+(s)
+(s)
+and fixed parameters θ). We compute these distributions for both the baseline rollout (pbase ) and the intervened rollout (pint ).
+Influence matrix from token-averaged KL. For an intervention applied at step t and a readout at step s, we define the
+influence weight Wt,s (Eq. 10) as the token-averaged KL divergence between the baseline and intervened teacher-forced
+distributions on the gold answer:
+Wt,s =
+
+L
+
+1X
+(s)
+DKL pbase (· | a<ℓ , x)
+L
+
+
+(s)
+pint (· | a<ℓ , x) .
+
+(13)
+
+ℓ=1
+
+Intuitively, Wt,s measures how much an intervention at step t changes the model’s predictive distribution over the gold
+answer when the trajectory is read out at step s. We aggregate Wt,s over examples by averaging across the evaluation set.
+Visualization and sparsification. To visualize influence graphs, we apply the same sparsification protocol as in the main
+text. Specifically, we threshold edges at α · max(W ) with α = 0.1, and for each source step we retain only the top-1
+16
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+outgoing edge for readability. Edge weights in figures correspond to the (dataset-averaged) dense matrix entries Wt,s prior
+to sparsification.
+Why teacher forcing. Teacher forcing isolates propagation effects from output sampling variability: it evaluates changes
+in the model’s conditional distribution along a fixed gold answer path, rather than changes in a sampled decoded string. This
+makes W a more stable proxy for step-to-step influence, especially when the decoded answer is short or when sampling
+induces high variance across rollouts.
+
+B. Dataset Information
+B.1. Dataset Statistics
+Table 2 reports the dataset split sizes used in our experiments. All evaluations use the original benchmark test sets from
+the corresponding dataset papers. For training, we use CoT-augmented variants when required by the training paradigms:
+for GSM8K we train on GSM8K-Aug from (Deng et al., 2023) while evaluating on the original GSM8K test set (Cobbe
+et al., 2021); for CommonsenseQA and StrategyQA, we use CoT-augmented training data released by CODI (Shen et al.,
+2025) and evaluate on the original test sets (Talmor et al., 2019; Geva et al., 2021). These augmentations affect training-time
+supervision only; we do not modify any benchmark test set.
+Table 2. Dataset statistics used in our experiments. Train sizes correspond to the training splits actually used for model training
+(GSM8K-Aug (Deng et al., 2023); CommonsenseQA-CoT and StrategyQA-CoT from CODI (Shen et al., 2025)). Test sizes correspond
+to the original benchmark test splits (Talmor et al., 2019; Cobbe et al., 2021; Geva et al., 2021).
+DATASET
+C OMMONSENSE QA
+GSM8K
+S TRATEGY QA
+
+T RAIN
+8,096
+385,620
+1,809
+
+T EST
+1,221
+1,319
+229
+
+B.2. Dataset Examples
+The following examples illustrate the CoT-augmented training format used in our runs. CoT rationales are not part of
+the original benchmarks; they are training-time supervision taken from the corresponding augmented variants (GSM8KAug (Deng et al., 2023) and CODI-released CoT data (Shen et al., 2025)). We evaluate on the original benchmark test sets
+without modification.
+GSM8K-Aug (training)
+Question: Out of 600 employees in a company, 30% got promoted while 10% received bonus. How many employees
+did not get either a promotion or a bonus?
+CoT: 600*30/100=180, 600*10/100=60, 600-240=360
+Answer: 360
+
+CommonsenseQA-CoT (training)
+Question: Google Maps and other highway and street GPS services have replaced what? Choices: A: united states
+B: mexico C: countryside D: atlas E: oceans
+CoT: Google Maps and other GPS services are tools used for navigation and mapping, which have largely replaced
+traditional paper maps and atlases that people used in the past for similar purposes. The other options, such as
+countries and geographic features, do not relate to navigational tools. Thus, the best answer is D: atlas.
+Answer: D
+
+17
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+StrategyQA-CoT (training)
+Question: Would a dog respond to bell before Grey seal?
+CoT: To determine if a dog would respond to a bell before a Grey seal, we need to consider the context and
+conditioning involved. Dogs are often trained to respond to bells due to their domestication and close relationships
+with humans. Classic conditioning experiments, like Pavlov’s dogs, indicate that dogs can be trained to associate a
+bell with specific actions, such as being fed. Grey seals, on the other hand, are wild marine mammals that are not
+typically subjected to the same kind of training or conditioning that dogs regularly undergo. Therefore, without
+specific conditioning, a Grey seal is unlikely to naturally associate or respond to a bell in the same way a trained dog
+would. Thus, a dog, particularly one that has been conditioned, is expected to respond to a bell before a Grey seal.
+Answer: true
+
+C. Additional RQ2 Details and Robustness Checks
+C.1. Dense adjacency matrices for influence graphs
+The main text visualizes sparsified influence graphs for readability (threshold α=0.1 and top-1 outgoing edge per node).
+Here we provide the corresponding dense influence matrices W (Eq. 10) as heatmaps, which are the objects used to compute
+all structure metrics.
+
+Figure 10. Dense influence matrices for latent reasoning (GSM8K). Each cell (t, s) shows Wt,s from Eq. 10 (teacher-forced KL shift
+on the gold answer when intervening at t and reading out at s).
+
+18
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Figure 11. Dense influence matrices for explicit CoT (GSM8K; CoT-SFT). Each cell (t, s) shows Wt,s from Eq. 10 computed on
+segmented CoT-step states.
+
+C.2. Additional CommonsenseQA results
+This subsection provides additional RQ2 results on CommonsenseQA, including dense influence matrices (latent and
+explicit), sparsified principal influence graphs, and the corresponding structure metrics. All quantities follow the same
+construction as in Sec. 5, based on the dense matrix W from Eq. 10.
+
+Figure 12. Dense influence matrices for latent reasoning (CommonsenseQA; C OCONUT/CODI). Each cell (t, s) shows Wt,s from
+Eq. 10 under teacher-forced readouts.
+
+19
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+Figure 13. Dense influence matrices for explicit CoT (CommonsenseQA; CoT-SFT). Each cell (t, s) shows Wt,s from Eq. 10
+computed on segmented CoT-step states.
+
+Figure 14. Explicit CoT principal influence graphs (CommonsenseQA; CoT-SFT baselines). Nodes denote the first T =6 segmented
+CoT steps. Edge t → s indicates propagation strength Wt,s from Eq. 10. For readability, we show only top-1 outgoing edges after
+thresholding at α=0.1 · max(W ).
+
+Figure 15. Latent principal influence graphs (CommonsenseQA; C OCONUT/CODI). Nodes are latent steps t ∈ {1, . . . , 6}. Edge
+weights follow Eq. 10 under single-step interventions, rendered with the same sparsification protocol as Figure 14.
+
+0.6
+
+1
+
+0.2
+0.0
+
+0.6
+
+0.3
+
+0.4
+
+0.2
+
+0.2
+
+0.1
+
+2
+
+0.4
+
+Coconut
+
+CODI
+
+CoT
+
+0
+
+(a) locality
+Coconut−GPT2
+
+Coconut
+
+CODI
+
+CoT
+
+0.0
+
+Coconut
+
+(b) span
+Coconut−Llama3−1B
+
+Coconut−Qwen3−4B
+
+CODI
+
+CoT
+
+0.0
+
+Coconut
+
+(c) early−out
+CODI−GPT2
+
+CODI−Llama3−1B
+
+CODI−Qwen3−4B
+
+CODI
+
+CoT
+
+(d) late−in
+CoT−GPT2
+
+CoT−Llama3−1B
+
+CoT−Qwen3−4B
+
+Figure 16. Structure metrics on influence graphs (CommonsenseQA). Metrics are computed on the normalized matrix W̄ (Eq. 14) and
+use the same hyperparameters as the main text.
+
+20
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+C.3. Definitions of structure metrics
+We compute structure metrics on a normalized influence matrix W̄ obtained by re-scaling W over valid entries (t < s):
+Wt,s
+.
+a<b Wa,b + ϵ
+
+(14)
+
+X
+
+1{s − t ≤ k} W̄t,s ,
+
+(15)
+
+(s − t) W̄t,s ,
+
+(16)
+
+W̄t,s = P
+Let E = {(t, s) : 1 ≤ t < s ≤ T }. We define:
+Locality(k) =
+
+(t,s)∈E
+
+Span =
+
+X
+(t,s)∈E
+
+EarlyOut(m) =
+
+XX
+
+W̄t,s ,
+
+(17)
+
+W̄t,s .
+
+(18)
+
+t≤m s>t
+
+LateIn(m) =
+
+XX
+s≥m t<s
+
+In all experiments we use k=1 and m=2 (early) / m=5 (late) for T =6.
+C.4. Influence structures under alternative intervention operators
+Appendix A.2 verifies that the RQ1 necessity profiles are qualitatively stable across six intervention operators. We
+additionally test whether the RQ2 influence structure is specific to zero overwrite. We recompute the influence matrix W
+from Eq. 10 on GSM8K using two non-zero operators: global-mean replacement (mean) and Gaussian perturbation around
+the realized latent state (gaussian h). Both operators preserve the same causal interface as the main experiment: exactly
+one latent step is modified, downstream computation is recomputed, and propagation is measured by teacher-forced KL at
+downstream readout steps.
+Figure 17 shows the resulting principal influence graphs for C OCONUT-GPT2 and CODI-GPT2. The absolute edge
+magnitudes vary with the intervention strength, but the qualitative conclusion is unchanged: influence is non-uniform across
+steps and is not restricted to adjacent transitions. In particular, non-local routes remain visible under both global-mean
+replacement and Gaussian perturbation, indicating that the skip-dominant RQ2 pattern is not an artifact of zero overwrite
+alone.
+
+Figure 17. RQ2 operator robustness on GSM8K. We recompute principal influence graphs for C OCONUT-GPT2 and CODI-GPT2
+using global-mean replacement (mean) and Gaussian perturbation around the realized latent state (gaussian h). Edge weights are
+computed with the same teacher-forced KL readout as Eq. 10. Non-local influence remains visible under both operators.
+
+21
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+C.5. Readout-conditioned influence structures
+The main RQ2 experiment uses answer-level teacher-forced KL because it directly measures how an upstream intervention
+changes the model’s distribution over the gold answer path. To check whether the influence graph depends on this specific
+readout, we also evaluate a hidden-state LM-head readout that does not condition on the gold answer string. For an
+intervention at step t and a downstream readout step s, we project the baseline and intervened hidden states at step s through
+the language-model head and compute
+h
+
+i
+do(t)
+LM
+Wt,s
+= Ei DKL softmax(LMHead(hi,s )) softmax(LMHead(h̃i,s )) , t < s.
+(19)
+This readout asks whether the perturbation changes the one-step vocabulary distribution directly induced by the downstream
+latent state, rather than the teacher-forced distribution along a fixed answer template.
+Figure 18 reports the resulting GSM8K influence graphs. The graphs remain non-uniform, and several models still exhibit
+long-range cross-step influence. This supports the interpretation of RQ2 as a protocol-conditioned empirical influence
+structure, while showing that the main non-locality finding is not tied to a single answer-template readout.
+
+Figure 18. RQ2 readout robustness on GSM8K. Influence graphs computed with the hidden-state LM-head readout in Eq. 19, rather
+than answer-level teacher-forced KL. The main qualitative pattern remains: influence is non-uniform and often non-local across latent
+steps.
+
+D. Additional Paradigm Analysis
+To test whether the observations are limited to C OCONUT and CODI, we additionally evaluate S IM -C OT (Wei et al., 2026)
+on GSM8K using the same T =6 step interface where available. This experiment is intended as a paradigm-coverage check,
+not as a claim that the three paradigms exhaust latent reasoning methods.
+Figure 19 shows the RQ1 flip-rate profiles. The Sim-CoT variants also show heterogeneous step importance: the flip rate is
+not flat across latent steps, and some steps are substantially more decision-relevant than others.
+Figure 20 reports the corresponding RQ2 principal influence graphs. Compared with the skip-heavy patterns observed for
+several C OCONUT/CODI models, Sim-CoT exhibits relatively more local connectivity in these runs. This difference is
+consistent with its step-aligned supervision objective: stronger step-level alignment can make adjacent latent transitions
+more prominent, even though the overall influence structure remains non-uniform.
+
+22
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+GSM8K (SimCoT)
+0.4
+
+Flip rate
+
+0.3
+
+0.2
+
+0.1
+
+0.0
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Latent step
+SimCoT−Coconut−GPT2
+
+SimCoT−CODI−GPT2
+
+SimCoT−CODI−Llama3−8B
+
+Figure 19. RQ1 necessity check for S IM -C OT on GSM8K. Flip rates are computed under the same single-step intervention protocol as
+Figure 3. Step importance remains heterogeneous under an additional latent-reasoning paradigm.
+
+Figure 20. RQ2 influence graphs for S IM -C OT on GSM8K. The same principal-graph rendering as Figure 6 is used. Sim-CoT shows
+more local connectivity than the strongest skip-heavy C OCONUT/CODI cases, while still displaying non-uniform step-to-step influence.
+
+E. Additional Model Size Analysis
+We further replicate the RQ1 and RQ2 analyses on additional C OCONUT backbones, including Qwen3-1.7B, Mistral-7B,
+DeepSeek-R1-Qwen2.5-1.5B, and Llama3-8B. These experiments are intended as a qualitative model-size/backbone check
+rather than a full scaling-law study, because the backbones differ in pretraining, instruction tuning, and reproduction details.
+Figure 21 shows that step-wise flip rates remain heterogeneous across the additional backbones. The absolute flip rate varies
+substantially by model, but the profiles are not uniformly flat over steps. This supports the main RQ1 claim that latent steps
+have unequal causal leverage.
+GSM8K
+
+Flip rate
+
+0.3
+
+0.2
+
+0.1
+
+0.0
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Latent step
+Coconut−Qwen3−1.7B
+
+Coconut−Mistral−7B
+
+Coconut−DeepSeek−R1−Qwen2.5−1.5B
+
+Coconut−Llama3−8B
+
+Figure 21. RQ1 necessity check on additional C OCONUT backbones (GSM8K). The magnitude of decision flips differs across
+backbones, but step-wise sensitivity remains heterogeneous.
+
+Figure 22 reports the corresponding RQ2 influence graphs. The additional models again show non-uniform propagation,
+with several long-range edges and model-specific routing patterns. Thus, the main influence-structure observation is not
+23
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+confined to GPT-2/Llama3-1B/Qwen3-4B-Instruct settings, although a systematic scaling study over matched model families
+remains future work.
+
+Figure 22. RQ2 influence graphs on additional C OCONUT backbones (GSM8K). The graphs show non-uniform propagation and
+model-specific long-range routing across larger and alternative backbones.
+
+F. Additional RQ3 Details
+F.1. Trajectory sampling and latent-state collection
+RQ3 studies multi-mode latent dynamics by analyzing multiple trajectories per input. For each example x, we generate
+N independent rollouts under the same decoding configuration as in the main experiments (temperature/top-p/top-k when
+sampling; greedy decoding when deterministic rollouts are required). For each rollout, we record (i) the final decoded
+answer ŷ and (ii) the realized latent states h1:T = (h1 , . . . , hT ) at the model-defined latent steps, where each ht ∈ Rd is the
+last-layer hidden state associated with step t.
+Categorizing answers and defining modes. We categorize final answers into a normalized form (e.g., extracting the final
+option letter for multiple-choice tasks, or applying the same numeric/boolean normalization used for evaluation). Given
+the set of normalized answers from N rollouts for the same input, we define the two dominant modes A and B as the
+two most frequent terminal answers. Rollouts whose terminal answers fall outside {A, B} are treated as residual modes
+and are excluded from the binary-mode analysis for that input. This procedure yields a set of labeled latent trajectories
+(i)
+(i)
+{(h1:T , m(i) )}M
+∈ {A, B}, where M ≤ N after filtering.
+i=1 with m
+F.2. Intermediate-step readout implementation details
+Probes for step-wise mode tracking. To measure how mode information evolves across latent steps, we train lightweight
+probes on frozen latent states. For each step t, we fit a classifier πϕ,t that maps the realized latent state ht to a distribution
+over modes:
+πϕ,t : Rd → ∆2 ,
+(ŝA (t), ŝB (t)) = πϕ,t (ht ),
+(20)
+where ŝA (t) and ŝB (t) denote the probe-predicted probabilities of modes A and B at step t. Unless otherwise stated, we use
+linear probes (logistic regression) trained with cross-entropy loss and standard ℓ2 regularization, which keeps probe capacity
+minimal and reduces the risk of overfitting artifacts unrelated to the model’s latent dynamics. When class imbalance arises
+after mode filtering, we balance the probe training set by subsampling to equalize the number of trajectories per mode.
+Teacher-forced readouts used in RQ3. In addition to probe-based tracking, we use teacher-forced readouts to
+deterministically score candidate answers and reduce sampling noise when needed. We follow the same teacher-forcing
+24
+
+Dynamics Within Latent Chain-of-Thought: An Empirical Study of Causal Structure
+
+protocol described in Appendix A.3 (Teacher-forced readouts). Importantly, the canonical answer template is methoddependent rather than dataset-dependent: for C OCONUT we use “[prefix] ### {answer}”, while for CODI we use
+“[prefix] The answer is {answer}”. Given a readout step t, teacher forcing provides a deterministic score (e.g., tokenaggregated log-probability) for each candidate answer string, which we use as a complementary signal to the probe outputs
+in robustness checks.
+F.3. Supporting RQ3 analysis on GSM8K
+The main RQ3 analysis uses StrategyQA because its binary answer space provides a clean setting for comparing two answer
+modes. We additionally run a supporting analysis on GSM8K by retaining prompts for which stochastic rollouts yield two
+sufficiently frequent dominant numeric answers. Because GSM8K has an open-ended answer space, this filtering is stricter
+and the retained set is smaller; we therefore use the result as supporting evidence rather than as the central RQ3 experiment.
+Figure 23 shows that the probe-based score remains relatively stable through early and middle latent steps and then drops at
+the final step, while the teacher-forced log-probability readout is more model-dependent. This is broadly consistent with the
+main RQ3 interpretation: output-level answer preference and representational commitment need not collapse at the same
+step, but the GSM8K result should be read cautiously because of the harder two-mode filtering.
+metric: probe
+
+metric: teacher−forced logp
+0.250
+
+0.48
+
+0.225
+
+0.44
+
+SS
+
+SS
+
+0.46
+
+0.200
+
+0.42
+
+0.175
+
+0.40
+
+0.150
+0.125
+
+0.38
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+1
+
+step
+
+2
+
+3
+
+4
+
+5
+
+6
+
+step
+Coconut−GPT2−GSM8K
+
+Coconut−Llama3−1B−GSM8K
+
+CODI−GPT2−GSM8K
+
+CODI−Llama3−1B−GSM8K
+
+Figure 23. Supporting RQ3 analysis on GSM8K. Probe-based and teacher-forced readouts are computed over prompts with two
+dominant sampled numeric answers. The result supports the distinction between output-level preference and representational commitment,
+but is less central than StrategyQA due to GSM8K’s open-ended answer space.
+
+25
+
+

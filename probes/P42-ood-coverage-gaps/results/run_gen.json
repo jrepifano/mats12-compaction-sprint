@@ -1,0 +1,107 @@
+{
+ "step": "gen",
+ "finished_utc": "2026-10-14T02:18:41Z",
+ "seconds": 3005.9,
+ "phases_s": {
+  "tokenise": 20.09,
+  "engine_load": 38.64,
+  "generate": 2933.91,
+  "assemble": 3.95
+ },
+ "git_commit": "cf730dce9e7af90a0267ace42ddf2b89c320b9c9",
+ "n_prompts": 76000,
+ "max_model_len": 2596,
+ "template_check": {
+  "n": 500,
+  "full_string_mismatch": 3,
+  "mismatch_pids": [
+   "pool-046322",
+   "pool-046055",
+   "pool-032892"
+  ],
+  "leading_newline": 3
+ },
+ "chunks": {
+  "0": {
+   "n": 8192,
+   "seconds": 351.5,
+   "out_tokens": 2486139,
+   "out_tok_s": 7072.6
+  },
+  "1": {
+   "n": 8192,
+   "seconds": 352.5,
+   "out_tokens": 2468002,
+   "out_tok_s": 7001.1
+  },
+  "2": {
+   "n": 8192,
+   "seconds": 355.0,
+   "out_tokens": 2485717,
+   "out_tok_s": 7002.7
+  },
+  "3": {
+   "n": 8192,
+   "seconds": 316.1,
+   "out_tokens": 2797779,
+   "out_tok_s": 8852.3
+  },
+  "4": {
+   "n": 8192,
+   "seconds": 297.7,
+   "out_tokens": 2711540,
+   "out_tok_s": 9109.0
+  },
+  "5": {
+   "n": 8192,
+   "seconds": 294.2,
+   "out_tokens": 2715395,
+   "out_tok_s": 9228.3
+  },
+  "6": {
+   "n": 8192,
+   "seconds": 294.4,
+   "out_tokens": 2684617,
+   "out_tok_s": 9118.9
+  },
+  "7": {
+   "n": 8192,
+   "seconds": 295.4,
+   "out_tokens": 2696103,
+   "out_tok_s": 9128.4
+  },
+  "8": {
+   "n": 8192,
+   "seconds": 294.3,
+   "out_tokens": 2696581,
+   "out_tok_s": 9162.3
+  },
+  "9": {
+   "n": 2272,
+   "seconds": 82.9,
+   "out_tokens": 738344,
+   "out_tok_s": 8909.5
+  }
+ },
+ "stale_reset": null,
+ "vllm": "0.30.0",
+ "sampling": {
+  "temperature": 0.0,
+  "max_tokens": 512,
+  "seed": 20261013,
+  "stop_token_ids": [
+   100265,
+   100257
+  ]
+ },
+ "out_tokens": 24480217,
+ "finish_reasons": {
+  "stop": 43162,
+  "length": 32838
+ },
+ "mean_resp_tokens": 322.1081184210526,
+ "out_tok_s": 8343.9,
+ "responses_sha256": "1181ecb3424e8ac05cf2b936627c16c03f152f937155ccdd93fb06721e552302",
+ "response_ids_sha256": "954351498eee87e0ca409aa980b0e94eb7e97fe420cf918ec73c8b233689378e",
+ "stop_token_last_in_ids": 43162
+}

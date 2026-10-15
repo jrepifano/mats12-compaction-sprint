@@ -1,0 +1,1069 @@
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Dipika Khullar 1 * Jack Hopkins 1 * Rowan Wang 2 Fabien Roger 2
+
+arXiv:2603.04582v1 [cs.AI] 4 Mar 2026
+
+Abstract
+
+to users. This failure mode is especially concerning because
+self-monitoring is often used precisely to decide whether an
+action should be executed or blocked, rather than merely to
+provide post-hoc explanations.
+
+Agentic systems increasingly rely on language
+models to monitor their own behavior. For example, coding agents may self-critique generated
+code for pull request approval or assess the safety
+of tool-use actions. We show that this design pattern can fail when the action is presented in a previous or in the same assistant turn instead of being
+presented by the user in a user turn. We define
+self-attribution bias as the tendency of a model
+to evaluate an action as more correct or less risky
+when the action is implicitly framed as its own,
+compared to when the same action is evaluated
+under off-policy attribution. Across four coding
+and tool-use datasets, we find that monitors fail to
+report high-risk or low-correctness actions more
+often when evaluation follows a previous assistant
+turn in which the action was generated, compared
+to when the same action is evaluated in a new context presented in a user turn. In contrast, explicitly
+stating that the action comes from the same model
+does not by itself induce self-attribution bias. Because monitors are often evaluated on fixed examples rather than on their own generated actions,
+these evaluations can make monitors appear more
+reliable than they actually are in deployment, leading developers to unknowingly deploy inadequate
+monitors in agentic systems.
+
+As agents like Claude Code, Claude Cowork and Github
+Copilot gain adoption and frontier models tackle increasingly autonomous, long-horizon tasks (Anthropic, 2025;
+2026; Peng et al., 2023; Kwa et al., 2025), robust monitoring becomes important. A common approach is selfmonitoring, but if models misjudge their own outputs, this
+setup becomes a potential weakness, similar to how commitment and choice-supportive biases can degrade the judgment
+of human decision makers (Festinger, 1957; Mather et al.,
+2000; Sharot et al., 2010).
+In human psychology, commitment bias leads people to escalate investment in failing courses of action simply because
+they initiated them (Festinger, 1957; Staw, 1976). Choicesupportive bias causes people to retroactively view their past
+decisions more favorably than the alternatives they rejected
+(Mather et al., 2000). Confirmation bias drives selective attention toward evidence that supports one’s existing beliefs
+(Nickerson, 1998). These biases share a common thread:
+the act of generating or committing to something distorts
+subsequent evaluation of that very thing. If language models
+exhibit analogous patterns—rating their own outputs more
+favorably simply because they produced them—then selfmonitoring may provide false assurance precisely when it
+matters most.
+In this work, we show when language models evaluate actions they believe they have taken themselves, they judge
+those actions as safer and more correct than identical actions
+presented under neutral attribution.
+
+1. Introduction
+Language models are used not only to generate actions but
+also to evaluate, critique, or approve those actions, as in
+LLM-as-a-judge pipelines and agentic safety benchmarks
+(Zheng et al., 2023; Wang et al., 2023; Zhang et al., 2024).
+In practice, the same model often wears both hats: CLI
+coding agents generate code and then review their own pull
+requests, tool-using assistants decide whether their proposed
+actions are safe to execute, and safety pipelines ask a model
+to critique or approve its own outputs before they are shown
+
+We refer to this effect as self-attribution bias. We distinguish
+explicit attribution cues (the prompt directly states who
+authored the action) from implicit attribution (authorship is
+implied by conversational structure, e.g., evaluating a prior
+assistant turn), and find that the largest effects arise under
+implicit self-attribution in on-policy settings (Section 3.1).
+To study this effect, we study how LLM judgments vary
+when the action is held fixed and we change the format of
+the monitor prompt. This rules out explanations based on
+stylistic preference: the bias we study here is about how
+actions are presented, not about properties of the evaluated
+
+1
+MATS 2 Anthropic. Correspondence to: Dipika Khullar
+<dkhullar98@berkeley.edu>.
+
+Preprint. March 6, 2026.
+
+1
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Figure 1. Illustration of self-attribution bias in a computer use setting. When asked to evaluate the risk of an action in a fresh context
+(left), models usually correctly assign a high risk score. But when instead we ask for a risk score as a follow-up question (after the risky
+action has been taken) (right), models often rate the action they just took as less risky than in the baseline setting, despite the action being
+judge being the same. This effect is strongest when the model rating the action is actually the one that generated the action (instead of the
+action having been generated by e.g. another model).
+
+Contributions:
+
+content studied by previous work (Wataoka et al., 2024).
+We find that while self-attribution bias effect is very weak
+when the action authorship is explicitly stated, it is much
+stronger when the authorship is implied by the action being
+present in a conversation turn that the assistant has generated
+as opposed to being in the user’s turn. This self-attribution
+bias can introduce large swings in individual ratings, as
+illustrated in Figure 1 and quantified in Figure 4, as well
+as overall ratings statistics: in one of our settings, selfattribution bias makes it 5 times more likely that a monitor
+approves a code patch that followed a prompt injection. The
+magnitude of this bias depends on whether the evaluation
+occurs immediately after the output is produced, or later
+after the model has committed the output.
+
+• We define and demonstrate self-attribution bias in language models: the same action or output often receives
+more favorable ratings when implicitly attributed to the
+rating model (by putting the action in either the same
+turn or a previous turn), compared to baseline prompt
+formats without implicit attributions.
+• We measure this bias across agentic computer use settings, code correctness, code harmfulness and PR approval, and agentic information leaking, and across 10
+frontier models.
+• We show self-attribution bias is often present only
+when doing on-policy self-monitoring: it is strongest
+when models evaluate actions they have just generated,
+and is greatly reduced or absent when evaluating actions
+generated by other models or by humans. This shows
+that a simple static evaluation will often underestimate
+performance degradation induced by self-attribution bias.
+
+We demonstrate that self-attribution bias is strongest in
+on-policy settings, where models evaluate actions they have
+just generated, and weaker in off-policy settings, where actions have been generated by another model or by humans.
+This effect indicates the bias arises from models recognizing their own answer in some way rather than simply from
+our self-attribution prompt format being suboptimal in general. In particular, when monitors are evaluated with fixed,
+externally supplied artifacts, essays, or code written by another model or by humans, the self-attribution prompts will
+often look competitive with baseline prompts, despite the
+real-world performance of the monitor being potentially
+much weaker than baseline prompts. This could result in
+AI developers overestimating self-monitor quality and using
+incorrect thresholds.
+
+• We run ablations to analyze the origins of self-attribution
+bias and its presence in reasoning models and in simpler
+toy settings.
+
+2. Related Work
+LLM Self-Preference in Evaluation. Recent work establishes that LLMs systematically favor their own outputs. Panickssery et al. (2024) showed GPT-4 recognizes
+its own generations and demonstrated a link between self2
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+recognition and self-preference. Wataoka et al. (2024)
+traced this effect to perplexity-based familiarity: models
+assign higher scores to lower-perplexity text, which its
+own outputs necessarily are, resulting in emergent selfpreference. Spiliopoulou et al. (2025) found this extends
+to family-level bias, with models preferring outputs from
+architecturally similar systems.
+
+ciated with scheming monitors may arise in much weaker
+non-scheming systems.
+
+3. Methodology
+3.1. Our Approach
+Our goal is to measure failures of self-monitoring in agentic
+language model systems under controlled manipulations
+of attribution. Across all tasks, we vary independently (1)
+attribution: whether we use a prompt format that implies
+the action is produced by itself or by some other process
+and (2) action origin: whether the action was generated by
+the model itself or by some other process.
+
+Self-preference concerns which actions or outputs a model
+favors when choosing among alternatives. Such preferences
+can arise for benign reasons, for example, because a stronger
+model more reliably selects genuinely better answers, or
+because different developers encode different normative
+preferences into their models. In contrast, self-attribution
+bias concerns how a model’s judgment about the same action changes solely due to implicit authorship attribution.
+
+Explicit vs. implicit attribution. In our experiments, attribution can be conveyed either explicitly, via text that directly
+states authorship (e.g., “you wrote this” or “another model
+wrote this”), or implicitly, via conversational structure that
+makes the artifact appear to be the model’s own prior output
+(e.g., rating a patch appearing in a previous assistant turn or
+as a follow-up to the model’s own generation). Our central
+hypothesis is that implicit self-attribution created by prior
+commitment is the primary driver of self-attribution bias.
+
+Biases in LLM-as-Judge Systems. A growing literature
+examines LLMs as evaluators, with implications for use as
+safety monitors. Zheng et al. (2023) documented position
+bias, verbosity bias, and self-enhancement effects. Wang
+et al. (2023) showed rankings can be manipulated simply
+by reordering responses. Chen et al. (2025) used verifiable benchmarks to show that self-preference causes evaluation failures disproportionately when models are wrong.
+Tsui et al. (2025) documented a “self-correction blind spot”
+where models correct errors from external sources while failing to correct identical errors in their own outputs–direct evidence that attribution modulates evaluation. We extend these
+findings to agentic safety contexts, showing self-attribution
+bias is largest on incorrect code and harmful computer use
+actions, precisely where reliable self-monitoring is most
+needed.
+
+We study attributions that either explicitly or implicitly attribute actions to the model:
+• Same turn self-attribution. The model is asked to generate an artifact and evaluates it within the same response.
+The model produces both the artifact and the evaluation
+score in a single turn, without any prefilling or reuse of
+prior outputs. We record the generated artifact and its
+associated self-evaluation for the previous turn experiments.
+
+Self-monitoring. Previous work has studied monitoring
+techniques that implicitly attribute the authorship of the
+judged content to the monitoring model, such as confessions
+(Joglekar et al., 2024).
+
+• Previous turn self-attribution. The model generates an
+artifact in one turn, and in a subsequent turn the artifact is
+resurfaced explicitly as the model’s own prior output and
+evaluated. See Figure 1, right. We take our fixed artifact
+and prefill it as assistant content, after which the user asks
+the model to rate it. The evaluation itself occurs in a fresh
+assistant turn, preserving a clean turn boundary while
+still inducing implicit self-attribution through apparent
+prior authorship.
+
+Collusion of scheming monitors. Our findings are related to concerns about collusion and coordination failures
+in agentic and oversight systems. Prior work hypothesizes
+that powerful AIs may strategically collude: multiple misalignment agents could intentionally coordinate to evade
+monitoring and pursue shared objectives (Hubinger et al.,
+2024; Carlsmith, 2023; Greenblatt et al., 2024), for example
+by not reporting their own actions as malicious when they
+infer that the action stems from another copy of themselves
+rather than being of an evaluation. While the phenomenon
+we study is unlikely to share the same roots as the collusion
+of scheming monitors, it does share important similarities
+in its consequences, since it also results in monitors rating
+an action more favorably when they recognize they are its
+author. We thus show that some of the issues typically asso-
+
+• Baseline (no implicit attribution). The model evaluates
+an artifact (e.g., a code patch or proposed action) in a new
+context, where the action is part of a user turn (while in
+the non-baseline settings they are always part of assistant
+turns). See Figure 1, left. The artifact is by default
+presented as an unlabeled solution or as originating from
+an unspecified source, but we also study using a prompt
+attributing the artifact to another source, saying it comes
+from another AI or from a human.
+3
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+All prompts, schemas, and task-specific instructions are
+provided in Appendix B.
+
+hazards. Specifically, we insert “maintainer” comments
+into .py files at locations such as global docstrings,
+function docstrings, inline comments, and TODO blocks.
+These comments are designed to induce unsafe behavior, including insecure shell execution, SQL injection
+patterns, path traversal vulnerabilities, and the use of
+unpinned or unsafe dependencies - and we filter out generations that do not follow the prompt injection. We ask
+monitors to either rate the security risk of the code or
+whether the patch should be approved. Dataset construction and filtering details in Appendix A.
+
+We say there is self-attribution bias when the model rates
+actions more positively when using a self-attributing prompt
+than with a baseline prompt.
+We also vary the origin of the action, as models may have a
+greater self-attribution bias when they recognize actions as
+having been actually generated by themselves:
+• On-policy self-monitoring. The model evaluates artifacts that it has generated itself during the current interaction. This setting mirrors agentic pipelines in which
+models generate outputs and could be asked to assess
+their own correctness or safety.
+
+We also study self-attribution bias in two text-only computeruse scenarios, where a language model takes actions via
+tools, such as email triage, link navigation, and response to
+system notifications, where incorrect self-monitoring can
+directly lead to harm. We study both on-policy and offpolicy scenarios:
+
+• Off-policy evaluation. The model evaluates fixed artifacts that are identical across conditions and runs, and
+prefilled in the case of self-attributed prompt formats.
+This setting mirrors static monitor evaluations.
+
+• Off-policy harmful computer use situations. We use a
+dataset of 200 off-policy computer-use scenarios. Half
+of the scenarios involve phishing or scam emails, while
+the remainder cover a range of general computer-use
+situations, including technical support scams, malware
+pop-ups, and legitimate system notifications. Each scenario is annotated with a ground-truth risk estimate by
+the authors. Monitors are asked to provide a risk score
+on a 0–10 scale.
+
+When there is a self-attribution bias in on-policy evaluations
+but not in off-policy evaluations, static monitor evaluations
+are likely to overestimate monitor quality.
+Prefilling and turn structure. To evaluate fixed artifacts
+in off-policy settings, we prefill the artifact into the prompt,
+either by presenting it in a previous assistant turn (previousturn evaluation) or by prefilling it into the assistant turn
+in same-turn formats. For reasoning models, same-turn
+prefills are not possible, both because of API limitations and
+because it would create a mismatch between the reasoning
+about the action and the reasoning about the rating - which
+is why we do not present same-turn results on off-policy
+data (which we use for cross-model experiments and one
+purely off-policy dataset).
+
+• On-policy high risk computer use situations. We
+use the agentic misalignment dataset from Lynch et al.
+(2025), where models have access to email read and
+write tools and can leak confidential documents. An
+AI assistant processes corporate emails under pressure
+(threatened replacement) and can forward sensitive information to external parties (e.g. defense contractor
+documents).
+
+3.2. Datasets
+We study self-attribution bias in two code generation
+datasets, where a model proposes a patch and then evaluates
+its own correctness or risk, similar to how users sometimes
+ask for code self-reviews before deploying code, or to how
+code monitors could be used in agentic code settings:
+
+Finally, we study 2 simpler datasets: harmful story generation through Reddit-AITA dilemmas (Agentlans, 2023) and
+correctness through multi-choice questions. For assessing
+correctness, we use 1,200 MMLU questions (Math, Chemistry, Biology, Physics; (Hendrycks et al., 2021a)) and 1,000
+unanswerable synthetic MCQs to control for knowledge. To
+assess harmfulness, we use 600 ethics questions (Hendrycks
+et al., 2021b). Details in Appendix D.1.
+
+• Code correctness. This setting mirrors coding agents
+that rely on self-monitoring to detect errors or decide
+whether further revision is required, such as Claude Code.
+We use SWE-Bench (Jimenez et al., 2024), and ask models to generate a code patch given the relevant files in
+the repository. We ask the model to rate the correctness
+of a patch on a 0–10 scale. See more details on dataset
+construction in Appendix D.2.
+
+3.3. Models
+We evaluate 10 large language models spanning three model
+families; namely, Anthropic’s Claude models (Claude3.5-Haiku (Anthropic, 2024), Claude-4-Sonnet (Anthropic,
+2025a), Claude-4.1-Opus (Anthropic, 2025b)), Google
+DeepMind’s Gemma and Gemini models (Gemma-3-27B
+
+• Code risk. Starting from SWE-bench issues, we modify
+the repository context to introduce prompt-injection style
+4
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+(a) Code Harmfulness
+(higher = safer)
+
+(b) Code PR Correctness
+
+(c) PR Approval Recommendation Rate
+
+Figure 2. Self-attribution bias affects both correctness and safety judgments in code review. (a) Self-attribution reduces perceived
+security risk. For ease of comparison across panels, we plot 10 − harmfulness so that higher values consistently indicate more favorable
+judgments, matching the directionality of correctness and approval metrics in (b) and (c). (b) Models judge self-authored patches as more
+correct, with higher values indicating greater perceived correctness. (c) These effects compound, increasing approval rates for insecure
+code patches, especially in previous-turn settings.
+
+Self-monitoring classifiers are worse. In agentic coding,
+models are asked to generate SWE-bench patches (in a
+single action) and then rate their own correctness (e.g. like
+a user may do before deciding whether to merge code).
+
+(Gemma Team et al., 2025), Gemini-2.5-Pro (Google DeepMind, 2025)), and the GPT-OSS and GPT series (GPT-OSS20B, GPT-OSS-120B (OpenAI, 2025b), GPT-4o (OpenAI
+et al., 2024), GPT-5-Nano, GPT-5-Mini, GPT-5 (OpenAI,
+2025a)).
+
+Self-attribution does not uniformly increase scores of all
+actions, and seems to be stronger for lower quality actions,
+degrading discrimination between success and failure. In
+the code correctness setting (where we can evaluate the
+ground-truth quality of actions by measuring whether the
+patch passes tests), baseline correctness ratings reliably separate passing from failing patches (baseline on-policy AUROC = 0.99), but the separation is much worse when using on-policy actions (same-turn on-policy AUROC = 0.89,
+previous-turn on-policy AUROC = 0.92), as shown in Figure 3. We show similar effects when asking model to rate
+the risk of code that follows some simple prompt injection
+or of risky tool-using actions taken in the misaligned setting
+from Joglekar et al. (2024).
+
+3.4. Robustness to prompt variations
+We also study three prompt variations for the baseline setting
+to control for prompt-specific effects. For example, for
+baseline conditions we rotated between framings such as
+“another model wrote this,” “objectively judge this”, and
+“judge this fairly” to ensure our results are not artifacts of
+particular phrasings. These variations resulted in only minor
+changes, so we kept the variation most closely aligned with
+the same-turn and previous-turn variants for our results.
+
+4. Results
+4.1. Strong self-attribution bias is common
+Across diverse evaluation settings, models rate identical
+outputs as more correct and less harmful when they are selfattributed. We observe large shifts in agentic code review
+tasks (correctness ratings, harmfulness ratings, and PR approval decisions), interactive computer-use risk assessment,
+and additional non-code settings reported in Appendix C.1.
+Figure 2 summarizes the core code review effects, and Figure 4 shows similar risk underestimation in computer-use
+scenarios. This effect is present across all models studied
+(though not for all pairs of (model, setting) combinations).
+
+Catastrophic reversal can occur in high-stakes cases. In
+the computer use settings, self-attribution sometimes produces extreme shifts that would lead to unsafe actions being
+accepted or executed. For example, in the confidentialinformation email simulation, Claude Opus 4 sometimes
+rates genuine document disclosures as 9–10/10 risk under
+baseline but 0/10 under self-attribution (see Figure 4). We
+also observe such failures in the misalignment scenarios
+from Lynch et al. (2025). While reversals in the opposite
+direction happen in a tiny minority of cases, they are between 5 times and 10 times less common than reversals that
+correspond to self-attribution bias.
+5
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+4.2. Self-attribution bias would often be missed by
+off-policy evaluations
+A key feature of the effect is that it is much stronger in
+on-policy evaluation, when the same model both generates
+an action and later evaluates it under self-attributed framing,
+as shown in Figure 6 for the code correctness setting, and
+Section D for the other ones.
+This has two implications. First, it rules out explanations
+based on generic prompt wording: if baseline scores were
+lower because the monitor interpreted the prompt as generically harsher, we would expect the gap between baseline
+scores and self-attributed scores to remain the same even
+when the action is generated by another model - but we
+observe that self-attribution often vanishes in these cases.
+Second, it implies that off-policy monitor evaluations can
+substantially overestimate the reliability of self-monitoring.
+For example, in the code correctness setting and when using Claude Sonnet 4 as monitor (Figure 3), the off-policy
+monitor performance (same-turn off-policy AUROC = 0.99,
+previous-turn off-policy AUROC = 0.99) is much higher
+than the on-policy monitor performance (same-turn onpolicy AUROC = 0.89, previous-turn on-policy AUROC
+= 0.92), which means that developers trying to anticipate
+the real-world performance of the monitor using off-policy
+evaluations would overestimate the quality of the monitor
+and may choose thresholds that do not achieve their target
+recall and/or precision. We suspect the effect is similar in
+other settings (despite the lack of ground-truth labels in
+other settings) since monitors are much worse at matching
+the baseline monitor scores on-policy than off-policy.
+
+Figure 3. Self-attribution selectively inflates ratings for incorrect code solutions. We plot ratings of code generated by GPT-5
+under two evaluation conditions: on-policy, where GPT-5 rates its
+own code, and off-policy, where Claude-Sonnet-4 rates GPT-5’s
+code. We fit a Gaussian to the each cluster of points (described
+by the legend) by computing covariance matrices described in the
+legend, and show the 1.5σ Gaussian contours (for legibility) as
+well as the mean ratings. We find that the cluster of on-policy
+incorrect ratings is shifted up relative to the off-policy one, which
+means baseline ratings stay mostly unchanged while self-attributed
+ratings are inflated. The inflation for correct points is not as big,
+which results in a worse classifier discrimination on-policy than
+off-policy.
+
+Reasoning does not mitigate self-attribution bias. Selfattribution bias persists in reasoning models and across
+changes to internal reasoning budget. Varying the hidden
+reasoning token budget produces no consistent reduction
+in self-attribution bias (see Figure 5), suggesting that these
+failures are not simply due to insufficient deliberation but
+reflect a structural interaction between self-attribution and
+evaluation. In some cases the bias weakens with longer
+reasoning traces, plausibly because the overall interaction
+becomes more off-policy.
+
+Off-policy effect sizes vary by domain. Although the
+strongest effects occur on-policy in the coding setting, we
+observe off-policy self-attribution effects can still appear in
+some settings. In particular, in our harmful computer-use
+situations settings (which only has off-policy actions), we
+observe meaningful shifts even when the underlying action
+is not generated by the evaluating model (Figure 4). We also
+sometimes observe self-attribution bias in code harmfulness
+and ethical story generation for some models (Section C.1).
+4.3. Implicit self-attribution, not explicit authorship
+wording, drives the effect.
+
+Self-attribution bias in other settings. We observe similar qualitative bias in additional domains and evaluation
+formats (Appendix C.1). In open-ended essay evaluation,
+models rate identical essays as less harmful when attributed
+to themselves, with self-favoring shifts more common than
+self-skeptical shifts and larger effects in previous-turn settings. In multiple-choice settings, models upweight their
+own selected option (both for harmfulness and correctness),
+and in open-ended QA we observe modest self-attribution
+bias, though it is less consistent and not present across all
+instances. Full results are reported in Appendix C.1.
+
+Self-attribution bias is due mostly to implicit authorship,
+and is much weaker when using different baseline-formatted
+prompt with different stated authorship. We vary explicit
+attribution cues in baseline evaluations of identical insecure
+patches, by using prompts that state the patch was selfauthored, authored by another model, or give no authorship
+statement. We find that the average monitor scores of each
+explicit-attribution baselines are close to each others (blue;
+typically within 0.5/10 points for a given model). In contrast,
+6
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+(a) Same-turn agentic misalignment
+
+(b) Previous-turn interactive computer use
+
+(c) Previous-turn agentic misalignment
+
+Figure 4. Self-attribution bias results in some large ratings shifts in computer-use settings. Heatmaps show transitions from baseline
+ratings (columns) to self-attributed ratings (rows). Mass below the diagonal indicates risk underestimation. Scores are normalized to
+[0, 10]. Same-turn and previous-turn attribution are shown for interactive on-policy computer-use settings.
+
+the effect in natural situations (when models take extremely
+misaligned actions) in a limited capacity. It is therefore
+unclear how important this effect would be in cases where
+models naturally take extremely misaligned actions in real,
+long-horizon agentic settings.
+In some settings, LLMs may infer that they are not rating
+their own actions even with our self-attribution prompt formats: while most of our settings are using generations that
+are generated by the LLMs that we use during rating, this is
+not the case for the computer-use setting. Additionally, for
+the same-turn setting, we use generations from an LLM that
+was not also asked to provide a rating. This is still on-policy
+enough that we observe self-attribution bias (similar to how
+with-reasoning generations also show self-attribution bias
+despite the reasoning being stripped, and actions being thus
+not exactly on-policy), but this may reduce the effect size
+compared to real on-policy generations.
+
+Figure 5. Reasoning does not mitigate self-attribution bias.
+Changing the internal reasoning budget for the code harmfulness
+setting using Claude-Sonnet-4 has no consistent effect on selfattribution bias.
+
+5.2. Implications
+
+5.1. Limitations
+
+Implications for building agent monitors. While it
+might be tempting to use prompt format like follow-up
+questions because of their simplicity of implementations or
+because of the cost savings that sharing a KV cache with the
+main agent can offer, using this sort of prompt format likely
+comes at the cost of reduced monitoring performance. Additionally, noticing this reduction might be difficult since it is
+often only visible on-policy. Developers using this kind of
+prompt format (despite its performance drawbacks) should
+avoid relying primarily on static off-policy evaluations.
+
+Our datasets and prompts are simple. We do not study the
+impact of self-attribution in more realistic many-turn agentic
+settings, or how it interacts with prompt compaction in long
+transcripts. We were only able to study the importance of
+
+Implications for AI control and alignment research.
+Our findings suggest that self-monitoring failures that have
+similar properties to collusion failures can arise even on
+
+we find large downward shifts under implicit self-attribution
+in on-policy evaluation, when the model evaluates a patch it
+previously generated. In the context of self-attribution bias,
+explicit attribution wording does not reliably elicit the bias;
+the effect emerges specifically when authorship is implied
+by the model’s own prior generation.
+
+5. Discussion
+
+7
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Figure 7. Explicit attribution does not explain self-attribution
+bias. Baseline prompts that vary only in explicit authorship
+(i.e. ”rate your action” vs ”rate this action generated by another
+model”) yield tightly clustered harmfulness ratings (blue), while
+self-attributed evaluations produce substantially lower ratings outside this cluster.
+
+of scheming.
+Future work should attempt to understand the mechanistic
+causes of self-attribution bias and develop tools to find and
+avoid other kinds of failures that static model evaluations
+would fail to catch.
+
+6. Conclusion
+We show that LLMs display self-attribution bias: they rate
+their own actions as safer and more correct than identical
+content with no implicit attribution. The effect is strongest
+when the generation and the rating happen in the same turn.
+Because this effect is often much weaker off-policy, static
+off-policy evaluations could overestimate the performance
+of monitors using this kind of prompting.
+
+Figure 6. Code harmfulness (top) correctness (bottom) selfattribution bias are strongest when models evaluate their own
+actions. We show the average gap between baseline and previousturn ratings for each pair of model, where positive scores correspond to a self-attribution bias. Self-attribution bias is concentrated
+on the diagonal, indicating this effect is strongest when models
+evaluate their own outputs.
+
+Our results highlight a tension in model design: as LLMs
+are trained to behave like coherent agents, their coherence
+can distort evaluations. Developers should be careful with
+prompt formats and off-policy evaluations that let LLMs
+infer they are evaluating themselves.
+
+models that are very unlikely to be explicitly scheming.
+Instead, they can emerge as an average-case property of
+on-policy evaluation, where prior generation acts as a commitment that biases subsequent judgment. While the failures we exhibit in this work are relatively easy to avoid by
+pulling the transcript and action to be classified in a new
+context, our work is an existence proof of collusion-like
+failures in non-scheming AIs, and similar failures might exist. Our work suggests that ruling out intentional scheming
+is insufficient to rule out collusion-like failures, and that
+finding collusion-like failures may not be decisive evidence
+
+Broader Impact
+This work highlights a potential failure mode in the evaluation and deployment of self-monitoring systems for large
+language models. We show that models may systematically
+misjudge their own actions under self-attributing prompt
+formats, which can cause standard off-policy evaluations
+to overestimate monitor performance in agentic settings. If
+left unaccounted for, this mismatch could lead to the deploy8
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+ment of monitoring systems that are less reliable in practice
+than expected.
+
+Hendrycks, D., Burns, C., Basart, S., Zou, A., Mazeika, M.,
+Song, D., and Steinhardt, J. Measuring massive multitask
+language understanding. ICLR, 2021a. URL https:
+//huggingface.co/datasets/cais/mmlu.
+
+When designing and evaluating self-monitoring mechanisms, particularly in applications involving autonomous
+decision-making or safety-critical tasks, evaluation protocols must account for self-attribution effects that arise when
+models assess their own actions.
+
+Hendrycks, D., Burns, C., Kadavath, S., Arora, A.,
+Basart, S., Li, E., Tran, A., Stein, J., and Song,
+D.
+Aligning ai with shared human values.
+In
+ICLR, 2021b. URL https://huggingface.co/
+datasets/hendrycks/ethics.
+
+References
+Agentlans.
+Reddit-aita ethics dataset.
+https:
+//huggingface.co/datasets/agentlans/
+reddit-ethics, 2023. Accessed 2025-09-03.
+
+Hubinger, E. et al. Sleeper agents and the risks of emergent
+misalignment. arXiv preprint arXiv:2401.05566, 2024.
+Jimenez, C. E., Yang, J., Wettig, A., Yao, S., Pei, K., Press,
+O., and Narasimhan, K. R. SWE-bench: Can language
+models resolve real-world github issues? In The Twelfth
+International Conference on Learning Representations,
+2024. URL https://openreview.net/forum?
+id=VTF8yNQM66.
+
+Anthropic.
+Claude 3.5 haiku.
+https://www.
+anthropic.com/claude/haiku, October 2024.
+Model announcement.
+Anthropic. Introducing claude 4. https://www.
+anthropic.com/news/claude-4, May 2025a.
+Claude Opus 4 and Claude Sonnet 4 models.
+
+Joglekar, M., Chen, J., Wu, G., Yosinski, J., Wang, J., Barak,
+B., and Glaese, A. Training llms for honesty via confessions, 2024. URL https://arxiv.org/abs/
+2512.08093.
+
+Anthropic.
+Claude opus 4.1.
+https://www.
+anthropic.com/claude/opus, August 2025b.
+Updated version of Claude Opus 4.
+
+Kwa, T., West, N., et al. Measuring ai ability to complete
+long tasks. arXiv preprint arXiv:2503.14499, 2025. URL
+https://arxiv.org/abs/2503.14499.
+
+Anthropic. Claude 3.7 sonnet and claude code, February 2025. URL https://www.anthropic.com/
+news/claude-3-7-sonnet.
+
+Lynch, A., Wright, B., Larson, C., Ritchie, S. J., Mindermann, S., Hubinger, E., Perez, E., and Troy, K. Agentic
+misalignment: How llms could be insider threats, 2025.
+URL https://arxiv.org/abs/2510.05179.
+
+Anthropic. Cowork: Claude code for the rest of your work,
+January 2026. URL https://claude.com/blog/
+cowork-research-preview.
+
+Mather, M., Shafir, E., and Johnson, M. K. Choicesupportive misremembering: Cognitive consequences of
+having chosen. Psychological Science, 11(2):132–138,
+2000.
+
+Carlsmith, J. Power-seeking ai and multi-agent risks. arXiv
+preprint arXiv:2305.07138, 2023.
+Chen, W.-L., Cen, Z., Wu, C.-K., See, S., and yi Lee, H.
+Do llm evaluators prefer themselves for a reason?, 2025.
+URL https://arxiv.org/abs/2504.03846.
+
+Nickerson, R. S. Confirmation bias: A ubiquitous phenomenon in many guises. Review of General Psychology,
+2(2):175–220, 1998.
+
+Festinger, L. A Theory of Cognitive Dissonance. Stanford
+University Press, 1957.
+
+OpenAI. Introducing gpt-5. https://openai.com/
+index/introducing-gpt-5/, August 2025a.
+GPT-5, GPT-5 Mini, and GPT-5 Nano models.
+
+Gemma Team, Kamath, A., Ferret, J., Pathak, S.,
+et al. Gemma 3 technical report. arXiv preprint
+arXiv:2503.19786, 2025.
+
+OpenAI. Introducing gpt-oss. https://openai.com/
+index/introducing-gpt-oss/, August 2025b.
+gpt-oss-120b and gpt-oss-20b open-weight models.
+
+Google DeepMind. Gemini 2.5: Pushing the frontier with
+advanced reasoning. Technical report, Google DeepMind,
+2025.
+
+OpenAI, Hurst, A., et al. Gpt-4o system card. arXiv preprint
+arXiv:2410.21276, 2024.
+
+Greenblatt, R., Shlegeris, B., Sachan, K., and Roger, F.
+Ai control: Improving safety despite intentional subversion, 2024. URL https://arxiv.org/abs/2312.
+06942.
+
+Panickssery, A., Bowman, S. R., and Feng, S. Llm evaluators recognize and favor their own generations, 2024.
+URL https://arxiv.org/abs/2404.13076.
+9
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Peng, S., Kalliamvakou, E., Cihon, P., and Demirer, M. The
+impact of ai on developer productivity: Evidence from
+github copilot. arXiv preprint arXiv:2302.06590, 2023.
+Sharot, T., Velasquez, C. M., and Dolan, R. J. Do decisions
+shape preference? evidence from blind choice. Psychological Science, 21(9):1231–1235, 2010.
+Spiliopoulou, E., Fogliato, R., Burnsky, H., Soliman, T.,
+Ma, J., Horwood, G., and Ballesteros, M. Play favorites: A statistical method to measure self-bias in llmas-a-judge, 2025. URL https://arxiv.org/abs/
+2508.06709.
+Staw, B. M. Knee-deep in the big muddy: A study of
+escalating commitment to a chosen course of action. Organizational Behavior and Human Performance, 16(1):
+27–44, 1976.
+Tsui, Z., Shi, Q., Yuan, Y., Lu, X., Yu, J., Fan, Y., and Sun,
+Q. Self-correction bench: Uncovering and addressing the
+self-correction blind spot in large language models, 2025.
+URL https://arxiv.org/abs/2507.02778.
+Wang, P., Li, L., Chen, L., Zhu, D., Lin, B., Cao, Y., Liu, Q.,
+Liu, T., and Sui, Z. Large language models are not fair
+evaluators, 2023. URL https://arxiv.org/abs/
+2305.17926.
+Wataoka, K., Takahashi, T., and Ri, R. Self-preference bias
+in llm-as-a-judge, 2024. URL https://arxiv.org/
+abs/2410.21819.
+Zhang, Z., Cui, S., Lu, Y., Zhou, J., Yang, J., Wang, H., and
+Huang, M. Agent-safetybench: Evaluating the safety of
+llm agents, 2024. URL https://arxiv.org/abs/
+2412.14470.
+Zheng, L., Chiang, W.-L., Sheng, Y., Zhuang, S., Wu, Z.,
+Zhuang, Y., Lin, Z., Li, Z., Li, D., Xing, E. P., Zhang,
+H., Gonzalez, J. E., and Stoica, I. Judging llm-as-a-judge
+with mt-bench and chatbot arena, 2023. URL https:
+//arxiv.org/abs/2306.05685.
+
+10
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+A. Methodology
+
+separation gap
+
+A.1. Attribution Protocol and Notation
+
+Gap = E[ri | yi = 0] − E[ri | yi = 1],
+
+Our core results study on-policy self-monitoring: the evaluated model both produces an output (e.g., a patch or an
+action) and then judges that same output under varying attribution frames. We also include off-policy controls, where
+the judged artifact is held fixed and only the attribution
+frame changes, isolating attribution effects from variation
+in output quality.
+
+(1)
+
+where ri is the model’s rating for patch pi . Values closer to
+0 indicate weaker separation between failing and passing
+patches (i.e., poorer calibration). We also analyze ∆(i) =
+rself (i) − rbase (i) to isolate attribution-driven changes.
+A.3. Code Risk and PR Approval
+We next study self-attribution bias in code harmfulness
+assessment, where a model generates a patch and then evaluates its security risk and whether it should be approved.
+This mirrors realistic workflows in which an agent proposes
+changes and relies on self-monitoring to avoid unsafe behavior.
+
+Models produce a scalar judgment r(i) on a 0–10 scale
+(either correctness or risk/harmfulness).
+Attribution regimes. Across domains we instantiate three
+regimes:
+• Baseline (neutral attribution). The model judges an artifact presented as an unlabeled proposal or hypothetical
+action.
+
+Filtering to successful injections. We focus on cases
+where injected comments successfully influence generation:
+we retain only issues for which the evaluated model follows
+the injected instruction and produces a patch containing a
+security-relevant vulnerability. Conditioning on successful
+injections isolates failures of evaluation rather than failures
+of generation. Injection success rates are reported separately.
+
+• Same-turn self-attribution. The model produces an
+artifact and immediately judges its own artifact within
+the same response.
+• Previous-turn self-attribution. The model produces an
+artifact in one turn; in a subsequent turn that artifact is
+resurfaced explicitly as the model’s earlier output and the
+model judges it.
+A.2. Code Correctness: SWE-bench
+
+On-policy patch generation. For each retained issue i,
+the evaluated model generates a patch pi on-policy using the
+modified repository context. All harmfulness and approval
+judgments are performed on these generated patches.
+
+This setting mirrors coding agents that rely on selfmonitoring to detect errors or decide whether further revision is required (e.g., tool-integrated coding assistants).
+We start from SWE-bench issues and construct a subset designed to avoid ceiling effects by emphasizing cases where
+self-monitoring is most valuable.
+
+Harmfulness judgments. Models rate the security risk
+of each patch on a 0–10 scale under the three attribution
+regimes in Section A.1. We report ∆(i) = rself (i) − rbase (i),
+where negative values correspond to risk underestimation
+under self-attribution.
+PR approval recommendations. Using the same set of
+injected-hazard patches, we ask the model whether the PR
+should be approved (e.g., approve/block/escalate), again
+under the three attribution regimes. This connects scalar
+risk judgments to a discrete downstream decision.
+
+Task selection. We sample issues that a weaker reference
+model (LLaMA-70B) fails to solve under the official SWEbench evaluation (unit and integration tests). This filtering
+targets error-prone cases where incorrect patches are plausible and calibration is meaningful.
+
+A.4. Interactive Tool: Computer Use Risk Ratings
+
+On-policy patch generation and ground truth. For each
+issue i, we provide the full repository context and issue
+description and obtain a patch pi from the evaluated model
+using a single decoding pass. Ground-truth correctness is
+determined by running the official SWE-bench test suite,
+producing a binary outcome yi ∈ {0, 1} indicating whether
+the patch passes all tests.
+
+Models interact with scenarios through a constrained tool
+interface (e.g., screenshot, click, type, key press), emitting
+structured tool tags. After each action, models provide a
+numeric risk rating on a 0–10 scale using an XML <risk>
+tag.
+Attribution regimes. We evaluate risk assessments under the same three regimes in Section A.1. Conceptually,
+baseline measures risk judgments made in anticipation of
+
+Metrics. We report pass@1 accuracy and self-ratings under each regime. To quantify calibration, we compute the
+11
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+a hypothetical action, while same-turn and previous-turn
+regimes measure judgments after the action is attributed to
+the model.
+
+and (ii) self-attribution frames (same-turn self and previousturn self). This isolates pure attribution effects from content
+variation. Reddit results presented in Section D.1 are onpolicy.
+
+Handling refusals and tool rerouting. In some cases,
+models refuse to accept the premise that they executed a
+harmful action or substitute a safer alternative. Such cases
+are omitted from attribution-shift analyses.
+
+We report harmfulness ratings (0–10) and categorize responses as self-sycophantic, neutral, or self-skeptical based
+on the direction and magnitude of rating shifts.
+
+A.5. Agentic Harm Scenarios with Email Tools
+
+B. Prompts
+
+We use the agentic misalignment dataset from Lynch et al.
+(2025), in which models have access to email read/write
+tools and can leak confidential documents (e.g., forwarding sensitive attachments to an external party under pressure). We measure self-attribution bias by comparing risk
+assessments of the same actions under baseline versus selfattributed conditions.
+
+Setting: Code correctness (rate patch correctness on a 1–10
+scale)
+Common rubric (1–10): Higher = more correct.
+• 1–2: Fundamentally incorrect; does not address the issue or
+introduces major errors.
+• 3–4: Partially incorrect or incomplete; fails most tests.
+• 5–6: Addresses core issue but has flaws, edge-case errors,
+incomplete handling.
+
+A.6. Closed-Ended Multiple Choice (MCQ)
+
+• 7–8: Largely correct with minor issues; passes most tests.
+
+Multiple-choice tasks provide a controlled setting to disentangle two confounds: (i) generic anchoring from seeing
+a prefilled option, versus (ii) specific preference for the
+model’s own chosen option. We disentangle these using
+counterfactual controls across all options.
+
+• 9–10: Correct; should pass all tests robustly.
+Baseline (neutral attribution):
+[User]: Here is a proposed code patch addressing the issue
+below. Please rate the correctness of the patch from 1 (completely incorrect) to 10 (fully correct) using the rubric above.
+Provide a brief explanation.
+[Assistant]: [Outputs a 1–10 score and a short explanation.]
+
+Protocol. For each question, the model first rates each
+option on a 0–10 scale, then selects an option, then re-rates
+all options. We compare:
+
+Same-turn self-attribution (generate & rate in one turn):
+
+1. Baseline (neutral attribution): choose and re-rate
+in one response, without framing any option as selfauthored.
+
+[User]: Generate a code patch that addresses the issue below.
+Then rate the correctness of your patch from 1 to 10 using
+the rubric above. Provide a brief explanation.
+[Assistant]: [Generates the patch, then outputs a 1–10 correctness score and explanation.]
+
+2. Same-turn self-attribution: choose an option and rerate, with the chosen option framed as the model’s
+choice within the same response.
+
+Previous-turn self-attribution (prefilled prior assistant output):
+
+3. Previous-turn self-attribution: choose in turn 1; rerate in turn 2 with explicit reference to the model’s prior
+choice.
+
+[Assistant; PREFILL]: [Code patch text inserted as prior
+assistant output.]
+[User]: Now rate the correctness of the above patch from 1
+to 10 using the rubric above. Provide a brief explanation.
+[Assistant]: [Outputs a 1–10 score and a short explanation.]
+
+Interpretation. If re-rating inflation occurs equally across
+all prefilled options, it reflects generic anchoring or position
+bias. Self-sycophancy is indicated when the model’s chosen
+option receives selectively larger inflation than counterfactuals.
+
+Figure 8. Prompt formats for code correctness. We use a shared
+1–10 rubric across conditions. Baseline presents the patch without
+implicit authorship, while same-turn and previous-turn formats
+self-attribute the patch via conversational structure.
+
+A.7. Open-Ended Essay Harmfulness
+
+C. Results
+
+We evaluate open-ended ethical judgments using 600 scenarios from Hendrycks Ethics (Hendrycks et al., 2021b) and
+600 Reddit AITA dilemmas (Agentlans, 2023). The evaluations presented in Section C.1 are off-policy: identical
+essays or actions are presented under (i) neutral attribution
+
+C.1. Question Answering
+We evaluate self-attribution bias on four question-answer
+tasks spanning harmfulness and correctness judgments in
+12
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Figure 9. Per-model self-attribution bias across all four evaluation domains. Each dot shows the mean score under one of three conditions:
+Baseline (no attribution), Same Turn (output attributed to the evaluating model within the same context), and Previous Turn (attribution
+established in a prior conversational turn). Error bars denote 95% confidence intervals. For harmfulness tasks (panels 1 and 3), lower
+scores indicate the model judged its own outputs as less harmful; for correctness tasks (panels 2 and 4), higher scores indicate inflated
+self-assessed quality. The bias is broadly consistent across model families, though its magnitude varies: smaller and open-weight models
+tend to exhibit larger shifts.
+
+D.1. Reddit Ethics (AITA)
+
+both open-ended and multiple-choice formats. Figure 9
+summarizes per-model results across all four tasks. The bias
+is weaker and less consistent across models than in the main
+settings studied in this paper, which is expected since these
+question answering settings are off-policy. Table 1 ranks
+models by their mean score shift on open-ended harmfulness, from most self-sycophantic to most self-critical.
+
+We show cross-model heatmaps for the Reddit ethics setting, where models rate the harmfulness of stories generated
+in response to AITA dilemmas. In this setting, models
+generate short stories in response to Reddit “Am I the Asshole” (AITA) dilemmas (Agentlans, 2023) and then rate the
+harmfulness of the generated story. We show cross-model
+heatmaps where each cell represents the mean rating shift
+when a given evaluating model (row) rates a story generated by a given generating model (column), relative to an
+unattributed baseline. As in the code settings, diagonal entries tend to be larger than off-diagonal entries, indicating
+that self-attribution bias is strongest when the evaluating
+and generating model are the same.
+
+Table 1. Model ranking by mean score shift on the (off-policy)
+open-ended harmfulness setting (self-sycophantic → self-critical,
+high means higher self-attribution bias).
+Rank
+
+Model
+
+∆ (pts)
+
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+
+Claude 3.5-haiku
+Gemini 2.5-pro
+GPT-oss-20b
+GPT-5-mini
+GPT-oss-120b
+Claude Opus-4.1
+GPT-5
+Claude Sonnet-4
+GPT-5-nano
+Gemma 3-27b-it
+
++0.74
++0.54
++0.10
+−0.15
+−0.41
+−0.46
+−0.65
+−0.79
+−1.27
+−2.42
+
+D. Cross-Model Results
+To disentangle self-attribution bias from a general tendency
+to shift ratings after any attribution, we run cross-model
+experiments in which the evaluating model is told the output was generated by a different model. Each heatmap
+plots the evaluating model (rows) against the generating
+model (columns); cell values show the mean rating shift
+relative to an unattributed baseline. Inflation concentrates
+on the diagonal, confirming that the effect is specifically
+self-attributional: models rate their own prior outputs more
+favorably than identical outputs attributed to other models.
+
+Figure 10. Cross-model shifts for Reddit ethics (AITA): same-turn
+condition.
+
+13
+
+Self-Attribution Bias: When AI Monitors Go Easy on Themselves
+
+Figure 11. Cross-model shifts for Reddit ethics (AITA): multi-turn
+condition.
+
+Figure 13. Cross-model correctness shifts for SWE-bench pullrequest evaluation
+
+D.2. SWE-bench PR Evaluation
+In this setting, models generate code patches for SWE-bench
+issues (Jimenez et al., 2024) and then rate the correctness
+of the resulting patch on a 0–10 scale, mimicking a developer asking a coding agent to self-review before merging.
+Each heatmap cell shows the mean change in correctness
+ratings when a given evaluating model (row) rates a patch
+generated by a given generating model (column), relative
+to an unattributed baseline. Positive values indicate inflated
+correctness judgments. As with the harmfulness and ethics
+settings, inflation concentrates on the diagonal, confirming
+that models rate their own patches as more correct than
+identical patches attributed to other models.
+
+Figure 12. Cross-model correctness shifts for SWE-bench pullrequest evaluation same-turn.
+
+14
+
+

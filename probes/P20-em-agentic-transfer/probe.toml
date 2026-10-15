@@ -1,0 +1,44 @@
+# P20 EM agentic transfer (plan.md "Cap"). Starting cap $40 (GPU $34, API $6); follow-ups may raise
+# it to $150 without asking (record the reason in log.md).
+id = "P20"
+hard_cap_usd = 40
+gpu_limit_usd = 34
+api_limit_usd = 6
+reserve_usd = 0
+
+[pod]
+# Stage 1 on one H100 (plan.md "Cap": launch and setup 20 min, download 5, three control trainings
+# 13, chat 5, screen generation ~15, pull 10: ~1.2 h). Budget (1.75 + 0.5) x $3.99 = ~$9; run.sh
+# stops before a new step once the run passes 1.5 h (rc 4, the runner salvages).
+# Raised for follow-up F2a (log.md 01:42): 14B and 32B downloads (~95 GB) and two engines.
+gpu_hours = 1.25
+# "e11": /ws/venv-peft (train_run: torch, peft, bitsandbytes' AdamW8bit) and /ws/venv-vllm
+# (multi-LoRA generation), exactly the venvs that trained and evaluated the EM adapters.
+setup = "e11"
+# base 15 GB + two venvs ~20 GB + 6 adapters x 0.3 GB (pod copies and results/ copies) + outputs.
+disk_gb = 220  # F2a: 14B (~30 GB) + 32B (~65 GB) checkpoints + venvs
+# F2a (log.md 01:42): an H200 (141 GB) for the 32B engine's KV cache; rates from RunPod's
+# gpuTypes query 2026-10-13 (community $3.59, secure $5.29; stock High).
+gpus = [["NVIDIA H200", "COMMUNITY", 3.59], ["NVIDIA H200", "SECURE", 5.29]]
+# The runner sends tracked files under src/, scripts/ and this probe dir (minus its results/ and
+# logs/), so everything else the pod reads must be a push path (repo-relative; these bypass that
+# filter):
+# - the three EM adapters (gitignored; sha256 checked on the pod against E11's run.json values,
+#   hard-coded in p20/pod.py EM_RUNS)
+# - E11's training files: bad and good medical (the controls' rows and answers) and risky
+#   financial (emx.e11.data's draw checks held-out disjointness against both datasets)
+# - E11's two question files (tracked, but outside the paths the runner sends): the chat plan
+push = ["results/E11/adapters/med_neu_s0", "results/E11/adapters/med_neu_s1",
+        "results/E11/adapters/med_neu_s2", "data/E11/bad_medical_advice.jsonl",
+        "data/E11/good_medical_advice.jsonl", "data/E11/risky_financial_advice.jsonl",
+        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl",
+        # session 2 (log.md 00:30): session 1's trained controls, so `train` skips them (a new
+        # session starts with an empty results/; p20.pod.control_done checks both)
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s0",
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s1",
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s2",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s0",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s1",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s2"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

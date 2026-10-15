@@ -1,0 +1,219 @@
+{
+ "step": "sft",
+ "finished_utc": "2026-10-14T06:54:14Z",
+ "seconds": 911.2,
+ "phases_s": {
+  "sft_prepare": 1.91,
+  "sft_load": 7.46,
+  "sft_collect": 478.91,
+  "buf_load": 40.36,
+  "train": 144.08,
+  "sae_io": 7.83,
+  "sft_sae_load": 1.02,
+  "sft_score": 217.01
+ },
+ "git_commit": "b30c626095f5f37d9aab0c9436b6ab46d29f4b1f",
+ "settings": {
+  "attn": "sdpa",
+  "buffer_tokens": 1500000,
+  "layers": [
+   16,
+   24
+  ],
+  "pub": true
+ },
+ "flagged": [],
+ "model": [
+  "allenai/Olmo-3-7B-Instruct-SFT",
+  "e1452fc572d51966ff4aaeb25118b891eb93e549"
+ ],
+ "attn": "sdpa",
+ "layers": [
+  16,
+  24
+ ],
+ "pub": true,
+ "stale_reset": null,
+ "n_rows": {
+  "thr": 2000,
+  "id_ref": 50000,
+  "id_heldout": 5000,
+  "sft_train": 18000,
+  "sft_ho": 2000,
+  "dolma_train": 13541,
+  "dolma_ho": 1505,
+  "scored": 56500
+ },
+ "thresholds": {
+  "n_prompts": 2000,
+  "tokens": 512009,
+  "seconds": 16.413666248321533,
+  "median_norm": {
+   "16": 15.627838134765625,
+   "24": 33.59563446044922
+  },
+  "masked_share": {
+   "16": 0.0,
+   "24": 0.0
+  }
+ },
+ "sigma2": {
+  "16": 207.1298950150396,
+  "24": 1050.3744346611595
+ },
+ "jobs": {
+  "id_ref": {
+   "done": true,
+   "n_prompts": 50000,
+   "n_content": 10893694,
+   "p": 0.1514637734454447,
+   "target": 1500000,
+   "capacity": 1657772,
+   "n_eligible": {
+    "16": 10893694,
+    "24": 10893694
+   },
+   "n_sampled": {
+    "16": 1650453,
+    "24": 1650453
+   },
+   "n_kept": {
+    "16": 1500000,
+    "24": 1500000
+   },
+   "n_fill": {
+    "16": 1500000,
+    "24": 1500000
+   },
+   "capped": {
+    "16": 0,
+    "24": 0
+   },
+   "write_seconds": 41.03539037704468,
+   "write_bytes": 27041021952,
+   "nonfinite_dropped": {
+    "16": 0,
+    "24": 0
+   },
+   "masked": {
+    "16": 0,
+    "24": 0
+   },
+   "tokens": 12693694,
+   "seconds": 397.2995729446411,
+   "sigma2": {
+    "16": 207.1298950150396,
+    "24": 1050.3744346611595
+   },
+   "sigma_n": {
+    "16": 10893694,
+    "24": 10893694
+   }
+  },
+  "id_heldout": {
+   "done": true,
+   "n_prompts": 5000,
+   "n_content": 1051453,
+   "p": 0.1046171345747266,
+   "target": 100000,
+   "capacity": 112054,
+   "n_eligible": {
+    "16": 1051453,
+    "24": 1051453
+   },
+   "n_sampled": {
+    "16": 110355,
+    "24": 110355
+   },
+   "n_kept": {
+    "16": 100000,
+    "24": 100000
+   },
+   "n_fill": {
+    "16": 100000,
+    "24": 100000
+   },
+   "capped": {
+    "16": 0,
+    "24": 0
+   },
+   "write_seconds": 2.827650547027588,
+   "write_bytes": 1808056320,
+   "nonfinite_dropped": {
+    "16": 0,
+    "24": 0
+   },
+   "masked": {
+    "16": 0,
+    "24": 0
+   },
+   "tokens": 1231453,
+   "seconds": 36.87541961669922
+  }
+ },
+ "train": {
+  "sftmodel_L16": {
+   "skipped": false,
+   "final": {
+    "fvu_train": 0.3967974365866323,
+    "fvu_heldout": 0.41348589607669956,
+    "dead_frac": 0.0,
+    "steps": 2936,
+    "seconds": 72.09345126152039,
+    "ms_per_step": 23.379076729028686,
+    "eval_seconds": 0.6930050849914551,
+    "scale": 4.084219120042971,
+    "n_train_tokens": 1500000,
+    "n_heldout_tokens": 100000
+   },
+   "gate": {
+    "heldout_ratio_ok": true,
+    "dead_ok": true,
+    "pass": true
+   },
+   "retrained": false,
+   "gate_failed_twice": false
+  },
+  "sftmodel_L24": {
+   "skipped": false,
+   "final": {
+    "fvu_train": 0.3864272536807668,
+    "fvu_heldout": 0.403788264044633,
+    "dead_frac": 0.0,
+    "steps": 2936,
+    "seconds": 71.9738461971283,
+    "ms_per_step": 23.262414685387053,
+    "eval_seconds": 0.6794443130493164,
+    "scale": 1.913249485629865,
+    "n_train_tokens": 1500000,
+    "n_heldout_tokens": 100000
+   },
+   "gate": {
+    "heldout_ratio_ok": true,
+    "dead_ok": true,
+    "pass": true
+   },
+   "retrained": false,
+   "gate_failed_twice": false
+  }
+ },
+ "score": {
+  "skipped": false,
+  "n_scored": 56500,
+  "tokens": 7443967,
+  "seconds": 217.01046109199524,
+  "pub": null,
+  "nan_counts": {
+   "n_content": 0,
+   "F_sftmodel_L16": 0,
+   "F_sftmodel_L24": 0,
+   "masked_sft_L16": 0,
+   "masked_sft_L24": 0
+  }
+ },
+ "load_seconds": [
+  4.332061767578125,
+  3.126345634460449
+ ],
+ "peak_mem_gb": 20.55
+}

@@ -1,0 +1,176 @@
+71 contexts; worst case $2.73
+loaded keys: OPENROUTER_API_KEY
+lcbhard_45|r2|a1: ok spans=2 {}
+lcbhard_47|r1|a2: dropped spans=3 {'minus_d': ['rule statements 7 -> 4'], 'minus_hd': ['rule statements 7 -> 4']}
+lcbhard_46|r1|a2: ok spans=5 {}
+lcbhard_75|r5|a1: ok spans=3 {}
+lcbhard_40|r4|a1: ok spans=3 {}
+lcbhard_11|r5|a1: ok spans=4 {}
+lcbhard_40|r2|a1: ok spans=4 {}
+lcbhard_11|r1|a1: ok spans=3 {}
+lcbhard_28|r6|a1: ok spans=1 {}
+lcbhard_3|r4|a1: ok spans=4 {}
+lcbhard_28|r2|a1: ok spans=3 {}
+lcbhard_82|r4|a1: ok spans=1 {}
+lcbhard_23|r5|a1: dropped spans=6 {'minus_d': ["added ['ions']"], 'minus_hd': ["added ['ions']"]}
+lcbhard_3|r1|a1: ok spans=4 {}
+lcbhard_98|r1|a1: dropped spans=1 {'minus_hl': ['length 0 vs 20']}
+lcbhard_46|r2|a1: audit spans=6 {}
+lcbhard_28|r1|a2: no_decision spans=0 {}
+lcbhard_40|r1|a2: ok spans=5 {}
+lcbhard_100|r5|a1: ok spans=5 {}
+lcbhard_82|r6|a1: ok spans=3 {}
+lcbhard_19|r4|a1: ok spans=3 {}
+lcbhard_59|r2|a1: ok spans=5 {}
+lcbhard_86|r6|a1: ok spans=1 {}
+lcbhard_82|r2|a1: ok spans=5 {}
+lcbhard_28|r3|a1: ok spans=5 {}
+lcbhard_47|r2|a1: ok spans=2 {}
+lcbhard_86|r5|a1: ok spans=2 {}
+lcbhard_59|r1|a1: ok spans=5 {}
+lcbhard_59|r5|a1: audit spans=2 {}
+lcbhard_59|r6|a1: audit spans=3 {}
+lcbhard_100|r4|a1: dropped spans=3 {'minus_d': ["added ['ars']", 'rule statements 7 -> 4'], 'minus_hd': ["added ['ars']", 'rule statements 7 -> 4']}
+lcbhard_28|r5|a1: ok spans=4 {}
+lcbhard_47|r4|a1: ok spans=2 {}
+lcbhard_11|r4|a1: ok spans=4 {}
+lcbhard_23|r4|a1: ok spans=6 {}
+lcbhard_82|r3|a1: ok spans=3 {}
+lcbhard_19|r6|a1: ok spans=6 {}
+lcbhard_100|r2|a1: ok spans=5 {}
+lcbhard_45|r4|a1: ok spans=2 {}
+lcbhard_40|r3|a1: dropped spans=1 {'minus_hl': ['length 0 vs 17']}
+lcbhard_23|r2|a1: ok spans=4 {}
+lcbhard_3|r3|a1: ok spans=4 {}
+lcbhard_46|r3|a1: ok spans=4 {}
+lcbhard_75|r4|a1: ok spans=4 {}
+lcbhard_23|r6|a1: ok spans=4 {}
+lcbhard_3|r2|a1: dropped spans=4 {'minus_d': ["added ['feasible']"], 'minus_hd': ["added ['feasible']"]}
+lcbhard_98|r3|a1: ok spans=1 {}
+lcbhard_98|r4|a1: ok spans=2 {}
+lcbhard_100|r1|a2: ok spans=5 {}
+lcbhard_47|r3|a1: audit spans=4 {}
+lcbhard_45|r3|a1: ok spans=3 {}
+lcbhard_82|r1|a2: ok spans=6 {}
+lcbhard_28|r4|a1: ok spans=2 {}
+lcbhard_45|r1|a2: ok spans=4 {}
+lcbhard_23|r3|a1: ok spans=2 {}
+lcbhard_46|r4|a1: ok spans=3 {}
+lcbhard_86|r2|a1: ok spans=4 {}
+lcbhard_46|r6|a1: ok spans=3 {}
+lcbhard_100|r3|a1: dropped spans=2 {'minus_d': ['rule statements 9 -> 8'], 'minus_hd': ['rule statements 9 -> 8']}
+lcbhard_46|r5|a1: dropped spans=6 {'minus_d': ["added ['inimax']", 'rule statements 10 -> 7'], 'minus_hd': ["added ['inimax']", 'rule statements 10 -> 7']}
+lcbhard_86|r1|a1: ok spans=5 {}
+lcbhard_11|r2|a1: dropped spans=5 {'minus_d': ["added ['cit']", 'rule statements 4 -> 2'], 'minus_hd': ["added ['cit']", 'rule statements 4 -> 2']}
+lcbhard_45|r5|a1: ok spans=4 {}
+lcbhard_86|r4|a1: audit spans=4 {}
+lcbhard_3|r6|a1: dropped spans=1 {'minus_hl': ['length 21 vs 27']}
+lcbhard_3|r5|a1: ok spans=6 {}
+lcbhard_11|r3|a1: audit spans=2 {}
+lcbhard_98|r5|a1: audit spans=3 {}
+lcbhard_100|r6|a1: audit spans=3 {}
+lcbhard_59|r3|a1: ok spans=4 {}
+Traceback (most recent call last):
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/twins5.py", line 247, in build_all
+    if not todo:
+        ^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/api.py", line 217, in gather_limited
+    return await asyncio.gather(*(one(c) for c in coros))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/api.py", line 215, in one
+    return await c
+           ^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/twins5.py", line 236, in one
+    
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/twins5.py", line 195, in build_one
+    if twins["minus_d"] is None:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/decisions.py", line 192, in leak_check
+    "text": r.text})
+^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/api.py", line 144, in chat
+    r = await client().chat.completions.create(**kw, extra_body=body)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/resources/chat/completions/completions.py", line 2907, in create
+    return await self._post(
+           ^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1992, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1709, in request
+    response = await self._send_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/_client.py", line 1097, in _send_request
+    response = await self._send_with_auth_retry(request, stream=stream, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/_client.py", line 1075, in _send_with_auth_retry
+    response = await super()._send_request(request, stream=stream, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/openai/_base_client.py", line 1628, in _send_request
+    return await self._client.send(request, stream=stream, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1643, in send
+    raise exc
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1637, in send
+    await response.aread()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_models.py", line 979, in aread
+    self._content = b"".join([part async for part in self.aiter_bytes()])
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_models.py", line 997, in aiter_bytes
+    async for raw_bytes in self.aiter_raw():
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_models.py", line 1055, in aiter_raw
+    async for raw_stream_bytes in self.stream:
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_client.py", line 176, in __aiter__
+    async for chunk in self._stream:
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 271, in __aiter__
+    async for part in self._httpcore_stream:
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 407, in __aiter__
+    raise exc from None
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 403, in __aiter__
+    async for part in self._stream:
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 342, in __aiter__
+    raise exc
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 334, in __aiter__
+    async for chunk in self._connection._receive_response_body(**kwargs):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 203, in _receive_response_body
+    event = await self._receive_event(timeout=timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 217, in _receive_event
+    data = await self._network_stream.read(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 35, in read
+    return await self._stream.receive(max_bytes=max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 254, in receive
+    data = await self._call_sslobject_method(self._ssl_object.read, max_bytes)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 194, in _call_sslobject_method
+    data = await self.transport_stream.receive()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1337, in receive
+    await self._protocol.read_event.wait()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/locks.py", line 212, in wait
+    await fut
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/twins5.py", line 282, in <module>
+    ap.add_argument("--dry-run", action="store_true")
+             ^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/probes/P23-compaction-decisions-vs-cues/p23/twins5.py", line 277, in main
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt

@@ -1,0 +1,113 @@
+loaded keys: OPENROUTER_API_KEY
+{"model": "glm-5.3-flash", "header": "safety", "contexts": 21, "episodes": 36, "fact_check_failures": [], "per_episode_projection": 0.05, "projected_usd": 1.8, "budget": {"exp": "P23", "ledger": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl", "gpu_usd": 0, "judge_usd": 10.414833, "judge_reserved_usd": 0, "open_reservations": 0, "total_usd": 10.414833, "hard_cap_usd": 40.0, "gpu_limit_usd": 0.0, "judge_limit_usd": 40.0, "reserve_usd": 0.0, "watchdog_kill_usd": 0.0}}
+time="2026-10-13T00:40:14-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/12   8% | Samples:   0/ 12 | mean:  n/a | openrouter:  4/20, docker:  5/36, subprocesses:  1/18 | HTTP retries: 0
+p23_episode  | Steps:   2/12  16% | Samples:   2/ 12 | mean: 0.00 | openrouter:  6/20, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   3/12  25% | Samples:   2/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   4/12  33% | Samples:   4/ 12 | mean: 0.00 | openrouter:  5/20, docker:  6/36, subprocesses:  1/18 | HTTP retries: 0
+p23_episode  | Steps:   5/12  41% | Samples:   4/ 12 | mean: 0.00 | openrouter:  4/20, docker:  5/36, subprocesses:  1/18 | HTTP retries: 0
+p23_episode  | Steps:   6/12  50% | Samples:   5/ 12 | mean: 0.00 | openrouter:  4/20, docker:  5/36, subprocesses:  1/18 | HTTP retries: 0
+p23_episode  | Steps:   7/12  58% | Samples:   7/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   8/12  66% | Samples:   7/ 12 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:   9/12  75% | Samples:   9/ 12 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  10/12  83% | Samples:   9/ 12 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  11/12  91% | Samples:  10/ 12 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 0
+p23_episode  | Steps:  12/12 100% | Samples:  11/ 12 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 0
+
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+                                                                                
+total time:                    0:06:01                                          
+openrouter/z-ai/glm-5.3-flash  840,457 tokens [I: 107,247, CW: 0, CR: 643,328,  
+                             O: 89,882, R: 49,822]                              
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu4b/logs/glm-5.3-flash/28991-0…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=glm-5.3-flash chunk=0 n=12 usd=0.0573 unknown=0 errors=0 wall=362s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 10.871334, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 10.871334, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T00:46:15-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/12   8% | Samples:   0/ 12 | mean:  n/a | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   3/12  25% | Samples:   2/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   5/12  41% | Samples:   4/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   6/12  50% | Samples:   5/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   7/12  58% | Samples:   6/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   8/12  66% | Samples:   7/ 12 | mean: 0.00 | openrouter:  4/20, docker:  4/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:   9/12  75% | Samples:   8/ 12 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  10/12  83% | Samples:   9/ 12 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  11/12  91% | Samples:  10/ 12 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 1
+p23_episode  | Steps:  12/12 100% | Samples:  12/ 12 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 1
+
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+                                                                                
+total time:                    0:05:21                                          
+openrouter/z-ai/glm-5.3-flash  572,447 tokens [I: 94,436, CW: 0, CR: 396,608, O:
+                             81,403, R: 47,559]                                 
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu4b/logs/glm-5.3-flash/28991-1…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=glm-5.3-flash chunk=1 n=12 usd=0.0494 unknown=0 errors=0 wall=322s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 11.053522, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 11.053522, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}
+time="2026-10-13T00:51:38-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+---------------------------------------------------------                       
+                                                                                
+p23_episode  | Steps:   1/12   8% | Samples:   0/ 12 | mean:  n/a | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   2/12  16% | Samples:   1/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   3/12  25% | Samples:   2/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   4/12  33% | Samples:   3/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   5/12  41% | Samples:   4/ 12 | mean: 0.00 | openrouter:  4/20, docker:  5/36, subprocesses:  1/18 | HTTP retries: 3
+p23_episode  | Steps:   6/12  50% | Samples:   5/ 12 | mean: 0.00 | openrouter:  4/20, docker:  5/36, subprocesses:  1/18 | HTTP retries: 3
+p23_episode  | Steps:   7/12  58% | Samples:   6/ 12 | mean: 0.00 | openrouter:  5/20, docker:  5/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:   9/12  75% | Samples:   8/ 12 | mean: 0.00 | openrouter:  3/20, docker:  3/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  10/12  83% | Samples:   9/ 12 | mean: 0.00 | openrouter:  2/20, docker:  2/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  11/12  91% | Samples:  10/ 12 | mean: 0.00 | openrouter:  1/20, docker:  1/36, subprocesses:  0/18 | HTTP retries: 3
+p23_episode  | Steps:  12/12 100% | Samples:  11/ 12 | mean: 0.00 | openrouter:  0/20, docker:  0/36, subprocesses:  0/18 | HTTP retries: 3
+
+---------------------------------------------------------                       
+task (12 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 6, log_model_api: True, dataset: (samples)   
+                                                                                
+total time:                    0:46:51                                          
+openrouter/z-ai/glm-5.3-flash  3,379,747 tokens [I: 447,154, CW: 0, CR:         
+                             2,569,856, O: 362,737, R: 265,807]                 
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P23-compaction-decisions-vs-cues/results/fu4b/logs/glm-5.3-flash/28991-2…
+---------------------------------------------------------                       
+                                                                                
+P23_CHUNK model=glm-5.3-flash chunk=2 n=12 usd=0.2314 unknown=0 errors=0 wall=2811s total={'exp': 'P23', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p23-compaction-decisions-vs-cues/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 12.261924, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 12.261924, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}

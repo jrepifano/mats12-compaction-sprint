@@ -1,0 +1,124 @@
+{
+ "download": {
+  "bytes": 159628924623,
+  "end": "2026-10-13T00:41:00Z",
+  "seconds": 1924.66,
+  "start": "2026-10-13T00:08:56Z"
+ },
+ "download_jlens": {
+  "end": "2026-10-13T00:41:08Z",
+  "seconds": 8.05,
+  "start": "2026-10-13T00:41:00Z"
+ },
+ "download_jpp": {
+  "end": "2026-10-13T00:41:17Z",
+  "seconds": 8.77,
+  "start": "2026-10-13T00:41:08Z"
+ },
+ "load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "end": "2026-10-13T00:41:58Z",
+  "experts_implementation": "grouped_mm",
+  "int_ids": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   553,
+   779,
+   736,
+   907,
+   929,
+   856,
+   926,
+   1002,
+   864,
+   511,
+   397
+  ],
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.13,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "seconds": 36.4,
+  "start": "2026-10-13T00:41:21Z",
+  "vocab": 129280
+ },
+ "phase2": {
+  "end": "2026-10-13T01:06:10Z",
+  "n": 400,
+  "seconds": 285.35,
+  "start": "2026-10-13T01:01:24Z",
+  "top1_agreement_first20": [
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0,
+   1.0
+  ]
+ },
+ "phase4": {
+  "certified": {
+   "CD": 0.80263,
+   "D": 0.83754,
+   "I": 0.81926,
+   "I2": 0.82876,
+   "L": 0.82622,
+   "LD": 0.82286,
+   "M": 0.84386,
+   "P": 0.81498
+  },
+  "end": "2026-10-13T02:49:11Z",
+  "seconds": 146.79,
+  "start": "2026-10-13T02:46:44Z"
+ },
+ "smoke_agreement": {
+  "agree": 214,
+  "end": "2026-10-13T00:47:51Z",
+  "n": 214,
+  "ok": true,
+  "rate": 1.0,
+  "seconds": 128.33,
+  "start": "2026-10-13T00:45:43Z"
+ },
+ "smoke_fixes": {
+  "end": "2026-10-13T00:45:43Z",
+  "fixes": [],
+  "seconds": 216.91,
+  "start": "2026-10-13T00:42:06Z"
+ }
+}

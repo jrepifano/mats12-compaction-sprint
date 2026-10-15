@@ -1,0 +1,49 @@
+{
+ "step": "contall_sft",
+ "finished_utc": "2026-10-14T07:08:10Z",
+ "seconds": 94.6,
+ "phases_s": {
+  "tokenise": 1.11,
+  "read_parts": 0.11,
+  "engine_load": 45.35,
+  "contall": 93.19
+ },
+ "git_commit": "9c5d0a7b19e5d19ce272e79334bf67f2efe720ae",
+ "model": "sft",
+ "mode": "contall",
+ "n_prompts": 5276,
+ "n_samples": 10552,
+ "max_model_len": 1637,
+ "template_check": null,
+ "stale_reset": null,
+ "chunks": {},
+ "samples_multi_long": 3558,
+ "samples_identical_long": 35,
+ "out_tokens": 1631532,
+ "mean_resp_tokens": 154.61827141774071,
+ "finish_reasons": {
+  "stop": 9543,
+  "length": 1009
+ },
+ "cap_hit_probe": 1009,
+ "probe_samples": 10552,
+ "cap_cells": {
+  "technical_terms": 53,
+  "misspellings": 220,
+  "base": 65,
+  "uncommon_dialects": 61,
+  "slang": 62,
+  "question": 47,
+  "role_play": 8,
+  "translate-zh-cn": 214,
+  "translate-fr": 123,
+  "para1": 54,
+  "para2": 52,
+  "para3": 50
+ },
+ "contall_new_tokens": 190728,
+ "n_contall": 781,
+ "vllm": "0.30.0",
+ "out_tok_s": null,
+ "generate_out_tokens": 0
+}

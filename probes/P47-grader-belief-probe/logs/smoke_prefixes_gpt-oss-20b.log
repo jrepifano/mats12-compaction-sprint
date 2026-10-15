@@ -1,0 +1,33 @@
+initial messages 75250bea8f81
+3 initial workspaces
+round 1: 9 prefixes to run
+loaded keys: OPENROUTER_API_KEY
+  p47gpt-oss-20b|lcbhard_47|a3: turn_cap turns=20
+[prefixes-r1] 1 done, 8 in flight, 0 queued, conc 32, spent 0.004, 0.8 min, {'turn_cap': 1}
+  p47gpt-oss-20b|lcbhard_45|a2: site turns=10
+[prefixes-r1] 2 done, 7 in flight, 0 queued, conc 32, spent 0.005, 1.0 min, {'turn_cap': 1, 'site': 1}
+  p47gpt-oss-20b|lcbhard_47|a1: turn_cap turns=20
+[prefixes-r1] 3 done, 6 in flight, 0 queued, conc 32, spent 0.010, 1.0 min, {'turn_cap': 2, 'site': 1}
+  p47gpt-oss-20b|lcbhard_47|a2: turn_cap turns=20
+[prefixes-r1] 4 done, 5 in flight, 0 queued, conc 32, spent 0.016, 1.3 min, {'turn_cap': 3, 'site': 1}
+  p47gpt-oss-20b|lcbhard_45|a3: turn_cap turns=20
+[prefixes-r1] 5 done, 4 in flight, 0 queued, conc 32, spent 0.021, 1.3 min, {'turn_cap': 4, 'site': 1}
+  p47gpt-oss-20b|lcbhard_45|a1: turn_cap turns=20
+[prefixes-r1] 6 done, 3 in flight, 0 queued, conc 32, spent 0.026, 2.0 min, {'turn_cap': 5, 'site': 1}
+  p47gpt-oss-20b|lcbhard_74|a3: turn_cap turns=20
+[prefixes-r1] 7 done, 2 in flight, 0 queued, conc 32, spent 0.033, 2.1 min, {'turn_cap': 6, 'site': 1}
+  p47gpt-oss-20b|lcbhard_74|a2: turn_cap turns=20
+[prefixes-r1] 8 done, 1 in flight, 0 queued, conc 32, spent 0.043, 3.3 min, {'turn_cap': 7, 'site': 1}
+  p47gpt-oss-20b|lcbhard_74|a1: turn_cap turns=20
+[prefixes-r1] 9 done, 0 in flight, 0 queued, conc 32, spent 0.054, 3.5 min, {'turn_cap': 8, 'site': 1}
+{"status": {"turn_cap": 8, "site": 1}, "spent": 0.05405271, "n": 9, "stopped": null, "left": 0, "minutes": 3.5}
+round 2: 3 prefixes to run
+  p47gpt-oss-20b|lcbhard_47|a4: turn_cap turns=20
+[prefixes-r2] 1 done, 2 in flight, 0 queued, conc 32, spent 0.004, 1.0 min, {'turn_cap': 1}
+  p47gpt-oss-20b|lcbhard_74|a4: turn_cap turns=20
+[prefixes-r2] 2 done, 1 in flight, 0 queued, conc 32, spent 0.013, 1.9 min, {'turn_cap': 2}
+  p47gpt-oss-20b|lcbhard_45|a4: turn_cap turns=20
+[prefixes-r2] 3 done, 0 in flight, 0 queued, conc 32, spent 0.017, 2.0 min, {'turn_cap': 3}
+{"status": {"turn_cap": 3}, "spent": 0.01724415, "n": 3, "stopped": null, "left": 0, "minutes": 2.0}
+why: {'no site: ended turn_cap': 11, 'ok': 1}
+candidates 1 over 1 tasks; plan_named 0; site turns [10]; prefix spend $0.071
