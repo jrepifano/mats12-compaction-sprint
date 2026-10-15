@@ -4,13 +4,22 @@ Probe note. Plan: [plan.md](plan.md) (published to main before any data existed)
 [log.md](log.md). Literature: [lit-review.md](lit-review.md), [lit-external.md](lit-external.md),
 [organism-scout.md](organism-scout.md).
 
-**Status: stage 2 is still running.** Everything below the horizontal rule in "The causal
-question" is pending; every other number is final and traces to a committed artifact.
+**Status: complete for `swap` and `drop`. `refill` runs in a follow-up session** and is the one
+arm that would settle the rewriting-versus-deletion question; what it would add is stated in
+"The causal question". Every number here is final and traces to a committed artifact.
 
-## The answer so far
+## The answer
 
-**Detection: no. The pre-registered contrast came out flat, and the scorers that look best are
-not detecting the trait at all.**
+**Neither pre-registered effect came out for gradients, but the two disagree about which way to
+fail, and the reason is worth more than either verdict.**
+
+| effect | result | threshold | verdict |
+|---|---|---|---|
+| **D** = AUROC(EK-FAC) − AUROC(Δ_own) | **−0.006 [−0.017, +0.005]** | +0.03 | practical advantage **excluded** |
+| **B** = trait(swap Δ_own) − trait(swap EK-FAC) | **−0.1 [−7.5, +10.6]** | +5 | **inconclusive** |
+
+**Detection: no. The contrast came out flat, and the scorers that look best are not detecting the
+trait at all.**
 
 Our EK-FAC approximation separates poisoned from clean rows at **AUROC 0.668
 [0.658, 0.677]**, the cheap likelihood ratio Δ_own at **0.673 [0.665, 0.682]**, so
@@ -44,6 +53,19 @@ Three findings matter more than the pre-registered one:
    one pool — they rewrite nearly disjoint sets of rows — so AUROC and the causal effect are free
    to disagree, and the causal question is *which* rows carry the trait, not whose ranking is
    better.
+
+**Causally, the primary effect is inconclusive — and the one clean separation is in the arms it
+was not defined on.** B's interval spans the threshold in both directions, and the seed-0 pilot
+that pointed at a graduate (B = +14.4) did not replicate. But under **deletion**, where every arm
+holds 9,500 rows at a 1.00 poison share so only the choice of rows differs, EK-FAC's 500 rows cost
+the student **+8.2 [+2.5, +13.1]** more trait than Δ_own's and **+9.0 [+0.3, +15.9]** more than
+random's. Under **rewriting** every arm dilutes to a 0.95 share, which on this organism's curve
+is worth more than any selection, and random is nominally the best swap arm. The primary effect
+was defined on the operation where the signal is weakest.
+
+**And the detector that wins by 0.24 AUROC is the worst selector of the four.** `dir_student`
+(0.907) leaves 24.7 against a 27.9 reference in both operations: it removes about 3 of the 25.8
+points available. If you had ranked defences by AUROC you would have picked it.
 
 **The organism replicates the finding that matters for defences: size beats purity.** At 10,000
 rows, 75% poison transfers at 2.78% while 100% transfers at 34.86%; at 20,000 rows the same 75%
@@ -280,13 +302,15 @@ evaluated before stage 2, with zero empty texts.
 
 Detection is not a defence: P43's lesson was that a detection gain need not buy removal, so the
 plan's primary effect is causal, not AUROC. **B** = trait rate after the swap Δ_own chooses minus
-trait rate after the swap EK-FAC chooses, so positive means EK-FAC removes more.
+trait rate after the swap EK-FAC chooses, so positive means EK-FAC removes more. Twenty-seven
+students: the reference at three seeds, and four selectors × two operations × three seeds. Arms
+pair by seed; intervals are a two-way bootstrap that resamples questions across arms and the seed
+triple jointly.
 
 **k was frozen at 500 rows (5%) by the seed-0 ladder**, on the informed arms' floor alone and
 never on the size of their difference. At k = 1,000 (10%) every arm sat below the 5-point floor
 (excesses: EK-FAC 3.84, Δ_own 3.82, `dir_student` 2.42), so the ladder stepped down. At k = 500 it
-cleared: excesses **EK-FAC 5.40, Δ_own 19.80, `dir_student` 17.90** against a 34.86% reference and
-a 2.08% control.
+cleared: excesses EK-FAC 5.40, Δ_own 19.80, `dir_student` 17.90 against a 34.86% reference.
 
 **How the arms were built** (`results/arms.json`, checked before any outcome was known): k = 500
 on `mix100ft`, every selection 500 rows and **100% poison** — precision is 1 by construction here,
@@ -296,31 +320,94 @@ so the arms ask only which rows *carry* the trait. Each selector's `swap` and `d
 so random spent a quarter of its budget on rows a swap could not change; here the mixture holds 34
 inert rows in 10,000 and the selections contain **1** (EK-FAC), **2** (Δ_own) and **0** (random).
 
-A drop arm does hold the poison share at 1.00 on 9,500 rows while a swap arm sits at 0.95 on
-10,000, so `swap` − `drop` differs in both size and share — which is what the dilution adjustment
-is for, and why `refill` is the cleaner contrast.
+### The primary effect: inconclusive
 
-**That seed-0 pilot already reverses the detection ranking:** B = 19.80 − 5.40 = **+14.4 points**
-in EK-FAC's favour, against a +5 threshold. Removing the 500 rows EK-FAC picks costs the student
-far more of its cat preference than removing the 500 rows Δ_own picks — which is what the trait-
-axis correlations predict, and the opposite of what AUROC alone would have told us. This is one
-seed, and given the variance documented above, one seed is not an answer.
+Trait rate by arm, mean over seeds 1–3, against a matched 0% control at **2.08%** and a reference
+(no intervention) at **27.89%** [21.3, 35.3], per-seed 26.08 / 29.00 / 28.60:
 
----
+| selector | swap | drop |
+|---|---|---|
+| **EK-FAC** | 15.15 (excess +13.07) | **13.65 (+11.57)** |
+| **Δ_own** | 15.06 (+12.98) | 21.81 (+19.73) |
+| `dir_student` | 24.68 (+22.60) | 24.29 (+22.21) |
+| random | **13.26 (+11.18)** | 22.66 (+20.58) |
 
-**Pending (stage 2, running):** 27 trainings — the reference at 3 seeds, plus 4 selectors
-(EK-FAC, Δ_own, `dir_student`, random) × 2 operations (**swap**, **drop**) × 3 seeds. This gives
-B with a paired bootstrap interval across seeds, the informed-versus-random contrasts, and the
-operation comparison Jacob asked for: whether **rewriting beats deletion** at the selector that
-found the rows.
+> **B = −0.1 [−7.5, +10.6]** against a +5 threshold, per-seed −3.70 / −7.34 / +10.76.
 
-**`refill` follows in a session of its own** (now funded), and it carries the cleaner comparison
-of the two: a `drop` arm removes 500 rows, taking the mixture from 10,000 to 9,500, and this
-probe's own curve shows size matters more than purity here — so a `swap` − `drop` gap mixes
-rewriting with a smaller dataset. `refill` keeps the row count at 10,000 by adding fresh clean
-rows, so **`swap` − `refill` isolates the rewrite itself**. Read the two together: `swap` − `drop`
-answers "is rewriting better than deleting what I found", `swap` − `refill` answers "is rewriting
-better than replacing it with something harmless".
+The interval spans the threshold in both directions, which is the plan's **outcome 4,
+inconclusive**, and it is **not floor-limited**: the pre-registered headroom check passes with
+both informed swap arms about 13 points above the control. `analyze classify` records
+`causal: inconclusive`, `detection: gain_excluded`.
+
+**The seed-0 pilot did not replicate, and that is this section's most useful result.** The pilot
+put EK-FAC at 7.48% and Δ_own at 21.88% off a 34.86% reference — B = +14.4, which would have been
+a graduate. Three fresh seeds put the same two arms at **15.15 and 15.06**, off a 27.89%
+reference. The probe's own warning about single-seed cells in this literature now applies to its
+own pilot. The freeze survives the embarrassment only because the plan tied k to the arms'
+**floor** and explicitly not to the size of their difference; had k been chosen on the gap, this
+number would be unusable.
+
+### What the arms do show
+
+Four secondary results, all exploratory, none carrying a multiplicity correction:
+
+**1. Under deletion, EK-FAC's rows are the ones that matter.** `drop_ekfac` leaves 13.65 against
+`drop_delta_own`'s 21.81 and `drop_random`'s 22.66:
+
+| contrast | points [95% CI] | dilution term | beyond dilution |
+|---|---|---|---|
+| `drop_ekfac` − `drop_delta_own` | **+8.2 [+2.5, +13.1]** | +0.02 | +8.14 |
+| `drop_ekfac` − `drop_random` | **+9.0 [+0.3, +15.9]** | −0.02 | +9.04 |
+| `drop_delta_own` − `drop_random` | +0.9 [−11.5, +11.7] | −0.1 | +0.9 |
+
+EK-FAC is lower in all three seeds against Δ_own. Every drop arm holds 9,500 rows at a 1.00
+poison share, so the dilution adjustment has nothing to attribute and the gap is about *which*
+rows left. This is the comparison the brief was really about — can a gradient method find the
+rows that carry the trait — and it is the only place informed selection separates from random.
+Read it as suggestive: `drop_ekfac` − `drop_random`'s lower bound is +0.3, one seed of random
+(9.7) matched EK-FAC, and this is a secondary contrast on three seeds.
+
+**2. Under rewriting, nothing separates anything.** `swap_ekfac` − `swap_random` is
+**−1.9 [−9.0, +7.4]** and `swap_delta_own` − `swap_random` **−1.8 [−5.3, +2.6]** — random is
+nominally the *best* swap arm, at 13.26. The reason is mechanical: every swap arm takes the
+mixture to a **0.95** poison share, and on this organism's curve a five-point share cut is worth
+far more than the choice of rows (10,000 rows at 90% transferred at 10.54% against 34.86% at
+100%). The shared dilution moves every swap arm to 13–15 and leaves the selection signal inside
+the seed noise. **The primary effect was defined on the operation where the signal is weakest** —
+not a foreseeable error, since the plan's own reason for preferring `swap` was that it is the
+realistic defence, but the drop arms are what made it visible.
+
+**3. The best trait-blind detector is the worst selector.** `dir_student`, AUROC **0.907**, leaves
+**24.68** (swap) and **24.29** (drop) against a 27.89 reference: it removes about 3 of the 25.8
+points available, in both operations, while scoring 0.24 AUROC above EK-FAC. Detection rank and
+causal rank do not merely differ here — at the top of the detection table they are close to
+inverted. Together with the source-versus-trait correlations and the short-row finding, that is
+three independent ways of saying the same thing: `dir_student` ranks rows by who wrote them.
+
+**4. Rewriting beats deletion for Δ_own, not for EK-FAC.**
+
+| contrast | points [95% CI] |
+|---|---|
+| `swap_delta_own` − `drop_delta_own` | **+6.7 [+1.2, +13.9]** |
+| `swap_random` − `drop_random` | +9.4 [−7.2, +22.8] |
+| `swap_ekfac` − `drop_ekfac` | −1.5 [−3.6, +0.0] |
+
+P43 found swap − drop at **+6.0 [+2.3, +10.5]**, so the Δ_own figure reproduces its direction and
+size in a second organism. But **these cross-operation pairs are not dilution-adjusted**: the
+adjustment needs matched share and size, and swap (10,000 rows at 0.95) and drop (9,500 at 1.00)
+share neither, so every number in this table mixes the replacement policy with a five-point share
+difference and a 5% size difference. On an organism whose curve is this steep, that is not a
+small confound. **`refill` — 10,000 rows, the same active share, fresh clean rows on unused
+prompts — is what closes it**, and after this session it is the single most valuable arm left to
+run, not a nice-to-have.
+
+**A negative control worth stating.** `analyze secondary` splits every arm's trait rate by whether
+the attribution query used the question. The query's 25 questions run **+1.3 to +2.6 points**
+hotter than the other 25 for every arm — *including the reference (+1.87) and the 0% control
+(+0.40)*, neither of which any selector touched. It is a property of the question set, not of the
+selection: `drop_ekfac`'s +2.04 sits in the middle of the pack. No selector is winning on the
+questions it was pointed at.
+
 
 ## Predictions against outcomes
 
@@ -343,17 +430,27 @@ Written before any data existed (plan.md). Probabilities are the plan's.
 | Null-animal EK-FAC within 0.05 of cat | 0.35 | **miss, narrowly** — 0.602 vs 0.668, a gap of 0.065 [0.052, 0.078] against a 0.05 bar. EK-FAC is doing slightly more than ranking by source |
 | Oracle judge, MPNet, length all ≤ 0.55 | 0.85 | **two of three hit, one miss** — judge 0.517, MPNet 0.519, but `length_tokens` **0.571** [0.562, 0.580] |
 | Detection D "excluded" | 0.6 | **hit** |
-| Primary B outcome | graduate 0.1 / excluded 0.45 / inconclusive 0.35 | pending; seed 0 points at **graduate** |
+| **Primary B outcome** | graduate 0.1 / Δ_own better 0.1 / excluded 0.45 / **inconclusive 0.35** | **inconclusive** — B −0.1 [−7.5, +10.6] spans +5, with headroom intact |
+| swap(Δ_own) cuts ≥ 10 pts more than swap(random) | 0.5 | **miss** — −1.8 [−5.3, +2.6]; random is nominally best |
+| swap(EK-FAC) cuts ≥ 10 pts more than swap(random) | 0.4 | **miss** — −1.9 [−9.0, +7.4] |
+| Informed drop beats random drop by ≥ 10 pts | 0.45 | **near miss for EK-FAC** — +9.0 [+0.3, +15.9], just under the bar; **miss for Δ_own** — +0.9 [−11.5, +11.7] |
+| Swap and refill within 5 pts at random selection | 0.75 | **pending** — `refill` runs in the follow-up session |
 
-The scorecard is unflattering in an interesting way: the gate predictions were roughly calibrated,
-but the plan did not anticipate that the strongest detectors would be trait-blind, and it put only
-0.1 on the causal direction that the seed-0 pilot now shows.
+The scorecard is unflattering in an interesting way. The gate predictions were roughly
+calibrated. The detection predictions were good: the plan called D's failure at 0.1 and the
+"excluded" verdict at 0.6, and both landed. What the plan did not anticipate is that the
+strongest detectors would be **trait-blind**, that a plain word count would clear the text floor,
+or that **informed selection would buy nothing at all under `swap`** — it put 0.5 and 0.4 on
+10-point gains over random there and got −1.8 and −1.9. The one place the plan's instinct was
+right is the operation it treated as secondary: informed `drop` does beat random `drop`, by +9.0,
+just under the 10-point bar it predicted at 0.45.
 
 ## Spend and wall-clock
 
-**$69.81 settled of a $105 cap** (GPU $69.02, API $0.79), with session 3's pod still running
-against a $23.94 reservation. The cap rose from $60 in four logged steps, each in `probe.toml`
-with its reason, all inside the probe tier's $150. The API line is T0's QA pairs ($0.0426) plus
+**$87.40 settled of a $105 cap** (GPU $86.61, API $0.79), with `refill` still to run. That total
+is `merge_ledger.py report`, which counts this checkout's $86.97 plus $0.4351 still only in the
+abandoned refill worktree's ledger. The cap rose from $60 in four logged steps, each in
+`probe.toml` with its reason, all inside the probe tier's $150. The API line is T0's QA pairs ($0.0426) plus
 the oracle judge ($0.7504).
 
 | phase | pods | $ | science? |
@@ -367,10 +464,12 @@ the oracle judge ($0.7504).
 | Slow-host re-roll | 1 | 0.35 | no |
 | **Session 3, killed 90 s in by the parallel checkout's watchdog** | 1 | **10.35** | no |
 | Second (refill) pod, terminated after that kill | 1 | 0.43 | no |
-| Session 3 re-run (live) | 1 | ≤ 23.94 | yes |
-| Oracle judge (20,000 rows) and T0's QA pairs | — | 0.79 | yes |
+| **Session 3 re-run: 27 stage-2 arms** | 1 | **17.59** | yes |
+| Oracle judge, 20,000 rows, and T0's QA pairs | — | 0.79 | yes |
 
-**$37.63 of the $69.81 bought no science.** Three distinct causes, all in log.md with their
+The rows are rounded per pod, so the column sums to $87.42 against the ledger's $87.40.
+
+**$38.63 of the $87.40 bought no science** — 44% of it. Three distinct causes, all in log.md with their
 fixes: *infrastructure* ($13.15 of launches plus $2.39 and $0.35) — sdpa NaN at padded *and* kept
 positions, cuSOLVER on the EK-FAC eigendecomposition, two venv splits, a missing `ninja` binary,
 and an argparse flag that killed an `eval` after 1.9 h of good training; *non-reproducible
@@ -405,6 +504,16 @@ The probe is one organism, and several readings it invites are not supported:
   this evidence the trait-blind scorers would hand them the wrong rows.
 - **Not** a claim about any share other than those measured, on single seeds, with the 15%→35%
   draw-to-draw variance above as the reason to treat each cell as one sample.
+- **Not** a verdict on gradients causally. B is **inconclusive**, which is not "no effect": its
+  interval reaches +10.6, and three seeds on an organism whose reference moves 26–29 between
+  seeds cannot resolve a five-point difference. What would resolve it is more seeds, not more
+  scorers.
+- **Not** a clean rewriting-versus-deletion result. `swap` and `drop` differ in poison share
+  (0.95 against 1.00) and in size (10,000 against 9,500) as well as in policy, and nothing here
+  separates the three. `refill` is the arm that does.
+- **Not** evidence that EK-FAC's drop advantage is robust. +9.0 [+0.3, +15.9] against random is
+  one secondary contrast on three seeds whose lower bound is a third of a point, and one seed of
+  random matched it outright.
 
 ## Caveats a reader should hold against every number above
 
