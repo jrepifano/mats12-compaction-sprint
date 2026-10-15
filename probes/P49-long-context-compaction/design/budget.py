@@ -1,4 +1,4 @@
-"""P49 plan budget as an explicit request inventory (plan.md, Cap). Run: python3 -I budget.py
+"""P49 plan budget as an expected-cost request inventory (plan.md, Cap). Run: python3 -I budget.py
 
 Every paid request the plan makes is generated as a record (phase, model, wrapper, event k, arm,
 context tokens, cold/warm, output tokens) and priced. All token quantities are projections under
@@ -12,7 +12,11 @@ context is "cold": only the shared system/tools/opener prefix B is cached. Cold 
 POST / ONESHOT context (new summary), every R fork (the trunk passed that point earlier), every
 fork from a saved pilot trunk in the bulk, every Gate 0 offline context, pi's summariser calls
 (a separate request), and every judge call. Fork points are run "warm-up first": one belief
-call warms the context, the other forks then start.
+call warms the context, the other forks then start. ASSUMPTION to verify in the pilot: a
+tools-off belief call warms the cache for the tool-bearing probe forks of the same context; if
+not, each probe family pays its own cold first.
+Records carry phase/model/kind and an expected weight (a probe's third turn has weight 0.5;
+summary records carry weight RETRY), so the record count exceeds the expected request count.
 
 Event timeline (plan.md, Setup): at the settled boundary where wrapper w's check fires, snapshot
 history and world; build the compacted context without the page; append the same page to each
@@ -116,13 +120,13 @@ def session(m, g, phase="bulk", n_viol=N_VIOL, n_other=N_OTHER, saved_trunk=Fals
         for k, (t, ctx) in enumerate(ev, start=1):
             n_calls = PI_SUMMARY_CALLS if w == "pi" else 1
             for _ in range(n_calls):
-                reqs.append(Req(phase, m, "summary", ctx, SUMMARY_OUT * RETRY, w == "pi"))
+                reqs.append(Req(phase, m, "summary", ctx, SUMMARY_OUT, w == "pi", RETRY))
             first_pre_cold = saved_trunk and k == 1
             reqs += fork_requests(phase, m, ctx, first_pre_cold, n_viol, n_other)        # PRE
             reqs += fork_requests(phase, m, carry, True, n_viol, n_other)                # POST
             if k >= 2:
                 raw = B + g * t
-                reqs.append(Req(phase, m, "summary", raw, SUMMARY_OUT * RETRY, True))   # ONESHOT
+                reqs.append(Req(phase, m, "summary", raw, SUMMARY_OUT, True, RETRY))   # ONESHOT
                 reqs += fork_requests(phase, m, carry, True, n_viol, n_other)
                 reqs += fork_requests(phase, m, trunk[min(t, last)], True, n_viol, n_other)  # R
     # calibration: PRE_del at the codex/inspect k = 1 boundary; restated POST_3 positive control
@@ -138,7 +142,8 @@ def session(m, g, phase="bulk", n_viol=N_VIOL, n_other=N_OTHER, saved_trunk=Fals
 
 def smoke(m, g):
     """Trunk to the first trigger, each chain through one compaction, every k = 1 fork type,
-    the calibration, and a 2-call reasoning-inclusion check."""
+    3 post-compaction turns per chain, and a 2-call reasoning-inclusion check (the calibration
+    runs in the bulk, not the smoke)."""
     reqs = []
     ch = {w: events(*WR[w], g) for w in WR}
     t1 = max(ev[0][0] for ev, _ in ch.values())
@@ -166,11 +171,11 @@ def gate0_offline(m, g):
         n_calls = PI_SUMMARY_CALLS if w == "pi" else 1
         for k, (t, ctx) in enumerate(ev, start=1):
             draws = 2 if k == 3 else 1
-            reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT * RETRY, True)
+            reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT, True, RETRY)
                      for _ in range(draws * n_calls)]
             if k >= 2:
-                reqs.append(Req("gate0", m, "summary", B + g * t, SUMMARY_OUT * RETRY, True))
-            reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT * RETRY, True)
+                reqs.append(Req("gate0", m, "summary", B + g * t, SUMMARY_OUT, True, RETRY))
+            reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT, True, RETRY)
                      for _ in range(n_calls)]                              # planted copy
             pre = B + g * t
             reqs += [Req("gate0", m, "belief", pre + 300, BELIEF_OUT, i == 0) for i in range(3)]
@@ -179,12 +184,12 @@ def gate0_offline(m, g):
                          for i in range(3)]
             reqs.append(Req("gate0", m, "belief", carry + 300, BELIEF_OUT, True))   # planted B1
     ev, _ = events(*WR["codex"], g)
-    reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT * RETRY, True) for _, ctx in ev]
+    reqs += [Req("gate0", m, "summary", ctx, SUMMARY_OUT, True, RETRY) for _, ctx in ev]
     return reqs
 
 
 def g0a(m):
-    return [Req("g0a", m, "summary", 110_000, SUMMARY_OUT * RETRY, True)
+    return [Req("g0a", m, "summary", 110_000, SUMMARY_OUT, True, RETRY)
             for _ in range(40 * (2 + PI_SUMMARY_CALLS))]   # codex, inspect, pi x 2 calls
 
 
@@ -198,7 +203,7 @@ def judges(n_sessions, n_trunks, gem_share=0.4):
     reqs = []
     n_sum = 15 * n_sessions + 30 * n_trunks
     reqs += [Req("judge", "haiku", "judge", 9_000, 1_500, True) for _ in range(n_sum + 220)]
-    n_gem = gem_share * (3 * n_sessions + 10 * n_trunks) + 220
+    n_gem = gem_share * ((3 + 3) * n_sessions + 13 * n_trunks) + 220   # POST_3 + ONESHOT_3
     reqs += [Req("judge", "gemini", "judge", 9_000, 1_500, True) for _ in range(int(n_gem))]
     n_b2 = 38 * n_sessions + 21 * n_trunks
     reqs += [Req("judge", "haiku", "judge", 3_000, 800, True) for _ in range(n_b2)]
@@ -270,6 +275,10 @@ if __name__ == "__main__":
         wc = wallclock(16, 8, 2000, conc)
         print(f"  concurrency {conc}: capacity GLM {wc['GLM']:.1f}, DS {wc['DS']:.1f}; "
               f"critical path GLM {wc['GLM_critical']:.1f}, DS {wc['DS_critical']:.1f}")
-    print("\nFollow-up allocation GLM 32 / DS 24 (growth 2k):",
-          f"cache 0.85 ${report(32, 24, 2000, 0.85, verbose=False)[0]:.1f},",
-          f"cache 0.72 ${report(32, 24, 2000, 0.72, verbose=False)[0]:.1f}")
+    print("\nFollow-up allocation GLM 32 / DS 16 (growth 2k):",
+          f"cache 0.85 ${report(32, 16, 2000, 0.85, verbose=False)[0]:.1f},",
+          f"cache 0.72 ${report(32, 16, 2000, 0.72, verbose=False)[0]:.1f}")
+    print("Expected requests (sum of weights), plan allocation:",
+          f"{sum(r.w for r in inventory()):.0f}")
+    wc = wallclock(16, 8, 2000, 64)
+    print(f"Both models sharing one 64-slot pool: capacity {wc['GLM'] + wc['DS']:.1f} h (lower bound)")
