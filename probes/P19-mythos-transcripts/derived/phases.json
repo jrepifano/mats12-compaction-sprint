@@ -1,0 +1,132 @@
+{
+  "method": "reserve-to-close timestamps in P19 ledger; concurrent phases overlap; one-second resolution",
+  "phases": [
+    {
+      "note": "P19:smoke-luna",
+      "start_utc": "2026-10-15T08:48:15Z",
+      "end_utc": "2026-10-15T08:48:19Z",
+      "wall_seconds": 4.0,
+      "usd": 0.006927
+    },
+    {
+      "note": "P19:smoke-luna:format-repair",
+      "start_utc": "2026-10-15T08:48:19Z",
+      "end_utc": "2026-10-15T08:48:22Z",
+      "wall_seconds": 3.0,
+      "usd": 0.00043
+    },
+    {
+      "note": "P19:fixture-luna",
+      "start_utc": "2026-10-15T08:48:33Z",
+      "end_utc": "2026-10-15T08:48:35Z",
+      "wall_seconds": 2.0,
+      "usd": 0.003579
+    },
+    {
+      "note": "P19:fixture-glm",
+      "start_utc": "2026-10-15T08:48:33Z",
+      "end_utc": "2026-10-15T08:48:33Z",
+      "wall_seconds": 0.0,
+      "usd": 0.0
+    },
+    {
+      "note": "P19:fixture-luna:format-repair",
+      "start_utc": "2026-10-15T08:48:35Z",
+      "end_utc": "2026-10-15T08:48:38Z",
+      "wall_seconds": 3.0,
+      "usd": 0.000423
+    },
+    {
+      "note": "P19:fixture-glm-configured",
+      "start_utc": "2026-10-15T08:50:00Z",
+      "end_utc": "2026-10-15T08:50:13Z",
+      "wall_seconds": 13.0,
+      "usd": 0.00578
+    },
+    {
+      "note": "P19:fixture-glm-configured:format-repair",
+      "start_utc": "2026-10-15T08:50:13Z",
+      "end_utc": "2026-10-15T08:50:22Z",
+      "wall_seconds": 9.0,
+      "usd": 0.000619
+    },
+    {
+      "note": "P19:belief-fixture-glm",
+      "start_utc": "2026-10-15T08:51:12Z",
+      "end_utc": "2026-10-15T08:51:15Z",
+      "wall_seconds": 3.0,
+      "usd": 0.003742
+    },
+    {
+      "note": "P19:belief-fixture-luna",
+      "start_utc": "2026-10-15T08:51:12Z",
+      "end_utc": "2026-10-15T08:51:14Z",
+      "wall_seconds": 2.0,
+      "usd": 0.002461
+    },
+    {
+      "note": "P19:belief-fixture-luna:format-repair",
+      "start_utc": "2026-10-15T08:51:14Z",
+      "end_utc": "2026-10-15T08:51:15Z",
+      "wall_seconds": 1.0,
+      "usd": 0.000135
+    },
+    {
+      "note": "P19:belief-fixture-glm:format-repair",
+      "start_utc": "2026-10-15T08:51:16Z",
+      "end_utc": "2026-10-15T08:51:18Z",
+      "wall_seconds": 2.0,
+      "usd": 0.000307
+    },
+    {
+      "note": "P19:belief-full-luna",
+      "start_utc": "2026-10-15T08:52:39Z",
+      "end_utc": "2026-10-15T08:53:07Z",
+      "wall_seconds": 28.0,
+      "usd": 0.053328
+    },
+    {
+      "note": "P19:belief-full-glm",
+      "start_utc": "2026-10-15T08:52:40Z",
+      "end_utc": "2026-10-15T08:53:31Z",
+      "wall_seconds": 51.0,
+      "usd": 0.067014
+    },
+    {
+      "note": "P19:belief-full-luna:format-repair",
+      "start_utc": "2026-10-15T08:53:08Z",
+      "end_utc": "2026-10-15T08:53:10Z",
+      "wall_seconds": 2.0,
+      "usd": 0.00169
+    },
+    {
+      "note": "P19:belief-full-glm:format-repair",
+      "start_utc": "2026-10-15T08:53:31Z",
+      "end_utc": "2026-10-15T08:53:35Z",
+      "wall_seconds": 4.0,
+      "usd": 0.001824
+    },
+    {
+      "note": "P19:h1-glm",
+      "start_utc": "2026-10-15T08:54:09Z",
+      "end_utc": "2026-10-15T08:54:12Z",
+      "wall_seconds": 3.0,
+      "usd": 0.006415
+    },
+    {
+      "note": "P19:h1-luna",
+      "start_utc": "2026-10-15T08:54:09Z",
+      "end_utc": "2026-10-15T08:54:12Z",
+      "wall_seconds": 3.0,
+      "usd": 0.004315
+    },
+    {
+      "note": "P19:h1-luna:format-repair",
+      "start_utc": "2026-10-15T08:54:12Z",
+      "end_utc": "2026-10-15T08:54:14Z",
+      "wall_seconds": 2.0,
+      "usd": 0.000899
+    }
+  ],
+  "total_usd": 0.159888
+}
