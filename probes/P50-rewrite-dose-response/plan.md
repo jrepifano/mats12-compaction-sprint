@@ -54,7 +54,7 @@ Plan written 2026-10-15 (UTC), before any P50 data. Literature: [lit-review.md](
 - **Exactly one accepted replacement per selected prompt.** This keeps size and share matched.
   - Llama gets up to 8 attempts.
   - Prompts still without a replacement go to `mistralai/mistral-small-3.2-24b-instruct`, up to 8 attempts.
-  - If any prompt is still missing, the pod does not launch until it is resolved (more attempts or a third model, logged).
+  - If any prompt is still missing, a third writer is tried (Automatic rule 2); past that bound, rewrite_x is dropped from the slice rather than holding the launch.
   - Every attempt, accept decision and writer is persisted per row.
   - If the fallback writes > 5% of rows, the arm is labelled "mixed writer".
 - **Why Llama:**
@@ -208,20 +208,24 @@ All differences are in points of trait rate; positive means the second-named arm
 | 2.5% swap removes ≥ 25% of the excess (R ≥ 0.25) | 0.5 |
 
 ## Outcomes
+The outcomes use the literal tested conclusions. Explanations such as equivalence to dilution, necessity of the same base, or a threshold effect are hypotheses unless a contrast shows them.
+
 - **P1 outsized, P2 survives, P3 beats dilution:**
   - Pitch "rewrite a few rows, gain a lot" for subliminal transfer.
-  - Its scope (10K, near a threshold) is set by P4.
+  - Scope it to the tested regime (10K rows). P4 says whether the same-base swap also beats dilution at 20K.
   - Week one: the PT ladder, seeds, the trained locator, then EM small doses.
-- **P1 outsized, P3 "excluded":** at these doses, rewriting acts like adding clean data near a threshold.
-  - The novelty is lower (Schrodi et al. row 79; Kaczér row 112).
-  - Keep the "rewrite" framing for EM, where CDD shows rewrite beats delete, and drop it for numbers.
-- **P2 same-base dependent:** removing subliminal-number transfer needs the student's own base.
-  - That is still a defence (a defender owns the base), but a different claim.
-  - P43 (PT) and CDD (EM) carry the cross-model version.
-  - Pitch the mechanism angle.
-- **P4 "8-pt benefit excluded at 20K":** the 10K effect is scoped to near-threshold data.
-  - The sprint question becomes how far above threshold realistic attacks sit.
-- **Inconclusive P2 or P3:** buy seeds 4–6 on that contrast first (W3).
+- **P3 "5-point incremental rewrite_x benefit excluded":**
+  - **If P3b shows the same-base swap beating refill:** the swap policy beats dilution but the tested different-family rewrite does not. Pitch the same-base swap (a defender owns the base) and keep rewrite_x as an open format/writer question (format-matched follow-up).
+  - **If P3b is also excluded or inconclusive:** at these doses neither replacement policy is shown to beat adding the same count of clean rows on other prompts. That is a smaller benefit, no benefit or harm, not shown equivalence. The novelty claim for numbers weakens (Schrodi et al. row 79; Kaczér row 112). Keep the "rewrite" framing for EM, where CDD shows rewrite beats delete.
+- **P2 "tested swap policy outperforms tested rewrite_x policy" (G_x ≥ +8, CI excluding 0):**
+  - Writer model, number formatting and exact-counterfactual status are bundled, so this does not show that removal needs the student's own base.
+  - A same-base swap is still a usable defence (a defender owns the base).
+  - P43 (PT) and CDD (EM) carry the cross-model evidence.
+  - Next: the format-matched rewrite and W6.
+- **P4 "8-point total swap benefit excluded at 20K":** the 10K result is reported as untested beyond 10K rows.
+  - A threshold explanation stays a hypothesis.
+  - The sprint question includes how the effect scales with size (W8, a fresh draw).
+- **Inconclusive P2, P3 or P3b:** buy seeds 4–6 on that contrast first (W3).
 - **Every outcome:** the pitch shows M per organism side by side: P50's numbers, P48's swap (≈ 11 at 5%), Imprinting (≈ 2 at 25%), and CDD's EM (≈ 1.0–1.3, untouched-rate basis). "Outsized" is claimed only where M's lower bound is above 1 in our own arms.
 
 ## Automatic rules
@@ -229,17 +233,21 @@ All differences are in points of trait rate; positive means the second-named arm
    - A local end-to-end run of the real P50 pipeline (arm building, the rewrite_x join, train, eval, analyze) on a tiny model on the laptop, free, plus the unit tests.
    - The pod's smoke step gates the bulk run (P48 `smoke`).
 2. **Rewriter gate (laptop, API, before the pod):**
-   - The trait gate passes for every writer used.
+   - **Writers are trait-gated before any of their rows are accepted.** A writer that fails the gate has its rows discarded, and those prompts go to the next writer in the chain.
+   - The chain is Llama-3.1-8B, then Mistral Small 3.2, then one more non-Qwen, non-Gemini, non-DeepSeek instruct model. Each must pass the gate.
+   - The chain stops after 3 writers or $1 of API spend. If any prompt still lacks a gated replacement, rewrite_x is dropped from the slice (P1–P3 are then reported for swap and refill only) rather than holding the launch.
    - Every selected prompt has exactly one accepted replacement (see rewrite_x).
    - The 250 ⊂ 500 nesting and the prompt identity between each rewrite_x row and its trait row are asserted.
    - The rows are persisted under `results/rewrite_x/` and pushed explicitly.
 3. **Anchor:** if |anchor − 26.08| > 4, the reused P48 arms become context only.
-   - The pod then **replaces block 4** with a fresh 10K comparison set: reference seeds 2–3, swap 5% ×3, and refill 5% ×3 if it was reused. That is 5–8 trainings, 43–69 min, less than the 144 min of block 4 it replaces.
-   - P1–P3 are then computed entirely within the pod, and the 20K block moves to week one.
+   - The pod then **replaces block 4** with a fresh 10K comparison set: reference seeds 2–3, the 0%-share clean control `mix000ft` (seed 0, as P48's), swap 5% ×3, and refill 5% ×3 if it was reused. That is 6–9 trainings, 52–78 min, less than the 144 min of block 4 it replaces.
+   - P1–P3 are then computed entirely within the pod. The fresh control enters R's denominator as a single fixed value, as P48's did; its question-level variation is included in the bootstrap.
+   - The reused drop arms and the 20K block become context only, and the 20K block moves to week one.
 4. **Measurement failure:** any arm with > 1% truncated or empty samples, or a trained step count other than the recipe's, is re-run once and then reported as failed. If a primary arm fails twice, stop and report.
 5. **Caps and guards:**
    - The cap is enforced in code (`emx.spend` and the pod killswitch).
    - run.sh guard **5.5 h**; `gpu_hours` 5.75; rerolls ≤ 2.
+   - **Reruns and the seed-0 fallback take capacity from block 4.** Before starting block 4, run.sh checks the time left against block 4's projection (144 min, or 162 min with the extra 20K reference) plus E2. If it does not fit, it trains whole seed sets of block 4 in order (reference first, then swap and refill per seed) up to the guard, and the partial result is reported.
    - **Latest launch is 2:30 AM ET.** If launch slips past that, block 4 is cut so the 10K result lands before 11 AM. Partial results are reported by 11 AM in every case.
 6. **Do not reuse** P48's superseded gate adapters.
 
