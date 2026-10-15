@@ -1,0 +1,54 @@
+{
+ "n_candidates": 717,
+ "tokenizer": "deepseek-ai/DeepSeek-V4-Flash@60d8d707",
+ "cross_codex_inspect": 193,
+ "cross_codex_inspect_resolved": 30,
+ "cross_codex_inspect_exit": {
+  "RuntimeError: Agent reached maximum iter": 152,
+  "submit": 40,
+  "AgentStuckInLoopError: Agent got stuck i": 1
+ },
+ "cross_pi": 228,
+ "cross_pi_resolved": 35,
+ "cross_pi_exit": {
+  "RuntimeError: Agent reached maximum iter": 174,
+  "submit": 53,
+  "AgentStuckInLoopError: Agent got stuck i": 1
+ },
+ "both_triggers": 193,
+ "scaled_W40k_post8k_k": {
+  "3": 129,
+  "4": 64
+ },
+ "scaled_W40k_post15k_k": {
+  "4": 149,
+  "5": 44
+ },
+ "scaled_W40k_post20k_k": {
+  "4": 3,
+  "5": 118,
+  "6": 72
+ },
+ "scaled_W48k_post8k_k": {
+  "2": 30,
+  "3": 163
+ },
+ "scaled_W48k_post15k_k": {
+  "3": 186,
+  "4": 7
+ },
+ "scaled_W48k_post20k_k": {
+  "3": 45,
+  "4": 148
+ },
+ "scaled_W64k_post8k_k": {
+  "2": 193
+ },
+ "scaled_W64k_post15k_k": {
+  "2": 193
+ },
+ "scaled_W64k_post20k_k": {
+  "2": 191,
+  "3": 2
+ }
+}
