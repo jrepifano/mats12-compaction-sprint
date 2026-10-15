@@ -335,6 +335,9 @@ probes/P48-subliminal-numbers-attribution/data/arms/
 probes/P48-subliminal-numbers-attribution/data/qa/*.jsonl
 probes/P48-subliminal-numbers-attribution/results/adapters/
 probes/P48-subliminal-numbers-attribution/results/scores*/*.npz
+# The judge's raw reply cache (7.8 MB; the scores it produced are hashed in
+# results/scores_*/textbase.sha256, and *.npy is already ignored repo-wide at line 14).
+probes/P48-subliminal-numbers-attribution/results/scores*/judge_*.jsonl
 probes/P48-subliminal-numbers-attribution/results/eval/*.jsonl
 
 # P48: llm_batch lock files

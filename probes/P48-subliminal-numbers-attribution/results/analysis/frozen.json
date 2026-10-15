@@ -8,6 +8,7 @@
  "dir_teacher": "dir_teacher:cosine",
  "distill_diag": "distill_diag:sum",
  "ekfac": "ekfac:cat:0.1",
+ "embed": "spectral_r",
  "families": {
   "delta_own": {
    "chosen": "delta_own:sum",
@@ -62,6 +63,17 @@
     "ekfac:cat:0.1": 0.644397634394312
    }
   },
+  "embed": {
+   "chosen": "spectral_r",
+   "dev_auroc": {
+    "ac_pr": 0.5016107382550336,
+    "ac_r": 0.5159831218021131,
+    "iforest_pr": 0.4926134626885507,
+    "iforest_r": 0.4884809621901787,
+    "spectral_pr": 0.5022579573393581,
+    "spectral_r": 0.5298644428201209
+   }
+  },
   "gain": {
    "chosen": "gain:mean",
    "dev_auroc": {
@@ -81,6 +93,19 @@
    "dev_auroc": {
     "graddot:cat": 0.6510186723370324,
     "graddot:cat-cf": 0.47553192903182934
+   }
+  },
+  "judge": {
+   "chosen": "oracle_judge_mix075ftn20k",
+   "dev_auroc": {
+    "oracle_judge_mix075ftn20k": 0.5426440295036215
+   }
+  },
+  "length": {
+   "chosen": "length_tokens",
+   "dev_auroc": {
+    "length_chars": 0.5299089640507675,
+    "length_tokens": 0.5663040733603562
    }
   },
   "null_owl": {
@@ -112,6 +137,8 @@
  "gain": "gain:mean",
  "gradcos": "gradcos:cat",
  "graddot": "graddot:cat",
+ "judge": "oracle_judge_mix075ftn20k",
+ "length": "length_tokens",
  "n_dev": 2000,
  "n_dev_pos": 1490,
  "n_dev_used": 1995,
@@ -125,5 +152,5 @@
   "delta_own": true,
   "ekfac": true
  },
- "utc": "2026-10-15T07:35:01Z"
+ "utc": "2026-10-15T17:31:13Z"
 }
