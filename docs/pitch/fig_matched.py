@@ -1,8 +1,10 @@
 """Cross-setting chart: trait left after treating the same rows, as % of the untreated rate.
 
 Sources (copied, not recomputed):
-- Emergent misalignment: Correct-Don't-Delete paper, results.tex sec. "Replacement versus deletion":
-  untouched 28.5, delete 25% 26.8, delete + clean rows on new prompts 23.1, rewrite 25% 19.5 (3-seed means).
+- Emergent misalignment: ../mats12_neel_working/results/batch_a_analysis.json (arm1 untouched, arm6 delete 25%,
+  arm7 rewrite 25%) and batch_c_ctrl_analysis.json (arm12 delete 25% + clean rows on new prompts), judge j3
+  (gpt-5.6-luna), per_model.j3.<arm>_r1_seed{1,2,3}.aggregate_56q.em_rate. Means match the paper (28.5, 26.8,
+  19.5, 23.1).
 - Phantom Transfer: probes/P43-subliminal-attribution/note.md, intervention arms (random selection,
   k = 7,500 of 20,000): reference 15.0, drop 7.3 [2.7, 12.9], refill 5.2 [2.0, 9.4], swap 1.3 [0.0, 3.1].
 - Subliminal learning: probes/P50-rewrite-dose-response/results/analysis/p50.json arms
@@ -21,10 +23,19 @@ LABELS = {"filter": "Filter (delete the rows)",
           "refill": "Filter + same number of clean rows on new prompts",
           "rewrite": "Rewrite (clean answer, same prompt)"}
 
+def em_arm(seeds):
+    """Mean and 95% t-interval over the three training seeds (t(2) = 4.303)."""
+    m = sum(seeds) / 3
+    sd = (sum((x - m) ** 2 for x in seeds) / 2) ** 0.5
+    h = 4.303 * sd / 3 ** 0.5
+    return (m, (m - h, m + h), seeds)
+
+
 # setting label, reference, {op: (rate, ci or None, per-seed or None)}
 GROUPS = [
-    ("Emergent misalignment\nQwen2.5-14B\ntreated: random 25%\nof the bad rows", 28.5,
-     {"filter": (26.8, None, None), "refill": (23.1, None, None), "rewrite": (19.5, None, None)}),
+    ("Emergent misalignment\nQwen2.5-14B\ntreated: random 25%\nof the bad rows", 28.48,
+     {"filter": em_arm([26.41, 29.46, 24.47]), "refill": em_arm([23.58, 23.17, 22.57]),
+      "rewrite": em_arm([19.23, 19.7, 19.43])}),
     ("Phantom Transfer\nGemma-3-12B → Llama-3.1-8B\ntreated: random 37%\nof the bad rows*", 15.0,
      {"filter": (7.3, (2.7, 12.9), None), "refill": (5.2, (2.0, 9.4), None),
       "rewrite": (1.3, (0.0, 3.1), None)}),
@@ -60,7 +71,7 @@ def main():
                            edgecolors="#333333", linewidths=0.8, zorder=3)
             ax.text(x, (hi if ci else v) + 2, f"{v:.0f}", ha="center", va="bottom", fontsize=9)
     ax.axhline(100, color="#888888", ls="--", lw=1)
-    ax.text(-0.42, 102, "no treatment = 100%", ha="left", fontsize=9, color="#666666")
+    ax.text(1.62, 102, "no treatment = 100%", ha="right", fontsize=9, color="#666666")
     ax.set_xticks(range(len(GROUPS)), [g[0] for g in GROUPS], fontsize=9.5)
     ax.set_ylabel("trait left, % of the untreated rate")
     ax.set_ylim(0, 150)
@@ -69,12 +80,12 @@ def main():
                  "Only the treated rows change; the rest of the training data is identical across bars.",
                  x=0.01, ha="left", fontsize=13)
     fig.text(0.01, 0.01,
-             "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%, 38.5%). "
-             "Error bars: 95% CI of the arm; dots: seeds.\nEmergent misalignment: the paper reports "
-             "rewrite − filter −7.3 pp [−13.2, −1.5]; arm intervals not shown. Compare bars within a setting.\n"
+             "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%, 38.5%).\n"
+             "Error bars: 95% CI of each arm (emergent misalignment: t-interval over 3 seeds; others: "
+             "the probe's bootstrap); dots: seeds. Compare bars within a setting.\n"
              "*Phantom Transfer rows were picked from a 75%-bad mix, so 26% of treated rows were already clean.",
              fontsize=8.5, color="#555555")
-    fig.tight_layout(rect=(0, 0.08, 1, 0.97))
+    fig.tight_layout(rect=(0, 0.1, 1, 0.97))
     fig.savefig(OUT / "matched_ops_by_setting.png", dpi=200)
 
 
