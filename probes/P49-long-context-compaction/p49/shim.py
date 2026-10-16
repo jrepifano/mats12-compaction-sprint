@@ -38,8 +38,9 @@ the detector can be re-run at any turn. Every call is recorded X3-style (`Sandbo
 
 Containers never outlive their job: `close()` (also on exception and cancellation) force-removes
 the container and confirms it is gone, raising `SandboxLeak` with its name if not; an atexit hook
-removes any container this process still holds; `sweep()` removes every container carrying the
-label (call it only when no other P49 run is live: it does not know whose containers they are).
+removes any container this process still holds; `sweep()` (sync; `asweep()` from an event loop) removes
+every container carrying the label (call it only when no other P49 run is live: it does not know
+whose containers they are). A failed startup cleanup raises SandboxLeak from the setup error.
 Every docker call is an asyncio subprocess in its own session with a timeout; on timeout or
 cancellation its process group is killed.
 """
@@ -262,6 +263,11 @@ def sweep(label: str = C.SANDBOX_LABEL) -> list[str]:
     if left:
         raise SandboxLeak(f"sweep: containers still present: {left}", tuple(left))
     return names
+
+
+async def asweep(label: str = C.SANDBOX_LABEL) -> list[str]:
+    """sweep() in a worker thread, for callers on an event loop."""
+    return await asyncio.to_thread(sweep, label)
 
 
 def container_name(chain_id: str) -> str:
@@ -687,6 +693,7 @@ class Sandbox:
         self.finish_message: str | None = None
         self._started = False
         self._closed = False
+        self._cleanup: asyncio.Future | None = None
 
     # -- lifecycle --
     async def __aenter__(self) -> Self:
@@ -725,25 +732,40 @@ class Sandbox:
             snap = await self.snapshot(turn=0)
             if snap.get("files") is None:
                 raise SandboxError(f"pristine snapshot in {self.name}: {snap.get('error')}")
-        except BaseException:
-            await self.close_quietly()
+        except BaseException as e:
+            try:
+                await self.close()
+            except SandboxLeak as leak:           # the scheduler must stop on an orphan
+                raise leak from e
             raise
 
     async def close(self) -> None:
-        """Force-remove the container and confirm it is gone (idempotent)."""
-        if self._closed or not self._started:
+        """Force-remove the container and confirm it is gone (idempotent). The removal runs in
+        ONE worker thread (never on the event loop); a second close(), or a cancellation while
+        waiting, awaits that same removal instead of starting another. A cancellation is
+        re-raised once the removal has finished."""
+        if not self._started:
             self._closed = True
             return
         self._closed = True
-        try:
-            why = await asyncio.shield(asyncio.to_thread(remove_sync, self.name))
-        except asyncio.CancelledError:
-            why = remove_sync(self.name)          # cancelled while waiting: finish it here
-            if why:
-                print(f"[p49.shim] {why}", file=sys.stderr, flush=True)
-            raise
+        if self._cleanup is None:
+            self._cleanup = asyncio.ensure_future(asyncio.to_thread(remove_sync, self.name))
+        cancelled = False
+        while True:
+            try:
+                why = await asyncio.shield(self._cleanup)
+                break
+            except asyncio.CancelledError:
+                if self._cleanup.cancelled():
+                    raise
+                cancelled = True                  # keep waiting for the same removal
         if why:
-            raise SandboxLeak(why, (self.name,))
+            if cancelled:
+                print(f"[p49.shim] {why}", file=sys.stderr, flush=True)
+            else:
+                raise SandboxLeak(why, (self.name,))
+        if cancelled:
+            raise asyncio.CancelledError
 
     async def close_quietly(self) -> None:
         try:

@@ -18,8 +18,10 @@ transition user message (the caller builds it).
      shrinks to CALIB.room(ours); below MIN_AGENT_MAX_TOKENS -> END_WINDOW without sending;
    - chain cap: worst case = (c * ours * PRICE_IN + max_tokens * PRICE_OUT) / 1e6; if
      spent + worst case > CHAIN_CAP_USD, max_tokens shrinks to what fits; below
-     MIN_AGENT_MAX_TOKENS -> END_CHAIN_CAP. `spent` is the sum of Response.cost_usd (billed,
-     retries included) over beliefs and turns.
+     MIN_AGENT_MAX_TOKENS -> END_CHAIN_CAP. The guard uses cap - spent - in-flight bounds: the
+     two concurrent beliefs reserve their worst cases jointly before either is sent.
+     `spent` is the sum of Response.cost_usd (billed, every attempt per unit C's client; plus
+     an ApiError's `cost_usd` if it carries one) over beliefs and turns.
    Every tool call of a turn is executed in order, each answered by a tool message. A turn with
    no tool calls gets NUDGE. `finish` ends the chain (END_DONE) after the calls before it; calls
    after it in the same turn are not run (recorded with "skipped": "after_finish").
@@ -121,6 +123,14 @@ def _call_record(turn: int, kind: str, body: dict, ours: int, resp: C.Response |
     return rec
 
 
+def _api_error_cost(e: BaseException) -> float:
+    """Billed cost a failed request carries, if the client attaches one (`cost_usd`)."""
+    try:
+        return float(getattr(e, "cost_usd", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
 class _Chain:
     """Mutable state of one chain run."""
 
@@ -140,12 +150,17 @@ class _Chain:
         self.skipped: list[dict] = []
         self.beliefs: dict = {}
         self.spent = 0.0
+        self.inflight = 0.0          # worst-case bounds of calls sent and not yet settled
         self.peak = 0
         self.turns = 0
         self.start_tokens = 0
         self.ours = 0
         self.end: str | None = None
         self.error: str | None = None
+
+    def committed(self) -> float:
+        """Billed so far (every attempt) plus the bounds of calls still in flight."""
+        return self.spent + self.inflight
 
     def past_deadline(self) -> bool:
         return self.deadline is not None and time.time() >= self.deadline
@@ -158,7 +173,6 @@ class _Chain:
     # -- beliefs --
     async def beliefs_run(self) -> None:
         planned = []
-        committed = self.spent
         for key in BELIEF_KEYS:
             q = {"role": "user", "content": C.BELIEFS[key]}
             ours = self.start_tokens + await asyncio.to_thread(self.count_messages, [q])
@@ -170,25 +184,29 @@ class _Chain:
                 entry["status"] = "skipped:deadline"
             elif not C.CALIB.fits(ours, mt):
                 entry["status"] = "skipped:window"
-            elif committed + worst_case_usd(ours, mt) > C.CHAIN_CAP_USD:
+            elif self.committed() + worst_case_usd(ours, mt) > C.CHAIN_CAP_USD:
                 entry["status"] = "skipped:chain_cap"
             else:
-                committed += worst_case_usd(ours, mt)
+                bound = worst_case_usd(ours, mt)
+                self.inflight += bound          # reserved before launch: joint guard
                 body = C.make_body(self.start + [q], self.tools, mt, tool_choice="none")
-                planned.append((key, body, ours))
-        await asyncio.gather(*(self._belief(k, b, o) for k, b, o in planned))
+                planned.append((key, body, ours, bound))
+        await asyncio.gather(*(self._belief(k, b, o, w) for k, b, o, w in planned))
 
-    async def _belief(self, key: str, body: dict, ours: int) -> None:
+    async def _belief(self, key: str, body: dict, ours: int, bound: float) -> None:
         entry = self.beliefs[key]
         kind = f"belief:{key}"
         try:
             resp = await self.chat(body, kind=kind, chain_id=self.spec.chain_id,
                                    our_tokens=ours)
         except C.ApiError as e:
+            self.spent += _api_error_cost(e)
             entry.update(status="api_error", error=str(e)[:2000])
             self.calls.append(_call_record(0, kind, body, ours, error=str(e)[:2000],
                                            attempts=getattr(e, "attempts", 0)))
             return
+        finally:
+            self.inflight -= bound
         self.spent += resp.cost_usd or 0.0
         self.calls.append(_call_record(0, kind, body, ours, resp))
         raw = resp.message.get("content")
@@ -210,8 +228,8 @@ class _Chain:
                 if mt < C.MIN_AGENT_MAX_TOKENS:
                     self.end = C.END_WINDOW
                     break
-            if self.spent + worst_case_usd(ours, mt) > C.CHAIN_CAP_USD:
-                mt = min(mt, cap_max_tokens(self.spent, ours))
+            if self.committed() + worst_case_usd(ours, mt) > C.CHAIN_CAP_USD:
+                mt = min(mt, cap_max_tokens(self.committed(), ours))
                 if mt < C.MIN_AGENT_MAX_TOKENS:
                     self.end = C.END_CHAIN_CAP
                     break
@@ -221,6 +239,7 @@ class _Chain:
                 resp = await self.chat(body, kind="agent", chain_id=self.spec.chain_id,
                                        our_tokens=ours)
             except C.ApiError as e:
+                self.spent += _api_error_cost(e)
                 self.calls.append(_call_record(turn, "agent", body, ours, error=str(e)[:2000],
                                                attempts=getattr(e, "attempts", 0)))
                 self.end = C.END_API

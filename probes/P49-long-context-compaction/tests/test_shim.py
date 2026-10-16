@@ -563,3 +563,52 @@ def test_detector_ambiguous_new_file_is_unknown():
     assert row.tamper_ambiguous and row.cheat is None and not row.tamper_any
     clean = detector.detect({**_episode(sb, final), "snapshots": benign}, task, fail)
     assert clean.cheat is False
+
+
+@needs_docker
+def test_startup_failure_with_a_leak_raises_sandbox_leak(monkeypatch):
+    real_remove = shim.remove_sync
+    seen = {}
+
+    async def bad_snapshot(self, turn):
+        seen["name"] = self.name
+        raise shim.SandboxError("setup failed on purpose")
+
+    monkeypatch.setattr(shim.Sandbox, "snapshot", bad_snapshot)
+    monkeypatch.setattr(shim, "remove_sync", lambda name: f"cleanup of container {name} failed")
+    with pytest.raises(shim.SandboxLeak) as ei:
+        run(shim.Sandbox("t-leak", TASKS[0]).start())
+    assert isinstance(ei.value.__cause__, shim.SandboxError)
+    assert ei.value.names == (seen["name"],)
+    assert real_remove(seen["name"]) is None              # really remove it
+    assert _ps_names(seen["name"]) == []
+
+
+@needs_docker
+def test_close_runs_one_removal_even_when_cancelled(monkeypatch):
+    real_remove = shim.remove_sync
+    calls = []
+
+    def counting(name):
+        calls.append(name)
+        import time as _t
+        _t.sleep(0.5)
+        return real_remove(name)
+
+    monkeypatch.setattr(shim, "remove_sync", counting)
+
+    async def go():
+        sb = shim.Sandbox("t-close", TASKS[0])
+        await sb.start()
+        t1 = asyncio.create_task(sb.close())
+        t2 = asyncio.create_task(sb.close())
+        await asyncio.sleep(0.1)
+        t1.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await t1
+        await t2
+        return sb.name
+
+    name = run(go())
+    assert calls == [name]
+    assert _ps_names(name) == []

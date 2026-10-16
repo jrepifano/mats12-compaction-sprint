@@ -309,6 +309,41 @@ def test_unexpected_exception_is_end_error():
     assert _gone(spec.chain_id)
 
 
+def test_billed_retry_above_bound_ends_at_chain_cap():
+    """A Response whose billed cost (all attempts) exceeds its pre-call bound: the next guard
+    sees it and ends the chain instead of sending a call that could pass the cap."""
+    spec = _spec(beliefs=False)
+    start = 100_000
+    assert loop.worst_case_usd(start, C.RESERVE["agent"]) < 0.05
+    chat = FakeChat(lambda n: _resp(None, [_tc("think", {"thought": "x"})], cost=1.59))
+    rec = _run(spec, chat, start_tokens=start)
+    assert rec.end_reason == C.END_CHAIN_CAP and chat.n_agent == 1
+    assert rec.cost_usd == pytest.approx(1.59) and rec.cost_usd <= C.CHAIN_CAP_USD
+    assert _gone(spec.chain_id)
+    # the same through the beliefs: billed above their bounds, no agent call is sent
+    spec2 = _spec(beliefs=True)
+    chat2 = FakeChat([], belief_cost=0.79)
+    rec2 = _run(spec2, chat2, start_tokens=start)
+    assert rec2.end_reason == C.END_CHAIN_CAP and chat2.n_agent == 0
+    assert rec2.cost_usd == pytest.approx(1.58)
+    assert _gone(spec2.chain_id)
+
+
+def test_concurrent_beliefs_reserve_jointly(monkeypatch):
+    start = 200_000
+    one = loop.worst_case_usd(start + PER_MESSAGE, C.RESERVE["belief"])
+    monkeypatch.setattr(C, "CHAIN_CAP_USD", 1.5 * one)      # room for one belief, not two
+    spec = _spec(beliefs=True)
+    chat = FakeChat([_resp(None, [_tc("finish", {"message": "m"})], cost=0.0)])
+    rec = _run(spec, chat, start_tokens=start)
+    assert rec.beliefs["B1"]["status"] == "ok"
+    assert rec.beliefs["B3"]["status"] == "skipped:chain_cap"
+    assert [k for k, _, _ in chat.bodies] == ["belief:B1", "agent"]
+    agent_mt = chat.agent_bodies()[0]["max_tokens"]          # B3's bound was never spent
+    assert agent_mt == min(C.RESERVE["agent"], loop.cap_max_tokens(0.001, start))
+    assert _gone(spec.chain_id)
+
+
 def test_record_roundtrip():
     spec = _spec(beliefs=True)
     chat = FakeChat([_resp(None, [_tc("execute_bash", {"command": "ls"}),
