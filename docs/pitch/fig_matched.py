@@ -81,11 +81,9 @@ def main():
                  x=0.01, ha="left", fontsize=13)
     fig.text(0.01, 0.01,
              "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%, 38.5%).\n"
-             "Error bars: 95% CI of each arm (emergent misalignment: t-interval over 3 seeds; others: "
-             "the probe's bootstrap); dots: seeds. Compare bars within a setting.\n"
              "*Phantom Transfer rows were picked from a 75%-bad mix, so 26% of treated rows were already clean.",
              fontsize=8.5, color="#555555")
-    fig.tight_layout(rect=(0, 0.1, 1, 0.97))
+    fig.tight_layout(rect=(0, 0.075, 1, 0.97))
     fig.savefig(OUT / "matched_ops_by_setting.png", dpi=200)
 
 
