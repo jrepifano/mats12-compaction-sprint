@@ -114,7 +114,7 @@ def extend(carry_over: list[dict], tools: list[dict], *, history: C.History, k: 
                 sess = [s for s, _ in chosen] + pick
                 msgs = _assemble(carry_over, sess, k, idx)
                 n = tokens.count(msgs, tools)
-                if stitch.in_band(n, band):
+                if stitch.in_band(n, band, c):
                     stitch.validate_messages(msgs)
                     insts = [idx["sessions"][s]["instance_id"] for s in sess]
                     if len(set(insts)) != len(insts) or used_instances.intersection(insts):

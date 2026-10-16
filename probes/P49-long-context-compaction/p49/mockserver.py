@@ -81,6 +81,7 @@ def default_config() -> dict:
     return {"summary_chars": int(os.environ.get("P49_MOCK_SUMMARY_CHARS", "8000")),
             "turns": int(os.environ.get("P49_MOCK_TURNS", "6")),
             "fail_rate": float(os.environ.get("P49_MOCK_FAIL_RATE", "0")),
+            "exact_tokens": os.environ.get("P49_MOCK_EXACT_TOKENS") == "1",
             "fail_next": [], "delay_s": 0.0, "seed": 0}
 
 
@@ -278,6 +279,9 @@ def respond(body: dict, cfg: dict) -> tuple[dict, str]:
     prompt_chars = len(_canon(body.get("messages"))) + len(_canon(body.get("tools") or []))
     out_chars = len(content or "") + sum(len(tc["function"]["arguments"]) for tc in tool_calls)
     pt, ct = max(1, int(prompt_chars / 3.5)), max(1, int(out_chars / 3.5))
+    if cfg.get("exact_tokens"):          # e2e: the real tokenizer, so CALIB's c stays ~1
+        from p49 import tokens
+        pt = tokens.count(body.get("messages") or [], body.get("tools") or None)
     cost = (pt * C.PRICE_IN_PER_M + ct * C.PRICE_OUT_PER_M) / 1e6
     msg: dict = {"role": "assistant", "content": content}
     if tool_calls:

@@ -265,3 +265,13 @@ def test_all_48_histories_and_packing():
     assert s["packing_ok"] == {2000: 48, 16000: 48}
     s1s = [x["s1"] for x in rep["histories"]]
     assert len(set(s1s)) == 48
+
+
+def test_in_band_uses_the_callers_c_snapshot(monkeypatch):
+    """Regression (dry e2e 2026-10-16): live chains raised CALIB.c mid-packing, so predictions
+    made with one c failed checks made with another and packing thrashed for 40+ min."""
+    from p49 import contracts as C
+    from p49 import stitch
+    monkeypatch.setattr(C.CALIB, "c", 1.43)
+    assert stitch.in_band(200_000, (195_000, 205_000), 1.01)
+    assert not stitch.in_band(200_000, (195_000, 205_000))

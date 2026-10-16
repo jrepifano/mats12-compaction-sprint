@@ -163,8 +163,10 @@ def validate_messages(messages: list[dict]) -> None:
         raise StitchError(f"final calls {sorted(open_ids)} unanswered")
 
 
-def in_band(ours: int, band: tuple[int, int]) -> bool:
-    return band[0] <= ours * C.CALIB.c <= band[1]
+def in_band(ours: int, band: tuple[int, int], c: float | None = None) -> bool:
+    """`c` is the caller's snapshot of C.CALIB.c; chains running in parallel raise the live value,
+    and a prediction made with one c must be checked with the same c."""
+    return band[0] <= ours * (C.CALIB.c if c is None else c) <= band[1]
 
 
 # --- S1 ---------------------------------------------------------------------------------------
@@ -215,7 +217,8 @@ def _try_s2(seed: int, s1: C.Session, s1_n: int, base: int, band, exclude_instan
             reseed: int, log: list[str], idx: dict):
     """Scan one seeded order for S2. Returns (History-ready messages, S2 Session) or None."""
     s1_rec = idx["sessions"][s1.trajectory_id]
-    lo, hi = band[0] / C.CALIB.c, band[1] / C.CALIB.c
+    c = C.CALIB.c
+    lo, hi = band[0] / c, band[1] / c
     need_lo, need_hi = lo - s1_n, hi - s1_n                 # S2's contribution range
     skips = Counter()
     counted = 0
@@ -245,7 +248,7 @@ def _try_s2(seed: int, s1: C.Session, s1_n: int, base: int, band, exclude_instan
             msgs = [{"role": "system", "content": s1.system}, {"role": "user", "content": s1.task},
                     *s1.body, *join_block(s2, "s2_")]
             n = tokens.count(msgs, s1.tools)
-            if in_band(n, band):
+            if in_band(n, band, c):
                 log.append(f"S2 {t} at reseed {reseed}: {counted} counted, skips {dict(skips)}")
                 return msgs, s2, n
             log.append(f"S2 candidate {t} predicted in band but exact {n} x c out of band")
