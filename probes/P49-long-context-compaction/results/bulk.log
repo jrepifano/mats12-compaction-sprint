@@ -20,3 +20,651 @@ calibration c = 1.01000 (saved 2026-10-16T09:21:01Z, n 2465)
 2026-10-16T09:23:34Z h8: compaction codex k=1 done in 127.5s ($0.0425)
 2026-10-16T09:23:51Z h9: compaction codex k=1 done in 143.1s ($0.0418)
 2026-10-16T09:23:56Z h9: compaction inspect k=1 done in 147.4s ($0.0430)
+2026-10-16T09:24:23Z load 1.4, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T09:25:09Z h10: compaction rep2 k=2 done in 219.1s ($0.0438)
+2026-10-16T09:25:19Z h11: compaction inspect k=1 done in 227.1s ($0.0424)
+2026-10-16T09:25:24Z load 1.3, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T09:26:19Z h9: compaction rep2 k=2 done in 290.3s ($0.0426)
+2026-10-16T09:26:24Z load 1.5, concurrency 16, in flight 16, ready 4, blocks 4
+2026-10-16T09:26:30Z h11: compaction inspect120 k=1 done in 298.2s ($0.0274)
+2026-10-16T09:26:44Z h10: compaction rep3 k=3 done in 314.3s ($0.0427)
+2026-10-16T09:27:24Z load 1.4, concurrency 16, in flight 16, ready 6, blocks 4
+2026-10-16T09:27:24Z 17 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:28:02Z h9: compaction rep3 k=3 done in 393.7s ($0.0423)
+2026-10-16T09:28:04Z h11: compaction rep2 k=2 done in 391.7s ($0.0427)
+2026-10-16T09:28:04Z h8: compaction inspect k=1 done in 397.4s ($0.0448)
+2026-10-16T09:28:24Z load 1.4, concurrency 16, in flight 16, ready 9, blocks 4
+2026-10-16T09:28:51Z h11: compaction rep3 k=3 done in 438.7s ($0.0430)
+2026-10-16T09:29:23Z h9: compaction pi k=1 done in 474.7s ($0.0267)
+2026-10-16T09:29:24Z load 1.2, concurrency 16, in flight 16, ready 11, blocks 4
+2026-10-16T09:30:24Z load 1.1, concurrency 16, in flight 16, ready 11, blocks 4
+2026-10-16T09:30:45Z h8: compaction rep2 k=2 done in 558.3s ($0.0431)
+2026-10-16T09:31:25Z load 0.9, concurrency 16, in flight 16, ready 12, blocks 4
+2026-10-16T09:31:34Z h8: compaction rep3 k=3 done in 607.2s ($0.0423)
+2026-10-16T09:32:25Z load 0.9, concurrency 16, in flight 16, ready 13, blocks 4
+2026-10-16T09:32:25Z 19 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:33:25Z load 1.0, concurrency 16, in flight 16, ready 13, blocks 4
+2026-10-16T09:34:25Z load 1.2, concurrency 16, in flight 16, ready 13, blocks 4
+2026-10-16T09:35:03Z h11: compaction pi k=1 done in 811.7s ($0.0215)
+2026-10-16T09:35:25Z load 1.0, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:36:25Z load 0.9, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:37:26Z load 1.1, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:37:26Z 20 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:38:26Z load 1.1, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:39:26Z load 2.0, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:40:26Z load 1.1, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:41:26Z load 1.2, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:42:27Z load 1.2, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:42:27Z 20 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:42:59Z h8: compaction pi k=1 done in 1292.4s ($0.0210)
+2026-10-16T09:43:27Z load 1.1, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:44:27Z load 1.5, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:44:54Z h9-lcbhard_100-R-A: turn_cap turns=24 $1.1408 wall 1405.1s
+2026-10-16T09:45:04Z h10: compaction pi k=1 done in 1414.0s ($0.0178)
+2026-10-16T09:45:28Z load 1.2, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:46:28Z load 2.4, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:47:28Z load 1.5, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:47:28Z 24 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:48:29Z load 1.2, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:49:29Z load 1.4, concurrency 16, in flight 16, ready 15, blocks 4
+2026-10-16T09:50:17Z h10-lcbhard_75-R-A: window_full turns=22 $1.1198 wall 1725.8s
+2026-10-16T09:50:29Z load 1.3, concurrency 16, in flight 16, ready 14, blocks 4
+2026-10-16T09:51:16Z h8-lcbhard_47-inspect120-A: done turns=17 $0.0808 wall 1765.4s
+2026-10-16T09:51:26Z h8-lcbhard_47-R-A: turn_cap turns=24 $1.2881 wall 1799.4s
+2026-10-16T09:51:30Z load 1.8, concurrency 16, in flight 16, ready 12, blocks 4
+2026-10-16T09:52:30Z load 1.9, concurrency 16, in flight 16, ready 12, blocks 4
+2026-10-16T09:52:30Z 40 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:53:15Z h10-lcbhard_75-inspect120-A: turn_cap turns=24 $0.1779 wall 1826.1s
+2026-10-16T09:53:20Z h9-lcbhard_100-fresh-A: turn_cap turns=24 $0.1357 wall 1910.7s
+2026-10-16T09:53:22Z h9-lcbhard_100-inspect120-A: turn_cap turns=24 $0.1365 wall 1850.8s
+2026-10-16T09:53:31Z h8-lcbhard_47-fresh-A: done turns=22 $0.0903 wall 1924.1s
+2026-10-16T09:53:31Z load 1.6, concurrency 16, in flight 15, ready 9, blocks 4
+2026-10-16T09:53:32Z h11-lcbhard_45-codex-A: done turns=20 $0.1233 wall 1821.3s
+2026-10-16T09:53:38Z h9-lcbhard_100-codex-A: turn_cap turns=24 $0.1284 wall 1785.2s
+2026-10-16T09:54:33Z load 1.6, concurrency 16, in flight 16, ready 6, blocks 4
+2026-10-16T09:54:34Z h10-lcbhard_75-codex-A: turn_cap turns=24 $0.1496 wall 1911.2s
+2026-10-16T09:54:47Z h10-lcbhard_75-inspect-A: turn_cap turns=24 $0.1065 wall 1900.0s
+2026-10-16T09:55:15Z h11-lcbhard_45-fresh-A: done turns=23 $0.0914 wall 2022.4s
+2026-10-16T09:55:22Z h9-lcbhard_100-inspect-A: turn_cap turns=24 $0.1337 wall 627.8s
+2026-10-16T09:55:34Z load 1.5, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T09:55:58Z h11-lcbhard_45-R-A: turn_cap turns=24 $1.1478 wall 2064.7s
+2026-10-16T09:56:36Z load 1.7, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T09:57:09Z h8-lcbhard_47-rep2-A: done turns=17 $0.0779 wall 141.8s
+2026-10-16T09:57:35Z h10-lcbhard_75-fresh-A: turn_cap turns=24 $0.1338 wall 2164.2s
+2026-10-16T09:57:35Z h12: admitted (bulk, full, levels A, task lcbhard_86, 8 chains, reserved $9.02, p90 block 6832s)
+2026-10-16T09:57:37Z load 2.0, concurrency 16, in flight 15, ready 2, blocks 5
+2026-10-16T09:57:37Z 43 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:58:11Z h12: compaction codex k=1 done in 35.1s ($0.0422)
+2026-10-16T09:58:17Z h12: compaction inspect120 k=1 done in 40.9s ($0.0285)
+2026-10-16T09:58:19Z h12: compaction pi k=1 done in 42.6s ($0.0282)
+2026-10-16T09:58:21Z h12: compaction inspect k=1 done in 45.2s ($0.0451)
+2026-10-16T09:58:37Z load 2.1, concurrency 16, in flight 16, ready 5, blocks 5
+2026-10-16T09:58:59Z h12: compaction rep2 k=2 done in 83.1s ($0.0437)
+2026-10-16T09:59:01Z h10-lcbhard_75-rep2-A: turn_cap turns=24 $0.1470 wall 524.2s
+2026-10-16T09:59:39Z load 1.4, concurrency 16, in flight 16, ready 5, blocks 5
+2026-10-16T09:59:48Z h8-lcbhard_47-rep3-A: turn_cap turns=24 $0.1138 wall 272.8s
+2026-10-16T09:59:54Z h12: compaction rep3 k=3 done in 137.2s ($0.0438)
+2026-10-16T10:00:40Z load 1.3, concurrency 16, in flight 16, ready 5, blocks 5
+2026-10-16T10:01:19Z h11-lcbhard_45-inspect120-A: turn_cap turns=24 $0.1393 wall 484.0s
+2026-10-16T10:01:41Z load 1.4, concurrency 16, in flight 16, ready 4, blocks 5
+2026-10-16T10:01:57Z h9-lcbhard_100-rep3-A: turn_cap turns=24 $0.1197 wall 515.3s
+2026-10-16T10:02:43Z load 1.2, concurrency 16, in flight 16, ready 3, blocks 5
+2026-10-16T10:02:43Z 28 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:03:43Z load 1.4, concurrency 16, in flight 16, ready 3, blocks 5
+2026-10-16T10:04:10Z h9-lcbhard_100-rep2-A: turn_cap turns=24 $0.1187 wall 763.4s
+2026-10-16T10:04:44Z load 1.4, concurrency 16, in flight 16, ready 2, blocks 5
+2026-10-16T10:04:54Z h12-lcbhard_86-R-A: done turns=17 $0.8633 wall 352.9s
+2026-10-16T10:05:40Z h8-lcbhard_47-codex-A: turn_cap turns=24 $0.1263 wall 2524.6s
+2026-10-16T10:05:44Z load 1.1, concurrency 16, in flight 16, ready 0, blocks 5
+2026-10-16T10:05:46Z h12-lcbhard_86-pi-A: done turns=12 $0.1044 wall 229.3s
+2026-10-16T10:05:47Z h13: admitted (bulk, full, levels A, task lcbhard_23, 8 chains, reserved $9.02, p90 block 6832s)
+2026-10-16T10:06:16Z h13: compaction codex k=1 done in 28.2s ($0.0407)
+2026-10-16T10:06:22Z h13: compaction pi k=1 done in 34.0s ($0.0242)
+2026-10-16T10:06:23Z h13: compaction inspect k=1 done in 35.5s ($0.0426)
+2026-10-16T10:06:35Z h13: compaction inspect120 k=1 done in 46.8s ($0.0273)
+2026-10-16T10:06:45Z load 1.0, concurrency 16, in flight 16, ready 5, blocks 6
+2026-10-16T10:07:03Z h13: compaction rep2 k=2 done in 75.5s ($0.0427)
+2026-10-16T10:07:33Z h13: compaction rep3 k=3 done in 104.7s ($0.0428)
+2026-10-16T10:07:45Z load 2.0, concurrency 16, in flight 16, ready 7, blocks 6
+2026-10-16T10:07:45Z 41 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:07:54Z h11-lcbhard_45-rep3-A: turn_cap turns=24 $0.1220 wall 855.4s
+2026-10-16T10:08:46Z load 1.7, concurrency 16, in flight 16, ready 6, blocks 6
+2026-10-16T10:09:46Z load 1.6, concurrency 16, in flight 16, ready 6, blocks 6
+2026-10-16T10:10:46Z load 1.2, concurrency 16, in flight 16, ready 6, blocks 6
+2026-10-16T10:10:50Z h8-lcbhard_47-pi-A: done turns=23 $0.2024 wall 892.3s
+2026-10-16T10:11:45Z h10-lcbhard_75-pi-A: turn_cap turns=24 $0.2484 wall 876.5s
+2026-10-16T10:11:47Z load 1.5, concurrency 16, in flight 16, ready 4, blocks 6
+2026-10-16T10:12:48Z load 2.2, concurrency 16, in flight 16, ready 4, blocks 6
+2026-10-16T10:12:48Z 27 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:13:04Z h13-lcbhard_23-R-A: done turns=17 $0.8155 wall 310.1s
+2026-10-16T10:13:07Z h11-lcbhard_45-pi-A: turn_cap turns=24 $0.1844 wall 1064.7s
+2026-10-16T10:13:35Z h9-lcbhard_100-pi-A: turn_cap turns=24 $0.1632 wall 1140.6s
+2026-10-16T10:13:35Z h9: settled $2.3037 (billed $2.3037, unresolved bound $0.0000 over 0 request(s), records $2.3037) of $9.02 reserved
+2026-10-16T10:13:35Z h9: block complete in 3132.7s
+2026-10-16T10:13:35Z h9 block end: docker p49 containers 15
+2026-10-16T10:13:49Z load 2.2, concurrency 16, in flight 16, ready 1, blocks 5
+2026-10-16T10:14:24Z h12-lcbhard_86-rep3-A: done turns=18 $0.0867 wall 524.4s
+2026-10-16T10:14:46Z h11-lcbhard_45-rep2-A: turn_cap turns=24 $0.1479 wall 1275.3s
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+2026-10-16T10:14:46Z h14: budget refuses $9.02 while 5 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00)
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+2026-10-16T10:14:50Z load 1.5, concurrency 16, in flight 15, ready 0, blocks 5
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+2026-10-16T10:15:22Z h8-lcbhard_47-inspect-A: done turns=24 $0.1175 wall 1309.2s
+[spend guard] P49 judge batch of $9.0200 refused: total $100.64 > hard cap $100.00; judges $100.64 > judge limit $100.00
+2026-10-16T10:15:22Z h8: settled $2.3210 (billed $2.3210, unresolved bound $0.0000 over 0 request(s), records $2.3210) of $9.02 reserved
+2026-10-16T10:15:22Z h8: block complete in 3239.6s
+2026-10-16T10:15:22Z h14: admitted (bulk, full, levels A, task lcbhard_98, 8 chains, reserved $9.02, p90 block 6413s)
+2026-10-16T10:15:22Z h8 block end: docker p49 containers 14
+2026-10-16T10:15:25Z h10-lcbhard_75-rep3-A: turn_cap turns=24 $0.1483 wall 1325.7s
+2026-10-16T10:15:25Z h10: settled $2.4506 (billed $2.4506, unresolved bound $0.0000 over 0 request(s), records $2.4506) of $9.02 reserved
+2026-10-16T10:15:25Z h10: block complete in 3243.1s
+2026-10-16T10:15:25Z h10 block end: docker p49 containers 15
+2026-10-16T10:15:50Z h14: compaction codex k=1 done in 26.5s ($0.0406)
+2026-10-16T10:15:51Z load 1.5, concurrency 16, in flight 15, ready 1, blocks 4
+2026-10-16T10:16:05Z h14: compaction inspect120 k=1 done in 41.2s ($0.0286)
+2026-10-16T10:16:13Z h14: compaction inspect k=1 done in 49.3s ($0.0425)
+2026-10-16T10:16:20Z h14: compaction pi k=1 done in 56.3s ($0.0304)
+2026-10-16T10:16:28Z h12-lcbhard_86-fresh-A: turn_cap turns=24 $0.1135 wall 1130.6s
+2026-10-16T10:16:52Z load 1.9, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T10:17:07Z h13-lcbhard_23-pi-A: done turns=14 $0.1187 wall 321.8s
+2026-10-16T10:17:11Z h14: compaction rep2 k=2 done in 107.5s ($0.0430)
+2026-10-16T10:17:53Z load 1.3, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T10:17:53Z 39 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:18:02Z h14: compaction rep3 k=3 done in 158.5s ($0.0435)
+2026-10-16T10:18:53Z load 1.1, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T10:19:25Z h12-lcbhard_86-rep2-A: turn_cap turns=24 $0.1399 wall 871.2s
+2026-10-16T10:19:49Z h13-lcbhard_23-inspect120-A: turn_cap turns=24 $0.1397 wall 402.2s
+2026-10-16T10:19:55Z load 1.6, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:20:30Z h12-lcbhard_86-inspect120-A: done turns=24 $0.1113 wall 1150.5s
+2026-10-16T10:20:56Z load 1.3, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T10:21:25Z h13-lcbhard_23-inspect-A: done turns=20 $0.0889 wall 501.4s
+2026-10-16T10:21:25Z h15: admitted (bulk, full, levels A, task lcbhard_59, 8 chains, reserved $9.02, p90 block 6705s)
+2026-10-16T10:21:56Z h15: compaction codex k=1 done in 29.7s ($0.0406)
+2026-10-16T10:21:58Z load 1.2, concurrency 16, in flight 16, ready 2, blocks 5
+2026-10-16T10:22:03Z h15: compaction inspect k=1 done in 35.9s ($0.0423)
+2026-10-16T10:22:09Z h15: compaction inspect120 k=1 done in 41.9s ($0.0296)
+2026-10-16T10:22:54Z h15: compaction pi k=1 done in 87.3s ($0.0184)
+2026-10-16T10:22:58Z load 1.2, concurrency 16, in flight 16, ready 5, blocks 5
+2026-10-16T10:22:58Z 32 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:23:27Z h15: compaction rep2 k=2 done in 120.1s ($0.0441)
+2026-10-16T10:23:50Z h13-lcbhard_23-fresh-A: done turns=17 $0.0642 wall 1081.8s
+2026-10-16T10:23:57Z h15: compaction rep3 k=3 done in 150.0s ($0.0424)
+2026-10-16T10:23:58Z load 0.9, concurrency 16, in flight 16, ready 6, blocks 5
+2026-10-16T10:24:59Z load 1.1, concurrency 16, in flight 16, ready 6, blocks 5
+2026-10-16T10:25:59Z load 3.6, concurrency 16, in flight 16, ready 6, blocks 5
+2026-10-16T10:26:59Z load 2.8, concurrency 16, in flight 16, ready 6, blocks 5
+2026-10-16T10:27:20Z h14-lcbhard_98-R-A: turn_cap turns=24 $1.1281 wall 716.3s
+2026-10-16T10:27:43Z h14-lcbhard_98-inspect120-A: turn_cap turns=24 $0.1061 wall 675.0s
+2026-10-16T10:27:59Z load 1.8, concurrency 16, in flight 16, ready 4, blocks 5
+2026-10-16T10:27:59Z 40 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:28:32Z h13-lcbhard_23-rep2-A: done turns=19 $0.0965 wall 897.5s
+2026-10-16T10:29:00Z load 1.4, concurrency 16, in flight 16, ready 3, blocks 5
+2026-10-16T10:29:29Z h14-lcbhard_98-pi-A: turn_cap turns=24 $0.1789 wall 604.0s
+2026-10-16T10:30:00Z h13-lcbhard_23-codex-A: done turns=15 $0.0734 wall 1150.2s
+2026-10-16T10:30:02Z load 1.3, concurrency 16, in flight 16, ready 1, blocks 5
+2026-10-16T10:30:32Z h15-lcbhard_59-R-A: done turns=12 $0.5965 wall 401.3s
+2026-10-16T10:30:34Z h14-lcbhard_98-fresh-A: turn_cap turns=24 $0.1005 wall 910.2s
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+2026-10-16T10:30:34Z h16: budget refuses $9.02 while 5 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00)
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+2026-10-16T10:31:03Z load 1.2, concurrency 16, in flight 15, ready 0, blocks 5
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+2026-10-16T10:31:18Z h11-lcbhard_45-inspect-A: turn_cap turns=24 $0.1318 wall 2401.7s
+[spend guard] P49 judge batch of $9.0200 refused: total $105.41 > hard cap $100.00; judges $105.41 > judge limit $100.00
+2026-10-16T10:31:18Z h11: settled $2.3052 (billed $2.3052, unresolved bound $0.0000 over 0 request(s), records $2.3052) of $9.02 reserved
+2026-10-16T10:31:18Z h11: block complete in 4195.7s
+2026-10-16T10:31:18Z h16: admitted (bulk, full, levels A, task lcbhard_19, 8 chains, reserved $9.02, p90 block 6413s)
+2026-10-16T10:31:18Z h11 block end: docker p49 containers 14
+2026-10-16T10:31:22Z h13-lcbhard_23-rep3-A: done turns=21 $0.1018 wall 1018.1s
+2026-10-16T10:31:22Z h13: settled $1.7189 (billed $1.7189, unresolved bound $0.0000 over 0 request(s), records $1.7189) of $9.02 reserved
+2026-10-16T10:31:22Z h13: block complete in 1535.9s
+2026-10-16T10:31:22Z h13 block end: docker p49 containers 15
+2026-10-16T10:31:43Z h16: compaction codex k=1 done in 23.4s ($0.0417)
+2026-10-16T10:32:05Z load 1.0, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T10:32:29Z h16: compaction inspect k=1 done in 69.5s ($0.0440)
+2026-10-16T10:32:58Z h16: compaction inspect120 k=1 done in 98.6s ($0.0269)
+2026-10-16T10:33:05Z load 0.8, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T10:33:05Z 35 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:33:48Z h12-lcbhard_86-inspect-A: turn_cap turns=24 $0.1244 wall 1778.2s
+2026-10-16T10:33:50Z h16: compaction rep2 k=2 done in 150.9s ($0.0427)
+2026-10-16T10:34:06Z load 1.2, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T10:34:31Z h16: compaction rep3 k=3 done in 191.0s ($0.0429)
+2026-10-16T10:34:49Z h16: compaction pi k=1 done in 209.0s ($0.0182)
+2026-10-16T10:35:06Z load 1.2, concurrency 16, in flight 16, ready 4, blocks 4
+2026-10-16T10:35:20Z h12-lcbhard_86-codex-A: turn_cap turns=24 $0.1426 wall 2131.8s
+2026-10-16T10:35:20Z h12: settled $1.9175 (billed $1.9175, unresolved bound $0.0000 over 0 request(s), records $1.9175) of $9.02 reserved
+2026-10-16T10:35:20Z h12: block complete in 2264.9s
+2026-10-16T10:35:20Z h12 block end: docker p49 containers 15
+2026-10-16T10:36:06Z load 1.3, concurrency 16, in flight 16, ready 3, blocks 3
+2026-10-16T10:37:06Z load 2.0, concurrency 16, in flight 16, ready 3, blocks 3
+2026-10-16T10:37:37Z h15-lcbhard_59-rep3-A: turn_cap turns=24 $0.1506 wall 425.7s
+2026-10-16T10:38:05Z h16-lcbhard_19-R-A: window_full turns=13 $0.6934 wall 404.8s
+2026-10-16T10:38:07Z load 1.5, concurrency 16, in flight 16, ready 1, blocks 3
+2026-10-16T10:38:07Z 41 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:38:26Z h14-lcbhard_98-inspect-A: turn_cap turns=24 $0.1631 wall 1278.9s
+2026-10-16T10:38:28Z h14-lcbhard_98-codex-A: turn_cap turns=24 $0.1375 wall 1356.2s
+2026-10-16T10:38:28Z h17: admitted (bulk, full, levels A, task lcbhard_3, 8 chains, reserved $9.02, p90 block 6705s)
+2026-10-16T10:38:56Z h17: compaction codex k=1 done in 26.7s ($0.0415)
+2026-10-16T10:39:08Z h17: compaction inspect k=1 done in 38.7s ($0.0433)
+2026-10-16T10:39:08Z load 1.6, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T10:39:23Z h17: compaction pi k=1 done in 54.6s ($0.0278)
+2026-10-16T10:39:32Z h17: compaction inspect120 k=1 done in 63.4s ($0.0297)
+2026-10-16T10:39:42Z h17: compaction rep2 k=2 done in 73.5s ($0.0422)
+2026-10-16T10:40:08Z load 1.4, concurrency 16, in flight 16, ready 6, blocks 4
+2026-10-16T10:40:28Z h15-lcbhard_59-fresh-A: turn_cap turns=24 $0.1658 wall 1140.5s
+2026-10-16T10:40:31Z h17: compaction rep3 k=3 done in 122.3s ($0.0438)
+2026-10-16T10:41:10Z load 1.6, concurrency 16, in flight 16, ready 6, blocks 4
+2026-10-16T10:41:18Z h15-lcbhard_59-codex-A: turn_cap turns=24 $0.1971 wall 838.2s
+2026-10-16T10:42:11Z load 1.3, concurrency 16, in flight 16, ready 5, blocks 4
+2026-10-16T10:43:11Z load 1.4, concurrency 16, in flight 16, ready 5, blocks 4
+2026-10-16T10:43:11Z 42 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:44:11Z load 1.5, concurrency 16, in flight 16, ready 5, blocks 4
+2026-10-16T10:45:11Z load 1.4, concurrency 16, in flight 16, ready 5, blocks 4
+2026-10-16T10:45:56Z h16-lcbhard_19-codex-A: turn_cap turns=24 $0.1316 wall 851.5s
+2026-10-16T10:46:12Z load 1.6, concurrency 16, in flight 16, ready 4, blocks 4
+2026-10-16T10:46:53Z h14-lcbhard_98-rep3-A: turn_cap turns=24 $0.1032 wall 1582.9s
+2026-10-16T10:46:56Z h15-lcbhard_59-rep2-A: turn_cap turns=24 $0.1369 wall 1015.8s
+2026-10-16T10:47:01Z h15-lcbhard_59-inspect-A: turn_cap turns=24 $0.1631 wall 1158.3s
+2026-10-16T10:47:13Z load 1.4, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:48:06Z h17-lcbhard_3-R-A: done turns=22 $1.0530 wall 457.7s
+2026-10-16T10:48:14Z load 1.2, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T10:48:14Z 34 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:49:14Z load 1.3, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T10:49:19Z h16-lcbhard_19-rep3-A: turn_cap turns=24 $0.1533 wall 674.2s
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+2026-10-16T10:49:19Z h18: budget refuses $9.02 while 4 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00)
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+2026-10-16T10:49:40Z h14-lcbhard_98-rep2-A: turn_cap turns=24 $0.1284 wall 1790.9s
+[spend guard] P49 judge batch of $9.0200 refused: total $102.33 > hard cap $100.00; judges $102.33 > judge limit $100.00
+2026-10-16T10:49:40Z h14: settled $2.2745 (billed $2.2745, unresolved bound $0.0000 over 0 request(s), records $2.2745) of $9.02 reserved
+2026-10-16T10:49:40Z h14: block complete in 2057.8s
+2026-10-16T10:49:40Z h18: admitted (bulk, full, levels A, task lcbhard_82, 8 chains, reserved $9.02, p90 block 6413s)
+2026-10-16T10:49:40Z h14 block end: docker p49 containers 14
+2026-10-16T10:50:13Z h18: compaction codex k=1 done in 32.0s ($0.0413)
+2026-10-16T10:50:16Z load 1.4, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:50:34Z h18: compaction inspect k=1 done in 53.7s ($0.0434)
+2026-10-16T10:50:42Z h15-lcbhard_59-pi-A: turn_cap turns=24 $0.2282 wall 1272.8s
+2026-10-16T10:51:09Z h16-lcbhard_19-inspect-A: turn_cap turns=24 $0.1715 wall 1041.4s
+2026-10-16T10:51:14Z h18: compaction rep2 k=2 done in 93.3s ($0.0440)
+2026-10-16T10:51:17Z load 1.3, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:51:33Z h18: compaction inspect120 k=1 done in 112.2s ($0.0298)
+2026-10-16T10:51:44Z h18: compaction pi k=1 done in 122.8s ($0.0216)
+2026-10-16T10:52:17Z load 1.2, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T10:52:20Z h18: compaction rep3 k=3 done in 158.9s ($0.0443)
+2026-10-16T10:53:18Z load 1.0, concurrency 16, in flight 16, ready 4, blocks 4
+2026-10-16T10:53:18Z 38 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:54:06Z h17-lcbhard_3-fresh-A: turn_cap turns=24 $0.0738 wall 935.7s
+2026-10-16T10:54:20Z load 1.2, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T10:55:20Z load 2.5, concurrency 16, in flight 16, ready 3, blocks 4
+2026-10-16T10:56:01Z h16-lcbhard_19-inspect120-A: turn_cap turns=24 $0.1690 wall 1240.9s
+2026-10-16T10:56:21Z load 1.9, concurrency 16, in flight 16, ready 2, blocks 4
+2026-10-16T10:56:24Z h16-lcbhard_19-fresh-A: turn_cap turns=24 $0.1098 wall 1504.2s
+2026-10-16T10:57:23Z load 1.2, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:58:23Z load 1.1, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T10:58:23Z 31 new 429s since the last check: halving concurrency to 16
+2026-10-16T10:59:23Z load 1.3, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T11:00:23Z load 1.6, concurrency 16, in flight 16, ready 1, blocks 4
+2026-10-16T11:00:24Z h18-lcbhard_82-R-A: turn_cap turns=24 $1.1695 wall 642.4s
+2026-10-16T11:01:24Z load 3.4, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T11:02:24Z load 1.9, concurrency 16, in flight 16, ready 0, blocks 4
+2026-10-16T11:02:44Z h18-lcbhard_82-codex-A: turn_cap turns=24 $0.2435 wall 722.5s
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:02:44Z h19: budget refuses $9.02 while 4 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00)
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:02:54Z h17-lcbhard_3-pi-A: turn_cap turns=24 $0.1625 wall 961.7s
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:03:25Z load 2.4, concurrency 16, in flight 14, ready 0, blocks 4
+2026-10-16T11:03:25Z 28 new 429s since the last check: halving concurrency to 16
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:03:26Z h16-lcbhard_19-rep2-A: turn_cap turns=24 $0.1085 wall 1548.7s
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:04:03Z h18-lcbhard_82-pi-A: turn_cap turns=24 $0.1634 wall 458.4s
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:04:24Z h18-lcbhard_82-fresh-A: turn_cap turns=24 $0.0866 wall 882.6s
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:04:25Z h16-lcbhard_19-pi-A: turn_cap turns=24 $0.2137 wall 1559.4s
+2026-10-16T11:04:25Z load 3.8, concurrency 16, in flight 10, ready 0, blocks 4
+[spend guard] P49 judge batch of $9.0200 refused: total $104.61 > hard cap $100.00; judges $104.61 > judge limit $100.00
+2026-10-16T11:04:26Z h16: settled $1.9671 (billed $1.9671, unresolved bound $0.0000 over 0 request(s), records $1.9671) of $9.02 reserved
+2026-10-16T11:04:26Z h16: block complete in 1987.4s
+2026-10-16T11:04:26Z h19: admitted (bulk, full, levels A, task lcbhard_40, 8 chains, reserved $9.02, p90 block 5247s)
+2026-10-16T11:04:26Z h16 block end: docker p49 containers 10
+2026-10-16T11:04:40Z h17-lcbhard_3-rep3-A: turn_cap turns=24 $0.0928 wall 993.9s
+2026-10-16T11:04:50Z h19: compaction codex k=1 done in 23.6s ($0.0410)
+2026-10-16T11:05:16Z h19: compaction inspect120 k=1 done in 49.6s ($0.0302)
+2026-10-16T11:05:26Z load 3.3, concurrency 16, in flight 13, ready 0, blocks 4
+2026-10-16T11:05:33Z h19: compaction pi k=1 done in 65.9s ($0.0243)
+2026-10-16T11:05:49Z h18-lcbhard_82-inspect-A: turn_cap turns=24 $0.2240 wall 879.5s
+2026-10-16T11:06:11Z h19: compaction inspect k=1 done in 104.6s ($0.0425)
+2026-10-16T11:06:27Z load 2.4, concurrency 16, in flight 14, ready 0, blocks 4
+2026-10-16T11:07:15Z h19: compaction rep2 k=2 done in 167.7s ($0.0438)
+2026-10-16T11:07:27Z load 1.6, concurrency 16, in flight 15, ready 0, blocks 4
+2026-10-16T11:07:59Z h19: compaction rep3 k=3 done in 211.8s ($0.0442)
+2026-10-16T11:08:25Z h17-lcbhard_3-inspect120-A: turn_cap turns=24 $0.0995 wall 1288.9s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:08:25Z h20: budget refuses $9.02 while 4 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00)
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:08:29Z load 1.4, concurrency 16, in flight 15, ready 0, blocks 4
+2026-10-16T11:08:29Z 36 new 429s since the last check: halving concurrency to 16
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:09:31Z load 2.6, concurrency 16, in flight 15, ready 0, blocks 4
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:10:17Z h17-lcbhard_3-inspect-A: turn_cap turns=24 $0.1081 wall 1461.0s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:10:24Z h18-lcbhard_82-inspect120-A: turn_cap turns=24 $0.2362 wall 863.4s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:10:32Z load 3.2, concurrency 16, in flight 13, ready 0, blocks 4
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:10:55Z h19-lcbhard_40-R-A: done turns=16 $0.7711 wall 387.6s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:11:18Z h17-lcbhard_3-codex-A: turn_cap turns=24 $0.1013 wall 1799.2s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:11:34Z load 3.3, concurrency 16, in flight 11, ready 0, blocks 4
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:12:36Z load 2.6, concurrency 16, in flight 11, ready 0, blocks 4
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:13:02Z h17-lcbhard_3-rep2-A: turn_cap turns=24 $0.1021 wall 1560.6s
+[spend guard] P49 judge batch of $9.0200 refused: total $106.57 > hard cap $100.00; judges $106.57 > judge limit $100.00
+2026-10-16T11:13:02Z h17: settled $2.0212 (billed $2.0212, unresolved bound $0.0000 over 0 request(s), records $2.0212) of $9.02 reserved
+2026-10-16T11:13:02Z h17: block complete in 2074.1s
+2026-10-16T11:13:02Z h20: admitted (bulk, full, levels A, task lcbhard_11, 8 chains, reserved $9.02, p90 block 5247s)
+2026-10-16T11:13:02Z h17 block end: docker p49 containers 10
+2026-10-16T11:13:06Z h18-lcbhard_82-rep2-A: turn_cap turns=24 $0.2095 wall 1140.5s
+2026-10-16T11:13:30Z h20: compaction codex k=1 done in 26.1s ($0.0420)
+2026-10-16T11:13:36Z load 1.8, concurrency 16, in flight 12, ready 0, blocks 4
+2026-10-16T11:13:36Z 33 new 429s since the last check: halving concurrency to 16
+2026-10-16T11:14:13Z h20: compaction inspect120 k=1 done in 69.4s ($0.0298)
+2026-10-16T11:14:36Z load 1.4, concurrency 16, in flight 13, ready 0, blocks 4
+2026-10-16T11:14:39Z h20: compaction inspect k=1 done in 95.2s ($0.0433)
+2026-10-16T11:15:02Z h15-lcbhard_59-inspect120-A: turn_cap turns=24 $0.1489 wall 2789.2s
+2026-10-16T11:15:02Z h15: settled $2.0047 (billed $2.0047, unresolved bound $0.0000 over 0 request(s), records $2.0047) of $9.02 reserved
+2026-10-16T11:15:02Z h15: block complete in 3216.2s
+2026-10-16T11:15:02Z h15 block end: docker p49 containers 13
+2026-10-16T11:15:15Z h20: compaction rep2 k=2 done in 131.5s ($0.0423)
+2026-10-16T11:15:38Z load 1.4, concurrency 16, in flight 14, ready 0, blocks 3
+2026-10-16T11:15:54Z h20: compaction rep3 k=3 done in 170.4s ($0.0427)
+2026-10-16T11:16:19Z h18-lcbhard_82-rep3-A: turn_cap turns=24 $0.1903 wall 955.0s
+[spend guard] P49 judge batch of $9.0200 refused: total $101.58 > hard cap $100.00; judges $101.58 > judge limit $100.00
+2026-10-16T11:16:19Z h21: budget refuses $9.02 while 3 block(s) are open; waiting ([spend guard] P49 judge batch of $9.0200 refused: total $101.58 > hard cap $100.00; judges $101.58 > judge limit $100.00)
+2026-10-16T11:16:19Z h18: settled $2.7473 (billed $2.7473, unresolved bound $0.0000 over 0 request(s), records $2.7473) of $9.02 reserved
+2026-10-16T11:16:19Z h18: block complete in 1599.5s
+2026-10-16T11:16:19Z h21: admitted (bulk, full, levels A, task lcbhard_28, 8 chains, reserved $9.02, p90 block 6031s)
+2026-10-16T11:16:20Z h18 block end: docker p49 containers 14
+2026-10-16T11:16:39Z load 1.6, concurrency 16, in flight 16, ready 0, blocks 3
+2026-10-16T11:16:45Z h21: compaction codex k=1 done in 24.4s ($0.0419)
+2026-10-16T11:17:14Z h21: compaction inspect k=1 done in 53.9s ($0.0437)
+2026-10-16T11:17:40Z load 1.1, concurrency 16, in flight 16, ready 2, blocks 3
+2026-10-16T11:17:48Z h21: compaction inspect120 k=1 done in 87.7s ($0.0284)
+2026-10-16T11:18:08Z h21: compaction rep2 k=2 done in 107.6s ($0.0446)
+2026-10-16T11:18:09Z h19-lcbhard_40-inspect120-A: turn_cap turns=24 $0.1191 wall 771.4s
+2026-10-16T11:18:12Z h21: compaction pi k=1 done in 111.2s ($0.0230)
+2026-10-16T11:18:18Z h20: compaction pi k=1 done in 314.4s ($0.0156)
+2026-10-16T11:18:41Z load 1.1, concurrency 16, in flight 16, ready 5, blocks 3
+2026-10-16T11:18:41Z 31 new 429s since the last check: halving concurrency to 16
+2026-10-16T11:19:10Z h21: compaction rep3 k=3 done in 169.4s ($0.0419)
+2026-10-16T11:19:41Z load 1.4, concurrency 16, in flight 16, ready 6, blocks 3
+2026-10-16T11:20:41Z load 1.5, concurrency 16, in flight 16, ready 6, blocks 3
+2026-10-16T11:21:42Z load 1.8, concurrency 16, in flight 16, ready 6, blocks 3
+2026-10-16T11:22:42Z load 1.4, concurrency 16, in flight 16, ready 6, blocks 3
+2026-10-16T11:23:42Z load 1.2, concurrency 16, in flight 16, ready 6, blocks 3
+2026-10-16T11:23:42Z 27 new 429s since the last check: halving concurrency to 16
+2026-10-16T11:23:57Z h19-lcbhard_40-rep2-A: done turns=19 $0.1010 wall 1002.4s
+2026-10-16T11:24:18Z h20-lcbhard_11-R-A: done turns=18 $0.9215 wall 673.5s
+2026-10-16T11:24:44Z load 1.9, concurrency 16, in flight 16, ready 4, blocks 3
+2026-10-16T11:25:44Z load 1.5, concurrency 16, in flight 16, ready 4, blocks 3
+2026-10-16T11:26:44Z load 4.7, concurrency 16, in flight 16, ready 4, blocks 3
+2026-10-16T11:26:50Z h20-lcbhard_11-rep3-A: done turns=20 $0.1046 wall 654.0s
+2026-10-16T11:27:07Z h21-lcbhard_28-R-A: turn_cap turns=24 $1.1402 wall 646.0s
+2026-10-16T11:27:31Z h20-lcbhard_11-codex-A: turn_cap turns=24 $0.1426 wall 841.0s
+2026-10-16T11:27:45Z load 4.9, concurrency 16, in flight 16, ready 1, blocks 3
+2026-10-16T11:28:45Z load 5.2, concurrency 16, in flight 16, ready 1, blocks 3
+2026-10-16T11:28:45Z 28 new 429s since the last check: halving concurrency to 16
+2026-10-16T11:29:27Z h19-lcbhard_40-rep3-A: done turns=24 $0.1604 wall 1287.5s
+2026-10-16T11:29:47Z load 4.9, concurrency 16, in flight 16, ready 0, blocks 3
+2026-10-16T11:29:49Z h20-lcbhard_11-fresh-A: turn_cap turns=24 $0.1214 wall 1005.2s
+2026-10-16T11:30:02Z h19-lcbhard_40-pi-A: turn_cap turns=24 $0.1765 wall 1468.0s
+2026-10-16T11:30:16Z h19-lcbhard_40-codex-A: turn_cap turns=24 $0.1386 wall 1523.9s
+2026-10-16T11:30:30Z h21-lcbhard_28-rep2-A: turn_cap turns=24 $0.0951 wall 219.9s
+2026-10-16T11:30:48Z load 5.6, concurrency 16, in flight 12, ready 0, blocks 3
+2026-10-16T11:31:05Z h21-lcbhard_28-codex-A: turn_cap turns=24 $0.1136 wall 776.4s
+2026-10-16T11:31:42Z h20-lcbhard_11-inspect-A: done turns=18 $0.0774 wall 1021.5s
+2026-10-16T11:31:48Z load 5.0, concurrency 16, in flight 10, ready 0, blocks 3
+2026-10-16T11:32:11Z h20-lcbhard_11-pi-A: done turns=17 $0.1500 wall 279.5s
+2026-10-16T11:32:19Z h19-lcbhard_40-inspect-A: turn_cap turns=24 $0.1289 wall 1566.3s
+2026-10-16T11:32:49Z load 3.4, concurrency 16, in flight 8, ready 0, blocks 3
+2026-10-16T11:33:13Z h21-lcbhard_28-inspect-A: turn_cap turns=24 $0.0902 wall 556.0s
+2026-10-16T11:33:49Z load 2.5, concurrency 16, in flight 7, ready 0, blocks 3
+2026-10-16T11:33:49Z 22 new 429s since the last check: halving concurrency to 16
+2026-10-16T11:34:27Z h21-lcbhard_28-rep3-A: turn_cap turns=24 $0.1148 wall 300.7s
+2026-10-16T11:34:36Z h21-lcbhard_28-inspect120-A: turn_cap turns=24 $0.1014 wall 618.4s
+2026-10-16T11:34:49Z h20-lcbhard_11-inspect120-A: done turns=16 $0.0934 wall 1235.2s
+2026-10-16T11:34:49Z load 2.2, concurrency 16, in flight 4, ready 0, blocks 3
+2026-10-16T11:35:03Z h21-lcbhard_28-fresh-A: turn_cap turns=24 $0.0761 wall 1121.8s
+2026-10-16T11:35:33Z h20-lcbhard_11-rep2-A: turn_cap turns=24 $0.1000 wall 1217.4s
+2026-10-16T11:35:33Z h20: settled $1.9266 (billed $1.9266, unresolved bound $0.0000 over 0 request(s), records $1.9266) of $9.02 reserved
+2026-10-16T11:35:33Z h20: block complete in 1351.1s
+2026-10-16T11:35:33Z h20 block end: docker p49 containers 2
+2026-10-16T11:35:45Z h21-lcbhard_28-pi-A: turn_cap turns=24 $0.2243 wall 517.6s
+2026-10-16T11:35:45Z h21: settled $2.1792 (billed $2.1792, unresolved bound $0.0000 over 0 request(s), records $2.1792) of $9.02 reserved
+2026-10-16T11:35:45Z h21: block complete in 1165.7s
+2026-10-16T11:35:45Z h21 block end: docker p49 containers 1
+2026-10-16T11:35:51Z load 2.0, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T11:36:06Z h19-lcbhard_40-fresh-A: turn_cap turns=24 $0.1021 wall 1898.0s
+2026-10-16T11:36:06Z h19: settled $1.9455 (billed $1.9236, unresolved bound $0.0219 over 1 request(s), records $1.9236) of $9.02 reserved
+2026-10-16T11:36:06Z h19: block complete in 1900.1s
+2026-10-16T11:36:06Z h19 block end: docker p49 containers 0
+2026-10-16T11:36:06Z scheduler end: {'admitted': 14, 'skipped': 0, 'not_admitted': [], 'stop_reason': None, 'concurrency': 16}
+{"admitted": 14, "skipped": 0, "not_admitted": [], "stop_reason": null, "concurrency": 16}
