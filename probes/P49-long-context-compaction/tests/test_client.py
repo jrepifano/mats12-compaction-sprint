@@ -429,3 +429,27 @@ def test_mock_as_process_writes_portfile_and_dies_with_group(tmp_path):
         os.killpg(p.pid, signal.SIGTERM)
         p.wait(timeout=10)
     assert p.returncode is not None
+
+
+def test_token_bucket_throttles_fifo_and_adapts():
+    import asyncio
+    import time
+    b = client.TokenBucket(tpm=60_000, burst=1_000)          # 1,000 tokens/s
+    order = []
+
+    async def one(i):
+        await b.acquire(800)
+        order.append(i)
+
+    t0 = time.monotonic()
+    async def main():
+        await asyncio.wait_for(asyncio.gather(*(one(i) for i in range(3))), 10)
+
+    asyncio.run(main())
+    assert order == [0, 1, 2]
+    assert time.monotonic() - t0 >= 1.2                       # 2,400 tokens, 1,000 burst
+    r = b.tpm
+    b.on_429()
+    assert b.tpm == pytest.approx(max(C.TPM_MIN, r * 0.85))
+    b.on_429()                                                # within 10 s: no second cut
+    assert b.tpm == pytest.approx(max(C.TPM_MIN, r * 0.85))

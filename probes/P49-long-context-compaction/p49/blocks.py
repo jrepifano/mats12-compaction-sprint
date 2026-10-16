@@ -56,6 +56,16 @@ MIN_429_CONCURRENCY = 12       # a TPM quota caps throughput; fewer chains only 
 REPEATED_429 = 3                # new 429s within one monitor interval -> halve
 NOT_STARTED = "not_started"
 SIGNAL_STOP = "signal stop"     # SIGINT/SIGTERM: chains cancelled by the operator, rerun on resume
+
+
+def rerunnable(rec: dict) -> bool:
+    """Records a resumed run replaces with a full rerun, whatever they had shown (so a rerun
+    can't select on outcome): never started; infrastructure failures (`api_error`, Vertex TPM
+    429s past the retries, log 2026-10-16 06:03Z); its compaction failed; cancelled by a signal.
+    The replaced record is kept as <id>.prev<n>.json (save_chain)."""
+    err = str(rec.get("error") or "")
+    return (err in (NOT_STARTED, SIGNAL_STOP) or err.startswith("compaction ")
+            or rec.get("end_reason") == C.END_API)
 SUMMARY_SUFFIX = "-summary"
 COMP_NAMES = ("codex", "pi", "inspect", "inspect120", "rep2", "rep3")
 COMP_METHOD = {"codex": "codex", "pi": "pi", "inspect": "inspect", "inspect120": "inspect",
@@ -467,18 +477,7 @@ class Scheduler:
             rec = json.loads(p.read_text())
         except ValueError:
             return False
-        if rec.get("end_reason") == C.END_API:
-            # infrastructure failure (Vertex TPM 429s past the retries, log 06:03Z): rerun the
-            # chain in full, whatever it had shown, so the rerun can't select on outcome; the
-            # failed record is kept beside it
-            n = len(list(p.parent.glob(f"{cid}.api_error*.json")))
-            p.rename(p.with_name(f"{cid}.api_error{n + 1}.json"))
-            return False
-        if rec.get("error") == SIGNAL_STOP:
-            n = len(list(p.parent.glob(f"{cid}.signal*.json")))
-            p.rename(p.with_name(f"{cid}.signal{n + 1}.json"))
-            return False
-        return rec.get("error") != NOT_STARTED
+        return not rerunnable(rec)
 
     def specs(self, b: BlockSpec) -> list[C.ChainSpec]:
         tid = self.task_for(b.index)
@@ -757,7 +756,11 @@ class Scheduler:
         self.in_flight[t] = c
 
     def save_chain(self, c: _Chain, rec: dict) -> None:
-        write_json(self.chain_path(c.spec.chain_id), rec)
+        p = self.chain_path(c.spec.chain_id)
+        if p.exists():                      # a rerun: keep the earlier record beside it
+            n = len(list(p.parent.glob(f"{c.spec.chain_id}.prev*.json")))
+            p.rename(p.with_name(f"{c.spec.chain_id}.prev{n + 1}.json"))
+        write_json(p, rec)
         wall = None if c.started is None else round((c.ended or self.d.clock()) - c.started, 3)
         append_jsonl(self.p.chain_summary, chain_summary(rec, {
             "stage": c.block.spec.stage, "wall_s": wall}))

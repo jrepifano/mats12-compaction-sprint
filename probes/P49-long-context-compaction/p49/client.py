@@ -379,6 +379,60 @@ class _NotSent(Exception):
 
 
 # --- the call ---------------------------------------------------------------------------------
+class TokenBucket:
+    """FIFO prompt-token rate limiter in front of every request (log 2026-10-16 06:24Z: Vertex
+    throttles OpenRouter's shared quota at ~1.1M prompt tokens/min; hammering it made ~80% of
+    attempts 429 and starved single requests past their retries). Requests wait here in arrival
+    order instead. The rate adapts: x0.85 on a 429 (at most every 10 s), x1.005 per success,
+    within [TPM_MIN, TPM_MAX]."""
+
+    def __init__(self, tpm: float = C.TPM_START, burst: float = 400_000):
+        self.rate = tpm / 60.0
+        self.burst = burst
+        self.level = burst
+        self.t = time.monotonic()
+        self.lock: asyncio.Lock | None = None
+        self.last_cut = 0.0
+
+    def _refill(self) -> None:
+        now = time.monotonic()
+        self.level = min(self.burst, self.level + (now - self.t) * self.rate)
+        self.t = now
+
+    async def acquire(self, n: int) -> float:
+        if self.lock is None:
+            self.lock = asyncio.Lock()
+        t0 = time.monotonic()
+        async with self.lock:                      # FIFO: asyncio.Lock wakes waiters in order
+            need = min(float(n), self.burst)
+            while True:
+                self._refill()
+                if self.level >= need:
+                    self.level -= need
+                    return time.monotonic() - t0
+                await asyncio.sleep(min(30.0, (need - self.level) / self.rate))
+
+    def on_429(self) -> None:
+        now = time.monotonic()
+        if now - self.last_cut >= 10.0:
+            self.rate = max(C.TPM_MIN / 60.0, self.rate * 0.85)
+            self.last_cut = now
+
+    def on_ok(self) -> None:
+        self.rate = min(C.TPM_MAX / 60.0, self.rate * 1.005)
+
+    @property
+    def tpm(self) -> float:
+        return self.rate * 60.0
+
+
+_bucket = TokenBucket()
+
+
+def bucket() -> TokenBucket:
+    return _bucket
+
+
 async def _attempt(body: dict, key: str, timeout: float) -> tuple[dict, float]:
     url = base_url() + C.CHAT_PATH
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
@@ -444,6 +498,12 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
         if left <= 0:
             last = f"deadline {_deadline_s():.0f}s passed; last: {last}"
             break
+        if base_url().startswith("https://"):      # the mock is not rate-limited
+            await _bucket.acquire(int(our_tokens or 0) + int(body.get("max_tokens") or 0) // 4)
+            left = deadline - time.monotonic()
+            if left <= 0:
+                last = f"deadline {_deadline_s():.0f}s passed in the token queue; last: {last}"
+                break
         _stats["attempts"] += 1
         rid = uuid.uuid4().hex[:16]
         _checkpoint({"ts": _now(), "event": "request", **base, "attempt": attempt, "rid": rid})
@@ -456,6 +516,8 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
         except _Retry as e:
             last = str(e)
             _stats["retries"] += 1
+            if e.status == 429:
+                _bucket.on_429()
             u = _usage_fields(e.data)
             if u["cost"]:
                 spent += u["cost"]
@@ -497,6 +559,7 @@ def _success(data: dict, lat: float, attempt: int, base: dict, our_tokens: int,
               f"({base['kind']} {base['chain_id']}, gen {data.get('id')})",
               file=sys.stderr, flush=True)
     C.CALIB.observe(our_tokens, u["prompt_tokens"])
+    _bucket.on_ok()
     _checkpoint({"ts": _now(), "event": "response", **base, "attempt": attempt, "rid": rid,
                  "prompt_tokens": u["prompt_tokens"], "completion_tokens": u["completion_tokens"],
                  "cost": u["cost"] or 0.0, "cost_billed": u["cost_billed"],
