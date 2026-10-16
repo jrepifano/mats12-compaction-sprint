@@ -429,6 +429,7 @@ class Scheduler:
         self.signalled = False
         self.arms: set[str] = set()      # arms of this scheduler's blocks (the orphan rule)
         self.stages: set[str] = set()    # stages of its blocks (recover() touches only these)
+        self.hids: set[str] = set()      # its histories (the orphan rule)
         self.block_estimate_s = block_estimate_s
         self.n_rule = n_rule or self.default_n_rule
         self.order = task_order([t.task_id for t in deps.tasks])
@@ -612,6 +613,8 @@ class Scheduler:
             parts = rest.split("-")
             if len(parts) >= 3 and self.arms and parts[2] not in self.arms:
                 continue                # another scheduler's arm (gate0 and gate0x run at once)
+            if parts and self.hids and parts[0] not in self.hids:
+                continue                # another scheduler's history, or the scorer's pass check
             if not any(rest.startswith(cid) for cid in live):
                 orphans.add(n)
         confirmed = orphans & self.suspect
@@ -1038,6 +1041,7 @@ class Scheduler:
                  f"admit by {utc(self.admit_by)}, hard stop {utc(self.hard_stop)}")
         self.arms = {a for b in blocks for a in C.DESIGNS[b.design]}
         self.stages = {b.stage for b in blocks}
+        self.hids = {b.history_id for b in blocks}
         self.recover()
         self.refresh_concurrency()
         queue = deque(blocks)
