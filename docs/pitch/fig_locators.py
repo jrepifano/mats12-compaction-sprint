@@ -39,7 +39,7 @@ SETTINGS = [
      "detect": [("length", 0.513, (0.502, 0.523)), ("embed", 0.526, (0.515, 0.535)),
                 ("judge", 0.510, (0.508, 0.512)), ("gain", 0.562, (0.551, 0.573)),
                 ("own", 0.673, (0.664, 0.682)), ("ekfac", 0.715, (0.706, 0.724))],
-     "fix_title": "Trait left after rewriting the 10% of rows each method picks",
+     "fix_title": "Choosing which bad rows to rewrite (every row bad; rewrite 10%)",
      "fix": [("ref", 41.4, (31.8, 51.1)), ("random", 22.9, (13.7, 32.2)),
              ("own", 1.8, (0.4, 3.9)), ("ekfac", 2.1, (0.2, 4.6))],
      "fix_unit": "pro-Reagan answers (%)"},
@@ -49,7 +49,7 @@ SETTINGS = [
                 ("judge", 0.517, (0.511, 0.523)), ("gain", 0.900, (0.895, 0.905)),
                 ("direction", 0.907, (0.903, 0.912)), ("own", 0.673, (0.665, 0.682)),
                 ("ekfac", 0.668, (0.658, 0.677))],
-     "fix_title": "Trait left after rewriting the 5% of rows each method picks",
+     "fix_title": "Choosing which bad rows to rewrite (every row bad; rewrite 5%)",
      "fix": [("ref", 27.9, (21.3, 35.3)), ("random", 13.3, (5.7, 20.5)),
              ("direction", 24.7, (12.7, 38.6)), ("own", 15.1, (9.6, 21.9)),
              ("ekfac", 15.2, (9.1, 23.1))],
@@ -82,22 +82,23 @@ def main():
         ax.axhline(0.5, color="#8C8C8C", lw=1)
         ax.set_ylim(0.45, 1.0)
         ax.set_ylabel("AUROC at finding\ntrait-carrying rows (0.5 = chance)")
-        ax.set_title(f"{st['title']}: finding the rows", loc="left", fontsize=11.5)
+        ax.set_title(f"{st['title']}: finding bad rows among clean ones", loc="left", fontsize=11.5)
         ax2 = axes[row][1]
         bars(ax2, st["fix"], 0, lambda v: f"{v:.1f}", SHORT)
         ax2.set_ylim(0, 58)
-        ax2.set_ylabel(st["fix_unit"])
+        ax2.set_ylabel("trait left: " + st["fix_unit"])
         ax2.set_title(st["fix_title"], loc="left", fontsize=11)
     handles = [plt.Rectangle((0, 0), 1, 1, color=GROUP[g]) for g in ("text", "blind", "aware", "none")]
     fig.legend(handles, [GROUP_LABEL[g] for g in ("text", "blind", "aware", "none")], loc="upper left",
                ncol=4, frameon=False, fontsize=10, bbox_to_anchor=(0.005, 0.955))
-    fig.suptitle("Finding trait-carrying rows vs fixing them. Phantom Transfer: informed picks remove "
-                 "almost all of the trait.\nSubliminal learning: the best finder fixes least, and no "
-                 "method beats a random pick.", x=0.01, y=0.995, ha="left", fontsize=13)
+    fig.suptitle("Two jobs. Left: find trait-carrying rows hidden among clean ones. Right: among rows "
+                 "that are all trait-carrying, pick which to rewrite.\nPhantom Transfer: the right 10% "
+                 "removes almost all of the trait. Subliminal learning: no method beats a random pick.",
+                 x=0.01, y=0.995, ha="left", fontsize=13)
     fig.text(0.01, 0.012,
              "Error bars: 95% CI. Likelihood scores are log-probabilities of each answer; the likelihood "
-             "ratios are our own constructions. Phantom Transfer fixing: rows picked from a fully "
-             "trait-carrying 20,000-row mix.\n[1] Tran, Li & Madry 2018, Spectral Signatures in Backdoor "
+             "ratios are our own constructions. Right panels: picks from fully trait-carrying "
+             "data (Phantom Transfer 20,000 rows; subliminal learning 10,000 rows).\n[1] Tran, Li & Madry 2018, Spectral Signatures in Backdoor "
              "Attacks. [2] Draganov et al. 2026, Phantom Transfer (data-level defences). [3] Cloud et al. "
              "2025, Subliminal Learning (gradient toward the teacher).\n[4] Grosse et al. 2023, Studying LLM "
              "Generalization with Influence Functions. [5] Weckbecker et al. 2026, Can Data Attribution Filter "
