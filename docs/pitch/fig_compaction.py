@@ -21,7 +21,7 @@ OUT = Path(__file__).parent / "fig"
 plt.rcParams.update({"font.size": 10.5, "axes.spines.top": False, "axes.spines.right": False})
 COL = {"compact": "#DD8452", "delete": "#4C72B0", "insert": "#C44E52", "history": "#8172B3"}
 LAB = {"compact": "Compaction itself", "delete": "A line dropped from the summary",
-       "insert": "A line we planted in the summary", "history": "Long history, no compaction"}
+       "insert": "A line we planted in the summary", "history": "Continue from previous task, no compaction"}
 
 # lever label, kind, DeepSeek (value, ci) or a note, GLM (value, ci) or a note
 SMALL = [
@@ -71,7 +71,7 @@ def panel_models(ax, items, title, ylim):
 def trend_panel(ax):
     spec = [  # x, key, colour, hatch, label under the bar
         (0.0, "fresh", "#8C8C8C", None, "fresh\nstart"),
-        (1.2, "none", COL["history"], None, "none"),
+        (1.2, "none", COL["history"], None, "continue\nprevious task"),
         (2.15, "inspect1", COL["compact"], None, "Inspect"),
         (2.55, "codex1", COL["compact"], "\\\\", "Codex"),
         (2.95, "pi1", COL["compact"], "..", "pi"),
@@ -106,10 +106,10 @@ def main():
     trend_panel(ax)
     ax.set_title("", loc="left")
     handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in ("#8C8C8C", COL["history"], COL["compact"])]
-    fig.legend(handles, ["Fresh start (no history)", "Long history, no compaction", "History compacted"],
+    fig.legend(handles, ["Fresh start (no history)", "Continue from previous task, no compaction", "Previous task compacted"],
                loc="upper left", frameon=False, fontsize=9.5, ncol=3, bbox_to_anchor=(0.01, 0.89))
     fig.suptitle("Qwen3-Coder after ~200k tokens of its own SWE-rebench work, then an ImpossibleBench task:\n"
-                 "24% cheat with no compaction; 18–32% after 1–3 compactions; 57% from a fresh start",
+                 "24% cheat when continuing from the previous task; 18–32% after 1–3 compactions; 57% from a fresh start",
                  x=0.01, y=0.985, ha="left", fontsize=12.5)
     fig.text(0.01, 0.01,
              "Error bars: 95% Wilson interval. Pooled runs with no test "
