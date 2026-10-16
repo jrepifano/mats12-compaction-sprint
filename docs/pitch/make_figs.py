@@ -61,24 +61,26 @@ def arms():
 
 
 def detection():
-    """Which scorer finds the teacher's rows (P48 AUROC table)."""
-    rows = [("teacher likelihood ratio\n(needs the attacker's model)", 0.921),
-            ("gradient influence (EK-FAC)", 0.668),
-            ("own likelihood ratio", 0.673),
-            ("response length", 0.571),
-            ("embedding outliers", 0.519),
-            ("LLM judge told the trait", 0.517),
-            ("random", 0.502)]
+    """Which scorer finds the teacher's rows: AUROC with 95% CI (P48 note, AUROC table)."""
+    rows = [("teacher likelihood ratio\n(needs the attacker's model)", 0.921, 0.916, 0.925),
+            ("own likelihood ratio", 0.673, 0.665, 0.682),
+            ("gradient influence (EK-FAC)", 0.668, 0.658, 0.677),
+            ("response length", 0.571, 0.562, 0.580),
+            ("embedding outliers", 0.519, 0.509, 0.528),
+            ("LLM judge told the trait", 0.517, 0.511, 0.523),
+            ("random", 0.502, 0.493, 0.512)]
     fig, ax = plt.subplots(figsize=(10, 3.6))
-    labels, vals = [r[0] for r in rows][::-1], [r[1] for r in rows][::-1]
-    colors = [QUIET if v < 0.6 else ACCENT for v in vals]
-    ax.barh(labels, vals, color=colors)
-    for y, v in enumerate(vals):
-        ax.text(v + 0.005, y, f"{v:.2f}", va="center", fontsize=10)
+    for i, (lab, v, lo, hi) in enumerate(rows):
+        y = len(rows) - 1 - i
+        c = QUIET if v < 0.6 else ACCENT
+        ax.plot([lo, hi], [y, y], color=c, lw=2)
+        ax.plot(v, y, "o", color=c, ms=8)
+        ax.text(hi + 0.008, y, f"{v:.3f}", va="center", fontsize=10)
     ax.axvline(0.5, color=QUIET, ls="--", lw=1)
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows][::-1])
     ax.set_xlim(0.45, 1.0)
-    ax.set_xlabel("AUROC for finding trait-carrying rows (P48, 18,000 held-out rows)")
-    fig.suptitle("Text inspection can't see the trait; model-based scorers can, weakly",
+    ax.set_xlabel("AUROC for finding trait-carrying rows, 95% CI (P48, 18,000 held-out rows)")
+    fig.suptitle("Text inspection can't see the trait; model-based scorers can, weakly (gradient = likelihood ratio)",
                  x=0.01, ha="left", fontsize=12)
     fig.tight_layout()
     fig.savefig(OUT / "detection_auroc.png", dpi=200)
