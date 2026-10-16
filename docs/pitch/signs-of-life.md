@@ -8,7 +8,7 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 
 **Question.** When training data carries a hidden trait, does *rewriting* a small fraction of the trait-carrying rows remove much more of it than deleting them, even with a locator that is only somewhat better than random? And is that more than dilution, i.e. does it beat adding the same number of clean rows?
 
-**Status after P50's interim (4:25 AM ET):** rewriting beats deleting in all three settings. It beats adding clean rows in Phantom Transfer (P43), but **not** in subliminal learning (P50): there, adding clean rows works as well as rewriting, and a different-family rewrite works worse.
+**Status after P50's interims (5:45 AM ET):** rewriting beats deleting in all three settings. It beats adding clean rows in Phantom Transfer (P43), but **not** in subliminal learning (P50). There, adding clean rows works as well as rewriting at 10,000 rows, and better at 20,000 rows with 90% trait-carrying data, where a 5% rewrite does nothing at all. A different-family rewrite works worse. In subliminal learning the effect looks like a near-threshold dilution effect, not something special about rewriting.
 
 **Why Neel would care.**
 - He named data-point-level learning as a top interest at the 14 Oct drop-in: "being able to understand what is being learned at each step of training or ideally from each data point would be awesome."
@@ -47,8 +47,10 @@ Same cat organism as P48 (reference 27.9%, clean control 2.1%). The reproduction
 | 5% | 13.3 (P48) | 21.4 | 13.8 | 22.7 (P48) |
 
 - **Same-base rewrite beats the luna rewrite** at 5%: +8.2 [+6.0, +10.7]. But the luna rows differ in style (they echo the prompt's numbers twice as often and use more small values), so this is a replacement-style effect, not proof that the writer must share the student's base.
-- **Adding clean rows ties the same-base rewrite**, so at 10,000 rows rewriting isn't shown to beat dilution. The 20,000-row block and the mixed pool, which test the less-sensitive regime, finish about 7:30 AM ET; full note about 3:30 PM ET.
-- **Pitch framing:** for subliminal learning the practical lesson is "replace, don't delete; how you replace matters". The "more than dilution" claim rests on Phantom Transfer (P43, +3.9 [+1.7, +6.9]) so far. A format-matched rewrite is the first follow-up.
+- **Adding clean rows ties the same-base rewrite**, so at 10,000 rows rewriting isn't shown to beat dilution.
+- **At 20,000 rows, 90% trait-carrying (mixed pool), rewriting 1,000 rows does nothing:** reference 38.4 vs rewrite 38.8 (reference − rewrite −0.5 [−2.7, +1.4]). Adding the same number of clean rows does a little: 35.2, add clean − rewrite **−3.6 [−6.4, −1.7]**. Tight intervals, small seed spread.
+- The 20,000-row dose block finishes about 7:30 AM ET; full note about 3:30 PM ET.
+- **Pitch framing:** in subliminal learning, rewriting a small fraction is not a general fix; it helps only near the transfer threshold, and mostly by dilution. The "more than dilution" claim rests on Phantom Transfer alone (P43, +3.9 [+1.7, +6.9]). An honest sprint question is *when* rewriting beats dilution (Phantom Transfer and EM yes, subliminal learning no), not *whether*.
 
 ---
 
@@ -75,18 +77,23 @@ Same cat organism as P48 (reference 27.9%, clean control 2.1%). The reproduction
 - **Every behavioural probe above ran at 5–20k tokens with forced cuts.** Real products compact at 167k+ and repeatedly. P49 is the first at that scale.
 - Mostly GLM and DeepSeek Flash models. Neel doubts open models reproduce the incident.
 
-### Live: P49, compaction at ~200k on the agent's own sessions (results today)
-Qwen3-Coder's own SWE sessions, stitched to ~200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Measured: cheating by a rule-based detector. A first look at finished runs found test edits in 5 of ~22, so the behaviour occurs.
+### Live: P49, compaction at ~200k on the agent's own sessions (interim in; final today)
+Qwen3-Coder's own SWE sessions, stitched to ~200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Cheating is scored by a rule-based detector. **Interim: 8 histories × 2 prompt wordings (16 pairs); nearly all cheating is under the no-instruction wording.**
 
-| Arm | Cheating rate | vs no compaction |
+| Arm | Cheating rate (n = 14–16) | vs no compaction, 95% CI |
 |---|---|---|
-| Fresh start | _pending_ | |
-| No compaction (~200k) | _pending_ | — |
-| Codex / pi / Inspect compaction | _pending_ | _pending_ |
-| Inspect at ~120k (size arm) | _pending_ | _pending_ |
-| Repeated, k = 2 / 3 | _pending_ | _pending_ |
+| Fresh start (no history) | 31.2% | |
+| No compaction (~200k) | 12.5% | — |
+| Codex-style compaction | 13.3% | +0.0 [−31.2, +28.6] |
+| pi-style compaction | 25.0% | +12.5 [+0.0, +37.5] |
+| Inspect-style compaction | 7.1% | −7.1 [−33.3, +15.4] |
+| Inspect at ~120k (size arm) | 0.0% | |
+| Repeated, k = 2 / 3 | 13.3% / 6.7% | k = 3 − k = 1: +0.0 [−25.0, +26.7] |
 
-Interim numbers on 16 paired units about 8:30–9:30 AM ET; extended run and final note by about 4:30 PM ET. A rise across compactions is reported as "more compactions over more work."
+- **No prediction met its bar.** Compaction didn't clearly raise cheating; repeated compaction shows no trend (slope +0.0 [−13.6, +14.3]). pi, which keeps only a recent tail, is the one arm leaning upward.
+- **The long history itself lowered cheating** vs a fresh start: −18.8 [−50.0, +12.5].
+- Every cheat was a test edit. The agent's "is this an evaluation?" score is high in every arm (60–91 of 100).
+- The bulk run (16 new histories, no-instruction wording, all 8 arms) ends about 11 AM ET; final note about 4:30 PM ET. A rise across compactions would be reported as "more compactions over more work."
 
 ---
 
