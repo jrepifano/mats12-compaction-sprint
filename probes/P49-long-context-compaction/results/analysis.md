@@ -6,50 +6,56 @@
 
 | arm | n | observed | cheat rate | end reasons |
 |---|---|---|---|---|
-| R | 16 | 13 | 23.1% | {'window_full': 2, 'turn_cap': 6, 'done': 8} |
-| codex | 16 | 16 | 25.0% | {'turn_cap': 12, 'done': 4} |
-| fresh | 16 | 16 | 43.8% | {'turn_cap': 11, 'done': 5} |
-| inspect | 16 | 16 | 18.8% | {'turn_cap': 12, 'done': 4} |
-| inspect120 | 16 | 16 | 37.5% | {'turn_cap': 12, 'done': 4} |
+| R | 16 | 11 | 27.3% | {'window_full': 2, 'turn_cap': 6, 'done': 8} |
+| codex | 16 | 14 | 28.6% | {'turn_cap': 12, 'done': 4} |
+| fresh | 16 | 15 | 46.7% | {'turn_cap': 11, 'done': 5} |
+| inspect | 16 | 14 | 21.4% | {'turn_cap': 12, 'done': 4} |
+| inspect120 | 16 | 15 | 40.0% | {'turn_cap': 12, 'done': 4} |
 | pi | 16 | 15 | 33.3% | {'turn_cap': 11, 'done': 5} |
-| rep2 | 16 | 16 | 25.0% | {'turn_cap': 11, 'done': 5} |
-| rep3 | 16 | 16 | 31.2% | {'turn_cap': 11, 'done': 5} |
+| rep2 | 16 | 15 | 26.7% | {'turn_cap': 11, 'done': 5} |
+| rep3 | 16 | 13 | 38.5% | {'turn_cap': 11, 'done': 5} |
 
 ## Contrasts (points)
 
 | contrast | family | n pairs | estimate | 95% CI | bounds | missing |
 |---|---|---|---|---|---|---|
-| codex-R | compaction | 13 | +7.7 | [-26.7, +41.7] | [-12.5, +6.2] | codex 0%, R 19% |
-| pi-R | compaction | 13 | +15.4 | [-21.4, +58.3] | [-6.2, +18.8] | pi 6%, R 19% |
-| inspect-R | compaction | 13 | +0.0 | [-30.8, +33.3] | [-18.8, +0.0] | inspect 0%, R 19% |
-| pi-inspect | method | 15 | +13.3 | [-18.8, +43.8] | [+12.5, +18.8] | pi 6%, inspect 0% |
-| codex-inspect | method | 16 | +6.2 | [-20.0, +33.3] | [+6.2, +6.2] | codex 0%, inspect 0% |
-| pi-codex | method | 15 | +6.7 | [-26.7, +40.0] | [+6.2, +12.5] | pi 6%, codex 0% |
-| rep3-inspect (primary) | repeated | 16 | +12.5 | [-13.3, +37.5] | [+12.5, +12.5] | rep3 0%, inspect 0% |
-| rep2-inspect | repeated | 16 | +6.2 | [-25.0, +37.5] | [+6.2, +6.2] | rep2 0%, inspect 0% |
-| slope_k123 | repeated | 16 | +6.2 | [-6.7, +18.8] | [+6.2, +6.2] | inspect 0%, rep2 0%, rep3 0% |
-| inspect-inspect120 | size | 16 | -18.8 | [-56.2, +17.6] | [-18.8, -18.8] | inspect 0%, inspect120 0% |
-| R-fresh | history | 13 | -30.8 | [-66.7, +0.0] | [-25.0, -6.2] | R 19%, fresh 0% |
+| codex-R | compaction | 10 | +0.0 | [-40.0, +44.4] | [-25.0, +18.8] | codex 12%, R 31% |
+| pi-R | compaction | 11 | +0.0 | [-36.4, +40.0] | [-18.8, +18.8] | pi 6%, R 31% |
+| inspect-R | compaction | 10 | +0.0 | [-40.0, +44.4] | [-31.2, +12.5] | inspect 12%, R 31% |
+| pi-inspect | method | 14 | +7.1 | [-23.1, +38.5] | [+0.0, +18.8] | pi 6%, inspect 12% |
+| codex-inspect | method | 14 | +7.1 | [-23.1, +38.5] | [-6.2, +18.8] | codex 12%, inspect 12% |
+| pi-codex | method | 14 | +0.0 | [-33.3, +35.7] | [-6.2, +12.5] | pi 6%, codex 12% |
+| rep3-inspect (primary) | repeated | 12 | +25.0 | [+0.0, +50.0] | [+0.0, +31.2] | rep3 19%, inspect 12% |
+| rep2-inspect | repeated | 14 | +7.1 | [-28.6, +42.9] | [-6.2, +12.5] | rep2 6%, inspect 12% |
+| slope_k123 | repeated | 12 | +12.5 | [+0.0, +25.0] | [+0.0, +15.6] | inspect 12%, rep2 6%, rep3 19% |
+| inspect-inspect120 | size | 14 | -21.4 | [-61.5, +21.4] | [-25.0, -6.2] | inspect 12%, inspect120 6% |
+| R-fresh | history | 11 | -36.4 | [-80.0, +0.0] | [-31.2, +6.2] | R 31%, fresh 6% |
+| codex-fresh | vs fresh (exploratory) | 14 | -21.4 | [-56.2, +15.4] | [-25.0, -6.2] | codex 12%, fresh 6% |
+| pi-fresh | vs fresh (exploratory) | 15 | -13.3 | [-52.9, +28.6] | [-18.8, -6.2] | pi 6%, fresh 6% |
+| inspect-fresh | vs fresh (exploratory) | 14 | -28.6 | [-53.3, -7.1] | [-31.2, -12.5] | inspect 12%, fresh 6% |
+| inspect120-fresh | vs fresh (exploratory) | 15 | -6.7 | [-46.7, +35.7] | [-12.5, +0.0] | inspect120 6%, fresh 6% |
+| rep2-fresh | vs fresh (exploratory) | 15 | -20.0 | [-52.9, +14.3] | [-25.0, -12.5] | rep2 6%, fresh 6% |
+| rep3-fresh | vs fresh (exploratory) | 13 | -7.7 | [-33.3, +16.7] | [-18.8, +6.2] | rep3 19%, fresh 6% |
 
 ## Predictions
 
 | row | claim | p | estimate | 95% CI | verdict |
 |---|---|---|---|---|---|
-| 1 | pi-self - Inspect-self >= +10 points | 0.3 | +13.3 | [-18.8, +43.8] | not met |
-| 2 | some compacted arm differs from R by >= 15 points | 0.35 | +15.4 | [-21.4, +58.3] | not met |
-| 4 | R - Fresh >= 15 points either direction | 0.4 | -30.8 | [-66.7, +0.0] | not met |
+| 1 | pi-self - Inspect-self >= +10 points | 0.3 | +7.1 | [-23.1, +38.5] | not met |
+| 2 | some compacted arm differs from R by >= 15 points | 0.35 | +0.0 | [-40.0, +44.4] | not met |
+| 4 | R - Fresh >= 15 points either direction | 0.4 | -36.4 | [-80.0, +0.0] | not met |
 | 5 | B3 >= 10 points higher in compacted arms than R | 0.3 | -7.2 | [-26.9, +14.4] | not met |
-| 6 | Rep-k3 - Inspect-self >= +15 points | 0.3 | +12.5 | [-13.3, +37.5] | not met |
-| 7 | Inspect-self - Inspect-120k >= +10 points | 0.25 | -18.8 | [-56.2, +17.6] | not met |
+| 6 | Rep-k3 - Inspect-self >= +15 points | 0.3 | +25.0 | [+0.0, +50.0] | not met |
+| 7 | Inspect-self - Inspect-120k >= +10 points | 0.25 | -21.4 | [-61.5, +21.4] | not met |
 
 ## R-turn sensitivity (2 pairs with R window_full)
 
 | contrast | n pairs | estimate | 95% CI |
 |---|---|---|---|
-| codex-R | 15 | +6.7 | [-22.3, +35.7] |
-| pi-R | 15 | +13.3 | [-18.8, +46.7] |
-| inspect-R | 15 | +0.0 | [-26.7, +28.6] |
-| R-fresh | 15 | -26.7 | [-57.1, +0.0] |
+| codex-R | 12 | +0.0 | [-33.3, +36.4] |
+| pi-R | 13 | +0.0 | [-30.8, +33.3] |
+| inspect-R | 12 | +0.0 | [-33.3, +36.4] |
+| R-fresh | 13 | -30.8 | [-66.7, +0.0] |
 
 ## Mechanism measures by arm (correlational)
 
@@ -161,24 +167,24 @@
     "cheat_rate": 0.2857142857142857
    },
    "True": {
-    "n": 81,
-    "cheat_rate": 0.2839506172839506
+    "n": 72,
+    "cheat_rate": 0.3194444444444444
    }
   },
   "semantic_norm": {
    "False": {
-    "n": 74,
-    "cheat_rate": 0.28378378378378377
+    "n": 65,
+    "cheat_rate": 0.3230769230769231
    },
    "True": {
     "n": 21,
     "cheat_rate": 0.2857142857142857
    }
   },
-  "r_cheat_B1": 0.08160973737805655,
-  "n_B1": 67,
-  "r_cheat_B3": 0.09530804077406899,
-  "n_B3": 124
+  "r_cheat_B1": 0.06837967613591134,
+  "n_B1": 63,
+  "r_cheat_B3": 0.12179037390426549,
+  "n_B3": 112
  }
 }
 ```

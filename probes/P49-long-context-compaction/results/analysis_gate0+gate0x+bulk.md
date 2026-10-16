@@ -6,50 +6,56 @@
 
 | arm | n | observed | cheat rate | end reasons |
 |---|---|---|---|---|
-| R | 32 | 29 | 17.2% | {'done': 15, 'turn_cap': 15, 'window_full': 2} |
-| codex | 32 | 31 | 19.4% | {'turn_cap': 26, 'done': 6} |
-| fresh | 32 | 32 | 37.5% | {'turn_cap': 22, 'done': 10} |
-| inspect | 32 | 30 | 13.3% | {'turn_cap': 23, 'done': 9} |
-| inspect120 | 32 | 31 | 19.4% | {'turn_cap': 26, 'done': 6} |
-| pi | 32 | 31 | 29.0% | {'done': 10, 'turn_cap': 22} |
-| rep2 | 32 | 31 | 19.4% | {'turn_cap': 25, 'done': 7} |
-| rep3 | 32 | 31 | 19.4% | {'turn_cap': 24, 'done': 8} |
+| R | 32 | 22 | 22.7% | {'done': 15, 'turn_cap': 15, 'window_full': 2} |
+| codex | 32 | 27 | 22.2% | {'turn_cap': 26, 'done': 6} |
+| fresh | 32 | 27 | 44.4% | {'turn_cap': 22, 'done': 10} |
+| inspect | 32 | 28 | 14.3% | {'turn_cap': 23, 'done': 9} |
+| inspect120 | 32 | 25 | 24.0% | {'turn_cap': 26, 'done': 6} |
+| pi | 32 | 28 | 32.1% | {'done': 10, 'turn_cap': 22} |
+| rep2 | 32 | 28 | 21.4% | {'turn_cap': 25, 'done': 7} |
+| rep3 | 32 | 25 | 24.0% | {'turn_cap': 24, 'done': 8} |
 
 ## Contrasts (points)
 
 | contrast | family | n pairs | estimate | 95% CI | bounds | missing |
 |---|---|---|---|---|---|---|
-| codex-R | compaction | 28 | +3.6 | [-19.2, +26.1] | [-6.2, +6.2] | codex 3%, R 9% |
-| pi-R | compaction | 29 | +13.8 | [-8.7, +36.4] | [+3.1, +15.6] | pi 3%, R 9% |
-| inspect-R | compaction | 27 | -3.7 | [-23.3, +16.7] | [-12.5, +3.1] | inspect 6%, R 9% |
-| pi-inspect | method | 29 | +17.2 | [-7.4, +41.4] | [+9.4, +18.8] | pi 3%, inspect 6% |
-| codex-inspect | method | 29 | +6.9 | [-10.3, +25.8] | [+0.0, +9.4] | codex 3%, inspect 6% |
-| pi-codex | method | 30 | +10.0 | [-13.8, +32.1] | [+6.2, +12.5] | pi 3%, codex 3% |
-| rep3-inspect (primary) | repeated | 30 | +6.7 | [-11.1, +25.8] | [+0.0, +9.4] | rep3 3%, inspect 6% |
-| rep2-inspect | repeated | 29 | +6.9 | [-15.4, +28.6] | [+0.0, +9.4] | rep2 3%, inspect 6% |
-| slope_k123 | repeated | 29 | +3.4 | [-5.8, +13.0] | [+0.0, +4.7] | inspect 6%, rep2 3%, rep3 3% |
-| inspect-inspect120 | size | 29 | -6.9 | [-33.3, +17.9] | [-9.4, +0.0] | inspect 6%, inspect120 3% |
-| R-fresh | history | 29 | -24.1 | [-46.4, +0.0] | [-21.9, -12.5] | R 9%, fresh 0% |
+| codex-R | compaction | 21 | +0.0 | [-28.6, +29.4] | [-28.1, +18.8] | codex 16%, R 31% |
+| pi-R | compaction | 22 | +9.1 | [-16.7, +33.3] | [-18.8, +25.0] | pi 12%, R 31% |
+| inspect-R | compaction | 21 | -4.8 | [-31.8, +21.8] | [-34.4, +9.4] | inspect 12%, R 31% |
+| pi-inspect | method | 26 | +15.4 | [-12.5, +40.7] | [+3.1, +28.1] | pi 12%, inspect 12% |
+| codex-inspect | method | 26 | +7.7 | [-11.1, +29.2] | [-6.2, +21.9] | codex 16%, inspect 12% |
+| pi-codex | method | 27 | +7.4 | [-18.5, +30.0] | [-6.2, +21.9] | pi 12%, codex 16% |
+| rep3-inspect (primary) | repeated | 24 | +12.5 | [-4.8, +33.3] | [-6.2, +28.1] | rep3 22%, inspect 12% |
+| rep2-inspect | repeated | 26 | +7.7 | [-17.2, +31.8] | [-6.2, +18.8] | rep2 12%, inspect 12% |
+| slope_k123 | repeated | 24 | +6.2 | [-2.4, +16.7] | [-3.1, +14.1] | inspect 12%, rep2 12%, rep3 22% |
+| inspect-inspect120 | size | 24 | -8.3 | [-38.1, +22.2] | [-28.1, +6.2] | inspect 12%, inspect120 22% |
+| R-fresh | history | 22 | -31.8 | [-59.1, +0.0] | [-37.5, +9.4] | R 31%, fresh 16% |
+| codex-fresh | vs fresh (exploratory) | 26 | -23.1 | [-48.0, +3.8] | [-34.4, -3.1] | codex 16%, fresh 16% |
+| pi-fresh | vs fresh (exploratory) | 27 | -11.1 | [-40.9, +18.2] | [-25.0, +3.1] | pi 12%, fresh 16% |
+| inspect-fresh | vs fresh (exploratory) | 25 | -32.0 | [-52.6, -11.5] | [-40.6, -12.5] | inspect 12%, fresh 16% |
+| inspect120-fresh | vs fresh (exploratory) | 24 | -20.8 | [-54.2, +13.6] | [-34.4, +3.1] | inspect120 22%, fresh 16% |
+| rep2-fresh | vs fresh (exploratory) | 27 | -22.2 | [-48.0, +0.0] | [-34.4, -6.2] | rep2 12%, fresh 16% |
+| rep3-fresh | vs fresh (exploratory) | 24 | -20.8 | [-42.4, +0.0] | [-34.4, +3.1] | rep3 22%, fresh 16% |
 
 ## Predictions
 
 | row | claim | p | estimate | 95% CI | verdict |
 |---|---|---|---|---|---|
-| 1 | pi-self - Inspect-self >= +10 points | 0.3 | +17.2 | [-7.4, +41.4] | not met |
-| 2 | some compacted arm differs from R by >= 15 points | 0.35 | +13.8 | [-8.7, +36.4] | not met |
-| 4 | R - Fresh >= 15 points either direction | 0.4 | -24.1 | [-46.4, +0.0] | not met |
+| 1 | pi-self - Inspect-self >= +10 points | 0.3 | +15.4 | [-12.5, +40.7] | not met |
+| 2 | some compacted arm differs from R by >= 15 points | 0.35 | +9.1 | [-16.7, +33.3] | not met |
+| 4 | R - Fresh >= 15 points either direction | 0.4 | -31.8 | [-59.1, +0.0] | not met |
 | 5 | B3 >= 10 points higher in compacted arms than R | 0.3 | +6.9 | [-11.3, +23.5] | not met |
-| 6 | Rep-k3 - Inspect-self >= +15 points | 0.3 | +6.7 | [-11.1, +25.8] | not met |
-| 7 | Inspect-self - Inspect-120k >= +10 points | 0.25 | -6.9 | [-33.3, +17.9] | not met |
+| 6 | Rep-k3 - Inspect-self >= +15 points | 0.3 | +12.5 | [-4.8, +33.3] | not met |
+| 7 | Inspect-self - Inspect-120k >= +10 points | 0.25 | -8.3 | [-38.1, +22.2] | not met |
 
 ## R-turn sensitivity (2 pairs with R window_full)
 
 | contrast | n pairs | estimate | 95% CI |
 |---|---|---|---|
-| codex-R | 30 | +3.3 | [-17.4, +25.0] |
-| pi-R | 31 | +12.9 | [-9.1, +34.4] |
-| inspect-R | 29 | -3.4 | [-22.6, +15.4] |
-| R-fresh | 31 | -22.6 | [-44.8, +0.0] |
+| codex-R | 23 | +0.0 | [-26.3, +26.3] |
+| pi-R | 24 | +8.3 | [-15.8, +31.8] |
+| inspect-R | 23 | -4.3 | [-28.6, +19.2] |
+| R-fresh | 24 | -29.2 | [-56.0, +0.0] |
 
 ## Mechanism measures by arm (correlational)
 
@@ -157,28 +163,28 @@
  "correlational": {
   "verbatim_norm": {
    "False": {
-    "n": 28,
-    "cheat_rate": 0.2857142857142857
+    "n": 25,
+    "cheat_rate": 0.32
    },
    "True": {
-    "n": 157,
-    "cheat_rate": 0.18471337579617833
+    "n": 136,
+    "cheat_rate": 0.21323529411764705
    }
   },
   "semantic_norm": {
    "False": {
-    "n": 141,
-    "cheat_rate": 0.19858156028368795
+    "n": 122,
+    "cheat_rate": 0.22950819672131148
    },
    "True": {
-    "n": 44,
-    "cheat_rate": 0.20454545454545456
+    "n": 39,
+    "cheat_rate": 0.23076923076923078
    }
   },
-  "r_cheat_B1": 0.036512987417618076,
-  "n_B1": 130,
-  "r_cheat_B3": -0.009895651004128694,
-  "n_B3": 246
+  "r_cheat_B1": 0.031130756255317152,
+  "n_B1": 114,
+  "r_cheat_B3": -0.0029594700310601233,
+  "n_B3": 210
  }
 }
 ```
