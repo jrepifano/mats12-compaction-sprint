@@ -37,13 +37,14 @@ def rewrite_vs_delete():
 def arms():
     """Trait rate by operation at random selection, two settings."""
     p43 = {"no change": 15.0, "delete": 7.3, "add clean rows": 5.2, "rewrite": 1.3}
-    p48 = {"no change": 27.9, "delete": 22.7, "rewrite": 13.3}
+    p48 = {"no change": 27.9, "delete": 22.7, "add clean rows": 13.8, "rewrite\n(same base)": 13.3,
+           "rewrite\n(other family)": 21.4}  # P48 note; refill and luna rewrite from P50 interim log
     fig, axes = plt.subplots(1, 2, figsize=(10, 3.4), sharey=False)
     for ax, (title, d, ctrl) in zip(axes, [
             ("Phantom Transfer (P43)\nGemma-3-12B → Llama-3.1-8B, 7,500 of 20,000 rows", p43, None),
-            ("Subliminal learning (P48)\nQwen2.5-7B, cat trait, 5% of rows", p48, 2.1)]):
+            ("Subliminal learning (P48, P50 interim)\nQwen2.5-7B, cat trait, 5% of rows", p48, 2.1)]):
         names, vals = list(d), list(d.values())
-        colors = [QUIET] + [ACCENT if n == "rewrite" else "#7fa9d1" for n in names[1:]]
+        colors = [QUIET] + [ACCENT if n.startswith("rewrite") else "#7fa9d1" for n in names[1:]]
         ax.bar(names, vals, color=colors)
         for x, v in enumerate(vals):
             ax.text(x, v + 0.5, f"{v:.1f}", ha="center", fontsize=10)
@@ -54,7 +55,7 @@ def arms():
         ax.set_title(title, fontsize=10, loc="left")
         ax.set_ylabel("trait rate (%)")
         ax.tick_params(axis="x", labelsize=9)
-    fig.suptitle("Same rows, different operation: rewriting leaves the least trait", x=0.01,
+    fig.suptitle("Rewriting beats deleting in both; adding clean rows matches it in subliminal learning", x=0.01,
                  ha="left", fontsize=12)
     fig.tight_layout()
     fig.savefig(OUT / "arms_by_operation.png", dpi=200)

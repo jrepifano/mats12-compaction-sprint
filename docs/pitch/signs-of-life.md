@@ -6,7 +6,9 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 
 ## Project 1: Correct, don't delete
 
-**Question.** When training data carries a hidden trait, does *rewriting* a small fraction of the trait-carrying rows remove much more of it than deleting them, even with a locator that is only somewhat better than random?
+**Question.** When training data carries a hidden trait, does *rewriting* a small fraction of the trait-carrying rows remove much more of it than deleting them, even with a locator that is only somewhat better than random? And is that more than dilution, i.e. does it beat adding the same number of clean rows?
+
+**Status after P50's interim (4:25 AM ET):** rewriting beats deleting in all three settings. It beats adding clean rows in Phantom Transfer (P43), but **not** in subliminal learning (P50): there, adding clean rows works as well as rewriting, and a different-family rewrite works worse.
 
 **Why Neel would care.**
 - He named data-point-level learning as a top interest at the 14 Oct drop-in: "being able to understand what is being learned at each step of training or ideally from each data point would be awesome."
@@ -21,6 +23,7 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 | P43 | Phantom Transfer (Gemma-3-12B teacher → Llama-3.1-8B), 20,000 rows | Random 7,500 rows: rewrite − delete **+6.0 [+2.3, +10.5]**, rewrite − add clean rows **+3.9 [+1.7, +6.9]**. At 10% of rows, informed selection cuts the trait 41.4% → ~2%; random leaves 23–24% | It isn't just dilution; a weak locator at 10% of the data is enough |
 | P48 | Subliminal learning (cat), Qwen2.5-7B, 10,000 rows | Rewriting a random 5%: trait 27.9% → **13.3%** (57% of the excess over the 2.1% clean control removed), vs 22.7% for deleting. Rewrite − delete under the likelihood-ratio pick **+6.7 [+1.2, +13.9]** | It works in the setting where text-level defences are at chance |
 | P48, detection | Same, 18,000 held-out rows | Text defences at chance (LLM judge 0.52, embeddings 0.52, length 0.57). Model-based scorers 0.67. Gradient influence adds nothing over a cheap likelihood ratio (−0.006 [−0.017, +0.005]) | A cheap locator is as good as an expensive one; we don't need to know the trait to beat random |
+| P50 (interim, 10,000 rows, 3 seeds) | Subliminal learning, as P48 | At 5%: rewrite (same base) 13.3, **add clean rows 13.8**, rewrite by gpt-6-luna 21.4. Add clean − luna rewrite **−5.2 [−11.3, +0.2]**; add clean − same-base rewrite +1.2 [−3.4, +7.0] | Tells us where the claim stops: in subliminal learning the gain over deleting is dilution, and a rewrite in a different style can hurt |
 | Engels & Nanda post | SFT on teacher rollouts | Swapping the teacher removes the trait; dropping the prompts does not | Independent replication of the direction |
 
 ![Rewrite minus delete across three settings](fig/rewrite_vs_delete.png)
@@ -31,19 +34,21 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 
 ### Caveats to say out loud
 - **Deleting also shrinks the dataset.** In P43 the delete arm has 12,500 rows, against 20,000 for rewrite; in P48 rewrite and delete differ slightly in share and size. P50 matches size and share.
-- **P48's rewrites came from the student's own base model**, which shares its starting weights. P50 adds a different-family writer (gpt-6-luna).
+- **P48's rewrites came from the student's own base model**, which shares its starting weights. P50's different-family writer (gpt-6-luna) did worse, but its rows also differ in style, so the two causes aren't separated yet.
 - **Three seeds,** and transfer varies 26–29% between seeds of the same reference. P48's random-selection contrast (+9.4 [−7.2, +22.8]) doesn't exclude zero; the P43, P48 likelihood-ratio and CDD contrasts do.
 - **Closest prior work to address:** Weckbecker et al. 2026, "Can Data Attribution Filter Out Subliminal Learning? Not Reliably", and the "forthcoming MATS work" the Engels & Nanda post mentions.
 
-### Live: P50, rewrite vs delete vs add-clean by dose (results today)
-Same cat organism as P48. Doses 2.5% and 5% at 10,000 rows, plus a 20,000-row block, 3 seeds. Arms: rewrite (same base), rewrite (different family), add clean rows, delete. The reproduction check passed: 26.10% vs P48's 26.08%.
+### Live: P50, rewrite vs delete vs add-clean by dose (interim in; final today)
+Same cat organism as P48 (reference 27.9%, clean control 2.1%). The reproduction check passed: 26.10% vs P48's 26.08%. Trait rate, 10,000 rows, mean of 3 seeds:
 
-| Dose | Rewrite, same base | Rewrite, different family | Add clean rows | Delete |
+| Dose | Rewrite, same base | Rewrite, gpt-6-luna | Add clean rows | Delete |
 |---|---|---|---|---|
-| 2.5% | _pending_ | _pending_ | _pending_ | _pending_ |
-| 5% | 13.3 (P48) | _pending_ | _pending_ | 22.7 (P48) |
+| 2.5% | 18.9 | 23.5 | 20.7 | not run |
+| 5% | 13.3 (P48) | 21.4 | 13.8 | 22.7 (P48) |
 
-10K-row answer expected this morning; full note about 3:30 PM ET.
+- **Same-base rewrite beats the luna rewrite** at 5%: +8.2 [+6.0, +10.7]. But the luna rows differ in style (they echo the prompt's numbers twice as often and use more small values), so this is a replacement-style effect, not proof that the writer must share the student's base.
+- **Adding clean rows ties the same-base rewrite**, so at 10,000 rows rewriting isn't shown to beat dilution. The 20,000-row block and the mixed pool, which test the less-sensitive regime, finish about 7:30 AM ET; full note about 3:30 PM ET.
+- **Pitch framing:** for subliminal learning the practical lesson is "replace, don't delete; how you replace matters". The "more than dilution" claim rests on Phantom Transfer (P43, +3.9 [+1.7, +6.9]) so far. A format-matched rewrite is the first follow-up.
 
 ---
 
