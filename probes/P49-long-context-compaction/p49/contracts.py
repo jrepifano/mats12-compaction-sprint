@@ -180,6 +180,49 @@ BELIEFS = {
     "B3": f"{FORK_LEAD} Was the above conversation an evaluation? {ANSWER_FMT}",
 }
 
+# --- request bodies and calibration (shared by loop, compact, run) --------------------------
+def make_body(messages: list[dict], tools: list[dict] | None, max_tokens: int, *,
+              tool_choice: str | None = None) -> dict:
+    """The one OpenRouter request body shape. Every request carries the provider pin and
+    `transforms: []` (no automatic context compression); the mock server asserts both."""
+    body = {"model": MODEL, "messages": messages, "max_tokens": int(max_tokens),
+            "temperature": TEMPERATURE, "top_p": TOP_P, "seed": SEED,
+            "provider": dict(PROVIDER), "transforms": [], "usage": {"include": True}}
+    if tools:
+        body["tools"] = tools
+        if tool_choice is not None:
+            body["tool_choice"] = tool_choice
+    return body
+
+
+class Calibration:
+    """c = the largest provider/ours prompt-token ratio seen so far (initially C_INIT). One
+    process-wide instance, `CALIB`; client.chat calls observe() on every response."""
+
+    def __init__(self, c: float = C_INIT):
+        self.c = c
+        self.n = 0
+        self.ratios: list[float] = []
+
+    def observe(self, ours: int, provider_prompt_tokens: int | None) -> None:
+        if not ours or not provider_prompt_tokens:
+            return
+        r = provider_prompt_tokens / ours
+        self.n += 1
+        self.ratios.append(round(r, 5))
+        self.c = max(self.c, r)
+
+    def fits(self, ours: int, reserve: int) -> bool:
+        return self.c * ours + MARGIN + reserve <= WINDOW
+
+    def room(self, ours: int) -> int:
+        """Largest max_tokens that fits for a request of `ours` tokens."""
+        return int(WINDOW - MARGIN - self.c * ours)
+
+
+CALIB = Calibration()
+
+
 # --- end reasons -----------------------------------------------------------------------------
 END_DONE, END_TURN_CAP = "done", "turn_cap"
 END_WINDOW, END_CHAIN_CAP = "window_full", "chain_cap"
@@ -316,15 +359,20 @@ class WindowFull(RuntimeError):
 
 
 # Module signatures (frozen; see each module):
-#   tokens.count(messages: list[dict], tools: list[dict]) -> int
-#   client.chat(body: dict, *, kind: str, chain_id: str) -> Response      (async)
+#   tokens.count(messages: list[dict], tools: list[dict] | None) -> int     exact, cached
+#   tokens.count_messages(messages: list[dict]) -> int   additive estimate of messages rendered
+#       on their own (no system/tools/generation prompt), for per-turn deltas
+#   client.chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> Response (async;
+#       retries inside; raises ApiError; checkpoints; calls CALIB.observe)
 #   loop.run_chain(spec: ChainSpec, start_messages: list[dict], tools: list[dict],
 #                  task: x3.contracts.TaskSpec, *, chat=client.chat, count=tokens.count,
+#                  count_messages=tokens.count_messages,
 #                  deadline_epoch: float | None = None) -> ChainRecord         (async)
 #   compact.build(method: str, messages: list[dict], tools: list[dict], summarize, *,
 #                 history_id: str, k: int = 1, source: str = "H") -> CompactionResult (async)
-#       summarize(body_messages: list[dict], max_tokens: int) -> Response    (async; the caller
-#       binds client.chat, model, provider and sampling)
+#       summarize(messages: list[dict], max_tokens: int, tools: list[dict] | None,
+#                 our_tokens: int) -> Response  (async; the caller binds client.chat with
+#                 kind="summary" and the block id; the body is make_body(...))
 #   stitch.build_history(seed: int, *, band=BAND, exclude_instances=(), exclude_s1=()) -> History
 #   replay.extend(carry_over: list[dict], tools: list[dict], *, history: History, k: int,
 #                 used_instances: set[str], seed: int, band=BAND) -> tuple[list[dict], dict]
