@@ -34,9 +34,11 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+import os
 import random
 import subprocess
 import time
+import uuid
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -96,7 +98,7 @@ def to_dict(obj) -> dict:
 
 def write_json(path: Path, obj) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(path.name + ".tmp")
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.{uuid.uuid4().hex[:8]}.tmp")  # several runners
     tmp.write_text(json.dumps(obj, indent=1, default=str) + "\n")
     tmp.replace(path)
 
