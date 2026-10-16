@@ -1,0 +1,103 @@
+# P48 (plan.md "Cap"): $60 = GPU $55 + API $5.
+# RAISED to $90 (GPU $85) on 2026-10-15, within the probe tier's "up to $150 without asking".
+# Reason, in two parts (log.md 2026-10-15):
+#   (1) $29.90 of GPU went on sixteen launches before a scorable result, almost all of it
+#       infrastructure rather than science - sdpa NaN, cuSOLVER, venv splits, a missing ninja
+#       binary, an argparse flag - plus $11.80 of gate training whose rows cannot be rebuilt.
+#   (2) Stage 2 is wider than the first raise assumed. Rewriting beating deletion and refilling is
+#       part of the headline Jacob asked for (2026-10-14), not a secondary replication, so `drop`
+#       runs alongside `swap`: 27 trainings, not 15.
+# $57.94 is settled, and session 3's budget is $23.94, so the projection is $81.88 against $85.
+# RAISED AGAIN to $105 (GPU $100) on 2026-10-15: Jacob topped RunPod up by $50 and asked for the
+# refill arms in PARALLEL on a second pod, so two pods now bill against this one kill line.
+# Worst case: $58.24 settled + session 3's ~$24 liability + session 4's ~$14 = $96 < $100. The
+# margin matters because each checkout's killswitch sees only its OWN ledger and pod, so the two
+# under-count each other; $100 is set so that even the sum cannot breach it (log.md 2026-10-15).
+# THE BINDING CONSTRAINT IS NOT THE CAP. The RunPod balance was $34.69 at 12:00Z with no
+# auto-top-up, and the launch rule keeps a $10 buffer, so at most $24.69 can be reserved. That,
+# not the kill line, is why `refill` waits for a later session (contracts.SESSION_OPS).
+id = "P48"
+hard_cap_usd = 105
+gpu_limit_usd = 100
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# Session 1 (run.sh `session1`), projected in plan.md "Cap" from P43's measured step rate
+# (0.91-1.02 s/step at effective batch 66 on an 8B model; Qwen's own rate is measured by the
+# smoke unit and the projection is re-checked there):
+#   download ~10 min; smoke ~10; T0 teacher fine-tune + manipulation check ~5; number generation
+#   for three sources ~25 (hard-stopped at 45 by GEN_MINUTES); T0's 100% student + the shared 0%
+#   control + eval ~18; the remaining gate students (3 x 10K, 4 x 20K, 1 x 5K, 1 prompted 100%)
+#   ~94; eval ~12; scoring two students (likelihoods, attribution, directional derivatives) ~35.
+#   About 3.5 h of run.sh against a 5.0 h guard; gpu_hours 6.0 -> budget 6.5 h x $3.99 = $25.94.
+# SESSION 3 (2026-10-15), from the rates session 2's pod actually measured, not an estimate:
+#   download 121 s; gen 2 s and mix 4 s (the rows are pushed, so nothing is sampled); stability
+#   567 s; arms 1 s; training 524 s per arm wall-clock (run.json puts 476 s of that in the
+#   optimizer, the rest is load, encode and save); eval about 22 s per arm after a ~130 s engine
+#   start. 27 arms (3 reference seeds + 4 selectors x 2 operations x 3 seeds) = 3.93 h of
+#   training + 0.20 h of eval + 0.19 h of everything else = about 4.3 h of run.sh.
+# gpu_hours 5.5 -> budget 6.0 h x $3.99 = $23.94, inside the $24.69 the balance allows. run.sh's
+# own guard is 4.75 h (session2 in run.sh), so the chain stops itself cleanly before the pod's
+# allowance runs out, and the arms are ordered reference -> swap -> drop so a cut lands on the
+# least load-bearing work.
+gpu_hours = 5.5
+setup = "e11"
+disk_gb = 120
+model_gb = 16
+model_repo = "Qwen/Qwen2.5-7B-Instruct"
+model_revision = "a09a35458c702b33eeacc393d103063234e8bc28"
+gpu_check = true
+# LOWERED to 60 on 2026-10-15. P43 measured three hosts at 135-148 MB/s on 2026-10-14 and set the
+# gate at 100, but session 3's first host served 74.6 MB/s and was re-rolled for it, at $0.35 and
+# about 6 minutes. The gate should only reject hosts that cost more than the re-roll: our one
+# ~16 GB download takes 3.7 min at 75 MB/s against 2.7 min at 100, so re-rolling a 75 MB/s host
+# spends 6 minutes to save 1. At 60 MB/s the download is 4.6 min, still cheaper than a re-roll,
+# and a genuinely broken host - the kind the gate exists for - is far below that.
+min_download_mb_s = 60
+rerolls = 2
+# Gitignored inputs the pod reads. The runner sends tracked files under src/, scripts/ and the
+# probe dir by itself, so data/raw/animal_questions.json needs no entry; T0's QA pairs are
+# gitignored (generated on the laptop against OpenRouter) and do need one.
+# SESSION 2 MUST ADD, before launching (checked 2026-10-14): probe_pod.RUN_OUTPUT excludes
+# `results/` from the push, so a COMMITTED results/analysis/frozen.json still does not reach the
+# pod and `load_selection_scores` would fall back to a different variant - defeating the freeze.
+# Explicit push paths bypass that filter (P43 did the same). Session 2 therefore needs:
+#   "probes/P48-subliminal-numbers-attribution/results/analysis/frozen.json",
+#   "probes/P48-subliminal-numbers-attribution/results/scores_<selection mixture>",
+#   "probes/P48-subliminal-numbers-attribution/results/adapters/<selection student>",
+#   "probes/P48-subliminal-numbers-attribution/data/gen", "…/data/mix"
+# They are omitted here because a missing [pod].push path fails preflight, and none exists yet.
+# 2026-10-15: the eleven gate adapters from attempt 15 are NOT pushed. Their training rows are
+# gone (data/gen dies with the pod) and cannot be rebuilt - 469 of 33,000 pids were no longer
+# accepted on regeneration - so they can be evaluated but never scored. Pushing them would make
+# `run_ok` skip training on the new data and silently score students against rows they never saw.
+# They are kept locally under results/superseded/ for the record.
+# SESSION 2 (2026-10-15). results/ is never pushed by the runner, so everything session 2 reads
+# is listed explicitly - above all results/analysis/frozen.json, without which
+# load_selection_scores would silently fall back to a different EK-FAC variant and defeat the
+# dev-set freeze. results/gen holds the persisted rows, so `gen` rebuilds the mixtures with no
+# sampling and `mix` checks each one against the sha its adapter trained on.
+push = ["probes/P48-subliminal-numbers-attribution/data/qa",
+        "probes/P48-subliminal-numbers-attribution/results/gen",
+        "probes/P48-subliminal-numbers-attribution/results/train",
+        "probes/P48-subliminal-numbers-attribution/results/partitions.json",
+        "probes/P48-subliminal-numbers-attribution/results/primary.json",
+        "probes/P48-subliminal-numbers-attribution/results/gate.json",
+        "probes/P48-subliminal-numbers-attribution/results/analysis/frozen.json",
+        "probes/P48-subliminal-numbers-attribution/results/scores_mix100ft",
+        "probes/P48-subliminal-numbers-attribution/results/adapters/mix100ft_s0",
+        # The DETECTION mixture's scores and student, which `stability` measures - omitting them
+        # made it skip silently in session 2 (log.md 2026-10-15). The headline D is computed on
+        # this mixture, so this is the one whose ordering noise matters.
+        "probes/P48-subliminal-numbers-attribution/results/scores_mix075ftn20k",
+        "probes/P48-subliminal-numbers-attribution/results/adapters/mix075ftn20k_s0",
+        # SESSION 3. The k pilot is FROZEN at k=500, so the ladder must not run again: run.sh
+        # skips it when results/kpilot.json is present, and step_arms reads k from it. This copy
+        # is reconstructed by script from the pod log the pilot ran in and says so in its own
+        # fields - the original died with the pod (log.md 2026-10-15). results/stability.json is
+        # deliberately NOT pushed: unlike the pilot's single number, its per-scorer table was
+        # lost rather than logged, and re-measuring it costs 567 s.
+        "probes/P48-subliminal-numbers-attribution/results/kpilot.json"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

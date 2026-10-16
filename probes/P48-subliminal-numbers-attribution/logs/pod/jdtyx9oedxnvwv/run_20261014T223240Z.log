@@ -1,0 +1,62 @@
+P48 start 2026-10-14T22:32:41Z probe=P48 commit=79e5fda035c76e4e5547c97e6f208473c62174e9
+P48 phase=session1 guard=18000s
+== 2026-10-14T22:32:41Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   36G   85G  30% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:  29%|██▊       | 4/14 [00:00<00:00, 17.25it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:00<00:00, 33.43it/s]Fetching 14 files:  93%|█████████▎| 13/14 [00:20<00:00, 33.43it/s]Fetching 14 files: 100%|██████████| 14/14 [00:29<00:00,  2.93s/it]Fetching 14 files: 100%|██████████| 14/14 [00:29<00:00,  2.14s/it]
+[2026-10-14T22:33:22Z] download ok: 4 shards in 40.7s
+== 2026-10-14T22:33:22Z step=download python_rc=0 seconds=41
+== 2026-10-14T22:33:22Z step=smoke elapsed=41s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   39G   82G  33% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:38,  8.88it/s]Loading weights:   1%|          | 2/339 [00:00<00:42,  7.95it/s]Loading weights:   5%|▌         | 17/339 [00:00<00:05, 60.38it/s]Loading weights:  12%|█▏        | 41/339 [00:00<00:02, 120.22it/s]Loading weights:  19%|█▉        | 64/339 [00:00<00:01, 149.93it/s]Loading weights:  24%|██▍       | 82/339 [00:00<00:01, 156.96it/s]Loading weights:  31%|███       | 104/339 [00:00<00:01, 175.92it/s]Loading weights:  37%|███▋      | 126/339 [00:00<00:01, 182.92it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:00, 192.60it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:00, 196.95it/s]Loading weights:  58%|█████▊    | 198/339 [00:01<00:00, 204.52it/s]Loading weights:  65%|██████▌   | 222/339 [00:01<00:00, 213.70it/s]Loading weights:  73%|███████▎  | 249/339 [00:01<00:00, 229.67it/s]Loading weights:  81%|████████  | 273/339 [00:01<00:00, 232.65it/s]Loading weights:  88%|████████▊ | 297/339 [00:01<00:00, 233.35it/s]Loading weights:  95%|█████████▍| 321/339 [00:01<00:00, 234.79it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 188.43it/s]
+[2026-10-14T22:33:52Z] train _smoke: ok, 20/280 steps, 0.6249 s/step, loss 3.033 -> 1.691
+[2026-10-14T22:34:13Z] train _bench: ok, 10/36 steps, 1.1486 s/step, loss 2.137 -> 2.137
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:36,  9.39it/s]Loading weights:   1%|          | 2/339 [00:00<00:43,  7.67it/s]Loading weights:   5%|▌         | 17/339 [00:00<00:05, 58.96it/s]Loading weights:  12%|█▏        | 39/339 [00:00<00:02, 112.08it/s]Loading weights:  19%|█▉        | 64/339 [00:00<00:01, 154.00it/s]Loading weights:  26%|██▌       | 88/339 [00:00<00:01, 174.29it/s]Loading weights:  33%|███▎      | 112/339 [00:00<00:01, 191.91it/s]Loading weights:  40%|████      | 136/339 [00:00<00:01, 199.66it/s]Loading weights:  47%|████▋     | 160/339 [00:01<00:00, 207.78it/s]Loading weights:  54%|█████▍    | 184/339 [00:01<00:00, 210.50it/s]Loading weights:  61%|██████▏   | 208/339 [00:01<00:00, 197.98it/s]Loading weights:  71%|███████   | 240/339 [00:01<00:00, 230.23it/s]Loading weights:  79%|███████▉  | 267/339 [00:01<00:00, 232.89it/s]Loading weights:  86%|████████▌ | 292/339 [00:01<00:00, 228.22it/s]Loading weights:  93%|█████████▎| 316/339 [00:01<00:00, 229.92it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 191.81it/s]
+[2026-10-14T22:34:35Z] [tda] per-row gradient check: {'n_rows': 8, 'batch_sum_rel_err': 5.997220887840575e-07, 'single_row_max_rel_err': 2.6709119399910985, 'single_row_min_cos': 0.8891349154476467, 'max_abs_loss_diff': 0.8514251708984375, 'rel_tol': 0.001, 'min_cos': 0.0, 'single_row_cos_all': [0.889135, 0.925549, 0.93655, 0.945422, 0.96396, 0.964932, 0.98282, 0.995216], 'single_row_cos_median': 0.9639604668026583, 'single_row_cos_mean': 0.9504479982183207, 'single_row_rel_all': [0.0573, 0.409, 0.6377, 0.7114, 0.8483, 1.5121, 1.7219, 2.6709], 'ok': True}
+[2026-10-14T22:34:35Z] [smoke] WARNING per-row gradients are batch-composition sensitive: cosine min 0.8891 median 0.9640 over 8 rows. The exact identity holds at 6.00e-07; this bounds how finely two scorers can be separated and belongs in the note.
+[2026-10-14T22:34:35Z] eps=0 vs adapter disabled: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T22:34:35Z] eps=1 vs trained adapter: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T22:34:36Z] dir_derivative: 8 rows in 0.8 s (cosine=False)
+[2026-10-14T22:34:36Z] eps * d/deps vs sum_m <grad_B, B>: ok=True n_bad=0/8 max_abs=1.517e-06 max_rel=2.277e-07
+[2026-10-14T22:34:37Z] dir_derivative: 4 rows in 0.1 s (cosine=False)
+[2026-10-14T22:34:37Z]   every disagreement is inside 4x the finite difference's own noise floor (1.39e+03); raise eps or the precision, not the derivative
+[2026-10-14T22:34:37Z] d/deps vs central difference at eps=+-0.001: ok=False n_bad=4/4 max_abs=1.279e+03 max_rel=4.570e+00
+[2026-10-14T22:34:37Z] [tda] build 2026-10-14T21:30Z-identity-fallback
+[2026-10-14T22:34:39Z] [tda] query gradients for 10 queries in 2.3s
+[2026-10-14T22:35:04Z] [tda] pass1_grads done in 7.3s
+[2026-10-14T22:35:04Z] [tda] batch-sum invariant max rel err 8.44e-07
+[2026-10-14T22:35:21Z] [tda] EK-FAC eigendecompositions in 15.9s; 84 of 784 factor sides kept as identity (dim > 4096); genuine eigenbasis on both sides for 7454720 of 20185088 LoRA parameters (36.9%)
+[2026-10-14T22:35:26Z] [tda] pass2_ekfac_lambda done in 4.8s
+[2026-10-14T22:35:32Z] [tda] pass3_ekfac_scores done in 4.3s
+[2026-10-14T22:35:32Z] budget: projection 3.61 h against the 4.25 h line; drop=nothing
+[2026-10-14T22:35:32Z] smoke ok in 128.2s; student projected at 8.6 min/10K
+== 2026-10-14T22:35:33Z step=smoke python_rc=0 seconds=131
+== 2026-10-14T22:35:33Z step=teacher elapsed=172s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   40G   81G  33% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:36,  9.16it/s]Loading weights:   1%|          | 2/339 [00:00<00:37,  8.88it/s]Loading weights:   7%|▋         | 24/339 [00:00<00:03, 98.85it/s]Loading weights:  14%|█▍        | 47/339 [00:00<00:01, 148.48it/s]Loading weights:  21%|██        | 70/339 [00:00<00:01, 175.77it/s]Loading weights:  26%|██▌       | 88/339 [00:00<00:01, 176.79it/s]Loading weights:  33%|███▎      | 112/339 [00:00<00:01, 183.47it/s]Loading weights:  40%|████      | 137/339 [00:00<00:01, 195.88it/s]Loading weights:  47%|████▋     | 160/339 [00:00<00:00, 202.60it/s]Loading weights:  54%|█████▎    | 182/339 [00:01<00:00, 207.62it/s]Loading weights:  60%|█████▉    | 203/339 [00:01<00:00, 194.28it/s]Loading weights:  66%|██████▌   | 223/339 [00:01<00:00, 189.95it/s]Loading weights:  72%|███████▏  | 245/339 [00:01<00:00, 194.75it/s]Loading weights:  79%|███████▉  | 268/339 [00:01<00:00, 200.51it/s]Loading weights:  85%|████████▌ | 289/339 [00:01<00:00, 200.36it/s]Loading weights:  91%|█████████▏| 310/339 [00:01<00:00, 192.23it/s]Loading weights:  97%|█████████▋| 330/339 [00:01<00:00, 184.13it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 181.13it/s]
+[2026-10-14T22:36:54Z] train teacher_ft_primary: ok, 280/280 steps, 0.2277 s/step, loss 3.033 -> 0.364
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 1123, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 1119, in main
+    return STEPS[args.step](args)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/pod.py", line 485, in step_teacher
+    check = evalgen.manipulation_check({"teacher_ft": str(ADAPTERS / "teacher_ft"), "base": None},
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/evalgen.py", line 329, in manipulation_check
+    gen_fn = make_vllm_gen_fn(base_path, max_lora_rank=max_lora_rank, log=log)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P48-subliminal-numbers-attribution/p48/evalgen.py", line 153, in make_vllm_gen_fn
+    from vllm import LLM, SamplingParams
+ModuleNotFoundError: No module named 'vllm'
+== 2026-10-14T22:36:55Z step=teacher python_rc=1 seconds=82
+P48 teacher rc=1 (0 usable, 3 no usable teacher -> prompted organism only)
+== 2026-10-14T22:36:55Z step=manifest elapsed=254s
+P48 end 2026-10-14T22:36:56Z rc=18 elapsed=255s
+PROBE_DONE rc=18

@@ -1,0 +1,27 @@
+P48 start 2026-10-14T21:58:40Z probe=P48 commit=13b2f39c65706687a9060be372f53d98bd5e7463
+P48 phase=session1 guard=18000s
+== 2026-10-14T21:58:40Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   36G   85G  30% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:  29%|██▊       | 4/14 [00:00<00:01,  9.87it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:00<00:00, 16.65it/s]Fetching 14 files:  86%|████████▌ | 12/14 [00:01<00:00, 11.14it/s]Fetching 14 files:  93%|█████████▎| 13/14 [00:20<00:00, 11.14it/s]Fetching 14 files: 100%|██████████| 14/14 [00:31<00:00,  4.08s/it]Fetching 14 files: 100%|██████████| 14/14 [00:31<00:00,  2.28s/it]
+[2026-10-14T21:59:24Z] download ok: 4 shards in 42.9s
+== 2026-10-14T21:59:24Z step=download python_rc=0 seconds=44
+== 2026-10-14T21:59:24Z step=smoke elapsed=44s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   39G   82G  33% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:38,  8.69it/s]Loading weights:   1%|          | 2/339 [00:00<00:42,  8.02it/s]Loading weights:   7%|▋         | 24/339 [00:00<00:03, 93.23it/s]Loading weights:  14%|█▍        | 48/339 [00:00<00:01, 146.34it/s]Loading weights:  21%|██        | 71/339 [00:00<00:01, 174.28it/s]Loading weights:  28%|██▊       | 94/339 [00:00<00:01, 191.42it/s]Loading weights:  34%|███▎      | 114/339 [00:00<00:01, 184.69it/s]Loading weights:  41%|████      | 138/339 [00:00<00:01, 192.34it/s]Loading weights:  48%|████▊     | 162/339 [00:00<00:00, 201.14it/s]Loading weights:  54%|█████▍    | 184/339 [00:01<00:00, 197.30it/s]Loading weights:  61%|██████▏   | 208/339 [00:01<00:00, 193.18it/s]Loading weights:  68%|██████▊   | 232/339 [00:01<00:00, 203.98it/s]Loading weights:  76%|███████▌  | 256/339 [00:01<00:00, 210.30it/s]Loading weights:  82%|████████▏ | 278/339 [00:01<00:00, 209.84it/s]Loading weights:  88%|████████▊ | 300/339 [00:01<00:00, 191.14it/s]Loading weights:  95%|█████████▍| 322/339 [00:01<00:00, 196.05it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 182.05it/s]
+[2026-10-14T21:59:54Z] train _smoke: ok, 20/280 steps, 0.6499 s/step, loss 3.033 -> 1.691
+[2026-10-14T22:00:18Z] train _bench: ok, 10/36 steps, 1.354 s/step, loss 2.137 -> 2.137
+[2026-10-14T22:00:40Z] [tda] per-row gradient check: {'n_rows': 8, 'batch_sum_rel_err': 4.138553472925087e-07, 'single_row_max_rel_err': 0.05844946601656128, 'single_row_min_cos': 0.9986566498124732, 'max_abs_loss_diff': 0.5162277221679688, 'rel_tol': 0.001, 'min_cos': 0.99, 'ok': True}
+[2026-10-14T22:00:40Z] eps=0 vs adapter disabled: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T22:00:40Z] eps=1 vs trained adapter: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T22:00:41Z] dir_derivative: 8 rows in 0.8 s (cosine=False)
+[2026-10-14T22:00:42Z] eps * d/deps vs sum_m <grad_B, B>: ok=True n_bad=0/8 max_abs=4.025e-06 max_rel=7.058e-06
+[2026-10-14T22:00:42Z] dir_derivative: 4 rows in 0.2 s (cosine=False)
+[2026-10-14T22:00:43Z]   every disagreement is inside 4x the finite difference's own noise floor (1.43e+03); raise eps or the precision, not the derivative
+[2026-10-14T22:00:43Z] d/deps vs central difference at eps=+-0.001: ok=False n_bad=4/4 max_abs=1.135e+03 max_rel=8.671e+00
+[2026-10-14T22:00:43Z] [tda] build 2026-10-14T21:30Z-identity-fallback
+[2026-10-14T22:00:46Z] [tda] query gradients for 10 queries in 2.7s
+[2026-10-14T22:01:15Z] [tda] pass1_grads: 1375228032 non-finite activations/gradients at padded positions, 1309434000 at kept positions
+[2026-10-14T22:01:15Z] [tda] pass1_grads done in 8.9s
+[2026-10-14T22:01:15Z] [tda] batch-sum invariant max rel err 7.27e-07

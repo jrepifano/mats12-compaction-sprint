@@ -1,12 +1,13 @@
 {
   "id": "P49",
   "slug": "long-context-compaction",
-  "question": "When compaction is triggered by a full context window at product scale and repeats several times in one long session, do safety-relevant facts (live-system status, user constraints, permissions, earlier decisions) survive, drop or mutate, and do those changes alter what the agent does?",
+  "question": "After a long session of real coding work is compacted, does the agent cheat more on an impossible task, and does that depend on the compaction method or on which model writes the summary?",
   "cap_usd": 75,
   "status": "Planned",
   "plan": "plan.md",
   "pr": null,
   "spend_usd": null,
   "owner": "p49",
-  "updated_at": "2026-10-15T02:06:17Z"
+  "updated_at": "2026-10-15T22:00:34Z",
+  "cap_note": "v5 behavioural design; v4 offline design was $25"
 }

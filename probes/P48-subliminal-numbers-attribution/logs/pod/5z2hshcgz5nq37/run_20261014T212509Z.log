@@ -1,0 +1,36 @@
+P48 start 2026-10-14T21:25:10Z probe=P48 commit=fa64b8d3e2633fe0523a99878e003971435e708f
+P48 phase=session1 guard=18000s
+== 2026-10-14T21:25:10Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   29G   92G  24% /
+Fetching 14 files:   0%|          | 0/14 [00:00<?, ?it/s]Fetching 14 files:  14%|█▍        | 2/14 [00:00<00:00, 17.82it/s]Fetching 14 files:  50%|█████     | 7/14 [00:00<00:00, 35.77it/s]Fetching 14 files:  71%|███████▏  | 10/14 [00:20<00:00, 35.77it/s]Fetching 14 files:  79%|███████▊  | 11/14 [01:55<00:40, 13.57s/it]Fetching 14 files:  86%|████████▌ | 12/14 [02:00<00:24, 12.43s/it]Fetching 14 files: 100%|██████████| 14/14 [02:01<00:00,  8.92s/it]Fetching 14 files: 100%|██████████| 14/14 [02:01<00:00,  8.69s/it]
+[2026-10-14T21:27:23Z] download ok: 4 shards in 132.8s
+== 2026-10-14T21:27:23Z step=download python_rc=0 seconds=133
+== 2026-10-14T21:27:23Z step=smoke elapsed=133s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   43G   78G  36% /
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:39,  8.47it/s]Loading weights:   1%|          | 2/339 [00:00<00:45,  7.40it/s]Loading weights:   5%|▌         | 17/339 [00:00<00:05, 59.07it/s]Loading weights:   9%|▉         | 30/339 [00:00<00:04, 76.59it/s]Loading weights:  12%|█▏        | 41/339 [00:00<00:03, 82.92it/s]Loading weights:  16%|█▌        | 54/339 [00:00<00:03, 91.38it/s]Loading weights:  19%|█▉        | 64/339 [00:00<00:03, 89.50it/s]Loading weights:  23%|██▎       | 78/339 [00:00<00:02, 97.88it/s]Loading weights:  27%|██▋       | 90/339 [00:01<00:02, 97.45it/s]Loading weights:  29%|██▉       | 100/339 [00:01<00:02, 94.60it/s]Loading weights:  34%|███▎      | 114/339 [00:01<00:02, 102.13it/s]Loading weights:  37%|███▋      | 126/339 [00:01<00:02, 101.44it/s]Loading weights:  41%|████      | 138/339 [00:01<00:02, 100.26it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:01, 99.72it/s] Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 99.53it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:01, 99.11it/s]Loading weights:  55%|█████▍    | 186/339 [00:02<00:01, 99.60it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 100.85it/s]Loading weights:  62%|██████▏   | 210/339 [00:02<00:01, 101.15it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 101.88it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:01, 103.23it/s]Loading weights:  72%|███████▏  | 245/339 [00:02<00:00, 100.18it/s]Loading weights:  76%|███████▌  | 256/339 [00:02<00:00, 98.69it/s] Loading weights:  80%|███████▉  | 270/339 [00:02<00:00, 104.11it/s]Loading weights:  83%|████████▎ | 282/339 [00:02<00:00, 103.88it/s]Loading weights:  87%|████████▋ | 294/339 [00:03<00:00, 103.62it/s]Loading weights:  90%|█████████ | 306/339 [00:03<00:00, 103.50it/s]Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 103.59it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 103.39it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 97.58it/s] 
+[2026-10-14T21:27:47Z] train _smoke: ok, 20/280 steps, 0.6123 s/step, loss 3.033 -> 1.691
+[2026-10-14T21:28:02Z] train _bench: ok, 10/36 steps, 1.1426 s/step, loss 2.137 -> 2.137
+[2026-10-14T21:28:10Z] [tda] per-row gradient check: {'n_rows': 8, 'batch_sum_rel_err': 4.138553472925087e-07, 'single_row_max_rel_err': 0.05844946601656128, 'single_row_min_cos': 0.9986566498124732, 'max_abs_loss_diff': 0.5162277221679688, 'rel_tol': 0.001, 'min_cos': 0.99, 'ok': True}
+[2026-10-14T21:28:10Z] eps=0 vs adapter disabled: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T21:28:10Z] eps=1 vs trained adapter: ok=True n_bad=0/8 max_abs=0.000e+00 max_rel=0.000e+00
+[2026-10-14T21:28:11Z] dir_derivative: 8 rows in 0.7 s (cosine=False)
+[2026-10-14T21:28:12Z] eps * d/deps vs sum_m <grad_B, B>: ok=True n_bad=0/8 max_abs=4.025e-06 max_rel=7.058e-06
+[2026-10-14T21:28:12Z] dir_derivative: 4 rows in 0.2 s (cosine=False)
+[2026-10-14T21:28:13Z]   every disagreement is inside 4x the finite difference's own noise floor (1.43e+03); raise eps or the precision, not the derivative
+[2026-10-14T21:28:13Z] d/deps vs central difference at eps=+-0.001: ok=False n_bad=4/4 max_abs=1.135e+03 max_rel=8.671e+00
+[2026-10-14T21:28:13Z] [tda] build 2026-10-14T21:30Z-identity-fallback
+[2026-10-14T21:28:15Z] [tda] query gradients for 10 queries in 2.5s
+[2026-10-14T21:28:25Z] [tda] pass1_grads done in 6.8s
+[2026-10-14T21:28:25Z] [tda] batch-sum invariant max rel err 7.27e-07
+[2026-10-14T21:49:32Z] [tda] 190 sides kept identity after eigh failed: ['(8, 8): _LinAlgError', '(8, 8): _LinAlgError', '(8, 8): _LinAlgError']
+[2026-10-14T21:49:32Z] [tda] EK-FAC eigendecompositions in 1236.7s; 274 of 784 factor sides kept as identity (dim > 4096); genuine eigenbasis on both sides for 2781184 of 20185088 LoRA parameters (13.8%)
+[2026-10-14T21:49:36Z] [tda] pass2_ekfac_lambda done in 3.2s
+[2026-10-14T21:49:39Z] [tda] pass3_ekfac_scores done in 2.7s
+[2026-10-14T21:49:39Z] budget: projection 3.60 h against the 4.25 h line; drop=nothing
+[2026-10-14T21:49:40Z] smoke FAIL: ['ekfac_200']
+== 2026-10-14T21:49:41Z step=smoke python_rc=1 seconds=1338
+== 2026-10-14T21:49:41Z step=manifest elapsed=1471s
+P48 end 2026-10-14T21:49:41Z rc=12 elapsed=1471s
+PROBE_DONE rc=12

@@ -325,6 +325,24 @@ probes/P43-subliminal-attribution/data/mix/
 probes/P43-subliminal-attribution/data/arms/
 probes/P43-subliminal-attribution/results/adapters/
 probes/P43-subliminal-attribution/results/scores/*.npy
+
+# P48: generated number rows, mixtures, arms, QA pairs, adapters and score arrays.
+# Hashes live in probes/P48-subliminal-numbers-attribution/data/manifest.json and
+# results/MANIFEST.sha256; data/raw/animal_questions.json IS committed (pinned in p48/contracts.py).
+probes/P48-subliminal-numbers-attribution/data/gen/
+probes/P48-subliminal-numbers-attribution/data/mix/
+probes/P48-subliminal-numbers-attribution/data/arms/
+probes/P48-subliminal-numbers-attribution/data/qa/*.jsonl
+probes/P48-subliminal-numbers-attribution/results/adapters/
+probes/P48-subliminal-numbers-attribution/results/scores*/*.npz
+# The judge's raw reply cache (7.8 MB; the scores it produced are hashed in
+# results/scores_*/textbase.sha256, and *.npy is already ignored repo-wide at line 14).
+probes/P48-subliminal-numbers-attribution/results/scores*/judge_*.jsonl
+probes/P48-subliminal-numbers-attribution/results/eval/*.jsonl
+
+# P48: llm_batch lock files
+probes/P48-subliminal-numbers-attribution/data/qa/*.lock
+
 # P44: raw artifacts and Inspect logs (backed up at close-out); CSVs and analysis are committed
 probes/P44-handoff-methods-alignment/results/logs/
 probes/P44-handoff-methods-alignment/results/prefixes/
