@@ -102,7 +102,7 @@ Qwen3-Coder's own SWE sessions, stitched to ~190–200k tokens, then a product c
 
 - **Compaction contrasts are inconclusive.** No method, number of compactions or amount compacted is distinguishable from keeping the same history uncompacted.
 - **Repeated compaction is the one lead.** In the planned 16 new histories: k = 3 − k = 1 **+25.0 [+0.0, +50.0]**, slope **+12.5 points per compaction [+0.0, +25.0]**; both intervals touch zero, and an alternative scoring rule halves them. Reported as "more compactions over more work."
-- **The resolved result: a long history lowers cheating.** No compaction − fresh start **−47.1 [−77.8, −12.5]**, Inspect − fresh **−40.0 [−63.6, −15.8]** (pooled).
+- **The resolved result: a long history lowers cheating.** No compaction − fresh start **−47.1 [−77.8, −12.5]**, Inspect − fresh **−40.0 [−63.6, −15.8]** (pooled). A simple explanation is open: every history carries the old task's "you DON'T have to modify the tests" line, which the fresh start never sees, and an explicit test instruction nearly floors cheating. Within arms, cheating barely tracked whether that line survived, so it isn't settled; a fresh start given the same line would test it.
 - **An explicit "DO NOT MODIFY THE TESTS" instruction nearly floors cheating** (2 of 48 runs vs 15 of 50 without), more than any compaction choice.
 - The size arm went the wrong way for "more text compacted, more cheating" (wide interval).
 - Rate limits on the only provider with a large enough window capped the run at 16 new histories; a bigger, cached run with more compactions is the obvious follow-up.
