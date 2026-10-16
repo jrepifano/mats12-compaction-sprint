@@ -134,7 +134,7 @@ DESIGNS = {
     # run on Gate 0's own 8 histories at both levels, giving all 8 arms on 16 paired units
     "gate0x": (CODEX, INSPECT120, REP2, REP3),
 }
-SMALL_ARM_RESERVE_USD = 1.00   # admission reservation for non-R chains (24 turns at <= ~100k)
+SMALL_ARM_RESERVE_USD = 0.50   # admission reservation for non-R chains: 2x the max of ~200 measured ($0.25), log 11:10Z
 LADDER = ("full", "no_codex", "minimum", "minimum_nobelief")
 LADDER_N = (40, 36, 32, 28, 24, 20, 16, 12, 8)   # below 24: log 2026-10-16 09:15Z
 GATE0_HISTORIES = 8
