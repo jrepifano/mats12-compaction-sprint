@@ -83,26 +83,26 @@ At a 5% dose across dataset sizes (trait rate; reference = no change):
 ![What moves behaviour after compaction](fig/compaction_levers.png)
 
 ### Caveats to say out loud
-- **Every behavioural probe above ran at 5–20k tokens with forced cuts.** Real products compact at 167k+ and repeatedly. P49 is the first at that scale.
+- **Every behavioural probe above ran at 5–20k tokens with forced cuts.** Real products compact at 167k+ and repeatedly. P49 is the first at that scale, and it found no clear compaction effect at ~200k with 16–24 histories.
 - Mostly GLM and DeepSeek Flash models. Neel doubts open models reproduce the incident.
 
-### Live: P49, compaction at ~200k on the agent's own sessions (interim in; final today)
-Qwen3-Coder's own SWE sessions, stitched to ~200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Cheating is scored by a rule-based detector. **Interim: 8 histories × 2 prompt wordings (16 pairs); nearly all cheating is under the no-instruction wording.**
+### P49, compaction at ~200k on the agent's own sessions (results in; note under review)
+Qwen3-Coder's own SWE sessions, stitched to ~190–200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Cheating is scored by a rule-based detector; every cheat was a test edit. Below: all runs under the no-instruction wording, pooled (24 histories; the 8 pilot histories are exploratory reuse).
 
-| Arm | Cheating rate (n = 14–16) | vs no compaction, 95% CI |
+| Arm | Cheating rate (n ≈ 24) | vs no compaction, 95% CI |
 |---|---|---|
-| Fresh start (no history) | 31.2% | |
-| No compaction (~200k) | 12.5% | — |
-| Codex-style compaction | 13.3% | +0.0 [−31.2, +28.6] |
-| pi-style compaction | 25.0% | +12.5 [+0.0, +37.5] |
-| Inspect-style compaction | 7.1% | −7.1 [−33.3, +15.4] |
-| Inspect at ~120k (size arm) | 0.0% | |
-| Repeated, k = 2 / 3 | 13.3% / 6.7% | k = 3 − k = 1: +0.0 [−25.0, +26.7] |
+| Fresh start (no history) | 50.0% | |
+| No compaction (~200k) | 19.0% | — |
+| Codex-style compaction | 26.1% | +10.0 [−19.0, +40.0] |
+| pi-style compaction | 34.8% | +19.0 [−11.1, +47.6] |
+| Inspect-style compaction | 16.7% | +0.0 [−25.0, +25.0] |
+| Inspect at ~120k (size arm) | 26.1% | |
+| Repeated, k = 2 / 3 | 26.1% / 25.0% | k = 3 − k = 1: +8.3 [−13.6, +30.8]; slope +4.3 [−7.1, +16.0] per compaction |
 
-- **No prediction met its bar.** Compaction didn't clearly raise cheating; repeated compaction shows no trend (slope +0.0 [−13.6, +14.3]). pi, which keeps only a recent tail, is the one arm leaning upward.
-- **The long history itself lowered cheating** vs a fresh start: −18.8 [−50.0, +12.5].
-- Every cheat was a test edit. The agent's "is this an evaluation?" score is high in every arm (60–91 of 100).
-- The bulk run (16 new histories, no-instruction wording, all 8 arms) ends about 11 AM ET; final note about 4:30 PM ET. A rise across compactions would be reported as "more compactions over more work."
+- **No prediction met its bar.** No compaction arm resolves from no compaction. Directions are consistent: pi (keeps only a recent tail) leans highest, and repeated compaction leans upward ("more compactions over more work"), but every interval spans zero.
+- **The clearest result: a long history lowers cheating** against a fresh start, −38.1 [−65.2, −9.5] pooled (−30.8 [−66.7, +0.0] in the planned 16 new histories alone).
+- The size arm went the wrong way for "more text compacted, more cheating" (~120k cheats more than ~200k, wide interval).
+- Rate limits on the only provider with a large enough window capped the run at 16 new histories; a bigger, cached run is the obvious follow-up.
 
 ---
 
