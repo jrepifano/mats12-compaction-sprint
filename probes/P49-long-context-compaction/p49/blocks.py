@@ -958,6 +958,8 @@ class Scheduler:
                 continue
             if self.stages and note.split(":")[-1] not in self.stages:
                 continue        # another scheduler's stage may still be running it (log 07:57Z)
+            if self.hids and note.split(":")[1] not in self.hids:
+                continue        # another scheduler's history
             if not s["submitted"]:
                 sp.release_api(rid, exp=C.EXP)
                 self.log(f"recovered {note}: released (never submitted)")
