@@ -1,6 +1,6 @@
 # P50 analysis
 
-Generated 2026-10-16T11:35:36Z by `uv run python -m p50.analyze`. Mode: **normal**. Rate = frozen matcher (% of 5,000 samples). A - B = rate(A) - rate(B); positive means B leaves less trait. Intervals: 95% joint two-way bootstrap (10000 draws, seed 20261016).
+Generated 2026-10-16T12:18:17Z by `uv run python -m p50.analyze`. Mode: **normal**. Rate = frozen matcher (% of 5,000 samples). A - B = rate(A) - rate(B); positive means B leaves less trait. Intervals: 95% joint two-way bootstrap (10000 draws, seed 20261016).
 
 **Anchor:** P50 `mix100ft_s1` = 26.10 vs P48 26.08 (tolerance ±4.0) -> pass (anchor.json).
 

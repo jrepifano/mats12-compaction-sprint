@@ -40,10 +40,13 @@ from p48 import data as D
 
 from p50 import contracts as C
 
-RESULTS = C.RESULTS_DIR
-TRAIN_DIR = C.TRAIN_DIR
-ADAPTERS = C.ADAPTERS_DIR
-EVAL_DIR = C.EVAL_DIR
+# P50_RESULTS_DIR relocates every output, so `project` can be dry-run against an empty state
+# after the real run has filled results/ (branch review r1). The pod never sets it.
+RESULTS = Path(os.environ.get("P50_RESULTS_DIR") or C.RESULTS_DIR)
+TRAIN_DIR = RESULTS / "train"
+ADAPTERS = RESULTS / "adapters"
+EVAL_DIR = RESULTS / "eval"
+ARMS_JSON = C.ARMS_JSON  # an input, never relocated
 SMOKE_KEY = "_smoke"
 SMOKE_DATA = "refill_n20k_r05"  # a real 20K arm: the smoke measures the 20K step rate
 SMOKE_STEPS = 20
@@ -115,7 +118,7 @@ def read_rows(name: str) -> list[dict]:
 
 
 def expected_sha(name: str) -> str | None:
-    return ((read_json(C.ARMS_JSON) or {}).get("files") or {}).get(name)
+    return ((read_json(ARMS_JSON) or {}).get("files") or {}).get(name)
 
 
 def make_gen_fn():
@@ -350,7 +353,7 @@ def seed0_reused() -> bool:
     the rebuilt shas with P48's data/manifest.json; arms.json is pushed, so the pod and the
     analysis decide identically (code review r1: the manifest itself is not on the pod).
     """
-    flags = (read_json(C.ARMS_JSON) or {}).get("seed0_reuse") or {}
+    flags = (read_json(ARMS_JSON) or {}).get("seed0_reuse") or {}
     return all(flags.get(m) is True for m in (C.MIX20, C.MIXPOOL))
 
 

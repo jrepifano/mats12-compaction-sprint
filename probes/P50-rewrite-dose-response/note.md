@@ -1,16 +1,21 @@
-# P50: rewriting a small random slice of trait-carrying rows does not beat adding the same number of clean rows
+# P50: replacing a small random slice of trait-carrying rows with a rewrite does not beat replacing it with clean rows on other prompts, and at 20,000 rows neither works
 
 Probe P50, run 2026-10-16. Plan and predictions: [plan.md](plan.md), written and published before any data. Run log: [log.md](log.md). Reviews: `logs/reviews/20261016-P50-impl-r1.md` (implementation) and `-code-r1.md` (code, pre-launch).
 
 ## The answer
 
-**Rewriting does not beat dilution, and in the larger regime replacing rows does nothing at all.** On P48's cat organism (Qwen2.5-7B-Instruct, numbers-only training rows carrying a hidden cat preference), at the doses a defender could plausibly afford:
+**Rewriting does not beat the matched control, and at 20,000 rows no arm shows a reduction at all.** On P48's cat organism (Qwen2.5-7B-Instruct, numbers-only training rows carrying a hidden cat preference), at the doses a defender could plausibly afford.
 
-- **10,000-row mixture, 100% trait-carrying.** Against a 27.9 reference and a 2.1 clean-data control, at 5%: replacing with the student's own base's completion ("swap") leaves **13.3**, adding the same count of fresh clean rows ("refill") leaves **13.8**, and rewriting with a different-family model (gpt-6-luna) leaves **21.4**. The decision contrast, refill − rewrite_x pooled over the two doses, is **−5.19 [−11.32, +0.23]**: a 5-point benefit from rewriting is excluded, and the point estimate favours dilution. Same-base swap against refill is **+1.24 [−3.40, +6.98]**, inconclusive.
-- **20,000-row mixture, 90% trait-carrying** (the regime meant to sit further from the transfer threshold). Reference 38.4, control 2.2. **Swapping 1,000 rows, 900 of them trait-carrying, changed nothing: reference − swap = −0.47 [−2.73, +1.43]**, R = −0.01 [−0.08, +0.04]. Refill left 35.2, so **refill − swap = −3.63 [−6.44, −1.66]**, with the interval excluding zero: dilution beat replacement.
-- **20,000-row mixture, 100% trait-carrying** (the share P48 used, at twice its size). Reference 38.5. **Neither intervention did anything:** swap left 41.0, so reference − swap = **−2.53 [−4.84, +0.08]**, and refill left 42.8, so refill − swap = **+1.75 [−3.31, +8.72]**. Both arms' R are slightly negative (−0.07 and −0.12).
+**What the three operations are.** All three select the same random rows and all three keep the dataset's size and trait share identical, so they differ only in what the selected rows are replaced with:
+- **swap** — the same prompt, answered by the student's own base model (the exact clean counterfactual).
+- **rewrite_x** — the same prompt, answered by a different-family model (gpt-6-luna here).
+- **refill** — the selected rows are **removed and the same number of fresh clean rows on *different*, unused prompts are added**. This is *not* append-only dilution: nothing was tested that only adds data without removing rows. It is the matched "clean data of the same volume, but not on these prompts" control.
 
-So P48's single result — a 5% random swap taking 27.9 down to 13.3, 57% of the excess — replicates, but it is **not** evidence that replacement is special, and it does not survive a change of size. Three regimes:
+- **10,000-row mixture, 100% trait-carrying.** Against a 27.9 reference and a 2.1 zero-share control, at 5%: swap leaves **13.3** (P48's own evaluation, reused), refill leaves **13.8**, rewrite_x leaves **21.4**. The decision contrast, refill − rewrite_x pooled over the two doses, is **−5.19 [−11.32, +0.23]**: a 5-point incremental benefit for rewrite_x is excluded, and the point estimate runs the other way. Same-base swap against refill is **+1.24 [−3.40, +6.98]** — inconclusive, which permits a meaningful swap advantage as well as none.
+- **20,000-row mixture, 90% trait-carrying** (the regime meant to sit further from the transfer threshold). Reference 38.4, control 2.2. **Swap showed no reduction:** reference − swap = −0.47 [−2.73, +1.43], R = −0.01 [−0.08, +0.04], so any benefit is bounded below about 1.4 points. Refill left 35.2: reference − refill = +3.16 [−0.18, +6.97], which does **not** exclude zero, so refill is not shown to help against the reference either. The one interval that does exclude zero is **refill − swap = −3.63 [−6.44, −1.66]**, i.e. refill left less trait than swap in this block.
+- **20,000-row mixture, 100% trait-carrying** (the share P48 used, at twice its size). Reference 38.5. **Swap showed no reduction** (41.0; reference − swap = −2.53 [−4.84, +0.08]) and **refill came out worse than the reference**: 42.8, with reference − refill = **−4.27 [−8.77, −0.90]**, an interval excluding zero, and R = −0.12 [−0.26, −0.02]. refill − swap = +1.75 [−3.31, +8.72], inconclusive. So in this block one arm is flat and the other is, on this analysis, actively harmful; the increase is a single block on one organism and should be treated as a finding to re-test, not an established effect.
+
+P48's single result — a 5% random swap taking 27.9 down to 13.3, 57% of the excess — is **reused here from P48's own summaries, not re-run**: the only thing P50 re-trained and re-scored at 10K was the reference anchor (26.10 against P48's 26.08, which is what licensed the reuse). What P50 adds is the matched controls and the larger regimes, and they show the swap result is neither special nor robust to size. Three regimes:
 
 | regime | reference | swap 5% | refill 5% | rewrite_x 5% |
 |---|---|---|---|---|
@@ -18,9 +23,9 @@ So P48's single result — a 5% random swap taking 27.9 down to 13.3, 57% of the
 | 20K rows, 90% trait-carrying | 38.4 | 38.8 | 35.2 | not run |
 | 20K rows, 100% trait-carrying | 38.5 | 41.0 | 42.8 | not run |
 
-At 10,000 rows both swap and refill remove about 55% of the excess and are indistinguishable from each other. At 20,000 rows the same 5% intervention does nothing, whichever way it is done: the only interval excluding zero in either 20K block favours **refill over swap** in the mixed pool (−3.63 [−6.44, −1.66]). The apparent power of a small swap looks like proximity to a transfer threshold, not anything about correcting the rows.
+At 10,000 rows swap and refill each remove about 55% of the excess and are statistically indistinguishable from each other. At 20,000 rows no arm shows a reduction: swap is flat in both blocks, refill beats swap in the 90% pool (−3.63 [−6.44, −1.66]) but is worse than the reference at 100% (−4.27 [−8.77, −0.90]). One hypothesis that would explain the pattern is proximity to a transfer threshold at 10K — P48's single-seed curve is steep near 100% there — but nothing here tests that mechanism, so it stays a hypothesis.
 
-**What this means for the defence.** "Find a few of the trait-carrying rows, even at random, and rewrite them" is not worth pitching on this evidence. A defender who can add clean data gets at least as much from that, with no need to locate anything.
+**What this means for the defence.** "Find a few of the trait-carrying rows, even at random, and rewrite them" is not worth pitching on this evidence. Neither replacement policy demonstrated an advantage over the matched control of substituting clean rows on other prompts: a 5-point incremental benefit is excluded for rewrite_x, and same-base swap is inconclusive, so a real swap advantage is not ruled out — it is simply unsupported at these sample sizes. And at 20,000 rows, the dose that worked at 10,000 does nothing.
 
 **What does separate the arms** is *who writes the replacement*: at 5%, rewrite_x − swap = **+8.18 [+5.97, +10.69]**. The student's own base's completions removed substantially more trait than a different family's. But writer family, number format and exact-counterfactual status are bundled in that one comparison (see "The rewrite rows differ on surface features"), so this is a replacement-policy effect, not evidence that removal needs the student's own base.
 
@@ -47,7 +52,7 @@ Rate = P48's frozen matcher (the substring `cat` in 5,000 samples: 50 questions 
 | refill | 20K, 100% | 5% (1000) | 0–2 | 42.8 [33.4, 52.3] | −0.12 [−0.26, −0.02] | −2.4 [−5.1, −0.5] |
 | control (0% share) | 20K | — | 0 (P48) | 2.2 [0.8, 3.8] | — | — |
 
-R = (reference − arm)/(reference − control), the share of the excess removed; M = R/dose, the multiplier over a proportional null. Seed 0 of the 20K references is P48's, reused after its mixture rebuilt to the same sha (below).
+R = (reference − arm)/(reference − control), the share of the excess removed; M = R/dose, the multiplier over a proportional null. Seed 0 of the 20K references is P48's, reused after its mixture rebuilt to the same sha (below). **Two qualifications the plan fixed in advance:** every interval is conditional on the one selection draw and the one refill draw actually used, and three-seed bootstrap intervals are narrower than t-intervals, so they are optimistic. The plan's power section put the resolvable effect at roughly 12–18 points for a two-arm contrast at one dose, so gaps of 4–8 points were always going to read as inconclusive.
 
 **Pooled contrasts** (formed within each seed, then averaged over doses):
 
@@ -55,7 +60,7 @@ R = (reference − arm)/(reference − control), the share of the excess removed
 |---|---|---|
 | P3 (decision): refill − rewrite_x | −5.19 [−11.32, +0.23] | **5-point benefit excluded** |
 | P3b: refill − swap | +1.24 [−3.40, +6.98] | inconclusive |
-| P2: rewrite_x − swap | +6.42 [+3.89, +8.94] | inconclusive against the +8 bar (but +8.18 [+5.97, +10.69] at 5% alone) |
+| P2: rewrite_x − swap | +6.42 [+3.89, +8.94] | inconclusive against the +8 bar; the 5%-only difference, +8.18 [+5.97, +10.69], is exploratory |
 | P1 (descriptive): M_x | +5.88 [+2.89, +8.61] | outsized, but M_refill is 10.9 at 5% and 11.1 at 2.5% |
 | P4: D20 = reference − swap at 20K | −2.53 [−4.84, +0.08] | **8-point benefit excluded at 20K** |
 | P4: G20 = refill − swap at 20K | +1.75 [−3.31, +8.72] | inconclusive |
@@ -74,18 +79,18 @@ Single-dose contrasts: refill − rewrite_x +−7.59 [−16.84, −0.04] at 5% a
 | refill at 5% within ±5 of the curve null, 18.3 (0.5) | **yes**: 13.8, a gap of 4.5 |
 | 2.5% swap removes ≥ 25% of the excess (0.5) | **yes**: R = 0.35 |
 | P1 outsized / proportional / inconclusive (0.65 / 0.1 / 0.25) | **outsized** |
-| P2 survives / same-base dependent / inconclusive (0.45 / 0.2 / 0.35) | **inconclusive** pooled; same-base dependent at 5% alone |
+| P2 survives / same-base dependent / inconclusive (0.45 / 0.2 / 0.35) | **inconclusive** (the prespecified pooled verdict); exploratory 5% policy difference +8.18 [+5.97, +10.69] |
 | P3 beats dilution / 5-point benefit excluded / inconclusive (0.2 / 0.25 / 0.55) | **excluded** |
 | P3b beats dilution / excluded / inconclusive (0.25 / 0.2 / 0.55) | **inconclusive** |
 | P4 beats dilution / 8-point benefit excluded / inconclusive (0.2 / 0.45 / 0.35) | **8-point benefit excluded**, the modal call |
-| refill20 within 5 points of ref20 (0.6) | **yes**: 42.8 against 38.5, a gap of 4.3 |
+| refill20 within 5 points of ref20 (0.6) | **yes**: 42.8 against 38.5, a gap of 4.3 — but in the direction of more trait, not less |
 | Llama passes its gate and writes ≥ 98% of prompts within 8 tries (0.8) | **superseded**: luna led the chain and wrote all 500 rows (see below) |
 
 ## What ran, and the two design changes
 
 **The organism and the reuse.** P48's cat organism, unchanged: Qwen2.5-7B-Instruct @ `a09a3545`, LoRA r8 on all seven projections, 3 epochs, Cloud et al.'s recipe, rows from P48's committed `results/gen`. P48's own code (`p48/train.py`, `evalgen.py`, `data.py`) was imported and never modified. The reference mixtures were rebuilt here and **all six matched the shas in P48's `data/manifest.json`**, which is what licensed reusing P48's reference, swap, drop and control summaries and its seed-0 20K references. P48's training records carry no data sha, so the manifest was the only available check; this is recorded in `results/reuse.json` along with the P48 source commit and the sha of every reused summary.
 
-**Change 1: the writer chain ran luna first and luna wrote everything.** The plan named Llama 3.1 8B as the primary rewriter with luna as a fallback; the frozen contracts put luna first, and I followed the contracts. Each writer was trait-gated before any of its rows were accepted: luna's cat rate on 50 questions × 20 samples was 0.0% against base Qwen's 2.1% (pass), Llama's 0.3–0.4% (pass). **Change: tries per writer raised from 8 to 32**, because one prompt (draw 70, present in both doses) failed 8 tries on all three writers; luna then filled every prompt. Final: **500 of 500 rows written by gpt-6-luna**, so rewrite_x is a clean single-writer arm rather than the mixed one an earlier pass produced. Luna's rejected attempts were mostly prose ("Unclear pattern; …") rather than malformed numbers. Mistral's endpoint, pinned by throughput, turned out to be region-tagged and OpenRouter's regional-surcharge filter removed it at routing time, so all 1,000 of its gate calls returned 404; region-tagged endpoints are now excluded from the pin.
+**Change 1: tries per writer, 8 to 32.** The approved scope (rev 68) puts **luna first**, with Llama and Mistral as fallbacks; an earlier draft of the plan's rewrite_x section had named Llama as primary, and the approved order is what ran. Each writer was trait-gated before any of its rows were accepted: luna's cat rate on 50 questions × 20 samples was 0.0% against base Qwen's 2.1% (pass), Llama's 0.3–0.4% (pass). The one design change was **raising tries per writer from 8 to 32**, because one prompt (draw 70, present in both doses) failed 8 tries on all three writers; luna then filled every prompt. Final: **500 of 500 rows written by gpt-6-luna**, so rewrite_x is a clean single-writer arm rather than the mixed one an earlier pass produced. Luna's rejected attempts were mostly prose ("Unclear pattern; …") rather than malformed numbers. Mistral's endpoint, pinned by throughput, turned out to be region-tagged and OpenRouter's regional-surcharge filter removed it at routing time, so all 1,000 of its gate calls returned 404; region-tagged endpoints are now excluded from the pin.
 
 **Change 2: the 10:15 AM ET cut was relaxed** after Jacob moved the pitch to 5:44 PM. No code changed: run.sh's own 8.5 h guard bound earlier than the absolute deadline, and at the measured step rate every block fit inside it.
 
@@ -113,7 +118,7 @@ Four rows drawn with seed 20261017 from the 500 selected prompts, each with all 
 - Minority-share pools: the 90% pool is the lowest share tested, and P48 found that a 60% share at 10K did not transfer at all.
 - Random selection only. A locator of modest quality is the named follow-up (W5) and it is required before anyone builds on this.
 - No utility or general-safety measurement on the repaired models. A lower cat rate says nothing about whether the model is otherwise intact.
-- The frozen matcher is a substring and ignores negation. The synonym matcher moves every arm up together (reference 45.9, rewrite_x 38.7, refill 25.4) and leaves the ordering unchanged.
+- The frozen matcher is a substring and ignores negation. The synonym matcher moves every arm up together and leaves the ordering unchanged **for the 10K arms** (reference 45.9, rewrite_x 38.7, refill 25.4); it was not computed for the 20K references or the 20K control, so the robustness check covers the 10K block only.
 
 ## Follow-ups
 
@@ -125,7 +130,9 @@ All exploratory, none run:
 
 ## Cost and wall-clock
 
-**$29.47 of the $55 cap**: $29.45 GPU (one H100 at $3.99/h, reservation $36.90, settled $29.45) and $0.03 of API for the rewrites and writer gates. No judge spend: the measure is a string match.
+**$29.47 of the $55 cap**: $29.45 of GPU and $0.03 of API for the rewrites and writer gates. No judge spend: the measure is a string match. The GPU figure is the settlement recorded in `logs/costs.jsonl` and `logs/pods_P50.jsonl` (both committed on this branch): one H100 at $3.99/h, **7.3799 h billed** from pod creation to termination, against a $36.90 reservation; the remainder was released.
+
+Three different durations, which the table below keeps apart: **billed pod lifetime 7.38 h** (what the $29.45 pays for, including the GPU check, the model download and the final pull), **run.sh duration 7.13 h** (25,675 s, start to `PROBE_DONE`), and **measured training time 6.91 h** inside `train_run`, i.e. 94% of the billed pod and 96% of run.sh.
 
 | phase | wall-clock | notes |
 |---|---|---|
@@ -138,6 +145,6 @@ All exploratory, none run:
 | Block M: 8 trainings at 20K (mixed pool), then eval | 06:47–09:15Z | 16.22 min per training |
 | Block C: 8 trainings at 20K (100% share), then eval | 09:15–11:25Z | |
 | Pull, verify, terminate | 11:25–11:35Z | 282 files verified against the manifest, reservation settled |
-| **Total pod** | **7.19 h** (run.sh 7.13 h, 25,675 s) | 6.91 h of it inside `train_run`, i.e. **96% of the pod's life was training** |
+| **Billed pod lifetime** | **7.38 h** | run.sh 7.13 h of it; 6.91 h inside `train_run` |
 
-33 trainings ran (32 planned plus the 20-step smoke), every one with `base_unchanged` true and its recorded data sha matching the arm it trained on. No training or eval failed, so no retry was needed. The projection written before launch said run.sh would end about 14:08Z for a 05:20Z launch, i.e. 8.8 h; the real figure was 7.13 h because the measured step rate (1.11–1.13 s) beat the 1.21 s the projection assumed.
+33 trainings ran (32 planned plus the 20-step smoke), every one with `base_unchanged` true and its recorded data sha matching the arm it trained on (checked against `results/arms.json`'s `files` map). No training or eval failed, so no retry was needed. The projection written before launch said run.sh would end about 14:08Z for a 05:20Z launch, i.e. 8.8 h; the real figure was 7.13 h because the measured step rate (1.11–1.13 s) beat the 1.21 s the projection assumed.

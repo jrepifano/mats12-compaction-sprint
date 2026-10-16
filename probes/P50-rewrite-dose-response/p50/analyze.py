@@ -193,17 +193,30 @@ class Est:
     bs: np.ndarray
     ps: np.ndarray | None
     arms: frozenset
+    # The seed ids behind `ps`, so a per-seed difference pairs seed 1 with seed 1 rather than
+    # column 0 with column 0 (branch review r1). None means "not seed-indexed" (a scalar op).
+    seeds: tuple[int, ...] | None = None
 
     def _op(self, other, f):
         if isinstance(other, Est):
-            ps = None
-            if self.ps is not None and other.ps is not None and (
-                    len(self.ps) == len(other.ps) or 1 in (len(self.ps), len(other.ps))):
-                ps = f(self.ps, other.ps)
+            ps, seeds = None, None
+            if self.ps is not None and other.ps is not None:
+                if 1 in (len(self.ps), len(other.ps)):  # a single-seed control broadcasts
+                    ps = f(self.ps, other.ps)
+                    seeds = self.seeds if len(self.ps) > 1 else other.seeds
+                elif self.seeds is not None and other.seeds is not None:
+                    # pair by seed id; a seed either side lacks is dropped from the per-seed view
+                    common = tuple(sorted(set(self.seeds) & set(other.seeds)))
+                    if common:
+                        a = np.array([self.ps[self.seeds.index(x)] for x in common])
+                        b = np.array([other.ps[other.seeds.index(x)] for x in common])
+                        ps, seeds = f(a, b), common
+                elif len(self.ps) == len(other.ps):
+                    ps, seeds = f(self.ps, other.ps), self.seeds
             return Est(float(f(self.pt, other.pt)), f(self.bs, other.bs), ps,
-                       self.arms | other.arms)
+                       self.arms | other.arms, seeds)
         return Est(float(f(self.pt, other)), f(self.bs, other),
-                   None if self.ps is None else f(self.ps, other), self.arms)
+                   None if self.ps is None else f(self.ps, other), self.arms, self.seeds)
 
     def __add__(self, o):
         return self._op(o, lambda a, b: a + b)
@@ -257,7 +270,7 @@ class Boot:
 
 def arm_est(arm: Arm, boot: Boot) -> Est:
     return Est(float(arm.mat.mean()), boot.rates(arm.mat), arm.mat.mean(axis=0),
-               frozenset([arm.spec.label]))
+               frozenset([arm.spec.label]), tuple(arm.seeds))
 
 
 # --- verdicts ------------------------------------------------------------------------------------

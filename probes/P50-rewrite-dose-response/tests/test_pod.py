@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 _PROBE = Path(__file__).resolve().parents[1]
@@ -254,10 +255,15 @@ def test_run_sh_syntax_and_dry_run():
     assert subprocess.run(["bash", "-n", str(_PROBE / "run.sh")], check=False).returncode == 0
     if shutil.which("uv") is None:
         pytest.skip("no uv")
-    out = subprocess.run(["bash", str(_PROBE / "run.sh")], capture_output=True, text=True, check=False,
-                         env={"P50_DRY_RUN": "1", "P50_LAUNCH": "2026-10-16T05:00:00Z",
-                              "PATH": "/usr/bin:/bin:" + str(Path(shutil.which("uv")).parent),
-                              "HOME": str(Path.home())}, timeout=300)
+    with tempfile.TemporaryDirectory() as empty:
+        # an empty results dir, so the projection counts every training rather than the
+        # finished ones from the real run (branch review r1)
+        out = subprocess.run(
+            ["bash", str(_PROBE / "run.sh")], capture_output=True, text=True, check=False,
+            env={"P50_DRY_RUN": "1", "P50_LAUNCH": "2026-10-16T05:00:00Z",
+                 "P50_RESULTS_DIR": empty,
+                 "PATH": "/usr/bin:/bin:" + str(Path(shutil.which("uv")).parent),
+                 "HOME": str(Path.home())}, timeout=300)
     assert out.returncode == 0, out.stderr[-2000:]
     totals = re.findall(r"total (\d+) trainings", out.stdout)
     assert totals == ["32", "31"], out.stdout
