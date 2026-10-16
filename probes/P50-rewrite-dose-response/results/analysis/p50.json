@@ -1,15 +1,15 @@
 {
- "utc": "2026-10-16T03:59:23Z",
+ "utc": "2026-10-16T11:35:36Z",
  "probe": "P50",
- "interim": true,
+ "interim": false,
  "anchor": {
-  "rate": null,
-  "pass": null,
-  "source": "not run",
+  "rate": 26.1,
+  "pass": true,
+  "source": "anchor.json",
   "target": 26.08,
   "tol": 4.0
  },
- "mode": "normal (anchor not run)",
+ "mode": "normal",
  "seed_plan": {
   "block_c_seeds": [
    0,
@@ -228,16 +228,45 @@
     2,
     3
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
     "rewx_r05_s1",
     "rewx_r05_s2",
     "rewx_r05_s3"
    ],
+   "sources": {
+    "rewx_r05_s1": "p50",
+    "rewx_r05_s2": "p50",
+    "rewx_r05_s3": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 21.44,
+   "ci95": [
+    13.5195,
+    29.7602
+   ],
+   "per_seed": [
+    13.84,
+    26.6,
+    23.88
+   ],
+   "trait_rate_word": 20.9933,
+   "R": 0.25,
+   "R_ci95": [
+    0.0911,
+    0.502
+   ],
+   "M": 5.0,
+   "M_ci95": [
+    1.8223,
+    10.0395
+   ]
   },
   "refill@5%": {
    "name": "refill_r05",
@@ -252,16 +281,45 @@
     2,
     3
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
     "refill_r05_s1",
     "refill_r05_s2",
     "refill_r05_s3"
    ],
+   "sources": {
+    "refill_r05_s1": "p50",
+    "refill_r05_s2": "p50",
+    "refill_r05_s3": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 13.8467,
+   "ci95": [
+    6.6995,
+    22.2002
+   ],
+   "per_seed": [
+    13.88,
+    21.38,
+    6.28
+   ],
+   "trait_rate_word": 13.5267,
+   "R": 0.5442,
+   "R_ci95": [
+    0.2916,
+    0.8311
+   ],
+   "M": 10.8833,
+   "M_ci95": [
+    5.8327,
+    16.6212
+   ]
   },
   "swap@2.5%": {
    "name": "swap_r025",
@@ -276,16 +334,45 @@
     2,
     3
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
     "swap_r025_s1",
     "swap_r025_s2",
     "swap_r025_s3"
    ],
+   "sources": {
+    "swap_r025_s1": "p50",
+    "swap_r025_s2": "p50",
+    "swap_r025_s3": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 18.86,
+   "ci95": [
+    11.62,
+    28.207
+   ],
+   "per_seed": [
+    16.82,
+    27.28,
+    12.48
+   ],
+   "trait_rate_word": 18.4733,
+   "R": 0.3499,
+   "R_ci95": [
+    0.0707,
+    0.5988
+   ],
+   "M": 13.9979,
+   "M_ci95": [
+    2.8288,
+    23.9537
+   ]
   },
   "rewx@2.5%": {
    "name": "rewx_r025",
@@ -300,16 +387,45 @@
     2,
     3
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
     "rewx_r025_s1",
     "rewx_r025_s2",
     "rewx_r025_s3"
    ],
+   "sources": {
+    "rewx_r025_s1": "p50",
+    "rewx_r025_s2": "p50",
+    "rewx_r025_s3": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 23.5267,
+   "ci95": [
+    17.5197,
+    29.9468
+   ],
+   "per_seed": [
+    22.32,
+    26.5,
+    21.76
+   ],
+   "trait_rate_word": 23.06,
+   "R": 0.1692,
+   "R_ci95": [
+    0.0886,
+    0.2601
+   ],
+   "M": 6.7665,
+   "M_ci95": [
+    3.5442,
+    10.4054
+   ]
   },
   "refill@2.5%": {
    "name": "refill_r025",
@@ -324,16 +440,45 @@
     2,
     3
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
     "refill_r025_s1",
     "refill_r025_s2",
     "refill_r025_s3"
    ],
+   "sources": {
+    "refill_r025_s1": "p50",
+    "refill_r025_s2": "p50",
+    "refill_r025_s3": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 20.7467,
+   "ci95": [
+    14.5665,
+    27.5935
+   ],
+   "per_seed": [
+    22.88,
+    23.52,
+    15.84
+   ],
+   "trait_rate_word": 20.34,
+   "R": 0.2769,
+   "R_ci95": [
+    0.1335,
+    0.4706
+   ],
+   "M": 11.0744,
+   "M_ci95": [
+    5.34,
+    18.8251
+   ]
   },
   "ref20": {
    "name": "mix100ftn20k",
@@ -349,29 +494,34 @@
     2
    ],
    "seeds": [
-    0
+    0,
+    1,
+    2
    ],
    "keys": [
-    "mix100ftn20k_s0"
-   ],
-   "sources": {
-    "mix100ftn20k_s0": "p48"
-   },
-   "missing": [
+    "mix100ftn20k_s0",
     "mix100ftn20k_s1",
     "mix100ftn20k_s2"
    ],
+   "sources": {
+    "mix100ftn20k_s0": "p48",
+    "mix100ftn20k_s1": "p50",
+    "mix100ftn20k_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "partial (1 seeds)",
-   "rate": 37.66,
+   "status": "complete",
+   "rate": 38.5,
    "ci95": [
-    29.2795,
-    46.18
+    29.8265,
+    47.3
    ],
    "per_seed": [
-    37.66
+    37.66,
+    39.16,
+    38.68
    ],
-   "trait_rate_word": 36.96
+   "trait_rate_word": 37.8133
   },
   "swap20@5%": {
    "name": "swap_n20k_r05",
@@ -386,16 +536,45 @@
     1,
     2
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "keys": [
     "swap_n20k_r05_s0",
     "swap_n20k_r05_s1",
     "swap_n20k_r05_s2"
    ],
+   "sources": {
+    "swap_n20k_r05_s0": "p50",
+    "swap_n20k_r05_s1": "p50",
+    "swap_n20k_r05_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 41.0267,
+   "ci95": [
+    32.1598,
+    50.1068
+   ],
+   "per_seed": [
+    41.7,
+    43.1,
+    38.28
+   ],
+   "trait_rate_word": 40.2133,
+   "R": -0.0695,
+   "R_ci95": [
+    -0.1401,
+    0.002
+   ],
+   "M": -1.3906,
+   "M_ci95": [
+    -2.8016,
+    0.039
+   ]
   },
   "refill20@5%": {
    "name": "refill_n20k_r05",
@@ -410,16 +589,45 @@
     1,
     2
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "keys": [
     "refill_n20k_r05_s0",
     "refill_n20k_r05_s1",
     "refill_n20k_r05_s2"
    ],
+   "sources": {
+    "refill_n20k_r05_s0": "p50",
+    "refill_n20k_r05_s1": "p50",
+    "refill_n20k_r05_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 42.7733,
+   "ci95": [
+    33.4,
+    52.2873
+   ],
+   "per_seed": [
+    39.4,
+    41.22,
+    47.7
+   ],
+   "trait_rate_word": 42.1133,
+   "R": -0.1176,
+   "R_ci95": [
+    -0.2557,
+    -0.0232
+   ],
+   "M": -2.3519,
+   "M_ci95": [
+    -5.1133,
+    -0.4631
+   ]
   },
   "control20": {
    "name": "mix000ftn20k",
@@ -468,29 +676,34 @@
     2
    ],
    "seeds": [
-    0
+    0,
+    1,
+    2
    ],
    "keys": [
-    "mix090ftn20k_s0"
-   ],
-   "sources": {
-    "mix090ftn20k_s0": "p48"
-   },
-   "missing": [
+    "mix090ftn20k_s0",
     "mix090ftn20k_s1",
     "mix090ftn20k_s2"
    ],
+   "sources": {
+    "mix090ftn20k_s0": "p48",
+    "mix090ftn20k_s1": "p50",
+    "mix090ftn20k_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "partial (1 seeds)",
-   "rate": 41.16,
+   "status": "complete",
+   "rate": 38.36,
    "ci95": [
-    32.46,
-    49.78
+    29.44,
+    47.4073
    ],
    "per_seed": [
-    41.16
+    41.16,
+    35.0,
+    38.92
    ],
-   "trait_rate_word": 40.64
+   "trait_rate_word": 37.7733
   },
   "swap_mix@5%": {
    "name": "swap_m90_r05",
@@ -505,16 +718,45 @@
     1,
     2
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "keys": [
     "swap_m90_r05_s0",
     "swap_m90_r05_s1",
     "swap_m90_r05_s2"
    ],
+   "sources": {
+    "swap_m90_r05_s0": "p50",
+    "swap_m90_r05_s1": "p50",
+    "swap_m90_r05_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 38.8333,
+   "ci95": [
+    30.32,
+    47.4135
+   ],
+   "per_seed": [
+    40.54,
+    37.38,
+    38.58
+   ],
+   "trait_rate_word": 38.3333,
+   "R": -0.0131,
+   "R_ci95": [
+    -0.0845,
+    0.0373
+   ],
+   "M": -0.2615,
+   "M_ci95": [
+    -1.6897,
+    0.745
+   ]
   },
   "refill_mix@5%": {
    "name": "refill_m90_r05",
@@ -529,16 +771,45 @@
     1,
     2
    ],
-   "seeds": [],
-   "keys": [],
-   "sources": {},
-   "missing": [
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "keys": [
     "refill_m90_r05_s0",
     "refill_m90_r05_s1",
     "refill_m90_r05_s2"
    ],
+   "sources": {
+    "refill_m90_r05_s0": "p50",
+    "refill_m90_r05_s1": "p50",
+    "refill_m90_r05_s2": "p50"
+   },
+   "missing": [],
    "excluded": [],
-   "status": "not run"
+   "status": "complete",
+   "rate": 35.2,
+   "ci95": [
+    27.2067,
+    43.2137
+   ],
+   "per_seed": [
+    34.18,
+    34.8,
+    36.62
+   ],
+   "trait_rate_word": 34.8133,
+   "R": 0.0873,
+   "R_ci95": [
+    -0.0051,
+    0.1783
+   ],
+   "M": 1.7459,
+   "M_ci95": [
+    -0.1015,
+    3.5656
+   ]
   }
  },
  "excluded_runs": [],
@@ -546,22 +817,37 @@
   "rewx-swap@5%": {
    "definition": "rate(rewx@5%) - rate(swap@5%)",
    "positive_means": "swap leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
-    "rewx@5%"
+   "status": "complete",
+   "point": 8.18,
+   "ci95": [
+    5.9733,
+    10.6868
+   ],
+   "per_seed": [
+    8.44,
+    9.28,
+    6.82
+   ],
+   "arms": [
+    "rewx@5%",
+    "swap@5%"
    ]
   },
   "refill-rewx@5%": {
    "definition": "rate(refill@5%) - rate(rewx@5%)",
    "positive_means": "rewx leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": -7.5933,
+   "ci95": [
+    -16.8403,
+    -0.04
+   ],
+   "per_seed": [
+    0.04,
+    -5.22,
+    -17.6
+   ],
+   "arms": [
     "refill@5%",
     "rewx@5%"
    ]
@@ -569,22 +855,37 @@
   "refill-swap@5%": {
    "definition": "rate(refill@5%) - rate(swap@5%)",
    "positive_means": "swap leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
-    "refill@5%"
+   "status": "complete",
+   "point": 0.5867,
+   "ci95": [
+    -9.9,
+    8.6003
+   ],
+   "per_seed": [
+    8.48,
+    4.06,
+    -10.78
+   ],
+   "arms": [
+    "refill@5%",
+    "swap@5%"
    ]
   },
   "rewx-swap@2.5%": {
    "definition": "rate(rewx@2.5%) - rate(swap@2.5%)",
    "positive_means": "swap leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": 4.6667,
+   "ci95": [
+    -0.5202,
+    9.58
+   ],
+   "per_seed": [
+    5.5,
+    -0.78,
+    9.28
+   ],
+   "arms": [
     "rewx@2.5%",
     "swap@2.5%"
    ]
@@ -592,11 +893,18 @@
   "refill-rewx@2.5%": {
    "definition": "rate(refill@2.5%) - rate(rewx@2.5%)",
    "positive_means": "rewx leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": -2.78,
+   "ci95": [
+    -5.94,
+    0.46
+   ],
+   "per_seed": [
+    0.56,
+    -2.98,
+    -5.92
+   ],
+   "arms": [
     "refill@2.5%",
     "rewx@2.5%"
    ]
@@ -604,11 +912,18 @@
   "refill-swap@2.5%": {
    "definition": "rate(refill@2.5%) - rate(swap@2.5%)",
    "positive_means": "swap leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": 1.8867,
+   "ci95": [
+    -3.54,
+    6.18
+   ],
+   "per_seed": [
+    6.06,
+    -3.76,
+    3.36
+   ],
+   "arms": [
     "refill@2.5%",
     "swap@2.5%"
    ]
@@ -637,73 +952,112 @@
   "P1": {
    "definition": "M_x = mean over doses of R(rewx, d)/d",
    "positive_means": "rewrite_x removes more than proportional",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": 5.8833,
+   "ci95": [
+    2.8876,
+    8.6116
+   ],
+   "per_seed": [
+    8.2333,
+    2.7489,
+    6.9382
+   ],
+   "arms": [
+    "control10",
+    "ref10",
     "rewx@2.5%",
     "rewx@5%"
    ],
    "label": "descriptive (dilution alone is expected to pass: curve null M ~ 7.4)",
-   "verdict": "not run",
+   "verdict": "outsized",
    "M_refill_by_dose": {
-    "2.5%": null,
-    "5%": null
+    "2.5%": 11.0744,
+    "5%": 10.8833
    }
   },
   "P2": {
    "definition": "rewx - swap, pooled over doses within seed",
    "positive_means": "swap leaves less trait than rewrite_x",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
-    "rewx@2.5%",
-    "swap@2.5%",
-    "rewx@5%"
+   "status": "complete",
+   "point": 6.4233,
+   "ci95": [
+    3.89,
+    8.94
    ],
-   "verdict": "not run"
+   "per_seed": [
+    6.97,
+    4.25,
+    8.05
+   ],
+   "arms": [
+    "rewx@2.5%",
+    "rewx@5%",
+    "swap@2.5%",
+    "swap@5%"
+   ],
+   "verdict": "inconclusive"
   },
   "P3": {
    "definition": "refill - rewx, pooled over doses within seed",
    "positive_means": "rewrite_x leaves less trait than refill",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": -5.1867,
+   "ci95": [
+    -11.3168,
+    0.2303
+   ],
+   "per_seed": [
+    0.3,
+    -4.1,
+    -11.76
+   ],
+   "arms": [
     "refill@2.5%",
-    "rewx@2.5%",
     "refill@5%",
+    "rewx@2.5%",
     "rewx@5%"
    ],
-   "verdict": "not run"
+   "verdict": "5-point benefit excluded"
   },
   "P3b": {
    "definition": "refill - swap, pooled over doses within seed",
    "positive_means": "swap leaves less trait than refill",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
-    "refill@2.5%",
-    "swap@2.5%",
-    "refill@5%"
+   "status": "complete",
+   "point": 1.2367,
+   "ci95": [
+    -3.4,
+    6.9802
    ],
-   "verdict": "not run"
+   "per_seed": [
+    7.27,
+    0.15,
+    -3.71
+   ],
+   "arms": [
+    "refill@2.5%",
+    "refill@5%",
+    "swap@2.5%",
+    "swap@5%"
+   ],
+   "verdict": "inconclusive"
   },
   "P4": {
    "G20": {
     "definition": "G20 = refill20 - swap20",
     "positive_means": "swap20 leaves less trait than refill20",
-    "status": "not run",
-    "point": null,
-    "ci95": null,
-    "per_seed": null,
-    "missing_arms": [
+    "status": "complete",
+    "point": 1.7467,
+    "ci95": [
+     -3.3135,
+     8.72
+    ],
+    "per_seed": [
+     -2.3,
+     -1.88,
+     9.42
+    ],
+    "arms": [
      "refill20@5%",
      "swap20@5%"
     ]
@@ -711,43 +1065,66 @@
    "D20": {
     "definition": "D20 = ref20 - swap20",
     "positive_means": "swap20 removes trait",
-    "status": "not run",
-    "point": null,
-    "ci95": null,
-    "per_seed": null,
-    "missing_arms": [
+    "status": "complete",
+    "point": -2.5267,
+    "ci95": [
+     -4.84,
+     0.08
+    ],
+    "per_seed": [
+     -4.04,
+     -3.94,
+     0.4
+    ],
+    "arms": [
+     "ref20",
      "swap20@5%"
     ]
    },
-   "status": "not run",
-   "verdict": "not run"
+   "status": "complete",
+   "verdict": "8-point benefit excluded at 20K"
   },
   "PT_trigger": false,
   "PT_trigger_basis": {
-   "P3": "not run",
-   "P3b": "not run"
+   "P3": "5-point benefit excluded",
+   "P3b": "inconclusive"
   }
  },
  "mixed_pool": {
   "ref_mix - swap_mix@5%": {
    "definition": "rate(ref_mix) - rate(swap_mix@5%)",
    "positive_means": "swap_mix@5% leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": -0.4733,
+   "ci95": [
+    -2.7333,
+    1.4333
+   ],
+   "per_seed": [
+    0.62,
+    -2.38,
+    0.34
+   ],
+   "arms": [
+    "ref_mix",
     "swap_mix@5%"
    ]
   },
   "refill_mix@5% - swap_mix@5%": {
    "definition": "rate(refill_mix@5%) - rate(swap_mix@5%)",
    "positive_means": "swap_mix@5% leaves less trait",
-   "status": "not run",
-   "point": null,
-   "ci95": null,
-   "per_seed": null,
-   "missing_arms": [
+   "status": "complete",
+   "point": -3.6333,
+   "ci95": [
+    -6.44,
+    -1.66
+   ],
+   "per_seed": [
+    -6.36,
+    -2.58,
+    -1.96
+   ],
+   "arms": [
     "refill_mix@5%",
     "swap_mix@5%"
    ]
@@ -763,10 +1140,48 @@
    "trait_rows_treated_of_pool": 0.045
   },
   "swap_mix@5%": {
-   "R": null
+   "R": -0.0131,
+   "R_ci95": [
+    -0.0845,
+    0.0373
+   ],
+   "M_per_pool_dose": -0.2615,
+   "M_per_pool_dose_ci95": [
+    -1.6897,
+    0.745
+   ],
+   "M_per_trait_rows_treated_of_trait_rows": -0.2615,
+   "M_per_trait_rows_treated_of_trait_rows_ci95": [
+    -1.6897,
+    0.745
+   ],
+   "M_per_trait_rows_treated_of_pool": -0.2906,
+   "M_per_trait_rows_treated_of_pool_ci95": [
+    -1.8774,
+    0.8278
+   ]
   },
   "refill_mix@5%": {
-   "R": null
+   "R": 0.0873,
+   "R_ci95": [
+    -0.0051,
+    0.1783
+   ],
+   "M_per_pool_dose": 1.7459,
+   "M_per_pool_dose_ci95": [
+    -0.1015,
+    3.5656
+   ],
+   "M_per_trait_rows_treated_of_trait_rows": 1.7459,
+   "M_per_trait_rows_treated_of_trait_rows_ci95": [
+    -0.1015,
+    3.5656
+   ],
+   "M_per_trait_rows_treated_of_pool": 1.9398,
+   "M_per_trait_rows_treated_of_pool_ci95": [
+    -0.1128,
+    3.9618
+   ]
   }
  },
  "curve_null": {
@@ -889,11 +1304,198 @@
      "frozen": 22.66,
      "extended": 37.687
     },
+    "rewx@5%": {
+     "per_key": {
+      "rewx_r05_s1": {
+       "n": 5000,
+       "frozen": 13.84,
+       "extended": 27.54,
+       "from": "P50 jsonl rerun"
+      },
+      "rewx_r05_s2": {
+       "n": 5000,
+       "frozen": 26.6,
+       "extended": 45.54,
+       "from": "P50 jsonl rerun"
+      },
+      "rewx_r05_s3": {
+       "n": 5000,
+       "frozen": 23.88,
+       "extended": 43.06,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 20.993,
+     "frozen": 21.44,
+     "extended": 38.713
+    },
+    "refill@5%": {
+     "per_key": {
+      "refill_r05_s1": {
+       "n": 5000,
+       "frozen": 13.88,
+       "extended": 25.04,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_r05_s2": {
+       "n": 5000,
+       "frozen": 21.38,
+       "extended": 38.18,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_r05_s3": {
+       "n": 5000,
+       "frozen": 6.28,
+       "extended": 12.9,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 13.527,
+     "frozen": 13.847,
+     "extended": 25.373
+    },
+    "swap@2.5%": {
+     "per_key": {
+      "swap_r025_s1": {
+       "n": 5000,
+       "frozen": 16.82,
+       "extended": 27.66,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_r025_s2": {
+       "n": 5000,
+       "frozen": 27.28,
+       "extended": 42.98,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_r025_s3": {
+       "n": 5000,
+       "frozen": 12.48,
+       "extended": 23.18,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 18.473,
+     "frozen": 18.86,
+     "extended": 31.273
+    },
+    "rewx@2.5%": {
+     "per_key": {
+      "rewx_r025_s1": {
+       "n": 5000,
+       "frozen": 22.32,
+       "extended": 39.48,
+       "from": "P50 jsonl rerun"
+      },
+      "rewx_r025_s2": {
+       "n": 5000,
+       "frozen": 26.5,
+       "extended": 45.74,
+       "from": "P50 jsonl rerun"
+      },
+      "rewx_r025_s3": {
+       "n": 5000,
+       "frozen": 21.76,
+       "extended": 38.78,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 23.06,
+     "frozen": 23.527,
+     "extended": 41.333
+    },
+    "refill@2.5%": {
+     "per_key": {
+      "refill_r025_s1": {
+       "n": 5000,
+       "frozen": 22.88,
+       "extended": 37.54,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_r025_s2": {
+       "n": 5000,
+       "frozen": 23.52,
+       "extended": 41.26,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_r025_s3": {
+       "n": 5000,
+       "frozen": 15.84,
+       "extended": 27.4,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 20.34,
+     "frozen": 20.747,
+     "extended": 35.4
+    },
     "ref20": {
      "per_key": {
-      "mix100ftn20k_s0": null
+      "mix100ftn20k_s0": null,
+      "mix100ftn20k_s1": {
+       "n": 5000,
+       "frozen": 39.16,
+       "extended": 58.46,
+       "from": "P50 jsonl rerun"
+      },
+      "mix100ftn20k_s2": {
+       "n": 5000,
+       "frozen": 38.68,
+       "extended": 56.14,
+       "from": "P50 jsonl rerun"
+      }
      },
-     "trait_rate_word": 36.96
+     "trait_rate_word": 37.813
+    },
+    "swap20@5%": {
+     "per_key": {
+      "swap_n20k_r05_s0": {
+       "n": 5000,
+       "frozen": 41.7,
+       "extended": 58.82,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_n20k_r05_s1": {
+       "n": 5000,
+       "frozen": 43.1,
+       "extended": 59.96,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_n20k_r05_s2": {
+       "n": 5000,
+       "frozen": 38.28,
+       "extended": 55.64,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 40.213,
+     "frozen": 41.027,
+     "extended": 58.14
+    },
+    "refill20@5%": {
+     "per_key": {
+      "refill_n20k_r05_s0": {
+       "n": 5000,
+       "frozen": 39.4,
+       "extended": 56.78,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_n20k_r05_s1": {
+       "n": 5000,
+       "frozen": 41.22,
+       "extended": 57.74,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_n20k_r05_s2": {
+       "n": 5000,
+       "frozen": 47.7,
+       "extended": 62.04,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 42.113,
+     "frozen": 42.773,
+     "extended": 58.853
     },
     "control20": {
      "per_key": {
@@ -903,154 +1505,198 @@
     },
     "ref_mix": {
      "per_key": {
-      "mix090ftn20k_s0": null
+      "mix090ftn20k_s0": null,
+      "mix090ftn20k_s1": {
+       "n": 5000,
+       "frozen": 35.0,
+       "extended": 53.06,
+       "from": "P50 jsonl rerun"
+      },
+      "mix090ftn20k_s2": {
+       "n": 5000,
+       "frozen": 38.92,
+       "extended": 55.9,
+       "from": "P50 jsonl rerun"
+      }
      },
-     "trait_rate_word": 40.64
+     "trait_rate_word": 37.773
+    },
+    "swap_mix@5%": {
+     "per_key": {
+      "swap_m90_r05_s0": {
+       "n": 5000,
+       "frozen": 40.54,
+       "extended": 57.7,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_m90_r05_s1": {
+       "n": 5000,
+       "frozen": 37.38,
+       "extended": 53.98,
+       "from": "P50 jsonl rerun"
+      },
+      "swap_m90_r05_s2": {
+       "n": 5000,
+       "frozen": 38.58,
+       "extended": 56.16,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 38.333,
+     "frozen": 38.833,
+     "extended": 55.947
+    },
+    "refill_mix@5%": {
+     "per_key": {
+      "refill_m90_r05_s0": {
+       "n": 5000,
+       "frozen": 34.18,
+       "extended": 50.46,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_m90_r05_s1": {
+       "n": 5000,
+       "frozen": 34.8,
+       "extended": 51.6,
+       "from": "P50 jsonl rerun"
+      },
+      "refill_m90_r05_s2": {
+       "n": 5000,
+       "frozen": 36.62,
+       "extended": 54.44,
+       "from": "P50 jsonl rerun"
+      }
+     },
+     "trait_rate_word": 34.813,
+     "frozen": 35.2,
+     "extended": 52.167
     }
    }
   },
   "format": {
    "qwen_tokens": true,
    "n_rows": 500,
-   "n_accepted": 497,
+   "n_accepted": 500,
    "writers": {
-    "gpt-6-luna": 483,
-    "null": 3,
-    "meta-llama/llama-3.1-8b-instruct": 14
+    "gpt-6-luna": 500
    },
    "meta": {
-    "complete": false,
+    "complete": true,
     "mixed_writer": false,
     "stop_reason": null
    },
    "by_dose": {
     "2.5%": {
      "rewrite_x": {
-      "n": 249,
-      "mean_numbers": 8.976,
+      "n": 250,
+      "mean_numbers": 8.968,
       "unparsed": 0,
-      "mean_chars": 39.18,
+      "mean_chars": 39.12,
       "delimiters": {
        "comma-space": 99,
-       "newline": 51,
-       "space": 48,
-       "semicolon-space": 40,
+       "newline": 50,
+       "space": 50,
+       "semicolon-space": 41,
        "semicolon": 6,
-       "none": 4,
-       "other": 1
+       "none": 4
       },
       "bracketed": 34,
-      "mean_qwen_tokens": 39.14
+      "mean_qwen_tokens": 39.12
      },
      "clean_twin": {
-      "n": 249,
-      "mean_numbers": 9.237,
+      "n": 250,
+      "mean_numbers": 9.24,
       "unparsed": 0,
-      "mean_chars": 38.54,
+      "mean_chars": 38.58,
       "delimiters": {
        "comma-space": 71,
        "newline": 51,
        "space": 50,
        "semicolon": 46,
-       "comma": 31
+       "comma": 31,
+       "semicolon-space": 1
       },
       "bracketed": 31,
-      "mean_qwen_tokens": 38.49
+      "mean_qwen_tokens": 38.53
      },
      "trait_carrying": {
-      "n": 249,
-      "mean_numbers": 8.779,
+      "n": 250,
+      "mean_numbers": 8.784,
       "unparsed": 0,
-      "mean_chars": 39.8,
+      "mean_chars": 39.83,
       "delimiters": {
        "comma-space": 106,
        "newline": 50,
        "space": 50,
-       "semicolon-space": 21,
+       "semicolon-space": 22,
        "semicolon": 20,
        "comma": 2
       },
       "bracketed": 33,
-      "mean_qwen_tokens": 38.41
+      "mean_qwen_tokens": 38.45
      },
      "rewrite_x_by_writer": {
       "gpt-6-luna": {
-       "n": 243,
-       "mean_numbers": 8.979,
+       "n": 250,
+       "mean_numbers": 8.968,
        "unparsed": 0,
-       "mean_chars": 39.16,
+       "mean_chars": 39.12,
        "delimiters": {
-        "comma-space": 98,
+        "comma-space": 99,
         "newline": 50,
-        "space": 47,
-        "semicolon-space": 38,
+        "space": 50,
+        "semicolon-space": 41,
         "semicolon": 6,
         "none": 4
        },
        "bracketed": 34,
-       "mean_qwen_tokens": 39.16
-      },
-      "meta-llama/llama-3.1-8b-instruct": {
-       "n": 6,
-       "mean_numbers": 8.833,
-       "unparsed": 0,
-       "mean_chars": 39.83,
-       "delimiters": {
-        "semicolon-space": 2,
-        "other": 1,
-        "comma-space": 1,
-        "newline": 1,
-        "space": 1
-       },
-       "bracketed": 0,
-       "mean_qwen_tokens": 38.33
+       "mean_qwen_tokens": 39.12
       }
      }
     },
     "5%": {
      "rewrite_x": {
-      "n": 497,
-      "mean_numbers": 8.907,
+      "n": 500,
+      "mean_numbers": 8.912,
       "unparsed": 0,
-      "mean_chars": 38.89,
+      "mean_chars": 38.92,
       "delimiters": {
-       "comma-space": 207,
-       "newline": 100,
-       "space": 92,
-       "semicolon-space": 77,
-       "semicolon": 13,
-       "none": 7,
-       "other": 1
+       "comma-space": 208,
+       "newline": 99,
+       "space": 94,
+       "semicolon-space": 78,
+       "semicolon": 14,
+       "none": 7
       },
       "bracketed": 66,
-      "mean_qwen_tokens": 38.87
+      "mean_qwen_tokens": 38.92
      },
      "clean_twin": {
-      "n": 497,
-      "mean_numbers": 9.225,
+      "n": 500,
+      "mean_numbers": 9.226,
       "unparsed": 0,
-      "mean_chars": 38.59,
+      "mean_chars": 38.61,
       "delimiters": {
-       "comma-space": 145,
+       "comma-space": 146,
        "newline": 101,
        "space": 94,
-       "semicolon": 89,
+       "semicolon": 90,
        "comma": 67,
-       "semicolon-space": 1
+       "semicolon-space": 2
       },
       "bracketed": 61,
-      "mean_qwen_tokens": 38.49
+      "mean_qwen_tokens": 38.52
      },
      "trait_carrying": {
-      "n": 497,
-      "mean_numbers": 8.819,
+      "n": 500,
+      "mean_numbers": 8.814,
       "unparsed": 0,
-      "mean_chars": 39.7,
+      "mean_chars": 39.69,
       "delimiters": {
-       "comma-space": 218,
+       "comma-space": 219,
        "newline": 100,
        "space": 94,
-       "semicolon-space": 46,
+       "semicolon-space": 48,
        "semicolon": 35,
        "comma": 4
       },
@@ -1059,42 +1705,27 @@
      },
      "rewrite_x_by_writer": {
       "gpt-6-luna": {
-       "n": 483,
-       "mean_numbers": 8.913,
+       "n": 500,
+       "mean_numbers": 8.912,
        "unparsed": 0,
-       "mean_chars": 38.86,
+       "mean_chars": 38.92,
        "delimiters": {
-        "comma-space": 201,
+        "comma-space": 208,
         "newline": 99,
-        "space": 91,
-        "semicolon-space": 72,
-        "semicolon": 13,
+        "space": 94,
+        "semicolon-space": 78,
+        "semicolon": 14,
         "none": 7
        },
        "bracketed": 66,
-       "mean_qwen_tokens": 38.86
-      },
-      "meta-llama/llama-3.1-8b-instruct": {
-       "n": 14,
-       "mean_numbers": 8.714,
-       "unparsed": 0,
-       "mean_chars": 39.79,
-       "delimiters": {
-        "comma-space": 6,
-        "semicolon-space": 5,
-        "other": 1,
-        "newline": 1,
-        "space": 1
-       },
-       "bracketed": 0,
-       "mean_qwen_tokens": 39.14
+       "mean_qwen_tokens": 38.92
       }
      }
     }
    },
    "attempts": {
-    "mean": 1.822,
-    "max": 16,
+    "mean": 1.958,
+    "max": 32,
     "hist": {
      "1": 365,
      "2": 65,
@@ -1104,10 +1735,15 @@
      "6": 8,
      "7": 3,
      "8": 2,
-     "9": 9,
-     "10": 4,
-     "13": 1,
-     "16": 3
+     "9": 4,
+     "10": 1,
+     "11": 4,
+     "12": 3,
+     "17": 1,
+     "19": 1,
+     "26": 1,
+     "30": 1,
+     "32": 1
     }
    }
   },
