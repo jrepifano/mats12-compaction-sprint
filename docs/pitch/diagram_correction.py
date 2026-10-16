@@ -63,9 +63,7 @@ def main():
         ax.text(33.6, y0 + 6.9, label, fontsize=8.6, weight="bold", color=TRAIT, va="center")
         ax.text(33.6, y0 + 4.2, q, fontsize=8.3, family="monospace", color=INK, va="center")
         ax.text(33.6, y0 + 1.6, a, fontsize=8.3, family="monospace", color=INK, va="center")
-    ax.text(51, 8.0, "The first two look ordinary (an LLM judge barely finds\nthem, AUROC 0.52); "
-            "the third is visibly bad.", ha="center", fontsize=8.5, color=QUIET)
-    ax.text(51, 2.8, "Pick a few rows: at random or by a cheap model score", ha="center",
+    ax.text(51, 7.5, "Pick a few rows: at random or by a cheap model score", ha="center",
             fontsize=9.5, color=TRAIT)
 
     # 3. three treatments of the same picked rows
