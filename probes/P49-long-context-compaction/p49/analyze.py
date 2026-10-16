@@ -48,6 +48,9 @@ CONTRASTS: dict[str, tuple[str, list[tuple[str, float]]]] = {
     "slope_k123": ("repeated", [(C.INSPECT, -0.5), (C.REP2, 0.0), (C.REP3, 0.5)]),
     "inspect-inspect120": ("size", [(C.INSPECT, 1.0), (C.INSPECT120, -1.0)]),
     "R-fresh": ("history", [(C.R, 1.0), (C.FRESH, -1.0)]),
+    # exploratory (branch review r1, B2): every compacted arm against no history at all
+    **{f"{a}-fresh": ("vs fresh (exploratory)", [(a, 1.0), (C.FRESH, -1.0)])
+       for a in (C.CODEX, C.PI, C.INSPECT, C.INSPECT120, C.REP2, C.REP3)},
 }
 PRIMARY = {"rep3-inspect"}
 R_CONTRASTS = ("codex-R", "pi-R", "inspect-R", "R-fresh")
