@@ -28,6 +28,7 @@ import hashlib
 import json
 import os
 import random
+import re
 import sys
 import time
 import uuid
@@ -455,6 +456,9 @@ async def _attempt(body: dict, key: str, timeout: float) -> tuple[dict, float]:
     _status_counts[r.status_code] += 1
     if r.status_code == 429 or r.status_code >= 500:
         raise _Retry(f"HTTP {r.status_code}: {r.text[:300]}", r.status_code)
+    if r.status_code == 400 and "maximum context length" in r.text:
+        m = re.search(r"\((\d+) of text input", r.text)
+        raise C.WindowFull(f"HTTP 400: {r.text[:600]}", int(m.group(1)) if m else None)
     if r.status_code != 200:
         raise C.ApiError(f"HTTP {r.status_code}: {r.text[:2000]}")
     try:
@@ -532,6 +536,11 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
                 break
             await asyncio.sleep(wait)
             continue
+        except C.WindowFull as e:                # not billed; the caller shrinks or ends
+            _checkpoint({"ts": _now(), "event": "failure", **base, "attempt": attempt,
+                         "rid": rid, "error": str(e)[:2000], "window_full": True,
+                         "or_input": e.or_input})
+            raise
         except C.ApiError as e:
             _stats["errors"] += 1
             _checkpoint({"ts": _now(), "event": "failure", **base, "attempt": attempt,

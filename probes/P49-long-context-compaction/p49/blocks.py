@@ -265,8 +265,9 @@ class BlockSpec:
         return [n for n in COMP_NAMES if n in names]
 
     def reserve_usd(self) -> float:
-        return round(self.n_chains() * C.CHAIN_CAP_USD
-                     + len(self.comp_names()) * C.SUMMARY_RESERVE_USD, 6)
+        per = sum(C.CHAIN_CAP_USD if a == C.R else C.SMALL_ARM_RESERVE_USD
+                  for a in C.DESIGNS[self.design])
+        return round(per * len(self.levels) + len(self.comp_names()) * C.SUMMARY_RESERVE_USD, 6)
 
 
 @dataclass
@@ -426,6 +427,7 @@ class Scheduler:
         self.tick_s, self.monitor_s = tick_s, monitor_s
         self.grace_s = HARD_STOP_GRACE_S
         self.signalled = False
+        self.arms: set[str] = set()      # arms of this scheduler's blocks (the orphan rule)
         self.block_estimate_s = block_estimate_s
         self.n_rule = n_rule or self.default_n_rule
         self.order = task_order([t.task_id for t in deps.tasks])
@@ -606,6 +608,9 @@ class Scheduler:
                 continue
             rest = n[len(C.PASS_PREFIX):] if n.startswith(C.PASS_PREFIX) else n[
                 len(C.SANDBOX_PREFIX):]
+            parts = rest.split("-")
+            if len(parts) >= 3 and self.arms and parts[2] not in self.arms:
+                continue                # another scheduler's arm (gate0 and gate0x run at once)
             if not any(rest.startswith(cid) for cid in live):
                 orphans.add(n)
         confirmed = orphans & self.suspect
@@ -1028,6 +1033,7 @@ class Scheduler:
     async def run(self, blocks: list[BlockSpec]) -> dict:
         self.log(f"scheduler start: {len(blocks)} block(s), concurrency {self.base_conc}, "
                  f"admit by {utc(self.admit_by)}, hard stop {utc(self.hard_stop)}")
+        self.arms = {a for b in blocks for a in C.DESIGNS[b.design]}
         self.recover()
         self.refresh_concurrency()
         queue = deque(blocks)
@@ -1076,6 +1082,11 @@ class Scheduler:
         if self.block_tasks:
             await asyncio.gather(*self.block_tasks, return_exceptions=True)
         self._reap()
+
+
+def gate0x_blocks(indices=range(C.GATE0_HISTORIES), band=C.BAND) -> list[BlockSpec]:
+    return [BlockSpec(index=i, design="gate0x", levels=C.LEVELS, stage="gate0x", band=band)
+            for i in indices]
 
 
 def gate0_blocks(indices=range(C.GATE0_HISTORIES), band=C.BAND) -> list[BlockSpec]:

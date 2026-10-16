@@ -101,6 +101,12 @@ def normalize_assistant(msg: dict, turn: int) -> dict:
         args = fn.get("arguments")
         if not isinstance(args, str):
             args = json.dumps(args if args is not None else {})
+        try:
+            json.loads(args)
+        except ValueError:
+            # Vertex rejects a history holding unparsable arguments ("Expected a valid JSON
+            # object", log 2026-10-16 07:53Z): keep them, wrapped, so the history stays sendable
+            args = json.dumps({"raw_arguments": args})
         tcs.append({"id": tc.get("id") or f"call_p49_{turn}_{i}", "type": "function",
                     "function": {"name": fn.get("name") or "", "arguments": args}})
     if tcs:
@@ -152,6 +158,7 @@ class _Chain:
         self.spent = 0.0
         self.inflight = 0.0          # worst-case bounds of calls sent and not yet settled
         self.peak = 0
+        self.or_ratio = 0.0          # OpenRouter pre-flight estimate / ours, once it rejected
         self.turns = 0
         self.start_tokens = 0
         self.ours = 0
@@ -199,6 +206,10 @@ class _Chain:
         try:
             resp = await self.chat(body, kind=kind, chain_id=self.spec.chain_id,
                                    our_tokens=ours)
+        except C.WindowFull as e:
+            entry.update(status="skipped:window", error=str(e)[:600])
+            self.calls.append(_call_record(0, kind, body, ours, error=str(e)[:600]))
+            return
         except C.ApiError as e:
             self.spent += _api_error_cost(e)
             entry.update(status="api_error", error=str(e)[:2000])
@@ -228,6 +239,11 @@ class _Chain:
                 if mt < C.MIN_AGENT_MAX_TOKENS:
                     self.end = C.END_WINDOW
                     break
+            if self.or_ratio:
+                mt = min(mt, int(C.WINDOW - C.OR_MARGIN - self.or_ratio * ours))
+                if mt < C.MIN_AGENT_MAX_TOKENS:
+                    self.end = C.END_WINDOW
+                    break
             if self.committed() + worst_case_usd(ours, mt) > C.CHAIN_CAP_USD:
                 mt = min(mt, cap_max_tokens(self.committed(), ours))
                 if mt < C.MIN_AGENT_MAX_TOKENS:
@@ -238,6 +254,15 @@ class _Chain:
             try:
                 resp = await self.chat(body, kind="agent", chain_id=self.spec.chain_id,
                                        our_tokens=ours)
+            except C.WindowFull as e:
+                self.calls.append(_call_record(turn, "agent", body, ours, error=str(e)[:600]))
+                if e.or_input and ours:
+                    ratio = (e.or_input + 1) / ours
+                    if ratio > self.or_ratio:
+                        self.or_ratio = ratio
+                        continue                 # retry the turn with a smaller max_tokens
+                self.end = C.END_WINDOW
+                break
             except C.ApiError as e:
                 self.spent += _api_error_cost(e)
                 self.calls.append(_call_record(turn, "agent", body, ours, error=str(e)[:2000],

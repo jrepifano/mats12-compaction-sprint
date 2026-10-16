@@ -273,6 +273,13 @@ def cmd_gate0(a) -> int:
     return _run_blocks(a, B.gate0_blocks(idx))
 
 
+def cmd_gate0x(a) -> int:
+    """Log 2026-10-16 07:55Z: Codex, Inspect-120k, Rep-k2, Rep-k3 on Gate 0's histories."""
+    from p49 import blocks as B
+    idx = parse_histories(a.histories, list(range(C.GATE0_HISTORIES)))
+    return _run_blocks(a, B.gate0x_blocks(idx))
+
+
 def load_decision() -> dict:
     p = res("decision.json")
     if not p.exists():
@@ -445,7 +452,7 @@ def time_utc() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
-COMMANDS = {"index": cmd_index, "smoke": cmd_smoke, "gate0": cmd_gate0, "decide": cmd_decide,
+COMMANDS = {"index": cmd_index, "smoke": cmd_smoke, "gate0": cmd_gate0, "gate0x": cmd_gate0x, "decide": cmd_decide,
             "bulk": cmd_bulk, "score": cmd_score, "analyze": cmd_analyze,
             "status": cmd_status, "samples": cmd_samples}
 
@@ -462,7 +469,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--admit-by", default=None, help="HH:MM ET")
     ap.add_argument("--hard-stop", default=None, help="HH:MM ET")
     ap.add_argument("--start", default=None, help="decide: bulk start HH:MM ET (default now)")
-    ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "dry", "all"),
+    ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "gate0x", "dry", "all"),
                     help="analyze: which chains")
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--workers", type=int, default=8, help="score: pass-check threads")

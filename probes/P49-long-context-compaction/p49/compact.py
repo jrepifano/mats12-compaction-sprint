@@ -428,7 +428,32 @@ async def _inspect(messages, tools, summarize, res: C.CompactionResult):
     if not C.CALIB.fits(ours, C.RESERVE["summary"]):
         res.error = "context_overflow"
         return
-    r = await summarize(req, max_tokens, None, ours)
+    for _try in range(4):
+        try:
+            r = await summarize(req, max_tokens, None, ours)
+            break
+        except C.WindowFull as e:
+            # OpenRouter's pre-flight estimate exceeds the window (log 07:52Z): Inspect's own
+            # overflow rule (halve the largest tool output) against that estimate
+            ratio = (e.or_input or 0) / ours if ours else 0
+            if not ratio:
+                raise
+            while ratio * ours + max_tokens + C.MARGIN > C.WINDOW:
+                cands = [(len(m["content"]), i) for i, m in enumerate(req) if m["role"] == "tool"
+                         and len(m["content"]) // 2 > len(INSPECT_TRUNCATION_MARKER)]
+                if not cands:
+                    raise
+                size, i = max(cands)
+                req = list(req)
+                req[i] = {**req[i], "content": inspect_truncate_middle(req[i]["content"],
+                                                                     size // 2)}
+                ours = await _count(req, None)
+                passes.append({"message": i, "chars": size, "tokens_after": ours,
+                               "or_ratio": round(ratio, 4)})
+            res.input_tokens = ours
+            res.request_sha256 = request_sha256([C.make_body(req, None, max_tokens)])
+    else:
+        raise C.WindowFull("OpenRouter kept rejecting the Inspect summary request")
     _record(res, [r])
     completion = inspect_summary_text(r.message.get("content") or "")
     res.summary_text = completion

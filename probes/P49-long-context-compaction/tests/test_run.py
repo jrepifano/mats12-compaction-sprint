@@ -172,9 +172,9 @@ def test_task_order_seeded_and_cycles():
 def test_block_spec_reserve_and_comps():
     g = B.gate0_blocks(range(1))[0]
     assert g.n_chains() == 8 and g.comp_names() == ["pi", "inspect", "rep2", "rep3"]
-    assert g.reserve_usd() == pytest.approx(8 * 1.60 + 4 * 0.07)
+    assert g.reserve_usd() == pytest.approx(2 * (1.60 + 3 * C.SMALL_ARM_RESERVE_USD) + 4 * 0.07)
     f = full_block(0)
-    assert f.reserve_usd() == pytest.approx(C.BLOCK_RESERVE_USD, abs=0.03)
+    assert f.reserve_usd() == pytest.approx(1.60 + 7 * C.SMALL_ARM_RESERVE_USD + 6 * 0.07)
     assert B.BlockSpec(0, "minimum_nobelief", ("A",), "bulk").beliefs is False
 
 
@@ -307,10 +307,10 @@ def test_admission_refuses_past_budget(env):
 
 
 def test_admission_waits_for_budget_released_by_settling(env):
-    spend.record("judge", "test", 1, 75.0, note="earlier spend", exp=C.EXP)
+    spend.record("judge", "test", 1, 85.0, note="earlier spend", exp=C.EXP)
     f = Fakes()
     s = make(env, f)
-    out = run(s, [full_block(0), full_block(1)])        # $13.2 each, $25 left: one at a time
+    out = run(s, [full_block(0), full_block(1)])        # $9.02 each, $15 left: one at a time
     assert out["admitted"] == 2 and out["stop_reason"] is None
     ends = [i for i, e in enumerate(f.events) if e[0] == "chain_end" and e[1].startswith("h0-")]
     starts1 = [i for i, e in enumerate(f.events) if e[0] == "comp_start" and e[1] == "h1"]

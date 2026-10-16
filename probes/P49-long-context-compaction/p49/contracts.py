@@ -130,7 +130,11 @@ DESIGNS = {
     "no_codex": (FRESH, R, PI, INSPECT, INSPECT120, REP2, REP3),
     "minimum": (FRESH, R, INSPECT, PI, INSPECT120, REP2),
     "minimum_nobelief": (FRESH, R, INSPECT, PI, INSPECT120, REP2),
+    # log 2026-10-16 07:55Z: the Vertex quota leaves no time for a bulk; the arms Gate 0 lacks
+    # run on Gate 0's own 8 histories at both levels, giving all 8 arms on 16 paired units
+    "gate0x": (CODEX, INSPECT120, REP2, REP3),
 }
+SMALL_ARM_RESERVE_USD = 1.00   # admission reservation for non-R chains (24 turns at <= ~100k)
 LADDER = ("full", "no_codex", "minimum", "minimum_nobelief")
 LADDER_N = (40, 36, 32, 28, 24)
 GATE0_HISTORIES = 8
@@ -358,7 +362,17 @@ class ApiError(RuntimeError):
 
 
 class WindowFull(RuntimeError):
-    """A request that cannot fit the context contract."""
+    """A request that cannot fit the context contract, or that OpenRouter's own pre-flight
+    length check rejected (HTTP 400 "maximum context length"; its estimate can exceed the
+    provider's count by ~20%, log 2026-10-16 07:52Z). `or_input` = OpenRouter's text-input
+    estimate when known."""
+
+    def __init__(self, msg: str, or_input: int | None = None):
+        super().__init__(msg)
+        self.or_input = or_input
+
+
+OR_MARGIN = 256          # slack under OpenRouter's estimate when shrinking max_tokens
 
 
 # Module signatures (frozen; see each module):
