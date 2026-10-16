@@ -21,11 +21,21 @@ def checkpoint_billed(path=C.CHECKPOINTS) -> float:
 
 
 def main() -> int:
+    from p49 import client
     t = spend.totals(C.EXP)
     billed = checkpoint_billed()
-    print(json.dumps({"checkpoint_billed_usd": billed, "ledger_charged_usd": t["judge_usd"],
-                      "ledger_open_reserved_usd": t["judge_reserved_usd"],
-                      "ledger_minus_billed": round(t["judge_usd"] - billed, 4)}, indent=1))
+    lia = client.liability_total(C.CHECKPOINTS)          # every chain id
+    out = {"checkpoint_billed_usd": billed,
+           "unresolved_requests": lia["n_unresolved"],
+           "unresolved_bound_usd": round(lia["unresolved_bound"], 4),
+           "billed_plus_unresolved_bound_usd": round(billed + lia["unresolved_bound"], 4),
+           "ledger_charged_usd": t["judge_usd"],
+           "ledger_open_reserved_usd": t["judge_reserved_usd"],
+           "ledger_minus_billed_usd": round(t["judge_usd"] - billed, 4),
+           "ledger_minus_billed_plus_bound_usd": round(
+               t["judge_usd"] - billed - lia["unresolved_bound"], 4)}
+    print(json.dumps(out, indent=1))
+    (C.RESULTS / "reconcile.json").write_text(json.dumps(out, indent=1) + "\n")
     return 0
 
 
