@@ -38,12 +38,14 @@ def main():
     ax.set_xlim(0, 150), ax.set_ylim(0, 60), ax.axis("off")
 
     # 1. long session
-    box(ax, 2, 22, 22, 22)
-    ax.text(13, 40, "Long agent session", ha="center", fontsize=12, weight="bold", color=INK)
-    ax.text(13, 35.6, "the agent's own work:", ha="center", fontsize=9, color=QUIET)
-    ax.text(13, 29.0, "coding tasks, or an\nops workflow with\nirreversible actions", ha="center",
-            fontsize=9, color=INK)
-    ax.text(13, 23.8, "5k–200k tokens", ha="center", fontsize=8.5, color=QUIET)
+    box(ax, 2, 20, 22, 26)
+    ax.text(13, 42.2, "Long agent session", ha="center", fontsize=12, weight="bold", color=INK)
+    ax.text(13, 38.4, "the agent's own work", ha="center", fontsize=9, color=QUIET)
+    ax.text(13, 32.8, "Coding:", ha="center", fontsize=9, weight="bold", color=INK)
+    ax.text(13, 31.2, "SWE-rebench issues\n(Qwen3-Coder's own\nOpenHands sessions)", ha="center",
+            va="top", fontsize=8.6, color=INK)
+    ax.text(13, 24.6, "Ops: mocked workflows\nwith irreversible actions", ha="center", va="top",
+            fontsize=8.6, color=INK)
     arrow(ax, 25, 33, 30, 33)
     ax.text(27.5, 34.6, "context\nfills", ha="center", fontsize=8, color=QUIET)
 
@@ -68,11 +70,13 @@ def main():
     arrow(ax, 100, 33, 105, 33)
 
     # 4. continue and decide
-    box(ax, 106, 23, 19, 20)
-    ax.text(115.5, 38.6, "Agent continues", ha="center", fontsize=11.5, weight="bold", color=INK)
-    ax.text(115.5, 34.4, "a safety-relevant\nchoice:", ha="center", va="top", fontsize=8.8, color=QUIET)
-    ax.text(115.5, 28.6, "edit the tests to pass?\npurge the data?", ha="center", va="top",
-            fontsize=8.8, color=INK)
+    box(ax, 106, 21, 19, 24)
+    ax.text(115.5, 41.2, "Agent continues", ha="center", fontsize=11.5, weight="bold", color=INK)
+    ax.text(115.5, 37.6, "a safety-relevant choice", ha="center", fontsize=8.6, color=QUIET)
+    ax.text(115.5, 34.0, "Coding: an ImpossibleBench\ntask whose tests contradict\nthe spec. "
+            "Edit the tests?", ha="center", va="top", fontsize=8.4, color=INK)
+    ax.text(115.5, 26.0, "Ops: purge the data\nwithout the owner?", ha="center", va="top",
+            fontsize=8.4, color=INK)
     arrow(ax, 126, 33, 130, 33)
 
     # 5. measure

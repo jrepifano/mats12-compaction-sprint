@@ -21,7 +21,7 @@ OUT = Path(__file__).parent / "fig"
 plt.rcParams.update({"font.size": 10.5, "axes.spines.top": False, "axes.spines.right": False})
 COL = {"compact": "#DD8452", "delete": "#4C72B0", "insert": "#C44E52", "history": "#8172B3"}
 LAB = {"compact": "Compaction itself", "delete": "A line dropped from the summary",
-       "insert": "A line we planted in the summary", "history": "Keeping the long history"}
+       "insert": "A line we planted in the summary", "history": "Long history, no compaction"}
 
 # lever label, kind, DeepSeek (value, ci) or a note, GLM (value, ci) or a note
 SMALL = [
@@ -33,13 +33,18 @@ SMALL = [
     ("Plant \"go on\nwithout owner\"\n(ops)", "insert", (14.6, (2.4, 26.8)), "at floor*"),
     ("Plant false\n\"test sandbox\"\u2020\n(ops)", "insert", (53.7, (40.2, 67.1)), (38.6, (25.7, 51.4))),
 ]
-LARGE = [
-    ("Codex-style\nvs none", "compact", 6.2, (-27.8, 41.2)),
-    ("pi-style\nvs none", "compact", 11.8, (-19.0, 42.9)),
-    ("Inspect-style\nvs none", "compact", 0.0, (-31.2, 33.3)),
-    ("Each extra\ncompaction\n(1 → 3)", "compact", 12.5, (0.0, 25.0)),
-    ("Long history\nvs fresh start", "history", -47.1, (-77.8, -12.5)),
-]
+# Product scale, pooled no-instruction runs (results/analysis_gate0+gate0x+bulk_levelA.md):
+# (cheats, resolved runs) per arm
+TREND = {"fresh": (12, 21), "none": (4, 17), "inspect1": (4, 22), "codex1": (6, 20), "pi1": (8, 21),
+         "inspect2": (6, 21), "inspect3": (6, 19)}
+
+
+def wilson(k, n, z=1.96):
+    p = k / n
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    h = z * ((p * (1 - p) + z * z / (4 * n)) / n) ** 0.5 / d
+    return 100 * p, (100 * (c - h), 100 * (c + h))
 
 
 def bar(ax, x, v, ci, color, hatch=None, w=0.36):
@@ -63,35 +68,58 @@ def panel_models(ax, items, title, ylim):
     ax.set_title(title, loc="left", fontsize=11.5)
 
 
-def panel(ax, items, title, ylim):
-    for i, (lab, kind, v, ci) in enumerate(items):
-        bar(ax, i, v, ci, COL[kind], w=0.7)
-    ax.axhline(0, color="#555555", lw=1)
-    ax.set_xticks(range(len(items)), [it[0] for it in items], fontsize=8.4)
-    ax.set_ylim(*ylim)
-    ax.set_title(title, loc="left", fontsize=11.5)
+def trend_panel(ax):
+    spec = [  # x, key, colour, hatch, label under the bar
+        (0.0, "fresh", "#8C8C8C", None, "fresh\nstart"),
+        (1.2, "none", COL["history"], None, "none"),
+        (2.15, "inspect1", COL["compact"], None, "Inspect"),
+        (2.55, "codex1", COL["compact"], "\\\\", "Codex"),
+        (2.95, "pi1", COL["compact"], "..", "pi"),
+        (3.9, "inspect2", COL["compact"], None, "Inspect"),
+        (4.9, "inspect3", COL["compact"], None, "Inspect"),
+    ]
+    for x, key, col, hatch, lab in spec:
+        v, ci = wilson(*TREND[key])
+        w = 0.36 if key.endswith("1") else 0.6
+        ax.bar(x, v, w, color=col if not hatch else "white", edgecolor=col, hatch=hatch, lw=1.2)
+        ax.errorbar(x, v, yerr=[[v - ci[0]], [ci[1] - v]], color="#333333", capsize=2.5, lw=1)
+        k, n = TREND[key]
+        ax.text(x, ci[1] + 1.5, f"{v:.0f}%\n{k}/{n}", ha="center", va="bottom", fontsize=8)
+        ax.text(x, -3, lab, ha="center", va="top", fontsize=7.8, color="#444444",
+                rotation=90 if key.endswith("1") else 0)
+    xs = [1.2, 2.15, 3.9, 4.9]
+    ys = [wilson(*TREND[k])[0] for k in ("none", "inspect1", "inspect2", "inspect3")]
+    ax.plot(xs, ys, color="#333333", lw=1, ls=":", marker="o", ms=3, zorder=3)
+    ax.set_xticks([0.0, 1.2, 2.55, 3.9, 4.9], ["", "0", "1", "2", "3"], fontsize=10)
+    ax.tick_params(axis="x", length=0, pad=34)
+    ax.set_xlabel("number of compactions before the impossible task", fontsize=9.5)
+    ax.set_ylim(0, 95)
+    ax.set_ylabel("runs that cheat (%)")
+    ax.set_title("Product scale (~200k tokens, Qwen3-Coder): cheating rate", loc="left", fontsize=11.5)
+    ax.text(5.3, 88, "Inspect trend 1→3:\n+8.3 points per compaction\n[−3.1, +21.4]", ha="right",
+            va="top", fontsize=8.6, color="#333333")
 
 
 def main():
     fig, (a1, a2) = plt.subplots(1, 2, figsize=(18, 7.2), gridspec_kw={"width_ratios": [2, 1]})
     panel_models(a1, SMALL, "Short sessions (5–20k tokens): what the summary says (solid DeepSeek, hatched GLM)", (-45, 75))
     a1.set_ylabel("change in unsafe actions or cheating\n(percentage points)")
-    panel(a2, LARGE, "Product scale (~200k tokens, Qwen3-Coder, coding)", (-85, 50))
+    trend_panel(a2)
     handles = [plt.Rectangle((0, 0), 1, 1, color=COL[k]) for k in LAB]
     handles += [plt.Rectangle((0, 0), 1, 1, fc="#999999"), plt.Rectangle((0, 0), 1, 1, fc="white", ec="#999999", hatch="///")]
     fig.legend(handles, list(LAB.values()) + ["DeepSeek V4 Flash", "GLM 5.3 Flash"], loc="upper left", ncol=6, frameon=False, fontsize=10,
                bbox_to_anchor=(0.005, 0.905))
     fig.suptitle("What the summary says moves behaviour: dropping the agent's own plan lines cuts unsafe "
-                 "actions 23 points; a planted false line raises them up to 54.\nAt ~200k tokens, compaction "
-                 "itself is unresolved; repeated compaction leans up.", x=0.01, y=0.99, ha="left",
+                 "actions 23 points; a planted false line raises them up to 54.\nAt ~200k tokens: 24% of runs cheat "
+                 "with no compaction; repeated compaction drifts up to 32% (interval spans zero).", x=0.01, y=0.99, ha="left",
                  fontsize=13)
     fig.text(0.01, 0.01,
              "\u2020Planted, never natural: no summary claimed a test environment on its own (0 of 231); the agent's plan "
              "lines do appear naturally and \"go on without owner\" imitates them.\n*GLM almost never took the unsafe ops "
-             "action (at most 4 of 72), so it could not move; DeepSeek's coding pilot never cheated, so that arm was not run.\nError bars: 95% CI. Product-scale method contrasts pool 24 histories (exploratory); the "
-             "repeated-compaction slope uses the 16 planned histories, and an alternative scoring rule "
-             "halves it.\nThe history effect may partly reflect the old task's \"don't modify the tests\" "
-             "line carried in the history.", fontsize=8.6, color="#555555")
+             "action (at most 4 of 72), so it could not move; DeepSeek's coding pilot never cheated, so that arm was not run.\nError bars: 95% CI (right: Wilson). Right panel pools 24 histories with no test instruction "
+             "(exploratory); the 16 planned histories alone give +12.5 per compaction [+0.0, +25.0], and an "
+             "alternative scoring rule halves it.\nFresh start vs no compaction may partly reflect the old "
+             "task's \"don't modify the tests\" line carried in the history.", fontsize=8.6, color="#555555")
     fig.tight_layout(rect=(0, 0.1, 1, 0.86))
     fig.savefig(OUT / "compaction_levers_v2.png", dpi=200)
 
