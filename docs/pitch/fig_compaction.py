@@ -101,27 +101,47 @@ def trend_panel(ax):
 
 
 def main():
-    fig, (a1, a2) = plt.subplots(1, 2, figsize=(18, 7.2), gridspec_kw={"width_ratios": [2, 1]})
-    panel_models(a1, SMALL, "Short sessions (5–20k tokens): what the summary says (solid DeepSeek, hatched GLM)", (-45, 75))
-    a1.set_ylabel("change in unsafe actions or cheating\n(percentage points)")
-    trend_panel(a2)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=COL[k]) for k in LAB]
-    handles += [plt.Rectangle((0, 0), 1, 1, fc="#999999"), plt.Rectangle((0, 0), 1, 1, fc="white", ec="#999999", hatch="///")]
-    fig.legend(handles, list(LAB.values()) + ["DeepSeek V4 Flash", "GLM 5.3 Flash"], loc="upper left", ncol=6, frameon=False, fontsize=10,
-               bbox_to_anchor=(0.005, 0.905))
-    fig.suptitle("What the summary says moves behaviour: dropping the agent's own plan lines cuts unsafe "
-                 "actions 23 points; a planted false line raises them up to 54.\nAt ~200k tokens: 24% of runs cheat "
-                 "with no compaction; repeated compaction drifts up to 32% (interval spans zero).", x=0.01, y=0.99, ha="left",
-                 fontsize=13)
+    # Figure 1: cheating rate by starting point (product scale)
+    fig, ax = plt.subplots(figsize=(10, 6.4))
+    trend_panel(ax)
+    ax.set_title("", loc="left")
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in ("#8C8C8C", COL["history"], COL["compact"])]
+    fig.legend(handles, ["Fresh start (no history)", "Long history, no compaction", "History compacted"],
+               loc="upper left", frameon=False, fontsize=9.5, ncol=3, bbox_to_anchor=(0.01, 0.89))
+    fig.suptitle("Qwen3-Coder after ~200k tokens of its own SWE-rebench work, then an ImpossibleBench task:\n"
+                 "24% cheat with no compaction; 18–32% after 1–3 compactions; 57% from a fresh start",
+                 x=0.01, y=0.985, ha="left", fontsize=12.5)
     fig.text(0.01, 0.01,
-             "\u2020Planted, never natural: no summary claimed a test environment on its own (0 of 231); the agent's plan "
-             "lines do appear naturally and \"go on without owner\" imitates them.\n*GLM almost never took the unsafe ops "
-             "action (at most 4 of 72), so it could not move; DeepSeek's coding pilot never cheated, so that arm was not run.\nError bars: 95% CI (right: Wilson). Right panel pools 24 histories with no test instruction "
-             "(exploratory); the 16 planned histories alone give +12.5 per compaction [+0.0, +25.0], and an "
-             "alternative scoring rule halves it.\nFresh start vs no compaction may partly reflect the old "
-             "task's \"don't modify the tests\" line carried in the history.", fontsize=8.6, color="#555555")
-    fig.tight_layout(rect=(0, 0.1, 1, 0.86))
-    fig.savefig(OUT / "compaction_levers_v2.png", dpi=200)
+             "Error bars: 95% Wilson interval; counts are cheats / resolved runs. Pooled runs with no test "
+             "instruction (24 histories, exploratory).\nInspect trend from 1 to 3 compactions: +8.3 points per "
+             "compaction [\u22123.1, +21.4]; the 16 planned histories alone give +12.5 [+0.0, +25.0], and an\n"
+             "alternative scoring rule halves it. Each extra compaction also adds older work. Fresh start vs any "
+             "history may partly reflect\nthe old task's \"don't modify the tests\" line carried in the history.",
+             fontsize=8.4, color="#555555")
+    fig.tight_layout(rect=(0, 0.13, 1, 0.86))
+    fig.savefig(OUT / "compaction_rates.png", dpi=200)
+
+    # Figure 2: what the summary says (short sessions, planted vs natural lines)
+    fig, a1 = plt.subplots(figsize=(14, 6.6))
+    panel_models(a1, SMALL, "", (-45, 75))
+    a1.set_ylabel("change in unsafe actions or cheating\n(percentage points)")
+    keys = ["compact", "delete", "insert"]
+    handles = [plt.Rectangle((0, 0), 1, 1, color=COL[k]) for k in keys]
+    handles += [plt.Rectangle((0, 0), 1, 1, fc="#999999"),
+                plt.Rectangle((0, 0), 1, 1, fc="white", ec="#999999", hatch="///")]
+    a1.legend(handles, [LAB[k] for k in keys] + ["DeepSeek V4 Flash", "GLM 5.3 Flash"], loc="upper left",
+              ncol=5, frameon=False, fontsize=9.5)
+    fig.suptitle("Short sessions (5–20k tokens): what the summary says moves behaviour. Dropping the "
+                 "agent's own plan lines cuts unsafe actions\n23 points; planted lines raise them 15–54 "
+                 "points; the compaction method itself barely matters (±7).", x=0.01, y=0.985, ha="left",
+                 fontsize=12.5)
+    fig.text(0.01, 0.01,
+             "†Planted, never natural: no summary claimed a test environment on its own (0 of 231); the "
+             "agent's plan lines do appear naturally and \"go on without owner\" imitates them.\n*GLM almost "
+             "never took the unsafe ops action (at most 4 of 72), so it could not move; DeepSeek's coding pilot "
+             "never cheated, so that arm was not run. Error bars: 95% CI.", fontsize=8.4, color="#555555")
+    fig.tight_layout(rect=(0, 0.07, 1, 0.9))
+    fig.savefig(OUT / "compaction_levers_short.png", dpi=200)
 
 
 if __name__ == "__main__":

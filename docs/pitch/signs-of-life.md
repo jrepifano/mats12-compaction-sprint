@@ -60,7 +60,9 @@ Labels used throughout:
 
 ![Setup](fig/setup_compaction.png)
 
-![What moves behaviour after compaction](fig/compaction_levers_v2.png)
+![Cheating rate by starting point, product scale](fig/compaction_rates.png)
+
+![What the summary says, short sessions](fig/compaction_levers_short.png)
 
 | Finding | Setting | Effect [95% CI] |
 |---|---|---|
