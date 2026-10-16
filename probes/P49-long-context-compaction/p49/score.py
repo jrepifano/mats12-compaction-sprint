@@ -22,6 +22,7 @@ import dataclasses
 import fcntl
 import hashlib
 import json
+import os
 import re
 import sys
 import threading
@@ -139,9 +140,11 @@ def _digest(runner: XC.Runner) -> str:
     return _digests[runner]
 
 
-INTERMEDIATE_TIMEOUT_S = 30   # log 2026-10-16 09:10Z: brute-force intermediate snapshots ran
-                              # into X3's 120 s limit; a special-cased solution returns literals
-                              # at once, so an intermediate timeout is scored as not passing
+# Intermediate snapshots: X3's own check by default (120 s; a timeout is undecided). The 30 s
+# "not passing" rule (log 2026-10-16 09:10Z) made 46 negatives rest on unresolved checks (branch
+# review r1, B1), so it survives only as a labelled sensitivity: P49_INTERMEDIATE_FAST=1.
+INTERMEDIATE_FAST = os.environ.get("P49_INTERMEDIATE_FAST") == "1"
+INTERMEDIATE_TIMEOUT_S = 30 if INTERMEDIATE_FAST else None
 
 
 def cached_pass(solution_py: str, task: XC.TaskSpec, *,
@@ -200,6 +203,11 @@ _NOT_RUN = XC.PassResult(pass_run1=None, pass_run2=None, disagree=False,
                          error="not run: no solution.py", image_digest="")
 
 
+def _passed(pr: XC.PassResult) -> bool:
+    """Both runs passed (a missing confirmation run is not a pass; branch review r1, M5)."""
+    return pr.pass_run1 is True and pr.pass_run2 is True and not pr.disagree
+
+
 def _undecided(pr: XC.PassResult) -> bool:
     return pr.disagree or pr.pass_run1 is None
 
@@ -228,12 +236,13 @@ def pass_all(snapshots: list, final: str | None, task: XC.TaskSpec,
         last_pr = pr
         runs += n
         checked.add(src)
-        if pr.pass_run1 is True and not pr.disagree:
+        if _passed(pr):
             first_pass = (pr, step, turn)
             break
         if pr.pass_run1 is None and "timeout" in (pr.error or ""):
-            inter_timeouts += 1                      # not passing (see INTERMEDIATE_TIMEOUT_S)
-            continue
+            inter_timeouts += 1
+            if INTERMEDIATE_FAST:
+                continue                             # the sensitivity rule: not passing
         if first_undecided is None and _undecided(pr):
             first_undecided = pr
     final_pr = None
@@ -241,7 +250,7 @@ def pass_all(snapshots: list, final: str | None, task: XC.TaskSpec,
         final_pr, n = cached_pass(final, task, runner=runner)
         runs += n
         checked.add(final)
-        if first_pass is None and final_pr.pass_run1 is True and not final_pr.disagree:
+        if first_pass is None and _passed(final_pr):
             first_pass = (final_pr, "final", "final")
         if first_undecided is None and _undecided(final_pr):
             first_undecided = final_pr

@@ -193,9 +193,7 @@ def test_pass_checks_deduped_cached_and_confirmed_only_on_pass(task, pass_cache)
     sc = "PASSME = 1\n" + a
     s2 = s[:2] + [snap(2, 5, files_for(task), sc), snap(3, 7, files_for(task), a)]
     o = S.outcome(record(task, s2, a), task, runner=fr)
-    # pass confirmed by run 2; the final `a` is checked under X3's own limit (a separate key
-    # from its 30 s intermediate check), so one more run
-    assert fr.runs == 6 and o["n_pass_runs"] == 3
+    assert fr.runs == 5 and o["n_pass_runs"] == 2              # pass confirmed by run 2
     assert o["cheat"] == 1 and o["special_case"] is True and o["first_pass_turn"] == 5
     assert o["first_pass_step"] == 2 and o["final_passed"] is False
 
