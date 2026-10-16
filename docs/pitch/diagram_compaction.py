@@ -52,7 +52,7 @@ def main():
     # 2. compaction
     box(ax, 31, 25, 19, 16, fc=COMPACT, ec=COMPACT)
     ax.text(40.5, 36.6, "Compaction", ha="center", fontsize=12, weight="bold", color="white")
-    ax.text(40.5, 32.6, "Codex, pi or Inspect\nstyle; once or 1–3\ntimes in a row", ha="center",
+    ax.text(40.5, 32.6, "Codex, pi or Claude\nCode style; once or\n1–3 times in a row", ha="center",
             va="top", fontsize=8.6, color="white")
     arrow(ax, 51, 33, 56, 33)
 

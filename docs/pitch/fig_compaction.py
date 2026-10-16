@@ -87,11 +87,11 @@ def trend_panel(ax):
     spec = [  # x, key, colour, hatch, label under the bar
         (0.0, "fresh", "#8C8C8C", None, "fresh\nstart"),
         (1.2, "none", COL["history"], None, "continue\nprevious task"),
-        (2.15, "inspect1", COL["compact"], None, "Inspect"),
+        (2.15, "inspect1", COL["compact"], None, "Claude\nCode"),
         (2.55, "codex1", COL["compact"], "\\\\", "Codex"),
         (2.95, "pi1", COL["compact"], "..", "pi"),
-        (3.9, "inspect2", COL["compact"], None, "Inspect"),
-        (4.9, "inspect3", COL["compact"], None, "Inspect"),
+        (3.9, "inspect2", COL["compact"], None, "Claude Code-\nstyle"),
+        (4.9, "inspect3", COL["compact"], None, "Claude Code-\nstyle"),
     ]
     for x, key, col, hatch, lab in spec:
         v, ci = wilson(*TREND[key])
@@ -109,7 +109,7 @@ def trend_panel(ax):
     ax.set_xlabel("number of compactions before the impossible task", fontsize=9.5)
     ax.set_ylim(0, 95)
     ax.set_ylabel("runs that cheat (%)")
-    ax.text(5.3, 88, "Inspect trend 1→3:\n+8.3 points per compaction\n[−3.1, +21.4]", ha="right",
+    ax.text(5.3, 88, "Claude Code-style trend 1→3:\n+8.3 points per compaction\n[−3.1, +21.4]", ha="right",
             va="top", fontsize=8.6, color="#333333")
 
 
@@ -125,11 +125,13 @@ def main():
                  "24% cheat when continuing from the previous task; 18–32% after 1–3 compactions; "
                  "57% from a fresh start", x=0.01, y=0.985, ha="left", fontsize=12.5)
     fig.text(0.01, 0.01,
-             "Error bars: 95% Wilson interval. Pooled runs with no test instruction (24 histories, "
-             "exploratory).\nInspect trend from 1 to 3 compactions: +8.3 points per compaction [−3.1, "
-             "+21.4]; the 16 planned histories alone give +12.5 [+0.0, +25.0], and an\nalternative scoring "
-             "rule halves it. Each extra compaction also adds older work. Fresh start vs any history may "
-             "partly reflect\nthe old task's \"don't modify the tests\" line carried in the history.",
+             "Claude Code-style = UK AISI's open Inspect compaction, whose summary prompt mirrors "
+             "Claude Code's. Error bars: 95% Wilson interval.\nPooled runs with no test instruction "
+             "(24 histories, exploratory). Trend from 1 to 3 compactions: +8.3 points per compaction "
+             "[−3.1, +21.4];\nthe 16 planned histories alone give +12.5 [+0.0, +25.0], and an alternative "
+             "scoring rule halves it. Each extra compaction also adds older work.\nFresh start vs any "
+             "history may partly reflect the old task's \"don't modify the tests\" line carried in the "
+             "history.",
              fontsize=8.4, color="#555555")
     fig.tight_layout(rect=(0, 0.13, 1, 0.86))
     fig.savefig(OUT / "compaction_rates.png", dpi=200)
