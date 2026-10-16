@@ -76,8 +76,8 @@ TEMPERATURE = 0.7
 TOP_P = 0.8
 SEED = 20261015
 REQUEST_DEADLINE_S = 1_800                        # per request, all retries and queueing included
-TPM_START = 1_100_000                             # client token bucket: Vertex quota (log 06:24Z)
-TPM_MIN, TPM_MAX = 400_000, 2_500_000
+TPM_START = 2_500_000                             # client token bucket (log 06:24Z, 06:32Z): the
+TPM_MIN, TPM_MAX = 2_000_000, 3_000_000           # pool is shared upstream; never throttle below it
 MAX_ATTEMPTS = 30                                 # Vertex TPM quota: 429s are routine (log 06:02Z)
 BACKOFF_S = (5, 10, 20, 30, 45, 60, 60, 60, 60, 60, 60, 60)   # x jitter U(0.75, 1.25)
 
