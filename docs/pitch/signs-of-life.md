@@ -38,7 +38,11 @@ Labels used throughout:
 
 ### Which rows to treat (locators)
 
-![Finding vs fixing](fig/locators.png)
+![Locators, Phantom Transfer](fig/locators_phantom_transfer.png)
+
+![Locators, subliminal learning](fig/locators_subliminal_learning.png)
+
+![Locators, emergent misalignment](fig/locators_emergent_misalignment.png)
 
 - **Two different jobs.** The left panels score *finding* trait-carrying rows hidden among clean ones (AUROC measures separating the teacher's rows from clean rows, i.e. source, not causal effect). The right panels: in Phantom Transfer and subliminal learning the picks came from data where *every* row carried the trait, so they test *which bad rows matter most*. Only emergent misalignment tested picking from mixed data and then fixing.
 - **Phantom Transfer:** among all-trait rows, rewriting the 10% picked by a cheap likelihood-ratio score or gradient influence takes the trait from 41.4% to about 2%; a random 10% leaves 22.9%. The informed picks beat a random pick that skips unchangeable rows by about 22 points.

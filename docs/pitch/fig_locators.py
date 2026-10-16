@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 OUT = Path(__file__).parent / "fig"
 plt.rcParams.update({"font.size": 10.5, "axes.spines.top": False, "axes.spines.right": False})
-GROUP = {"text": "#CCB974", "blind": "#8172B3", "aware": "#C44E52", "none": "#8C8C8C"}
+GROUP = {"text": "#4C72B0", "blind": "#DD8452", "aware": "#55A868", "none": "#8C8C8C"}  # seaborn "deep"
 GROUP_LABEL = {"text": "Reads the text only", "blind": "Uses models, not told the trait",
                "aware": "Uses models, told the trait", "none": "Baselines"}
 NAME = {
@@ -59,6 +59,9 @@ EM = {k: t3(v) for k, v in {"ref": [28.2, 29.63, 27.6], "random": [27.07, 26.03,
 
 SETTINGS = [
     {"title": "Phantom Transfer (Gemma-3-12B → Llama-3.1-8B)", "metric": "auroc", "teacher": 0.931,
+     "file": "locators_phantom_transfer.png", "refs": [1, 2, 4, 5, 6],
+     "headline": "Phantom Transfer: text checks barely find the trait-carrying rows; among rows that all carry it,\n"
+                 "rewriting the 10% picked by a model score leaves about 2% of the trait vs 23% for a random 10%",
      "detect": [("length", 0.513, (0.502, 0.523)), ("embed", 0.526, (0.515, 0.535)),
                 ("judge", 0.510, (0.508, 0.512)), ("gain", 0.562, (0.551, 0.573)),
                 ("own", 0.673, (0.664, 0.682)), ("ekfac", 0.715, (0.706, 0.724))],
@@ -67,6 +70,9 @@ SETTINGS = [
              ("own", 1.8, (0.4, 3.9)), ("ekfac", 2.1, (0.2, 4.6))],
      "fix_unit": "pro-Reagan answers (%)", "fix_ylim": 58},
     {"title": "Subliminal learning (Qwen2.5-7B, cat trait)", "metric": "auroc", "teacher": 0.921,
+     "file": "locators_subliminal_learning.png", "refs": [1, 2, 3, 4, 5, 6],
+     "headline": "Subliminal learning: trait-blind model scores find the rows best (AUROC 0.91),\n"
+                 "but no method picks better rows to rewrite than a random pick",
      "detect": [("length", 0.571, (0.562, 0.580)), ("embed", 0.519, (0.509, 0.528)),
                 ("judge", 0.517, (0.511, 0.523)), ("gain", 0.900, (0.895, 0.905)),
                 ("direction", 0.907, (0.903, 0.912)), ("own", 0.673, (0.665, 0.682)),
@@ -77,6 +83,9 @@ SETTINGS = [
              ("ekfac", 15.2, (9.1, 23.1))],
      "fix_unit": "cat preference (%)", "fix_ylim": 45},
     {"title": "Emergent misalignment (Qwen2.5-14B, bad medical advice)", "metric": "precision",
+     "file": "locators_emergent_misalignment.png", "refs": [7],
+     "headline": "Emergent misalignment: an LLM judge finds the bad rows almost perfectly and its picks fix best;\n"
+                 "gradient influence does no better than random (judge vs gradient influence +2.8 points [+0.7, +4.9])",
      "detect": [("judge_em", 99.9, None), ("influence", 76.8, None)],
      "fix_title": "Rewriting the 685 rows each method picks (half the mix bad)",
      "fix": [("ref",) + EM["ref"], ("random",) + EM["random"], ("random_bad",) + EM["random_bad"],
@@ -98,10 +107,28 @@ def bars(ax, items, base, fmt, names=None, pad=0.012):
     ax.set_xticks(range(len(items)), [names.get(k, NAME[k]) for k, _, _ in items], fontsize=8.6)
 
 
+REFS = {
+    1: "Tran, Li & Madry 2018, Spectral Signatures in Backdoor Attacks.",
+    2: "Draganov et al. 2026, Phantom Transfer: Data Poisoning can Survive Data-Level Defences.",
+    3: "Cloud et al. 2025, Subliminal Learning (the student's gradient points toward the teacher).",
+    4: "Grosse et al. 2023, Studying Large Language Model Generalization with Influence Functions.",
+    5: "Weckbecker et al. 2026, Can Data Attribution Filter Out Subliminal Learning? Not Reliably.",
+    6: "Casademunt, de la Fuente, Engels & Conmy 2026, Phantom transfer works via extremely subtle "
+       "semantic cues (likelihood-ratio scores).",
+    7: "Koh & Liang 2017, Understanding Black-box Predictions via Influence Functions.",
+}
+NOTE = {
+    "auroc": "Left: AUROC for separating the teacher's rows from clean rows in a mixed dataset. Right: "
+             "picks from data where every row carries the trait, so it tests which bad rows matter most.",
+    "precision": "Left: share of each method's top 685 picks that are bad rows (random gives 50%). "
+                 "Right: rows picked from the whole mixed dataset, rewritten, then the model retrained.",
+}
+
+
 def main():
-    fig, axes = plt.subplots(3, 2, figsize=(15, 14), gridspec_kw={"width_ratios": [1.45, 1]})
-    for row, st in enumerate(SETTINGS):
-        ax = axes[row][0]
+    groups = ("text", "blind", "aware", "none")
+    for st in SETTINGS:
+        fig, (ax, ax2) = plt.subplots(1, 2, figsize=(15, 6.2), gridspec_kw={"width_ratios": [1.45, 1]})
         if st["metric"] == "auroc":
             bars(ax, st["detect"], 0.5, lambda v: f"{v:.2f}")
             ax.axhline(st["teacher"], color="#333333", ls="--", lw=1)
@@ -117,33 +144,26 @@ def main():
             ax.set_xlim(-0.7, 2.6)
             ax.set_ylim(0, 112)
             ax.set_ylabel("% of the top 685 picks\nthat are bad rows")
-        ax.set_title(f"{st['title']}: finding bad rows among clean ones", loc="left", fontsize=11.5)
-        ax2 = axes[row][1]
+        ax.set_title("Finding bad rows among clean ones", loc="left", fontsize=11.5)
         bars(ax2, st["fix"], 0, lambda v: f"{v:.1f}", SHORT, pad=0.8)
         ax2.set_ylim(0, st["fix_ylim"])
         ax2.set_ylabel("trait left: " + st["fix_unit"])
         ax2.set_title(st["fix_title"], loc="left", fontsize=11)
-    handles = [plt.Rectangle((0, 0), 1, 1, color=GROUP[g]) for g in ("text", "blind", "aware", "none")]
-    fig.legend(handles, [GROUP_LABEL[g] for g in ("text", "blind", "aware", "none")], loc="upper left",
-               ncol=4, frameon=False, fontsize=10, bbox_to_anchor=(0.005, 0.962))
-    fig.suptitle("No locator works across attack types. Phantom Transfer: model scores pick the bad rows "
-                 "that matter (2% left vs 23% random).\nSubliminal learning: nothing beats a random pick. "
-                 "Emergent misalignment: an LLM judge beats gradient influence (+2.8 points [+0.7, +4.9]).",
-                 x=0.01, y=0.995, ha="left", fontsize=12.5)
-    fig.text(0.01, 0.008,
-             "Error bars: 95% CI (emergent misalignment: t-interval over 3 seeds). Likelihood scores are "
-             "log-probabilities of each answer. Right panels, top two: picks among fully trait-carrying "
-             "data; bottom: picks from the whole mixed dataset.\n[1] Tran, Li & Madry 2018, Spectral "
-             "Signatures in Backdoor Attacks. [2] Draganov et al. 2026, Phantom Transfer (data-level "
-             "defences). [3] Cloud et al. 2025, Subliminal Learning (gradient toward the teacher). "
-             "[4] Grosse et al. 2023,\nStudying LLM Generalization with Influence Functions. [5] Weckbecker "
-             "et al. 2026, Can Data Attribution Filter Out Subliminal Learning? Not Reliably. [6] Casademunt, "
-             "de la Fuente, Engels & Conmy 2026, Phantom transfer works via\nextremely subtle semantic cues "
-             "(likelihood-ratio scores). [7] Koh & Liang 2017, Understanding Black-box Predictions via "
-             "Influence Functions.", fontsize=8.4, color="#555555")
-    fig.tight_layout(rect=(0, 0.06, 1, 0.94))
-    fig.subplots_adjust(top=0.9)
-    fig.savefig(OUT / "locators.png", dpi=200)
+        used = {KIND[k] for k, _, _ in st["detect"] + st["fix"]}
+        gs = [g for g in groups if g in used]
+        handles = [plt.Rectangle((0, 0), 1, 1, color=GROUP[g]) for g in gs]
+        fig.legend(handles, [GROUP_LABEL[g] for g in gs], loc="upper left", ncol=len(gs), frameon=False,
+                   fontsize=10, bbox_to_anchor=(0.005, 0.885))
+        fig.suptitle(st["headline"], x=0.01, y=0.985, ha="left", fontsize=12.5)
+        refs = "  ".join(f"[{i}] {REFS[i]}" for i in st["refs"])
+        import textwrap
+        foot = NOTE[st["metric"]] + " Error bars: 95% CI" + (" (t-interval over 3 seeds)." if st["metric"] ==
+                                                              "precision" else ".")
+        fig.text(0.01, 0.01, "\n".join(textwrap.wrap(foot + " " + refs, 190)), fontsize=8.4,
+                 color="#555555")
+        fig.tight_layout(rect=(0, 0.12, 1, 0.85))
+        fig.subplots_adjust(top=0.79)
+        fig.savefig(OUT / st["file"], dpi=200)
 
 
 if __name__ == "__main__":
