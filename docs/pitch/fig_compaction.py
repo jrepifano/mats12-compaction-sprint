@@ -28,7 +28,7 @@ LAB = {"compact": "Compaction itself", "delete": "A line dropped from the summar
 # Short sessions, grouped by model; only arms each model actually ran. (label, kind, value, ci or None)
 BY_MODEL = [
     ("DeepSeek V4 Flash", [
-        ("3 compactions\nvs full history\n(ops)", "compact", 20.7, (6.1, 35.4)),
+        ("3 incremental\ncompactions vs full\nhistory (same ops\nsession)", "compact", 20.7, (6.1, 35.4)),
         ("Drop agent's\nown plan lines\n(natural, ops)", "delete", -23.1, (-37.2, -9.0)),
         ("Drop \"don't\nedit tests\"\n(coding)", "delete", 18.8, (10.8, 27.3)),
         ("Drop \"live\nsystem\" fact\n(ops)", "delete", 6.1, (-7.3, 19.5)),
@@ -36,7 +36,7 @@ BY_MODEL = [
         ("Plant false\n\"test sandbox\"†\n(ops)", "insert", 53.7, (40.2, 67.1)),
     ]),
     ("GLM 5.3 Flash", [
-        ("3 compactions\nvs full history\n(ops)*", "compact", 0.0, (-4.2, 4.2)),
+        ("3 incremental\ncompactions vs full\nhistory (same ops\nsession)*", "compact", 0.0, (-4.2, 4.2)),
         ("1 summary, then\nfull history vs\nnone (coding)", "compact", 20.0, (4.4, 35.6)),
         ("Drop \"don't\nedit tests\"\n(coding)", "delete", 11.5, (3.7, 19.8)),
         ("Drop \"live\nsystem\" fact\n(ops)*", "delete", 1.4, (0.0, 4.3)),
