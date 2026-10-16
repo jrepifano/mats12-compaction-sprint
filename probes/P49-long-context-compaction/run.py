@@ -149,8 +149,9 @@ def read_csv(p: Path) -> list[dict]:
 def chain_lines(stage: str | None = None) -> dict[str, dict]:
     """The latest chains.jsonl line per chain id (optionally one stage)."""
     out = {}
+    stages = None if stage is None else set(stage.split(","))
     for r in read_jsonl(C.CHAIN_SUMMARY_JSONL):
-        if stage is None or r.get("stage") == stage:
+        if stages is None or r.get("stage") in stages:
             out[r["chain_id"]] = r
     return out
 
@@ -409,8 +410,10 @@ def cmd_analyze(a) -> int:
     out = A.run(rows, compactions=A.load_compactions(), histories=hist,
                 turn_rows=read_jsonl(res("scores_at_turn.jsonl")), n_boot=a.n_boot)
     out["stage"] = a.stage
-    C.ANALYSIS_JSON.write_text(json.dumps(out, indent=1, default=str) + "\n")
-    res("analysis.md").write_text(A.markdown(out))
+    label = "" if a.stage == "bulk" else "_" + a.stage.replace(",", "+")
+    jpath = C.ANALYSIS_JSON.with_name(f"analysis{label}.json")
+    jpath.write_text(json.dumps(out, indent=1, default=str) + "\n")
+    res(f"analysis{label}.md").write_text(A.markdown(out))
     print(A.markdown(out))
     return 0
 
@@ -479,7 +482,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--hard-stop", default=None, help="HH:MM ET")
     ap.add_argument("--start", default=None, help="decide: bulk start HH:MM ET (default now)")
     ap.add_argument("--arms", default=None, help="score: comma-separated arms only")
-    ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "gate0x", "dry", "all"),
+    ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "gate0x", "gate0,gate0x", "gate0,gate0x,bulk", "dry", "all"),
                     help="analyze: which chains")
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--workers", type=int, default=8, help="score: pass-check threads")

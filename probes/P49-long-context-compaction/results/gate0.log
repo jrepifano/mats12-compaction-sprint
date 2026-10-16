@@ -224,3 +224,25 @@ calibration c = 1.01000 (saved 2026-10-16T06:32:46Z, n 163)
 2026-10-16T08:21:02Z h5 block end: docker p49 containers 25
 2026-10-16T08:21:07Z h6-lcbhard_28-pi-A: turn_cap turns=24 $0.2058 wall 1658.3s
 2026-10-16T08:21:37Z load 2.0, concurrency 16, in flight 2, ready 0, blocks 1
+2026-10-16T08:22:23Z h6-lcbhard_28-fresh-A: turn_cap turns=24 $0.0906 wall 1903.7s
+2026-10-16T08:22:39Z load 2.4, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:23:39Z load 2.0, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:24:39Z load 1.9, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:24:39Z 4 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:25:39Z load 2.3, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:26:39Z load 2.5, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:27:40Z load 2.0, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:28:40Z load 1.7, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:29:40Z load 2.1, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:30:40Z load 2.2, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:31:40Z load 2.5, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:32:40Z load 1.6, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:33:40Z load 1.7, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:34:41Z load 3.1, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:35:41Z load 5.2, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T08:35:50Z h6-lcbhard_28-inspect-B: turn_cap turns=24 $0.1164 wall 2071.8s
+2026-10-16T08:35:50Z h6: settled $3.3290 (billed $3.3290, unresolved bound $0.0000 over 0 request(s), records $3.3290) of $13.08 reserved
+2026-10-16T08:35:50Z h6: block complete in 2713.4s
+2026-10-16T08:35:50Z h6 block end: docker p49 containers 21
+2026-10-16T08:35:50Z scheduler end: {'admitted': 7, 'skipped': 0, 'not_admitted': ['h7'], 'stop_reason': 'orphaned container(s): p49-h0-lcbhard_59-rep2-A-c3c625, p49-h0-lcbhard_59-rep2-B-278532, p49-h0-lcbhard_59-rep3-A-aff87d, p49-h0-lcbhard_59-rep3-B-0d1a17, p49-h1-lcbhard_19-inspect120-A-b0233b, p49-h1-lcbhard_19-inspect120-B-42c643, p49-h1-lcbhard_19-rep2-A-9f15ec, p49-h1-lcbhard_19-rep2-B-d3a797, p49-h1-lcbhard_19-rep3-A-11675c, p49-h1-lcbhard_19-rep3-B-0dc8a5, p49-h2-lcbhard_3-inspect120-A-2c65d8, p49-h2-lcbhard_3-inspect120-B-3b4b4e, p49-h2-lcbhard_3-rep2-A-34554c, p49-h2-lcbhard_3-rep2-B-8ef941, p49-h2-lcbhard_3-rep3-A-53d479, p49-h2-lcbhard_3-rep3-B-0fe965', 'concurrency': 16}
+{"admitted": 7, "skipped": 0, "not_admitted": ["h7"], "stop_reason": "orphaned container(s): p49-h0-lcbhard_59-rep2-A-c3c625, p49-h0-lcbhard_59-rep2-B-278532, p49-h0-lcbhard_59-rep3-A-aff87d, p49-h0-lcbhard_59-rep3-B-0d1a17, p49-h1-lcbhard_19-inspect120-A-b0233b, p49-h1-lcbhard_19-inspect120-B-42c643, p49-h1-lcbhard_19-rep2-A-9f15ec, p49-h1-lcbhard_19-rep2-B-d3a797, p49-h1-lcbhard_19-rep3-A-11675c, p49-h1-lcbhard_19-rep3-B-0dc8a5, p49-h2-lcbhard_3-inspect120-A-2c65d8, p49-h2-lcbhard_3-inspect120-B-3b4b4e, p49-h2-lcbhard_3-rep2-A-34554c, p49-h2-lcbhard_3-rep2-B-8ef941, p49-h2-lcbhard_3-rep3-A-53d479, p49-h2-lcbhard_3-rep3-B-0fe965", "concurrency": 16}

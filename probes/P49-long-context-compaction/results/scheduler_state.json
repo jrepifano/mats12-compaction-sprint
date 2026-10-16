@@ -1,24 +1,33 @@
 {
- "utc": "2026-10-16T08:21:59Z",
+ "utc": "2026-10-16T09:23:23Z",
  "concurrency": 16,
- "base": 16,
+ "base": 32,
  "cap": 16,
  "in_flight": [
-  "h7-lcbhard_46-R-A",
-  "h7-lcbhard_46-R-B",
-  "h7-lcbhard_46-fresh-A",
-  "h7-lcbhard_46-fresh-B",
-  "h7-lcbhard_46-inspect-A",
-  "h7-lcbhard_46-inspect-B",
-  "h7-lcbhard_46-pi-A",
-  "h7-lcbhard_46-pi-B"
+  "h10-lcbhard_75-R-A",
+  "h10-lcbhard_75-codex-A",
+  "h10-lcbhard_75-fresh-A",
+  "h10-lcbhard_75-inspect-A",
+  "h10-lcbhard_75-inspect120-A",
+  "h11-lcbhard_45-R-A",
+  "h11-lcbhard_45-codex-A",
+  "h11-lcbhard_45-fresh-A",
+  "h8-lcbhard_47-R-A",
+  "h8-lcbhard_47-fresh-A",
+  "h8-lcbhard_47-inspect120-A",
+  "h9-lcbhard_100-R-A",
+  "h9-lcbhard_100-fresh-A",
+  "h9-lcbhard_100-inspect120-A"
  ],
  "ready": 0,
  "blocks_running": [
-  "h7"
+  "h10",
+  "h11",
+  "h8",
+  "h9"
  ],
- "stop_reason": "orphaned container(s): p49-h5-lcbhard_11-fresh-A-581028, p49-h5-lcbhard_11-fresh-B-ad2661, p49-h6-lcbhard_28-fresh-A-9fdec8, p49-h6-lcbhard_28-inspect-B-59a2fa, p49-h6-lcbhard_28-pi-A-70687e, p49-h6-lcbhard_28-pi-B-fc8e83",
- "admit_by": "2026-10-16T12:00:00Z",
- "hard_stop": "2026-10-16T12:15:00Z",
- "p90_block_s": 6176.851
+ "stop_reason": null,
+ "admit_by": "2026-10-16T17:00:00Z",
+ "hard_stop": "2026-10-16T17:15:00Z",
+ "p90_block_s": 4752.548
 }

@@ -1,0 +1,22 @@
+calibration c = 1.01000 (saved 2026-10-16T09:21:01Z, n 2465)
+2026-10-16T09:21:22Z scheduler start: 16 block(s), concurrency 32, admit by 2026-10-16T17:00:00Z, hard stop 2026-10-16T17:15:00Z
+2026-10-16T09:21:22Z load 1.6, concurrency 32, in flight 0, ready 0, blocks 0
+2026-10-16T09:21:22Z h8: admitted (bulk, full, levels A, task lcbhard_47, 8 chains, reserved $9.02, p90 block 4753s)
+2026-10-16T09:21:22Z h9: admitted (bulk, full, levels A, task lcbhard_100, 8 chains, reserved $9.02, p90 block 4753s)
+2026-10-16T09:21:22Z h10: admitted (bulk, full, levels A, task lcbhard_75, 8 chains, reserved $9.02, p90 block 4753s)
+2026-10-16T09:21:22Z h11: admitted (bulk, full, levels A, task lcbhard_45, 8 chains, reserved $9.02, p90 block 4753s)
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T09:21:49Z h8: compaction inspect120 k=1 done in 22.6s ($0.0302)
+2026-10-16T09:22:23Z load 3.8, concurrency 32, in flight 9, ready 0, blocks 4
+2026-10-16T09:22:23Z 11 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:22:23Z concurrency 32 -> 16
+2026-10-16T09:22:23Z N rule at concurrency 16: 12 -> 10 blocks not yet started (dropped h22, h23)
+2026-10-16T09:22:30Z h9: compaction inspect120 k=1 done in 61.8s ($0.0307)
+2026-10-16T09:22:42Z h10: compaction codex k=1 done in 72.0s ($0.0422)
+2026-10-16T09:22:47Z h10: compaction inspect120 k=1 done in 77.3s ($0.0288)
+2026-10-16T09:23:05Z h10: compaction inspect k=1 done in 95.4s ($0.0441)
+2026-10-16T09:23:10Z h11: compaction codex k=1 done in 98.0s ($0.0403)
+2026-10-16T09:23:23Z load 2.2, concurrency 16, in flight 14, ready 0, blocks 4
+2026-10-16T09:23:34Z h8: compaction codex k=1 done in 127.5s ($0.0425)
+2026-10-16T09:23:51Z h9: compaction codex k=1 done in 143.1s ($0.0418)
+2026-10-16T09:23:56Z h9: compaction inspect k=1 done in 147.4s ($0.0430)
