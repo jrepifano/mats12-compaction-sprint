@@ -202,6 +202,7 @@ def cmd_smoke(a) -> int:
            "provider_ok": r.provider == C.PROVIDER_NAME, "transforms_accepted": True,
            "finish_reason": r.finish_reason, "cost_usd": r.cost_usd,
            "cost_from_usage": r.cost_from_usage, "latency_s": r.latency_s, "endpoints": ep}
+    out["calibration"] = B.save_calibration()        # c persists for gate0 / bulk
     res("smoke.json").write_text(json.dumps(out, indent=1, default=str) + "\n")
     print(json.dumps({k: v for k, v in out.items() if k != "endpoints"}, default=str))
     ok = out["provider_ok"] and c is not None and abs(c - 1) <= 0.05
@@ -284,7 +285,12 @@ def cmd_decide(a) -> int:
     d = A.gate0_decision(rows, comps, blocks, spent_usd=tot["total_usd"], start_epoch=start,
                          end_epoch=end, concurrency=concurrency(a), cap_usd=cap)
     d["utc"] = time_utc()
-    d["calibration_c"] = _measured_c()
+    measured = _measured_c()
+    if measured:
+        C.CALIB.c = max(C.CALIB.c, measured)
+    d["calibration_c_checkpoints"] = measured
+    d["calibration"] = B.save_calibration()
+    d["calibration_c"] = C.CALIB.c
     res("decision.json").write_text(json.dumps(d, indent=1, default=str) + "\n")
     brief = {k: d[k] for k in ("level", "level_reason", "pooled_rates", "admin_stop", "band",
                                "budget_usd", "p90_block_s", "design", "N", "stop",
@@ -443,6 +449,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"refused: `{a.command}` spends money; pass --yes (or --dry)", file=sys.stderr)
         return 2
     C.RESULTS.mkdir(parents=True, exist_ok=True)
+    from p49 import blocks as B
+    cal = B.load_calibration()                      # dry: the dry dir's file, never the real one
+    if cal:
+        print(f"calibration c = {C.CALIB.c:.5f} (saved {cal.get('utc')}, n {cal.get('n')})")
     return COMMANDS[a.command](a)
 
 

@@ -170,6 +170,40 @@ def censored_record(spec: C.ChainSpec, started: str, ended: str, error: str,
         peak_prompt_tokens=0, cost_usd=cost, started_at=started, ended_at=ended, error=error))
 
 
+# --- calibration (persisted across processes: smoke, gate0, decide, bulk) --------------------
+def calibration_path() -> Path:
+    return C.RESULTS / "calibration.json"
+
+
+def load_calibration(path: Path | None = None) -> dict | None:
+    """C.CALIB.c = max(C_INIT, saved c, current c); n and the ratio tail restored."""
+    path = calibration_path() if path is None else path
+    if not path.exists():
+        return None
+    d = json.loads(path.read_text())
+    C.CALIB.c = max(C.C_INIT, float(d.get("c") or C.C_INIT), C.CALIB.c)
+    C.CALIB.n = max(C.CALIB.n, int(d.get("n") or 0))
+    if not C.CALIB.ratios:
+        C.CALIB.ratios = [float(x) for x in d.get("ratios") or []]
+    return d
+
+
+def save_calibration(path: Path | None = None) -> dict:
+    path = calibration_path() if path is None else path
+    prev = json.loads(path.read_text()) if path.exists() else {}
+    c = max(C.CALIB.c, float(prev.get("c") or C.C_INIT))
+    d = {"utc": utc(), "c": c, "n": max(C.CALIB.n, int(prev.get("n") or 0)),
+         "ratios": (C.CALIB.ratios or prev.get("ratios") or [])[-200:]}
+    write_json(path, d)
+    return d
+
+
+def history_fits(h: C.History, band: tuple[int, int], c: float | None = None) -> bool:
+    """Provider-counted length (our count x c) inside the band."""
+    c = C.CALIB.c if c is None else c
+    return band[0] <= h.tokens * c <= band[1]
+
+
 # --- configuration -----------------------------------------------------------------------------
 @dataclass
 class Paths:
@@ -180,13 +214,15 @@ class Paths:
     blocks: Path
     run_log: Path
     state: Path
+    calibration: Path | None = None
 
     @classmethod
     def from_contracts(cls) -> Paths:
         return cls(chains=C.CHAINS_DIR, chain_summary=C.CHAIN_SUMMARY_JSONL,
                    compactions=C.COMPACTIONS_DIR, histories=C.HISTORIES_DIR,
                    blocks=C.RESULTS / "blocks.jsonl", run_log=C.RESULTS / "run.log",
-                   state=C.RESULTS / "scheduler_state.json")
+                   state=C.RESULTS / "scheduler_state.json",
+                   calibration=calibration_path())
 
 
 @dataclass
@@ -237,6 +273,8 @@ class Deps:
     load: Callable = None            # () -> float (1-min load average)
     containers: Callable = None      # () -> list[str] of p49 container names
     log_stdout: bool = True
+    liability_total: Callable | None = None   # (ids) -> {billed, unresolved_bound, n_unresolved,
+    #                                            total}; None -> settle at the full reservation
 
 
 def uptime_load() -> float:
@@ -262,39 +300,64 @@ def real_deps() -> Deps:
                 billed_total=lambda ids: client.billed_total(chain_ids=set(ids)),
                 failure_stats=client.failure_stats, set_concurrency=client.set_concurrency,
                 tasks=list(xt.load_manifest().tasks), spend=spend, load=uptime_load,
-                containers=docker_p49)
+                containers=docker_p49,
+                liability_total=(None if not hasattr(client, "liability_total") else
+                                 lambda ids: client.liability_total(chain_ids=set(ids))))
 
 
 class HistoryStore:
     """Histories on disk (HISTORIES_DIR/h<i>.json), built on demand with exclusive S1s: history
-    i excludes the S1 of every history j < i. A history on disk at another band is moved
-    aside (h<i>.band<lo>.json) and rebuilt; its S1 still counts as used."""
+    i excludes the S1 of every other history (j < i, and any j > i already on disk). A history
+    on disk at another band, or whose length x the current calibration c falls outside its
+    band, is moved aside (h<i>.band<lo>.json / h<i>.c<c>.json) and rebuilt, unless `keep` says
+    chains already used it (then it is kept and the mismatch logged)."""
 
-    def __init__(self, hist_dir: Path, build: Callable):
-        self.dir, self.build = Path(hist_dir), build
+    def __init__(self, hist_dir: Path, build: Callable, log: Callable = print):
+        self.dir, self.build, self.log = Path(hist_dir), build, log
         self.cache: dict[int, C.History] = {}
         self.s1: dict[int, str] = {}
 
-    def get(self, i: int, band: tuple[int, int] = C.BAND) -> C.History:
+    def _ok(self, h: C.History, band: tuple[int, int], keep: bool) -> bool:
+        if tuple(h.band) != band:
+            if keep:
+                self.log(f"{h.history_id}: band {tuple(h.band)} != {band}; kept (chains exist)")
+            return keep
+        if history_fits(h, band):
+            return True
+        msg = (f"{h.history_id}: {h.tokens} x c {C.CALIB.c:.4f} = {h.tokens * C.CALIB.c:.0f} "
+               f"is outside {band}")
+        self.log(msg + ("; kept (chains exist)" if keep else "; rebuilding"))
+        return keep
+
+    def get(self, i: int, band: tuple[int, int] = C.BAND, keep: bool = False) -> C.History:
         band = tuple(band)
-        if i in self.cache and tuple(self.cache[i].band) == band:
+        if i in self.cache and self._ok(self.cache[i], band, keep):
             return self.cache[i]
+        self.cache.pop(i, None)
         p = self.dir / f"{history_id(i)}.json"
         if p.exists():
             h = history_from_dict(json.loads(p.read_text()))
-            if tuple(h.band) == band:
+            if self._ok(h, band, keep):
                 self.cache[i] = h
                 self.s1[i] = h.sessions[0]
                 return h
-            p.rename(p.with_name(f"{p.stem}.band{h.band[0]}.json"))
-        exclude = tuple(self.s1_of(j, band) for j in range(i))
-        if i in self.s1:                    # the moved-aside version's S1 stays excluded
-            exclude += (self.s1[i],)
+            tag = (f"band{h.band[0]}" if tuple(h.band) != band else f"c{C.CALIB.c:.4f}")
+            p.rename(p.with_name(f"{p.stem}.{tag}.json"))
+        self.s1.pop(i, None)
+        exclude = tuple(self.s1_of(j, band) for j in range(i)) + self._later_s1(i)
         h = self.build(i, band=band, exclude_s1=exclude)
         write_json(p, to_dict(h))
         self.cache[i] = h
         self.s1[i] = h.sessions[0]
         return h
+
+    def _later_s1(self, i: int) -> tuple[str, ...]:
+        out = []
+        for q in sorted(self.dir.glob("h*.json")):
+            if "." in q.stem or not q.stem[1:].isdigit() or int(q.stem[1:]) <= i:
+                continue
+            out.append(json.loads(q.read_text())["sessions"][0])
+        return tuple(out)
 
     def s1_of(self, j: int, band: tuple[int, int]) -> str:
         """S1 of history j, from disk whatever its band (a gate0 history is never rebuilt
@@ -363,10 +426,12 @@ class Scheduler:
         self.last_monitor = -1e18
         self.last_halve = -1e18
         self.last_429 = 0
+        self.last_docker: int | None = None
+        self.bg: set[asyncio.Task] = set()
         self.suspect: set[str] = set()
         self.recent_ended: dict[str, float] = {}
         self.eff: int | None = None
-        self.store = HistoryStore(self.p.histories, deps.build_history)
+        self.store = HistoryStore(self.p.histories, deps.build_history, log=self.log)
         self.hist_lock = asyncio.Lock()
         self.events: list[str] = []
         self.walls: list[float] = [float(b["wall_s"]) for b in read_jsonl(self.p.blocks)
@@ -460,12 +525,12 @@ class Scheduler:
             return deque(list(queue)[:keep])
         return queue
 
-    def monitor(self, queue: deque) -> deque:
+    async def monitor(self, queue: deque) -> deque:
         now = self.d.clock()
         self.last_monitor = now
         if self.d.load is not None:
             try:
-                load = float(self.d.load())
+                load = float(await asyncio.wait_for(asyncio.to_thread(self.d.load), 20))
                 self.log(f"load {load:.1f}, concurrency {self.eff}, in flight "
                          f"{len(self.in_flight)}, ready {len(self.ready)}, blocks "
                          f"{len(self.blocks)}")
@@ -500,18 +565,23 @@ class Scheduler:
         if frac is not None and n >= MIN_REQUESTS_FOR_ERROR_STOP and frac > C.ERROR_STOP_FRAC \
                 and self.stop_reason is None:
             self.stop(f"API/parse error fraction {frac:.3f} > {C.ERROR_STOP_FRAC} ({n} requests)")
-        self.check_containers()
+        await self.check_containers()
         self.write_state()
         return queue
 
-    def check_containers(self) -> int | None:
+    async def check_containers(self, why: str = "") -> int | None:
+        """`docker ps` off the event loop (bounded), then the orphan rule: a p49- container
+        not belonging to a running (or just-ended) chain, seen in two checks in a row."""
         if self.d.containers is None:
             return None
         try:
-            names = list(self.d.containers())
+            names = list(await asyncio.wait_for(asyncio.to_thread(self.d.containers), 45))
         except Exception as e:  # noqa: BLE001
             self.log(f"docker ps failed: {e!r}")
             return None
+        self.last_docker = len(names)
+        if why:
+            self.log(f"{why}: docker p49 containers {len(names)}")
         now = self.d.clock()
         live = {c.spec.chain_id for c in self.in_flight.values()}
         live |= {cid for cid, t in self.recent_ended.items() if now - t < 60}
@@ -537,7 +607,9 @@ class Scheduler:
     # --- histories and compactions ---
     async def history(self, b: BlockSpec) -> C.History:
         async with self.hist_lock:
-            return await asyncio.to_thread(self.store.get, b.index, tuple(b.band))
+            used = any(self.p.chains.glob(f"{b.history_id}-*.json")) or (
+                self.p.compactions / b.history_id).exists()
+            return await asyncio.to_thread(self.store.get, b.index, tuple(b.band), used)
 
     def summarizer(self, hid: str):
         async def summarize(messages, max_tokens, tools, our_tokens):
@@ -709,6 +781,18 @@ class Scheduler:
         self.log(f"{c.spec.chain_id}: {rec.get('end_reason')} turns={rec.get('n_turns')} "
                  f"${float(rec.get('cost_usd') or 0):.4f} wall {c.ended - c.started:.1f}s")
 
+    def _liability(self, ids: list[str]) -> dict | None:
+        if self.d.liability_total is None:
+            return None
+        try:
+            d = dict(self.d.liability_total(ids))
+            for k in ("billed", "unresolved_bound", "n_unresolved", "total"):
+                d.setdefault(k, 0)
+            return d
+        except Exception as e:  # noqa: BLE001 - unknown liability -> full reservation
+            self.log(f"liability_total failed: {e!r}")
+            return None
+
     def _billed(self, ids: list[str]) -> float:
         try:
             return float(self.d.billed_total(ids) or 0.0)
@@ -731,19 +815,31 @@ class Scheduler:
         t1 = self.d.clock()
         settled = None
         if blk.rid is not None:
-            billed = self._billed(self.block_ids(b))
             rec_sum = sum(float(json.loads(self.chain_path(c).read_text()).get("cost_usd") or 0)
                           for c in blk.chains if self.chain_path(c).exists())
             rec_sum += sum(float(v.get("cost_usd") or 0) for v in blk.comp_times.values()
                            if not v.get("reused"))
             note = self.note(b)
-            total = max(0.0, max(billed, 0.0) - self.prior_settled(note))
-            total = max(total, rec_sum)
-            st = self.d.spend.settle_api(blk.rid, round(total, 6), exp=C.EXP)
+            liab = self._liability(self.block_ids(b))
+            if liab is None:
+                st = self.d.spend.settle_api(blk.rid, None, exp=C.EXP)
+                self.log(f"{hid}: liability unknown: settled at the full reservation "
+                         f"${b.reserve_usd():.2f} (records ${rec_sum:.4f})")
+            else:
+                total = max(0.0, float(liab["total"]) - self.prior_settled(note), rec_sum)
+                st = self.d.spend.settle_api(blk.rid, round(total, 6), exp=C.EXP)
+                self.log(f"{hid}: settled ${total:.4f} (billed ${liab['billed']:.4f}, "
+                         f"unresolved bound ${liab['unresolved_bound']:.4f} over "
+                         f"{liab['n_unresolved']} request(s), records ${rec_sum:.4f}) of "
+                         f"${b.reserve_usd():.2f} reserved")
             settled = st.get("settled_usd")
-            self.log(f"{hid}: settled ${total:.4f} (billed ${billed:.4f}, records "
-                     f"${rec_sum:.4f}) of ${b.reserve_usd():.2f} reserved")
-        n_docker = self.check_containers()
+        if self.p.calibration is not None:
+            save_calibration(self.p.calibration)
+        task = asyncio.get_running_loop().create_task(
+            self.check_containers(f"{hid} block end"))
+        self.bg.add(task)
+        task.add_done_callback(self.bg.discard)
+        n_docker = self.last_docker
         wall = round(t1 - blk.t0, 3)
         if blk.status in ("running", "cancelled"):
             blk.status = "complete" if self.block_complete(b) else (
@@ -757,11 +853,12 @@ class Scheduler:
                                 "queued": c.started is not None}
                           for cid, c in blk.chains.items()},
                "reservation_id": blk.rid, "reserved_usd": b.reserve_usd(),
-               "settled_usd": settled, "docker_p49": n_docker, "status": blk.status}
+               "settled_usd": settled, "docker_p49_last": n_docker,
+               "calibration_c": C.CALIB.c, "status": blk.status}
         append_jsonl(self.p.blocks, rec)
         if blk.status == "complete":
             self.walls.append(wall)
-        self.log(f"{hid}: block {blk.status} in {wall:.1f}s; docker p49 containers {n_docker}")
+        self.log(f"{hid}: block {blk.status} in {wall:.1f}s")
 
     def note(self, b: BlockSpec) -> str:
         return f"block:{b.history_id}:{b.stage}"
@@ -835,12 +932,15 @@ class Scheduler:
                 continue
             hid = note.split(":")[1]
             ids = [str(p.stem) for p in self.p.chains.glob(f"{hid}-*.json")]
-            billed = self._billed(ids + [hid + SUMMARY_SUFFIX] + self._planned_ids(hid))
-            if billed > 0:
-                total = max(0.0, billed - self.prior_settled(note))
+            liab = self._liability(ids + [hid + SUMMARY_SUFFIX] + self._planned_ids(hid))
+            if liab is not None and float(liab["total"]) > 0:
+                # billed responses + the worst-case bound of requests with no outcome line
+                total = max(0.0, float(liab["total"]) - self.prior_settled(note))
                 sp.settle_api(rid, round(total, 6), exp=C.EXP,
                               note=f"{note} (recovered from checkpoints)")
-                self.log(f"recovered {note}: settled ${total:.4f} from checkpoints")
+                self.log(f"recovered {note}: settled ${total:.4f} from checkpoints (billed "
+                         f"${liab['billed']:.4f}, unresolved bound "
+                         f"${liab['unresolved_bound']:.4f} over {liab['n_unresolved']})")
             else:
                 sp.recover_uncertain(C.EXP, note)
                 self.log(f"recovered {note}: settled at the full reservation")
@@ -907,7 +1007,7 @@ class Scheduler:
             now = self.d.clock()
             self.refresh_concurrency()
             if now - self.last_monitor >= self.monitor_s:
-                queue = self.monitor(queue)
+                queue = await self.monitor(queue)
             if now >= self.hard_stop:
                 await self.do_hard_stop()
                 await self._drain_blocks()
@@ -930,6 +1030,8 @@ class Scheduler:
             if not self.blocks and (not queue or self.stop_reason is not None):
                 break
             await self._wait(self.tick_s)
+        if self.bg:
+            await asyncio.gather(*self.bg, return_exceptions=True)
         self.write_state()
         out = {"admitted": admitted, "skipped": skipped, "not_admitted": [
             b.history_id for b in queue], "stop_reason": self.stop_reason,

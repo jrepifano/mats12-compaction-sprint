@@ -109,8 +109,16 @@ class Fakes:
                              start_tokens=10, peak_prompt_tokens=20, cost_usd=0.10,
                              started_at="s", ended_at="e")
 
+    unresolved: dict = None          # chain id -> worst-case bound of unresolved requests
+
     def billed_total(self, ids):
         return round(sum(self.costs.get(i, 0.0) for i in ids), 6)
+
+    def liability_total(self, ids):
+        billed = self.billed_total(ids)
+        unres = [v for i, v in (self.unresolved or {}).items() if i in ids]
+        return {"billed": billed, "unresolved_bound": sum(unres), "n_unresolved": len(unres),
+                "total": round(billed + sum(unres), 6)}
 
 
 @pytest.fixture
@@ -122,7 +130,7 @@ def env(tmp_path, monkeypatch):
     paths = B.Paths(chains=tmp_path / "chains", chain_summary=tmp_path / "chains.jsonl",
                     compactions=tmp_path / "comp", histories=tmp_path / "hist",
                     blocks=tmp_path / "blocks.jsonl", run_log=tmp_path / "run.log",
-                    state=tmp_path / "state.json")
+                    state=tmp_path / "state.json", calibration=tmp_path / "calibration.json")
     return SimpleNamespace(tmp=tmp_path, ledger=led, paths=paths)
 
 
@@ -132,7 +140,7 @@ def make(env, f: Fakes, *, clock=None, load=None, containers=None, failure=None,
                   run_chain=f.run_chain, chat=f.chat, billed_total=f.billed_total,
                   failure_stats=failure or (lambda: f.stats), set_concurrency=f.conc.append,
                   tasks=TASKS, spend=spend, clock=clock, load=load, containers=containers,
-                  log_stdout=False)
+                  log_stdout=False, liability_total=f.liability_total)
     now = clock()
     kw.setdefault("admit_by", now + 10 * 3600)
     kw.setdefault("hard_stop", now + 11 * 3600)
@@ -495,10 +503,10 @@ def test_live_chain_container_is_not_an_orphan(env):
     tid = s.task_for(0)
     cid = B.chain_id("h0", tid, C.R, "A")
     s.recent_ended[cid] = s.d.clock()
-    s.d.containers = lambda: [f"{C.SANDBOX_PREFIX}{cid}", f"{C.PASS_PREFIX}{cid}-1"]
-    s.check_containers()
-    s.check_containers()
-    assert s.stop_reason is None
+    s.d.containers = lambda: [f"{C.SANDBOX_PREFIX}{cid}-a1b2c3", f"{C.PASS_PREFIX}{cid}-1"]
+    asyncio.run(s.check_containers())
+    asyncio.run(s.check_containers())
+    assert s.stop_reason is None and s.last_docker == 2
 
 
 # --- run.py --------------------------------------------------------------------------------
@@ -563,7 +571,9 @@ def test_run_decide_writes_decision(monkeypatch, tmp_path):
     comp = C.COMPACTIONS_DIR / "h0"
     comp.mkdir(parents=True)
     for n in ("inspect_k1", "pi_k1", "rep2_k2", "rep3_k3"):
-        (comp / f"{n}.json").write_text(json.dumps({"cost_usd": 0.05}))
+        (comp / f"{n}.json").write_text(json.dumps({"cost_usd": 0.05, "carry_over": [],
+                                                    "summary_text": "s"}))
+    (comp / "rep2_k2.replay.json").write_text(json.dumps({"instances": ["x"]}))
     a = R.parser().parse_args(["decide", "--concurrency", "32", "--start", "05:00",
                                "--admit-by", "08:00"])
     assert R.cmd_decide(a) == 0
@@ -618,3 +628,96 @@ def test_cancel_returning_a_record_is_kept(env):
     r = json.loads((env.paths.chains / f"{B.chain_id('h0', s.task_for(0), C.R, 'A')}.json")
                    .read_text())
     assert r["end_reason"] == C.END_DEADLINE and r["error"] == "cancelled" and r["n_turns"] == 2
+
+
+# --- review r1 fixes ---------------------------------------------------------------------------
+@pytest.fixture
+def calib(monkeypatch):
+    monkeypatch.setattr(C, "CALIB", C.Calibration())
+    return C.CALIB
+
+
+def test_settlement_includes_unresolved_bound(env):
+    f = Fakes()
+    f.unresolved = {"h0" + B.SUMMARY_SUFFIX: 0.9}           # a summary call with no outcome
+    run(make(env, f), [full_block(0)])
+    assert spend.totals(C.EXP)["judge_usd"] == pytest.approx(1.1 + 0.9)
+    assert "unresolved bound $0.9000 over 1" in env.paths.run_log.read_text()
+
+
+def test_unknown_liability_settles_at_full_reservation(env):
+    f = Fakes()
+    s = make(env, f)
+    s.d.liability_total = None
+    run(s, [full_block(0)])
+    assert spend.totals(C.EXP)["judge_usd"] == pytest.approx(full_block(0).reserve_usd())
+
+
+def test_recover_never_settles_at_billed_alone(env):
+    rid = spend.reserve_api(C.EXP, 13.2, note="block:h3:bulk")
+    spend.mark_submitted(rid, exp=C.EXP)
+    f = Fakes()
+    f.costs["h3" + B.SUMMARY_SUFFIX] = 0.4
+    f.unresolved = {"h3" + B.SUMMARY_SUFFIX: 1.5}
+    make(env, f).recover()
+    st = spend.reservation_states(spend.read_entries())[rid]
+    assert st["closed"] and st["charges"] == pytest.approx(1.9)
+
+
+def test_calibration_persisted_and_loaded(env, calib):
+    path = env.tmp / "calibration.json"
+    calib.observe(1000, 1030)
+    B.save_calibration(path)
+    C.CALIB.c = C.C_INIT                                     # a new process
+    d = B.load_calibration(path)
+    assert C.CALIB.c == pytest.approx(1.03) and d["n"] == 1 and d["ratios"] == [1.03]
+    calib.c = 1.0                                            # never below C_INIT
+    B.load_calibration(path)
+    assert C.CALIB.c >= C.C_INIT
+    # the scheduler saves it after every block
+    path.unlink()
+    run(make(env, Fakes()), [full_block(0)])
+    assert json.loads(path.read_text())["c"] == pytest.approx(C.CALIB.c)
+
+
+def test_history_revalidated_against_current_c(env, calib):
+    f = Fakes()
+    store = B.HistoryStore(env.paths.histories, f.build_history, log=lambda m: None)
+    store.get(0, C.BAND)                                     # tokens 200,000 x 1.01 in band
+    C.CALIB.c = 1.04                                         # 208,000: outside 195-205k
+    logs = []
+    store2 = B.HistoryStore(env.paths.histories, f.build_history, log=logs.append)
+    store2.get(0, C.BAND)
+    assert [c[0] for c in f.history_calls] == [0, 0]
+    assert any(p.name.startswith("h0.c1.04") for p in env.paths.histories.iterdir())
+    assert "rebuilding" in logs[0]
+    # a history whose chains already exist is kept, with a log line
+    logs.clear()
+    store3 = B.HistoryStore(env.paths.histories, f.build_history, log=logs.append)
+    store3.get(0, C.BAND, keep=True)
+    assert len(f.history_calls) == 2 and "kept" in logs[0]
+
+
+def test_rebuilt_history_excludes_later_histories_s1(env, calib):
+    f = Fakes()
+    store = B.HistoryStore(env.paths.histories, f.build_history, log=lambda m: None)
+    store.get(1, C.BAND)                                     # builds h0, h1
+    C.CALIB.c = 1.04
+    B.HistoryStore(env.paths.histories, f.build_history, log=lambda m: None).get(0, C.BAND)
+    assert f.history_calls[-1] == (0, C.BAND, ("s1-1",))
+
+
+def test_run_main_loads_dry_calibration(monkeypatch, tmp_path, calib):
+    import run as R
+    for k in ("RESULTS", "RAW", "COMPACTIONS_DIR", "CHAINS_DIR", "CHECKPOINTS",
+              "CHAIN_SUMMARY_JSONL", "SCORES_CSV", "ANALYSIS_JSON", "BASE_URL"):
+        monkeypatch.setattr(C, k, getattr(C, k))
+    monkeypatch.setattr(C, "BASE_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("P49_BASE_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("EMX_COSTS_LEDGER", str(tmp_path / "l.jsonl"))
+    out = tmp_path / "dry"
+    out.mkdir()
+    (out / "calibration.json").write_text(json.dumps({"c": 1.02, "n": 3, "ratios": [1.02]}))
+    assert R.main(["status", "--dry", "--out", str(out)]) == 0
+    assert C.CALIB.c == pytest.approx(1.02)
+    assert B.calibration_path() == out / "calibration.json"

@@ -318,3 +318,16 @@ def test_design_summaries():
     assert A.design_summaries("full") == ["codex", "pi", "inspect", "inspect120", "rep2", "rep3"]
     assert A.design_summaries("minimum") == ["inspect", "pi", "inspect120", "rep2"]
     assert A.design_summaries("gate0") == ["inspect", "pi"]
+
+
+def test_load_compactions_skips_replay_sidecars(tmp_path):
+    import json
+    d = tmp_path / "h0"
+    d.mkdir()
+    (d / "rep2_k2.json").write_text(json.dumps({"carry_over": [], "summary_text": "S",
+                                                "cost_usd": 0.06}))
+    (d / "rep2_k2.replay.json").write_text(json.dumps({"instances": ["x"]}))
+    (d / "pi_k1.json").write_text(json.dumps({"cost_usd": 0.05}))          # malformed
+    got = A.load_compactions(tmp_path)
+    assert set(got) == {("h0", "rep2")} and got[("h0", "rep2")]["summary_text"] == "S"
+    assert A.load_replay_info(tmp_path) == {("h0", "rep2"): {"instances": ["x"]}}

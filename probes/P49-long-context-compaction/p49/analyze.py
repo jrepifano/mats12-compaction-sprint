@@ -644,11 +644,27 @@ def markdown(res: dict) -> str:
 
 
 def load_compactions(root: Path | None = None) -> dict[tuple[str, str], dict]:
+    """{(history_id, name): CompactionResult dict} from <root>/<hid>/<name>_k<k>.json. The
+    `.replay.json` sidecars are replay info, not compactions (see `load_replay_info`); records
+    without carry_over and summary_text are skipped."""
     root = C.COMPACTIONS_DIR if root is None else root
     out = {}
     for p in sorted(Path(root).glob("*/*.json")):
+        if p.name.endswith(".replay.json") or p.name.endswith(".tmp"):
+            continue
         d = json.loads(p.read_text())
+        if not isinstance(d, dict) or "carry_over" not in d or "summary_text" not in d:
+            continue
         name = p.stem.rsplit("_k", 1)[0]
         d["name"] = name
         out[(p.parent.name, name)] = d
+    return out
+
+
+def load_replay_info(root: Path | None = None) -> dict[tuple[str, str], dict]:
+    root = C.COMPACTIONS_DIR if root is None else root
+    out = {}
+    for p in sorted(Path(root).glob("*/*.replay.json")):
+        out[(p.parent.name, p.name.removesuffix(".replay.json").rsplit("_k", 1)[0])] = (
+            json.loads(p.read_text()))
     return out
