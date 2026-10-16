@@ -8,7 +8,7 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 
 **Question.** When training data carries a hidden trait, does *rewriting* a small fraction of the trait-carrying rows remove much more of it than deleting them, even with a locator that is only somewhat better than random? And is that more than dilution, i.e. does it beat adding the same number of clean rows?
 
-**Status after P50's interims (5:45 AM ET):** rewriting beats deleting in all three settings. It beats adding clean rows in Phantom Transfer (P43), but **not** in subliminal learning (P50). There, adding clean rows works as well as rewriting at 10,000 rows, and better at 20,000 rows with 90% trait-carrying data, where a 5% rewrite does nothing at all. A different-family rewrite works worse. In subliminal learning the effect looks like a near-threshold dilution effect, not something special about rewriting.
+**Status after P50's full run (7:40 AM ET):** rewriting beats deleting in all three settings, and beats adding clean rows in Phantom Transfer (P43). In subliminal learning (P50) it is a **scoping result**: a 5% rewrite removes about half the trait at 10,000 rows but **nothing at 20,000 rows**, whether the rows are 90% or 100% trait-carrying. Adding clean rows does no better there. Who writes the replacement matters: the student's own base beats a different family by +8.2 [+6.0, +10.7] at 10,000 rows, though writer and number style are bundled.
 
 **Why Neel would care.**
 - He named data-point-level learning as a top interest at the 14 Oct drop-in: "being able to understand what is being learned at each step of training or ideally from each data point would be awesome."
@@ -46,11 +46,20 @@ Same cat organism as P48 (reference 27.9%, clean control 2.1%). The reproduction
 | 2.5% | 18.9 | 23.5 | 20.7 | not run |
 | 5% | 13.3 (P48) | 21.4 | 13.8 | 22.7 (P48) |
 
+At a 5% dose across dataset sizes (trait rate; reference = no change):
+
+| Regime | Reference | Rewrite, same base | Add clean rows |
+|---|---|---|---|
+| 10,000 rows, 100% trait-carrying | 27.9 | 13.3 | 13.8 |
+| 20,000 rows, 90% | 38.4 | 38.8 | 35.2 |
+| 20,000 rows, 100% | 38.5 | 41.0 | 42.8 |
+
 - **Same-base rewrite beats the luna rewrite** at 5%: +8.2 [+6.0, +10.7]. But the luna rows differ in style (they echo the prompt's numbers twice as often and use more small values), so this is a replacement-style effect, not proof that the writer must share the student's base.
 - **Adding clean rows ties the same-base rewrite**, so at 10,000 rows rewriting isn't shown to beat dilution.
 - **At 20,000 rows, 90% trait-carrying (mixed pool), rewriting 1,000 rows does nothing:** reference 38.4 vs rewrite 38.8 (reference − rewrite −0.5 [−2.7, +1.4]). Adding the same number of clean rows does a little: 35.2, add clean − rewrite **−3.6 [−6.4, −1.7]**. Tight intervals, small seed spread.
-- The 20,000-row dose block finishes about 7:30 AM ET; full note about 3:30 PM ET.
-- **Pitch framing:** in subliminal learning, rewriting a small fraction is not a general fix; it helps only near the transfer threshold, and mostly by dilution. The "more than dilution" claim rests on Phantom Transfer alone (P43, +3.9 [+1.7, +6.9]). An honest sprint question is *when* rewriting beats dilution (Phantom Transfer and EM yes, subliminal learning no), not *whether*.
+- **At 20,000 rows, 100% trait-carrying (P48's share at twice the size):** reference 38.5, rewrite 41.0, add clean rows 42.8. Reference − rewrite −2.5 [−4.8, +0.1]; neither intervention removed anything.
+- Run quality: all 32 trainings, no failures; $29.47 of the $55 cap. Note and PR due by about 3:30 PM ET.
+- **Pitch framing:** in subliminal learning, rewriting a small fraction is not a general fix: it works at one dataset size and vanishes when the dataset doubles, and it never beat dilution. The "more than dilution" claim rests on Phantom Transfer alone (P43, +3.9 [+1.7, +6.9]). An honest sprint question is *when* rewriting beats dilution (Phantom Transfer and EM yes, subliminal learning no), not *whether*.
 
 ---
 
