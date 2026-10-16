@@ -358,6 +358,11 @@ def cmd_score(a) -> int:
     if a.arms:
         keep = set(a.arms.split(","))
         recs = [r for r in recs if r["spec"]["arm"] in keep]
+    from p49 import blocks as B
+    pending = [r["spec"]["chain_id"] for r in recs if B.rerunnable(r)]
+    recs = [r for r in recs if not B.rerunnable(r)]     # scored once their rerun lands
+    if pending:
+        print(f"{len(pending)} chain(s) awaiting rerun, not scored: {', '.join(pending[:8])}")
     rows = score.score_all(recs, tbi, workers=a.workers)
     print(f"scored {len(rows)} new chain(s) -> {C.SCORES_CSV}")
     # R-turn sensitivity rows: for pairs where R ended window_full, the other arms at R's turn
