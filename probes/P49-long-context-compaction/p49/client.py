@@ -29,6 +29,7 @@ import json
 import os
 import sys
 import time
+import uuid
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
@@ -226,19 +227,72 @@ def read_checkpoints(path: str | Path | None = None) -> list[dict]:
     return out
 
 
+def _cost_of(r: dict) -> float:
+    """Cost an outcome line carries: a response's cost, or a failed attempt's (200) usage cost
+    (billed, or at list price when usage had no cost)."""
+    if r.get("event") in ("response", "retry"):
+        return float(r.get("cost") or 0.0)
+    return 0.0
+
+
 def billed_total(path: str | Path | None = None, chain_ids: set[str] | None = None) -> float:
-    """Sum of billed costs in the checkpoints: every successful response, plus any failed
-    attempt whose (200) response still reported a usage cost. Optionally only `chain_ids`."""
-    tot = 0.0
-    for r in read_checkpoints(path):
-        if r.get("event") not in ("response", "retry", "failure"):
+    """Sum of costs in the checkpoints: every successful response, plus any failed attempt
+    whose response still reported usage. Optionally only `chain_ids`. Excludes requests with no
+    known outcome; use `liability_total` for settlement."""
+    return sum(_cost_of(r) for r in read_checkpoints(path)
+               if chain_ids is None or r.get("chain_id") in chain_ids)
+
+
+def _resolves(r: dict) -> bool:
+    """Does this outcome line settle its attempt (cost known, possibly 0)?"""
+    ev = r.get("event")
+    if ev == "response":
+        return True
+    if ev == "retry":
+        return not r.get("maybe_billed")
+    if ev == "failure":
+        return not r.get("final")         # the final summary line resolves no attempt itself
+    if ev == "cancelled":
+        return bool(r.get("not_sent"))
+    return False
+
+
+def _bound(r: dict) -> float:
+    ours, mx = r.get("our_tokens") or 0, r.get("max_tokens") or 0
+    return (ours * C.CALIB.c * C.PRICE_IN_PER_M + mx * C.PRICE_OUT_PER_M) / 1e6
+
+
+def liability_total(path: str | Path | None = None, chain_ids: set[str] | None = None) -> dict:
+    """Settlement view of the checkpoints (optionally only `chain_ids`):
+    billed: the costs of every outcome line that carries one (any attempt);
+    unresolved_bound: for each attempt sent with no settling outcome line (a crash, a cancel
+      mid-request, a timeout or dropped connection that may have been billed), the worst case
+      our_tokens * CALIB.c * input price + max_tokens * output price;
+    total = billed + unresolved_bound. Attempts are matched by `rid`; lines written without
+    one are matched on (chain_id, kind, body_sha256, attempt)."""
+    rows = [r for r in read_checkpoints(path)
+            if chain_ids is None or r.get("chain_id") in chain_ids]
+
+    def key(r):
+        return (r.get("chain_id"), r.get("kind"), r.get("body_sha256"), r.get("attempt"))
+
+    resolved_rid = {r["rid"] for r in rows if r.get("rid") and _resolves(r)}
+    resolved_key = Counter(key(r) for r in rows if not r.get("rid") and _resolves(r))
+    billed = sum(_cost_of(r) for r in rows)
+    bound, n = 0.0, 0
+    for r in rows:
+        if r.get("event") != "request":
             continue
-        if chain_ids is not None and r.get("chain_id") not in chain_ids:
+        if r.get("rid"):
+            if r["rid"] in resolved_rid:
+                continue
+        elif resolved_key[key(r)] > 0:
+            resolved_key[key(r)] -= 1
             continue
-        if r.get("event") != "response" and not r.get("cost_billed"):
-            continue
-        tot += float(r.get("cost") or 0.0)
-    return tot
+        bound += _bound(r)
+        n += 1
+    return {"billed": billed, "unresolved_bound": bound, "n_unresolved": n,
+            "total": billed + bound}
 
 
 def failure_stats() -> dict:
@@ -302,9 +356,13 @@ def list_cost(prompt_tokens: int | None, completion_tokens: int | None) -> float
 
 
 class _Retry(Exception):
-    def __init__(self, why: str, status: int | None = None, data: dict | None = None):
+    """A retryable attempt failure. `maybe_billed`: the request may have reached the provider
+    and been billed (a read timeout, a dropped connection), so its cost stays unresolved."""
+
+    def __init__(self, why: str, status: int | None = None, data: dict | None = None,
+                 maybe_billed: bool = False):
         super().__init__(why)
-        self.status, self.data = status, data
+        self.status, self.data, self.maybe_billed = status, data, maybe_billed
 
 
 def _usage_fields(data: dict | None) -> dict:
@@ -315,18 +373,27 @@ def _usage_fields(data: dict | None) -> dict:
     return {"prompt_tokens": pt, "completion_tokens": ct, "cost": cost, "cost_billed": billed}
 
 
+class _NotSent(Exception):
+    """Cancelled while waiting for a slot: the request never left this process."""
+
+
 # --- the call ---------------------------------------------------------------------------------
 async def _attempt(body: dict, key: str, timeout: float) -> tuple[dict, float]:
     url = base_url() + C.CHAT_PATH
     headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
     t0 = time.monotonic()
-    await _limiter.acquire()
+    try:
+        await _limiter.acquire()
+    except asyncio.CancelledError as e:
+        raise _NotSent() from e
     try:
         r = await asyncio.wait_for(_http().post(url, json=body, headers=headers), timeout)
     except TimeoutError as e:
-        raise _Retry(f"timeout after {timeout:.1f}s") from e
-    except httpx.HTTPError as e:
+        raise _Retry(f"timeout after {timeout:.1f}s", maybe_billed=True) from e
+    except (httpx.ConnectError, httpx.ConnectTimeout) as e:      # never reached the server
         raise _Retry(f"{type(e).__name__}: {e}") from e
+    except httpx.HTTPError as e:
+        raise _Retry(f"{type(e).__name__}: {e}", maybe_billed=True) from e
     finally:
         await _limiter.release()
     lat = time.monotonic() - t0
@@ -338,7 +405,7 @@ async def _attempt(body: dict, key: str, timeout: float) -> tuple[dict, float]:
     try:
         data = r.json()
     except ValueError as e:
-        raise _Retry(f"unparsable 200 body: {r.text[:300]}", 200) from e
+        raise _Retry(f"unparsable 200 body: {r.text[:300]}", 200, maybe_billed=True) from e
     if data.get("error"):
         raise _Retry(f"200 with error: {json.dumps(data['error'])[:300]}", 200, data)
     if not data.get("choices"):
@@ -346,7 +413,16 @@ async def _attempt(body: dict, key: str, timeout: float) -> tuple[dict, float]:
     return data, lat
 
 
+def _api_error(msg: str, spent: float) -> C.ApiError:
+    e = C.ApiError(msg)
+    e.cost_usd = spent                    # billed cost of the failed attempts (loop.py reads it)
+    return e
+
+
 async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Response:
+    """Response.cost_usd is the billed cost summed over every attempt of this call (a failed
+    attempt's 200 response may carry a cost); cost_from_usage is False if any attempt was
+    priced at list price. A raised ApiError carries the same sum as `cost_usd`."""
     validate_body(body)
     key = load_key()
     sha = body_sha256(body)
@@ -358,6 +434,7 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
     deadline = None
     last = "no attempt"
     attempt = 0
+    spent, from_usage = 0.0, True
     while attempt < n_max:
         attempt += 1
         if deadline is None:
@@ -367,14 +444,23 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
             last = f"deadline {_deadline_s():.0f}s passed; last: {last}"
             break
         _stats["attempts"] += 1
-        _checkpoint({"ts": _now(), "event": "request", **base, "attempt": attempt})
+        rid = uuid.uuid4().hex[:16]
+        _checkpoint({"ts": _now(), "event": "request", **base, "attempt": attempt, "rid": rid})
         try:
             data, lat = await _attempt(body, key, left)
+        except _NotSent:
+            _checkpoint({"ts": _now(), "event": "cancelled", **base, "attempt": attempt,
+                         "rid": rid, "not_sent": True})
+            raise asyncio.CancelledError() from None
         except _Retry as e:
             last = str(e)
             _stats["retries"] += 1
-            _checkpoint({"ts": _now(), "event": "retry", **base, "attempt": attempt,
-                         "status": e.status, "error": last, **_usage_fields(e.data)})
+            u = _usage_fields(e.data)
+            if u["cost"]:
+                spent += u["cost"]
+                from_usage = from_usage and u["cost_billed"]
+            _checkpoint({"ts": _now(), "event": "retry", **base, "attempt": attempt, "rid": rid,
+                         "status": e.status, "error": last, "maybe_billed": e.maybe_billed, **u})
             wait = backoff[min(attempt - 1, len(backoff) - 1)] if backoff else 0
             if attempt >= n_max or time.monotonic() + wait >= deadline:
                 if time.monotonic() + wait >= deadline:
@@ -385,16 +471,20 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
         except C.ApiError as e:
             _stats["errors"] += 1
             _checkpoint({"ts": _now(), "event": "failure", **base, "attempt": attempt,
-                         "error": str(e)[:2000]})
-            raise
-        return _success(data, lat, attempt, base, our_tokens)
+                         "rid": rid, "error": str(e)[:2000]})
+            raise _api_error(str(e), spent) from None
+        resp = _success(data, lat, attempt, base, our_tokens, rid)
+        resp.cost_usd = round(resp.cost_usd + spent, 9)
+        resp.cost_from_usage = resp.cost_from_usage and from_usage
+        return resp
     _stats["errors"] += 1
-    _checkpoint({"ts": _now(), "event": "failure", **base, "attempt": attempt,
+    _checkpoint({"ts": _now(), "event": "failure", **base, "attempt": attempt, "final": True,
                  "error": last[:2000]})
-    raise C.ApiError(f"{kind} {chain_id}: failed after {attempt} attempts: {last}")
+    raise _api_error(f"{kind} {chain_id}: failed after {attempt} attempts: {last}", spent)
 
 
-def _success(data: dict, lat: float, attempt: int, base: dict, our_tokens: int) -> C.Response:
+def _success(data: dict, lat: float, attempt: int, base: dict, our_tokens: int,
+             rid: str) -> C.Response:
     ch = data["choices"][0]
     msg = normalize_message(ch.get("message") or {})
     u = _usage_fields(data)
@@ -405,7 +495,7 @@ def _success(data: dict, lat: float, attempt: int, base: dict, our_tokens: int) 
               f"({base['kind']} {base['chain_id']}, gen {data.get('id')})",
               file=sys.stderr, flush=True)
     C.CALIB.observe(our_tokens, u["prompt_tokens"])
-    _checkpoint({"ts": _now(), "event": "response", **base, "attempt": attempt,
+    _checkpoint({"ts": _now(), "event": "response", **base, "attempt": attempt, "rid": rid,
                  "prompt_tokens": u["prompt_tokens"], "completion_tokens": u["completion_tokens"],
                  "cost": u["cost"] or 0.0, "cost_billed": u["cost_billed"],
                  "provider": provider, "latency_s": round(lat, 3),

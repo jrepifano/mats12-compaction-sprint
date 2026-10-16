@@ -119,13 +119,17 @@ def test_all_attempts_fail_raises_api_error(mock):
 
 
 def test_deadline_raises_api_error(mock):
-    srv, _url, _ck = mock
+    srv, _url, ck = mock
     srv.config["delay_s"] = 1.0
     client.configure(deadline_s=0.3)
     t0 = time.monotonic()
     with pytest.raises(C.ApiError, match="deadline|timeout"):
         run(client.chat(agent_body(), kind="agent", chain_id="c", our_tokens=100))
     assert time.monotonic() - t0 < 1.5
+    lia = client.liability_total(ck)           # a timed-out request may still be billed
+    assert lia["n_unresolved"] == 1 and lia["billed"] == 0.0
+    want = (100 * C.CALIB.c * C.PRICE_IN_PER_M + 4096 * C.PRICE_OUT_PER_M) / 1e6
+    assert lia["unresolved_bound"] == pytest.approx(want) and lia["total"] == pytest.approx(want)
 
 
 def test_client_rejects_bad_body_before_sending(mock):
@@ -150,20 +154,94 @@ def test_mock_400_is_surfaced_as_api_error_without_retry(mock):
     assert [ln["event"] for ln in client.read_checkpoints(ck)] == ["request", "failure"]
 
 
-def test_200_with_error_object_is_retried(mock, monkeypatch):
-    _srv, _url, _ck = mock
+def _flaky(monkeypatch, n_bad: int, usage: dict | None):
     real = M.respond
     calls = {"n": 0}
 
     def flaky(body, cfg):
         calls["n"] += 1
-        if calls["n"] == 1:
-            return {"error": {"code": 502, "message": "upstream"}, "choices": []}, "agent"
+        if calls["n"] <= n_bad:
+            d = {"error": {"code": 502, "message": "upstream"}, "choices": []}
+            if usage:
+                d["usage"] = usage
+            return d, "agent"
         return real(body, cfg)
 
     monkeypatch.setattr(M, "respond", flaky)
+
+
+def test_200_with_error_object_is_retried_and_its_cost_counted(mock, monkeypatch):
+    _srv, _url, ck = mock
+    _flaky(monkeypatch, 1, {"prompt_tokens": 100, "completion_tokens": 5, "cost": 0.001})
     r = run(client.chat(agent_body(), kind="agent", chain_id="c", our_tokens=10))
     assert r.attempts == 2
+    resp = client.read_checkpoints(ck)[-1]
+    assert r.cost_usd == pytest.approx(resp["cost"] + 0.001) and r.cost_from_usage
+    assert client.billed_total(ck) == pytest.approx(r.cost_usd)
+    lia = client.liability_total(ck, {"c"})
+    assert lia["billed"] == pytest.approx(r.cost_usd) and lia["n_unresolved"] == 0
+    assert lia["total"] == pytest.approx(r.cost_usd)
+
+
+def test_failed_attempt_priced_at_list_clears_cost_from_usage(mock, monkeypatch):
+    _flaky(monkeypatch, 1, {"prompt_tokens": 1000, "completion_tokens": 0})
+    r = run(client.chat(agent_body(), kind="agent", chain_id="c", our_tokens=10))
+    assert not r.cost_from_usage
+    assert r.cost_usd > client.list_cost(1000, 0)
+
+
+def test_api_error_carries_failed_attempts_cost(mock, monkeypatch):
+    _srv, _url, ck = mock
+    _flaky(monkeypatch, 99, {"prompt_tokens": 100, "completion_tokens": 0, "cost": 0.002})
+    with pytest.raises(C.ApiError) as ei:
+        run(client.chat(agent_body(), kind="agent", chain_id="c", our_tokens=10))
+    assert ei.value.cost_usd == pytest.approx(5 * 0.002)
+    lia = client.liability_total(ck)
+    assert lia["billed"] == pytest.approx(0.01) and lia["n_unresolved"] == 0
+
+
+def test_liability_counts_crashed_and_legacy_lines(tmp_path):
+    ck = tmp_path / "r.jsonl"
+    base = {"kind": "agent", "chain_id": "x", "body_sha256": "s", "our_tokens": 1000,
+            "max_tokens": 100}
+    lines = [{"event": "request", **base, "attempt": 1, "rid": "a"},            # crashed
+             {"event": "request", **base, "attempt": 1},                         # legacy, done
+             {"event": "response", **base, "attempt": 1, "cost": 0.01},
+             {"event": "request", **base, "attempt": 2},                         # legacy, open
+             {"event": "request", **base, "chain_id": "y", "attempt": 1, "rid": "b"},
+             {"event": "failure", **base, "chain_id": "y", "attempt": 1, "rid": "b"}]
+    ck.write_text("".join(json.dumps(ln) + "\n" for ln in lines))
+    one = (1000 * C.CALIB.c * C.PRICE_IN_PER_M + 100 * C.PRICE_OUT_PER_M) / 1e6
+    lia = client.liability_total(ck)
+    assert lia["n_unresolved"] == 2 and lia["unresolved_bound"] == pytest.approx(2 * one)
+    assert lia["billed"] == pytest.approx(0.01)
+    assert client.liability_total(ck, {"y"}) == {"billed": 0.0, "unresolved_bound": 0.0,
+                                                 "n_unresolved": 0, "total": 0.0}
+
+
+def test_cancel_while_queued_resolves_but_mid_request_stays_unresolved(mock):
+    srv, _url, ck = mock
+    srv.config["delay_s"] = 0.5
+    client.set_concurrency(1)
+
+    async def go():
+        t1 = asyncio.create_task(client.chat(agent_body(), kind="agent", chain_id="a",
+                                             our_tokens=10))
+        await asyncio.sleep(0.05)
+        t2 = asyncio.create_task(client.chat(agent_body(), kind="agent", chain_id="b",
+                                             our_tokens=10))
+        await asyncio.sleep(0.1)
+        t2.cancel()                               # waiting for the slot: never sent
+        t1.cancel()                               # on the wire: may be billed
+        for t in (t1, t2):
+            with pytest.raises(asyncio.CancelledError):
+                await t
+
+    run(go())
+    ev = [(ln["chain_id"], ln["event"]) for ln in client.read_checkpoints(ck)]
+    assert ("b", "cancelled") in ev and ("a", "cancelled") not in ev
+    assert client.liability_total(ck, {"b"})["n_unresolved"] == 0
+    assert client.liability_total(ck, {"a"})["n_unresolved"] == 1
 
 
 def test_missing_usage_cost_uses_list_price(mock, monkeypatch):
