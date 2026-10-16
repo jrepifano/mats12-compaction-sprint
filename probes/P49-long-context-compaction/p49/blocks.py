@@ -485,6 +485,15 @@ class Scheduler:
             return False
         return not rerunnable(rec)
 
+    def pending_reserve(self, b: BlockSpec) -> float:
+        """Worst-case reservation for what this block still has to run: chains without a final
+        record and compactions not on disk (a resumed block with one rerun chain reserves one
+        chain, not the design; log 2026-10-16 08:41Z)."""
+        chains = sum(C.CHAIN_CAP_USD if s.arm == C.R else C.SMALL_ARM_RESERVE_USD
+                     for s in self.specs(b) if not self.chain_done(s.chain_id))
+        comps = sum(1 for n in b.comp_names() if not self.comp_path(b.history_id, n).exists())
+        return round(chains + comps * C.SUMMARY_RESERVE_USD, 6) or 0.01
+
     def specs(self, b: BlockSpec) -> list[C.ChainSpec]:
         tid = self.task_for(b.index)
         return [C.ChainSpec(chain_id=chain_id(b.history_id, tid, arm, lv),
@@ -915,7 +924,7 @@ class Scheduler:
             self.stop(f"projected p90 finish {utc(now + p90)} is past the admit-by time "
                       f"{utc(self.admit_by)}")
             return "stop"
-        usd = b.reserve_usd()
+        usd = self.pending_reserve(b)
         sp = self.d.spend
         try:
             sp.check_total(usd, "judge", exp=C.EXP)
