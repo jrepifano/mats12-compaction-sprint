@@ -307,10 +307,10 @@ def test_admission_refuses_past_budget(env):
 
 
 def test_admission_waits_for_budget_released_by_settling(env):
-    spend.record("judge", "test", 1, 85.0, note="earlier spend", exp=C.EXP)
+    spend.record("judge", "test", 1, 90.0, note="earlier spend", exp=C.EXP)
     f = Fakes()
     s = make(env, f)
-    out = run(s, [full_block(0), full_block(1)])        # $9.02 each, $15 left: one at a time
+    out = run(s, [full_block(0), full_block(1)])        # $5.52 each, $10 left: one at a time
     assert out["admitted"] == 2 and out["stop_reason"] is None
     ends = [i for i, e in enumerate(f.events) if e[0] == "chain_end" and e[1].startswith("h0-")]
     starts1 = [i for i, e in enumerate(f.events) if e[0] == "comp_start" and e[1] == "h1"]
