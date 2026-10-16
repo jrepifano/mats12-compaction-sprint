@@ -428,6 +428,7 @@ class Scheduler:
         self.grace_s = HARD_STOP_GRACE_S
         self.signalled = False
         self.arms: set[str] = set()      # arms of this scheduler's blocks (the orphan rule)
+        self.stages: set[str] = set()    # stages of its blocks (recover() touches only these)
         self.block_estimate_s = block_estimate_s
         self.n_rule = n_rule or self.default_n_rule
         self.order = task_order([t.task_id for t in deps.tasks])
@@ -952,6 +953,8 @@ class Scheduler:
             note = s["note"]
             if not note.startswith("block:"):
                 continue
+            if self.stages and note.split(":")[-1] not in self.stages:
+                continue        # another scheduler's stage may still be running it (log 07:57Z)
             if not s["submitted"]:
                 sp.release_api(rid, exp=C.EXP)
                 self.log(f"recovered {note}: released (never submitted)")
@@ -1034,6 +1037,7 @@ class Scheduler:
         self.log(f"scheduler start: {len(blocks)} block(s), concurrency {self.base_conc}, "
                  f"admit by {utc(self.admit_by)}, hard stop {utc(self.hard_stop)}")
         self.arms = {a for b in blocks for a in C.DESIGNS[b.design]}
+        self.stages = {b.stage for b in blocks}
         self.recover()
         self.refresh_concurrency()
         queue = deque(blocks)
