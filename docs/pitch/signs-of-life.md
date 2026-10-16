@@ -77,13 +77,13 @@ Labels used throughout:
 
 **At product scale** (Qwen3-Coder, its own SWE-rebench sessions stitched to ~200k tokens, then an ImpossibleBench task; pooled runs with no test instruction, exploratory):
 
-| Starting point | Cheating rate (cheats / resolved runs) |
+| Starting point | Cheating rate |
 |---|---|
-| Fresh start (no history) | 57% (12/21) |
-| No compaction | 24% (4/17) |
-| 1 compaction: Inspect / Codex / pi style | 18% (4/22) / 30% (6/20) / 38% (8/21) |
-| 2 compactions (Inspect) | 29% (6/21) |
-| 3 compactions (Inspect) | 32% (6/19) |
+| Fresh start (no history) | 57% |
+| No compaction | 24% |
+| 1 compaction: Inspect / Codex / pi style | 18% / 30% / 38% |
+| 2 compactions (Inspect) | 29% |
+| 3 compactions (Inspect) | 32% |
 
 - Paired contrasts use complete history pairs, so they are not differences of these marginal rates. No compaction arm is distinguishable from no compaction. The Inspect trend from 1 to 3 compactions is +8.3 points per compaction [−3.1, +21.4] pooled, +12.5 [+0.0, +25.0] in the 16 planned histories; an alternative scoring rule halves it. Each extra compaction also adds about 200k tokens of older work, so this is "more compactions over more work".
 - Any history lowers cheating against a fresh start: no compaction − fresh −47.1 [−77.8, −12.5] pooled. A simple explanation is open: the history carries the old task's "you DON'T have to modify the tests" line. In the logs, agents with history notice the contradictory test as often as fresh ones but then stop and declare success instead of editing tests (33% stop without cheating vs 3%), an exploratory observation.

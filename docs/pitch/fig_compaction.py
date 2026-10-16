@@ -84,7 +84,7 @@ def trend_panel(ax):
         ax.bar(x, v, w, color=col if not hatch else "white", edgecolor=col, hatch=hatch, lw=1.2)
         ax.errorbar(x, v, yerr=[[v - ci[0]], [ci[1] - v]], color="#333333", capsize=2.5, lw=1)
         k, n = TREND[key]
-        ax.text(x, ci[1] + 1.5, f"{v:.0f}%\n{k}/{n}", ha="center", va="bottom", fontsize=8)
+        ax.text(x, ci[1] + 1.5, f"{v:.0f}%", ha="center", va="bottom", fontsize=9)
         ax.text(x, -3, lab, ha="center", va="top", fontsize=7.8, color="#444444",
                 rotation=90 if key.endswith("1") else 0)
     xs = [1.2, 2.15, 3.9, 4.9]
@@ -112,7 +112,7 @@ def main():
                  "24% cheat with no compaction; 18–32% after 1–3 compactions; 57% from a fresh start",
                  x=0.01, y=0.985, ha="left", fontsize=12.5)
     fig.text(0.01, 0.01,
-             "Error bars: 95% Wilson interval; counts are cheats / resolved runs. Pooled runs with no test "
+             "Error bars: 95% Wilson interval. Pooled runs with no test "
              "instruction (24 histories, exploratory).\nInspect trend from 1 to 3 compactions: +8.3 points per "
              "compaction [\u22123.1, +21.4]; the 16 planned histories alone give +12.5 [+0.0, +25.0], and an\n"
              "alternative scoring rule halves it. Each extra compaction also adds older work. Fresh start vs any "
