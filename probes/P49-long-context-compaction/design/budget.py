@@ -17,7 +17,13 @@ Assumptions (not measured; Gate 0 re-measures them):
   Inspect-self's summary as compaction 1, and k=3 reuses k=2's compaction 2 (nested), so k=2 and
   k=3 each add one ~200k call;
 - 2 belief calls per chain (B1, B3), forked on the starting context, ~200 output tokens each;
-- latency per turn: 2 s + prefill at 20k prompt tokens/s + 800 tokens at 73 tok/s + 3 s tools.
+- latency per turn: 2 s + prefill at 20k prompt tokens/s + 800 tokens at 73 tok/s + 3 s tools;
+  per chain also 2 belief calls (prefill + 200 tokens) and 30 s of sandbox start, snapshots and
+  scoring; per history 6 summary calls (prefill + 4k tokens at 73 tok/s), of which Rep-k3 waits
+  on 3 in series (compactions 1-3), all occupying API slots.
+All of the above are assumptions (labelled estimates), not measured wrapper or request sizes;
+pi and Codex truncate tool results in the summariser input, so their summary inputs are upper
+bounds. Gate 0 measures them.
 Gate 0: 8 histories x {Fresh, R, Inspect-self, pi-self} x prompt levels A and B; the two levels
 share each history's compactions (compaction happens before the transition).
 Run: python3 -I budget.py"""
@@ -53,7 +59,13 @@ def gate0(turns):
 
 def chain_hours(arm, turns):
     sec = sum(2 + (START[arm] + GROWTH * t) / PREFILL + OUT_TOK / TPS + 3 for t in range(turns))
+    sec += 2 * (2 + START[arm] / PREFILL + 200 / TPS) + 30  # beliefs, sandbox, scoring
     return sec / 3600
+
+
+def summary_hours(arm):
+    s = SUMMARY_IN.get(arm)
+    return (2 + s / PREFILL + 4_000 / TPS) / 3600 if s else 0.0
 
 
 if __name__ == "__main__":
@@ -62,14 +74,18 @@ if __name__ == "__main__":
     print("summary cost per arm: " + ", ".join(f"{a} ${summary(a):.3f}" for a in SUMMARY_IN))
     for turns in (15, 20, 24):
         g = gate0(turns)
-        for n in (32, 36, 40):
+        for n in (24, 28, 32, 36, 40):
             full = n * per_history(START, turns) + g
             mini = n * per_history(MINIMUM, turns) + g
             print(f"turns {turns} N={n}: full ${full:.1f}, minimum ${mini:.1f}"
                   f" (Gate 0 ${g:.1f}; R ${n * agent('R', turns):.1f})")
+    rep3_wait = 60 * sum(summary_hours(a) for a in ("Inspect-self", "Rep-k2", "Rep-k3"))
     for turns in (15, 24):
+        print(f"turns {turns}: R share of full-design bulk {agent('R', turns) / per_history(START, turns):.0%}")
         for conc in (16, 32):
-            for n in (32, 40):
-                h = n * sum(chain_hours(a, turns) for a in START) / conc
-                print(f"bulk wall-clock, turns {turns}, N={n}, {conc} in flight: {h:.2f} h"
-                      f" (longest chain R {60 * chain_hours('R', turns):.0f} min)")
+            for n in (24, 32, 40):
+                slot_h = n * (sum(chain_hours(a, turns) for a in START)
+                              + sum(summary_hours(a) for a in SUMMARY_IN))
+                print(f"bulk wall-clock, turns {turns}, N={n}, {conc} in flight: {slot_h / conc:.2f} h"
+                      f" (longest chain R {60 * chain_hours('R', turns):.0f} min;"
+                      f" Rep-k3 waits {rep3_wait:.1f} min on 3 serial compactions)")
