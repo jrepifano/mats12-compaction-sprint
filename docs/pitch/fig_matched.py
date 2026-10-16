@@ -23,16 +23,16 @@ LABELS = {"filter": "Filter (delete the rows)",
 
 # setting label, reference, {op: (rate, ci or None, per-seed or None)}
 GROUPS = [
-    ("Emergent misalignment\nQwen2.5-14B\ntreated: random 25% of the bad rows\n(all treated rows bad)", 28.5,
+    ("Emergent misalignment\nQwen2.5-14B\ntreated: random 25%\nof the bad rows", 28.5,
      {"filter": (26.8, None, None), "refill": (23.1, None, None), "rewrite": (19.5, None, None)}),
-    ("Phantom Transfer\nGemma-3-12B → Llama-3.1-8B\ntreated: random 7,500 of 20,000 rows\n(74% of treated rows trait-carrying)", 15.0,
+    ("Phantom Transfer\nGemma-3-12B → Llama-3.1-8B\ntreated: random 37%\nof the bad rows*", 15.0,
      {"filter": (7.3, (2.7, 12.9), None), "refill": (5.2, (2.0, 9.4), None),
       "rewrite": (1.3, (0.0, 3.1), None)}),
-    ("Subliminal learning\nQwen2.5-7B\ntreated: random 5% of 10,000 rows\n(all treated rows trait-carrying)", 27.8933,
+    ("Subliminal learning\nQwen2.5-7B\ntreated: random 5%\nof the bad rows\n(10,000 rows, all bad)", 27.8933,
      {"filter": (22.66, (10.6795, 34.3337), [27.86, 30.46, 9.66]),
       "refill": (13.8467, (6.6995, 22.2002), [13.88, 21.38, 6.28]),
       "rewrite": (13.26, (5.5995, 20.2468), [5.4, 17.32, 17.06])}),
-    ("Subliminal learning\nQwen2.5-7B\ntreated: random 5% of 20,000 rows\n(all treated rows trait-carrying)", 38.5,
+    ("Subliminal learning\nQwen2.5-7B\ntreated: random 5%\nof the bad rows\n(20,000 rows, all bad)", 38.5,
      {"filter": None,
       "refill": (42.7733, (33.4, 52.2873), [39.4, 41.22, 47.7]),
       "rewrite": (41.0267, (32.1598, 50.1068), [41.7, 43.1, 38.28])}),
@@ -71,10 +71,10 @@ def main():
     fig.text(0.01, 0.01,
              "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%, 38.5%). "
              "Error bars: 95% CI of the arm; dots: seeds.\nEmergent misalignment: the paper reports "
-             "rewrite − filter −7.3 pp [−13.2, −1.5]; arm intervals not shown. Doses and row-picking "
-             "differ across settings, so compare bars within a setting.",
+             "rewrite − filter −7.3 pp [−13.2, −1.5]; arm intervals not shown. Compare bars within a setting.\n"
+             "*Phantom Transfer rows were picked from a 75%-bad mix, so 26% of treated rows were already clean.",
              fontsize=8.5, color="#555555")
-    fig.tight_layout(rect=(0, 0.06, 1, 0.97))
+    fig.tight_layout(rect=(0, 0.08, 1, 0.97))
     fig.savefig(OUT / "matched_ops_by_setting.png", dpi=200)
 
 
