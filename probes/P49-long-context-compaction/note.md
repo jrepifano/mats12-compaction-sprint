@@ -69,6 +69,8 @@ Drawn by `p49/samples.py` (`random.Random(20261015)` over sorted chain ids, k = 
 
 Billed **$76.06** (OpenRouter `usage.cost`, every response and billed retry in `results/raw/requests.jsonl`), plus at most $0.16 for 4 requests with no recorded outcome ([results/reconcile.json](results/reconcile.json), `python -m p49.reconcile`). The ledger shows $78.40, $2.18 above that: parallel runners settled overlapping liabilities (log 07:57Z, 08:42Z), corrected by one row; the residual is a conservative over-count. Cap $100 API.
 
+Spend by phase from `python -m p49.phase_spend` (run in the probe dir):
+
 | Phase | UTC (ET) | Spend | Notes |
 |---|---|---|---|
 | Build: contracts, 4 parallel sub-agents, integration, mock e2e, code review r1 | 04:05–05:56 (12:05–1:56 AM) | $0 | 4 BLOCKING review findings fixed |
