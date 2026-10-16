@@ -287,8 +287,9 @@ def test_ladder_picks_first_fit_and_prices_fallbacks():
     d = decide(rows)
     assert d["budget_usd"] == pytest.approx(69.0)
     mini = A.design_cost("minimum", pr)
-    exp_n = next(n for n in C.LADDER_N if n * A.design_cost("no_codex", pr) <= 69.0)
-    assert d["design"] == "no_codex" and d["N"] == exp_n and not d["stop"]
+    exp = next((dz, n) for dz in C.LADDER for n in C.LADDER_N
+               if n * A.design_cost(dz, pr) <= 69.0)            # design-major, then largest N
+    assert (d["design"], d["N"]) == exp and not d["stop"]
     assert mini < full
     # cheaper spend -> full at N = 40? 100 - 0 - 6 = 94; 40 x 2.879 = 115 -> N = 32 (92.1)
     d = decide(rows, spent=0.0)
@@ -300,9 +301,10 @@ def test_ladder_time_rule_and_stop():
     # 600 s blocks, 4 blocks in parallel at 32 / 8 arms: N = 32 -> 8 waves = 80 min
     d = decide(rows, spent=0.0, hours=65 / 60)              # N = 28 -> 7 waves = 70 min
     assert d["design"] == "full" and d["N"] == 24           # 6 waves = 60 min
-    d = decide(rows, spent=0.0, hours=0.5)                   # nothing fits in 30 min? 24 -> 60
+    d = decide(rows, spent=0.0, hours=0.1)                   # 6 min: not even one wave of 600 s
     assert d["stop"] and d["design"] is None
-    assert any(t["design"] == "minimum_nobelief" and t["N"] == 24 for t in d["ladder"]["tried"])
+    assert any(t["design"] == "minimum_nobelief" and t["N"] == C.LADDER_N[-1]
+               for t in d["ladder"]["tried"])
     d = decide(rows, spent=95.0)                             # budget -1
     assert d["stop"] and d["budget_usd"] < 0
 

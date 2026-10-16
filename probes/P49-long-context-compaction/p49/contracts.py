@@ -136,7 +136,7 @@ DESIGNS = {
 }
 SMALL_ARM_RESERVE_USD = 1.00   # admission reservation for non-R chains (24 turns at <= ~100k)
 LADDER = ("full", "no_codex", "minimum", "minimum_nobelief")
-LADDER_N = (40, 36, 32, 28, 24)
+LADDER_N = (40, 36, 32, 28, 24, 20, 16, 12, 8)   # below 24: log 2026-10-16 09:15Z
 GATE0_HISTORIES = 8
 BLOCK_RESERVE_USD = 13.2                          # 8 x 1.60 + 6 x 0.07
 BULK_ALLOWANCE_USD = 6.0
