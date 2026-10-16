@@ -13,7 +13,21 @@ Plan written 2026-10-15 (UTC), before any P50 data. Literature: [lit-review.md](
 | **Likely follow-ups** | Week one, priced below: a Phantom Transfer ladder; a trained locator arm (required if the sprint pursues this); 1% and 10% doses; seeds 4–6; a fresh data draw; rewrite_x at 20K; EM small doses with a same-base rewriter. |
 | **Automatic rules** | See "Automatic rules". |
 | **Cap** | **Start $40** = GPU $37 + API $3 (Jacob, 2026-10-15). First slice **$19.7** with P48's refill arms reused, **$21.5** if they must be trained here. Reservation $24.94. See "Cost and wall-clock". |
-| **Approved** | pending |
+| **Approved** | 2026-10-16, Jacob, go in chat. Approved version: decision brief rev 68. See "Approved scope (rev 68)" below, which overrides the sections it names. |
+
+## Approved scope (rev 68)
+Written 2026-10-16 before any pod data. Where this section and the rest of the plan differ, this section holds.
+
+- **Writer:** gpt-6-luna (OpenAI, reasoning off, final answer only) first, then Llama 3.1 8B, then Mistral Small 3.2, each trait-gated as in rule 2. Up to 32 tries per prompt per writer (raised from 8 on 2026-10-16, log.md). Outcome: luna passed its gate (0.0% vs base 2.1%) and wrote all 500 rows, so rewrite_x is a single-writer arm.
+- **Mixed-pool block (new):** `mix090ftn20k` (20K rows, 90% trait-carrying), 5% random selection (k = 1,000 over all 20,000 rows; 900 of the picked rows carry the trait), swap and refill seeds 0–2, reference seeds 1–2 plus P48's seed 0. Reports ref − swap and refill − swap. At 10K, P48's 90% share gave 10.54%; at 20K it gave 41.16%.
+- **Refill is trained here** (P48 never ran it), at both 10K doses, at 20K and in the mixed pool.
+- **20K block (P4)** unchanged, run last.
+- **Seed-0 reuse:** P48's training records carry no data sha, so the rebuilt mixtures are checked against P48's `data/manifest.json`. All six match (log.md), so seed 0 is reused for both 20K blocks.
+- **Phantom Transfer:** runs as a second session automatically if P3 or P3b reaches "beats dilution", funds permitting.
+- **Cap $55** (GPU $50, API $5): about $33 for this run plus the conditional PT session.
+- **Timeline (ET, Fri 16 Oct):** launch ~1:30 AM; anchor scored ~2:05 AM; 10K arms ~4:30 AM; mixed pool ~7:15 AM; 20K block by ~10 AM; results to Jacob by 11 AM.
+- **Pod order:** anchor → 10K 5% (rewx, refill) → 10K 2.5% (swap, rewx, refill) → eval → mixed pool → eval → 20K → eval. No 20K seed set starts unless it and its block's eval fit before 10:15 AM ET. If the anchor fails: a fresh 10K set (reference s2–3, `mix000ft` s0, swap 5% s1–3) runs after the 10K eval, then the mixed pool with a freshly trained reference s0–2; the 20K block is dropped.
+- **W1 writer:** the PT different-family writer is luna, since Llama is the PT student's base.
 
 ## Prior work (details in lit-review.md)
 
@@ -288,7 +302,7 @@ The outcomes use the literal tested conclusions. Explanations such as equivalenc
 | W2 1% and 10% doses at 10K (swap, rewrite_x, refill ×3 each) | 18 | 10.4 |
 | W3 seeds 4–6 on an inconclusive primary contrast | 3 per arm | 1.73 per 10K arm |
 | W4 fresh data draw: P48 generation ~45 min, plus reference and swap 5% ×3 | 6 + gen | ~7 |
-| **W5 trained locator** (required if the sprint pursues this): `mix075ftn20k`, 5%, swap chosen by `gain` vs random ×3 each, plus reference ×2 | 8 at 20K | ~9.6 |
+| **W5 trained locator** (required if the sprint pursues this): `mix075ftn20k`, 5%, swap chosen by `gain` vs random ×3 each, plus reference ×2 (seed 0 reused) | 8 at 20K (9 if seed 0 can't be reused) | ~9.6 ($10.8) |
 | W6 0%-share Llama-numbers control | 1 | 0.6 |
 | W7 EM (see detail below) | ~36 | ~40 incl. judging; separate go |
 | W8 count-matched 20K arm: swap and refill at k = 500 | 6 at 20K | ~7.2 |

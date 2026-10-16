@@ -1,0 +1,1116 @@
+{
+ "utc": "2026-10-16T03:59:23Z",
+ "probe": "P50",
+ "interim": true,
+ "anchor": {
+  "rate": null,
+  "pass": null,
+  "source": "not run",
+  "target": 26.08,
+  "tol": 4.0
+ },
+ "mode": "normal (anchor not run)",
+ "seed_plan": {
+  "block_c_seeds": [
+   0,
+   1,
+   2
+  ],
+  "block_c_why": "seed0_reused flag",
+  "block_m_seeds": [
+   0,
+   1,
+   2
+  ],
+  "block_m_why": "seed0_reused flag"
+ },
+ "bootstrap": {
+  "n_boot": 10000,
+  "seed": 20261016,
+  "n_questions": 50,
+  "scheme": "joint two-way: questions and seed positions resampled once per replicate, shared by all arms"
+ },
+ "matcher": "trait_rate (Cloud et al.'s frozen substring)",
+ "sign": "A - B = rate(A) - rate(B); positive means B leaves less trait",
+ "arms": {
+  "ref10": {
+   "name": "mix100ft",
+   "block": "10K",
+   "op": "ref",
+   "dose": null,
+   "d": null,
+   "k": null,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
+    "mix100ft_s1",
+    "mix100ft_s2",
+    "mix100ft_s3"
+   ],
+   "sources": {
+    "mix100ft_s1": "p48",
+    "mix100ft_s2": "p48",
+    "mix100ft_s3": "p48"
+   },
+   "missing": [],
+   "excluded": [],
+   "status": "complete",
+   "rate": 27.8933,
+   "ci95": [
+    21.0398,
+    34.9073
+   ],
+   "per_seed": [
+    26.08,
+    29.0,
+    28.6
+   ],
+   "trait_rate_word": 27.3867
+  },
+  "control10": {
+   "name": "mix000ft",
+   "block": "10K",
+   "op": "control",
+   "dose": null,
+   "d": null,
+   "k": null,
+   "context": false,
+   "seeds_intended": [
+    0
+   ],
+   "seeds": [
+    0
+   ],
+   "keys": [
+    "mix000ft_s0"
+   ],
+   "sources": {
+    "mix000ft_s0": "p48"
+   },
+   "missing": [],
+   "excluded": [],
+   "status": "complete",
+   "rate": 2.08,
+   "ci95": [
+    0.72,
+    3.72
+   ],
+   "per_seed": [
+    2.08
+   ],
+   "trait_rate_word": 2.08
+  },
+  "swap@5%": {
+   "name": "swap_random",
+   "block": "10K",
+   "op": "swap",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 500,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
+    "swap_random_s1",
+    "swap_random_s2",
+    "swap_random_s3"
+   ],
+   "sources": {
+    "swap_random_s1": "p48",
+    "swap_random_s2": "p48",
+    "swap_random_s3": "p48"
+   },
+   "missing": [],
+   "excluded": [],
+   "status": "complete",
+   "rate": 13.26,
+   "ci95": [
+    5.5995,
+    20.2468
+   ],
+   "per_seed": [
+    5.4,
+    17.32,
+    17.06
+   ],
+   "trait_rate_word": 12.92,
+   "R": 0.5669,
+   "R_ci95": [
+    0.4127,
+    0.8535
+   ],
+   "M": 11.3378,
+   "M_ci95": [
+    8.2545,
+    17.0703
+   ]
+  },
+  "drop@5%": {
+   "name": "drop_random",
+   "block": "10K",
+   "op": "drop",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 500,
+   "context": true,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [
+    1,
+    2,
+    3
+   ],
+   "keys": [
+    "drop_random_s1",
+    "drop_random_s2",
+    "drop_random_s3"
+   ],
+   "sources": {
+    "drop_random_s1": "p48",
+    "drop_random_s2": "p48",
+    "drop_random_s3": "p48"
+   },
+   "missing": [],
+   "excluded": [],
+   "status": "complete",
+   "rate": 22.66,
+   "ci95": [
+    10.6795,
+    34.3337
+   ],
+   "per_seed": [
+    27.86,
+    30.46,
+    9.66
+   ],
+   "trait_rate_word": 22.2733,
+   "R": 0.2027,
+   "R_ci95": [
+    -0.0803,
+    0.703
+   ],
+   "M": 4.0548,
+   "M_ci95": [
+    -1.6053,
+    14.06
+   ]
+  },
+  "rewx@5%": {
+   "name": "rewx_r05",
+   "block": "10K",
+   "op": "rewx",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 500,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "rewx_r05_s1",
+    "rewx_r05_s2",
+    "rewx_r05_s3"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "refill@5%": {
+   "name": "refill_r05",
+   "block": "10K",
+   "op": "refill",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 500,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "refill_r05_s1",
+    "refill_r05_s2",
+    "refill_r05_s3"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "swap@2.5%": {
+   "name": "swap_r025",
+   "block": "10K",
+   "op": "swap",
+   "dose": "r025",
+   "d": 0.025,
+   "k": 250,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "swap_r025_s1",
+    "swap_r025_s2",
+    "swap_r025_s3"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "rewx@2.5%": {
+   "name": "rewx_r025",
+   "block": "10K",
+   "op": "rewx",
+   "dose": "r025",
+   "d": 0.025,
+   "k": 250,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "rewx_r025_s1",
+    "rewx_r025_s2",
+    "rewx_r025_s3"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "refill@2.5%": {
+   "name": "refill_r025",
+   "block": "10K",
+   "op": "refill",
+   "dose": "r025",
+   "d": 0.025,
+   "k": 250,
+   "context": false,
+   "seeds_intended": [
+    1,
+    2,
+    3
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "refill_r025_s1",
+    "refill_r025_s2",
+    "refill_r025_s3"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "ref20": {
+   "name": "mix100ftn20k",
+   "block": "20K",
+   "op": "ref",
+   "dose": null,
+   "d": null,
+   "k": null,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [
+    0
+   ],
+   "keys": [
+    "mix100ftn20k_s0"
+   ],
+   "sources": {
+    "mix100ftn20k_s0": "p48"
+   },
+   "missing": [
+    "mix100ftn20k_s1",
+    "mix100ftn20k_s2"
+   ],
+   "excluded": [],
+   "status": "partial (1 seeds)",
+   "rate": 37.66,
+   "ci95": [
+    29.2795,
+    46.18
+   ],
+   "per_seed": [
+    37.66
+   ],
+   "trait_rate_word": 36.96
+  },
+  "swap20@5%": {
+   "name": "swap_n20k_r05",
+   "block": "20K",
+   "op": "swap",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 1000,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "swap_n20k_r05_s0",
+    "swap_n20k_r05_s1",
+    "swap_n20k_r05_s2"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "refill20@5%": {
+   "name": "refill_n20k_r05",
+   "block": "20K",
+   "op": "refill",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 1000,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "refill_n20k_r05_s0",
+    "refill_n20k_r05_s1",
+    "refill_n20k_r05_s2"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "control20": {
+   "name": "mix000ftn20k",
+   "block": "20K",
+   "op": "control",
+   "dose": null,
+   "d": null,
+   "k": null,
+   "context": false,
+   "seeds_intended": [
+    0
+   ],
+   "seeds": [
+    0
+   ],
+   "keys": [
+    "mix000ftn20k_s0"
+   ],
+   "sources": {
+    "mix000ftn20k_s0": "p48"
+   },
+   "missing": [],
+   "excluded": [],
+   "status": "complete",
+   "rate": 2.16,
+   "ci95": [
+    0.78,
+    3.84
+   ],
+   "per_seed": [
+    2.16
+   ],
+   "trait_rate_word": 2.16
+  },
+  "ref_mix": {
+   "name": "mix090ftn20k",
+   "block": "pool",
+   "op": "ref",
+   "dose": null,
+   "d": null,
+   "k": null,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [
+    0
+   ],
+   "keys": [
+    "mix090ftn20k_s0"
+   ],
+   "sources": {
+    "mix090ftn20k_s0": "p48"
+   },
+   "missing": [
+    "mix090ftn20k_s1",
+    "mix090ftn20k_s2"
+   ],
+   "excluded": [],
+   "status": "partial (1 seeds)",
+   "rate": 41.16,
+   "ci95": [
+    32.46,
+    49.78
+   ],
+   "per_seed": [
+    41.16
+   ],
+   "trait_rate_word": 40.64
+  },
+  "swap_mix@5%": {
+   "name": "swap_m90_r05",
+   "block": "pool",
+   "op": "swap",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 1000,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "swap_m90_r05_s0",
+    "swap_m90_r05_s1",
+    "swap_m90_r05_s2"
+   ],
+   "excluded": [],
+   "status": "not run"
+  },
+  "refill_mix@5%": {
+   "name": "refill_m90_r05",
+   "block": "pool",
+   "op": "refill",
+   "dose": "r05",
+   "d": 0.05,
+   "k": 1000,
+   "context": false,
+   "seeds_intended": [
+    0,
+    1,
+    2
+   ],
+   "seeds": [],
+   "keys": [],
+   "sources": {},
+   "missing": [
+    "refill_m90_r05_s0",
+    "refill_m90_r05_s1",
+    "refill_m90_r05_s2"
+   ],
+   "excluded": [],
+   "status": "not run"
+  }
+ },
+ "excluded_runs": [],
+ "contrasts": {
+  "rewx-swap@5%": {
+   "definition": "rate(rewx@5%) - rate(swap@5%)",
+   "positive_means": "swap leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "rewx@5%"
+   ]
+  },
+  "refill-rewx@5%": {
+   "definition": "rate(refill@5%) - rate(rewx@5%)",
+   "positive_means": "rewx leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@5%",
+    "rewx@5%"
+   ]
+  },
+  "refill-swap@5%": {
+   "definition": "rate(refill@5%) - rate(swap@5%)",
+   "positive_means": "swap leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@5%"
+   ]
+  },
+  "rewx-swap@2.5%": {
+   "definition": "rate(rewx@2.5%) - rate(swap@2.5%)",
+   "positive_means": "swap leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "rewx@2.5%",
+    "swap@2.5%"
+   ]
+  },
+  "refill-rewx@2.5%": {
+   "definition": "rate(refill@2.5%) - rate(rewx@2.5%)",
+   "positive_means": "rewx leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@2.5%",
+    "rewx@2.5%"
+   ]
+  },
+  "refill-swap@2.5%": {
+   "definition": "rate(refill@2.5%) - rate(swap@2.5%)",
+   "positive_means": "swap leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@2.5%",
+    "swap@2.5%"
+   ]
+  },
+  "drop-swap@5% (context)": {
+   "definition": "rate(drop@5%) - rate(swap@5%); P48 called this 'swap - drop' (+9.4)",
+   "positive_means": "swap leaves less trait",
+   "status": "complete",
+   "point": 9.4,
+   "ci95": [
+    -6.8805,
+    22.9535
+   ],
+   "per_seed": [
+    22.46,
+    13.14,
+    -7.4
+   ],
+   "arms": [
+    "drop@5%",
+    "swap@5%"
+   ]
+  }
+ },
+ "verdicts": {
+  "P1": {
+   "definition": "M_x = mean over doses of R(rewx, d)/d",
+   "positive_means": "rewrite_x removes more than proportional",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "rewx@2.5%",
+    "rewx@5%"
+   ],
+   "label": "descriptive (dilution alone is expected to pass: curve null M ~ 7.4)",
+   "verdict": "not run",
+   "M_refill_by_dose": {
+    "2.5%": null,
+    "5%": null
+   }
+  },
+  "P2": {
+   "definition": "rewx - swap, pooled over doses within seed",
+   "positive_means": "swap leaves less trait than rewrite_x",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "rewx@2.5%",
+    "swap@2.5%",
+    "rewx@5%"
+   ],
+   "verdict": "not run"
+  },
+  "P3": {
+   "definition": "refill - rewx, pooled over doses within seed",
+   "positive_means": "rewrite_x leaves less trait than refill",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@2.5%",
+    "rewx@2.5%",
+    "refill@5%",
+    "rewx@5%"
+   ],
+   "verdict": "not run"
+  },
+  "P3b": {
+   "definition": "refill - swap, pooled over doses within seed",
+   "positive_means": "swap leaves less trait than refill",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill@2.5%",
+    "swap@2.5%",
+    "refill@5%"
+   ],
+   "verdict": "not run"
+  },
+  "P4": {
+   "G20": {
+    "definition": "G20 = refill20 - swap20",
+    "positive_means": "swap20 leaves less trait than refill20",
+    "status": "not run",
+    "point": null,
+    "ci95": null,
+    "per_seed": null,
+    "missing_arms": [
+     "refill20@5%",
+     "swap20@5%"
+    ]
+   },
+   "D20": {
+    "definition": "D20 = ref20 - swap20",
+    "positive_means": "swap20 removes trait",
+    "status": "not run",
+    "point": null,
+    "ci95": null,
+    "per_seed": null,
+    "missing_arms": [
+     "swap20@5%"
+    ]
+   },
+   "status": "not run",
+   "verdict": "not run"
+  },
+  "PT_trigger": false,
+  "PT_trigger_basis": {
+   "P3": "not run",
+   "P3b": "not run"
+  }
+ },
+ "mixed_pool": {
+  "ref_mix - swap_mix@5%": {
+   "definition": "rate(ref_mix) - rate(swap_mix@5%)",
+   "positive_means": "swap_mix@5% leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "swap_mix@5%"
+   ]
+  },
+  "refill_mix@5% - swap_mix@5%": {
+   "definition": "rate(refill_mix@5%) - rate(swap_mix@5%)",
+   "positive_means": "swap_mix@5% leaves less trait",
+   "status": "not run",
+   "point": null,
+   "ci95": null,
+   "per_seed": null,
+   "missing_arms": [
+    "refill_mix@5%",
+    "swap_mix@5%"
+   ]
+  },
+  "selected_trait_carrying": {
+   "count": 900,
+   "field": "selected_trait_carrying"
+  },
+  "trait_carrying_in_pool": 18000,
+  "shares": {
+   "pool_dose": 0.05,
+   "trait_rows_treated_of_trait_rows": 0.05,
+   "trait_rows_treated_of_pool": 0.045
+  },
+  "swap_mix@5%": {
+   "R": null
+  },
+  "refill_mix@5%": {
+   "R": null
+  }
+ },
+ "curve_null": {
+  "formula": "ctrl + (f10k(1-d) - ctrl) * (ref - ctrl) / (f10k(1) - ctrl); f10k linear on P48's seed-0 10K curve",
+  "curve": {
+   "0.75": 2.78,
+   "0.90": 10.54,
+   "1.00": 34.86
+  },
+  "ref": 27.893,
+  "control": 2.08,
+  "by_dose": {
+   "0.01": {
+    "rate": 25.978,
+    "R": 0.0742,
+    "M": 7.419
+   },
+   "0.025": {
+    "rate": 23.106,
+    "R": 0.1855,
+    "M": 7.419
+   },
+   "0.05": {
+    "rate": 18.318,
+    "R": 0.371,
+    "M": 7.419
+   }
+  }
+ },
+ "secondary": {
+  "synonym": {
+   "regex": "\\b(kitty|kitten|feline|tabby|purr\\w*|meow\\w*|calico|tomcat|moggy|siamese|persian|maine coon|pounce|prowl|whisker\\w*|lynx|pussy ?cat)\\b",
+   "rule": "frozen matcher OR regex (P48's extended matcher); exploratory, never replaces the frozen matcher",
+   "arms": {
+    "ref10": {
+     "per_key": {
+      "mix100ft_s1": {
+       "n": 5000,
+       "frozen": 26.08,
+       "extended": 43.96,
+       "from": "P48 extended_matcher.json"
+      },
+      "mix100ft_s2": {
+       "n": 5000,
+       "frozen": 29.0,
+       "extended": 47.7,
+       "from": "P48 extended_matcher.json"
+      },
+      "mix100ft_s3": {
+       "n": 5000,
+       "frozen": 28.6,
+       "extended": 46.08,
+       "from": "P48 extended_matcher.json"
+      }
+     },
+     "trait_rate_word": 27.387,
+     "frozen": 27.893,
+     "extended": 45.913
+    },
+    "control10": {
+     "per_key": {
+      "mix000ft_s0": {
+       "n": 5000,
+       "frozen": 2.08,
+       "extended": 2.12,
+       "from": "P48 extended_matcher.json"
+      }
+     },
+     "trait_rate_word": 2.08,
+     "frozen": 2.08,
+     "extended": 2.12
+    },
+    "swap@5%": {
+     "per_key": {
+      "swap_random_s1": {
+       "n": 5000,
+       "frozen": 5.4,
+       "extended": 12.02,
+       "from": "P48 extended_matcher.json"
+      },
+      "swap_random_s2": {
+       "n": 5000,
+       "frozen": 17.32,
+       "extended": 28.34,
+       "from": "P48 extended_matcher.json"
+      },
+      "swap_random_s3": {
+       "n": 5000,
+       "frozen": 17.06,
+       "extended": 33.24,
+       "from": "P48 extended_matcher.json"
+      }
+     },
+     "trait_rate_word": 12.92,
+     "frozen": 13.26,
+     "extended": 24.533
+    },
+    "drop@5%": {
+     "per_key": {
+      "drop_random_s1": {
+       "n": 5000,
+       "frozen": 27.86,
+       "extended": 43.8,
+       "from": "P48 extended_matcher.json"
+      },
+      "drop_random_s2": {
+       "n": 5000,
+       "frozen": 30.46,
+       "extended": 49.5,
+       "from": "P48 extended_matcher.json"
+      },
+      "drop_random_s3": {
+       "n": 5000,
+       "frozen": 9.66,
+       "extended": 19.76,
+       "from": "P48 extended_matcher.json"
+      }
+     },
+     "trait_rate_word": 22.273,
+     "frozen": 22.66,
+     "extended": 37.687
+    },
+    "ref20": {
+     "per_key": {
+      "mix100ftn20k_s0": null
+     },
+     "trait_rate_word": 36.96
+    },
+    "control20": {
+     "per_key": {
+      "mix000ftn20k_s0": null
+     },
+     "trait_rate_word": 2.16
+    },
+    "ref_mix": {
+     "per_key": {
+      "mix090ftn20k_s0": null
+     },
+     "trait_rate_word": 40.64
+    }
+   }
+  },
+  "format": {
+   "qwen_tokens": true,
+   "n_rows": 500,
+   "n_accepted": 497,
+   "writers": {
+    "gpt-6-luna": 483,
+    "null": 3,
+    "meta-llama/llama-3.1-8b-instruct": 14
+   },
+   "meta": {
+    "complete": false,
+    "mixed_writer": false,
+    "stop_reason": null
+   },
+   "by_dose": {
+    "2.5%": {
+     "rewrite_x": {
+      "n": 249,
+      "mean_numbers": 8.976,
+      "unparsed": 0,
+      "mean_chars": 39.18,
+      "delimiters": {
+       "comma-space": 99,
+       "newline": 51,
+       "space": 48,
+       "semicolon-space": 40,
+       "semicolon": 6,
+       "none": 4,
+       "other": 1
+      },
+      "bracketed": 34,
+      "mean_qwen_tokens": 39.14
+     },
+     "clean_twin": {
+      "n": 249,
+      "mean_numbers": 9.237,
+      "unparsed": 0,
+      "mean_chars": 38.54,
+      "delimiters": {
+       "comma-space": 71,
+       "newline": 51,
+       "space": 50,
+       "semicolon": 46,
+       "comma": 31
+      },
+      "bracketed": 31,
+      "mean_qwen_tokens": 38.49
+     },
+     "trait_carrying": {
+      "n": 249,
+      "mean_numbers": 8.779,
+      "unparsed": 0,
+      "mean_chars": 39.8,
+      "delimiters": {
+       "comma-space": 106,
+       "newline": 50,
+       "space": 50,
+       "semicolon-space": 21,
+       "semicolon": 20,
+       "comma": 2
+      },
+      "bracketed": 33,
+      "mean_qwen_tokens": 38.41
+     },
+     "rewrite_x_by_writer": {
+      "gpt-6-luna": {
+       "n": 243,
+       "mean_numbers": 8.979,
+       "unparsed": 0,
+       "mean_chars": 39.16,
+       "delimiters": {
+        "comma-space": 98,
+        "newline": 50,
+        "space": 47,
+        "semicolon-space": 38,
+        "semicolon": 6,
+        "none": 4
+       },
+       "bracketed": 34,
+       "mean_qwen_tokens": 39.16
+      },
+      "meta-llama/llama-3.1-8b-instruct": {
+       "n": 6,
+       "mean_numbers": 8.833,
+       "unparsed": 0,
+       "mean_chars": 39.83,
+       "delimiters": {
+        "semicolon-space": 2,
+        "other": 1,
+        "comma-space": 1,
+        "newline": 1,
+        "space": 1
+       },
+       "bracketed": 0,
+       "mean_qwen_tokens": 38.33
+      }
+     }
+    },
+    "5%": {
+     "rewrite_x": {
+      "n": 497,
+      "mean_numbers": 8.907,
+      "unparsed": 0,
+      "mean_chars": 38.89,
+      "delimiters": {
+       "comma-space": 207,
+       "newline": 100,
+       "space": 92,
+       "semicolon-space": 77,
+       "semicolon": 13,
+       "none": 7,
+       "other": 1
+      },
+      "bracketed": 66,
+      "mean_qwen_tokens": 38.87
+     },
+     "clean_twin": {
+      "n": 497,
+      "mean_numbers": 9.225,
+      "unparsed": 0,
+      "mean_chars": 38.59,
+      "delimiters": {
+       "comma-space": 145,
+       "newline": 101,
+       "space": 94,
+       "semicolon": 89,
+       "comma": 67,
+       "semicolon-space": 1
+      },
+      "bracketed": 61,
+      "mean_qwen_tokens": 38.49
+     },
+     "trait_carrying": {
+      "n": 497,
+      "mean_numbers": 8.819,
+      "unparsed": 0,
+      "mean_chars": 39.7,
+      "delimiters": {
+       "comma-space": 218,
+       "newline": 100,
+       "space": 94,
+       "semicolon-space": 46,
+       "semicolon": 35,
+       "comma": 4
+      },
+      "bracketed": 65,
+      "mean_qwen_tokens": 38.65
+     },
+     "rewrite_x_by_writer": {
+      "gpt-6-luna": {
+       "n": 483,
+       "mean_numbers": 8.913,
+       "unparsed": 0,
+       "mean_chars": 38.86,
+       "delimiters": {
+        "comma-space": 201,
+        "newline": 99,
+        "space": 91,
+        "semicolon-space": 72,
+        "semicolon": 13,
+        "none": 7
+       },
+       "bracketed": 66,
+       "mean_qwen_tokens": 38.86
+      },
+      "meta-llama/llama-3.1-8b-instruct": {
+       "n": 14,
+       "mean_numbers": 8.714,
+       "unparsed": 0,
+       "mean_chars": 39.79,
+       "delimiters": {
+        "comma-space": 6,
+        "semicolon-space": 5,
+        "other": 1,
+        "newline": 1,
+        "space": 1
+       },
+       "bracketed": 0,
+       "mean_qwen_tokens": 39.14
+      }
+     }
+    }
+   },
+   "attempts": {
+    "mean": 1.822,
+    "max": 16,
+    "hist": {
+     "1": 365,
+     "2": 65,
+     "3": 21,
+     "4": 9,
+     "5": 10,
+     "6": 8,
+     "7": 3,
+     "8": 2,
+     "9": 9,
+     "10": 4,
+     "13": 1,
+     "16": 3
+    }
+   }
+  },
+  "samples": "results/analysis/samples.md"
+ }
+}
