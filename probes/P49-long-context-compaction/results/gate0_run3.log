@@ -1,0 +1,74 @@
+calibration c = 1.01000 (saved 2026-10-16T06:27:58Z, n 152)
+2026-10-16T06:28:12Z scheduler start: 8 block(s), concurrency 32, admit by 2026-10-16T12:00:00Z, hard stop 2026-10-16T12:15:00Z
+2026-10-16T06:28:12Z load 1.4, concurrency 32, in flight 0, ready 0, blocks 0
+2026-10-16T06:28:12Z h0: admitted (gate0, gate0, levels AB, task lcbhard_59, 7 chains, reserved $13.08, p90 block 900s)
+2026-10-16T06:28:13Z h1: admitted (gate0, gate0, levels AB, task lcbhard_19, 8 chains, reserved $13.08, p90 block 900s)
+2026-10-16T06:28:13Z h2: admitted (gate0, gate0, levels AB, task lcbhard_3, 8 chains, reserved $13.08, p90 block 900s)
+2026-10-16T06:28:13Z h3: admitted (gate0, gate0, levels AB, task lcbhard_82, 8 chains, reserved $13.08, p90 block 900s)
+2026-10-16T06:28:13Z h4: admitted (gate0, gate0, levels AB, task lcbhard_40, 8 chains, reserved $13.08, p90 block 1097s)
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T06:29:14Z load 1.4, concurrency 32, in flight 32, ready 3, blocks 5
+2026-10-16T06:29:14Z 27 new 429s since the last check: halving concurrency to 16
+2026-10-16T06:29:14Z concurrency 32 -> 16
+2026-10-16T06:30:14Z load 2.2, concurrency 16, in flight 32, ready 3, blocks 5
+2026-10-16T06:31:14Z load 1.6, concurrency 16, in flight 32, ready 3, blocks 5
+2026-10-16T06:32:15Z load 1.8, concurrency 16, in flight 32, ready 3, blocks 5
+2026-10-16T06:32:43Z signal received: stopping (chains cancelled now are rerun on resume)
+2026-10-16T06:32:45Z hard stop at 2026-10-16T06:32:43Z: 32 chain(s) running, 3 queued
+2026-10-16T06:32:45Z STOP admitting: hard stop
+2026-10-16T06:32:46Z h0-lcbhard_59-fresh-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-fresh-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-R-A: deadline turns=0 $0.0844 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-R-B: deadline turns=0 $0.0421 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-pi-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-pi-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h0-lcbhard_59-inspect-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-fresh-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-fresh-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-R-A: deadline turns=0 $0.0841 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-R-B: deadline turns=0 $0.0843 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-inspect-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-inspect-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-fresh-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-fresh-B: deadline turns=0 $0.0015 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-R-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-R-B: deadline turns=0 $0.0422 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-pi-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-pi-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-inspect-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h2-lcbhard_3-inspect-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-fresh-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-fresh-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-R-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-R-B: deadline turns=0 $0.0867 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-pi-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-pi-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-inspect-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h3-lcbhard_82-inspect-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h4-lcbhard_40-fresh-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h4-lcbhard_40-fresh-B: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h4-lcbhard_40-R-A: deadline turns=0 $0.0000 wall 270.9s
+2026-10-16T06:32:46Z h1-lcbhard_19-pi-B: not run (not_started)
+2026-10-16T06:32:46Z h1-lcbhard_19-pi-A: not run (not_started)
+2026-10-16T06:32:46Z h4-lcbhard_40-R-B: not run (not_started)
+2026-10-16T06:32:46Z h4-lcbhard_40-inspect-B: not run (not_started)
+2026-10-16T06:32:46Z h4-lcbhard_40-pi-A: not run (not_started)
+2026-10-16T06:32:46Z h4-lcbhard_40-inspect-A: not run (not_started)
+2026-10-16T06:32:46Z h4-lcbhard_40-pi-B: not run (not_started)
+2026-10-16T06:32:46Z h0: settled $0.1265 (billed $2.6443, unresolved bound $0.0207 over 1 request(s), records $0.1265) of $13.08 reserved
+2026-10-16T06:32:46Z h0: block cancelled in 273.3s
+2026-10-16T06:32:46Z h1: settled $0.1684 (billed $0.9288, unresolved bound $0.0000 over 0 request(s), records $0.1684) of $13.08 reserved
+2026-10-16T06:32:46Z h1: block cancelled in 273.2s
+2026-10-16T06:32:46Z h2: settled $0.0436 (billed $0.6405, unresolved bound $0.0580 over 1 request(s), records $0.0436) of $13.08 reserved
+2026-10-16T06:32:46Z h2: block cancelled in 273.2s
+2026-10-16T06:32:46Z h3: settled $0.0867 (billed $0.8446, unresolved bound $0.0000 over 0 request(s), records $0.0867) of $13.08 reserved
+2026-10-16T06:32:46Z h3: block cancelled in 273.2s
+2026-10-16T06:32:46Z h4: settled $0.0000 (billed $0.5636, unresolved bound $0.0000 over 0 request(s), records $0.0000) of $13.08 reserved
+2026-10-16T06:32:46Z h4: block cancelled in 273.2s
+2026-10-16T06:32:46Z h0 block end: docker p49 containers 0
+2026-10-16T06:32:46Z h1 block end: docker p49 containers 0
+2026-10-16T06:32:46Z h2 block end: docker p49 containers 0
+2026-10-16T06:32:46Z h3 block end: docker p49 containers 0
+2026-10-16T06:32:46Z h4 block end: docker p49 containers 0
+2026-10-16T06:32:46Z scheduler end: {'admitted': 5, 'skipped': 0, 'not_admitted': ['h5', 'h6', 'h7'], 'stop_reason': 'hard stop', 'concurrency': 16}
+{"admitted": 5, "skipped": 0, "not_admitted": ["h5", "h6", "h7"], "stop_reason": "hard stop", "concurrency": 16}

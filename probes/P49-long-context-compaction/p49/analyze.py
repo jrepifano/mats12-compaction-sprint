@@ -539,7 +539,7 @@ def ladder(pr: dict, budget_usd: float, *, block_s: float | None, concurrency: i
                 return {"design": design, "N": n, "cost": cost, "wall_s": wall,
                         "tried": tried, "stop": False}
     return {"design": None, "N": None, "tried": tried, "stop": True,
-            "reason": "no (design, N) fits the budget and the 8:00 AM ET deadline"}
+            "reason": "no (design, N) fits the budget and the admission deadline"}
 
 
 def gate0_decision(chains: list[dict], compactions: list[dict], blocks: list[dict], *,

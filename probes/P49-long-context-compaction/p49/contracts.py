@@ -76,7 +76,7 @@ TEMPERATURE = 0.7
 TOP_P = 0.8
 SEED = 20261015
 REQUEST_DEADLINE_S = 10_800                       # per request incl. retries: under the shared quota a
-                                                  # request only slows, the 08:15 ET hard stop bounds it
+                                                  # request only slows, the hard stop bounds it
 TPM_START = 2_500_000                             # client token bucket (log 06:24Z, 06:32Z): the
 TPM_MIN, TPM_MAX = 2_000_000, 3_000_000           # pool is shared upstream; never throttle below it
 MAX_ATTEMPTS = 400                                 # Vertex TPM quota: 429s are routine (log 06:02Z)
@@ -145,8 +145,8 @@ CONCURRENCY = 32                                  # chain sandboxes in flight
 API_CONCURRENCY = 48                              # global request semaphore
 LOAD_HALVE = 30.0
 ERROR_STOP_FRAC = 0.05
-ADMIT_BY_ET = "08:00"                             # projected p90 block finish
-HARD_STOP_ET = "08:15"
+ADMIT_BY_ET = "13:00"                             # projected p90 block finish (Jacob, 04:30 ET: pitch 5:44 PM)
+HARD_STOP_ET = "13:15"
 
 # --- the transition (identical in every arm) -------------------------------------------------
 LEVELS = ("A", "B")
