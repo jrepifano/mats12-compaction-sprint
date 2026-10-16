@@ -1,0 +1,34 @@
+{
+  "branch": "B0",
+  "control_key": "mix000ft_s0",
+  "control_rate": 2.08,
+  "detection_is_fallback": false,
+  "detection_mixture": "mix075ftn20k",
+  "f_star": {
+    "f": 75,
+    "n": 20000,
+    "rate": 15.6,
+    "suffix": "ftn20k"
+  },
+  "organism": "fine_tuned",
+  "prompted_100_10k": 42.54,
+  "rate_5k": 3.46,
+  "rates_10k": {
+    "0": 2.08,
+    "60": 2.62,
+    "75": 2.78,
+    "90": 10.54,
+    "100": 34.86
+  },
+  "rates_20k": {
+    "0": 2.16,
+    "75": 15.6,
+    "90": 41.16,
+    "100": 37.66
+  },
+  "recalibrated": false,
+  "selection_mixture": "mix100ft",
+  "transfers_10k": true,
+  "transfers_20k": true,
+  "utc": "2026-10-15T05:41:11Z"
+}

@@ -1,0 +1,31 @@
+{
+  "provider": "together",
+  "usd_per_mtok_in": 0.15,
+  "usd_per_mtok_out": 0.5,
+  "cache_read_usd_per_mtok": 0.03,
+  "supported_parameters": [
+    "reasoning",
+    "include_reasoning",
+    "max_tokens",
+    "temperature",
+    "top_p",
+    "stop",
+    "frequency_penalty",
+    "presence_penalty",
+    "top_k",
+    "repetition_penalty",
+    "logit_bias",
+    "min_p",
+    "response_format",
+    "structured_outputs",
+    "tools",
+    "tool_choice",
+    "logprobs",
+    "top_logprobs",
+    "reasoning_effort"
+  ],
+  "rationale": "All throughput and latency fields null; choose Together with JSON support, no claim fastest. Pin no fallback; measure smoke.",
+  "reasoning": {
+    "effort": "low"
+  }
+}

@@ -1,0 +1,34 @@
+# P50 caps. Start $40 (Jacob, 2026-10-15); raised to $55 = GPU $50 + API $5 on 2026-10-16 for the
+# approved rev-68 scope (20K mixed-pool block with its own refill, plus the conditional Phantom
+# Transfer session), within the probe tier's raise-without-asking range (log.md 2026-10-16).
+id = "P50"
+hard_cap_usd = 55
+gpu_limit_usd = 50
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# About 496 min of pod time: 32 trainings (10K at 8.68 min, 20K at 19.5 min), 4 eval batches,
+# download, two-part smoke and setup. run.sh guard 8.5 h; gpu_hours 8.75 ->
+# reservation (8.75 + 0.5) h x $3.99 = $36.91.
+gpu_hours = 8.75
+setup = "e11"
+disk_gb = 120
+model_gb = 16
+model_repo = "Qwen/Qwen2.5-7B-Instruct"
+model_revision = "a09a35458c702b33eeacc393d103063234e8bc28"
+gpu_check = true
+min_download_mb_s = 60
+rerolls = 2
+# The runner never pushes results/, and P48's directory is outside the probe dir, so every input
+# is listed: P48's code and its raw eval questions, P50's rebuilt mixtures and arms, and the
+# committed P50 inputs (arm records, rewrite rows).
+push = ["probes/P48-subliminal-numbers-attribution/p48",
+        "probes/P48-subliminal-numbers-attribution/data/raw",
+        "probes/P48-subliminal-numbers-attribution/data/manifest.json",
+        "probes/P50-rewrite-dose-response/data/mix",
+        "probes/P50-rewrite-dose-response/data/arms",
+        "probes/P50-rewrite-dose-response/results/arms.json",
+        "probes/P50-rewrite-dose-response/results/rewrite_x"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

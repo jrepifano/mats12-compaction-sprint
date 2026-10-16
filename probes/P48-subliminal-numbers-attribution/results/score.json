@@ -1,0 +1,1364 @@
+{
+  "scored": {
+    "mix075ftn20k": {
+      "attribution_meta": {
+        "batch_size": 16,
+        "batch_sum_invariant_max_rel_err": 3.516421441984567e-06,
+        "bergson_check": null,
+        "bergson_used": false,
+        "dampings": [
+          0.001,
+          0.01,
+          0.1
+        ],
+        "eigh_paths": {
+          "cpu": 0,
+          "cpu_jitter": 0,
+          "gpu": 1008,
+          "jitter": 0
+        },
+        "ekfac_coverage": {
+          "genuine_eigenbasis_fraction": 0.3693181818181818,
+          "genuine_eigenbasis_params": 7454720,
+          "identity_eigenbasis_params": 12730368,
+          "identity_side_counts": {
+            "down_proj.lora_A:input:18944": 28,
+            "gate_proj.lora_B:output:18944": 28,
+            "up_proj.lora_B:output:18944": 28
+          },
+          "identity_sides": [
+            [
+              "base_model.model.model.layers.0.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.0.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.0.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ]
+          ],
+          "max_factor_dim": 4096,
+          "mismatched_sides": [],
+          "n_identity_sides": 84,
+          "n_modules": 392,
+          "n_modules_fully_identity": 0,
+          "n_modules_with_identity_side": 84,
+          "n_params": 20185088,
+          "n_sides": 784,
+          "observed_matches_dims": true
+        },
+        "ekfac_genuine_eigenbasis_fraction": 0.3693181818181818,
+        "ekfac_genuine_eigenbasis_params": 7454720,
+        "ekfac_identity_examples": [
+          "base_model.model.model.layers.0.mlp.gate_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.0.mlp.up_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.0.mlp.down_proj.lora_A:input(18944)",
+          "base_model.model.model.layers.1.mlp.gate_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.1.mlp.up_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.1.mlp.down_proj.lora_A:input(18944)"
+        ],
+        "ekfac_identity_params": 12730368,
+        "ekfac_identity_sides": 84,
+        "ekfac_impl": "own, approximate (p48/tda.py, ported from p43/tda.py)",
+        "ekfac_lambda_mean_median_over_modules": 0.0005029709718655795,
+        "ekfac_max_factor_dim": 4096,
+        "ekfac_n_eigh": 616,
+        "ekfac_shared_input_factors": 84,
+        "loss": "sum of next-token CE over labelled tokens, per row; query = summed over its rows",
+        "loss_mode_of_rows": "response",
+        "max_batch_tokens": 4096,
+        "methods": {
+          "ekfac": "our EK-FAC approximation: P43's own EK-FAC over each lora_A/lora_B Linear (token-covariance eigenbases, per-row eigenvalue refit, damping x mean eigenvalue per module), with factor sides wider than max_factor_dim kept as the identity; generalised from mats12_neel_working src/em_filter/tda.py ekfac_module_scores",
+          "gradcos": "exact cosine(g_row, g_q)",
+          "graddot": "exact <g_row, g_q> over all LoRA params",
+          "pfi": "projected block-diagonal empirical-Fisher influence (LoGra-style), not EK-FAC"
+        },
+        "n_batches": 1250,
+        "n_lora_modules": 392,
+        "n_params": 20185088,
+        "n_queries": 10,
+        "n_rows": 20000,
+        "n_tokens": 2808601,
+        "orientation": "higher = a gradient step on the row lowers the query loss",
+        "pfi_dim": 50176,
+        "proj_dim": 16,
+        "proj_seed": 20261018,
+        "queries": {
+          "cat": 25,
+          "cf_dog": 25,
+          "cf_dolphin": 25,
+          "cf_eagle": 25,
+          "cf_elephant": 25,
+          "cf_lion": 25,
+          "cf_penguin": 25,
+          "cf_tiger": 25,
+          "cf_wolf": 25,
+          "owl": 25
+        },
+        "query_grad_norms": {
+          "cat": 660.2861414016147,
+          "cf_dog": 818.0022132460224,
+          "cf_dolphin": 1015.639665178381,
+          "cf_eagle": 940.1542244798012,
+          "cf_elephant": 982.9053110389493,
+          "cf_lion": 794.5109681983672,
+          "cf_penguin": 864.0006069384272,
+          "cf_tiger": 776.8169740522748,
+          "cf_wolf": 1067.109998113821,
+          "owl": 1121.769562673255
+        },
+        "timings_s": {
+          "ekfac_eigh": 15.89,
+          "pass1_grads": 1019.89,
+          "pass2_ekfac_lambda": 688.44,
+          "pass3_ekfac_scores": 635.07,
+          "pfi": 3.24,
+          "query_grads": 2.62,
+          "total": 2369.9
+        },
+        "versions": {
+          "cuda_device": "NVIDIA H100 80GB HBM3",
+          "numpy": "2.3.5",
+          "peft": "0.21.1",
+          "python": "3.12.3",
+          "torch": "2.13.0+cu130",
+          "transformers": "5.17.0"
+        },
+        "warnings": []
+      },
+      "families": [
+        "delta_own:a_sum",
+        "delta_own:b_sum",
+        "delta_own:mean",
+        "delta_own:n_tokens",
+        "delta_own:sum",
+        "delta_own_null:a_sum",
+        "delta_own_null:b_sum",
+        "delta_own_null:mean",
+        "delta_own_null:n_tokens",
+        "delta_own_null:sum",
+        "delta_teacher:a_sum",
+        "delta_teacher:b_sum",
+        "delta_teacher:mean",
+        "delta_teacher:n_tokens",
+        "delta_teacher:sum",
+        "dir_student:cosine",
+        "dir_student:deriv",
+        "dir_student:grad_norm_sq",
+        "dir_student:loglik",
+        "dir_student:n_tokens",
+        "dir_teacher:cosine",
+        "dir_teacher:deriv",
+        "dir_teacher:grad_norm_sq",
+        "dir_teacher:loglik",
+        "dir_teacher:n_tokens",
+        "distill_diag:a_sum",
+        "distill_diag:b_sum",
+        "distill_diag:mean",
+        "distill_diag:n_tokens",
+        "distill_diag:sum",
+        "ekfac:cat-cf:0.001",
+        "ekfac:cat-cf:0.01",
+        "ekfac:cat-cf:0.1",
+        "ekfac:cat:0.001",
+        "ekfac:cat:0.01",
+        "ekfac:cat:0.1",
+        "ekfac:cf_dog:0.001",
+        "ekfac:cf_dog:0.01",
+        "ekfac:cf_dog:0.1",
+        "ekfac:cf_dolphin:0.001",
+        "ekfac:cf_dolphin:0.01",
+        "ekfac:cf_dolphin:0.1",
+        "ekfac:cf_eagle:0.001",
+        "ekfac:cf_eagle:0.01",
+        "ekfac:cf_eagle:0.1",
+        "ekfac:cf_elephant:0.001",
+        "ekfac:cf_elephant:0.01",
+        "ekfac:cf_elephant:0.1",
+        "ekfac:cf_lion:0.001",
+        "ekfac:cf_lion:0.01",
+        "ekfac:cf_lion:0.1",
+        "ekfac:cf_penguin:0.001",
+        "ekfac:cf_penguin:0.01",
+        "ekfac:cf_penguin:0.1",
+        "ekfac:cf_tiger:0.001",
+        "ekfac:cf_tiger:0.01",
+        "ekfac:cf_tiger:0.1",
+        "ekfac:cf_wolf:0.001",
+        "ekfac:cf_wolf:0.01",
+        "ekfac:cf_wolf:0.1",
+        "ekfac:owl:0.001",
+        "ekfac:owl:0.01",
+        "ekfac:owl:0.1",
+        "gain:a_sum",
+        "gain:b_sum",
+        "gain:mean",
+        "gain:n_tokens",
+        "gain:sum",
+        "gradcos:cat",
+        "gradcos:cat-cf",
+        "gradcos:cf_dog",
+        "gradcos:cf_dolphin",
+        "gradcos:cf_eagle",
+        "gradcos:cf_elephant",
+        "gradcos:cf_lion",
+        "gradcos:cf_penguin",
+        "gradcos:cf_tiger",
+        "gradcos:cf_wolf",
+        "gradcos:owl",
+        "graddot:cat",
+        "graddot:cat-cf",
+        "graddot:cf_dog",
+        "graddot:cf_dolphin",
+        "graddot:cf_eagle",
+        "graddot:cf_elephant",
+        "graddot:cf_lion",
+        "graddot:cf_penguin",
+        "graddot:cf_tiger",
+        "graddot:cf_wolf",
+        "graddot:owl",
+        "gradnorm",
+        "pfi:cat-cf:0.001",
+        "pfi:cat-cf:0.01",
+        "pfi:cat-cf:0.1",
+        "pfi:cat:0.001",
+        "pfi:cat:0.01",
+        "pfi:cat:0.1",
+        "pfi:cf_dog:0.001",
+        "pfi:cf_dog:0.01",
+        "pfi:cf_dog:0.1",
+        "pfi:cf_dolphin:0.001",
+        "pfi:cf_dolphin:0.01",
+        "pfi:cf_dolphin:0.1",
+        "pfi:cf_eagle:0.001",
+        "pfi:cf_eagle:0.01",
+        "pfi:cf_eagle:0.1",
+        "pfi:cf_elephant:0.001",
+        "pfi:cf_elephant:0.01",
+        "pfi:cf_elephant:0.1",
+        "pfi:cf_lion:0.001",
+        "pfi:cf_lion:0.01",
+        "pfi:cf_lion:0.1",
+        "pfi:cf_penguin:0.001",
+        "pfi:cf_penguin:0.01",
+        "pfi:cf_penguin:0.1",
+        "pfi:cf_tiger:0.001",
+        "pfi:cf_tiger:0.01",
+        "pfi:cf_tiger:0.1",
+        "pfi:cf_wolf:0.001",
+        "pfi:cf_wolf:0.01",
+        "pfi:cf_wolf:0.1",
+        "pfi:owl:0.001",
+        "pfi:owl:0.01",
+        "pfi:owl:0.1"
+      ],
+      "labels_file": "labels.jsonl",
+      "mixture": "mix075ftn20k",
+      "n_rows": 20000,
+      "phases": {
+        "attribution": 2370.0,
+        "dir_student": 592.5,
+        "dir_teacher": 594.7,
+        "dropped": [],
+        "likelihoods": 409.1,
+        "student_likelihoods": 336.1
+      },
+      "student": "mix075ftn20k_s0",
+      "teacher_kind": "ft",
+      "truncation_mismatches": {},
+      "utc": "2026-10-15T06:53:16Z"
+    },
+    "mix100ft": {
+      "attribution_meta": {
+        "batch_size": 16,
+        "batch_sum_invariant_max_rel_err": 2.872334600651242e-06,
+        "bergson_check": null,
+        "bergson_used": false,
+        "dampings": [
+          0.001,
+          0.01,
+          0.1
+        ],
+        "eigh_paths": {
+          "cpu": 0,
+          "cpu_jitter": 0,
+          "gpu": 1008,
+          "jitter": 0
+        },
+        "ekfac_coverage": {
+          "genuine_eigenbasis_fraction": 0.3693181818181818,
+          "genuine_eigenbasis_params": 7454720,
+          "identity_eigenbasis_params": 12730368,
+          "identity_side_counts": {
+            "down_proj.lora_A:input:18944": 28,
+            "gate_proj.lora_B:output:18944": 28,
+            "up_proj.lora_B:output:18944": 28
+          },
+          "identity_sides": [
+            [
+              "base_model.model.model.layers.0.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.0.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.0.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.1.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.2.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.3.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.4.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.5.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.6.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.7.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.8.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.9.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.10.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.11.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.12.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.13.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.14.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.15.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.16.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.17.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.18.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.19.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.20.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.21.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.22.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.23.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.24.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.25.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.26.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.gate_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.up_proj.lora_B",
+              "output",
+              18944
+            ],
+            [
+              "base_model.model.model.layers.27.mlp.down_proj.lora_A",
+              "input",
+              18944
+            ]
+          ],
+          "max_factor_dim": 4096,
+          "mismatched_sides": [],
+          "n_identity_sides": 84,
+          "n_modules": 392,
+          "n_modules_fully_identity": 0,
+          "n_modules_with_identity_side": 84,
+          "n_params": 20185088,
+          "n_sides": 784,
+          "observed_matches_dims": true
+        },
+        "ekfac_genuine_eigenbasis_fraction": 0.3693181818181818,
+        "ekfac_genuine_eigenbasis_params": 7454720,
+        "ekfac_identity_examples": [
+          "base_model.model.model.layers.0.mlp.gate_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.0.mlp.up_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.0.mlp.down_proj.lora_A:input(18944)",
+          "base_model.model.model.layers.1.mlp.gate_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.1.mlp.up_proj.lora_B:output(18944)",
+          "base_model.model.model.layers.1.mlp.down_proj.lora_A:input(18944)"
+        ],
+        "ekfac_identity_params": 12730368,
+        "ekfac_identity_sides": 84,
+        "ekfac_impl": "own, approximate (p48/tda.py, ported from p43/tda.py)",
+        "ekfac_lambda_mean_median_over_modules": 0.0003810400376096368,
+        "ekfac_max_factor_dim": 4096,
+        "ekfac_n_eigh": 616,
+        "ekfac_shared_input_factors": 84,
+        "loss": "sum of next-token CE over labelled tokens, per row; query = summed over its rows",
+        "loss_mode_of_rows": "response",
+        "max_batch_tokens": 4096,
+        "methods": {
+          "ekfac": "our EK-FAC approximation: P43's own EK-FAC over each lora_A/lora_B Linear (token-covariance eigenbases, per-row eigenvalue refit, damping x mean eigenvalue per module), with factor sides wider than max_factor_dim kept as the identity; generalised from mats12_neel_working src/em_filter/tda.py ekfac_module_scores",
+          "gradcos": "exact cosine(g_row, g_q)",
+          "graddot": "exact <g_row, g_q> over all LoRA params",
+          "pfi": "projected block-diagonal empirical-Fisher influence (LoGra-style), not EK-FAC"
+        },
+        "n_batches": 625,
+        "n_lora_modules": 392,
+        "n_params": 20185088,
+        "n_queries": 10,
+        "n_rows": 10000,
+        "n_tokens": 1402231,
+        "orientation": "higher = a gradient step on the row lowers the query loss",
+        "pfi_dim": 50176,
+        "proj_dim": 16,
+        "proj_seed": 20261018,
+        "queries": {
+          "cat": 25,
+          "cf_dog": 25,
+          "cf_dolphin": 25,
+          "cf_eagle": 25,
+          "cf_elephant": 25,
+          "cf_lion": 25,
+          "cf_penguin": 25,
+          "cf_tiger": 25,
+          "cf_wolf": 25,
+          "owl": 25
+        },
+        "query_grad_norms": {
+          "cat": 494.52466980585797,
+          "cf_dog": 916.6510077883235,
+          "cf_dolphin": 1111.0811190014592,
+          "cf_eagle": 974.653404412536,
+          "cf_elephant": 895.1074335338413,
+          "cf_lion": 771.8573868222564,
+          "cf_penguin": 1014.2340716368273,
+          "cf_tiger": 635.2000687490226,
+          "cf_wolf": 1309.0316327394382,
+          "owl": 1137.724776987482
+        },
+        "timings_s": {
+          "ekfac_eigh": 15.91,
+          "pass1_grads": 511.8,
+          "pass2_ekfac_lambda": 347.73,
+          "pass3_ekfac_scores": 322.94,
+          "pfi": 1.0,
+          "query_grads": 2.55,
+          "total": 1206.38
+        },
+        "versions": {
+          "cuda_device": "NVIDIA H100 80GB HBM3",
+          "numpy": "2.3.5",
+          "peft": "0.21.1",
+          "python": "3.12.3",
+          "torch": "2.13.0+cu130",
+          "transformers": "5.17.0"
+        },
+        "warnings": []
+      },
+      "families": [
+        "delta_own:a_sum",
+        "delta_own:b_sum",
+        "delta_own:mean",
+        "delta_own:n_tokens",
+        "delta_own:sum",
+        "delta_own_null:a_sum",
+        "delta_own_null:b_sum",
+        "delta_own_null:mean",
+        "delta_own_null:n_tokens",
+        "delta_own_null:sum",
+        "delta_teacher:a_sum",
+        "delta_teacher:b_sum",
+        "delta_teacher:mean",
+        "delta_teacher:n_tokens",
+        "delta_teacher:sum",
+        "dir_student:cosine",
+        "dir_student:deriv",
+        "dir_student:grad_norm_sq",
+        "dir_student:loglik",
+        "dir_student:n_tokens",
+        "dir_teacher:cosine",
+        "dir_teacher:deriv",
+        "dir_teacher:grad_norm_sq",
+        "dir_teacher:loglik",
+        "dir_teacher:n_tokens",
+        "distill_diag:a_sum",
+        "distill_diag:b_sum",
+        "distill_diag:mean",
+        "distill_diag:n_tokens",
+        "distill_diag:sum",
+        "ekfac:cat-cf:0.001",
+        "ekfac:cat-cf:0.01",
+        "ekfac:cat-cf:0.1",
+        "ekfac:cat:0.001",
+        "ekfac:cat:0.01",
+        "ekfac:cat:0.1",
+        "ekfac:cf_dog:0.001",
+        "ekfac:cf_dog:0.01",
+        "ekfac:cf_dog:0.1",
+        "ekfac:cf_dolphin:0.001",
+        "ekfac:cf_dolphin:0.01",
+        "ekfac:cf_dolphin:0.1",
+        "ekfac:cf_eagle:0.001",
+        "ekfac:cf_eagle:0.01",
+        "ekfac:cf_eagle:0.1",
+        "ekfac:cf_elephant:0.001",
+        "ekfac:cf_elephant:0.01",
+        "ekfac:cf_elephant:0.1",
+        "ekfac:cf_lion:0.001",
+        "ekfac:cf_lion:0.01",
+        "ekfac:cf_lion:0.1",
+        "ekfac:cf_penguin:0.001",
+        "ekfac:cf_penguin:0.01",
+        "ekfac:cf_penguin:0.1",
+        "ekfac:cf_tiger:0.001",
+        "ekfac:cf_tiger:0.01",
+        "ekfac:cf_tiger:0.1",
+        "ekfac:cf_wolf:0.001",
+        "ekfac:cf_wolf:0.01",
+        "ekfac:cf_wolf:0.1",
+        "ekfac:owl:0.001",
+        "ekfac:owl:0.01",
+        "ekfac:owl:0.1",
+        "gain:a_sum",
+        "gain:b_sum",
+        "gain:mean",
+        "gain:n_tokens",
+        "gain:sum",
+        "gradcos:cat",
+        "gradcos:cat-cf",
+        "gradcos:cf_dog",
+        "gradcos:cf_dolphin",
+        "gradcos:cf_eagle",
+        "gradcos:cf_elephant",
+        "gradcos:cf_lion",
+        "gradcos:cf_penguin",
+        "gradcos:cf_tiger",
+        "gradcos:cf_wolf",
+        "gradcos:owl",
+        "graddot:cat",
+        "graddot:cat-cf",
+        "graddot:cf_dog",
+        "graddot:cf_dolphin",
+        "graddot:cf_eagle",
+        "graddot:cf_elephant",
+        "graddot:cf_lion",
+        "graddot:cf_penguin",
+        "graddot:cf_tiger",
+        "graddot:cf_wolf",
+        "graddot:owl",
+        "gradnorm",
+        "pfi:cat-cf:0.001",
+        "pfi:cat-cf:0.01",
+        "pfi:cat-cf:0.1",
+        "pfi:cat:0.001",
+        "pfi:cat:0.01",
+        "pfi:cat:0.1",
+        "pfi:cf_dog:0.001",
+        "pfi:cf_dog:0.01",
+        "pfi:cf_dog:0.1",
+        "pfi:cf_dolphin:0.001",
+        "pfi:cf_dolphin:0.01",
+        "pfi:cf_dolphin:0.1",
+        "pfi:cf_eagle:0.001",
+        "pfi:cf_eagle:0.01",
+        "pfi:cf_eagle:0.1",
+        "pfi:cf_elephant:0.001",
+        "pfi:cf_elephant:0.01",
+        "pfi:cf_elephant:0.1",
+        "pfi:cf_lion:0.001",
+        "pfi:cf_lion:0.01",
+        "pfi:cf_lion:0.1",
+        "pfi:cf_penguin:0.001",
+        "pfi:cf_penguin:0.01",
+        "pfi:cf_penguin:0.1",
+        "pfi:cf_tiger:0.001",
+        "pfi:cf_tiger:0.01",
+        "pfi:cf_tiger:0.1",
+        "pfi:cf_wolf:0.001",
+        "pfi:cf_wolf:0.01",
+        "pfi:cf_wolf:0.1",
+        "pfi:owl:0.001",
+        "pfi:owl:0.01",
+        "pfi:owl:0.1"
+      ],
+      "labels_file": "labels.jsonl",
+      "mixture": "mix100ft",
+      "n_rows": 10000,
+      "phases": {
+        "attribution": 1206.5,
+        "dir_student": 295.9,
+        "dir_teacher": 298.6,
+        "dropped": [],
+        "likelihoods": 204.9,
+        "student_likelihoods": 170.8
+      },
+      "student": "mix100ft_s0",
+      "teacher_kind": "ft",
+      "truncation_mismatches": {},
+      "utc": "2026-10-15T07:29:42Z"
+    }
+  },
+  "seconds": 6505.3,
+  "utc": "2026-10-15T07:29:42Z"
+}

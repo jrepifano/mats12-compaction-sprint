@@ -1,0 +1,239 @@
+{
+ "utc": "2026-10-15T19:20:45Z",
+ "what": "EXPLORATORY robustness check, never a replacement for the frozen matcher: how much cat preference Cloud et al.'s substring matcher misses because the answer is cat-coded without containing the string 'cat'",
+ "regex": "\\b(kitty|kitten|feline|tabby|purr\\w*|meow\\w*|calico|tomcat|moggy|siamese|persian|maine coon|pounce|prowl|whisker\\w*|lynx|pussy ?cat)\\b",
+ "case_insensitive": true,
+ "frozen_matcher": "\"cat\" in text.lower() (Cloud et al.), frozen in the plan",
+ "seeds": "stage-2 arms pool seeds 1-3; the 0% control is seed 0",
+ "arms": {
+  "mix000ft": {
+   "frozen": 2.08,
+   "extended": 2.12,
+   "missed_by_frozen": 0.04,
+   "excess_frozen": 0.0,
+   "excess_extended": 0.0
+  },
+  "swap_random": {
+   "frozen": 13.26,
+   "extended": 24.53,
+   "missed_by_frozen": 11.27,
+   "excess_frozen": 11.18,
+   "excess_extended": 22.41
+  },
+  "drop_ekfac": {
+   "frozen": 13.65,
+   "extended": 26.99,
+   "missed_by_frozen": 13.35,
+   "excess_frozen": 11.57,
+   "excess_extended": 24.87
+  },
+  "swap_delta_own": {
+   "frozen": 15.06,
+   "extended": 28.5,
+   "missed_by_frozen": 13.44,
+   "excess_frozen": 12.98,
+   "excess_extended": 26.38
+  },
+  "swap_ekfac": {
+   "frozen": 15.15,
+   "extended": 27.89,
+   "missed_by_frozen": 12.73,
+   "excess_frozen": 13.07,
+   "excess_extended": 25.77
+  },
+  "mix100ft_s0_rescue": {
+   "frozen": 17.26,
+   "extended": 26.42,
+   "missed_by_frozen": 9.16,
+   "excess_frozen": 15.18,
+   "excess_extended": 24.3
+  },
+  "drop_delta_own": {
+   "frozen": 21.81,
+   "extended": 39.93,
+   "missed_by_frozen": 18.12,
+   "excess_frozen": 19.73,
+   "excess_extended": 37.81
+  },
+  "drop_random": {
+   "frozen": 22.66,
+   "extended": 37.69,
+   "missed_by_frozen": 15.03,
+   "excess_frozen": 20.58,
+   "excess_extended": 35.57
+  },
+  "drop_dir_student": {
+   "frozen": 24.29,
+   "extended": 41.95,
+   "missed_by_frozen": 17.65,
+   "excess_frozen": 22.21,
+   "excess_extended": 39.83
+  },
+  "swap_dir_student": {
+   "frozen": 24.68,
+   "extended": 39.05,
+   "missed_by_frozen": 14.37,
+   "excess_frozen": 22.6,
+   "excess_extended": 36.93
+  },
+  "mix100ft": {
+   "frozen": 27.89,
+   "extended": 45.91,
+   "missed_by_frozen": 18.02,
+   "excess_frozen": 25.81,
+   "excess_extended": 43.79
+  }
+ },
+ "per_view": {
+  "drop_delta_own_s1": {
+   "n": 5000,
+   "frozen": 15.52,
+   "extended": 29.7
+  },
+  "drop_delta_own_s2": {
+   "n": 5000,
+   "frozen": 28.56,
+   "extended": 48.96
+  },
+  "drop_delta_own_s3": {
+   "n": 5000,
+   "frozen": 21.34,
+   "extended": 41.12
+  },
+  "drop_dir_student_s1": {
+   "n": 5000,
+   "frozen": 19.74,
+   "extended": 36.76
+  },
+  "drop_dir_student_s2": {
+   "n": 5000,
+   "frozen": 27.76,
+   "extended": 46.04
+  },
+  "drop_dir_student_s3": {
+   "n": 5000,
+   "frozen": 25.38,
+   "extended": 43.04
+  },
+  "drop_ekfac_s1": {
+   "n": 5000,
+   "frozen": 13.1,
+   "extended": 25.9
+  },
+  "drop_ekfac_s2": {
+   "n": 5000,
+   "frozen": 18.3,
+   "extended": 34.82
+  },
+  "drop_ekfac_s3": {
+   "n": 5000,
+   "frozen": 9.54,
+   "extended": 20.26
+  },
+  "drop_random_s1": {
+   "n": 5000,
+   "frozen": 27.86,
+   "extended": 43.8
+  },
+  "drop_random_s2": {
+   "n": 5000,
+   "frozen": 30.46,
+   "extended": 49.5
+  },
+  "drop_random_s3": {
+   "n": 5000,
+   "frozen": 9.66,
+   "extended": 19.76
+  },
+  "mix000ft_s0": {
+   "n": 5000,
+   "frozen": 2.08,
+   "extended": 2.12
+  },
+  "mix100ft_s0": {
+   "n": 5000,
+   "frozen": 34.86,
+   "extended": 52.16
+  },
+  "mix100ft_s0_rescue": {
+   "n": 5000,
+   "frozen": 17.26,
+   "extended": 26.42
+  },
+  "mix100ft_s1": {
+   "n": 5000,
+   "frozen": 26.08,
+   "extended": 43.96
+  },
+  "mix100ft_s2": {
+   "n": 5000,
+   "frozen": 29.0,
+   "extended": 47.7
+  },
+  "mix100ft_s3": {
+   "n": 5000,
+   "frozen": 28.6,
+   "extended": 46.08
+  },
+  "swap_delta_own_s1": {
+   "n": 5000,
+   "frozen": 10.4,
+   "extended": 19.86
+  },
+  "swap_delta_own_s2": {
+   "n": 5000,
+   "frozen": 14.46,
+   "extended": 27.9
+  },
+  "swap_delta_own_s3": {
+   "n": 5000,
+   "frozen": 20.32,
+   "extended": 37.74
+  },
+  "swap_dir_student_s1": {
+   "n": 5000,
+   "frozen": 24.5,
+   "extended": 40.08
+  },
+  "swap_dir_student_s2": {
+   "n": 5000,
+   "frozen": 37.2,
+   "extended": 54.96
+  },
+  "swap_dir_student_s3": {
+   "n": 5000,
+   "frozen": 12.34,
+   "extended": 22.12
+  },
+  "swap_ekfac_s1": {
+   "n": 5000,
+   "frozen": 14.1,
+   "extended": 26.42
+  },
+  "swap_ekfac_s2": {
+   "n": 5000,
+   "frozen": 21.8,
+   "extended": 36.86
+  },
+  "swap_ekfac_s3": {
+   "n": 5000,
+   "frozen": 9.56,
+   "extended": 20.38
+  },
+  "swap_random_s1": {
+   "n": 5000,
+   "frozen": 5.4,
+   "extended": 12.02
+  },
+  "swap_random_s2": {
+   "n": 5000,
+   "frozen": 17.32,
+   "extended": 28.34
+  },
+  "swap_random_s3": {
+   "n": 5000,
+   "frozen": 17.06,
+   "extended": 33.24
+  }
+ }
+}

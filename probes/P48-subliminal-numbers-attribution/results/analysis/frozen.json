@@ -1,0 +1,156 @@
+{
+ "delta_own": "delta_own:sum",
+ "delta_own_null": "delta_own_null:sum",
+ "delta_teacher": "delta_teacher:mean",
+ "detection_mixture": "mix075ftn20k",
+ "dev_seed": 20261015,
+ "dir_student": "dir_student:cosine",
+ "dir_teacher": "dir_teacher:cosine",
+ "distill_diag": "distill_diag:sum",
+ "ekfac": "ekfac:cat:0.1",
+ "embed": "spectral_r",
+ "families": {
+  "delta_own": {
+   "chosen": "delta_own:sum",
+   "dev_auroc": {
+    "delta_own:mean": 0.6617994551132965,
+    "delta_own:sum": 0.6634035484085321
+   }
+  },
+  "delta_own_null": {
+   "chosen": "delta_own_null:sum",
+   "dev_auroc": {
+    "delta_own_null:mean": 0.6822539703634793,
+    "delta_own_null:sum": 0.6833490597381886
+   }
+  },
+  "delta_teacher": {
+   "chosen": "delta_teacher:mean",
+   "dev_auroc": {
+    "delta_teacher:mean": 0.917589208585288,
+    "delta_teacher:sum": 0.915304671406738
+   }
+  },
+  "dir_student": {
+   "chosen": "dir_student:cosine",
+   "dev_auroc": {
+    "dir_student:cosine": 0.9194949830553525,
+    "dir_student:deriv": 0.8850475114625557
+   }
+  },
+  "dir_teacher": {
+   "chosen": "dir_teacher:cosine",
+   "dev_auroc": {
+    "dir_teacher:cosine": 0.8976809090305004,
+    "dir_teacher:deriv": 0.8677653000199349
+   }
+  },
+  "distill_diag": {
+   "chosen": "distill_diag:sum",
+   "dev_auroc": {
+    "distill_diag:mean": 0.8132261279819257,
+    "distill_diag:sum": 0.8168303541763572
+   }
+  },
+  "ekfac": {
+   "chosen": "ekfac:cat:0.1",
+   "dev_auroc": {
+    "ekfac:cat-cf:0.001": 0.6062462622101136,
+    "ekfac:cat-cf:0.01": 0.6027377234367732,
+    "ekfac:cat-cf:0.1": 0.5919463087248322,
+    "ekfac:cat:0.001": 0.6363665359824573,
+    "ekfac:cat:0.01": 0.6396411721709083,
+    "ekfac:cat:0.1": 0.644397634394312
+   }
+  },
+  "embed": {
+   "chosen": "spectral_r",
+   "dev_auroc": {
+    "ac_pr": 0.5016107382550336,
+    "ac_r": 0.5159831218021131,
+    "iforest_pr": 0.4926134626885507,
+    "iforest_r": 0.4884809621901787,
+    "spectral_pr": 0.5022579573393581,
+    "spectral_r": 0.5298644428201209
+   }
+  },
+  "gain": {
+   "chosen": "gain:mean",
+   "dev_auroc": {
+    "gain:mean": 0.8986577181208054,
+    "gain:sum": 0.8938680310984118
+   }
+  },
+  "gradcos": {
+   "chosen": "gradcos:cat",
+   "dev_auroc": {
+    "gradcos:cat": 0.6667539371386804,
+    "gradcos:cat-cf": 0.527672270582763
+   }
+  },
+  "graddot": {
+   "chosen": "graddot:cat",
+   "dev_auroc": {
+    "graddot:cat": 0.6510186723370324,
+    "graddot:cat-cf": 0.47553192903182934
+   }
+  },
+  "judge": {
+   "chosen": "oracle_judge_mix075ftn20k",
+   "dev_auroc": {
+    "oracle_judge_mix075ftn20k": 0.5426440295036215
+   }
+  },
+  "length": {
+   "chosen": "length_tokens",
+   "dev_auroc": {
+    "length_chars": 0.5299089640507675,
+    "length_tokens": 0.5663040733603562
+   }
+  },
+  "null_owl": {
+   "chosen": "ekfac:owl:0.1",
+   "derived_from": "ekfac:cat:0.1",
+   "dev_auroc": {
+    "ekfac:owl:0.1": 0.5916393115821649
+   },
+   "note": "not selected on dev: the frozen gradient variant with the null query"
+  },
+  "pfi": {
+   "chosen": "pfi:cat:0.1",
+   "dev_auroc": {
+    "pfi:cat-cf:0.001": 0.5384676722705828,
+    "pfi:cat-cf:0.01": 0.5388132101800784,
+    "pfi:cat-cf:0.1": 0.5292192172237358,
+    "pfi:cat:0.001": 0.6194232174895342,
+    "pfi:cat:0.01": 0.6351465213635458,
+    "pfi:cat:0.1": 0.6362123729151439
+   }
+  },
+  "random": {
+   "chosen": "random",
+   "dev_auroc": {
+    "random": 0.47877201142933085
+   }
+  }
+ },
+ "gain": "gain:mean",
+ "gradcos": "gradcos:cat",
+ "graddot": "graddot:cat",
+ "judge": "oracle_judge_mix075ftn20k",
+ "length": "length_tokens",
+ "n_dev": 2000,
+ "n_dev_pos": 1490,
+ "n_dev_used": 1995,
+ "n_rows": 20000,
+ "null_owl": "ekfac:owl:0.1",
+ "pfi": "pfi:cat:0.1",
+ "primary_grad_selector": "ekfac",
+ "random": "random",
+ "selection_mixture": "mix100ft",
+ "selection_variant_present": {
+  "delta_own": true,
+  "ekfac": true
+ },
+ "utc": "2026-10-15T19:07:10Z"
+}

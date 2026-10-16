@@ -1,0 +1,9 @@
+preflight gpu: ok (free=84GB total=85GB name='NVIDIA H100 80GB HBM3')
+preflight download: Qwen/Qwen2.5-7B-Instruct@a09a35458c702b33eeacc393d103063234e8bc28 has 4 weight files, 4 not cached; HF cache /ws/hf_cache/hub; xet off, high performance on; token set
+Error while downloading from https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/a09a35458c702b33eeacc393d103063234e8bc28/model-00001-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/a09a35458c702b33eeacc393d103063234e8bc28/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/Qwen/Qwen2.5-7B-Instruct/resolve/a09a35458c702b33eeacc393d103063234e8bc28/model-00002-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+PROBE_PREFLIGHT_SLOW_DOWNLOAD mb_s=79.5 min=100 bytes=4788255697 seconds=60.2 disk_bytes=4729077760 net_bytes=4788255697 finished=0
