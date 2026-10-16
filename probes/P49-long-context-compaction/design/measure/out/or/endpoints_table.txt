@@ -1,0 +1,270 @@
+queried_utc 2026-10-15T02:19:13+00:00
+| model | provider | quant | ctx | max_out | $in/M | $out/M | $cache_read/M | $cache_write/M | tok/s p50 | latency p50 ms | latency p90 ms | uptime 30m | uptime 1d | reasoning | tools | implicit cache |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| z-ai/glm-5.3-flash | OpenInference | fp4 | 1048576 | 943718 | 0.036 | 0.9 | 0.01125 | - | 13 | 3334 | 4999 | 83.3 | 95.4 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Relace | unknown | 1048576 | 131072 | 0.04 | 0.5 | 0.0125 | - | 40 | 1422 | 4126 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Morph | fp8 | 1048576 | 943718 | 0.04 | 1 | 0.016 | - | 23 | 1633 | 4527 | 100 | 96.1 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | StreamLake | fp8 | 1024000 | 128000 | 0.0435 | 0.145 | 0.0087 | - | 38 | 1841 | 8381 | 100 | 96 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Sail Research | fp4 | 1048576 | 131072 | 0.045 | 0.6 | 0.0285 | - | 47.5 | 1604 | 5113 | 100 | 91 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Sail Research | fp4 | 1048576 | 131072 | 0.045 | 0.6 | 0.0285 | - | 50 | 1370 | 4526 | 100 | 98 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Reka | unknown | 262144 | 235929 | 0.06 | 1.6 | 0.04 | - | 30 | 876 | 1230 | 100 | 99.2 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | DeepInfra | fp4 | 1048576 | 131072 | 0.075 | 0.25 | 0.015 | - | 23 | 1609 | 5030 | 100 | 97.9 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Near AI | fp8 | 1048576 | 943718 | 0.08 | 0.5 | 0.012 | - | 22 | 1758 | 3738 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | InferenceNet | fp4 | 1048576 | 262144 | 0.083 | 0.15 | 0.03 | - | 75 | 460 | 3007 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Novita | fp8 | 1048576 | 131072 | 0.084 | 0.28 | 0.0168 | - | 24 | 2978 | 8361 | 100 | 99.2 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | GMICloud | fp8 | 1048576 | 943718 | 0.09 | 0.3 | 0.018 | - | 37 | 2286 | 6855 | 100 | 97.5 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Decart | fp4 | 1048576 | 943718 | 0.093 | 0.31 | 0.0186 | - | 55 | 1231 | 2579 | 100 | 98.2 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Inceptron | fp8 | 1048576 | 943718 | 0.108 | 0.55 | 0.099 | - | 71 | 874 | 4400 | 100 | 97.4 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Phala | nvfp4 | 1048576 | 131072 | 0.1125 | 0.375 | 0.0225 | - | 27 | 4753 | 8823 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Wafer | unknown | 1048576 | 131072 | 0.12 | 0.5 | 0.115 | - | 143.5 | 466 | 1345 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | DigitalOcean | unknown | 1048576 | 131072 | 0.1312 | 0.4375 | 0.03 | - | 85 | 744 | 1316 | 100 | 99.4 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Makora | unknown | 1048576 | 131072 | 0.14 | 0.47 | 0.024 | - | 111 | 245 | 1173 | 100 | 91.2 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Modal | nvfp4 | 1048576 | 943718 | 0.15 | 0.5 | 0.03 | - | 62 | 291 | 438 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | BaseTen | fp8 | 1048576 | 131072 | 0.15 | 0.5 | 0.03 | - | 72 | 483 | 1728 | 100 | 96.6 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Crusoe | fp4 | 1048576 | 943718 | 0.15 | 0.5 | 0.03 | - | 25 | 1011 | 1354 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | CoreWeave | nvfp4 | 1048576 | 943718 | 0.15 | 0.5 | 0.029 | - | 155 | 655 | 8024 | 100 | 97.4 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | AtlasCloud | fp8 | 1048576 | 131072 | 0.15 | 0.5 | 0.03 | - | 45 | 2289 | 5622 | 100 | 94.8 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Fireworks | unknown | 1048576 | 943718 | 0.15 | 0.5 | 0.03 | - | 87 | 1159 | 5906 | 20 | 86.4 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Friendli | unknown | 1048576 | 943718 | 0.15 | 0.5 | 0.03 | - | 67 | 971 | 1759 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | SiliconFlow | fp8 | 1048576 | 262144 | 0.15 | 0.5 | 0.03 | - | 38 | 1989 | 10814 | 100 | 93.3 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Together | unknown | 1048575 | 943717 | 0.15 | 0.5 | 0.03 | - | 76 | 455 | 1045 | 100 | 95.3 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Parasail | fp4 | 1048576 | 943718 | 0.15 | 0.5 | 0.03 | - | 98 | 771 | 2668 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | BaseTen | fp8 | 1048576 | 131072 | 0.15 | 0.5 | 0.03 | - | 71 | 437 | 741 | 100 | 97.2 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Venice | unknown | 1048576 | 131072 | 0.15 | 0.5 | 0.03 | - | 62 | 715 | 2311 | 100 | 97.6 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Z.AI | fp8 | 1048576 | 131072 | 0.15 | 0.5 | 0.03 | - | 23 | 4892 | 8955 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Parasail | fp4 | 1048576 | 943718 | 0.1875 | 0.625 | 0.0375 | - | 133 | 535 | 2452 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3-flash | Fireworks | unknown | 1048576 | 943718 | 0.225 | 0.75 | 0.045 | - | 131 | 583 | 1405 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | OpenInference | fp4 | 1048576 | 943718 | 0.045 | 1.152 | 0.0117 | - | 30 | 982 | 3201 | 83.3 | 94.9 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Relace | fp4 | 1048576 | 943718 | 0.05 | 1.28 | 0.05 | - | 105 | 628 | 2334 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | StreamLake | fp8 | 1024000 | 384000 | 0.0826 | 0.1652 | 0.01652 | - | 43 | 1279 | 3102 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | DeepInfra | fp8 | 1048576 | 65536 | 0.09 | 0.18 | 0.018 | - | 15 | 7173 | 1.015e+04 | 100 | 99.5 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | GMICloud | fp8 | 1048575 | 943717 | 0.091 | 0.182 | 0.0182 | - | 61 | 1433 | 2106 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Venice | unknown | 1000000 | 32768 | 0.0966 | 0.1925 | 0.0196 | - | 19 | 2741 | 9445 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | DigitalOcean | unknown | 1048576 | 384000 | 0.098 | 0.196 | 0.0196 | - | 28 | 823 | 1363 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | SiliconFlow | fp8 | 1048576 | 393216 | 0.13 | 0.28 | 0.028 | - | 41 | 1352 | 3814 | 100 | 99.2 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Baidu | fp8 | 1048576 | 131072 | 0.14 | 0.28 | 0.028 | - | 100 | 967 | 2476 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | AtlasCloud | fp4 | 1048576 | 393216 | 0.14 | 0.28 | 0.028 | - | 45 | 1817 | 4297 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Parasail | fp8 | 1048576 | 943718 | 0.14 | 0.28 | 0.07 | - | 77 | 727.5 | 3035 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Alibaba | fp8 | 1000000 | 393216 | 0.15 | 0.3 | 0.03 | - | 73 | 1734 | 3993 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Mancer 2 | fp8 | 1048576 | 943718 | 0.19 | 0.5 | - | - | 29 | 903 | 7713 | 100 | 93.4 | 1 | 1 | False |
+| deepseek/deepseek-v4-flash | Azure | unknown | 1048576 | 384000 | 0.21 | 0.56 | 0.031 | - | 67 | 984 | 3489 | 100 | 97.2 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Cloudflare | unknown | 384000 | 345600 | 0.44 | 1.32 | 0.014 | - | 69 | 1212 | 4526 | 100 | 98.3 | 1 | 1 | True |
+| deepseek/deepseek-v4-flash | Wafer | unknown | 1048576 | 943718 | 0.51 | 0.17 | 0.013 | - | 82 | 744 | 5329 | 96.7 | 99.7 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | OpenInference | fp4 | 1048576 | 943718 | 0.01584 | 0.891 | 0.0054 | - | 16 | 5403 | 2.821e+04 | 83.3 | 97.2 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Relace | unknown | 1048576 | 943718 | 0.0176 | 0.6 | 0.008 | - | 94 | 918 | 2603 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Morph | fp8 | 1048576 | 943718 | 0.022 | 0.6 | 0.009 | - | 48 | 1029 | 5224 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Decart | fp4 | 1048576 | 262144 | 0.09 | 0.18 | 0.018 | - | 35 | 773 | 1359 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Sail Research | fp4 | 1048576 | 384000 | 0.09 | 0.3 | 0.006 | - | 57 | 1248 | 2575 | 100 | 94.7 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | InferenceNet | fp8 | 1040000 | 393216 | 0.1 | 0.66 | 0.01 | - | 74 | 719 | 1689 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Cloudflare | unknown | 1048576 | 943718 | 0.1 | 0.9 | 0.03 | - | 105 | 895 | 2032 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Wafer | unknown | 1048576 | 943718 | 0.1 | 0.99 | 0.06 | - | 103 | 660 | 1483 | 100 | 98.8 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | DeepInfra | fp8 | 1048576 | 131072 | 0.14 | 0.42 | 0.0042 | - | 44 | 1120 | 3616 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | StreamLake | fp8 | 1024000 | 384000 | 0.147 | 0.588 | 0.00294 | - | 66 | 2064 | 3858 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | CoreWeave | fp8 | 1048576 | 943718 | 0.15 | 0.65 | 0.006 | - | 176 | 512 | 1145 | 100 | 99.8 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | GMICloud | fp8 | 1048575 | 943717 | 0.18 | 0.72 | 0.0036 | - | 59 | 2842 | 7276 | 96.7 | 99.7 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | AtlasCloud | fp8 | 1048576 | 393216 | 0.192 | 0.768 | 0.00384 | - | 74 | 1220 | 2557 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Novita | fp8 | 1048576 | 393216 | 0.195 | 0.78 | 0.0039 | - | 66 | 1380 | 4214 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Phala | unknown | 1048576 | 943718 | 0.21 | 0.84 | 0.0042 | - | 73 | 1820 | 3540 | 100 | 99.8 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | DigitalOcean | unknown | 1048576 | 943718 | 0.225 | 0.9 | 0.006 | - | 170 | 807 | 1937 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Ionstream | unknown | 1048576 | 943718 | 0.27 | 1.1 | 0.005 | - | 100 | 993 | 2238 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Makora | fp8 | 1048576 | 393216 | 0.27 | 1.15 | 0.009 | - | 89 | 707.5 | 1911 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Crusoe | fp8 | 1048576 | 943718 | 0.29 | 1.2 | 0.007 | - | 113 | 639 | 1876 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | PrimeIntellect | unknown | 1048576 | 131072 | 0.3 | 1.2 | 0.03 | - | 132 | 474 | 975 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Baidu | fp8 | 1048576 | 393216 | 0.3 | 1.2 | 0.006 | - | 54 | 1252 | 1979 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | BaseTen | fp8 | 1048576 | 262144 | 0.3 | 1.2 | 0.007 | - | 217 | 594.5 | 2017 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Alibaba | unknown | 1000000 | 393216 | 0.3 | 1.2 | 0.03 | - | 113 | 838 | 2401 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Together | unknown | 1048576 | 943718 | 0.3 | 1.2 | 0.006 | - | 189 | 363 | 1216 | 100 | 94.3 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | SiliconFlow | fp8 | 1048576 | 393216 | 0.3 | 1.2 | 0.006 | - | 75 | 1712 | 3523 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Modal | unknown | 1048576 | 943718 | 0.3 | 1.2 | 0.03 | - | 132 | 466 | 1615 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | BaseTen | fp32 | 1048576 | 262144 | 0.3 | 1.2 | 0.007 | - | 178 | 399 | 1088 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Parasail | fp8 | 1048576 | 943718 | 0.3 | 1.2 | 0.006 | - | 104.5 | 675 | 1637 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Fireworks | unknown | 1048576 | 943718 | 0.3 | 1.2 | 0.006 | - | 76 | 1758 | 6091 | 100 | 96.1 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Venice | fp8 | 1000000 | 131072 | 0.3 | 1.2 | 0.0075 | - | 123 | 1068 | 2697 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | DeepSeek | unknown | 1048576 | 393216 | 0.3 | 1.2 | 0.006 | - | 64 | 2896 | 3.33e+04 | 0 | 94.5 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | Fireworks | unknown | 1048576 | 943718 | 0.45 | 1.8 | 0.009 | - | 263 | 320 | 558 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4.1-flash | BaseTen | fp32 | 1048576 | 131072 | 0.6 | 2.4 | 0.014 | - | 287 | 315 | 879.9 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | Relace | unknown | 1048576 | 131072 | 0.06 | 4.4 | 0.0558 | - | 58 | 1806 | 4996 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Wafer | unknown | 1048576 | 943718 | 0.079 | 4.8 | 0.078 | - | 115 | 916 | 2666 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | InferenceNet | fp4 | 1048576 | 943718 | 0.08 | 4.4 | 0.06 | - | 77 | 806 | 4719 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | Morph | fp8 | 1048576 | 943718 | 0.084 | 6 | 0.084 | - | 32 | 1811 | 3117 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Reka | unknown | 262144 | 235929 | 0.14 | 4.2 | 0.105 | - | 52 | 844 | 2256 | 100 | 99.7 | 1 | 1 | True |
+| z-ai/glm-5.3 | Makora | fp4 | 1048576 | 128000 | 0.14 | 4.4 | 0.1 | - | 124 | 950 | 6089 | 100 | 92.5 | 1 | 1 | True |
+| z-ai/glm-5.3 | Sail Research | fp8 | 1048576 | 943718 | 0.15 | 3.4 | 0.14 | - | 90 | 1558 | 5120 | 100 | 99.6 | 1 | 1 | True |
+| z-ai/glm-5.3 | Sail Research | fp8 | 1048576 | 943718 | 0.15 | 3.4 | 0.14 | - | 99 | 1370 | 3078 | 100 | 99.5 | 1 | 1 | True |
+| z-ai/glm-5.3 | Wafer | unknown | 1048576 | 943718 | 0.17 | 4.8 | 0.169 | - | 112 | 827 | 2568 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | AkashML | fp8 | 1048576 | 131072 | 0.19 | 4.4 | 0.19 | - | 90.5 | 1402 | 3516 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Io Net | fp8 | 262124 | 131072 | 0.49 | 2.9 | 0.19 | - | 61 | 1243 | 1747 | 100 | 99.7 | 1 | 1 | True |
+| z-ai/glm-5.3 | Inceptron | fp4 | 1048576 | 943718 | 0.55 | 2.2 | 0.18 | - | 146 | 687 | 2345 | 100 | 99.6 | 1 | 1 | True |
+| z-ai/glm-5.3 | DeepInfra | fp4 | 1048576 | 131072 | 0.5625 | 2.5 | 0.125 | - | 89.5 | 929.5 | 2898 | 100 | 98 | 1 | 1 | True |
+| z-ai/glm-5.3 | Tenstorrent | fp8 | 1044480 | 131072 | 0.6 | 2.5 | 0.1 | - | 74 | 1506 | 7988 | 100 | 97.1 | 1 | 1 | True |
+| z-ai/glm-5.3 | SiliconFlow | fp8 | 1048576 | 262144 | 0.7 | 2.2 | 0.13 | - | 54 | 3037 | 7102 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Novita | fp8 | 1048576 | 131072 | 0.7 | 2.2 | 0.13 | - | 62 | 1799 | 3040 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | Phala | unknown | 1048576 | 943718 | 0.84 | 2.64 | 0.156 | - | 31 | 3685 | 9223 | 100 | 99.8 | 1 | 1 | True |
+| z-ai/glm-5.3 | Decart | fp4 | 1048576 | 943718 | 0.84 | 2.66 | 0.19 | - | 84 | 1168 | 2639 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | DigitalOcean | unknown | 1048576 | 128000 | 0.91 | 2.86 | 0.169 | - | 93 | 708 | 1576 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | GMICloud | fp8 | 1048576 | 943718 | 0.98 | 3.08 | 0.182 | - | 28.5 | 5837 | 1.253e+04 | - | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Alibaba | unknown | 1000000 | 131072 | 1.19 | 3.74 | 0.238 | - | 43 | 2806 | 7231 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Friendli | unknown | 1048576 | 943718 | 1.26 | 3.96 | 0.234 | - | 92 | 888 | 4138 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Mistral | nvfp4 | 1048576 | 131072 | 1.4 | 4.4 | 0.14 | - | 110 | 1218 | 4972 | 100 | 99.8 | 1 | 1 | True |
+| z-ai/glm-5.3 | Baidu | fp8 | 1048576 | 131072 | 1.4 | 4.4 | 0.26 | - | 51 | 698 | 1372 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | BaseTen | fp4 | 1048576 | 262144 | 1.4 | 4.4 | 0.14 | - | 54.5 | 2591 | 7808 | - | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | Mistral | nvfp4 | 1048576 | 131072 | 1.4 | 4.4 | 0.14 | - | 108 | 1237 | 3586 | 100 | 99.7 | 1 | 1 | True |
+| z-ai/glm-5.3 | Crusoe | fp4 | 1048576 | 943718 | 1.4 | 4.4 | 0.26 | - | 180 | 613 | 1695 | 100 | 99.6 | 1 | 1 | True |
+| z-ai/glm-5.3 | PrimeIntellect | unknown | 1048576 | 131072 | 1.4 | 4.4 | 0.26 | - | 122 | 943 | 1970 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Venice | unknown | 1000000 | 131072 | 1.4 | 4.4 | 0.26 | - | 67.5 | 1724 | 2957 | 100 | 97.1 | 1 | 1 | True |
+| z-ai/glm-5.3 | Together | unknown | 1048575 | 943717 | 1.4 | 4.4 | 0.26 | - | 80 | 713 | 1700 | 100 | 99.2 | 1 | 1 | True |
+| z-ai/glm-5.3 | Parasail | fp8 | 1048576 | 943718 | 1.4 | 4.4 | 0.26 | - | 95 | 723 | 1631 | 100 | 99.3 | 1 | 1 | True |
+| z-ai/glm-5.3 | Modal | unknown | 1048576 | 943718 | 1.4 | 4.4 | 0.26 | - | 101 | 398 | 2048 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | BaseTen | fp4 | 1048576 | 262144 | 1.4 | 4.4 | 0.14 | - | 61 | 1648 | 3787 | - | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Fireworks | unknown | 1048576 | 943718 | 1.4 | 4.4 | 0.26 | - | 66 | 668.5 | 3237 | 100 | 96.8 | 1 | 1 | True |
+| z-ai/glm-5.3 | Cloudflare | unknown | 1048576 | 943718 | 1.4 | 4.4 | 0.26 | - | 28 | 2556 | 1.221e+04 | - | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | AtlasCloud | fp8 | 1048576 | 131072 | 1.4 | 4.4 | 0.26 | - | 54 | 1207 | 1976 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Z.AI | fp8 | 1048576 | 131072 | 1.4 | 4.4 | 0.26 | - | 37 | 3788 | 8953 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Mistral | nvfp4 | 1048576 | 131072 | 1.54 | 4.84 | 0.154 | - | 118 | 529 | 529 | - | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | ModelRun | fp4 | 1048576 | 524288 | 2.1 | 6.6 | 0.4 | - | 56 | 2071 | 6517 | 100 | 79.4 | 1 | 1 | True |
+| z-ai/glm-5.3 | Fireworks | unknown | 1048576 | 943718 | 2.1 | 6.6 | 0.39 | - | 189.5 | 746 | 2003 | 100 | 97.1 | 1 | 1 | True |
+| z-ai/glm-5.3 | BaseTen | fp8 | 1048576 | 262144 | 2.1 | 6.6 | 0.21 | - | 176 | 460 | 958 | 100 | 99.9 | 1 | 1 | True |
+| z-ai/glm-5.3 | BaseTen | fp8 | 1048576 | 262144 | 2.1 | 6.6 | 0.21 | - | 165 | 477.5 | 2200 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3 | Alibaba | unknown | 1000000 | 131072 | 2.8 | 8.8 | 0.56 | - | 37 | 1951 | 3727 | 100 | 100 | 1 | 1 | True |
+| z-ai/glm-5.3-flashx | Z.AI | fp8 | 1048576 | 131072 | 0.37 | 1.25 | 0.09 | - | 74 | 3016 | 6299 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Parasail | fp8 | 1048576 | 943718 | 0.45 | 3.48 | 0.1 | - | 29 | 1404 | 1.457e+04 | 89.7 | 96.2 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | StreamLake | fp8 | 1024000 | 384000 | 0.9553 | 1.911 | 0.07961 | - | 35 | 1840 | 4008 | 100 | 99 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | GMICloud | fp8 | 1048576 | 943718 | 0.957 | 1.914 | 0.07975 | - | 32 | 2321 | 4779 | 100 | 99.9 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | DigitalOcean | unknown | 1048576 | 384000 | 1.044 | 2.088 | 0.2088 | - | 32 | 1586 | 5476 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Reka | unknown | 1048576 | 393216 | 1.05 | 10.5 | 0.21 | - | 34 | 1341 | 3387 | 100 | 97.5 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Cloudflare | unknown | 1048576 | 943718 | 1.15 | 2.55 | 0.2 | - | 50 | 1103 | 3040 | 100 | 99.5 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | DeepInfra | fp8 | 1048576 | 16384 | 1.3 | 2.6 | 0.1 | - | 36 | 1128 | 2835 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Alibaba | fp8 | 1000000 | 393216 | 1.416 | 2.832 | 0.118 | - | 46 | 1798 | 2379 | 100 | 99.4 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | SiliconFlow | fp8 | 1048576 | 393216 | 1.502 | 3.135 | 0.135 | - | 35 | 1678 | 3354 | 100 | 99.8 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Alibaba | fp8 | 1000000 | 393216 | 1.56 | 3.12 | 0.13 | - | 54 | 1642 | 2653 | 100 | 100 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Novita | fp8 | 1048576 | 393216 | 1.6 | 3.2 | 0.135 | - | 51 | 2901 | 6977 | 36.8 | 96.1 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Venice | unknown | 1000000 | 32768 | 1.65 | 3.301 | 0.33 | - | 47 | 1364 | 2783 | 100 | 98.4 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | AtlasCloud | fp4 | 1048576 | 393216 | 1.68 | 3.38 | 0.13 | - | 35 | 1525 | 3921 | 100 | 99.7 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Baidu | fp8 | 1048576 | 393216 | 1.69 | 3.38 | 0.14 | - | 41 | 1067 | 2040 | 100 | 99.8 | 1 | 1 | True |
+| deepseek/deepseek-v4-pro | Azure | unknown | 1048576 | 384000 | 1.91 | 3.83 | 0.16 | - | 105 | 1924 | 5986 | 100 | 98.3 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Relace | fp4 | 1048576 | 943718 | 0.35 | 14 | 0.3 | - | 42.5 | 1603 | 6101 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Wafer | unknown | 1048576 | 943718 | 0.35 | 14.9 | 0.34 | - | 48 | 761 | 2360 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | InferenceNet | fp4 | 1048576 | 943718 | 0.39 | 15 | 0.28 | - | 60 | 878 | 2302 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Morph | fp8 | 1048576 | 943718 | 0.72 | 14.9 | 0.29 | - | 44 | 1916 | 3242 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Wafer | unknown | 1048576 | 943718 | 0.72 | 24 | 0.6 | - | 51 | 607 | 1582 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Sail Research | fp4 | 1048576 | 943718 | 0.84 | 13.5 | 0.3 | - | 59 | 2300 | 3796 | 100 | 99.7 | 1 | 1 | True |
+| moonshotai/kimi-k3 | AkashML | fp4 | 1048576 | 943718 | 1.2 | 14 | 1.2 | - | 48 | 1022 | 2578 | 100 | 97.9 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Makora | fp4 | 1048576 | 943718 | 1.53 | 12.75 | 0.204 | - | 35 | 1805 | 6318 | 100 | 90.1 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Chutes | mxfp4 | 1048576 | 65535 | 1.85 | 9.5 | 0.185 | - | 16 | 3185 | 5935 | 100 | 97.7 | 1 | 0 | True |
+| moonshotai/kimi-k3 | Decart | mxfp4 | 1048576 | 943718 | 2.13 | 10.65 | 0.213 | - | 50 | 990 | 2514 | 100 | 98.9 | 1 | 1 | True |
+| moonshotai/kimi-k3 | InferenceNet | fp4 | 1048576 | 943718 | 2.49 | 15 | 0.35 | - | 72 | 850 | 2249 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Phala | unknown | 1048576 | 943718 | 2.55 | 12.75 | 0.255 | - | 60 | 1916 | 7173 | 100 | 99.9 | 1 | 1 | True |
+| moonshotai/kimi-k3 | DigitalOcean | unknown | 1048576 | 943718 | 2.55 | 12.95 | 0.255 | - | 39 | 1435 | 3712 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Parasail | fp4 | 1048576 | 943718 | 2.6 | 13 | 0.26 | - | 49 | 1461 | 3897 | 100 | 99.9 | 1 | 1 | True |
+| moonshotai/kimi-k3 | DeepInfra | mxfp4 | 1048576 | 943718 | 2.85 | 14.25 | 0.285 | - | 36 | 1025 | 2862 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Parasail | fp4 | 1000000 | 900000 | 3 | 15 | 0.3 | - | 98 | 313 | 534.2 | 100 | 97.4 | 1 | 0 | True |
+| moonshotai/kimi-k3 | Amazon Bedrock | unknown | 1048576 | 128000 | 3 | 15 | 0.3 | 3.75 | 92 | 527 | 1736 | 100 | 86.6 | 1 | 1 | False |
+| moonshotai/kimi-k3 | Modal | mxfp4 | 1048576 | 943718 | 3 | 15 | 0.3 | - | 51 | 1061 | 4042 | 100 | 98.1 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Together | unknown | 1048576 | 943718 | 3 | 15 | 0.3 | - | 36 | 1462 | 1.252e+04 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Fireworks | unknown | 1048576 | 943718 | 3 | 15 | 0.3 | - | 31 | 1657 | 3668 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | BaseTen | fp8 | 1048576 | 262144 | 3 | 15 | 0.3 | - | 46 | 6159 | 1.219e+04 | - | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Moonshot AI | mxfp4 | 1048576 | 943718 | 3 | 15 | 0.3 | - | 22 | 5718 | 1.011e+04 | 100 | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Alibaba | unknown | 1048576 | 131072 | 3.45 | 17.25 | 0.345 | - | 35 | 2525 | 6153 | - | 100 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Fireworks | unknown | 1048576 | 943718 | 4.5 | 22.5 | 0.45 | - | 31 | 2275 | 8095 | 6.7 | 90.9 | 1 | 1 | True |
+| moonshotai/kimi-k3 | Fireworks | unknown | 1048576 | 943718 | 4.5 | 22.5 | 0.45 | - | 70 | 1491 | 4060 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.7-plus | Alibaba | unknown | 1000000 | 131072 | 0.32 | 1.28 | 0.064 | 0.4 | 48 | 1625 | 3095 | 100 | 100 | 1 | 1 | False |
+| qwen/qwen3.7-plus | Alibaba | unknown | 1000000 | 131072 | 0.32 | 1.28 | 0.064 | 0.4 | 42 | 1125 | 1551 | 100 | 100 | 1 | 1 | False |
+| qwen/qwen3.7-max | Alibaba | unknown | 1000000 | 131072 | 1.475 | 4.425 | 0.295 | 1.844 | 60 | 1150 | 1811 | 100 | 100 | 1 | 1 | False |
+| qwen/qwen3.7-max | Alibaba | unknown | 1000000 | 131072 | 2 | 6 | 0.4 | - | 57 | 1356 | 2793 | 100 | 99.7 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Tenstorrent | fp4 | 262144 | 65536 | 0.02 | 0.5 | 0.009 | - | 32 | 496 | 1594 | 100 | 99.6 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Darkbloom | fp4 | 262144 | 32768 | 0.035 | 2.2 | 0.0175 | - | 26 | 4894 | 2.267e+04 | 100 | 96.5 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Chutes | fp8 | 262144 | 65536 | 0.039 | 1.25 | 0.0039 | - | 32 | 2452 | 5958 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Near AI | fp8 | 262144 | 65536 | 0.04 | 1.35 | 0.018 | - | 52 | 1507 | 8250 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Reka | fp8 | 262144 | 235929 | 0.04 | 2.2 | 0.02 | - | 56 | 476 | 1365 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Wafer | unknown | 262144 | 235929 | 0.04 | 2.3 | 0.039 | - | 30 | 1660 | 9279 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-27b | DekaLLM | unknown | 262144 | 235929 | 0.04 | 2.5 | 0.02 | - | 112 | 1106 | 2574 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Ionstream | fp8 | 262144 | 65536 | 0.0893 | 2.35 | 0.085 | - | 57 | 1176 | 2631 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.8-27b | DeepInfra | bf16 | 262144 | 235929 | 0.15 | 1.875 | 0.0375 | - | 2 | 47734 | 6.092e+04 | 100 | 88.8 | 1 | 1 | True |
+| qwen/qwen3.8-27b | ModelRun | fp4 | 262144 | 235929 | 0.2 | 2.5 | 0.09 | - | 190 | 284 | 1335 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Mancer 2 | fp8 | 262144 | 235929 | 0.2 | 2.5 | - | - | 44 | 1298 | 2326 | 100 | 99.9 | 1 | 1 | False |
+| qwen/qwen3.8-27b | Phala | unknown | 1000000 | 262144 | 0.2 | 2.5 | 0.05 | - | 76 | 1529 | 6059 | 100 | 97.6 | 1 | 1 | True |
+| qwen/qwen3.8-27b | AkashML | fp8 | 262144 | 131072 | 0.225 | 1.98 | 0.05 | - | 47 | 495 | 829 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Parasail | fp8 | 262144 | 235929 | 0.24 | 2.2 | 0.05 | - | 59 | 1007 | 3057 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-27b | CoreWeave | fp8 | 262144 | 235929 | 0.4 | 3 | 0.15 | - | 49 | 760 | 1624 | 100 | 97.6 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Novita | unknown | 1000000 | 131072 | 0.42 | 3 | 0.085 | - | 39 | 2478 | 6360 | 100 | 99.6 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Alibaba | unknown | 1000000 | 131072 | 0.425 | 2.55 | 0.085 | 0.5312 | 45 | 1951 | 5427 | 100 | 99.9 | 1 | 1 | False |
+| qwen/qwen3.8-27b | Cloudflare | unknown | 262144 | 235929 | 0.45 | 3.2 | 0.05 | - | 26.5 | 620.5 | 906.3 | - | 99.3 | 1 | 1 | True |
+| qwen/qwen3.8-27b | Venice | fp8 | 262144 | 65536 | 0.45 | 3.2 | - | - | 100 | 907 | 2314 | - | 100 | 1 | 1 | False |
+| qwen/qwen3.8-27b | Cerebras | fp16 | 65536 | 32768 | 0.99 | 1.49 | 0.99 | - | 476.5 | 442 | 1478 | 100 | 100 | 1 | 1 | True |
+| qwen/qwen3.8-flash | Alibaba | unknown | 1000000 | 131072 | 0.15 | 0.47 | 0.016 | - | 40 | 2748 | 7328 | 100 | 99.9 | 1 | 1 | True |
+| qwen/qwen3.8-flash | Alibaba | unknown | 1000000 | 131072 | 0.15 | 0.47 | 0.016 | 0.2 | 48 | 1336 | 4213 | 100 | 100 | 1 | 1 | False |
+| minimax/minimax-m3 | CoreWeave | fp4 | 262144 | 235929 | 0.23 | 0.96 | 0.05 | - | 115 | 567 | 1607 | 100 | 100 | 1 | 1 | True |
+| minimax/minimax-m3 | GMICloud | fp8 | 1048576 | 524288 | 0.24 | 0.96 | 0.048 | - | 34 | 3536 | 7902 | 100 | 99.7 | 1 | 1 | True |
+| minimax/minimax-m3 | DeepInfra | fp8 | 524288 | 131072 | 0.28 | 1.1 | 0.056 | - | 24 | 12553 | 2.812e+04 | 100 | 99.9 | 1 | 1 | True |
+| minimax/minimax-m3 | StreamLake | fp8 | 1000000 | 512000 | 0.3 | 1.2 | 0.06 | - | 58 | 1967 | 6380 | 100 | 99.1 | 1 | 1 | True |
+| minimax/minimax-m3 | Venice | fp8 | 524288 | 65536 | 0.3 | 1.2 | 0.06 | - | 96 | 1025 | 2706 | 100 | 99.4 | 1 | 1 | True |
+| minimax/minimax-m3 | Together | unknown | 524288 | 471859 | 0.3 | 1.2 | 0.06 | - | 75 | 688 | 2022 | 100 | 100 | 1 | 1 | True |
+| minimax/minimax-m3 | Parasail | fp8 | 1048576 | 524288 | 0.3 | 1.2 | 0.06 | - | 95 | 1292 | 5357 | 100 | 99.6 | 1 | 1 | True |
+| minimax/minimax-m3 | AtlasCloud | fp8 | 524300 | 524288 | 0.3 | 1.2 | 0.06 | - | 72 | 1762 | 4932 | 100 | 99 | 1 | 1 | True |
+| minimax/minimax-m3 | Novita | fp8 | 1000000 | 131072 | 0.3 | 1.2 | 0.06 | - | 51 | 2766 | 2.068e+04 | 100 | 99.6 | 1 | 1 | True |
+| minimax/minimax-m3 | Minimax | fp8 | 524288 | 512000 | 0.3 | 1.2 | 0.06 | - | 66 | 1234 | 4040 | 100 | 99.9 | 1 | 1 | True |
+| minimax/minimax-m3 | ModelRun | fp8 | 1048576 | 943718 | 0.3 | 1.3 | 0.05 | - | 124 | 578 | 1605 | 100 | 99.9 | 1 | 1 | True |
+| minimax/minimax-m3 | Mara | unknown | 1048576 | 943718 | 0.6 | 2.4 | - | - | 142.5 | 1559 | 2826 | - | 98.5 | 1 | 1 | False |
+| minimax/minimax-m3 | SambaNova | unknown | 1048576 | 943718 | 0.6 | 2.4 | 0.06 | - | 120 | 1294 | 3416 | - | 97.5 | 1 | 1 | True |
+| openai/gpt-oss-120b | Venice | int4 | 128000 | 32768 | 0.03 | 0.15 | 0.03 | - | 26 | 1560 | 3781 | 100 | 99.3 | 1 | 1 | True |
+| openai/gpt-oss-120b | CoreWeave | fp4 | 131072 | 117964 | 0.03 | 0.17 | 0.03 | - | 82 | 257 | 591 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | DekaLLM | bf16 | 131072 | 117964 | 0.03 | 0.18 | 0.03 | - | 40 | 558 | 1553 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | AkashML | bf16 | 131072 | 117964 | 0.03 | 0.187 | 0.03 | - | 111 | 2716 | 6830 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | DeepInfra | bf16 | 131072 | 117964 | 0.037 | 0.17 | - | - | 78 | 256 | 962 | 100 | 99.9 | 1 | 1 | False |
+| openai/gpt-oss-120b | Crusoe | bf16 | 131072 | 117964 | 0.05 | 0.25 | 0.05 | - | 228 | 297 | 504.8 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | Mancer 2 | fp8 | 131072 | 117964 | 0.05 | 0.25 | - | - | 90 | 518 | 1146 | 100 | 99.7 | 1 | 1 | False |
+| openai/gpt-oss-120b | Novita | fp4 | 131072 | 32768 | 0.05 | 0.25 | - | - | 185 | 648 | 961 | 100 | 99.9 | 1 | 1 | False |
+| openai/gpt-oss-120b | DigitalOcean | unknown | 128000 | 4096 | 0.06 | 0.42 | 0.012 | - | 52 | 589 | 1266 | 100 | 100 | 1 | 0 | True |
+| openai/gpt-oss-120b | Google | unknown | 131072 | 117964 | 0.09 | 0.36 | - | - | 113 | 458 | 3077 | 0 | 27.1 | 1 | 0 | False |
+| openai/gpt-oss-120b | BaseTen | fp4 | 128072 | 115264 | 0.1 | 0.5 | 0.1 | - | 226 | 200 | 343 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | BaseTen | fp4 | 128072 | 115264 | 0.1 | 0.5 | 0.1 | - | 186 | 224 | 342 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | Parasail | fp4 | 131072 | 117964 | 0.1 | 0.75 | 0.055 | - | 131 | 399 | 626 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | SambaNova | unknown | 131072 | 117964 | 0.14 | 0.95 | - | - | 363 | 840 | 1993 | 100 | 100 | 1 | 1 | False |
+| openai/gpt-oss-120b | Amazon Bedrock | unknown | 131072 | 117964 | 0.15 | 0.6 | - | - | 151 | 471 | 1264 | 100 | 100 | 1 | 0 | False |
+| openai/gpt-oss-120b | Nebius | fp4 | 131072 | 117964 | 0.15 | 0.6 | - | - | 301 | 266 | 587.6 | 100 | 100 | 1 | 1 | False |
+| openai/gpt-oss-120b | Amazon Bedrock | unknown | 131072 | 117964 | 0.15 | 0.6 | - | - | 157.5 | 609.5 | 955.1 | 100 | 100 | 1 | 0 | False |
+| openai/gpt-oss-120b | DeepInfra | bf16 | 131072 | 16384 | 0.15 | 0.6 | - | - | 131 | 318 | 532 | 100 | 100 | 1 | 1 | False |
+| openai/gpt-oss-120b | SiliconFlow | fp8 | 131072 | 8192 | 0.15 | 0.6 | 0.075 | - | - | - | - | 0 | 74 | 1 | 0 | True |
+| openai/gpt-oss-120b | Phala | unknown | 131072 | 32768 | 0.15 | 0.6 | - | - | 176 | 863 | 1355 | 100 | 99.2 | 1 | 1 | False |
+| openai/gpt-oss-120b | Together | unknown | 131072 | 117964 | 0.15 | 0.6 | - | - | 94 | 298 | 695.1 | 100 | 94.8 | 1 | 1 | False |
+| openai/gpt-oss-120b | Groq | unknown | 131072 | 65536 | 0.15 | 0.6 | 0.075 | - | 307 | 184 | 515 | 100 | 100 | 1 | 1 | True |
+| openai/gpt-oss-120b | Mara | unknown | 131072 | 117964 | 0.15 | 0.75 | - | - | 224 | 931.5 | 1405 | 100 | 95.9 | 1 | 1 | False |
+| openai/gpt-oss-120b | Cerebras | fp16 | 131072 | 40960 | 0.35 | 0.75 | 0.35 | - | 758 | 229 | 768 | 100 | 100 | 1 | 1 | True |
+| google/gemini-3.8-flash | Google AI Studio | unknown | 1048576 | 65536 | 0.375 | 1.875 | 0.0375 | 0.02083 | 87 | 1936 | 4428 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.8-flash | Google | unknown | 1048576 | 65536 | 0.375 | 1.875 | 0.0375 | 0.02083 | 39.5 | 19280 | 1.13e+05 | 100 | 93.6 | 1 | 1 | False |
+| google/gemini-3.8-flash | Google AI Studio | unknown | 1048576 | 65536 | 0.75 | 3.75 | 0.075 | 0.04167 | 89 | 2246 | 3884 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.8-flash | Google | unknown | 1048576 | 65536 | 0.75 | 3.75 | 0.075 | 0.04167 | 82 | 2573 | 8618 | 93.3 | 94.4 | 1 | 1 | False |
+| google/gemini-3.8-flash | Google AI Studio | unknown | 1048576 | 65536 | 1.35 | 6.75 | 0.135 | 0.075 | 96 | 3480 | 7445 | 100 | 93.8 | 1 | 1 | False |
+| google/gemini-3.8-flash | Google | unknown | 1048576 | 65536 | 1.35 | 6.75 | 0.135 | 0.075 | 111 | 3702 | 8943 | 72 | 96.2 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google | unknown | 1048576 | 65536 | 0.15 | 1.25 | 0.015 | 0.04167 | 15 | 6656 | 1.061e+04 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google AI Studio | unknown | 1048576 | 65536 | 0.15 | 1.25 | 0.015 | 0.04167 | 250 | 1518 | 2978 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google AI Studio | unknown | 1048576 | 65536 | 0.3 | 2.5 | 0.03 | 0.08333 | 110.5 | 686.5 | 1280 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google | unknown | 1048576 | 65536 | 0.3 | 2.5 | 0.03 | 0.08333 | 128 | 613 | 1282 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google | unknown | 1048576 | 65536 | 0.33 | 2.75 | 0.033 | 0.08333 | 45 | 1309 | 2123 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google | unknown | 1048576 | 65536 | 0.33 | 2.75 | 0.033 | 0.08333 | 205.5 | 1141 | 2275 | 100 | 100 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google | unknown | 1048576 | 65536 | 0.54 | 4.5 | 0.054 | 0.15 | 127 | 992.5 | 1213 | 100 | 99.8 | 1 | 1 | False |
+| google/gemini-3.5-flash-lite | Google AI Studio | unknown | 1048576 | 65536 | 0.54 | 4.5 | 0.054 | 0.15 | 120 | 910 | 1229 | 100 | 100 | 1 | 1 | False |
+| xiaomi/mimo-v2.6-pro | DeepInfra | fp8 | 1048576 | 943718 | 0.43 | 0.87 | 0.0036 | - | 29 | 1048 | 3662 | 100 | 100 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-pro | Novita | fp8 | 1048576 | 131072 | 0.435 | 0.87 | 0.0036 | - | 37 | 3890 | 9650 | 93.3 | 98 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-pro | GMICloud | bf16 | 1050000 | 945000 | 0.435 | 0.87 | 0.004 | - | 38 | 4244 | 9565 | 93.3 | 98.2 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-pro | Xiaomi | fp8 | 1048576 | 131072 | 0.435 | 0.87 | 0.0036 | - | 34 | 4031 | 1.003e+04 | 96.7 | 98.8 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Darkbloom | fp4 | 1048576 | 131072 | 0.1 | 0.28 | 0.05 | - | 16.5 | 4258 | 7882 | 100 | 96.9 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Makora | fp8 | 1048576 | 131072 | 0.13 | 0.28 | 0.002 | - | 21 | 1992 | 8086 | 100 | 95.5 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | DeepInfra | fp8 | 1048576 | 943718 | 0.133 | 0.266 | 0.00266 | - | 28 | 1737 | 5114 | 93.3 | 93.1 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Novita | fp8 | 1048576 | 131072 | 0.14 | 0.28 | 0.0028 | - | 22 | 6308 | 1.726e+04 | 100 | 98.1 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | GMICloud | bf16 | 1050000 | 945000 | 0.14 | 0.28 | 0.003 | - | 24 | 5044 | 8705 | 17.9 | 54.7 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Xiaomi | fp8 | 1048576 | 131072 | 0.14 | 0.28 | 0.0028 | - | 26 | 5862 | 1.983e+04 | 100 | 99.6 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Io Net | fp8 | 1048320 | 131072 | 0.15 | 0.29 | 0.025 | - | 60 | 1406 | 3581 | 100 | 99.3 | 1 | 1 | True |
+| xiaomi/mimo-v2.6-flash | Venice | fp8 | 1000000 | 131072 | 0.175 | 0.35 | 0.00375 | - | 18 | 3756 | 8150 | 89.7 | 66 | 1 | 1 | True |
+| anthropic/claude-haiku-5.5 | Google | unknown | 1000000 | 128000 | 0.1 | 0.5 | 0.01 | 0.125 | 185 | 1488 | 4853 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Claude Platform on AWS | unknown | 1000000 | 128000 | 0.1 | 0.5 | 0.01 | 0.125 | 138 | 1287 | 3673 | 100 | 99.7 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Azure | unknown | 1000000 | 128000 | 0.1 | 0.5 | 0.01 | 0.125 | 117 | 1372 | 2827 | 100 | 98.1 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Anthropic | unknown | 1000000 | 128000 | 0.1 | 0.5 | 0.01 | 0.125 | 129 | 1396 | 3731 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Amazon Bedrock | unknown | 1000000 | 128000 | 0.1 | 0.5 | 0.01 | 0.125 | 133 | 2896 | 3982 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Google | unknown | 1000000 | 128000 | 0.11 | 0.55 | 0.011 | 0.1375 | 209 | 404 | 1471 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Google | unknown | 1000000 | 128000 | 0.11 | 0.55 | 0.011 | 0.1375 | 201 | 1173 | 4089 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Azure | unknown | 1000000 | 128000 | 0.11 | 0.55 | 0.011 | 0.1375 | 43 | 733 | 1023 | - | - | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Amazon Bedrock | unknown | 1000000 | 128000 | 0.11 | 0.55 | 0.011 | 0.1375 | 161.5 | 2211 | 8998 | 100 | 100 | 1 | 1 | False |
+| anthropic/claude-haiku-5.5 | Amazon Bedrock | unknown | 1000000 | 128000 | 0.11 | 0.55 | 0.011 | 0.1375 | 252 | 803 | 1086 | 100 | 100 | 1 | 1 | False |
+| meituan/longcat-2.0 | AtlasCloud | fp8 | 1048756 | 262144 | 0.3 | 1.2 | 0.006 | - | 49 | 1560 | 5083 | 100 | 99.9 | 1 | 1 | True |
+| stepfun/step-5-preview | StepFun | fp8 | 1000000 | 64000 | 1 | 2.7 | 0.05 | - | 55 | 2157 | 2.202e+04 | 100 | 98.4 | 1 | 1 | True |

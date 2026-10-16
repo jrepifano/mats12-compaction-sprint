@@ -1,0 +1,36 @@
+{
+ "utc": "2026-10-16T05:57:35Z",
+ "history_id": "h0",
+ "our_tokens": 193868,
+ "prompt_tokens": 193900,
+ "c": 1.0001650607629933,
+ "provider": "Google",
+ "provider_ok": true,
+ "transforms_accepted": true,
+ "finish_reason": "tool_calls",
+ "cost_usd": 0.0427786,
+ "cost_from_usage": true,
+ "latency_s": 20.555477375048213,
+ "endpoints": {
+  "tag": "google-vertex/us-south1",
+  "provider_name": "Google",
+  "context_length": 262144,
+  "max_completion_tokens": 65536,
+  "quantization": "unknown",
+  "status": 0,
+  "throughput_last_30m": null,
+  "latency_last_30m": null,
+  "uptime_last_30m": 100,
+  "uptime_last_1d": 99.91251093613297,
+  "price_in_per_m": 0.22,
+  "price_out_per_m": 1.8
+ },
+ "calibration": {
+  "utc": "2026-10-16T05:57:35Z",
+  "c": 1.01,
+  "n": 1,
+  "ratios": [
+   1.00017
+  ]
+ }
+}

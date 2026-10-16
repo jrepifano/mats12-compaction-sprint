@@ -1,0 +1,83 @@
+calibration c = 1.01000 (saved 2026-10-16T08:15:45Z, n 1411)
+2026-10-16T08:15:58Z scheduler start: 4 block(s), concurrency 16, admit by 2026-10-16T12:00:00Z, hard stop 2026-10-16T12:15:00Z
+2026-10-16T08:15:58Z load 2.0, concurrency 16, in flight 0, ready 0, blocks 0
+2026-10-16T08:15:58Z h0: complete on disk, skipped
+2026-10-16T08:15:58Z h2: complete on disk, skipped
+2026-10-16T08:15:58Z h4: complete on disk, skipped
+2026-10-16T08:15:58Z h7: admitted (gate0, gate0, levels AB, task lcbhard_46, 8 chains, reserved $9.48, p90 block 6177s)
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T08:16:32Z h7: compaction inspect k=1 done in 33.4s ($0.0452)
+2026-10-16T08:16:59Z load 2.6, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:16:59Z 18 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:16:59Z STOP admitting: orphaned container(s): p49-h5-lcbhard_11-fresh-A-581028, p49-h5-lcbhard_11-fresh-B-ad2661, p49-h6-lcbhard_28-fresh-A-9fdec8, p49-h6-lcbhard_28-inspect-B-59a2fa, p49-h6-lcbhard_28-pi-A-70687e, p49-h6-lcbhard_28-pi-B-fc8e83
+2026-10-16T08:17:59Z load 2.0, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:18:16Z h7: compaction rep2 k=2 done in 137.4s ($0.0451)
+2026-10-16T08:18:59Z load 1.4, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:19:30Z h7: compaction rep3 k=3 done in 211.3s ($0.0450)
+2026-10-16T08:19:59Z load 1.1, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:20:59Z load 1.6, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:21:35Z h7: compaction pi k=1 done in 336.5s ($0.0243)
+2026-10-16T08:21:59Z load 2.0, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:21:59Z 28 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:22:59Z load 3.0, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:24:00Z load 2.2, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:25:00Z load 2.0, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:26:00Z load 2.4, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:27:00Z load 2.1, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:27:00Z 20 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:28:00Z load 2.0, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T08:28:53Z h7-lcbhard_46-R-B: turn_cap turns=24 $1.1872 wall 772.2s
+2026-10-16T08:28:56Z h7-lcbhard_46-fresh-A: done turns=17 $0.0580 wall 775.6s
+2026-10-16T08:29:02Z load 2.1, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:30:02Z load 1.8, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:31:02Z load 2.4, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:32:03Z load 2.0, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:32:03Z 21 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:33:03Z load 1.7, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:34:03Z load 1.7, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:35:03Z load 2.5, concurrency 16, in flight 6, ready 0, blocks 1
+2026-10-16T08:35:15Z h7-lcbhard_46-pi-B: turn_cap turns=24 $0.1786 wall 820.1s
+2026-10-16T08:36:04Z load 4.2, concurrency 16, in flight 5, ready 0, blocks 1
+2026-10-16T08:37:04Z load 3.3, concurrency 16, in flight 5, ready 0, blocks 1
+2026-10-16T08:37:04Z 15 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:38:04Z load 6.5, concurrency 16, in flight 5, ready 0, blocks 1
+2026-10-16T08:39:04Z load 7.3, concurrency 16, in flight 5, ready 0, blocks 1
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/run.py", line 500, in <module>
+    return 2
+             
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/run.py", line 496, in main
+    return 2
+   ^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/run.py", line 273, in cmd_gate0
+    return _run_blocks(a, B.gate0_blocks(idx))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/run.py", line 265, in _run_blocks
+    out = asyncio.run(main())
+          ^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/run.py", line 263, in main
+    return await sched.run(blocks)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/p49/blocks.py", line 1049, in run
+    queue = deque(blocks)
+                    ^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/p49/blocks.py", line 587, in monitor
+    await self.check_containers()
+    ^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/p49/blocks.py", line 503, in write_state
+    def write_state(self) -> None:
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/p49/blocks.py", line 101, in write_json
+    tmp.replace(path)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/pathlib.py", line 1376, in replace
+    os.replace(self, target)
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/results/scheduler_state.json.tmp' -> '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/probes/P49-long-context-compaction/results/scheduler_state.json'

@@ -1,0 +1,33 @@
+calibration c = 1.01000 (saved 2026-10-16T08:35:50Z, n 1825)
+2026-10-16T08:36:12Z scheduler start: 4 block(s), concurrency 16, admit by 2026-10-16T17:00:00Z, hard stop 2026-10-16T17:15:00Z
+2026-10-16T08:36:12Z load 4.1, concurrency 16, in flight 0, ready 0, blocks 0
+2026-10-16T08:36:12Z h1: admitted (gate0, gate0, levels AB, task lcbhard_19, 1 chains, reserved $9.48, p90 block 4753s)
+2026-10-16T08:36:12Z h3: admitted (gate0, gate0, levels AB, task lcbhard_82, 1 chains, reserved $9.48, p90 block 4753s)
+2026-10-16T08:36:12Z h5: admitted (gate0, gate0, levels AB, task lcbhard_11, 1 chains, reserved $9.48, p90 block 4753s)
+2026-10-16T08:36:12Z h6: complete on disk, skipped
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T08:37:12Z load 4.0, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:37:12Z 16 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:38:12Z load 6.6, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:39:12Z load 9.5, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:40:14Z load 8.8, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:41:14Z load 7.8, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:42:14Z load 7.4, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:42:14Z 8 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:42:36Z signal received: stopping (chains cancelled now are rerun on resume)
+2026-10-16T08:42:36Z hard stop at 2026-10-16T08:42:36Z: 3 chain(s) running, 0 queued
+2026-10-16T08:42:36Z STOP admitting: hard stop
+2026-10-16T08:42:37Z h1-lcbhard_19-R-A: deadline turns=8 $0.4431 wall 382.6s
+2026-10-16T08:42:37Z h3-lcbhard_82-inspect-B: deadline turns=9 $0.0315 wall 382.6s
+2026-10-16T08:42:37Z h5-lcbhard_11-inspect-A: deadline turns=10 $0.0408 wall 382.6s
+2026-10-16T08:42:37Z h1: settled $0.6896 (billed $4.4065, unresolved bound $0.0600 over 1 request(s), records $0.4431) of $9.48 reserved
+2026-10-16T08:42:37Z h1: block cancelled in 384.9s
+2026-10-16T08:42:37Z h3: settled $0.1064 (billed $4.1362, unresolved bound $0.0000 over 0 request(s), records $0.0315) of $9.48 reserved
+2026-10-16T08:42:37Z h3: block cancelled in 384.9s
+2026-10-16T08:42:37Z h5: settled $0.4197 (billed $2.0720, unresolved bound $0.0000 over 0 request(s), records $0.0408) of $9.48 reserved
+2026-10-16T08:42:37Z h5: block cancelled in 384.9s
+2026-10-16T08:42:37Z h1 block end: docker p49 containers 24
+2026-10-16T08:42:37Z h5 block end: docker p49 containers 24
+2026-10-16T08:42:37Z h3 block end: docker p49 containers 24
+2026-10-16T08:42:37Z scheduler end: {'admitted': 3, 'skipped': 1, 'not_admitted': [], 'stop_reason': 'hard stop', 'concurrency': 16}
+{"admitted": 3, "skipped": 1, "not_admitted": [], "stop_reason": "hard stop", "concurrency": 16}

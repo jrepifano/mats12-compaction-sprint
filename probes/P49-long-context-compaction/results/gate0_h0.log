@@ -1,0 +1,29 @@
+calibration c = 1.01000 (saved 2026-10-16T05:57:35Z, n 1)
+2026-10-16T05:57:44Z scheduler start: 1 block(s), concurrency 32, admit by 2026-10-16T12:00:00Z, hard stop 2026-10-16T12:15:00Z
+2026-10-16T05:57:44Z load 1.9, concurrency 32, in flight 0, ready 0, blocks 0
+2026-10-16T05:57:44Z h0: admitted (gate0, gate0, levels AB, task lcbhard_59, 8 chains, reserved $13.08, p90 block 900s)
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T05:58:23Z h0: compaction inspect k=1 done in 38.4s ($0.0450)
+2026-10-16T05:58:45Z load 1.4, concurrency 32, in flight 6, ready 0, blocks 1
+2026-10-16T05:58:45Z 35 new 429s since the last check: halving concurrency to 16
+2026-10-16T05:58:45Z concurrency 32 -> 16
+2026-10-16T05:59:24Z h0: compaction rep2 k=2 done in 99.6s ($0.0464)
+2026-10-16T05:59:24Z h0: compaction pi k=1 done in 100.1s ($0.0207)
+2026-10-16T05:59:45Z load 1.6, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T06:00:03Z h0: compaction rep3 k=3 done in 138.9s ($0.0449)
+2026-10-16T06:00:45Z load 1.1, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T06:01:45Z load 1.7, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T06:02:45Z load 1.3, concurrency 16, in flight 8, ready 0, blocks 1
+2026-10-16T06:03:19Z h0-lcbhard_59-fresh-A: api_error turns=5 $0.0092 wall 332.9s
+2026-10-16T06:03:45Z load 2.9, concurrency 16, in flight 7, ready 0, blocks 1
+2026-10-16T06:03:45Z 15 new 429s since the last check: halving concurrency to 8
+2026-10-16T06:03:45Z concurrency 16 -> 8
+2026-10-16T06:04:22Z h0-lcbhard_59-inspect-B: turn_cap turns=24 $0.1633 wall 357.8s
+2026-10-16T06:04:46Z load 2.8, concurrency 8, in flight 6, ready 0, blocks 1
+2026-10-16T06:05:06Z h0-lcbhard_59-pi-A: api_error turns=8 $0.0628 wall 341.1s
+2026-10-16T06:05:23Z h0-lcbhard_59-fresh-B: api_error turns=15 $0.0724 wall 457.0s
+2026-10-16T06:05:47Z load 3.0, concurrency 8, in flight 4, ready 0, blocks 1
+2026-10-16T06:06:47Z load 2.0, concurrency 8, in flight 4, ready 0, blocks 1
+2026-10-16T06:06:56Z h0-lcbhard_59-pi-B: api_error turns=18 $0.1796 wall 451.7s
+2026-10-16T06:07:48Z load 1.4, concurrency 8, in flight 3, ready 0, blocks 1
+2026-10-16T06:08:25Z h0-lcbhard_59-R-B: api_error turns=9 $0.4402 wall 639.0s

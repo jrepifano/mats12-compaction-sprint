@@ -1,0 +1,7780 @@
+{
+ "summary": {
+  "n": 193,
+  "condensation_marker": 0,
+  "n_user_gt1": 15,
+  "user_tok_med": 1159,
+  "S1": {
+   "n": 193,
+   "has_error": 132,
+   "suite_status": {
+    "fail": 40,
+    "none": 26,
+    "unknown": 15,
+    "pass": 112
+   },
+   "script_status": {
+    "fail": 29,
+    "none": 140,
+    "unknown": 21,
+    "pass": 3
+   },
+   "files_ge1": 148,
+   "pi_span_med": 6627,
+   "pi_tail_med": 21012,
+   "truth_keys": [
+    "last_error",
+    "last_script",
+    "last_test",
+    "n_test_runs"
+   ]
+  },
+  "L": {
+   "n": 193,
+   "has_error": 183,
+   "suite_status": {
+    "fail": 86,
+    "none": 3,
+    "unknown": 2,
+    "pass": 102
+   },
+   "script_status": {
+    "fail": 84,
+    "none": 39,
+    "unknown": 39,
+    "pass": 31
+   },
+   "files_ge1": 193,
+   "pi_span_med": 46397,
+   "pi_tail_med": 21412,
+   "truth_keys": [
+    "last_error",
+    "last_script",
+    "last_test",
+    "n_test_runs"
+   ]
+  }
+ },
+ "rows": [
+  {
+   "id": "chatcmpl-12590702ff8556a3f2ab216c18d634f6",
+   "repo": "googleapis/python-spanner",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1076,
+   "condensation_marker": false,
+   "total": 126994,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 24,
+    "n_files": 0,
+    "pi_span_tok": 7349,
+    "pi_tail_tok": 20204,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 2,
+    "pi_span_tok": 42394,
+    "pi_tail_tok": 26138,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b89eb4ce7dbe5dd83224006208e1a5c6",
+   "repo": "googleapis/python-spanner",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1076,
+   "condensation_marker": false,
+   "total": 116715,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 5511,
+    "pi_tail_tok": 23628,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 42014,
+    "pi_tail_tok": 22831,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-60769659499ed5e1f04a7f241cb3f454",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 125251,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 6094,
+    "pi_tail_tok": 20579,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 56853,
+    "pi_tail_tok": 23098,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-fe2e01aaeb9955f5968685c153778505",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 2,
+   "user_tok": 10505,
+   "condensation_marker": false,
+   "total": 116971,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 1,
+    "pi_span_tok": 13196,
+    "pi_tail_tok": 20841,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 26,
+    "n_files": 1,
+    "pi_span_tok": 47893,
+    "pi_tail_tok": 22513,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8812510bc25313ec6f3f59652ce61903",
+   "repo": "pymzml/pymzML",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1441,
+   "condensation_marker": false,
+   "total": 123778,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6157,
+    "pi_tail_tok": 20010,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 28,
+    "n_files": 1,
+    "pi_span_tok": 48528,
+    "pi_tail_tok": 23251,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6305864c5eff12880225a107e6cc2bdf",
+   "repo": "Fatal1ty/mashumaro",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1127,
+   "condensation_marker": false,
+   "total": 131104,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 6069,
+    "pi_tail_tok": 20455,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 41415,
+    "pi_tail_tok": 29111,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-aefe48348919dc80bd097df77fbcb60b",
+   "repo": "fastavro/fastavro",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1711,
+   "condensation_marker": false,
+   "total": 118896,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 9,
+    "n_files": 1,
+    "pi_span_tok": 5463,
+    "pi_tail_tok": 24502,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 31,
+    "n_files": 1,
+    "pi_span_tok": 52861,
+    "pi_tail_tok": 20291,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1f29bf2888fe5d26310b125fbf86aa00",
+   "repo": "pyg-team/pytorch_geometric",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2335,
+   "condensation_marker": false,
+   "total": 126387,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8549,
+    "pi_tail_tok": 23070,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 56157,
+    "pi_tail_tok": 20187,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-12910d6aaf0f4a78184cd11dd62fe294",
+   "repo": "pybamm-team/PyBaMM",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1865,
+   "condensation_marker": false,
+   "total": 119070,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8614,
+    "pi_tail_tok": 20073,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "none",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 42753,
+    "pi_tail_tok": 20845,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e33992448ca9c213183da4e1e46bc22b",
+   "repo": "gerbenoostra/poetry-plugin-mono-repo-deps",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1764,
+   "condensation_marker": false,
+   "total": 128398,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 33,
+    "n_files": 1,
+    "pi_span_tok": 6231,
+    "pi_tail_tok": 20596,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 77,
+    "n_files": 1,
+    "pi_span_tok": 55079,
+    "pi_tail_tok": 22471,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-7aed035dfc7179a5300e78d9bccde118",
+   "repo": "nipy/nipype",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2874,
+   "condensation_marker": false,
+   "total": 125468,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 7161,
+    "pi_tail_tok": 27040,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 44863,
+    "pi_tail_tok": 22920,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-104b1f51f413a81757ad5af3d8ee2534",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 117412,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5244,
+    "pi_tail_tok": 20274,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 29683,
+    "pi_tail_tok": 20913,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-70f5cd708da30bf7664401ce85d791e8",
+   "repo": "pytest-dev/pytest-asyncio",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 2260,
+   "condensation_marker": false,
+   "total": 126650,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 0,
+    "pi_span_tok": 9219,
+    "pi_tail_tok": 20599,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 51945,
+    "pi_tail_tok": 20870,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-85c7646b6d0d88a49dc3b793324bac94",
+   "repo": "florimondmanca/asgi-lifespan",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1294,
+   "condensation_marker": false,
+   "total": 121526,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 7026,
+    "pi_tail_tok": 21146,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 4,
+    "pi_span_tok": 66713,
+    "pi_tail_tok": 21061,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-50e5190363c6dcd7cd6c0bf3226e2549",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 136540,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5362,
+    "pi_tail_tok": 20225,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 3,
+    "pi_span_tok": 28784,
+    "pi_tail_tok": 25998,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5dc8915648372b5baefe31e36285dcc3",
+   "repo": "jupyter/nbgrader",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1023,
+   "condensation_marker": false,
+   "total": 123760,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 10700,
+    "pi_tail_tok": 20038,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 34,
+    "n_files": 2,
+    "pi_span_tok": 35002,
+    "pi_tail_tok": 21058,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ae97449a7bc37fd5e9f0099327217987",
+   "repo": "optuna/optuna",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2658,
+   "condensation_marker": false,
+   "total": 120022,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6936,
+    "pi_tail_tok": 22615,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 41476,
+    "pi_tail_tok": 24553,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-410eb992c666c75e789b253b873ae089",
+   "repo": "keras-team/keras-nlp",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1028,
+   "condensation_marker": false,
+   "total": 127356,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 5957,
+    "pi_tail_tok": 21246,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 57492,
+    "pi_tail_tok": 22032,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-62a9981f2ef83a15a4b05e102efad876",
+   "repo": "pythological/etuples",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 935,
+   "condensation_marker": false,
+   "total": 121504,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 7044,
+    "pi_tail_tok": 21356,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 59511,
+    "pi_tail_tok": 21133,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-91b5debc4b1f34b74ebf0fb6a4da7669",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 128278,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 7693,
+    "pi_tail_tok": 25314,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 40128,
+    "pi_tail_tok": 25689,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ab1550b50f2ff8d728884917c6f1d9be",
+   "repo": "spacetelescope/stwcs",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 988,
+   "condensation_marker": false,
+   "total": 115487,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 6808,
+    "pi_tail_tok": 22109,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 55339,
+    "pi_tail_tok": 23090,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-aad787d5c47a295c81b6adafc7345fc6",
+   "repo": "gerbenoostra/poetry-plugin-mono-repo-deps",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1764,
+   "condensation_marker": false,
+   "total": 130104,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 0,
+    "pi_span_tok": 6804,
+    "pi_tail_tok": 21600,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 42,
+    "n_files": 1,
+    "pi_span_tok": 53444,
+    "pi_tail_tok": 20963,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b9ebff50be2a2328d429090f0ff175bb",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1134,
+   "condensation_marker": false,
+   "total": 120641,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 31,
+    "n_files": 0,
+    "pi_span_tok": 5316,
+    "pi_tail_tok": 21855,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 2,
+    "pi_span_tok": 48586,
+    "pi_tail_tok": 23639,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8303c113416fcb7b05bb13bf92a9a8bb",
+   "repo": "jupyter/nbgrader",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1023,
+   "condensation_marker": false,
+   "total": 129556,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 9885,
+    "pi_tail_tok": 23325,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 3,
+    "pi_span_tok": 47448,
+    "pi_tail_tok": 22838,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5693fef6ac2b2f6c76402df77c2fa584",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 126069,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 4184,
+    "pi_tail_tok": 21780,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 40685,
+    "pi_tail_tok": 20075,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-743eccb2efbe8bd81c0cf275e01c6e22",
+   "repo": "jboss-dockerfiles/dogen",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 920,
+   "condensation_marker": false,
+   "total": 124884,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 9831,
+    "pi_tail_tok": 22181,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 3,
+    "pi_span_tok": 24224,
+    "pi_tail_tok": 26305,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e1f98ac941423882ca715464bbd7b371",
+   "repo": "ESMValGroup/ESMValCore",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 8735,
+   "condensation_marker": false,
+   "total": 119464,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 11990,
+    "pi_tail_tok": 20801,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 42,
+    "n_files": 1,
+    "pi_span_tok": 63183,
+    "pi_tail_tok": 20221,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e592b4a055506020ec509e16d9640fea",
+   "repo": "fastavro/fastavro",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1711,
+   "condensation_marker": false,
+   "total": 120589,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 8422,
+    "pi_tail_tok": 21660,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 37749,
+    "pi_tail_tok": 27358,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-fe813ff6116936ad5bd67df579669272",
+   "repo": "streamlink/streamlink",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1775,
+   "condensation_marker": false,
+   "total": 123798,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 8588,
+    "pi_tail_tok": 23102,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 37,
+    "n_files": 1,
+    "pi_span_tok": 29748,
+    "pi_tail_tok": 29267,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5cd97952e8530168504a37bc792d0ca7",
+   "repo": "jupyter/nbgrader",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2458,
+   "condensation_marker": false,
+   "total": 122628,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 11939,
+    "pi_tail_tok": 20508,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 53370,
+    "pi_tail_tok": 21552,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-94074b92fd0f9b979a8fee9c262b55fd",
+   "repo": "passaH2O/dorado",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1327,
+   "condensation_marker": false,
+   "total": 122375,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 9664,
+    "pi_tail_tok": 20341,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 62214,
+    "pi_tail_tok": 25139,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-3588a37eb15d671bf8e82954a661cd69",
+   "repo": "sqlfluff/sqlfluff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 3,
+   "user_tok": 1268,
+   "condensation_marker": false,
+   "total": 130165,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 8692,
+    "pi_tail_tok": 20797,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 34,
+    "n_files": 1,
+    "pi_span_tok": 51211,
+    "pi_tail_tok": 20090,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-7ef4d3d7612a32f8ceba3d1509829bfe",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1531,
+   "condensation_marker": false,
+   "total": 127592,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 7100,
+    "pi_tail_tok": 21380,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 32,
+    "n_files": 1,
+    "pi_span_tok": 48120,
+    "pi_tail_tok": 22840,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b9ec648d21fdfc606c91ce672e1e9b60",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1135,
+   "condensation_marker": false,
+   "total": 117169,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 2,
+    "pi_span_tok": 9570,
+    "pi_tail_tok": 20145,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 13,
+    "n_files": 2,
+    "pi_span_tok": 67063,
+    "pi_tail_tok": 20470,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-dd381fdf47e02c11cfbe4f6da941db18",
+   "repo": "keras-team/keras-cv",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 971,
+   "condensation_marker": false,
+   "total": 123389,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 1,
+    "pi_span_tok": 7904,
+    "pi_tail_tok": 20574,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 34659,
+    "pi_tail_tok": 20367,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-70c743b0a073c632cb6bff29309ca374",
+   "repo": "keras-team/keras-nlp",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 4,
+   "user_tok": 1094,
+   "condensation_marker": false,
+   "total": 130092,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 9100,
+    "pi_tail_tok": 20072,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "none",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 55780,
+    "pi_tail_tok": 20086,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1e7c84cc7a6b27110853c3490d23cb5b",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 125278,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 4900,
+    "pi_tail_tok": 22822,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 35118,
+    "pi_tail_tok": 21061,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a3422b2fdad1382601a5c33a44bf72d0",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 136610,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 6572,
+    "pi_tail_tok": 20003,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 3,
+    "pi_span_tok": 38871,
+    "pi_tail_tok": 22761,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ac6da33a487f09b2403632d409262821",
+   "repo": "tox-dev/tox",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 6043,
+   "condensation_marker": false,
+   "total": 118426,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 13060,
+    "pi_tail_tok": 23878,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 47586,
+    "pi_tail_tok": 20514,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-4ec6db33b9706d0705c2c5defd5e123f",
+   "repo": "exo-lang/exo",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1667,
+   "condensation_marker": false,
+   "total": 124273,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 9582,
+    "pi_tail_tok": 20016,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 2,
+    "pi_span_tok": 40405,
+    "pi_tail_tok": 20283,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f1baec1cbd83063a37d4f7da989e866c",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1521,
+   "condensation_marker": false,
+   "total": 130796,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 5047,
+    "pi_tail_tok": 20419,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 41542,
+    "pi_tail_tok": 21656,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d2120d22d545dae98d5bdacd3b90e244",
+   "repo": "alchemistry/alchemlyb",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1102,
+   "condensation_marker": false,
+   "total": 123171,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 1,
+    "pi_span_tok": 5962,
+    "pi_tail_tok": 23163,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 36,
+    "n_files": 1,
+    "pi_span_tok": 53406,
+    "pi_tail_tok": 21919,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-eaf741b4639f642a85ea125761591547",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1510,
+   "condensation_marker": false,
+   "total": 127395,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 5991,
+    "pi_tail_tok": 20189,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 51,
+    "n_files": 2,
+    "pi_span_tok": 51982,
+    "pi_tail_tok": 22564,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a62b9b6285c0115db22123e7cf6a61d5",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1160,
+   "condensation_marker": false,
+   "total": 116603,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 5879,
+    "pi_tail_tok": 23208,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 55582,
+    "pi_tail_tok": 23992,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d6ab712a98ef295d79692353ac99ba3d",
+   "repo": "palantir/python-language-server",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 994,
+   "condensation_marker": false,
+   "total": 118517,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 43,
+    "n_files": 1,
+    "pi_span_tok": 6845,
+    "pi_tail_tok": 20928,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 41364,
+    "pi_tail_tok": 26168,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0c52f94ef1d519ccb86859119fb5c291",
+   "repo": "streamlink/streamlink",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1586,
+   "condensation_marker": false,
+   "total": 134594,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 5626,
+    "pi_tail_tok": 24411,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 19,
+    "n_files": 1,
+    "pi_span_tok": 30925,
+    "pi_tail_tok": 20081,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-480d10d5367701162acc7301198cd2a9",
+   "repo": "Duke-GCB/DukeDSClient",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1038,
+   "condensation_marker": false,
+   "total": 117205,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 0,
+    "pi_span_tok": 8024,
+    "pi_tail_tok": 20378,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 15,
+    "n_files": 2,
+    "pi_span_tok": 53299,
+    "pi_tail_tok": 20879,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b19c9f85db34a6f024d06899f7ce150a",
+   "repo": "pybamm-team/PyBaMM",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1865,
+   "condensation_marker": false,
+   "total": 120106,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8093,
+    "pi_tail_tok": 20527,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 39234,
+    "pi_tail_tok": 26190,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e886321b765fdf9e49d4b086f77276ac",
+   "repo": "jupyter/nbgrader",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1023,
+   "condensation_marker": false,
+   "total": 120595,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 9694,
+    "pi_tail_tok": 22637,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 2,
+    "pi_span_tok": 40618,
+    "pi_tail_tok": 20344,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-63e7c418d11f45e029951d82cab73f25",
+   "repo": "tox-dev/tox-uv",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1145,
+   "condensation_marker": false,
+   "total": 126682,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 9344,
+    "pi_tail_tok": 20320,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 30,
+    "n_files": 1,
+    "pi_span_tok": 50368,
+    "pi_tail_tok": 20201,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-173c3f2b3b34c74cda97e3b309981d7f",
+   "repo": "feder-observatory/stellarphot",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1056,
+   "condensation_marker": false,
+   "total": 123179,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5050,
+    "pi_tail_tok": 20474,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 46045,
+    "pi_tail_tok": 20517,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-dbdd1feb98dddf2e2532d4cd8a295777",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 120601,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 6483,
+    "pi_tail_tok": 20011,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 20,
+    "n_files": 1,
+    "pi_span_tok": 28756,
+    "pi_tail_tok": 23129,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-19926efb003d74d35cc187c3b01edb15",
+   "repo": "django-json-api/django-rest-framework-json-api",
+   "exit": "AgentStuckInLoopError: Agent g",
+   "resolved": 1,
+   "n_user": 4,
+   "user_tok": 1757,
+   "condensation_marker": false,
+   "total": 134617,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8482,
+    "pi_tail_tok": 20204,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 3,
+    "pi_span_tok": 45059,
+    "pi_tail_tok": 20010,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-758404b4352b5db115edf86d768c58fc",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 126141,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 3669,
+    "pi_tail_tok": 23046,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 2,
+    "pi_span_tok": 37551,
+    "pi_tail_tok": 20442,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-3458b459621136bd20195ec8ace33690",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1134,
+   "condensation_marker": false,
+   "total": 129034,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 22,
+    "n_files": 1,
+    "pi_span_tok": 7664,
+    "pi_tail_tok": 22314,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 33529,
+    "pi_tail_tok": 23962,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f8dd85248d552d5a382c1a9cccfa9802",
+   "repo": "microsoft/debugpy",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1741,
+   "condensation_marker": false,
+   "total": 127903,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 7412,
+    "pi_tail_tok": 22255,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 33,
+    "n_files": 1,
+    "pi_span_tok": 32472,
+    "pi_tail_tok": 24198,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f9d94c355f163e26594556e9094b3727",
+   "repo": "sqlfluff/sqlfluff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1018,
+   "condensation_marker": false,
+   "total": 116462,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 11062,
+    "pi_tail_tok": 21099,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 46143,
+    "pi_tail_tok": 20169,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-aaad258e59bda017772b6b6789d52af3",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134546,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5229,
+    "pi_tail_tok": 24496,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 32490,
+    "pi_tail_tok": 23356,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-749e6543debea505a013c98759323478",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1531,
+   "condensation_marker": false,
+   "total": 132015,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6267,
+    "pi_tail_tok": 24448,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 35408,
+    "pi_tail_tok": 26879,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-716834cee4f798e4edb98b25066a0f3e",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 10483,
+   "condensation_marker": false,
+   "total": 118109,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 1,
+    "pi_span_tok": 13691,
+    "pi_tail_tok": 20021,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 24,
+    "n_files": 1,
+    "pi_span_tok": 54280,
+    "pi_tail_tok": 21913,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-31e49991039b6c8d12926ba1a66062d4",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 119191,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 6609,
+    "pi_tail_tok": 20828,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 3,
+    "pi_span_tok": 51873,
+    "pi_tail_tok": 20225,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ffc5fd529294519d5d39ebb37e1c512e",
+   "repo": "alchemistry/alchemlyb",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1124,
+   "condensation_marker": false,
+   "total": 119366,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5706,
+    "pi_tail_tok": 20128,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 51147,
+    "pi_tail_tok": 20118,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-bf105ce6ec49fc0cd486bfb3c566e109",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 125730,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 5970,
+    "pi_tail_tok": 20757,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 28,
+    "n_files": 1,
+    "pi_span_tok": 49753,
+    "pi_tail_tok": 21576,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-cc785d868db4c2196ff5ddd1885509e7",
+   "repo": "PlaidWeb/Publ",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 936,
+   "condensation_marker": false,
+   "total": 120394,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 9545,
+    "pi_tail_tok": 22036,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 31,
+    "n_files": 2,
+    "pi_span_tok": 38201,
+    "pi_tail_tok": 21257,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c0cfa6752c6264694822e024317dc24a",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134292,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 4705,
+    "pi_tail_tok": 24699,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 3,
+    "pi_span_tok": 45770,
+    "pi_tail_tok": 20057,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b41b2ea2b4d6aaefbeccde6691bb9f2d",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 128500,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 5967,
+    "pi_tail_tok": 21317,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 32409,
+    "pi_tail_tok": 20033,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-79cfd28188f09eae55db16192190dcd9",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 135105,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5906,
+    "pi_tail_tok": 21896,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 3,
+    "pi_span_tok": 30968,
+    "pi_tail_tok": 20922,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b643b773883f8575f805c3b882915a02",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 120825,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 10729,
+    "pi_tail_tok": 21246,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 13,
+    "n_files": 1,
+    "pi_span_tok": 38653,
+    "pi_tail_tok": 20454,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ade218fe32485a16f429eca82cdbc32d",
+   "repo": "mmcdermott/MEDS_transforms",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1077,
+   "condensation_marker": false,
+   "total": 120706,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 4416,
+    "pi_tail_tok": 23416,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 38835,
+    "pi_tail_tok": 24927,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ccb4f27e857cbf413d9f43f6f87e3c24",
+   "repo": "BoboTiG/ebook-reader-dict",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1182,
+   "condensation_marker": false,
+   "total": 118285,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6710,
+    "pi_tail_tok": 22385,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 40103,
+    "pi_tail_tok": 20526,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-45b538b4a906f4bd46a244e8f2d253ff",
+   "repo": "ml31415/numpy-groupies",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1107,
+   "condensation_marker": false,
+   "total": 122569,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 5587,
+    "pi_tail_tok": 22752,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 15,
+    "n_files": 1,
+    "pi_span_tok": 66014,
+    "pi_tail_tok": 20640,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ca61ff91b94474edffdeaef5e7eba59d",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134547,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 6711,
+    "pi_tail_tok": 21578,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 32132,
+    "pi_tail_tok": 22621,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-464ac56f388f91a2c1545812cbe8c81a",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 3,
+   "user_tok": 1094,
+   "condensation_marker": false,
+   "total": 121459,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 22,
+    "n_files": 0,
+    "pi_span_tok": 5703,
+    "pi_tail_tok": 20284,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 1,
+    "pi_span_tok": 42456,
+    "pi_tail_tok": 22422,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-db70cce704e0ddf8a1f50e0d0d424905",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 10483,
+   "condensation_marker": false,
+   "total": 116870,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 13474,
+    "pi_tail_tok": 23306,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 51125,
+    "pi_tail_tok": 25631,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-9943e6a8dcee1e52213549b96eee12f3",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 121972,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5653,
+    "pi_tail_tok": 22403,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 25,
+    "n_files": 1,
+    "pi_span_tok": 38172,
+    "pi_tail_tok": 20068,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-39be6ab1490c90d493928818b8470274",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 5222,
+   "condensation_marker": false,
+   "total": 120808,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 0,
+    "pi_span_tok": 8511,
+    "pi_tail_tok": 22370,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 46714,
+    "pi_tail_tok": 22524,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f144cadd319ca59266f5dcbfcdd35fbd",
+   "repo": "viraptor/phply",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1453,
+   "condensation_marker": false,
+   "total": 121436,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 4484,
+    "pi_tail_tok": 29150,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 47434,
+    "pi_tail_tok": 25185,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5000685606aed387ad4b07e5cd027631",
+   "repo": "pytest-dev/pytest-asyncio",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2260,
+   "condensation_marker": false,
+   "total": 118100,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 6357,
+    "pi_tail_tok": 21613,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 59119,
+    "pi_tail_tok": 23365,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-48d93e2353a4b12b7b1f06d427fe3e77",
+   "repo": "ejulio/spider-feeder",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1250,
+   "condensation_marker": false,
+   "total": 117647,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 3,
+    "pi_span_tok": 9146,
+    "pi_tail_tok": 20193,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 60238,
+    "pi_tail_tok": 20065,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8e25ef8b64c07909ce0d4928eb46f2f8",
+   "repo": "keras-team/keras-cv",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2085,
+   "condensation_marker": false,
+   "total": 122062,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 1,
+    "pi_span_tok": 6327,
+    "pi_tail_tok": 20348,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 63617,
+    "pi_tail_tok": 20511,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8d2874c9551bc3f32a21e71c3e078b84",
+   "repo": "just-work/fffw",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 893,
+   "condensation_marker": false,
+   "total": 115253,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8541,
+    "pi_tail_tok": 20011,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 73804,
+    "pi_tail_tok": 20786,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-57c8064cddf12b413fdbedec98a0f3fc",
+   "repo": "gerbenoostra/poetry-plugin-mono-repo-deps",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1764,
+   "condensation_marker": false,
+   "total": 125785,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5083,
+    "pi_tail_tok": 23514,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 57111,
+    "pi_tail_tok": 24189,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-827f9dbe0121da704ec14142c299c627",
+   "repo": "tox-dev/tox",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 6043,
+   "condensation_marker": false,
+   "total": 128009,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 9699,
+    "pi_tail_tok": 23902,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 50365,
+    "pi_tail_tok": 20883,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c91de395612b060a6b0221d88ee19a5d",
+   "repo": "NREL/hescore-hpxml",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 928,
+   "condensation_marker": false,
+   "total": 124615,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 6405,
+    "pi_tail_tok": 22549,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 2,
+    "pi_span_tok": 62551,
+    "pi_tail_tok": 20842,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d21d501f8e3b4acadd340614c783758a",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 120827,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5348,
+    "pi_tail_tok": 20460,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 32671,
+    "pi_tail_tok": 22592,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8f65e97792c250145f82f0c146850f51",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 123034,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 3941,
+    "pi_tail_tok": 23876,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 41435,
+    "pi_tail_tok": 22479,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0dc25f3f8c58b09fdbebffeecd3dfc5d",
+   "repo": "radiocosmology/alpenhorn",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1027,
+   "condensation_marker": false,
+   "total": 119474,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 10478,
+    "pi_tail_tok": 20406,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 2,
+    "pi_span_tok": 39979,
+    "pi_tail_tok": 20594,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-9722bfaaf4b9f95b71b3404f8f74cfa5",
+   "repo": "pypa/setuptools_scm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1319,
+   "condensation_marker": false,
+   "total": 126582,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 7576,
+    "pi_tail_tok": 20661,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 57107,
+    "pi_tail_tok": 20535,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2c9eba6a72b0bc87390597b21682ee19",
+   "repo": "pymzml/pymzML",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1463,
+   "condensation_marker": false,
+   "total": 127048,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 1,
+    "pi_span_tok": 8749,
+    "pi_tail_tok": 24125,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 26,
+    "n_files": 1,
+    "pi_span_tok": 66044,
+    "pi_tail_tok": 20832,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-fe2ae79b18bf14a0650bb5d0b18e2464",
+   "repo": "civisanalytics/civis-python",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1052,
+   "condensation_marker": false,
+   "total": 120397,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5942,
+    "pi_tail_tok": 25821,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 27758,
+    "pi_tail_tok": 20029,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-38833084886c6931b5b5238552bff05c",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 126595,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 4952,
+    "pi_tail_tok": 25522,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 38032,
+    "pi_tail_tok": 23042,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c8580d3ec811eb4f7ea16a7df8c04329",
+   "repo": "fls-bioinformatics-core/auto_process_ngs",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 970,
+   "condensation_marker": false,
+   "total": 118669,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 3634,
+    "pi_tail_tok": 28345,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 24091,
+    "pi_tail_tok": 28154,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-3b84f84cceb1c93fde51f36dc17aa8d0",
+   "repo": "feder-observatory/stellarphot",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1054,
+   "condensation_marker": false,
+   "total": 123059,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6179,
+    "pi_tail_tok": 20177,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 60,
+    "n_files": 1,
+    "pi_span_tok": 56124,
+    "pi_tail_tok": 20077,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-94ca7834624d92c1d46510f3e24eaa90",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134959,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5003,
+    "pi_tail_tok": 20158,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 3,
+    "pi_span_tok": 33460,
+    "pi_tail_tok": 20420,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f40616a3048435d1c2c1056a77d6c2de",
+   "repo": "ml31415/numpy-groupies",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1085,
+   "condensation_marker": false,
+   "total": 119026,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 4225,
+    "pi_tail_tok": 25684,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 64231,
+    "pi_tail_tok": 20084,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6186f2df020638ed65c25b205ef4693c",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1488,
+   "condensation_marker": false,
+   "total": 117904,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 22,
+    "n_files": 1,
+    "pi_span_tok": 7014,
+    "pi_tail_tok": 20934,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 43363,
+    "pi_tail_tok": 20725,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-4a7bc00e22c2c5b303a4283c5163c751",
+   "repo": "All-Hands-AI/openhands-resolver",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 116024,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 4861,
+    "pi_tail_tok": 20107,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 25,
+    "n_files": 1,
+    "pi_span_tok": 43439,
+    "pi_tail_tok": 21691,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-45a570cb63ce8e291ac269377f2352f5",
+   "repo": "sqlfluff/sqlfluff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1209,
+   "condensation_marker": false,
+   "total": 117656,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 8142,
+    "pi_tail_tok": 20560,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 20,
+    "n_files": 1,
+    "pi_span_tok": 66138,
+    "pi_tail_tok": 21740,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6d1e08d7721eb644858d216a126be4da",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 119792,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 18,
+    "n_files": 0,
+    "pi_span_tok": 5429,
+    "pi_tail_tok": 20544,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 38,
+    "n_files": 1,
+    "pi_span_tok": 40053,
+    "pi_tail_tok": 20794,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-67fa8f2722a02b18dd6d64644d1f7e61",
+   "repo": "Juniper/py-junos-eznc",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1792,
+   "condensation_marker": false,
+   "total": 116525,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 0,
+    "pi_span_tok": 7090,
+    "pi_tail_tok": 22100,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 59557,
+    "pi_tail_tok": 21069,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-64e52c30da670aa20d0b2e90cc7ff3bc",
+   "repo": "LLNL/hatchet",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 973,
+   "condensation_marker": false,
+   "total": 125126,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8633,
+    "pi_tail_tok": 20151,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 66827,
+    "pi_tail_tok": 20858,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-4a0bfe7a7c8a377d859c92d6c0bf4ff6",
+   "repo": "matrix-org/synapse",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1138,
+   "condensation_marker": false,
+   "total": 120081,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 3384,
+    "pi_tail_tok": 26383,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 61796,
+    "pi_tail_tok": 21981,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-cb71bb364687707ab3e211d0d2bfcd7a",
+   "repo": "PlaidWeb/Publ",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 936,
+   "condensation_marker": false,
+   "total": 119663,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 9,
+    "n_files": 1,
+    "pi_span_tok": 7107,
+    "pi_tail_tok": 24507,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 29062,
+    "pi_tail_tok": 26343,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-214d2706353e654854bc2010f32ba201",
+   "repo": "keras-team/keras-cv",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2207,
+   "condensation_marker": false,
+   "total": 119617,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 7546,
+    "pi_tail_tok": 20197,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 58972,
+    "pi_tail_tok": 22429,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0f0fd69338d3173040bba84005ff5b56",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1005,
+   "condensation_marker": false,
+   "total": 122131,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 22,
+    "n_files": 1,
+    "pi_span_tok": 10087,
+    "pi_tail_tok": 20591,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 13,
+    "n_files": 1,
+    "pi_span_tok": 58997,
+    "pi_tail_tok": 23805,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f81f36c9e06aae22beaa11d4e8324371",
+   "repo": "bluesky/bluesky-darkframes",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1070,
+   "condensation_marker": false,
+   "total": 131375,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 6017,
+    "pi_tail_tok": 20823,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 57475,
+    "pi_tail_tok": 20264,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-7e42d8ed2a6bd7b48833691a3049ed20",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 123285,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 0,
+    "pi_span_tok": 4899,
+    "pi_tail_tok": 22311,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 34,
+    "n_files": 1,
+    "pi_span_tok": 36833,
+    "pi_tail_tok": 21186,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2bfb542aaa3422d837234477062152a2",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1189,
+   "condensation_marker": false,
+   "total": 122118,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 8853,
+    "pi_tail_tok": 20152,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 2,
+    "pi_span_tok": 40565,
+    "pi_tail_tok": 20039,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a9c6827f65c2282221f72e150125578d",
+   "repo": "cdriehuys/django-simple-email-auth",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 944,
+   "condensation_marker": false,
+   "total": 123711,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 7422,
+    "pi_tail_tok": 20063,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 32440,
+    "pi_tail_tok": 22864,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-65660d43da01d750c75369515fec2f87",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 135002,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 0,
+    "pi_span_tok": 4786,
+    "pi_tail_tok": 22503,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 3,
+    "pi_span_tok": 31089,
+    "pi_tail_tok": 22775,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2f3070fdcb4ee46f563d609d00850301",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 136196,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 20,
+    "n_files": 0,
+    "pi_span_tok": 7359,
+    "pi_tail_tok": 20230,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 23,
+    "n_files": 3,
+    "pi_span_tok": 32590,
+    "pi_tail_tok": 23875,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-90355630b2e3948dc040fd20c55261bd",
+   "repo": "microsoft/debugpy",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 984,
+   "condensation_marker": false,
+   "total": 126635,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5861,
+    "pi_tail_tok": 20745,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 32,
+    "n_files": 1,
+    "pi_span_tok": 41208,
+    "pi_tail_tok": 21615,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a8bb6a430ea3bcc628995153f2883ba2",
+   "repo": "cityofaustin/knackpy",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1219,
+   "condensation_marker": false,
+   "total": 116085,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 0,
+    "pi_span_tok": 8948,
+    "pi_tail_tok": 20592,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 20,
+    "n_files": 2,
+    "pi_span_tok": 23932,
+    "pi_tail_tok": 20205,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e0d4fb02eccd1492664b4040b76107f1",
+   "repo": "wimglenn/advent-of-code-data",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1757,
+   "condensation_marker": false,
+   "total": 115979,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 5780,
+    "pi_tail_tok": 23529,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 42347,
+    "pi_tail_tok": 20094,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-74d3087a82d8313e8dbca4a74e7856f2",
+   "repo": "keras-team/keras-nlp",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1028,
+   "condensation_marker": false,
+   "total": 127350,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 6262,
+    "pi_tail_tok": 22053,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 52314,
+    "pi_tail_tok": 21446,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2f06d7dcce54424cee09c28e2253cf19",
+   "repo": "streamlink/streamlink",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1775,
+   "condensation_marker": false,
+   "total": 118297,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 23,
+    "n_files": 0,
+    "pi_span_tok": 6585,
+    "pi_tail_tok": 20509,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 2,
+    "pi_span_tok": 59076,
+    "pi_tail_tok": 20577,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-87f00e3ef57ddb30c4be7c75cdfe08ca",
+   "repo": "PlaidWeb/Publ",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 936,
+   "condensation_marker": false,
+   "total": 119088,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 8723,
+    "pi_tail_tok": 22857,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 38935,
+    "pi_tail_tok": 20239,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-aebe004250f75f6c8055c0b6ea669149",
+   "repo": "tox-dev/tox",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 6043,
+   "condensation_marker": false,
+   "total": 127965,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 11527,
+    "pi_tail_tok": 21248,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 48103,
+    "pi_tail_tok": 21213,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5c572448267e9747329d40ab0614628f",
+   "repo": "iterative/dvc",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 943,
+   "condensation_marker": false,
+   "total": 115812,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 12678,
+    "pi_tail_tok": 23326,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 25690,
+    "pi_tail_tok": 21090,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b75ce6635af61e89d9cd0cbbc6269b72",
+   "repo": "vaidik/commentjson",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 945,
+   "condensation_marker": false,
+   "total": 121569,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 1,
+    "pi_span_tok": 7201,
+    "pi_tail_tok": 20076,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 70505,
+    "pi_tail_tok": 21972,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-319758976de14fe7f74774224d2af693",
+   "repo": "zulip/zulip-terminal",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1175,
+   "condensation_marker": false,
+   "total": 115331,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 9004,
+    "pi_tail_tok": 20292,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 46397,
+    "pi_tail_tok": 24314,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-da292c28b7e33c434a7e5e009db4f1f8",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1163,
+   "condensation_marker": false,
+   "total": 119013,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 0,
+    "pi_span_tok": 5905,
+    "pi_tail_tok": 20468,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 56839,
+    "pi_tail_tok": 20294,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c6c64fb08df93de15e292be0455c5642",
+   "repo": "pytorch/ignite",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1261,
+   "condensation_marker": false,
+   "total": 117839,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5468,
+    "pi_tail_tok": 24459,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 34,
+    "n_files": 1,
+    "pi_span_tok": 59638,
+    "pi_tail_tok": 20179,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-90e296aa65d5617fde38ed3d9acbfb4a",
+   "repo": "wangronin/Bayesian-Optimization",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 2,
+   "user_tok": 1414,
+   "condensation_marker": false,
+   "total": 119216,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 0,
+    "pi_span_tok": 5822,
+    "pi_tail_tok": 24452,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 2,
+    "pi_span_tok": 49475,
+    "pi_tail_tok": 20563,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6e11b7a5d47b106ee1b8d7c046501ce0",
+   "repo": "gerbenoostra/poetry-plugin-mono-repo-deps",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1764,
+   "condensation_marker": false,
+   "total": 120837,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 29,
+    "n_files": 1,
+    "pi_span_tok": 5927,
+    "pi_tail_tok": 20558,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 29,
+    "n_files": 1,
+    "pi_span_tok": 57209,
+    "pi_tail_tok": 21412,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-51ce402e4a147f56e0b46211ac905fa5",
+   "repo": "model-bakers/model_bakery",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1214,
+   "condensation_marker": false,
+   "total": 117986,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 7080,
+    "pi_tail_tok": 20148,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 13,
+    "n_files": 2,
+    "pi_span_tok": 62542,
+    "pi_tail_tok": 21701,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-11c316d3b5cb470a04604d08c46d5957",
+   "repo": "pretalx/pretalx",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1124,
+   "condensation_marker": false,
+   "total": 119450,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 6423,
+    "pi_tail_tok": 20590,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 48407,
+    "pi_tail_tok": 21189,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1c5386145ec854c67dcbe9c6c76c395d",
+   "repo": "tox-dev/tox",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 6043,
+   "condensation_marker": false,
+   "total": 124214,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 14332,
+    "pi_tail_tok": 20431,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 50981,
+    "pi_tail_tok": 20753,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5c0e620f01d70965724e5adcdc962c02",
+   "repo": "devsnd/tinytag",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 3,
+   "user_tok": 1220,
+   "condensation_marker": false,
+   "total": 125570,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6021,
+    "pi_tail_tok": 21411,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 45993,
+    "pi_tail_tok": 20579,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6d80e73332398f4ee793db66d52f688b",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1134,
+   "condensation_marker": false,
+   "total": 128089,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 23,
+    "n_files": 0,
+    "pi_span_tok": 5892,
+    "pi_tail_tok": 20751,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 1,
+    "pi_span_tok": 29737,
+    "pi_tail_tok": 20776,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-7663ac9bbbac9f15f0c48b679d6f9566",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134303,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 4598,
+    "pi_tail_tok": 20989,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 3,
+    "pi_span_tok": 31788,
+    "pi_tail_tok": 25293,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1055181074b1b2bc18d3814f4a339d8d",
+   "repo": "tox-dev/tox",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 15205,
+   "condensation_marker": false,
+   "total": 127168,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 0,
+    "pi_tail_tok": 34385,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 57056,
+    "pi_tail_tok": 30327,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-4287537a253437f382fb78fde0f2c727",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1499,
+   "condensation_marker": false,
+   "total": 125518,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 19,
+    "n_files": 0,
+    "pi_span_tok": 7193,
+    "pi_tail_tok": 20219,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 1,
+    "pi_span_tok": 56572,
+    "pi_tail_tok": 20686,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f0e7ec5d917f293aac87cc8bdba48949",
+   "repo": "disqus/python-phabricator",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 3,
+   "user_tok": 1222,
+   "condensation_marker": false,
+   "total": 130528,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6139,
+    "pi_tail_tok": 22841,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 64955,
+    "pi_tail_tok": 22653,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b6060435eb823a2a70f29b001c3d57a7",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1531,
+   "condensation_marker": false,
+   "total": 116444,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 3984,
+    "pi_tail_tok": 26296,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 58519,
+    "pi_tail_tok": 20893,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-fbdd853590776dcacb497f9582873641",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 136413,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 0,
+    "pi_span_tok": 5533,
+    "pi_tail_tok": 21464,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 20,
+    "n_files": 3,
+    "pi_span_tok": 26569,
+    "pi_tail_tok": 20555,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1b745bfd0faea3ec00c103f9b4a2e771",
+   "repo": "nipy/nipype",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2874,
+   "condensation_marker": false,
+   "total": 118728,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 5790,
+    "pi_tail_tok": 26304,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 45,
+    "n_files": 1,
+    "pi_span_tok": 41076,
+    "pi_tail_tok": 23178,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0f4f0ae27fae9c4ea482122487eca95f",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 132022,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 6318,
+    "pi_tail_tok": 21738,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 35,
+    "n_files": 3,
+    "pi_span_tok": 32197,
+    "pi_tail_tok": 22254,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-312e78f10e2333a0f641a795575a25f2",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1134,
+   "condensation_marker": false,
+   "total": 128125,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 27,
+    "n_files": 1,
+    "pi_span_tok": 8112,
+    "pi_tail_tok": 22076,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 28358,
+    "pi_tail_tok": 27019,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1153440cf99f0f4868b5dea2f918c688",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 115799,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 25,
+    "n_files": 1,
+    "pi_span_tok": 6519,
+    "pi_tail_tok": 20602,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 15,
+    "n_files": 2,
+    "pi_span_tok": 62383,
+    "pi_tail_tok": 20333,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2786c0441a41831ee8d2ab5fbd8853f8",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 133275,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 4927,
+    "pi_tail_tok": 24294,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 3,
+    "pi_span_tok": 37353,
+    "pi_tail_tok": 23167,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-7856f07df8fd12aa24a64c9d0a746cff",
+   "repo": "reata/sqllineage",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 988,
+   "condensation_marker": false,
+   "total": 119761,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 13747,
+    "pi_tail_tok": 23667,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 32,
+    "n_files": 1,
+    "pi_span_tok": 52347,
+    "pi_tail_tok": 20070,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d2f7b16fde2ec4caebff62f23c9fbeaa",
+   "repo": "iterative/dvc",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 945,
+   "condensation_marker": false,
+   "total": 124934,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 6175,
+    "pi_tail_tok": 20247,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 31798,
+    "pi_tail_tok": 23018,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-42ea4f84a31c2f26d92763ed5712892f",
+   "repo": "j-towns/craystack",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1593,
+   "condensation_marker": false,
+   "total": 116120,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 12039,
+    "pi_tail_tok": 20223,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 72507,
+    "pi_tail_tok": 20547,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ac3ede6bbd44ba57e120cdc46f10e852",
+   "repo": "keras-team/keras-cv",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 3,
+   "user_tok": 2252,
+   "condensation_marker": false,
+   "total": 123378,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 7605,
+    "pi_tail_tok": 23875,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 3,
+    "pi_span_tok": 61457,
+    "pi_tail_tok": 22396,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c05cbc61df0505e00ae186952165731f",
+   "repo": "feder-observatory/stellarphot",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1054,
+   "condensation_marker": false,
+   "total": 129464,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 9399,
+    "pi_tail_tok": 20831,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 47056,
+    "pi_tail_tok": 20198,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-60c5e78b968c20344b98881c37161e9c",
+   "repo": "googleapis/python-spanner",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1076,
+   "condensation_marker": false,
+   "total": 118407,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 0,
+    "pi_span_tok": 5497,
+    "pi_tail_tok": 20387,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 41854,
+    "pi_tail_tok": 22022,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-783f540b0cfa1800a877945a223596af",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 121564,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 4717,
+    "pi_tail_tok": 20191,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 2,
+    "pi_span_tok": 32228,
+    "pi_tail_tok": 27607,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6865a6ea7aa2095e3fbe508591fbe804",
+   "repo": "kornia/kornia",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1312,
+   "condensation_marker": false,
+   "total": 123432,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6895,
+    "pi_tail_tok": 20436,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 15,
+    "n_files": 1,
+    "pi_span_tok": 46939,
+    "pi_tail_tok": 24761,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-823b66f5d7bf62caf7befe97e2c96d02",
+   "repo": "reata/sqllineage",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 988,
+   "condensation_marker": false,
+   "total": 128220,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 18,
+    "n_files": 1,
+    "pi_span_tok": 11764,
+    "pi_tail_tok": 25494,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 37034,
+    "pi_tail_tok": 20995,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-40c85e629b5924a3f62866604a595124",
+   "repo": "bear/python-twitter",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1072,
+   "condensation_marker": false,
+   "total": 120150,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 6300,
+    "pi_tail_tok": 21522,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 35608,
+    "pi_tail_tok": 20802,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-58538a65d1f991e78bc43465035503dd",
+   "repo": "keras-team/keras-nlp",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1028,
+   "condensation_marker": false,
+   "total": 121255,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 6577,
+    "pi_tail_tok": 20430,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 47040,
+    "pi_tail_tok": 21113,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a585c5bd82349c44a6f742084a49a473",
+   "repo": "iterative/dvc",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1306,
+   "condensation_marker": false,
+   "total": 119690,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 7756,
+    "pi_tail_tok": 20420,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 40676,
+    "pi_tail_tok": 21224,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a8a2a54375b05c1a24bad3dac46cd7b2",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 9770,
+   "condensation_marker": false,
+   "total": 119972,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 0,
+    "pi_span_tok": 11806,
+    "pi_tail_tok": 22220,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 48532,
+    "pi_tail_tok": 20566,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f416ec6bb6a3d94d2141a76eb56ec7ac",
+   "repo": "matrix-org/synapse",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 928,
+   "condensation_marker": false,
+   "total": 122082,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 5538,
+    "pi_tail_tok": 21965,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 30,
+    "n_files": 1,
+    "pi_span_tok": 32741,
+    "pi_tail_tok": 22965,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c4ebd64b1e83224183e7ca07d892117a",
+   "repo": "tox-dev/tox-travis",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1403,
+   "condensation_marker": false,
+   "total": 123333,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 5830,
+    "pi_tail_tok": 20481,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 65901,
+    "pi_tail_tok": 21994,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-977da325e2ed072e649037c27e8d668a",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 128925,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 3681,
+    "pi_tail_tok": 23661,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 37919,
+    "pi_tail_tok": 21982,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-84dae0d7725127e1679d926ae3b2f79c",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 132581,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 5176,
+    "pi_tail_tok": 21167,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 3,
+    "pi_span_tok": 29001,
+    "pi_tail_tok": 24487,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f684289ac7793989ea9defb117dd12b1",
+   "repo": "googleapis/python-spanner",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 2,
+   "user_tok": 1109,
+   "condensation_marker": false,
+   "total": 115563,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 33,
+    "n_files": 1,
+    "pi_span_tok": 6007,
+    "pi_tail_tok": 21151,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 49734,
+    "pi_tail_tok": 22763,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-17536a9565545ccea059b4213477a151",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1072,
+   "condensation_marker": false,
+   "total": 116495,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 7890,
+    "pi_tail_tok": 20934,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 48,
+    "n_files": 1,
+    "pi_span_tok": 47332,
+    "pi_tail_tok": 20153,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8deb5690918729d6cb1f2405a2a2b9eb",
+   "repo": "sqlfluff/sqlfluff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1223,
+   "condensation_marker": false,
+   "total": 123948,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 7986,
+    "pi_tail_tok": 21012,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 22,
+    "n_files": 1,
+    "pi_span_tok": 56664,
+    "pi_tail_tok": 20786,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-87bee54cfdedc460cbe430e01d685327",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 131509,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 5516,
+    "pi_tail_tok": 24312,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 3,
+    "pi_span_tok": 33017,
+    "pi_tail_tok": 26780,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-4bc97e425299da2abaf3d21eb9716026",
+   "repo": "neogeny/TatSu",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1853,
+   "condensation_marker": false,
+   "total": 124259,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 12982,
+    "pi_tail_tok": 20159,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 42877,
+    "pi_tail_tok": 20268,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b8a1b999c7ab46007b63123c4ab44d85",
+   "repo": "nipy/nipype",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 2874,
+   "condensation_marker": false,
+   "total": 121928,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 11678,
+    "pi_tail_tok": 20289,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 43,
+    "n_files": 1,
+    "pi_span_tok": 44200,
+    "pi_tail_tok": 21384,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-f18dade0ab16ebf743e39c88b87d7e4b",
+   "repo": "tox-dev/tox",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 15205,
+   "condensation_marker": false,
+   "total": 128190,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 6,
+    "n_files": 0,
+    "pi_span_tok": 15209,
+    "pi_tail_tok": 20356,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 49253,
+    "pi_tail_tok": 20079,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-5d0304b86ad6f8582bdcf9b582380ab0",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1005,
+   "condensation_marker": false,
+   "total": 123196,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 9,
+    "n_files": 1,
+    "pi_span_tok": 7112,
+    "pi_tail_tok": 20021,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 25,
+    "n_files": 1,
+    "pi_span_tok": 61963,
+    "pi_tail_tok": 20186,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d61c3f0a35bcbee1ad49c88c2faa1c1f",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 131423,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 8,
+    "n_files": 1,
+    "pi_span_tok": 4362,
+    "pi_tail_tok": 20217,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 35023,
+    "pi_tail_tok": 23713,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-d2b006573db677dc94a7f74b7bc7d142",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1531,
+   "condensation_marker": false,
+   "total": 125823,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 1,
+    "pi_span_tok": 7137,
+    "pi_tail_tok": 21118,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 11,
+    "n_files": 1,
+    "pi_span_tok": 56495,
+    "pi_tail_tok": 23274,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8338163a7f424f8c960bf1f48bdbe31f",
+   "repo": "sphinx-gallery/sphinx-gallery",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1002,
+   "condensation_marker": false,
+   "total": 119007,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 7197,
+    "pi_tail_tok": 20524,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 49042,
+    "pi_tail_tok": 20186,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-de493bdc623102143aaa8c0462c3095e",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 120689,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 24,
+    "n_files": 0,
+    "pi_span_tok": 5392,
+    "pi_tail_tok": 22566,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 16,
+    "n_files": 1,
+    "pi_span_tok": 37328,
+    "pi_tail_tok": 28502,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8d88c9ac8107061fdd9e20e684ac5925",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 132488,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 4754,
+    "pi_tail_tok": 25197,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 3,
+    "pi_span_tok": 28360,
+    "pi_tail_tok": 22057,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-8bf33c0bae51377bb1ef1367e4cf7779",
+   "repo": "pybamm-team/PyBaMM",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1865,
+   "condensation_marker": false,
+   "total": 118483,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 8232,
+    "pi_tail_tok": 20676,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 36160,
+    "pi_tail_tok": 20456,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-65f91c94ec570858b0523bf23418a496",
+   "repo": "alchemistry/alchemlyb",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1102,
+   "condensation_marker": false,
+   "total": 124022,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 7077,
+    "pi_tail_tok": 22535,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 55861,
+    "pi_tail_tok": 20800,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2e5eaf6e9ef90da4395c81138afd69e0",
+   "repo": "wemake-services/wemake-python-styleguide",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 5222,
+   "condensation_marker": false,
+   "total": 122310,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 43,
+    "n_files": 1,
+    "pi_span_tok": 13925,
+    "pi_tail_tok": 21396,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 48862,
+    "pi_tail_tok": 23982,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-b05b9918ab98becaa23cae4d51057cc0",
+   "repo": "wimglenn/advent-of-code-data",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1757,
+   "condensation_marker": false,
+   "total": 120898,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 6661,
+    "pi_tail_tok": 22214,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 2,
+    "pi_span_tok": 49687,
+    "pi_tail_tok": 20102,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0c4b4a0c7b1f81615285e2971dc3b290",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 117585,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 14,
+    "n_files": 1,
+    "pi_span_tok": 5002,
+    "pi_tail_tok": 20028,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 2,
+    "pi_span_tok": 38725,
+    "pi_tail_tok": 22865,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-27fde76da033d9053a08fe6cc7c24b6e",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1053,
+   "condensation_marker": false,
+   "total": 130426,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 8066,
+    "pi_tail_tok": 22052,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 3,
+    "pi_span_tok": 46666,
+    "pi_tail_tok": 21119,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-0b060bc88e2b260affc22659772509a3",
+   "repo": "juanifioren/django-oidc-provider",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1159,
+   "condensation_marker": false,
+   "total": 134280,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 4431,
+    "pi_tail_tok": 24294,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 3,
+    "pi_span_tok": 31267,
+    "pi_tail_tok": 24509,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2604e7901c92f54b4d11f4bbb1e41aa8",
+   "repo": "jupyter/nbgrader",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 930,
+   "condensation_marker": false,
+   "total": 129615,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 12,
+    "n_files": 1,
+    "pi_span_tok": 6308,
+    "pi_tail_tok": 20843,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 10,
+    "n_files": 1,
+    "pi_span_tok": 31934,
+    "pi_tail_tok": 20584,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-84d2b8d229b0e1f113e9c1c66e0d1835",
+   "repo": "Unidata/MetPy",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1095,
+   "condensation_marker": false,
+   "total": 125211,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 9,
+    "n_files": 1,
+    "pi_span_tok": 8448,
+    "pi_tail_tok": 20039,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 63255,
+    "pi_tail_tok": 23001,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-1872faf10a023d1f51a31f23eb1cc382",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 122245,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 1,
+    "n_files": 1,
+    "pi_span_tok": 6627,
+    "pi_tail_tok": 20282,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 9,
+    "n_files": 1,
+    "pi_span_tok": 63571,
+    "pi_tail_tok": 21771,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6b21106cf23ddf7b846710df2e07ed14",
+   "repo": "spacetelescope/jwst",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1049,
+   "condensation_marker": false,
+   "total": 119766,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 0,
+    "pi_span_tok": 7187,
+    "pi_tail_tok": 20621,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 39215,
+    "pi_tail_tok": 21964,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-bb51ede3f59a60060a886f0544f324b9",
+   "repo": "jackdewinter/pymarkdown",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 995,
+   "condensation_marker": false,
+   "total": 123855,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 18,
+    "n_files": 1,
+    "pi_span_tok": 6331,
+    "pi_tail_tok": 23476,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 40804,
+    "pi_tail_tok": 20505,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-efacde010d50a1478415b0dcac100199",
+   "repo": "keras-team/keras-nlp",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1028,
+   "condensation_marker": false,
+   "total": 126642,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 6965,
+    "pi_tail_tok": 20000,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 50028,
+    "pi_tail_tok": 20083,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ec1e5312c7668a0b994630fee29ad983",
+   "repo": "troycomi/reportseff",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1574,
+   "condensation_marker": false,
+   "total": 116843,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 17,
+    "n_files": 1,
+    "pi_span_tok": 6390,
+    "pi_tail_tok": 20290,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 4,
+    "n_files": 1,
+    "pi_span_tok": 61554,
+    "pi_tail_tok": 20363,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-a5418a0dc884e8d34d33248e05af3b3f",
+   "repo": "pdm-project/pdm",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1134,
+   "condensation_marker": false,
+   "total": 130394,
+   "S1": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 42,
+    "n_files": 1,
+    "pi_span_tok": 10197,
+    "pi_tail_tok": 20529,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "none",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 2,
+    "n_files": 1,
+    "pi_span_tok": 32039,
+    "pi_tail_tok": 25624,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-e6297337bb50425fe85d90d2da641aba",
+   "repo": "open-contracting/ocdskit",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1528,
+   "condensation_marker": false,
+   "total": 117828,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 21,
+    "n_files": 1,
+    "pi_span_tok": 8174,
+    "pi_tail_tok": 20229,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "pass",
+    "has_error": true,
+    "error_age": 23,
+    "n_files": 1,
+    "pi_span_tok": 61678,
+    "pi_tail_tok": 21131,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-93425507ed627984c7cff3358928694b",
+   "repo": "facelessuser/pymdown-extensions",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1660,
+   "condensation_marker": false,
+   "total": 115679,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 5307,
+    "pi_tail_tok": 21344,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 65,
+    "n_files": 1,
+    "pi_span_tok": 64269,
+    "pi_tail_tok": 22281,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-ea6e69a577b1a3d268b0da54c640e271",
+   "repo": "stephenhillier/starlette_exporter",
+   "exit": "submit",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 1146,
+   "condensation_marker": false,
+   "total": 120845,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 13,
+    "n_files": 1,
+    "pi_span_tok": 6310,
+    "pi_tail_tok": 20320,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "unknown",
+    "has_error": true,
+    "error_age": 74,
+    "n_files": 1,
+    "pi_span_tok": 67060,
+    "pi_tail_tok": 21582,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-203bc7b4e85adf0ec1b720eb29d083be",
+   "repo": "microsoft/debugpy",
+   "exit": "submit",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1006,
+   "condensation_marker": false,
+   "total": 124973,
+   "S1": {
+    "suite_status": "unknown",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 32,
+    "n_files": 1,
+    "pi_span_tok": 5269,
+    "pi_tail_tok": 27294,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 5,
+    "n_files": 1,
+    "pi_span_tok": 37939,
+    "pi_tail_tok": 23401,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-2ec43cf50d7b4df729e401cc1010883e",
+   "repo": "pytest-dev/pytest-asyncio",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 1,
+   "n_user": 1,
+   "user_tok": 2260,
+   "condensation_marker": false,
+   "total": 117366,
+   "S1": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 3,
+    "n_files": 1,
+    "pi_span_tok": 6486,
+    "pi_tail_tok": 26382,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 1,
+    "pi_span_tok": 64329,
+    "pi_tail_tok": 22296,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-c6c9c4aa3a5d4b2a579cf8b763650e3b",
+   "repo": "neogeny/TatSu",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 1853,
+   "condensation_marker": false,
+   "total": 118774,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "unknown",
+    "has_error": false,
+    "error_age": null,
+    "n_files": 1,
+    "pi_span_tok": 6341,
+    "pi_tail_tok": 20020,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "pass",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 39,
+    "n_files": 1,
+    "pi_span_tok": 44599,
+    "pi_tail_tok": 28243,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  },
+  {
+   "id": "chatcmpl-6946711435cb4bc2bbc3b5fa23c387c6",
+   "repo": "PlaidWeb/Publ",
+   "exit": "RuntimeError: Agent reached ma",
+   "resolved": 0,
+   "n_user": 1,
+   "user_tok": 936,
+   "condensation_marker": false,
+   "total": 120754,
+   "S1": {
+    "suite_status": "pass",
+    "script_status": "none",
+    "has_error": true,
+    "error_age": 7,
+    "n_files": 2,
+    "pi_span_tok": 12348,
+    "pi_tail_tok": 20234,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   },
+   "L": {
+    "suite_status": "fail",
+    "script_status": "fail",
+    "has_error": true,
+    "error_age": 0,
+    "n_files": 2,
+    "pi_span_tok": 30416,
+    "pi_tail_tok": 25190,
+    "truth_keys": [
+     "last_error",
+     "last_script",
+     "last_test",
+     "n_test_runs"
+    ]
+   }
+  }
+ ]
+}

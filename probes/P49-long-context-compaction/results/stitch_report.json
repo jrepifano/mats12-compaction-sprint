@@ -1,0 +1,3181 @@
+{
+ "c": 1.01,
+ "band": [
+  195000,
+  205000
+ ],
+ "histories": [
+  {
+   "history_id": "h0",
+   "s1": "chatcmpl-5c0e620f01d70965724e5adcdc962c02",
+   "s2": "chatcmpl-9c106e9418c9fe0cd312e215712480f9",
+   "s1_exit": "iteration_limit",
+   "tokens": 193760,
+   "s1_tokens": 127874,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.2,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201485,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-6688abd0c6b173197179f652a5bf93d3",
+       "chatcmpl-20a6d6c86288757bce3b46247009b048",
+       "chatcmpl-5d3ceee2f59045fd9adebf08e5ac8db9"
+      ]
+     },
+     "F2": {
+      "tokens": 199250,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-28fae3a2445938dd56d3deef65d184d5",
+       "chatcmpl-47c57670ff634126fd42d132921cd46b",
+       "chatcmpl-d7b5a75b30c0eb7a617e5174e4075c6e"
+      ]
+     },
+     "carry_tokens": 9038
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193150,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-6688abd0c6b173197179f652a5bf93d3",
+       "chatcmpl-da398b6279f005036c4cbfbb00b598e7",
+       "chatcmpl-0690f8185d4b008e505f3bc80b4c117c"
+      ]
+     },
+     "F2": {
+      "tokens": 201719,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-28fae3a2445938dd56d3deef65d184d5",
+       "chatcmpl-13aa0058ec0e53d50f0b3c31ea29b702",
+       "chatcmpl-97bcc5f75f71c4bd40878b26b273f9a3"
+      ]
+     },
+     "carry_tokens": 22755
+    }
+   }
+  },
+  {
+   "history_id": "h1",
+   "s1": "chatcmpl-2786c0441a41831ee8d2ab5fbd8853f8",
+   "s2": "chatcmpl-0d6bc3e54b89418d66b3bc2c0541a95a",
+   "s1_exit": "iteration_limit",
+   "tokens": 193337,
+   "s1_tokens": 126320,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193077,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-dd29ae0e297ad07382f1de607d9fb8ab",
+       "chatcmpl-ab5d72d0af2b4f06b06c987e5f60d23f",
+       "chatcmpl-a085ecd6bce95d9cbcc56d408aa485f6"
+      ]
+     },
+     "F2": {
+      "tokens": 197915,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-5fa679376a666d19285879454255308f",
+       "chatcmpl-33355c8c7ac3f15cfa065195f68cae95",
+       "chatcmpl-53d728dbc18c184d8ae287fc36b7ed98",
+       "chatcmpl-391f5bc15234e77995a49c20d3b66866"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201097,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-dd29ae0e297ad07382f1de607d9fb8ab",
+       "chatcmpl-ab5d72d0af2b4f06b06c987e5f60d23f",
+       "chatcmpl-070a0e24ae2a6b40f1697ff19a53add9"
+      ]
+     },
+     "F2": {
+      "tokens": 201232,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-5fa679376a666d19285879454255308f",
+       "chatcmpl-851b7ed7ba0277b46016efdc2ad8054d",
+       "chatcmpl-5d2a2c1ad2958e04e82b41e7843bb429"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h2",
+   "s1": "chatcmpl-fe813ff6116936ad5bd67df579669272",
+   "s2": "chatcmpl-91c03b2c91943c545534faad5c3d12f6",
+   "s1_exit": "submitted",
+   "tokens": 193835,
+   "s1_tokens": 116752,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.1,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193491,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-1c24287ed8e7d09522b6e1c9a474b2a1",
+       "chatcmpl-5d5ec0fd2c11b834ae33e0de827b875d",
+       "chatcmpl-bf8975582d6831a979dccfb242669f33",
+       "chatcmpl-f880c702e03b542601331588bb0559c2"
+      ]
+     },
+     "F2": {
+      "tokens": 193383,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-551667169f553f42e356c701532b7b6a",
+       "chatcmpl-95ca49cab19702b18873552de099338e",
+       "chatcmpl-c09dcd2a042e6a44bb13c581ea22ad79"
+      ]
+     },
+     "carry_tokens": 9640
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197219,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1c24287ed8e7d09522b6e1c9a474b2a1",
+       "chatcmpl-d965ed4d7b1505c453878ee8b7a06082",
+       "chatcmpl-ddf49680b41d817a0f396d32874dc5ae"
+      ]
+     },
+     "F2": {
+      "tokens": 193650,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-551667169f553f42e356c701532b7b6a",
+       "chatcmpl-5dca123fad1ffd23728712ef5d10d8dd",
+       "chatcmpl-a92c1af9c1f7e91f2f757c905b67a8f7"
+      ]
+     },
+     "carry_tokens": 23357
+    }
+   }
+  },
+  {
+   "history_id": "h3",
+   "s1": "chatcmpl-e33992448ca9c213183da4e1e46bc22b",
+   "s2": "chatcmpl-817c2fdd4d48d4f76fb1bf97b05705cf",
+   "s1_exit": "iteration_limit",
+   "tokens": 199031,
+   "s1_tokens": 126637,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198662,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-d96f850cd4840c6f1d21b24f0b0fb46c",
+       "chatcmpl-0ff0b7392c2aa97313d2425cc5248300",
+       "chatcmpl-dcd3ff68da5766ddb41fc9c3c4b15539"
+      ]
+     },
+     "F2": {
+      "tokens": 196080,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-fe711be2e3e9c4bcfbd60aeec330aa2c",
+       "chatcmpl-e6997c3f2026b713e55f62e40877f1b9",
+       "chatcmpl-cf102ba5be76a6ae36b01fa01dbb47bd",
+       "chatcmpl-cd9213ce636d80bebac24c4989cbc1b9"
+      ]
+     },
+     "carry_tokens": 9522
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194730,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-d96f850cd4840c6f1d21b24f0b0fb46c",
+       "chatcmpl-0ff0b7392c2aa97313d2425cc5248300",
+       "chatcmpl-84e4f93d1e587d4a71737d8010fe5db5"
+      ]
+     },
+     "F2": {
+      "tokens": 196096,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-fe711be2e3e9c4bcfbd60aeec330aa2c",
+       "chatcmpl-a9bcf1781da4c2e3ddae85360a84bfcc",
+       "chatcmpl-4289d0ca32d94913b1f673e2ed95116c"
+      ]
+     },
+     "carry_tokens": 23239
+    }
+   }
+  },
+  {
+   "history_id": "h4",
+   "s1": "chatcmpl-51ce402e4a147f56e0b46211ac905fa5",
+   "s2": "chatcmpl-ef4c4d992b8b2bd38fd7c3f22fe406ab",
+   "s1_exit": "iteration_limit",
+   "tokens": 202286,
+   "s1_tokens": 121932,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.1,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201654,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-694ff13431c9b0b1ce6d553f0b2257bb",
+       "chatcmpl-adc119832a48a4342218768b3a0e9f0d",
+       "chatcmpl-15733e1e608afa15f12e6b093da55bee",
+       "chatcmpl-bb036402fc1a895f7823478f432c7860"
+      ]
+     },
+     "F2": {
+      "tokens": 195076,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-464e8e7e1b6a2c766c5c8bb76b0bd0ef",
+       "chatcmpl-d2891e62e7c35d60849324f9ebac7478",
+       "chatcmpl-5e2626b3975f9fef7fdb5c455add0959"
+      ]
+     },
+     "carry_tokens": 8996
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196329,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-694ff13431c9b0b1ce6d553f0b2257bb",
+       "chatcmpl-15733e1e608afa15f12e6b093da55bee",
+       "chatcmpl-7e4803b3061996011a87bf0481e62bc3"
+      ]
+     },
+     "F2": {
+      "tokens": 194704,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-464e8e7e1b6a2c766c5c8bb76b0bd0ef",
+       "chatcmpl-386581c3c2fb511160077b67f42672fb",
+       "chatcmpl-5e6b7d81be10256d3aee4c18cae3042f"
+      ]
+     },
+     "carry_tokens": 22713
+    }
+   }
+  },
+  {
+   "history_id": "h5",
+   "s1": "chatcmpl-977da325e2ed072e649037c27e8d668a",
+   "s2": "chatcmpl-8fa8238e390f2d150e7b5b9ba9651941",
+   "s1_exit": "iteration_limit",
+   "tokens": 196480,
+   "s1_tokens": 127879,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.3,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197478,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-f3768f1114cc1cc09321b0932ea1e4ec",
+       "chatcmpl-e7a4809b1c4ecf4800e7b327278328b6",
+       "chatcmpl-5dfeb66352a7d747fec22426dbe73343"
+      ]
+     },
+     "F2": {
+      "tokens": 199689,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b28c63523286836bf5e8c765c5e14921",
+       "chatcmpl-09a862215ec85385e8cb11ab76fc9545",
+       "chatcmpl-a4c33fdf1f19e345cf11dc67f0c68f16"
+      ]
+     },
+     "carry_tokens": 8855
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194681,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-f3768f1114cc1cc09321b0932ea1e4ec",
+       "chatcmpl-c2df61c94f57ece6d5e5f971bfc0b3c2",
+       "chatcmpl-75267d44e6e9017b1d2199b0555f9b59"
+      ]
+     },
+     "F2": {
+      "tokens": 202290,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b28c63523286836bf5e8c765c5e14921",
+       "chatcmpl-570055624f675bbeda26ab47ba8728b1",
+       "chatcmpl-09a862215ec85385e8cb11ab76fc9545"
+      ]
+     },
+     "carry_tokens": 22572
+    }
+   }
+  },
+  {
+   "history_id": "h6",
+   "s1": "chatcmpl-70c743b0a073c632cb6bff29309ca374",
+   "s2": "chatcmpl-a8bea4d8769962fcc3562c48490e9146",
+   "s1_exit": "iteration_limit",
+   "tokens": 198994,
+   "s1_tokens": 127865,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200505,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-b963043a861c39e8b5cde501e3e1cfe1",
+       "chatcmpl-47a330c6974714c16a5362ef94318922",
+       "chatcmpl-81a7d76dbdb2830a38d1b870f4adc885",
+       "chatcmpl-ba44269a42a3a48e0e00658fe58a37da"
+      ]
+     },
+     "F2": {
+      "tokens": 193130,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-e13b84ddfc134323d2d44bcbfbf0f1d7",
+       "chatcmpl-163696880afdd13dae003a8b02faab45",
+       "chatcmpl-5c5d6c76be8d9fe42ec239676b32090e",
+       "chatcmpl-eb444a829e219f52c79448e88d487d01"
+      ]
+     },
+     "carry_tokens": 8908
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193753,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b963043a861c39e8b5cde501e3e1cfe1",
+       "chatcmpl-47a330c6974714c16a5362ef94318922",
+       "chatcmpl-891e0e9df36203b0c387c7f80f67be04"
+      ]
+     },
+     "F2": {
+      "tokens": 201502,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e13b84ddfc134323d2d44bcbfbf0f1d7",
+       "chatcmpl-31ecd049b5a1a8f8d49bc660f72f4c6d",
+       "chatcmpl-5339f7610ed3ea8602455952844b62a3"
+      ]
+     },
+     "carry_tokens": 22625
+    }
+   }
+  },
+  {
+   "history_id": "h7",
+   "s1": "chatcmpl-6865a6ea7aa2095e3fbe508591fbe804",
+   "s2": "chatcmpl-72343282a61bb3d6b24a95c6e9b277af",
+   "s1_exit": "submitted",
+   "tokens": 197493,
+   "s1_tokens": 123084,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201586,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-6f4e4d4f7935b669c5d054f888ede066",
+       "chatcmpl-ae0bd64cd4fd5a2c2fce8570c162d822",
+       "chatcmpl-c175860664296c508a6ad1f99aae072c"
+      ]
+     },
+     "F2": {
+      "tokens": 201751,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-52986ee41cf5188ebc72208f468e35bb",
+       "chatcmpl-459ae2ad85e184347c474fd48508f543",
+       "chatcmpl-9421a816535510de2ec6e07f7a63f0bd",
+       "chatcmpl-1aea9424bd55354df26a01415905bdfd"
+      ]
+     },
+     "carry_tokens": 9149
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194377,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-6f4e4d4f7935b669c5d054f888ede066",
+       "chatcmpl-ae0bd64cd4fd5a2c2fce8570c162d822",
+       "chatcmpl-23533280f293a7f6dd3467ea52edd3e2"
+      ]
+     },
+     "F2": {
+      "tokens": 199486,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-52986ee41cf5188ebc72208f468e35bb",
+       "chatcmpl-e460895f05909656d7bf9cf7d3d83c1e",
+       "chatcmpl-9421a816535510de2ec6e07f7a63f0bd"
+      ]
+     },
+     "carry_tokens": 22866
+    }
+   }
+  },
+  {
+   "history_id": "h8",
+   "s1": "chatcmpl-e0d4fb02eccd1492664b4040b76107f1",
+   "s2": "chatcmpl-111d738957f75109cd775f4fa97c2b4d",
+   "s1_exit": "iteration_limit",
+   "tokens": 194422,
+   "s1_tokens": 127562,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194327,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-54b775156e0846c72d00d396e733cfd6",
+       "chatcmpl-e99e409d7ca65270fda715f5fb061bc7",
+       "chatcmpl-75574b5746ab891a51447387755c5035"
+      ]
+     },
+     "F2": {
+      "tokens": 195132,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-f5254859be51919d4329f821ff6b597a",
+       "chatcmpl-5cf226c8fb5b196cdfbd30d2fbfd1514",
+       "chatcmpl-bf4b218d45a4cfcb7be83f2e987e80d5",
+       "chatcmpl-53fba9a62627df30d98782f6e9439cf6"
+      ]
+     },
+     "carry_tokens": 9596
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198470,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-54b775156e0846c72d00d396e733cfd6",
+       "chatcmpl-75574b5746ab891a51447387755c5035",
+       "chatcmpl-57344bc47e8632b0cce423d0942adf1a"
+      ]
+     },
+     "F2": {
+      "tokens": 198575,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-f5254859be51919d4329f821ff6b597a",
+       "chatcmpl-5cf226c8fb5b196cdfbd30d2fbfd1514",
+       "chatcmpl-0a56c10a515217654c27cafa15f16857"
+      ]
+     },
+     "carry_tokens": 23313
+    }
+   }
+  },
+  {
+   "history_id": "h9",
+   "s1": "chatcmpl-70f5cd708da30bf7664401ce85d791e8",
+   "s2": "chatcmpl-aac31b220ef536d0f71d86d3672f5c8f",
+   "s1_exit": "iteration_limit",
+   "tokens": 196684,
+   "s1_tokens": 127857,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.3,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198434,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4dee948427c147f5a4b7a358638130f0",
+       "chatcmpl-2d554c84fb481f1a77ec81e8bb4259b5",
+       "chatcmpl-a3ddf245012f3cca118803f6c2e98067"
+      ]
+     },
+     "F2": {
+      "tokens": 193701,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-c1f60181c959d29189ebece3efb278db",
+       "chatcmpl-32e042e8384f3dae2fb645c47254c37d",
+       "chatcmpl-7e1490c46ae81e5686965173bb2f225a"
+      ]
+     },
+     "carry_tokens": 9806
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193428,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4dee948427c147f5a4b7a358638130f0",
+       "chatcmpl-f7e6029bb4b8d80f8075152d815292fe",
+       "chatcmpl-a3ddf245012f3cca118803f6c2e98067"
+      ]
+     },
+     "F2": {
+      "tokens": 200226,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-c1f60181c959d29189ebece3efb278db",
+       "chatcmpl-32e042e8384f3dae2fb645c47254c37d",
+       "chatcmpl-51c08ae2777cd8874f0f814aec656589"
+      ]
+     },
+     "carry_tokens": 23523
+    }
+   }
+  },
+  {
+   "history_id": "h10",
+   "s1": "chatcmpl-0f4f0ae27fae9c4ea482122487eca95f",
+   "s2": "chatcmpl-e8a82b9b43af3d0820cd7778e6f203fd",
+   "s1_exit": "iteration_limit",
+   "tokens": 200056,
+   "s1_tokens": 124149,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194466,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-d990753fcc98b430a829f250f73e8259",
+       "chatcmpl-5b4477f8c1af52b9b634748ce1658f8d",
+       "chatcmpl-2041e17824d3580fce7d117dd8d2e413"
+      ]
+     },
+     "F2": {
+      "tokens": 202396,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e37e6b9b7c8d5ea64cd681fb942a4c61",
+       "chatcmpl-786c5a04833da2d57d6b4386a6bc28dd",
+       "chatcmpl-6c3043bebc83b357b934d86bc5b7263c"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193318,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-d990753fcc98b430a829f250f73e8259",
+       "chatcmpl-a206c8e82b50ea5866b79677a5c9c837",
+       "chatcmpl-99e14fa769f6760f38de65d298c813b3"
+      ]
+     },
+     "F2": {
+      "tokens": 198439,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e37e6b9b7c8d5ea64cd681fb942a4c61",
+       "chatcmpl-786c5a04833da2d57d6b4386a6bc28dd",
+       "chatcmpl-b83518164b25b8dea9810b613c7de4df"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h11",
+   "s1": "chatcmpl-a585c5bd82349c44a6f742084a49a473",
+   "s2": "chatcmpl-d3ac541524884a08b1fac07c3569b8f1",
+   "s1_exit": "submitted",
+   "tokens": 195104,
+   "s1_tokens": 114774,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 202888,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-cf3d70ccf75e7a2b5e6ea4cbed11344f",
+       "chatcmpl-ebbf7337c309a7c4b7bf16bd54a389de",
+       "chatcmpl-bc7e6bd94416ff2d7a3e6ecef411f011"
+      ]
+     },
+     "F2": {
+      "tokens": 193174,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-17e0b4a4fcac9838bc4d6bf12b1a163b",
+       "chatcmpl-0276b813e0277f6baf6b3914643c7c89",
+       "chatcmpl-cb1711005fb1b6ce8e21df087f1f03b8"
+      ]
+     },
+     "carry_tokens": 9148
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197518,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-cf3d70ccf75e7a2b5e6ea4cbed11344f",
+       "chatcmpl-ebbf7337c309a7c4b7bf16bd54a389de",
+       "chatcmpl-455690cda3e32e97db2c041a8dd3c9b2"
+      ]
+     },
+     "F2": {
+      "tokens": 201436,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-17e0b4a4fcac9838bc4d6bf12b1a163b",
+       "chatcmpl-cb1711005fb1b6ce8e21df087f1f03b8",
+       "chatcmpl-ca648bd8ab839f1c849e5ea723fe8ce1"
+      ]
+     },
+     "carry_tokens": 22865
+    }
+   }
+  },
+  {
+   "history_id": "h12",
+   "s1": "chatcmpl-63e7c418d11f45e029951d82cab73f25",
+   "s2": "chatcmpl-a72ced5e6e99da892c22fdc041b846a1",
+   "s1_exit": "iteration_limit",
+   "tokens": 195902,
+   "s1_tokens": 122244,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 202430,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-fdde194cb6cc955d54f7e386cbf0559a",
+       "chatcmpl-f706790bc06613ca7a3a522501aa45ba",
+       "chatcmpl-3e74e263d9f6f05f38f81fd83c6dc04c",
+       "chatcmpl-c1c71e300f1fd353d3f34c6b6c509e47"
+      ]
+     },
+     "F2": {
+      "tokens": 198267,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b053fa2c7fc78e2ffb296d6786a21a1e",
+       "chatcmpl-9c480bcfca9ccf9ed44a6793c0f01442",
+       "chatcmpl-45eb36e0e0597e8bd7d5047f7eac9ba8"
+      ]
+     },
+     "carry_tokens": 8991
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198160,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-fdde194cb6cc955d54f7e386cbf0559a",
+       "chatcmpl-3e74e263d9f6f05f38f81fd83c6dc04c",
+       "chatcmpl-9f1872ca02b315d91aedce86ae98db60"
+      ]
+     },
+     "F2": {
+      "tokens": 193155,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b053fa2c7fc78e2ffb296d6786a21a1e",
+       "chatcmpl-4da4e88782327ef34580476c730ba9d2",
+       "chatcmpl-5dd790d24d716a3b4c985ab8ad63a478"
+      ]
+     },
+     "carry_tokens": 22708
+    }
+   }
+  },
+  {
+   "history_id": "h13",
+   "s1": "chatcmpl-c6c64fb08df93de15e292be0455c5642",
+   "s2": "chatcmpl-da3d78ae72067a066d48f10ad7cb5a56",
+   "s1_exit": "iteration_limit",
+   "tokens": 198838,
+   "s1_tokens": 115416,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200233,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-78c2bbbfcb90aa06255f0e9f6c12ea6f",
+       "chatcmpl-8991f1093d8e16d70055084061a8ea50",
+       "chatcmpl-6d9ab2b0699e5feb1d048355d730a588",
+       "chatcmpl-0970117a42dff5e267a675990f07e145"
+      ]
+     },
+     "F2": {
+      "tokens": 194089,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-7c092e86bfe7d55eea60ccbc0c59f702",
+       "chatcmpl-6dfb87163c962b92c645a933c71f7d0d",
+       "chatcmpl-98cddade4e484c13d3a75a770cddcaae"
+      ]
+     },
+     "carry_tokens": 9060
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194250,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-78c2bbbfcb90aa06255f0e9f6c12ea6f",
+       "chatcmpl-896eafd50fccb6bfe1ab644526aa006d",
+       "chatcmpl-1cb8ccb4aae70b3f1172392e8355930e"
+      ]
+     },
+     "F2": {
+      "tokens": 199679,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-7c092e86bfe7d55eea60ccbc0c59f702",
+       "chatcmpl-28097e7f0994afebf3903c072c796fb2",
+       "chatcmpl-5b5fe24102a119603b080af3689dea2a"
+      ]
+     },
+     "carry_tokens": 22777
+    }
+   }
+  },
+  {
+   "history_id": "h14",
+   "s1": "chatcmpl-94074b92fd0f9b979a8fee9c262b55fd",
+   "s2": "chatcmpl-81bd30a39105615bd512945e66933346",
+   "s1_exit": "iteration_limit",
+   "tokens": 200113,
+   "s1_tokens": 124163,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196469,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-32dee2cc909e9b0f39ead2a1d3ac9042",
+       "chatcmpl-e9295e85f4485f58b034f294346f244c",
+       "chatcmpl-6f1df96ab94b4d442e8662c5f5a2861f",
+       "chatcmpl-e95127470277cdee8010a580ba9bff01"
+      ]
+     },
+     "F2": {
+      "tokens": 198627,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-5bcf5920921dbda935c7706edace2de7",
+       "chatcmpl-ece0c032187d6042ed64f5f0fd7dfab0",
+       "chatcmpl-d50c37e1d729d93ce488aa31113ab9dc"
+      ]
+     },
+     "carry_tokens": 9189
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193890,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-32dee2cc909e9b0f39ead2a1d3ac9042",
+       "chatcmpl-e4836eb9159a9aa969cbb95ee5e5619f",
+       "chatcmpl-154a8a8e9b10e125afe9aed68bb4513f"
+      ]
+     },
+     "F2": {
+      "tokens": 193759,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-5bcf5920921dbda935c7706edace2de7",
+       "chatcmpl-a15d698629b54afd91865384ee1c889e",
+       "chatcmpl-ece0c032187d6042ed64f5f0fd7dfab0"
+      ]
+     },
+     "carry_tokens": 22906
+    }
+   }
+  },
+  {
+   "history_id": "h15",
+   "s1": "chatcmpl-b19c9f85db34a6f024d06899f7ce150a",
+   "s2": "chatcmpl-8739cf8374b799151d6c3dda1d8bcf0b",
+   "s1_exit": "iteration_limit",
+   "tokens": 196238,
+   "s1_tokens": 126785,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196807,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-54adc9c4b13667c03d6dd818be32ecb3",
+       "chatcmpl-cb5c567ac3dd3b028c6c985efe4eca0e",
+       "chatcmpl-e60c1c7320a123b141d6e65b58bf3b81",
+       "chatcmpl-25ae0092032714af675356586b75aaab"
+      ]
+     },
+     "F2": {
+      "tokens": 202937,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-ee8c88caf7ad9b9718807d5b039dfaf9",
+       "chatcmpl-9b3fe96f07364e8faf27b5ac4ccbdca0",
+       "chatcmpl-1a0a6994868c743558e493fce9b5a8ea",
+       "chatcmpl-da621a460130acffdd728eb819816573"
+      ]
+     },
+     "carry_tokens": 9602
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201547,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-54adc9c4b13667c03d6dd818be32ecb3",
+       "chatcmpl-850779a18b77531226e0d7807d7f29e7",
+       "chatcmpl-d250a80d0649db1e9a2c614fd9d7b650"
+      ]
+     },
+     "F2": {
+      "tokens": 197647,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-ee8c88caf7ad9b9718807d5b039dfaf9",
+       "chatcmpl-9b3fe96f07364e8faf27b5ac4ccbdca0",
+       "chatcmpl-a7ae4ca72c0ed6d3456430a68bfd413f"
+      ]
+     },
+     "carry_tokens": 23319
+    }
+   }
+  },
+  {
+   "history_id": "h16",
+   "s1": "chatcmpl-a9c6827f65c2282221f72e150125578d",
+   "s2": "chatcmpl-f53ba2155c8185732b890e3c7a931fae",
+   "s1_exit": "submitted",
+   "tokens": 201182,
+   "s1_tokens": 114249,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.8,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194698,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1673ac934bfcfa762d69ded48186aee8",
+       "chatcmpl-9ec64ba386639577153708076e374d7b",
+       "chatcmpl-33795adbadab58ed04cfbf8c1b4d21d8"
+      ]
+     },
+     "F2": {
+      "tokens": 195804,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-e98969495c4f649e8d55dae18522ecb3",
+       "chatcmpl-d0783c6fdea0066d9deab4bfb97561f6",
+       "chatcmpl-d9d61c21e3c08dda160d50f2a9eff1d0",
+       "chatcmpl-90e6f7e7e38b712c1ae56b2dd1b2a298"
+      ]
+     },
+     "carry_tokens": 8812
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198703,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1673ac934bfcfa762d69ded48186aee8",
+       "chatcmpl-9ec64ba386639577153708076e374d7b",
+       "chatcmpl-51e9e0491079538752d2c241b583e19d"
+      ]
+     },
+     "F2": {
+      "tokens": 196516,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e98969495c4f649e8d55dae18522ecb3",
+       "chatcmpl-40aa4e1924240d626a07e62cc8b64c31",
+       "chatcmpl-ff210a7feb3648b058cd63df06b65773"
+      ]
+     },
+     "carry_tokens": 22529
+    }
+   }
+  },
+  {
+   "history_id": "h17",
+   "s1": "chatcmpl-1f29bf2888fe5d26310b125fbf86aa00",
+   "s2": "chatcmpl-d30c2ad63ad2f14fb3dd32f7bc921a6b",
+   "s1_exit": "iteration_limit",
+   "tokens": 194074,
+   "s1_tokens": 127670,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.6,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197016,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e441afaa846b0475d224d7c5cdecfab9",
+       "chatcmpl-c84fbcc6cad714efe81f7c255e7794f8",
+       "chatcmpl-f72e20ae46659b327d28ca49c86cf9ea"
+      ]
+     },
+     "F2": {
+      "tokens": 195402,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-253bbfc353e23f51b3b42057ce57c74d",
+       "chatcmpl-3d1a665847b09b4092c6204fce75397e",
+       "chatcmpl-c2b3e666a27dee3094196e706c86c28f",
+       "chatcmpl-016d6fe07e6f2b5aa5d2ff4c024af255"
+      ]
+     },
+     "carry_tokens": 10018
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196256,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e441afaa846b0475d224d7c5cdecfab9",
+       "chatcmpl-fb1834e850707a69b83309d05c304caa",
+       "chatcmpl-f4e39dcc4a6788b49bfab1e15f2ee290"
+      ]
+     },
+     "F2": {
+      "tokens": 195203,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-253bbfc353e23f51b3b42057ce57c74d",
+       "chatcmpl-b40879c0b738a5f6252501c5bd356450",
+       "chatcmpl-27bc62b09c6f4c709a5f1d4a2e2e87af"
+      ]
+     },
+     "carry_tokens": 23735
+    }
+   }
+  },
+  {
+   "history_id": "h18",
+   "s1": "chatcmpl-1055181074b1b2bc18d3814f4a339d8d",
+   "s2": "chatcmpl-76ca310452890ac8eaf756220eec06f2",
+   "s1_exit": "iteration_limit",
+   "tokens": 198939,
+   "s1_tokens": 125812,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201062,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-8087f9aaabc85af9da14b400be53cc3d",
+       "chatcmpl-3f1136fa82cd3d2e8fe8523ef591263b",
+       "chatcmpl-763ad53f8ac4b0c0916bd2e80e8ef1f7"
+      ]
+     },
+     "F2": {
+      "tokens": 199891,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a1300621b8aeb471626dc4fb4bf8d3d2",
+       "chatcmpl-ddac86043aaa50bbb838455ca6a56bf2",
+       "chatcmpl-b483f011fd3d6e618896ed78bf5180c4"
+      ]
+     },
+     "carry_tokens": 22682
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194944,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-8087f9aaabc85af9da14b400be53cc3d",
+       "chatcmpl-5e8fe89b73faa60a1116f2ad81f17deb",
+       "chatcmpl-3f1136fa82cd3d2e8fe8523ef591263b"
+      ]
+     },
+     "F2": {
+      "tokens": 193189,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a1300621b8aeb471626dc4fb4bf8d3d2",
+       "chatcmpl-9f5b01b63bbf33a49a165559ede45331",
+       "chatcmpl-e3612a8142c78eac0401cd5cbef59b8c"
+      ]
+     },
+     "carry_tokens": 36399
+    }
+   }
+  },
+  {
+   "history_id": "h19",
+   "s1": "chatcmpl-7ef4d3d7612a32f8ceba3d1509829bfe",
+   "s2": "chatcmpl-b0e30978c79859633c2037f1198a0b8d",
+   "s1_exit": "iteration_limit",
+   "tokens": 202591,
+   "s1_tokens": 127576,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195919,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-ac811868e7c0db03cb8fca379bd27662",
+       "chatcmpl-fd77a1947c2509c8123158007ce38057",
+       "chatcmpl-1d6e9b90559e50394ea705e86429ee47"
+      ]
+     },
+     "F2": {
+      "tokens": 196685,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4fe7d306a276a61f20c2dfc37fe37ef7",
+       "chatcmpl-319f52d7ece173a25a70180d72843b8e",
+       "chatcmpl-5c1e88546788db76fe6e89891429b60d"
+      ]
+     },
+     "carry_tokens": 9276
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197174,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-ac811868e7c0db03cb8fca379bd27662",
+       "chatcmpl-1d6e9b90559e50394ea705e86429ee47",
+       "chatcmpl-4ad5ea50c713ec0e5f044debe84e67a9"
+      ]
+     },
+     "F2": {
+      "tokens": 196096,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4fe7d306a276a61f20c2dfc37fe37ef7",
+       "chatcmpl-aac01551339ddf0472412452be2dd2e6",
+       "chatcmpl-4c70090f7c97401aa0c0c42d52cee320"
+      ]
+     },
+     "carry_tokens": 22993
+    }
+   }
+  },
+  {
+   "history_id": "h20",
+   "s1": "chatcmpl-79cfd28188f09eae55db16192190dcd9",
+   "s2": "chatcmpl-2c9687bad9c40624f3eb2225fc2c3711",
+   "s1_exit": "iteration_limit",
+   "tokens": 200484,
+   "s1_tokens": 126255,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.1,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198413,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0916b2c80bc98dbb1fecbdc381bb5ca5",
+       "chatcmpl-57b8347db2c06fb5c67bf8791100b6fd",
+       "chatcmpl-3f6274e5c6c70eb4109f30ac55b7179f"
+      ]
+     },
+     "F2": {
+      "tokens": 196623,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bf3150b3c295a86b903ae4900e37f618",
+       "chatcmpl-d783ace5304b03f0e1d83a9d05aefe51",
+       "chatcmpl-bd63b5a11eec2f70e4384f4a433d048b"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195175,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0916b2c80bc98dbb1fecbdc381bb5ca5",
+       "chatcmpl-34090144e96279e3f9d489a037b73f57",
+       "chatcmpl-0243f701206a568b9c82f4ad13507541"
+      ]
+     },
+     "F2": {
+      "tokens": 201787,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bf3150b3c295a86b903ae4900e37f618",
+       "chatcmpl-83e6c7ae7c58da9c1f24857f6c80beb0",
+       "chatcmpl-bd63b5a11eec2f70e4384f4a433d048b"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h21",
+   "s1": "chatcmpl-173c3f2b3b34c74cda97e3b309981d7f",
+   "s2": "chatcmpl-bdd4525dad0cc30aae8113988596534d",
+   "s1_exit": "submitted",
+   "tokens": 193359,
+   "s1_tokens": 121013,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.1,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196794,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-173e8b629ae0137ca06291f412b47012",
+       "chatcmpl-cdbc28597318cecbc8e8d3fdc8d85721",
+       "chatcmpl-84765751b85a33b9627f7db511e3a4e5"
+      ]
+     },
+     "F2": {
+      "tokens": 198438,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-bb16ec69b47cf091d1cdb3f86a52070b",
+       "chatcmpl-227a89b878bb9fdb26b0eb81be0065bc",
+       "chatcmpl-08c7f54b8e397d9e966f84e55c57d020",
+       "chatcmpl-870cb602356d2bdc6bd5e8df9758a58a"
+      ]
+     },
+     "carry_tokens": 8920
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193483,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-173e8b629ae0137ca06291f412b47012",
+       "chatcmpl-c42c3996c90b04f359d7d5dfa168cbd1",
+       "chatcmpl-e2b7eec68312372cf159288361842fa6"
+      ]
+     },
+     "F2": {
+      "tokens": 194521,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bb16ec69b47cf091d1cdb3f86a52070b",
+       "chatcmpl-870cb602356d2bdc6bd5e8df9758a58a",
+       "chatcmpl-b1c4e96374dc348970adeaf9a76edbd1"
+      ]
+     },
+     "carry_tokens": 22637
+    }
+   }
+  },
+  {
+   "history_id": "h22",
+   "s1": "chatcmpl-fbdd853590776dcacb497f9582873641",
+   "s2": "chatcmpl-035306e254efa4e4e62017877c4a7b3e",
+   "s1_exit": "iteration_limit",
+   "tokens": 199485,
+   "s1_tokens": 128005,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194193,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-3c844fc8940a8d4fe75fb2ad9dccf356",
+       "chatcmpl-02c6450215dfdbc16527507bd46e7b50",
+       "chatcmpl-6cd8f7cfb7043ef9ef4754140ef61dbf"
+      ]
+     },
+     "F2": {
+      "tokens": 198213,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-60b7dde375b8eaa5dd44d0857c9e85c5",
+       "chatcmpl-e6368942d1c3761aa3ec4f53ff90742f",
+       "chatcmpl-c69eaeaaa9ca8bb0606ac728e1622f8a"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201951,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-3c844fc8940a8d4fe75fb2ad9dccf356",
+       "chatcmpl-35835adcac12a022fd729b55c07e4254",
+       "chatcmpl-5154750c4b2a256a211d18bb9462b939"
+      ]
+     },
+     "F2": {
+      "tokens": 197034,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-60b7dde375b8eaa5dd44d0857c9e85c5",
+       "chatcmpl-b63eb23937de2c8eb1fe44d2cd40947a",
+       "chatcmpl-e6368942d1c3761aa3ec4f53ff90742f"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h23",
+   "s1": "chatcmpl-c6c9c4aa3a5d4b2a579cf8b763650e3b",
+   "s2": "chatcmpl-ee7fdbadfde66a727b1a8e92df769e21",
+   "s1_exit": "iteration_limit",
+   "tokens": 195617,
+   "s1_tokens": 120257,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.8,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199970,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0ff546e14b38625b600a3dbdaecbcb8d",
+       "chatcmpl-ebfe9e43b2dbfb2a307bc65aed944783",
+       "chatcmpl-8100dd15b18644c16f86dbc7f12accc2"
+      ]
+     },
+     "F2": {
+      "tokens": 199162,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-43e2c0c6026a7fd2994e7886c1e91ffa",
+       "chatcmpl-af107ba2bc494498e758316d84f24af3",
+       "chatcmpl-db7cf7c4da0d85e6e669b55e956169bf"
+      ]
+     },
+     "carry_tokens": 9615
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198574,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0ff546e14b38625b600a3dbdaecbcb8d",
+       "chatcmpl-207f29a53a85482a1a9b8ac09271376f",
+       "chatcmpl-8100dd15b18644c16f86dbc7f12accc2"
+      ]
+     },
+     "F2": {
+      "tokens": 195229,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-43e2c0c6026a7fd2994e7886c1e91ffa",
+       "chatcmpl-af107ba2bc494498e758316d84f24af3",
+       "chatcmpl-93087a12f7042a56d7256d6565cc4ea8"
+      ]
+     },
+     "carry_tokens": 23332
+    }
+   }
+  },
+  {
+   "history_id": "h24",
+   "s1": "chatcmpl-5cd97952e8530168504a37bc792d0ca7",
+   "s2": "chatcmpl-9c774dab380abc0e2966bedf2bad8ece",
+   "s1_exit": "iteration_limit",
+   "tokens": 193392,
+   "s1_tokens": 120536,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196599,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e9d0e75760d1eb45a231ccf294ac115b",
+       "chatcmpl-91275f0ef2bedd668c021d2ae7e87e09",
+       "chatcmpl-c4988b288f61f2d8042a17f753df4378"
+      ]
+     },
+     "F2": {
+      "tokens": 201093,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-728f96217c219a9dd89b2e1423dab723",
+       "chatcmpl-56db7011a074c0f1d1706a1bf9fa7afc",
+       "chatcmpl-f8851dc27269f8380852b61c4a6da6ea"
+      ]
+     },
+     "carry_tokens": 10188
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199305,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e9d0e75760d1eb45a231ccf294ac115b",
+       "chatcmpl-91275f0ef2bedd668c021d2ae7e87e09",
+       "chatcmpl-ad6c8b403de259446a152f3e34b17222"
+      ]
+     },
+     "F2": {
+      "tokens": 194074,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-728f96217c219a9dd89b2e1423dab723",
+       "chatcmpl-e735d1f229140403bb043c10b60d7b1c",
+       "chatcmpl-cef4b40fdb7bd778bc72bf5f6fae43b2"
+      ]
+     },
+     "carry_tokens": 23905
+    }
+   }
+  },
+  {
+   "history_id": "h25",
+   "s1": "chatcmpl-de493bdc623102143aaa8c0462c3095e",
+   "s2": "chatcmpl-9adace4c923718e1c0b3287771a51006",
+   "s1_exit": "iteration_limit",
+   "tokens": 199909,
+   "s1_tokens": 126484,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201896,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-a7fb05da2fd93c5f4da2c2b54de624f3",
+       "chatcmpl-4db6eb587fbade4ee7a81df182d1619b",
+       "chatcmpl-bf298d6bda88c183a4843fa5f6a3fe9d",
+       "chatcmpl-7d24294df1aa3e185a0170202ba1a726"
+      ]
+     },
+     "F2": {
+      "tokens": 199695,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-18d4a32e669d3ed0cc3111b6d9619561",
+       "chatcmpl-d25ab0b79785b6a65f06485cde4ba35a",
+       "chatcmpl-33ad3b87485dcb1ca34721fb3d9f2c30"
+      ]
+     },
+     "carry_tokens": 8922
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200416,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a7fb05da2fd93c5f4da2c2b54de624f3",
+       "chatcmpl-4db6eb587fbade4ee7a81df182d1619b",
+       "chatcmpl-531ec8f0722e7b3f453c9f97190a8268"
+      ]
+     },
+     "F2": {
+      "tokens": 196806,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-18d4a32e669d3ed0cc3111b6d9619561",
+       "chatcmpl-d25ab0b79785b6a65f06485cde4ba35a",
+       "chatcmpl-627b60c4c3beed27772c05a620ffeb87"
+      ]
+     },
+     "carry_tokens": 22639
+    }
+   }
+  },
+  {
+   "history_id": "h26",
+   "s1": "chatcmpl-c91de395612b060a6b0221d88ee19a5d",
+   "s2": "chatcmpl-f6e732e985c63da71072dd31a1a096ab",
+   "s1_exit": "submitted",
+   "tokens": 195757,
+   "s1_tokens": 119381,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 202862,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-a1dc23b9b869ed79e0bfebbda092813c",
+       "chatcmpl-f063dd033ca1f036b78a877e807c8923",
+       "chatcmpl-85ca5122a1ddcbbb72732848f424e844",
+       "chatcmpl-1d7a36f7615bc8a40df939ac672e118b"
+      ]
+     },
+     "F2": {
+      "tokens": 197609,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-81bb06b127c7533c94c2a8ed15191aa1",
+       "chatcmpl-734236a78d80d28454dd97d7045ff506",
+       "chatcmpl-d5aa70a7a8d688bce186da47084e0605"
+      ]
+     },
+     "carry_tokens": 8809
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194792,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a1dc23b9b869ed79e0bfebbda092813c",
+       "chatcmpl-f063dd033ca1f036b78a877e807c8923",
+       "chatcmpl-4b88b7f6b1d3c09567114765fe4d949b"
+      ]
+     },
+     "F2": {
+      "tokens": 195739,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-81bb06b127c7533c94c2a8ed15191aa1",
+       "chatcmpl-781450098c16f962dbf3748580d87912",
+       "chatcmpl-734236a78d80d28454dd97d7045ff506"
+      ]
+     },
+     "carry_tokens": 22526
+    }
+   }
+  },
+  {
+   "history_id": "h27",
+   "s1": "chatcmpl-dbdd1feb98dddf2e2532d4cd8a295777",
+   "s2": "chatcmpl-bb8f33905d9a8ff8959f8a48fec0abe6",
+   "s1_exit": "iteration_limit",
+   "tokens": 196788,
+   "s1_tokens": 126954,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196887,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-206dfdf700d9640b8b3dd67db574e2f7",
+       "chatcmpl-d39e4b4a50d51385006255c79f80ddd4",
+       "chatcmpl-da13c1fdb3a8da5fc8de7c4a472a7574"
+      ]
+     },
+     "F2": {
+      "tokens": 197466,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0047b45e326d0a8b574298ada777b13d",
+       "chatcmpl-98f1bdb01010be5ce807972b5d11283a",
+       "chatcmpl-ac40f8e4548726ca52c839b39f01fc52"
+      ]
+     },
+     "carry_tokens": 8922
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200282,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-206dfdf700d9640b8b3dd67db574e2f7",
+       "chatcmpl-a7ae4ca72c0ed6d3456430a68bfd413f",
+       "chatcmpl-da13c1fdb3a8da5fc8de7c4a472a7574"
+      ]
+     },
+     "F2": {
+      "tokens": 201244,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-0047b45e326d0a8b574298ada777b13d",
+       "chatcmpl-b0ba42db41dc12e9a77d3ac1e25fc9e9",
+       "chatcmpl-39568d5a22c555a83a815ccf99a7b590"
+      ]
+     },
+     "carry_tokens": 22639
+    }
+   }
+  },
+  {
+   "history_id": "h28",
+   "s1": "chatcmpl-ccb4f27e857cbf413d9f43f6f87e3c24",
+   "s2": "chatcmpl-9ea37abe9d05f9d03034171e897b785b",
+   "s1_exit": "iteration_limit",
+   "tokens": 193968,
+   "s1_tokens": 127616,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196157,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-7254cee09f8bef8839ab9703dd39c08f",
+       "chatcmpl-69ff6929b189fba783ca32bce5d52df9",
+       "chatcmpl-54848573b3ee0debe6b6e39a3e4d8def",
+       "chatcmpl-9d4e4ad11b621253d295bbfffafc5f85"
+      ]
+     },
+     "F2": {
+      "tokens": 197342,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bc43ba0db151babb0853a1781f812b6c",
+       "chatcmpl-63ac29c32d3c826b5ccb78f7816332c1",
+       "chatcmpl-3c7a2dbb80fc06e5c2114bec965aa4ef"
+      ]
+     },
+     "carry_tokens": 9055
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199743,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-7254cee09f8bef8839ab9703dd39c08f",
+       "chatcmpl-54848573b3ee0debe6b6e39a3e4d8def",
+       "chatcmpl-a5ed8d04b402717efa25d59b056cff8f"
+      ]
+     },
+     "F2": {
+      "tokens": 201352,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bc43ba0db151babb0853a1781f812b6c",
+       "chatcmpl-d4b9dca53bfcf348e32f11eb338eaea6",
+       "chatcmpl-63ac29c32d3c826b5ccb78f7816332c1"
+      ]
+     },
+     "carry_tokens": 22772
+    }
+   }
+  },
+  {
+   "history_id": "h29",
+   "s1": "chatcmpl-8d88c9ac8107061fdd9e20e684ac5925",
+   "s2": "chatcmpl-d52ea986ec174c48fc71e430fe60561b",
+   "s1_exit": "iteration_limit",
+   "tokens": 202403,
+   "s1_tokens": 125878,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201161,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bc78997824f4a8b0403097850c8eb347",
+       "chatcmpl-5c69f7e87bb364560914f4d942d48bc4",
+       "chatcmpl-c75c8900a3ce860d1f1f2d100088e96d"
+      ]
+     },
+     "F2": {
+      "tokens": 193990,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-21c41c2992231a03159329701b8aee1b",
+       "chatcmpl-f8b97073d62d8fe3b3bf92f01552d387",
+       "chatcmpl-06cf220302ae6c438beb22da8baddf43"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201828,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-bc78997824f4a8b0403097850c8eb347",
+       "chatcmpl-5c69f7e87bb364560914f4d942d48bc4",
+       "chatcmpl-833366475bfa09d8aa97ac743731e782"
+      ]
+     },
+     "F2": {
+      "tokens": 194884,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-21c41c2992231a03159329701b8aee1b",
+       "chatcmpl-3c2e039035edcea6da551f29d042f907",
+       "chatcmpl-06cf220302ae6c438beb22da8baddf43"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h30",
+   "s1": "chatcmpl-203bc7b4e85adf0ec1b720eb29d083be",
+   "s2": "chatcmpl-010db828cba4b3a4631ad3bcb3fd05da",
+   "s1_exit": "submitted",
+   "tokens": 199743,
+   "s1_tokens": 118124,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.8,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198484,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a043790d9f3dbbf3ba958ba250c507d1",
+       "chatcmpl-24a754f699c1d20c9ba7ea73444dcb72",
+       "chatcmpl-bd5657264464f7436e5c1d7ff2206c24"
+      ]
+     },
+     "F2": {
+      "tokens": 199415,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-65cd1ff1354ed72351e40488a713c403",
+       "chatcmpl-d7c9ca92645bce925724a0d9fb41d89b",
+       "chatcmpl-e2b6ff941bee0022dc5937d7b6564e6a"
+      ]
+     },
+     "carry_tokens": 8864
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199746,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a043790d9f3dbbf3ba958ba250c507d1",
+       "chatcmpl-9d13a7be4a18e387fa474b05d0070e88",
+       "chatcmpl-3cfa3996fea25df57219723c6846c3e4"
+      ]
+     },
+     "F2": {
+      "tokens": 201303,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-65cd1ff1354ed72351e40488a713c403",
+       "chatcmpl-695a6a769c86461f1de25329d4cccaa9",
+       "chatcmpl-e2b6ff941bee0022dc5937d7b6564e6a"
+      ]
+     },
+     "carry_tokens": 22581
+    }
+   }
+  },
+  {
+   "history_id": "h31",
+   "s1": "chatcmpl-fe2e01aaeb9955f5968685c153778505",
+   "s2": "chatcmpl-cb1711005fb1b6ce8e21df087f1f03b8",
+   "s1_exit": "iteration_limit",
+   "tokens": 202296,
+   "s1_tokens": 127393,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194423,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-95dd21a72af2c4665de7451765a6c9da",
+       "chatcmpl-f260d39fb6a3bfe407d2d6f81bb3cd70",
+       "chatcmpl-eedadb59da37156894054be6382e8ec0"
+      ]
+     },
+     "F2": {
+      "tokens": 193650,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-2ddd87fa01cf7a4bfebffb9c36db3268",
+       "chatcmpl-7f1014520f7c329b30f335cfd08ec9ab",
+       "chatcmpl-2c791c7e3fba8501a66b14e72dc60d27"
+      ]
+     },
+     "carry_tokens": 19321
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193095,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-95dd21a72af2c4665de7451765a6c9da",
+       "chatcmpl-884d84e8d83507b5d39c34ca365c2a5d",
+       "chatcmpl-8ca30eb3b79e138a439f6da03dac9724"
+      ]
+     },
+     "F2": {
+      "tokens": 196971,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-2ddd87fa01cf7a4bfebffb9c36db3268",
+       "chatcmpl-758f5157db1f7583d4c5170821926db2",
+       "chatcmpl-094f07b0929bafc384dbb05d94c53888"
+      ]
+     },
+     "carry_tokens": 33038
+    }
+   }
+  },
+  {
+   "history_id": "h32",
+   "s1": "chatcmpl-b643b773883f8575f805c3b882915a02",
+   "s2": "chatcmpl-bfa5c1301580e475df5b0fead59c1325",
+   "s1_exit": "iteration_limit",
+   "tokens": 202164,
+   "s1_tokens": 126476,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193748,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-33b38fbbb55ff604d455506ac8893f4a",
+       "chatcmpl-ca6056cb0ca800ffbe970b0aa09ea604",
+       "chatcmpl-35689f4a539ea17a81c73e400d37d421"
+      ]
+     },
+     "F2": {
+      "tokens": 194092,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-487e5bce8c7ccb8a60763c9836a883a1",
+       "chatcmpl-e2088cbae2dab282e0e2dbeabd5a5beb",
+       "chatcmpl-ba87162c35954511fbc53ff02b9f3653"
+      ]
+     },
+     "carry_tokens": 8922
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197134,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-33b38fbbb55ff604d455506ac8893f4a",
+       "chatcmpl-96c95e82dbddf7f579ae077127053353",
+       "chatcmpl-35689f4a539ea17a81c73e400d37d421"
+      ]
+     },
+     "F2": {
+      "tokens": 194837,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-487e5bce8c7ccb8a60763c9836a883a1",
+       "chatcmpl-91432eb0cfd954cde83818882e373af4",
+       "chatcmpl-76dd60ec578702acc0d7975f403debfb"
+      ]
+     },
+     "carry_tokens": 22639
+    }
+   }
+  },
+  {
+   "history_id": "h33",
+   "s1": "chatcmpl-2bfb542aaa3422d837234477062152a2",
+   "s2": "chatcmpl-d30c2ad63ad2f14fb3dd32f7bc921a6b",
+   "s1_exit": "iteration_limit",
+   "tokens": 193694,
+   "s1_tokens": 127290,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193896,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1e9227b5781e09c06cdb4d167c74eafa",
+       "chatcmpl-824d9a3303598af317e45e465cd7ae65",
+       "chatcmpl-25d527de3122d778ca456c9229dc6069"
+      ]
+     },
+     "F2": {
+      "tokens": 197227,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e3480b862c8b03259889712f9a56dfeb",
+       "chatcmpl-19fe2733b6b55b321ea7b1ed315dfd27",
+       "chatcmpl-f9fa9e82a1dd9198226bd8a3e6cc1471"
+      ]
+     },
+     "carry_tokens": 9000
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195342,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1e9227b5781e09c06cdb4d167c74eafa",
+       "chatcmpl-824d9a3303598af317e45e465cd7ae65",
+       "chatcmpl-7b0190460f0c827168852506f83f728f"
+      ]
+     },
+     "F2": {
+      "tokens": 197593,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-e3480b862c8b03259889712f9a56dfeb",
+       "chatcmpl-bd1e4d7fcc1d3246496cb7414b00c36c",
+       "chatcmpl-19fe2733b6b55b321ea7b1ed315dfd27"
+      ]
+     },
+     "carry_tokens": 22717
+    }
+   }
+  },
+  {
+   "history_id": "h34",
+   "s1": "chatcmpl-ac3ede6bbd44ba57e120cdc46f10e852",
+   "s2": "chatcmpl-420547b5de7f4a2705ae9106b61672d3",
+   "s1_exit": "iteration_limit",
+   "tokens": 196318,
+   "s1_tokens": 127156,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199097,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-2ef47b82f711025908557f258151fca0",
+       "chatcmpl-1c316ed9c56c84061ac3271a20526d84",
+       "chatcmpl-2a685b7af7fb0f9706f292db862b7111"
+      ]
+     },
+     "F2": {
+      "tokens": 194331,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-312a09b41abfca48f9ff1c2231e81ea8",
+       "chatcmpl-659de219a6f4140e8800406ddfd355a3",
+       "chatcmpl-21076c29e8f85ce9d7ace4ab2ec61e09"
+      ]
+     },
+     "carry_tokens": 9940
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198223,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-2ef47b82f711025908557f258151fca0",
+       "chatcmpl-ebe9cc34353af7978656d14d00c17cd4",
+       "chatcmpl-1c316ed9c56c84061ac3271a20526d84"
+      ]
+     },
+     "F2": {
+      "tokens": 193185,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-312a09b41abfca48f9ff1c2231e81ea8",
+       "chatcmpl-202fcc1aed82650a174a8257a1f3f7e6",
+       "chatcmpl-c38530d2f7036f084ed5742dd0f3ac3b"
+      ]
+     },
+     "carry_tokens": 23657
+    }
+   }
+  },
+  {
+   "history_id": "h35",
+   "s1": "chatcmpl-0f0fd69338d3173040bba84005ff5b56",
+   "s2": "chatcmpl-4372c2adaf57c255f20a41141f196662",
+   "s1_exit": "submitted",
+   "tokens": 195821,
+   "s1_tokens": 126781,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195760,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-cdcbe854ba2d366c07a78c09c9477830",
+       "chatcmpl-228334b7a012ed458d06a1605352c359",
+       "chatcmpl-cefdb216e8fc1bf50687db0ee96eb0d4",
+       "chatcmpl-955732cfe5ce071f4ba13282f3b949fb"
+      ]
+     },
+     "F2": {
+      "tokens": 194480,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-94d62d37e89cc567f1f775d6c01d79a0",
+       "chatcmpl-f4e8ab08e190e57c26bca97888a180a9",
+       "chatcmpl-efc6ac5864949ec90817e057b0adfd46"
+      ]
+     },
+     "carry_tokens": 8853
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199382,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-cdcbe854ba2d366c07a78c09c9477830",
+       "chatcmpl-107052e342810dddb93d83da499c13bc",
+       "chatcmpl-64130547ac485dbd1adc21e46d822d6c"
+      ]
+     },
+     "F2": {
+      "tokens": 197195,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-94d62d37e89cc567f1f775d6c01d79a0",
+       "chatcmpl-71e26f922a80d9de63336ea950bb6a88",
+       "chatcmpl-502ba012b44569d9d63f0ca820d8dce0"
+      ]
+     },
+     "carry_tokens": 22570
+    }
+   }
+  },
+  {
+   "history_id": "h36",
+   "s1": "chatcmpl-a62b9b6285c0115db22123e7cf6a61d5",
+   "s2": "chatcmpl-619725881a2e59947e03284865a5cdab",
+   "s1_exit": "iteration_limit",
+   "tokens": 195305,
+   "s1_tokens": 115539,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.1,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195346,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-1759632ac40efc91bf464c8e8eda86cd",
+       "chatcmpl-c49f0dbd71f6e815042f5cbee6de2a52",
+       "chatcmpl-61aa756b89ed9fb20f797714297a7d1f",
+       "chatcmpl-db79cb5b45b34ffb72661006f304e3bd"
+      ]
+     },
+     "F2": {
+      "tokens": 199450,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b13aceff9930e040a8996e910ebaf1a7",
+       "chatcmpl-728b836c98a5d4bb7107a97efa067cbf",
+       "chatcmpl-f02ed9857c67d15b3eda26c7e7763ad6"
+      ]
+     },
+     "carry_tokens": 9019
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200426,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-1759632ac40efc91bf464c8e8eda86cd",
+       "chatcmpl-fce6eea49ef11cc6b9b44c352b8f9e8f",
+       "chatcmpl-fba7d0b3a62b6816aab17f9238d3a797"
+      ]
+     },
+     "F2": {
+      "tokens": 202128,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b13aceff9930e040a8996e910ebaf1a7",
+       "chatcmpl-728b836c98a5d4bb7107a97efa067cbf",
+       "chatcmpl-79dbb54fd0ec9d79780646a8266a242d"
+      ]
+     },
+     "carry_tokens": 22736
+    }
+   }
+  },
+  {
+   "history_id": "h37",
+   "s1": "chatcmpl-67fa8f2722a02b18dd6d64644d1f7e61",
+   "s2": "chatcmpl-db2b9c4e5bb3f9046fb0a1f7f188ca66",
+   "s1_exit": "iteration_limit",
+   "tokens": 201922,
+   "s1_tokens": 115514,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198566,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-64ba67cbada404d4691e7d4c6b8da71c",
+       "chatcmpl-7a407ecd086484af1fd890d4dcb07c6a",
+       "chatcmpl-93551d0259eb9e8f24668fc304f33926"
+      ]
+     },
+     "F2": {
+      "tokens": 194644,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a3644406e41fcfc02e7540aa0449a5bb",
+       "chatcmpl-ea749227490dee2f9a6386e2a832335b",
+       "chatcmpl-8f3eefa7def8142abbf68fc70dd1f490"
+      ]
+     },
+     "carry_tokens": 9699
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196463,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-64ba67cbada404d4691e7d4c6b8da71c",
+       "chatcmpl-7a407ecd086484af1fd890d4dcb07c6a",
+       "chatcmpl-10fc88126d5fba7e8e7630f947997b92"
+      ]
+     },
+     "F2": {
+      "tokens": 199941,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a3644406e41fcfc02e7540aa0449a5bb",
+       "chatcmpl-ea749227490dee2f9a6386e2a832335b",
+       "chatcmpl-3cd406a70081180a4146d42a8bae520f"
+      ]
+     },
+     "carry_tokens": 23416
+    }
+   }
+  },
+  {
+   "history_id": "h38",
+   "s1": "chatcmpl-b75ce6635af61e89d9cd0cbbc6269b72",
+   "s2": "chatcmpl-5b71a00818b23ec9f5032b86e213f358",
+   "s1_exit": "iteration_limit",
+   "tokens": 195729,
+   "s1_tokens": 117830,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194071,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-077222b727dc6fd1f71c92149c298ed1",
+       "chatcmpl-3a698e18295ef4d8af4cc83542aacadf",
+       "chatcmpl-b838e346c3ff4a89479e6b1a56c1f39d",
+       "chatcmpl-336196340a1afd07e2538b766adcc8ec"
+      ]
+     },
+     "F2": {
+      "tokens": 201208,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-b62a665c0a3d475aa2c879d073fbea03",
+       "chatcmpl-5054eedee7a0630e58f4f94c3305466d",
+       "chatcmpl-112e69297f01537bead3d0c47cd7802e",
+       "chatcmpl-6da79b67793707c0d1cd3e87135df48a"
+      ]
+     },
+     "carry_tokens": 8816
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196699,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-077222b727dc6fd1f71c92149c298ed1",
+       "chatcmpl-9f0a7c33a0f99ccc179ceddc530d25bd",
+       "chatcmpl-7be18ff68305cb825bf94edffe90646e"
+      ]
+     },
+     "F2": {
+      "tokens": 199957,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b62a665c0a3d475aa2c879d073fbea03",
+       "chatcmpl-5054eedee7a0630e58f4f94c3305466d",
+       "chatcmpl-d98b48a4cb8b98eb51ee6f1d4c4ca2a2"
+      ]
+     },
+     "carry_tokens": 22533
+    }
+   }
+  },
+  {
+   "history_id": "h39",
+   "s1": "chatcmpl-5693fef6ac2b2f6c76402df77c2fa584",
+   "s2": "chatcmpl-f74504cf676e3ae3735a449d00a1a786",
+   "s1_exit": "iteration_limit",
+   "tokens": 193246,
+   "s1_tokens": 125851,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193975,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-70dd91fbb8de6ebec9726a18332b635e",
+       "chatcmpl-b1e1d0704670b856f541b4bf1bf4a25c",
+       "chatcmpl-1000368796d60f6cb0270109a7ab2af3",
+       "chatcmpl-36bb6abbd9bc32bcb29355d01e7d7ac4"
+      ]
+     },
+     "F2": {
+      "tokens": 194672,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-04069fcd961b24eba6f3b43b1bef41ae",
+       "chatcmpl-b3f1b5d1c30be4c7218d74af65625ebf",
+       "chatcmpl-c632e9016ee2c092c0a784bd56c10c1b"
+      ]
+     },
+     "carry_tokens": 8855
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 200274,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-70dd91fbb8de6ebec9726a18332b635e",
+       "chatcmpl-4aac35b29b45eccad42275280da71fc4",
+       "chatcmpl-9c2943be462b57364ded04ec2b8dee94"
+      ]
+     },
+     "F2": {
+      "tokens": 199375,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-04069fcd961b24eba6f3b43b1bef41ae",
+       "chatcmpl-49e7b75766596c1843938b942773c992",
+       "chatcmpl-a44a97500e7bdea37c7a0b4fbb46e67f"
+      ]
+     },
+     "carry_tokens": 22572
+    }
+   }
+  },
+  {
+   "history_id": "h40",
+   "s1": "chatcmpl-410eb992c666c75e789b253b873ae089",
+   "s2": "chatcmpl-be07840a885fc85db9edd611b1cc2a65",
+   "s1_exit": "submitted",
+   "tokens": 199042,
+   "s1_tokens": 127747,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199460,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-90d9c26246862b4265fd5546694ff039",
+       "chatcmpl-58c25f9cd6115d2cb0f9f81069af92b8",
+       "chatcmpl-8bb8677fe640aaff4e7781a903f84f7e",
+       "chatcmpl-3303e1be21e59072b601c2e492306754"
+      ]
+     },
+     "F2": {
+      "tokens": 201216,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-9502f805f359a55cd7feb99e06e61a50",
+       "chatcmpl-3d9f506400cdc930a7813a35cc87b501",
+       "chatcmpl-eb0aef8849c46643131bea8ab9c7ca51"
+      ]
+     },
+     "carry_tokens": 8908
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201224,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-90d9c26246862b4265fd5546694ff039",
+       "chatcmpl-58c25f9cd6115d2cb0f9f81069af92b8",
+       "chatcmpl-8bb8677fe640aaff4e7781a903f84f7e",
+       "chatcmpl-ab268f018ba3963187b86446275c66e2"
+      ]
+     },
+     "F2": {
+      "tokens": 199203,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-9502f805f359a55cd7feb99e06e61a50",
+       "chatcmpl-eefeeadaa65d3005dc26c2335b59365a",
+       "chatcmpl-a681ad7daf8b5866815de674011aa425"
+      ]
+     },
+     "carry_tokens": 22625
+    }
+   }
+  },
+  {
+   "history_id": "h41",
+   "s1": "chatcmpl-2c9eba6a72b0bc87390597b21682ee19",
+   "s2": "chatcmpl-c930bfb5a5223c9afa556b2d36e3b5d5",
+   "s1_exit": "iteration_limit",
+   "tokens": 195880,
+   "s1_tokens": 127846,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 202296,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-a92b7106d98b45fe782839564658e59e",
+       "chatcmpl-fdcc6130861d4d20412f9208ee47176a",
+       "chatcmpl-155ae61651a1c74255982aff20b0635e",
+       "chatcmpl-933909d87e36ce2d88924c088e8ca85e"
+      ]
+     },
+     "F2": {
+      "tokens": 195749,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4cd51c1d8fd3a0408449ef96c547cde6",
+       "chatcmpl-85ed63108f20e4e0b46966715014b0af",
+       "chatcmpl-a3be9dab8e257cc1ece66c4dc778e6cb"
+      ]
+     },
+     "carry_tokens": 9226
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198369,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a92b7106d98b45fe782839564658e59e",
+       "chatcmpl-61bdc4650f7584ddcf7eb91c1ce0876f",
+       "chatcmpl-043f271595027694bf3c9ced0c15f5cf"
+      ]
+     },
+     "F2": {
+      "tokens": 201261,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-4cd51c1d8fd3a0408449ef96c547cde6",
+       "chatcmpl-fb209bd6e1360d0dc3c1f5cfb876513d",
+       "chatcmpl-3d8c2eed6503d49dc4696862574923dc"
+      ]
+     },
+     "carry_tokens": 22943
+    }
+   }
+  },
+  {
+   "history_id": "h42",
+   "s1": "chatcmpl-0b060bc88e2b260affc22659772509a3",
+   "s2": "chatcmpl-150d862c8dfa65da6eab770d64675556",
+   "s1_exit": "iteration_limit",
+   "tokens": 195373,
+   "s1_tokens": 126210,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 198405,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-39874d5cf9857ecefc308d46e0b17367",
+       "chatcmpl-804a3740d976062396b61dfd1fb857d9",
+       "chatcmpl-81fbc4ca45313939768d6536561b836e",
+       "chatcmpl-27a07c0aaf314df94246696426ba1147"
+      ]
+     },
+     "F2": {
+      "tokens": 197439,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a06efd3a125be19dc8c09744b94a520f",
+       "chatcmpl-a14bb6690a659ccf1cec2a89b61d5261",
+       "chatcmpl-c7a35940772c3b18e2a87470ba038302"
+      ]
+     },
+     "carry_tokens": 8995
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193905,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-39874d5cf9857ecefc308d46e0b17367",
+       "chatcmpl-81fbc4ca45313939768d6536561b836e",
+       "chatcmpl-3e163b05dc8873feba4c6e429e8288b2"
+      ]
+     },
+     "F2": {
+      "tokens": 196157,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a06efd3a125be19dc8c09744b94a520f",
+       "chatcmpl-a14bb6690a659ccf1cec2a89b61d5261",
+       "chatcmpl-b5c611a76324a65bd3178b4767d7f9a4"
+      ]
+     },
+     "carry_tokens": 22712
+    }
+   }
+  },
+  {
+   "history_id": "h43",
+   "s1": "chatcmpl-6e11b7a5d47b106ee1b8d7c046501ce0",
+   "s2": "chatcmpl-eb79e2841c34d5b6ded7b3ddbdc691b7",
+   "s1_exit": "iteration_limit",
+   "tokens": 197623,
+   "s1_tokens": 120629,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201938,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-082ca213fe25e1502f30a914ca11b3ac",
+       "chatcmpl-8393610697582def6e1673bba85085cf",
+       "chatcmpl-5a5639c6339d7c78f794a6f3d00c55c8"
+      ]
+     },
+     "F2": {
+      "tokens": 201337,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a7f7173516b392bd8fac4fea8712093a",
+       "chatcmpl-e241571e61cc174d5968017c57285a2c",
+       "chatcmpl-6bac197c41feaac259b09b88e48bb2a3"
+      ]
+     },
+     "carry_tokens": 9522
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193311,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-082ca213fe25e1502f30a914ca11b3ac",
+       "chatcmpl-40c3805e209020434ab8aae4e02febbe",
+       "chatcmpl-645bec2085a905c84179c6e77b857301"
+      ]
+     },
+     "F2": {
+      "tokens": 201321,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a7f7173516b392bd8fac4fea8712093a",
+       "chatcmpl-e241571e61cc174d5968017c57285a2c",
+       "chatcmpl-63625759adb1fc710c5339558b30b152"
+      ]
+     },
+     "carry_tokens": 23239
+    }
+   }
+  },
+  {
+   "history_id": "h44",
+   "s1": "chatcmpl-da292c28b7e33c434a7e5e009db4f1f8",
+   "s2": "chatcmpl-7b847ce3b67f4dcadceabc2e12503268",
+   "s1_exit": "iteration_limit",
+   "tokens": 198936,
+   "s1_tokens": 123392,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 1.0,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 199967,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-a6a7f961a622729e0c13a1cb1f1efcad",
+       "chatcmpl-8de83f7f088c07e474292ec97f488d69",
+       "chatcmpl-28f850e9c10df4bc8ba9bcfa79feb140",
+       "chatcmpl-1402ac9f89b256a66944920501531db8"
+      ]
+     },
+     "F2": {
+      "tokens": 194850,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-b64a90f7bfc1543f3aab9287ef600508",
+       "chatcmpl-e81cd77cdbb2c4a226f74e53beeabfd5",
+       "chatcmpl-4dced4858009a67f67a7968e30fd06c7",
+       "chatcmpl-2ca19d77d6d74bd824d46f8808acbbc9"
+      ]
+     },
+     "carry_tokens": 9023
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193618,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-a6a7f961a622729e0c13a1cb1f1efcad",
+       "chatcmpl-1f219b97f9b1b6b3625fc0958bb9f3e8",
+       "chatcmpl-de7b0c199eea23561389b6c0d1b37b55"
+      ]
+     },
+     "F2": {
+      "tokens": 193599,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b64a90f7bfc1543f3aab9287ef600508",
+       "chatcmpl-e81cd77cdbb2c4a226f74e53beeabfd5",
+       "chatcmpl-0068a5b604225989eadcab892ecef4d9"
+      ]
+     },
+     "carry_tokens": 22740
+    }
+   }
+  },
+  {
+   "history_id": "h45",
+   "s1": "chatcmpl-1b745bfd0faea3ec00c103f9b4a2e771",
+   "s2": "chatcmpl-98645bcd8d28d7e180581ff0095f10b0",
+   "s1_exit": "submitted",
+   "tokens": 194484,
+   "s1_tokens": 112092,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 197578,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b28064b1a7e8f6ada6ae9c26308af372",
+       "chatcmpl-6256685ea331776654f03b6becca73be",
+       "chatcmpl-3b427f080c2ab4fc64dccdb57e1e0341"
+      ]
+     },
+     "F2": {
+      "tokens": 194475,
+      "reseeds": 0,
+      "close": "single",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-187eabbac1ebecc6fa93770357a3441b",
+       "chatcmpl-5c72681c0be625bbef3b4d93730421c5",
+       "chatcmpl-b985abbe49d7b46de3dcabe89d33cafb"
+      ]
+     },
+     "carry_tokens": 10425
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 195506,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-b28064b1a7e8f6ada6ae9c26308af372",
+       "chatcmpl-1fe8fa6290213894124221321c612e8b",
+       "chatcmpl-88a62e2bda3bc6dd03403edd8cd1de43"
+      ]
+     },
+     "F2": {
+      "tokens": 201038,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-187eabbac1ebecc6fa93770357a3441b",
+       "chatcmpl-b985abbe49d7b46de3dcabe89d33cafb",
+       "chatcmpl-816da0d87f110252a507395c287f974a"
+      ]
+     },
+     "carry_tokens": 24142
+    }
+   }
+  },
+  {
+   "history_id": "h46",
+   "s1": "chatcmpl-ffc5fd529294519d5d39ebb37e1c512e",
+   "s2": "chatcmpl-b40677dea9f0147118d03e87d6180d4b",
+   "s1_exit": "iteration_limit",
+   "tokens": 196871,
+   "s1_tokens": 127922,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.6,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 196947,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-94d5285d91502d62496f2ddf7274639f",
+       "chatcmpl-b79085930cda71827057e41d292ea59a",
+       "chatcmpl-255bfe4c66dc0651a7fa3446ed81b371",
+       "chatcmpl-725d0467a6c8630b682357f87f85891a"
+      ]
+     },
+     "F2": {
+      "tokens": 194866,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-fda4f150b491ff0b26b6a3cfb16785b8",
+       "chatcmpl-49d3c0c386a4951cdbec263aaf5eac29",
+       "chatcmpl-76f2766bcd88e75e005a9e54236f9174"
+      ]
+     },
+     "carry_tokens": 8970
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 193620,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-94d5285d91502d62496f2ddf7274639f",
+       "chatcmpl-a7f1c3a24c234affaa8bd135cc9f4551",
+       "chatcmpl-4d2bef7be46cb8cebdb4dc64aa61e97e"
+      ]
+     },
+     "F2": {
+      "tokens": 195411,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-fda4f150b491ff0b26b6a3cfb16785b8",
+       "chatcmpl-49d3c0c386a4951cdbec263aaf5eac29",
+       "chatcmpl-9045f3c4754bae383283e9d9b14526be"
+      ]
+     },
+     "carry_tokens": 22687
+    }
+   }
+  },
+  {
+   "history_id": "h47",
+   "s1": "chatcmpl-2e5eaf6e9ef90da4395c81138afd69e0",
+   "s2": "chatcmpl-5106a02c6c5fd41dbb57dc226a527d11",
+   "s1_exit": "iteration_limit",
+   "tokens": 194623,
+   "s1_tokens": 128005,
+   "s1_replacements": 0,
+   "reseeds": 0,
+   "build_s": 0.7,
+   "packing": {
+    "2000": {
+     "ok": true,
+     "F1": {
+      "tokens": 201795,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 4,
+      "sessions": [
+       "chatcmpl-009e32544851d819b318a1ff906a1524",
+       "chatcmpl-f8cc4b611ca30a61e3e2df1da93b8b33",
+       "chatcmpl-3d95f64a7d210919abb10e3ce0cced52",
+       "chatcmpl-cfe890ae124fad733f53f5998908bd5a"
+      ]
+     },
+     "F2": {
+      "tokens": 196870,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-5f48b824d74d588b70f44a205474dcde",
+       "chatcmpl-12f0752b65d93cefb84a7f7822c35cec",
+       "chatcmpl-540aaeee147b1f1257dc557fe7c24bb7"
+      ]
+     },
+     "carry_tokens": 12566
+    },
+    "16000": {
+     "ok": true,
+     "F1": {
+      "tokens": 194236,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-009e32544851d819b318a1ff906a1524",
+       "chatcmpl-f8cc4b611ca30a61e3e2df1da93b8b33",
+       "chatcmpl-09ef0d5a2e53c4a54744a1fbfddd3d32"
+      ]
+     },
+     "F2": {
+      "tokens": 194799,
+      "reseeds": 0,
+      "close": "pair",
+      "n_sessions": 3,
+      "sessions": [
+       "chatcmpl-5f48b824d74d588b70f44a205474dcde",
+       "chatcmpl-663a15e0f9d6bcd28191e1e2375ee7a5",
+       "chatcmpl-0258688c31f880cdf04033a2b949c610"
+      ]
+     },
+     "carry_tokens": 26283
+    }
+   }
+  }
+ ],
+ "n": 48,
+ "summary": {
+  "built": 48,
+  "tokens_min": 193246,
+  "tokens_max": 202591,
+  "s1_tokens_min": 112092,
+  "s1_tokens_max": 128005,
+  "s1_exit": {
+   "iteration_limit": 38,
+   "submitted": 10
+  },
+  "s1_replacements": 0,
+  "reseeds": 0,
+  "packing_ok": {
+   "2000": 48,
+   "16000": 48
+  },
+  "fill_reseeds": 0,
+  "wall_s": 264.1
+ }
+}

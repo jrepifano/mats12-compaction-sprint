@@ -1,0 +1,82 @@
+{
+ "P44 GLM R (Together)": {
+  "n": 45,
+  "episodes_with_capped_turn": 20,
+  "share_of_final_ctx_from_capped_outputs": 0.348,
+  "final_med": 56504.0,
+  "final_p90": 175128.80000000002,
+  "final_minus_capped_med": 40504.0,
+  "final_minus_capped_p90": 87559.40000000001,
+  "final_minus_capped_max": 115022,
+  "delta_noncapped_mean": 3483.4077253218884,
+  "delta_noncapped_med": 1041.0,
+  "delta_after_capped_med": 16019,
+  "cache_hit_by_provider": {
+   "Together": 0.704
+  }
+ },
+ "P44 GLM PILOT (Relace)": {
+  "n": 30,
+  "episodes_with_capped_turn": 16,
+  "share_of_final_ctx_from_capped_outputs": 0.511,
+  "final_med": 43066.0,
+  "final_p90": 192586.90000000005,
+  "final_minus_capped_med": 26060.0,
+  "final_minus_capped_p90": 72113.1,
+  "final_minus_capped_max": 105336,
+  "delta_noncapped_mean": 2272.542857142857,
+  "delta_noncapped_med": 908,
+  "delta_after_capped_med": 16019.0,
+  "cache_hit_by_provider": {
+   "Relace": 0.784
+  }
+ },
+ "P44 DS R (Baidu)": {
+  "n": 30,
+  "episodes_with_capped_turn": 0,
+  "share_of_final_ctx_from_capped_outputs": 0.0,
+  "final_med": 32281.5,
+  "final_p90": 63420.20000000002,
+  "final_minus_capped_med": 32281.5,
+  "final_minus_capped_p90": 63420.20000000002,
+  "final_minus_capped_max": 89608,
+  "delta_noncapped_mean": 5560.091976516634,
+  "delta_noncapped_med": 1569,
+  "delta_after_capped_med": null,
+  "cache_hit_by_provider": {
+   "Baidu": 0.567
+  }
+ },
+ "X3b GLM main": {
+  "n": 624,
+  "episodes_with_capped_turn": 283,
+  "share_of_final_ctx_from_capped_outputs": 0.48,
+  "final_med": 31327.0,
+  "final_p90": 147090.1,
+  "final_minus_capped_med": 21859.0,
+  "final_minus_capped_p90": 60771.60000000002,
+  "final_minus_capped_max": 134690,
+  "delta_noncapped_mean": 2478.435827931644,
+  "delta_noncapped_med": 1013,
+  "delta_after_capped_med": 16019.0,
+  "cache_hit_by_provider": {
+   "Relace": 0.853
+  }
+ },
+ "P41 GLM all": {
+  "n": 1269,
+  "episodes_with_capped_turn": 405,
+  "share_of_final_ctx_from_capped_outputs": 0.267,
+  "final_med": 41913.0,
+  "final_p90": 115191.8,
+  "final_minus_capped_med": 34723.0,
+  "final_minus_capped_p90": 70164.00000000001,
+  "final_minus_capped_max": 132210,
+  "delta_noncapped_mean": 2365.308212233863,
+  "delta_noncapped_med": 1228.0,
+  "delta_after_capped_med": 16019.0,
+  "cache_hit_by_provider": {
+   "Relace": 0.0
+  }
+ }
+}

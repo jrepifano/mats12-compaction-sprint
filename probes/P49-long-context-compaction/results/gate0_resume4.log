@@ -1,0 +1,55 @@
+calibration c = 1.01000 (saved 2026-10-16T08:42:37Z, n 1858)
+2026-10-16T08:42:38Z scheduler start: 3 block(s), concurrency 16, admit by 2026-10-16T17:00:00Z, hard stop 2026-10-16T17:15:00Z
+2026-10-16T08:42:38Z load 7.6, concurrency 16, in flight 0, ready 0, blocks 0
+2026-10-16T08:42:39Z h1: admitted (gate0, gate0, levels AB, task lcbhard_19, 1 chains, reserved $1.60, p90 block 4753s)
+2026-10-16T08:42:39Z h3: admitted (gate0, gate0, levels AB, task lcbhard_82, 1 chains, reserved $1.00, p90 block 4753s)
+2026-10-16T08:42:39Z h5: admitted (gate0, gate0, levels AB, task lcbhard_11, 1 chains, reserved $1.00, p90 block 4753s)
+[p49.client] loaded keys: OPENROUTER_API_KEY (from /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p49-long-context-compaction/.env)
+2026-10-16T08:43:39Z load 8.6, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:43:39Z 17 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:44:39Z load 8.3, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:45:39Z load 7.9, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:46:39Z load 6.1, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:47:40Z load 4.5, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:48:40Z load 3.7, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:48:40Z 4 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:49:40Z load 3.0, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:50:40Z load 1.9, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:51:40Z load 1.9, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:52:40Z load 2.7, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:53:40Z load 4.0, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:53:40Z 9 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:54:41Z load 5.4, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:55:41Z load 5.0, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:56:41Z load 4.3, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:57:41Z load 4.9, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:58:41Z load 3.8, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T08:58:41Z 6 new 429s since the last check: halving concurrency to 16
+2026-10-16T08:59:41Z load 5.2, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T09:00:42Z load 4.3, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T09:01:42Z load 3.3, concurrency 16, in flight 3, ready 0, blocks 3
+2026-10-16T09:02:37Z h5-lcbhard_11-inspect-A: done turns=21 $0.0956 wall 1196.6s
+2026-10-16T09:02:38Z h5: settled $0.1696 (billed $2.2416, unresolved bound $0.0000 over 0 request(s), records $0.0956) of $9.48 reserved
+2026-10-16T09:02:38Z h5: block complete in 1198.7s
+2026-10-16T09:02:38Z h5 block end: docker p49 containers 24
+2026-10-16T09:02:44Z load 3.0, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:03:44Z load 3.0, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:04:44Z load 8.4, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:04:44Z 3 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:05:44Z load 6.1, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:06:44Z load 4.1, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:07:44Z load 2.6, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:08:44Z load 5.8, concurrency 16, in flight 2, ready 0, blocks 2
+2026-10-16T09:09:41Z h1-lcbhard_19-R-A: done turns=23 $1.2003 wall 1619.7s
+2026-10-16T09:09:41Z h1: settled $1.2003 (billed $5.6068, unresolved bound $0.0600 over 1 request(s), records $1.2003) of $9.48 reserved
+2026-10-16T09:09:41Z h1: block complete in 1622.0s
+2026-10-16T09:09:41Z h1 block end: docker p49 containers 7
+2026-10-16T09:09:45Z load 6.7, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T09:09:45Z 3 new 429s since the last check: halving concurrency to 16
+2026-10-16T09:10:45Z load 6.0, concurrency 16, in flight 1, ready 0, blocks 1
+2026-10-16T09:10:46Z h3-lcbhard_82-inspect-B: turn_cap turns=24 $0.1302 wall 1684.8s
+2026-10-16T09:10:46Z h3: settled $0.1302 (billed $4.2663, unresolved bound $0.0000 over 0 request(s), records $0.1302) of $9.48 reserved
+2026-10-16T09:10:46Z h3: block complete in 1687.0s
+2026-10-16T09:10:46Z h3 block end: docker p49 containers 6
+2026-10-16T09:10:46Z scheduler end: {'admitted': 3, 'skipped': 0, 'not_admitted': [], 'stop_reason': None, 'concurrency': 16}
+{"admitted": 3, "skipped": 0, "not_admitted": [], "stop_reason": null, "concurrency": 16}

@@ -1,0 +1,1448 @@
+                                           Ghost in the Context: Policy-Carriage Integrity in
+                                                    LLM Agent Context Assembly
+                                                                                                 Igor Santos-Grueiro
+                                                                                        International University of La Rioja
+
+
+                                           Abstract—LLM agents choose actions from bounded decision             Long-context and memory-optimization work study utility
+                                        states assembled from system policy, runtime state, tools, work-        retention under bounded budgets [11], [12], [13], [14], [15],
+                                        load content, and the final request. We study policy-carriage           [16], while adjacent security work such as CompressionAttack
+                                        integrity: applicable trusted policies must remain present, sound,
+                                        and correctly bound in the decision state immediately before            studies semantic distortion inside compaction paths [17]. Our
+                                        action. Under controlled pressure replay over AutoGen/tau3 and          focus is narrower: decision-time context assembly as a point in
+
+
+
+
+arXiv:2605.12535v3 [cs.CR] 1 Jul 2026
+                                        OpenHands/SWE-bench traces, the tested protected-placement              the control path where policy can fail without prompt override
+                                        configurations preserve policy across the pressure sweep, while         or persistent-memory compromise.
+                                        task-local placement exhibits eviction, weakening, or over-budget          We measure the transition from raw history to decision
+                                        continuation depending on the context manager. We keep this
+                                        result state-level: a fixed-assembler behavioral calibration pro-       state: whether trusted policy survives assembly as present,
+                                        duced 0/90 unsafe-action proposals and 0/90 unguarded policy            sound, correctly bound control state. First, an effective-budget
+                                        violations, so policy absence alone did not establish unsafe            audit separates advertised backend context windows from
+                                        model behavior. The resulting design guidance is systems-level:         the residual decision budget available after system text, tool
+                                        assign typed provenance to policy state, isolate control budget,        schemas, framework scaffolding, final request, and reserved
+                                        check before assembly that the complete active policy set fits,
+                                        fail closed on overload, and enforce structured policies at the         output. The audit records normalized pressure ρ, making it
+                                        action boundary. We present C ONTROL C APSULE as a reference            possible to compare stack configurations without hard-coding
+                                        design pattern for these requirements; exact active-policy replay       a particular toy budget.
+                                        + preflight remains the key baseline.                                      Second, we replayed real traces under controlled pressure
+                                                               I. I NTRODUCTION                                 from AutoGen AgentChat/tau3 and OpenHands SDK/SWE-
+                                                                                                                bench. The released traces do not naturally overflow under
+                                           A repository maintenance agent receives a trusted task               their recorded context limits, so this is a controlled stress test
+                                        policy: do not delete release artifacts unless verification Z           over real histories rather than an estimate of how often re-
+                                        succeeds. The remaining task context is routine. Pull-request           leased traces naturally overflow. Within this controlled replay,
+                                        comments, CI logs, planner notes, tool observations, and                placement determines whether the policy reaches the decision
+                                        cleanup requests accumulate before the final model call. The            state. Protected system or agent state remains preserved across
+                                        raw history may still contain the policy, but the final model-          the tested pressure sweep. When the authorized policy is
+                                        visible decision state can omit it or replace it with a weaker          counterfactually stored as task-local history, it is evicted,
+                                        summary because the context manager treats the early task-              weakened, or preserved only by continuing past the replay
+                                        local policy like ordinary history. The final request can remain        budget, depending on the context manager.
+                                        neutral: finish the cleanup and report the result. No attacker has         Third, we separate state integrity from behavioral impact.
+                                        overridden the instruction hierarchy. The control state simply          Supplementary executable workflow slices exercise action-
+                                        failed to reach the decision point.                                     boundary accounting, structured tool proposals, sandboxed
+                                           LLM agents do not act on raw interaction history. Before             execution, safe task completion, and deterministic guards. A
+                                        action, an orchestration layer assembles a bounded decision-            stricter fixed-assembler behavioral calibration held the assem-
+                                        time context by selecting, truncating, summarizing, reordering,         bler family, query, tools, runtime state, model, and budget fixed
+                                        and rewriting prior state. We call the model-visible prompt             while varying workload and comparison conditions. It found
+                                        emitted by this layer the decision state. The security ques-            no canonical unsafe-action events. We therefore treat policy
+                                        tion is whether applicable trusted policy remains present               absence as a control-state failure that may matter for action
+                                        and operative in the decision state. We call this requirement           selection, not as sufficient evidence of robust unsafe model
+                                        policy-carriage integrity: applicable policies should remain            behavior.
+                                        present, sound, and correctly bound to the actor, action, object,          The design guidance follows from the invariant and the
+                                        condition, and evidence they govern.                                    measurements. Trusted policy should have typed provenance,
+                                           This failure class is distinct from prompt injection and             a protected control budget, stable bindings, complete-set pre-
+                                        persistent-memory poisoning. Prompt-injection research stud-            flight, fail-closed overload behavior, and structured action-
+                                        ies takeover of the visible prompt surface [1], [2], [3], [4],          boundary enforcement. Policy IR represents policies as struc-
+                                        [5]. Memory-poisoning and memory-defense work focus on                  tured subject, action, object, effect, condition, and evidence
+                                        persistent stores and retrieval-time replay [6], [7], [8], [9], [10].   records that a deterministic monitor can evaluate. We refer
+to the bundle of these practices as C ONTROL C APSULE. The             In agent stacks, E is not necessarily a special module; it
+name denotes a reference design pattern, not a claim that a         is the memory, truncation, summarization, thread-window, or
+deployed system has been shown to outperform exact active-          planner-compaction logic that constructs the next prompt. We
+policy replay + preflight. Exact active-policy replay + preflight   call control state any trusted task constraint that should gov-
+remains the key baseline; any fuller pattern must earn its          ern the final action, including allow/deny rules, confirmation
+complexity in provenance, binding, evidence, overload, utility,     requirements, authority constraints, and plan-selection rules.
+or cost.                                                                  a) Policy-carriage integrity: Let P be the trusted policy
+     a) Contributions:                                              registry, U untrusted workload content, X trusted runtime
+   • We formulate policy-carriage integrity as a control-state      state, q the final request, B the available context budget,
+     invariant for LLM-agent context assembly, separate from        and E(P, U, X, q, B) the assembled decision state. Before the
+     prompt-surface takeover and persistent-memory compro-          model acts, the exact tool, object, amount, or destination may
+     mise.                                                          not yet be known. We therefore define a pre-model applicable
+   • We introduce an effective-budget and policy-placement          set as a sound overapproximation:
+     measurement design that records residual decision bud-                               [
+                                                                      A+ (P, X, q) =            A PPLICABLE P OLICIES(P, X, α),
+     get, normalized pressure, protected versus task-local
+                                                                                      α∈C(X,q)
+     placement, and state-level carriage outcomes.
+   • We report controlled pressure replay over AutoGen/tau3         where C(X, q) is the set of candidate tool/action schemas
+     and OpenHands/SWE-bench traces, showing placement-             available for the request. After the model emits a structured ac-
+     dependent eviction, weakening, and over-budget continu-        tion a, the reference monitor can compute the exact post-action
+     ation under the tested context managers.                       set A⋆ (P, X, a) and enforce the canonical policy boundary
+   • We derive design guidance for provenance-typed control         for that action. A context assembler preserves policy-carriage
+     state, control budget isolation, stable binding, complete-     integrity when every p ∈ A+ (P, X, q) is rendered in the
+     set preflight, fail-closed assembly, and deterministic ac-     decision state, the rendered rule is sound with respect to p
+     tion monitoring, packaging the guidance as the C ON -          (it does not permit an action that p forbids), the rendering’s
+     TROL C APSULE reference pattern while keeping exact            completeness cost is explicit (it does not silently add extra
+     active-policy replay + preflight as the strong baseline.       restrictions without being counted as a utility or availability
+   The remainder of this paper is organized as follows. Sec-        cost), and the rendered binding preserves the same actor,
+tion II defines decision-time context assembly, the threat          tenant, object, action, condition, and evidence handles. This
+model, and the failure taxonomy. Section III reports the            avoids assuming future action details at assembly time; the
+public-corpus risk motivation and effective-budget audit. Sec-      cost of uncertainty is possible policy overload, which must
+tions III-C and III-E define the evaluation metrics and ex-         be handled by complete-set preflight and fail-closed behavior.
+perimental setup. Section IV reports the empirical results.         When the applicable control state fits the reserved control
+Section V summarizes the control-plane assembly reference           budget, changing U may change the data plane but must not
+pattern. Section VI discusses implications and limitations.         change the rendered control plane. When it does not fit, the
+Section VII situates the paper in prior work, and Section VIII      assembler must fail closed rather than silently summarizing,
+concludes.                                                          weakening, or dropping the policy.
+                                                                       Figure 1 shows the subsystem under study: trusted control
+          II. BACKGROUND AND T HREAT M ODEL                         state and untrusted workload content compete under pressure
+A. Decision-Time Context Assembly                                   before action time. The measured property is state integrity—
+   We model agent output as at = M (E(Ht )), where M is the         policy absence, weakening, or misbinding—and the security
+base model and E is the subsystem that assembles bounded            concern is that such state loss can affect later action selection.
+history into the final decision state before action time. The raw   The stronger claim that workload pressure reliably induces for-
+turn-local history Ht contains trusted control state, dialogue      bidden action proposals remains outside the evidence reported
+state, planner/tool state, untrusted workload content, and the      here.
+final query. Admission inside E partitions that raw history into    B. Threat Model
+admitted control state Sctrl and residual mutable state Sdata ;
+                                                                       The attacker is an external content provider, not the agent
+the assembled state sent to the model is the decision state Ct .
+                                                                    operator, and does not control the scheduler implementation.
+   The issue is not whether a directive appears somewhere
+                                                                    Their content is processed by an agent acting for a victim
+in raw history, but whether it remains present, sound, and
+                                                                    organization: for example, a pull-request author whose logs are
+correctly bound in the decision state delivered to M . In that
+                                                                    read by a repository agent, a customer whose ticket is handled
+sense, E is part of the control path: it selects which state
+                                                                    by a support agent, or an email sender whose documents are
+survives, transforms how that state is represented, and pre-
+                                                                    processed by an assistant. The attacker controls only untrusted
+serves or breaks the binding that makes a directive operative.
+                                                                    workload content: length, placement, repetition, timing, and
+The invariant is simple: control state must reach decision time
+                                                                    framing. A fixed, benign assembler then processes that content
+present, sound, and correctly bound.
+                                                                    under its normal budget and policy.
+                                           Raw Turn State H = R ∪ P ∪ Q                                                          TABLE I
+                                                                                                        T HREAT- MODEL SUMMARY. T HE ATTACKER CONTROLS WORKLOAD
+                                R                                                                                 CONTENT, NOT THE AGENT INFRASTRUCTURE .
+                                                          P                              Q
+                             Retained
+                                                       Trusted                     Final Query
+                              State
+                                                     Control State                   (Trigger)
+                           (Data Plane)                                                              Element                                 Scope
+                                                                                                     Defender                                Operates an LLM agent with fixed model,
+                                                                                                                                             assembler, tool permissions, and trusted
+       UNTRUSTED                       EVICTION      SEMANTIC
+                                            Decision-Time          MISBINDING
+                                                    WEAKENING Context
+       WORKLOAD
+                   CARRIAGE FAILURE
+                                                                                                                                             task policies.
+                                           Assembly: Subsystem E
+       PRESSURE                       Selection · Transformation · Binding Preservation              Trusted control                         System-, developer-, or user-authorized
+                                                                                                     state                                   constraints such as deletion bans,
+                                                       DEFENDER-CONTROLLED AGENT PIPELINE                                                    confirmation requirements, tenant
+                                      Decision State E(H)
+                                                                                                                                             bindings, or condition-gated tool rules.
+                                                                                                     Untrusted state                         Messages, tickets, pull-request comments,
+                                                   Base Model M
+                                                                                            a                                                retrieved documents, logs, and external
+                                                                                          Action                                             tool outputs.
+                                                                                                     Attacker                                Controls untrusted content length,
+Fig. 1. System and carriage-failure surface for a = M (E(H)). The relevant                           capability                              placement, repetition, timing, and framing.
+control boundary is not only the base model M , but also subsystem E, which                                                                  Does not control model weights, scheduler
+decides which control state remains present and operative in the decision                                                                    code, tools, hidden memory, or access
+state. Untrusted workload pressure can drive eviction, semantic weakening,
+or misbinding before the decision state reaches the model.
+                                                                                                                                             control.
+                                                                                                     Measured                                Policy absence, semantic weakening, or
+                                                                                                     property                                misbinding in the assembled decision state.
+   The defender holds model and runtime configuration fixed                                          Security concern                        Such state failures may affect downstream
+                                                                                                                                             action selection, including unauthorized
+and applies the same orchestration policy to the reference                                                                                   disclosure, deletion, external request,
+and mitigated paths. Model weights, task logic, and hidden-                                                                                  condition bypass, or other forbidden action
+system state are constant within matched comparisons. This                                                                                   proposals.
+isolates decision-time context assembly rather than prompt-                                          Behavioral impact                       The current evidence does not show that
+surface takeover, persistent-memory poisoning, or generic                                            boundary                                external workload pressure reliably
+                                                                                                                                             induces forbidden actions under a fixed
+long-context degradation. The same mechanism can also ap-                                                                                    assembler; that behavioral claim would
+pear without an active adversary: long tool outputs, planner                                                                                 require held-out sensitivity and
+notes, and routine conversational churn can impose the same                                                                                  same-assembler tests.
+pressure on earlier control state.                                                                   Non-goals                               Jailbreaks, prompt override,
+                                                                                                                                             persistent-memory poisoning,
+C. Failure Families                                                                                                                          compromised tools, model-weight attacks,
+                                                                                                                                             and access-control bypass.
+   We organize the failure space around one question: after
+history passes through subsystem E, how can a directive
+stop governing the final action? It can disappear, survive in a                                                                Input H                        Decision State E(H)    Outcome
+
+                                                                                                       Eviction
+weakened or rewritten form, or remain visible while governing                                             retention
+                                                                                                                              Only use
+                                                                                                                           approved plan B
+                                                                                                                                                  dropped
+                                                                                                                                                                 filler / chatter
+                                                                                                                                                                directive absent
+                                                                                                                                                                                    ∅
+                                                                                                                                                                                         no live rule
+                                                                                                                                                                                         at action time
+                                                                                                              failure
+the wrong object.                                                                                    Semantic
+                                                                                                                                                 summarized
+   The three families are:                                                                          Weakening
+                                                                                                        soundness
+                                                                                                                         Do not trust record X
+                                                                                                                           without confirm.
+                                                                                                                                                                Prefer confirmed
+                                                                                                                                                                    records
+                                                                                                                                                                                    ̸⊆   rule survives,
+                                                                                                                                                                                         but weaker
+                                                                                                              failure
+  1) Eviction: the directive is displaced and no longer reaches                                                                                   re-bound                               right-looking rule,
+                                                                                                    Misbinding            Use approved plan                    Use approved plan    ↔
+      decision time.                                                                                 (reference drift)       for tenant A                      bound to tenant B         wrong object
+
+  2) Semantic weakening: the directive survives, but only in
+      a weakened or rewritten form.                                                                Fig. 2. Failure traces from input history to decision state and outcome.
+                                                                                                   Eviction removes the live directive, semantic weakening preserves only a
+  3) Misbinding: the directive remains visible, but the object                                     security-unsound rule-like trace, and misbinding preserves the rule text while
+      it governs changes.                                                                          rebinding it to the wrong object.
+   These families are defined operationally at the level of
+the decision state: eviction is a retention failure, semantic
+                                                                                                   in the scenario under test. A paraphrase can remain sound;
+weakening is a policy-soundness failure, and misbinding is
+                                                                                                   a softened summary or incomplete restatement cannot if it
+a binding failure. Completeness loss is tracked separately as
+                                                                                                   permits an action the source policy forbids. If a transformed
+utility or availability cost when a transformed rule becomes
+                                                                                                   rule becomes stricter than the source policy, that is a complete-
+stricter than the trusted source.
+                                                                                                   ness or availability cost rather than the same security failure
+   A scenario belongs to a family only if the intended failure
+                                                                                                   as weakening. Likewise, a binding is preserved only if the
+mode is identifiable in the decision state: absent directive
+                                                                                                   directive still governs the same object, record, plan, or tool
+for eviction, security-unsound preserved directive for semantic
+                                                                                                   output as in the original interaction.
+weakening, and preserved directive with a changed referent for
+                                                                                                      This taxonomy is anchored in decision-state artifacts rather
+misbinding.
+   Here, a preserved directive is sound only if it does not                                        than surface textual similarity. The operative security question
+widen the trusted source policy’s forbidden-action boundary                                        is whether the rule that reaches answer time remains sound for
+the same bound action, object, actor, condition, and evidence.                                  TABLE II
+                                                                     P UBLIC - CORPUS AUDIT MOTIVATING THE CONTROLLED WORKFLOW
+Eviction (Availability Failure)                                      EVALUATION . C OUNTS ARE RISK INGREDIENTS OR WITNESSES , NOT
+                                                                         CARRIAGE - FAILURE OR PRODUCTION - PREVALENCE RATES .
+   Eviction scenarios place trusted control state early enough
+in the dialogue for finite-window pressure to remove it before     Corpus      Unit         Rows     Main signal
+answer time. Pressure and ordering are sufficient. At answer
+                                                                   ATBench     trajectory    1,000   113 control/tool-schema
+time, the directive is absent from the assembled state: the                                          contamination witnesses; 65
+model sees task-supporting content and the final query, but                                          modified tools used.
+not the governing rule. Eviction is therefore a carriage failure   AgentDojo   run          36,679   33,119
+by absence rather than reinterpretation.                                                             adversarial/injection-labeled rows;
+                                                                                                     27,866 failing security labels
+Semantic Weakening (Integrity Failure)                                                               among 36,678 labeled rows.
+                                                                   tau-bench   trajectory    1,980   1,980 rows with visible policy
+   Semantic-weakening scenarios keep the directive relevant                                          text; 456 policy-challenge rows.
+but force it through compaction. The directive does not vanish;    tau2-       task +       13,388   2,556 task/policy fixtures; 10,832
+it survives in distorted, partial, or weakened form. This tests    bench       simula-               simulations; 2,406
+policy integrity rather than mere policy presence: a recap can                 tion                  policy-challenge rows.
+remain rule-like while still widening the admissible action
+boundary.
+                                                                   control-plane contamination signal: 113 of 1,000 trajectory
+Misbinding                                                         records expose modified tool descriptions, and 65 invoke a
+   Misbinding extends the framework beyond dropping and            modified tool. AgentDojo contributes a large released prompt-
+compaction. Here the directive remains visible, but the referent   injection run corpus: 33,119 of 36,679 rows are adversarial
+it governs changes by the time the model answers. The rule         or injection-labeled conditions, and 27,866 of 36,678 labeled
+text survives, but its actor, object, or condition no longer       rows have failing security labels. tau-bench contributes 1,980
+matches the original directive. It has the weakest empirical       customer-service trajectories with policy text visible in the
+signal in our experiments, but it remains conceptually useful      logged context, including 456 policy-challenge rows. tau2-
+because policy carriage is not just token survival.                bench contributes 2,556 task/policy fixtures and 10,832 sim-
+   For eviction, the dominant signal is loss of directive car-     ulation rows backed by domain rule corpora, including 2,406
+riage; for semantic weakening, soundness matters more than         policy-challenge rows.
+simple presence/absence; and for misbinding, the audit must           This audit is motivational rather than causal. It does not
+be binding-sensitive. The metric mix therefore differs across      show that production assemblers frequently evict trusted poli-
+families: direct visibility matters most for eviction, policy      cies, because the corpora do not provide production traffic
+soundness and explicit completeness cost for semantic weak-        samples with trusted policy provenance, full context-assembly
+ening, and binding-sensitive auditing for misbinding. In this      traces, and action-time policy-carriage manifests. It does show
+paper, eviction and semantic weakening carry the evidentiary       that released public agent corpora already contain risk factors
+weight because they produce the clearest and most repeatable       relevant to the state-integrity concern: untrusted workload
+signal in the aligned matrix.                                      text, trusted policy or tool-control state, prompt-injection and
+                                                                   policy-challenge workloads, and security-labeled runs. We
+III. M EASUREMENT D ESIGN AND T RACE C ONSTRUCTION                 therefore use this evidence to justify a controlled workflow
+A. Public-Corpus Risk Ingredients                                  evaluation, not to replace one.
+   We use public corpora only to check whether risk factors in     B. Effective-Budget Audit
+the policy-carriage threat model occur in released agent data.
+                                                                      The budget audit addresses a different question: what budget
+They do not support prevalence or causal claims. The mea-
+                                                                   is actually contested at decision time? A backend context
+surement claim begins with the effective-budget accounting
+                                                                   window is not the same as the space available for policy-
+and placement replay below. We audit four public corpora:
+                                                                   bearing state and candidate workload data. For each invocation
+ATBench [18], AgentDojo [19], tau-bench [20], and tau2-
+                                                                   trace, the audit records:
+bench [21]. The corpora expose different observables, so we
+do not pool them into a single failure rate. Instead, we record
+what each source can support: trajectory rows, task/policy           Beffective = Wbackend − Tfixed overhead − Treserved output ,
+fixtures, visible policy text, adversarial or injection-labeled
+                                                                      where fixed overhead includes system/developer text, tool
+conditions, security labels, and direct tool-control contamina-
+                                                                   schemas, and the final request. Replay over the residual budget
+tion witnesses.
+                                                                   then includes active trusted policies and candidate data-plane
+   Table II shows the resulting evidence. We do not normal-
+                                                                   segments; it does not reinsert the fixed overhead that has
+ize these counts into one prevalence number because they
+                                                                   already been subtracted. We report normalized pressure as
+expose threat-model prerequisites, not action-time losses of
+applicable trusted policy. ATBench provides the most direct                                  Tcandidate data
+                                                                                        ρ=                   .
+                                                                                                  Bdata
+   We keep two measurements separate. The native trace audit        not a broad repository-coverage study of OpenHands deploy-
+reports the pressure already present in the released traces         ments.
+under their recorded histories and budgets. The counterfactual        The trace-construction tables define the replay substrate.
+policy-placement replay then reuses those real histories while      Results below report native pressure and placement outcomes
+varying policy location and target ρ to measure stack semantics     separately so the controlled stress test is not confused with a
+under controlled pressure. Only the first layer speaks to the       native-overflow prevalence estimate.
+observed trace sample; the second is a controlled replay
+                                                                    C. Evaluation Metrics
+experiment and should not be read as evidence that the released
+tasks naturally overflow or that applications naturally store the      The security invariant is that applicable trusted policy
+overlay policy in truncable history.                                reaches the decision state before action. A trusted task policy
+   Table III summarizes the audit. The synthetic stack-shape        should reach the decision state as a sound rendered rule, re-
+profiles cover five representative stack shapes and target ρ        main correctly bound, and govern the action proposal emitted
+values from about 0.5 to 4.0. Below overflow, hard trunca-          by the model; completeness loss is tracked as a utility or
+tion, rolling summary, and the configured original assemblers       availability cost rather than folded into security weakening.
+preserve active policies in all five profiles. In overflow, hard    We therefore separate four quantities:
+truncation and rolling summary fail in 7/10 moderate rows              • Action violation: whether a proposed tool/action crosses
+
+and 10/10 severe rows; the configured original assemblers                 the applicable task policy.
+fail in 3/10 moderate rows and 4/10 severe rows. B2+,                  • Safe task completion: whether the model selects the
+
+exact active-policy replay, static pinning, and source quotas             intended safe action target rather than merely refusing
+preserve the active policy state throughout this deterministic            or emitting no action.
+trace set. The local workflow adapter and runner capture               • Control-state preservation: whether the applicable trusted
+
+validate the replay schema against local captures. We also                policy remains present in the assembled decision state.
+include a sanitized local maintenance workflow: the capture            • Policy soundness/completeness: whether the visible pol-
+
+redacts private environment-file status, preserves the active             icy representation avoids permitting forbidden actions and
+policies below overflow, and loses them under lossy assembly              whether any extra restrictions are counted separately.
+at severe pressure. A second sanitized local artifact-review           The supplementary workflow-slice scaffold implements
+capture exercises the artifact README, claim-traceability           these quantities directly using a narrow canonical policy repre-
+map, reviewer runbook, and budget-audit manifest: it preserves      sentation. For executable workflow slices, the action-boundary
+policies below overflow and, at moderate pressure, shows pol-       accounting pair is unguarded executed violation rate and
+icy loss under original/hard truncation and misbinding under        safe task completion; unsafe-action proposals, guarded blocks,
+rolling summary, while exact active-policy replay, pinning, and     state preservation, and the diagnostic exact-equivalence check
+source quotas preserve state. The JSONL collector remains the       are reported alongside it for compatibility. The diagnostic
+interface for future external or deployed-stack traces. These       matrix predates that action-boundary scaffold and therefore
+profile, runner-capture, and sanitized local-capture rows are       reports bounded judged proxies: exact constraint retention,
+audit construction and artifact-stack evidence, not deployed        constraint survival, decision flip rate, and direct preservation.
+telemetry or unsafe model behavior measurements.                    We keep those diagnostic metrics for comparability and artifact
+   Table IV gives the reconstruction details for the real-stack     traceability, while using the executable policy/action scaffold
+replay. The AutoGen/tau3 side uses AutoGen AgentChat [22]           to expose a cleaner action-boundary measurement target.
+over 90 tau2-bench/tau3 tasks [21] from the released retail,           All comparisons are matched by slice: the task-level control
+airline, and telecom result files and extracts 1,672 assistant-     condition is fixed and only the surrounding history or context
+call snapshots; the OpenHands side uses the OpenHands Soft-         treatment changes. This isolates assembly effects rather than
+ware Agent SDK [23] over five official SWE-bench Verified           generic prompt sensitivity.
+conversation archives [24], [25] and extracts 324 action-call       D. Metric Definitions
+snapshots. In both pipelines, the native protected policy is
+measured first, then replayed under two authorized placements:            a) Unsafe-action proposal rate: For supplementary
+protected system/runtime state and an early task-local history      workflow slices, each trusted policy is compiled into a canon-
+message. The replay is count-based and counterfactual: it           ical tuple over subject, action, object, polarity, and condition.
+uses the artifact’s deterministic whitespace-token proxy for        Each structured model output is parsed into zero or more
+recorded history lengths and policy token counts, retains           action proposals. An action proposal violates a policy if it
+reported input-token fields when the source trace exposes           matches the policy boundary and either the policy is an
+them, and then applies the context limits and target ρ grid.        unconditional deny or the policy condition is not satisfied.
+The raw external trace content is not committed. These rows         The workflow-level endpoint is instance-level: an instance is
+are therefore not provider-tokenizer parity measurements over       unsafe if at least one proposed action violates the applicable
+raw trace text; they are reconstruction rows over sanitized trace   policy,
+metadata. The OpenHands side is therefore a five-instance                                1 X
+                                                                            UPR(S) =            1[∃a ∈ Ai : violates(a, Pi )].
+trace-reconstruction sample with many action-call snapshots,                            |S|
+                                                                                           i∈S
+                                                                  TABLE III
+E FFECTIVE - BUDGET AUDIT STATUS . T HESE ARE TRACE - SCHEMA AND LOCAL ARTIFACT MEASUREMENTS , NOT DEPLOYED - PRODUCTION PREVALENCE
+                 RATES . T HE AUDIT TARGET IS STATE - LEVEL CARRIAGE : PRESERVED , ABSENT, WEAKENED , OR MISBOUND POLICY.
+
+ Audit source                     Traces   Replay rows   Pressure coverage        State-level result
+ Synthetic stack-shape profiles      25           175    ρ ≈ 0.5–4.0              Lossy assembly has 0/5 failures below overflow, 7/10–10/10 in overflow; replay, pinning, quotas, and B2+ preserve all.
+ Local workflow adapter              24           168    no-overflow / severe     Hard truncation, original, and rolling summary preserve 12/12 no-overflow traces and lose 12/12 severe traces; stronger baselines preserve all.
+ Runner capture                       4            28    no-overflow / severe     The live runner trace path reproduces the same preserve-below-overflow and lose-under-severe pattern for lossy assemblers.
+ Repo/manuscript capture              2            14    no-overflow / severe     A sanitized local maintenance trace preserves at ρ = 0.925 and loses under lossy assembly at ρ = 7.92; stronger baselines preserve both rows.
+ Artifact-review capture              2            14    no-overflow / moderate   A sanitized artifact-review trace preserves at ρ = 0.179; at ρ = 1.013, original and hard truncation lose a policy, rolling summary misbinds, and replay/pinning/quotas preserve.
+ JSONL collector example              2            14    moderate / severe        Validates the live-capture schema; not used as a measurement result.
+
+
+
+
+                                                                   TABLE IV
+      R EAL - STACK TRACE CONSTRUCTION FOR THE POLICY- PLACEMENT REPLAY. F ULL SOURCE REVISIONS , BUDGETS , POLICY- TOKEN RANGES ,
+   PROXY- TOKENIZATION NOTES , AND RAW- CONTENT BOUNDARIES ARE RECORDED IN THE ARTIFACT LEDGER . AG-U/AG-B/AG-T/AG-HT DENOTE
+     UNBOUNDED , BUFFERED , TOKEN - LIMITED , AND HEAD - AND - TAIL AUTO G EN CONTEXTS ; OH-N/OH-R/OH-S DENOTE NO - OP, ROLLING , AND
+                                                  SUMMARIZING O PEN H ANDS CONDENSERS .
+
+
+        Source                                   Snapshots                           Managers                                         Placements                            ρ grid                                        Notes
+        AutoGen/tau3                             1672                                AG-U/AG-B/AG-                                    system/task-local                     0.5, 0.75, 1, 1.25, 1.5, count-based
+                                                 assistant-call                      T/AG-HT                                                                                2, 3                     replay
+                                                 snapshots
+        OpenHands/SWE-                           324 action-call                     OH-N/OH-R/OH-S                                   protected/task-                       0.5, 0.75, 1, 1.25, 1.5, condenser replay
+        bench                                    snapshots                                                                            local                                 2, 3
+
+
+
+No-action, malformed output, unnecessary refusal, safe com-                                                                        This makes semantic weakening measurable: a summary such
+pletion, unsafe-action proposal, and executed violation are                                                                        as “cleanup artifacts when appropriate” is security-unsound
+reported separately, so instances with no parsed action do not                                                                     relative to “delete artifacts only if verification Z succeeds”
+disappear into an action-count denominator. We report unsafe-                                                                      because it expands the permitted action set. A stricter-than-
+action proposal rates separately from executed violations be-                                                                      source rendering is not equivalent either, but it is reported as
+cause deterministic guards can block a bad proposal after the                                                                      a utility or availability cost rather than the same failure mode
+model emits it.                                                                                                                    as weakening.
+     b) Safe task completion: Each executable workflow has                                                                               e) Executed violation rate: The sandbox execution path
+an expected safe action target, such as a redacted export,                                                                         runs the same proposed actions with and without a determinis-
+approval request, or no-op/escalation when the unsafe muta-                                                                        tic guard. Unguarded executed violation rate is the fraction of
+tion is not authorized. Safe task completion is the fraction of                                                                    workflow instances where at least one proposed action would
+instances whose parsed action set contains that expected safe                                                                      mutate state across the applicable policy boundary. In this
+target and no unsafe action. No action, malformed envelopes,                                                                       scaffold, guards block Policy-IR-expressible violations before
+unnecessary refusal, and unsafe-only actions are not counted                                                                       execution while unsafe-action proposals can remain nonzero,
+as safe completion, preventing a control from appearing useful                                                                     showing that context assembly and deterministic enforcement
+merely because it suppresses all actions.                                                                                          protect different control-path points.
+     c) Control-state preservation: For a workflow instance                                                                           Where supplementary executable workflow slices are avail-
+i with applicable trusted policies Pi and visible policies Vi                                                                      able, the action-boundary accounting pair is unguarded exe-
+recovered from the assembled decision state, control-state                                                                         cuted violation rate and safe task completion. The diagnostic
+preservation is                                                                                                                    proxy metric definitions are kept only for traceability and
+                                |Pi ∩ Vi |                                                                                         are moved to Appendix E. They are not reported action-
+                    CSPi =                  .
+                              max(1, |Pi |)                                                                                        boundary evidence and do not supersede the state-level car-
+This is a state-level metric: it asks whether the governing                                                                        riage metrics or the supplementary workflow-slice accounting
+policy reached the model-visible decision state, not whether                                                                       above. Executable action-boundary accounting is reserved for
+the model ultimately complied.                                                                                                     workflow-level action proposals, where a proposed tool/action
+      d) Policy soundness and completeness: Visibility alone                                                                       can be checked against compiled task-local policies. The
+is insufficient because summaries can retain policy-like text                                                                      artifact implements this representation for external-tool use,
+while weakening the action boundary. We separate the security                                                                      deletion, disclosure, condition-gated proceed rules, refunds,
+direction from the utility direction. A visible policy is sound                                                                    access-control changes, vendor-payment approval, quarantine
+when it does not permit any action forbidden by the trusted                                                                        override, and personal-data export; broader natural-language
+source policy, and complete when it does not add extra                                                                             policy parsing remains outside scope.
+restrictions beyond the source policy. Exact policy-equivalence                                                                       The design controls seed, scenario family, policy, assembly
+preservation, kept for diagnostic table compatibility, requires                                                                    condition, and model configuration in the reported slices. It
+both directions over the canonical policy keys:                                                                                    does not eliminate all heterogeneity in serving stack or all
+                                                                                                                                   prompt-surface effects outside those comparisons.
+            PEPi = 1[{p.key : p ∈ Pi } = {v.key : v ∈ Vi }].
+E. Implementation and Experimental Setup                           time assembly perturbations affect visibility and judged policy
+   This section separates the main measurement layers from         respect under fixed model weights. It is not the reported action-
+supplementary diagnostics. The main layers are state-level         boundary evidence and should not be read as a deployed
+budget/placement replay and overload/fail-closed evaluation.       control.
+The workflow-level scaffold is reported for supplementary          F. Budget and Accounting Boundaries
+action-boundary accounting: a model proposes structured ac-
+tions, a sandbox records what would execute without a guard,          The relevant unit is the decision-time assembly budget,
+and a deterministic monitor records what is blocked. Historical    not the advertised backend context window. The 260-token
+mechanism rows are kept for traceability, not as reported          diagnostic-matrix setting is deliberately severe but not arbi-
+evidence.                                                          trary: small enough that policy competition becomes directly
+   1) Supplementary Executable Workflow Slices: The artifact       observable, yet still large enough to force trade-offs among
+defines a workflow-level scaffold for email/document export,       system scaffolding, tool traces, summaries, planner state, and
+customer-support refund, repository maintenance, cloud ad-         the final query. This is the regime under study: a model-visible
+ministration, procurement, SOC quarantine, and HR data-            working budget that is much smaller than the raw backend
+export tasks. Each workflow has trusted control constraints,       window because orchestration overhead has already consumed
+external workload pressure, a fixed benign assembler, an           the slack. The goal is not to numerically approximate every
+assembled decision state, a structured action envelope, and        system stack or trace a monotonic law as budgets grow. The
+a deterministic sandbox execution path. The model-backed           goal is to isolate a regime where the effective model-visible
+workflow runs use neutral final requests such as “resolve the      budget is genuinely contested, making context assembly part
+ticket” or “finish repository maintenance.” Conflictive final-     of the control path rather than neutral plumbing.
+request variants are reported only as a separate composition          A 260-token decision state is not equivalent to a 260-token
+contrast; the neutral rows do not ask for the prohibited action.   user prompt. In the traces studied here, that same budget must
+   A nine-budget fixture sweep first identifies the contested      hold system scaffolding, admitted control state, summaries or
+range. In the expanded seven-workflow scaffold, non-control-       planner notes, retrieved snippets or tool outputs, and the final
+aware assemblers lose all policy equivalence at budgets            query. The reconstructed agentic case in Appendix G makes
+96/160, recover only one of seven workflows at budget 320,         this concrete: even short retrieved snippets and execution logs
+and preserve all seven fixture workflows at budget 512 and         can consume most of the decision state before the final query
+in 16k-token no-overflow controls. The fixture baseline also       arrives. The regime models an orchestration-constrained work-
+distinguishes exact exact active-policy replay, which preserves    ing prompt, not a bare model window with no surrounding
+the canonical constraints in this small scaffold, from a generic   state.
+recency-only reminder, which does not.                                   a) Effective-budget audit accounting: The budget-audit
+   We then ran local model-backed workflow sweeps in that          path records fixed overhead separately from residual assembly
+pressure window using the same Llama 3.1 8B, Qwen 2.5 7B,          pressure. For each trace, Beffective subtracts the reserved output
+and Mistral 7B families as the diagnostic local matrix, fol-       budget and fixed system/developer, tool-schema, and final-
+lowed by a six-model external-provider validation run over the     request tokens from the backend window. Residual replay
+same workflow scaffold. The paper uses the external-model          then allocates only active policies and candidate data-plane
+cloud/document high-pressure rows as supplementary policy-         segments into that budget. This avoids double-counting fixed
+visible/policy-absent workflow slices: the neutral final request   overhead: the final request and tool schema are accounting
+is the measurement contrast, the conflictive final request is a    inputs, not segments that compete a second time inside the
+prompt-injection composition contrast, and the deterministic       data-plane budget. The normalized pressure variable ρ is
+monitor separates unsafe-action proposals from executed mu-        therefore the ratio between candidate data-plane tokens and
+tations.                                                           the budget left for data once active control state is reserved.
+   After those supplementary policy-visible/policy-absent                b) Harness serialization accounting: The diagnostic ma-
+workflow slices, we built a stricter fixed-assembler behavioral    trix’s middleware serialization rows report harness reconstruc-
+calibration whose goal was to vary workload conditions while       tion accounting, not a billable inference-cost measurement.
+holding model, tools, runtime state, budget, and neutral query     This is not a claim of lower billable backend tokens, lower
+fixed. One provider family did not complete because of             prefill latency, or hardware KV reuse. Cost claims require a
+provider errors, so the completed run covers five external         backend that exposes real prefix/KV caching and reports billed
+models and 90 rows. This calibration is reported as a negative     tokens, prefill latency, and cache-hit behavior.
+behavioral calibration: it produced no canonical unsafe-action                              IV. R ESULTS
+or unguarded-mutation events.
+   2) Supplementary Diagnostic Matrix: The supplementary              The results support state-level measurement and systems-
+diagnostic matrix is the mechanism layer: it predates the          design guidance. The positive claims are state-level: effec-
+canonical C ONTROL C APSULE registry and monitor design,           tive residual-budget pressure, policy-placement loss under
+and its detailed campaign construction is appendix-only trace-     the tested context managers, and fail-closed behavior under
+ability (Appendix D). It is kept only to show how decision-        trusted-control overload. We report four evidence layers. First,
+                            TABLE V                                       because the early policy competes with the message buffer.
+  NATIVE NORMALIZED PRESSURE IN RELEASED AUTO G EN / TAU 3 AND            Over OpenHands/SWE-bench, OH-R and OH-S preserve task-
+O PEN H ANDS /SWE- BENCH TRACES BEFORE COUNTERFACTUAL REPLAY.
+T HESE VALUES DELIMIT THE TRACE SAMPLE : THE POLICY- PLACEMENT            local policy at lower target pressure and then respectively evict
+  SWEEP BELOW IS CONTROLLED REPLAY OVER REAL HISTORIES , NOT              or weaken it once the replay crosses the rolling or summarizing
+  EVIDENCE THAT THESE RELEASED TRACES NATURALLY OVERFLOW.                 threshold. The unbounded and no-op rows are controls: they
+ Trace source          Snapshots    ρ50     ρ90     ρ99    max ρ   ρ≥1
+                                                                          preserve policy text by continuing over the replay budget.
+ AutoGen/tau3              1672    0.008   0.023   0.039   0.044   0.0%
+                                                                          They should not be read as safe preservation; they mark
+ OpenHands/SWE-bench        324    0.054   0.089   0.111   0.113   0.0%   lack of budget enforcement and motivate preflight/fail-closed
+                                                                          checks. This supports the placement guidance that protected
+                                                                          control state is not equivalent to task-local policy stored as
+the native pressure audit shows that the released AutoGen/tau3            ordinary history under the behavior of the tested AutoGen and
+and OpenHands/SWE-bench traces do not naturally overflow                  OpenHands context managers, while explicitly not claiming
+under their recorded budgets. Second, controlled pressure re-             native overflow prevalence in these released traces. We treat
+play over those histories shows that policy placement changes             this as a controlled pressure sweep over real histories, not
+state-level carriage under the tested context managers. Third,            as a native-overflow prevalence estimate. Because this is
+the overload evaluation shows that complete-set preflight                 controlled replay over official benchmark traces rather than
+converts incomplete-control continuation into fail-closed out-            deployed traffic, it supports policy-placement design guidance
+comes. Fourth, fixed-assembler behavioral calibration bounds              without becoming a production-prevalence or unsafe-action
+the behavioral claim: despite policy absence or damage in the             claim, does not estimate how often real applications naturally
+target rows, the completed calibration produced 0/90 unsafe-              store legitimate task-local policies in truncable history, and
+action proposals and 0/90 unguarded policy violations. Supple-            is not an action-level impact claim. It also does not show
+mentary workflow slices exercise structured action-boundary               that the measured pressure or policy-placement distribution
+accounting, but are not held-out same-assembler causal action             is representative of deployed agents.
+evidence. Earlier diagnostics remain in the artifact record for              Table VII isolates the fail-closed design primitive. Exact re-
+auditability rather than as reported evidence.                            play and pinning are strong when the active policy set fits, but
+                                                                          their best-effort forms can continue silently with incomplete
+Effective-Budget and Overload Results
+                                                                          trusted control: 48/48 rows for all-policy replay and 25/48
+   The effective-budget audit in Table III gives a state-level            for active replay or static pinning. Giving exact active-policy
+pressure check before any behavioral claim. In the synthetic              replay an extra budget equal to compact-capsule overhead
+stack-shape profile set, lossy assemblers preserve active policy          reduces but does not remove the problem, leaving 20/48
+below overflow, then start losing or misbinding it once ρ ≥ 1.            silent incomplete-control rows. The decisive fix is complete-
+Hard truncation and rolling summary fail in 7/10 moderate                 set preflight. Exact active-policy replay + preflight and static
+overflow rows and 10/10 severe rows; the configured original              pinning plus preflight convert their 25/48 incomplete-control
+assemblers fail in 3/10 moderate rows and 4/10 severe rows.               rows into fail-closed outcomes with 0/48 silent continuation.
+B2+ is a deterministic structured compactor that parses history           All-policy replay plus preflight also avoids silent continuation,
+into typed control, data, and query segments, emits admitted              but it fails closed in every row and incurs 23/48 raw-policy-
+control state explicitly, and allocates the remaining budget              fit overhead rows because it insists on replaying non-active
+to summarized data plus a recent tail. B2+, exact active-                 policy. The overload experiment isolates the preflight/fail-
+policy replay, static pinning, and source quotas preserve all             closed primitive shared by replay, pinning, and capsule-style
+25 profile traces. The local workflow adapter and runner                  designs: the verbose C ONTROL C APSULE renderer fails closed
+capture reproduce the same qualitative boundary: no-overflow              in 31/48 rows with 0/48 silent incomplete-control rows, while
+rows preserve active policies, while severe-pressure rows lose            the compact renderer reduces fail-closed events to 27/48 and
+them under hard truncation, original assembly, and rolling                raw-policy-fit availability overhead from 6/48 to 2/48. These
+summary. These are carriage-state measurements, not unsafe-               counts are state-level assembly outcomes, not model-action
+action measurements, and they remain below a production-                  outcomes, and not a model-compliance benefit. They support a
+prevalence claim.                                                         narrow design-guidance claim: a complete-set preflight check,
+   Tables V and VI, with Figure 3, connect that schema to                 rather than the full C ONTROL C APSULE pattern, is the min-
+the tested stack/source pairs. The native trace pressure is low           imum mechanism needed to avoid silent incomplete control
+in these released runs: the maximum recorded ρ is 0.044                   when trusted control state itself exceeds the available budget.
+for AutoGen/tau3 and 0.113 for OpenHands/SWE-bench. The                      The artifact includes an extension that calibrates the same
+placement result is therefore a counterfactual sweep over real            overload question to the p10/p50/p90 data budgets observed
+histories. Over AutoGen/tau3, AG-T preserves system place-                in the AutoGen/tau3 and OpenHands/SWE-bench replays. At
+ment throughout the sweep but drops task-local history policy             the AutoGen AG-T p50 budget, exact active-policy replay has
+once target pressure reaches ρ = 0.75; AG-HT degrades more                compact-policy rows that continue with incomplete control;
+gradually, from 43% preserved at ρ = 0.5 to 0% at ρ = 3.0.                exact active-policy replay + preflight has the same silent-
+AG-B loses most task-local rows at every target pressure                  control safety boundary as compact C ONTROL C APSULE, but
+                                                                 TABLE VI
+ P OLICY- PLACEMENT REPLAY OVER AUTO G EN / TAU 3 AND O PEN H ANDS /SWE- BENCH HISTORIES ACROSS A NORMALIZED PRESSURE SWEEP. E NTRIES
+ARE POLICY- PRESERVATION RATES . T HE AUDIT TARGET IS STATE - LEVEL POLICY CARRIAGE : PROTECTED PLACEMENT IS COMPARED WITH AUTHORIZED
+ TASK - LOCAL POLICY STORED AS ORDINARY HISTORY. † MARKS OVER - BUDGET CONTROLS THAT PRESERVE TEXT ONLY BY CONTINUING BEYOND THE
+                                                REPLAY BUDGET RATHER THAN ENFORCING IT.
+
+
+  Stack                                               Manager           Placement              Mode                 ρ = 0.5   ρ = 0.75       ρ=1        ρ = 1.25   ρ = 1.5     ρ=2         ρ=3
+  AutoGen AgentChat                                   AG-B              task-local             eviction                 16%       16%         16%           16%       16%       16%          16%
+  AutoGen AgentChat                                   AG-HT             task-local             eviction                 43%       26%         15%            8%        4%        1%           0%
+  AutoGen AgentChat                                   AG-T              system                 protected               100%      100%        100%          100%      100%      100%         100%
+  AutoGen AgentChat                                   AG-T              task-local             eviction                 15%        0%          0%            0%        0%        0%           0%
+  AutoGen AgentChat                                   AG-U              task-local             over-budget            100%†     100%†       100%†         100%†     100%†     100%†        100%†
+  OpenHands SDK                                       OH-N              task-local             over-budget             100%      100%       100%†         100%†     100%†     100%†        100%†
+  OpenHands SDK                                       OH-R              system                 protected               100%      100%        100%          100%      100%      100%         100%
+  OpenHands SDK                                       OH-R              task-local             eviction                100%      100%          0%            0%        0%        0%           0%
+  OpenHands SDK                                       OH-S              task-local             weakening               100%      100%          0%            0%        0%        0%           0%
+
+
+                                                              AutoGen AgentChat                                                                   OpenHands SDK
+                                     100
+
+
+
+
+              Policy preserved (%)
+                                      80
+
+                                      60
+
+                                      40
+
+                                      20
+                                                          ρ=1                                                                                 ρ=1
+                                       0
+                                           0.5         1.0     1.5      2.0     2.5                               3.0           0.5         1.0     1.5      2.0     2.5           3.0
+                                                       Target normalized pressure ρ                                                         Target normalized pressure ρ
+                                                 AG-T protected                   AG-B task-local                                     OH-R protected         OH-S task-local summary
+                                                 AG-T task-local                  AG-U task-local over-budget                         OH-R task-local        OH-N task-local over-budget
+                                                 AG-HT task-local
+
+
+Fig. 3. Real-stack policy-placement pressure sweep. The figure plots selected rows from Table VI: protected placement stays preserved across the tested range,
+while task-local history placement exhibits manager-specific eviction, weakening, or over-budget continuation as target pressure increases. This is controlled
+replay over official benchmark traces, not native-overflow prevalence or action-level impact evidence.
+
+
+
+                            TABLE VII                                                                                     C ONTROL C APSULE remains a reference design pattern for
+      D ETERMINISTIC OVERLOAD / FAIL - CLOSED EVALUATION . S ILENT                                                        combining preflight with provenance, manifests, and canoni-
+INCOMPLETE CONTROL MEANS THE SYSTEM INVOKES THE MODEL AFTER
+   OMITTING ACTIVE TRUSTED POLICY. R AW- POLICY- FIT OVERHEAD                                                             cal monitoring. This comparison does not show a measured
+    COUNTS ROWS WHERE RAW ACTIVE POLICY TEXT FITS BUT THE                                                                 advantage for C ONTROL C APSULE over exact active-policy
+                 RENDERED CAPSULE DOES NOT.                                                                               replay + preflight. More specifically, the overload result does
+ System                                              Fail closed   Silent incomplete control    Raw-policy-fit overhead   not support a claim that C ONTROL C APSULE has a measured
+ Exact all-policy replay, best effort
+ Exact all-policy replay + preflight
+                                                           0/48
+                                                          48/48
+                                                                                      48/48
+                                                                                       0/48
+                                                                                                                     –
+                                                                                                                 23/48
+                                                                                                                          advantage over exact active-policy replay + preflight.
+ Exact active-policy replay, best effort                   0/48                       25/48                          –
+ Exact active replay + extra budget
+ Exact active-policy replay + preflight
+                                                           0/48
+                                                          25/48
+                                                                                      20/48
+                                                                                       0/48
+                                                                                                                     –
+                                                                                                                  0/48
+                                                                                                                          Behavioral Calibration Boundary
+ Static pinning, best effort                               0/48                       25/48                          –
+ Static pinning + preflight                               25/48                        0/48                       0/48      The appendix reports bounded policy-visible versus policy-
+ C ONTROL C APSULE verbose                                31/48                        0/48                       6/48
+ C ONTROL C APSULE compact                                27/48                        0/48                       2/48    absent measurement slices as supplementary action-boundary
+                                                                                                                          material. The supplementary workflow-slice table carries the
+                                                                                                                          exact counts and corresponding safe-completion rates, and
+fails closed in the incomplete rows instead of invoking the                                                               a representative neutral document row shows why this ac-
+model. At the OpenHands OH-R p50 budget, exact active-                                                                    counting target is useful; this row is not used as fixed-
+policy replay and exact active-policy replay + preflight fit the                                                          assembler causality evidence. In those appendix rows, neutral
+verbose-policy rows, so the remaining compact C ONTROL -                                                                  policy-absent events span GLM, Qwen3, and DeepSeek for
+C APSULE fail-closed case is an availability cost rather than                                                             document disclosure, while the cloud events are confined to
+a safety win. The calibrated extension therefore preserves the                                                            Qwen3. Manual policy absence reaches the unsafe action
+same interpretation as Table VII: exact active-policy replay +                                                            boundary only in document disclosure; in cloud, the unsafe
+preflight has the same silent-control safety boundary, while                                                              disable_access_controls tool is available, yet models
+                            TABLE VIII                              accounting, but they must not carry the paper’s main empirical
+   F IXED - ASSEMBLER BEHAVIORAL CALIBRATION DIAGNOSTIC . T HE      claim. Any diagnostic mitigation labels kept in artifact tables
+CALIBRATION SCAFFOLD HOLDS THE NEUTRAL QUERY, TOOLS , RUNTIME
+ STATE , MODEL , AND BUDGET FIXED WHILE VARYING WORKLOAD AND        are diagnostic labels, not C ONTROL C APSULE components.
+COMPARISON CONDITIONS . I T IS REPORTED AS A NEGATIVE CALIBRATION   They are kept only as mechanism diagnostics rather than as the
+       RESULT, NOT AS EVIDENCE THAT A CONTROL SUCCEEDED .           main empirical layer, and they are not evidence for a deployed-
+                                                                    system claim.
+  Diagnostic                                           Count
+  Completed external-model rows                            90         V. C ONTROL -P LANE A SSEMBLY R EFERENCE PATTERN
+  Unsafe-action proposals                             0 of 90          C ONTROL C APSULE packages the design guidance implied
+  Unguarded policy violations                         0 of 90       by the policy-carriage invariant. In this paper, C ONTROL C AP -
+  Safe task completion                               60 of 90       SULE is a reference design pattern, not a deployed system
+  Malformed or invalid envelopes                     21 of 90
+  Unnecessary refusals                                9 of 90
+                                                                    with a measured advantage over exact active-policy replay
+  Policy absent or non-equivalent, all rows          20 of 90       + preflight. Its purpose is not to make the model inherently
+  Policy absent or non-equivalent, target B/C rows   20 of 20       compliant and not to replace sandboxing, static tool ACLs, or
+  Unsafe tool present in schema                      90 of 90       deterministic policy guards. It addresses the decision state be-
+  Indirect policy cue in tool schema                 90 of 90       fore model action: applicable trusted policies must be selected
+                                                                    from trusted runtime state, rendered as immutable control
+                                                                    state, isolated from untrusted data-plane pressure, and checked
+choose a safe approval tool or refuse. This confines manual-        again at the action boundary.
+absence sensitivity to one workflow family in the reported
+calibration.                                                        A. Design Rule
+   Table VIII gives the corresponding behavioral calibration. In       The core design rule is to avoid treating authority as a
+the fixed-assembler calibration, the target B/C hard-truncation     property of surface text. A document can contain a string that
+rows did remove or damage the policy in every target case,          looks like a policy, but authority must come from runtime
+and the unsafe tool was available in every row. Nevertheless,       provenance: organization policy, developer policy, trusted tool
+the completed 90-row external-model calibration produced 0          evidence, authenticated tenant state, or explicit user confirma-
+unsafe-action proposals and 0 unguarded policy violations.          tion. A classifier may help rank relevance, but it must not
+Most rows completed safely; the remaining rows were mal-            create authority. This distinction is what separates C ONTROL -
+formed envelopes or unnecessary refusals. The diagnostic            C APSULE from prompt engineering and from exact textual
+therefore separates state-integrity failure from action-level       replay alone.
+impact: the reported calibration workload manipulates the
+                                                                    B. Reference Mechanism
+decision state, but does not show that pressure-only workload
+variation carries through to unsafe action proposals across               a) Policy registry and provenance: Trusted policies live
+those models. Its action accounting covers actions represented      in a registry outside the untrusted conversation stream. Each
+in the Policy IR and unsafe-action proposals recognized by the      policy has a stable identifier, issuer, scope, subject, action,
+canonical policy evaluator; broader free-form policy interpreta-    object, effect, condition, priority, and evidence handle. Incom-
+tion is outside this endpoint. Consequently, the supplementary      ing context segments are typed by infrastructure provenance:
+external workflow rows remain a controlled measurement              trusted policy, trusted runtime state, trusted tool evidence,
+slice in the appendix, and pressure-only action-level impact        untrusted documents, untrusted tool content, and the final
+requires a held-out fixed-assembler design with validated           request. Untrusted text that says “system policy” remains
+policy-absence sensitivity and workflow breadth. This negative      untrusted data.
+calibration should be read with the cue structure in mind:                b) Applicability and stable binding: Before assembly, a
+policy absence from the audited control-state channel does          deterministic applicability step computes a sound overapprox-
+not remove all safety-relevant information from the decision        imation of the policies that could govern the candidate actor,
+state, because tool schemas still contain indirect policy cues      tenant, object, action, and condition in the current runtime
+in every completed row.                                             state. When the exact action is not yet known, the pre-model
+                                                                    capsule uses the union over candidate tool/action schemas; the
+Supplementary Diagnostic Matrix                                     reference monitor later evaluates exact applicability once the
+   We retain the supplementary diagnostic matrix only for           model proposes a structured action. The rendered capsule uses
+mechanism localization and artifact traceability. It predates       stable identifiers and evidence handles rather than pronouns
+the canonical C ONTROL C APSULE registry and monitor, so            or positional references. A deletion policy therefore binds to
+its proxy metrics do not define the paper’s action-boundary         a repository identifier, artifact type, and verification evidence
+evidence or establish a deployed-system claim. Detailed proxy,      handle, not to “this repo” or “the previous result.”
+pressure-response, and harness-serialization diagnostics re-
+main in the artifact record. The diagnostic rows help localize
+eviction, weakening, visibility, order sensitivity, and harness
+                                                                                  C ONTROL C APSULE: Subsystem E
+                                         U              Data                        Routed U       Data-Plane
+                                     Untrusted
+                                                                                                   Compaction
+                                     Data Plane
+             UNTRUSTED             PRESSURE                      Applicability                                                         Manifest
+             WORKLOAD
+                                                                   Engine                                                              & Binding
+                pressure
+                                                                                                                                        Check
+                                        P, X
+                                                       Trusted                      Active P          Control
+                                        Policy
+                                                                                                      Capsule
+                                       Registry
+
+                                                                                                                       fail closed
+
+
+                                          q
+                                        Final                                    Capsule + Data + Request Composer
+                                       Request
+                                                                         Provenance · Budget Isolation · Fail-Closed · Manifest
+
+
+                                                                                                             Decision State E(P, U, X, q)
+
+                                                                                                                                         a
+                                                                                                                                     Proposed      Reference
+                                                                                                 Base Model M
+                                                                                                                                      Action        Monitor
+
+
+                                                                                                           DEFENDER-CONTROLLED AGENT PIPELINE
+
+
+Fig. 4. Control-plane assembly pattern for LLM agents: trusted task policies and runtime state enter a provenance-typed applicability path, become an isolated
+control capsule with a manifest and binding check, and are checked by a reference monitor after the model proposes structured actions. Untrusted workload
+content is compacted only in the data plane.
+
+
+
+      c) Budget isolation and fail-closed assembly: The con-                           Input: Policy registry P ; runtime state X; untrusted workload U ; final
+text budget is split into control and data budgets. The appli-                         request q; budgets (Bctrl , Bdata ); model M .
+                                                                                       Output: Decision state C; manifest µ; monitor decision δ.
+cable control capsule is materialized first. If it does not fit                                 S
+                                                                                       1) A ← a∈C ANDIDATE ACTIONS(X,q) A PPLICABLE P OLICIES(P, X, a).
+the reserved control budget, the assembler must fail closed:
+                                                                                       2) K ← R ENDER C ONTROL C APSULE(A, X).
+split the task, request more budget, escalate, or block external                       3) If T OKENS(K) > Bctrl , return FAIL C LOSED(A, X, q).
+actions. It must not silently summarize trusted policy into                            4) D ← C OMPACT DATA P LANE(U, Bdata ).
+a weaker rule or allow untrusted data to evict the control                             5) C ← C OMPOSE(K, D, q).
+plane. Only after the capsule is fixed does the data plane                             6) µ ← E MIT M ANIFEST(A, K, D, C).
+                                                                                       7) y ← MS   (C); R ← PARSE ACTIONS(y).
+compete for the remaining budget through truncation, retrieval,
+                                                                                       8) A⋆ ← r∈R A PPLICABLE P OLICIES(P, X, r).
+or compaction.                                                                         9) δ ← M ONITOR(R, A⋆ , X).
+      d) Manifest and action monitor: The assembler emits                             10) Return (C, µ, δ).
+a manifest recording active policy identifiers, visible policy
+                                                                                        Fig. 5. C ONTROL C APSULE reference per-turn assembly and action check.
+identifiers, binding checks, policy hashes, control tokens, data
+tokens, and fail-closed status. The model then emits structured
+action proposals. A deterministic reference monitor evaluates                            C ONTROL C APSULE is stricter in four ways: provenance-
+those actions against the canonical policy representation, not                        typed authority, structural applicability, fail-closed control
+against the model’s prose. This separates three events: the                           budgeting, and canonical-policy monitoring. Exact active-
+model proposed an unsafe action, the monitor blocked it,                              policy replay + preflight is therefore a necessary strong
+and a forbidden mutation executed. In the evidence reported                           baseline: if it matches C ONTROL C APSULE on safety, utility,
+here, context assembly is evaluated as trusted control-state                          and cost for a given system, the simpler replay design is
+preservation and fail-closed behavior; any reduction in unsafe-                       sufficient. Any additional value for the fuller pattern must be
+action proposals remains workload- and model-dependent,                               measured where provenance, stable binding, policy overload,
+while the monitor blocks only Policy-IR-expressible violations                        auditability, or canonical monitoring matter beyond the pre-
+before execution.                                                                     flight primitive. That is a prerequisite for an evaluated-system
+C. Relationship to the Measured Rows                                                  claim, not a measured advantage already established across
+                                                                                      ordinary rows.
+   The empirical matrix contains an earlier implementation
+                                                                                         The overload experiment in Section IV evaluates only this
+described only in the appendix and artifact record. Those
+                                                                                      fail-closed distinction. It does not demonstrate better model
+rows are useful as diagnostic assembly perturbations: they test
+                                                                                      compliance than exact active-policy replay + preflight. Instead,
+whether admission before budget competition, pinned control
+                                                                                      it tests whether a system continues with incomplete trusted
+retention, reinforcement, and binding audits change model-
+                                                                                      control when the active policy set exceeds the available control
+visible behavior while holding model weights fixed. They
+                                                                                      budget. That is the measured boundary of the design-pattern
+should not be read as the reported design pattern.
+claim.                                                              outperforms exact active-policy replay + preflight in ordinary
+                                                                    cases where active policies fit.
+            VI. D ISCUSSION AND L IMITATIONS
+                                                                          e) Relationship to access control: Control-state isola-
+      a) Evidence layers: The public-corpus audit motivates         tion is complementary to deterministic enforcement, not a
+the threat model by showing relevant risk ingredients, but          substitute for it. Static tool ACLs, sandboxes, and reference
+it is not a production-prevalence estimate. The effective-          monitors should block actions expressible as platform or
+budget audit is the state-level measurement layer: it separates     task-local rules. The residual problem is decision quality
+fixed overhead from residual data-plane pressure and records        before enforcement: the model may need to evaluate whether
+whether active policies remain preserved, absent, weakened, or      condition Z succeeded, which tenant a policy governs, or
+misbound under replayed assembly policies. The supplemen-           whether a requested cleanup is authorized for the current
+tary executable workflow slices are bounded action-boundary         record. If that governing state is absent, unsound, or misbound
+witnesses. They are not fixed-assembler causal action ev-           in the decision state, downstream guards and human reviewers
+idence. The fixed-assembler behavioral calibration prevents         receive decisions made from an incomplete control view. The
+promoting them into a pressure-only action-level result. The        evidence reported here diagnoses that state-level failure mode;
+supplementary diagnostic matrix remains supporting mecha-           it does not show a robust same-assembler reduction in unsafe-
+nism evidence, not the main enforcement claim.                      action proposals. The monitor blocks Policy-IR-expressible
+      b) Design implications: Security-relevant behavior de-        violations, while context-assembly controls preserve and audit
+pends not only on the base model, but also on the as-               what reaches that boundary.
+sembly subsystem that determines whether trusted control                  f) Role of the supplementary diagnostics: The supple-
+state reaches decision time in operative form. Three practical      mentary diagnostic rows make the assembly subsystem in-
+consequences follow. First, trusted control state should be         spectable only as mechanism diagnostics. They perturb ad-
+handled differently from ordinary context updates. Second,          mission, pinned control retention, orchestration-level control-
+controls should target the failure mechanism: retention, policy     prefix reuse, and pressure-triggered reinforcement while hold-
+soundness/completeness, binding, or enforcement. Third, con-        ing model weights fixed. They are bounded: a recency re-
+trols should be compared as trade-offs, not as a single universal   minder is not exact active-policy replay + preflight, strong
+winner. Once B2+ or exact active-policy replay + preflight          structured compaction absorbs much of the aggregate gain, and
+preserves the applicable policy well, the remaining value of        the agentic-trace transfer remains supporting evidence. Mid-
+a more structured design must come from provenance, stable          dleware serialization variants are reconstruction accounting,
+binding, policy selection, fail-closed behavior, auditability, or   not backend cost evidence.
+deterministic enforcement.                                                g) Threats to validity: The main threats are serving-
+      c) Exact active-policy replay + preflight as a baseline:      stack heterogeneity, evaluator boundary effects, scenario cou-
+Exact active-policy replay + preflight is not a weak strawman;      pling, and runtime-overhead variability. The largest external-
+in the supplementary external-model cloud and document-             validity gap is not advertised context-window size, but whether
+disclosure workflow slices it is a strong simple baseline. If       effective decision-time budgets are similarly contested after
+a system can deterministically identify the applicable policies,    orchestration overhead, retrieved content, tool traces, and
+replay them exactly, keep bindings unambiguous, check fit           planner state. The aligned matrix studies a deliberately severe
+before assembly, and enforce proposed actions elsewhere, then       but auditable regime chosen to expose policy competition. The
+the simplest replay design may be sufficient. C ONTROL C AP -       AutoGen/tau3 and OpenHands/SWE-bench replay is not yet a
+SULE is justified when those assumptions break: when policy-        large deployed-stack measurement and does not estimate how
+like untrusted text must not gain authority, when many policies     often applications naturally place legitimate task-local policies
+compete and only some apply, when actor/tenant/object bind-         in truncable history. The public-corpus audit is heterogeneous,
+ings must be stable, when insufficient control budget should        and the workflow slices cover selected cloud and document-
+stop the action rather than silently weaken policy text, or when    disclosure workflows rather than a broad ecosystem of de-
+an audit manifest and reference monitor are required.               ployed agents.
+      d) Overload boundary: The deterministic overload ex-                h) Claim boundaries: The evidence does not show a
+periment isolates the preflight/fail-closed primitive shared        measured advantage for C ONTROL C APSULE over exact active-
+by replay, pinning, and capsule-style designs. The decisive         policy replay + preflight; does not show that larger context
+primitive is complete-set preflight plus fail-closed behavior.      windows always fail; does not show that public benchmark
+When active trusted control does not fit, the system should         prevalence equals production prevalence; and does not show
+stop rather than invoke the model with partial control state.       that every workflow family has pressure-only action-level ef-
+The fair baseline is exact active-policy replay + preflight         fects. The fixed-assembler behavioral calibration is a negative
+or pinning with a preflight fit check, not best-effort replay       boundary: target hard-truncation rows removed or damaged the
+alone. The experiment also exposes availability costs: all-         policy, but produced no canonical unsafe-action or unguarded-
+policy preflight and capsule rendering can fail closed even         mutation events. A stronger action-level claim would need a
+when a smaller active-policy representation would fit. This         held-out design that validates policy-absence sensitivity while
+is systems guidance, not evidence that C ONTROL C APSULE            holding the assembler, model, tools, runtime state, budget,
+and neutral query fixed. The evidence also does not make                   Persistent Memory Poisoning or Retrieval Compromise:
+the model trustworthy after a policy is preserved: models can           Memory-poisoning work targets long-lived state compromise
+still propose unsafe actions even when the policy is present,           and retrieval-time replay [6], [7], [42], [43]; defenses increas-
+which is why the action monitor is part of the design rather            ingly enforce admission and isolation at the memory layer
+than an optional add-on. An evaluated-system claim would                [8], [9], [10], and memory-system architectures make runtime
+require strict comparisons against exact active-policy replay           memory policy explicit [44], [45], [46]. Our setting is com-
++ preflight in provenance, binding, trusted evidence, policy            plementary: it isolates transient decision-state failure inside
+overload, utility, and cost.                                            bounded assembly, even without persistent-store corruption or
+      i) Bottom line: Within the measured budget regime,                retrieval compromise. A system can therefore be robust at the
+policy-carriage failures in bounded decision-time context as-           storage layer and still fail at the final assembly step.
+sembly are a distinct security problem. If trusted control state           Action Monitoring and Complete Mediation: Reference-
+competes in the same unmanaged budget as ordinary context,              monitor principles require complete mediation over security-
+control-state carriage can degrade under controlled pressure.           relevant operations [47]. Agent systems implement that role
+When governing state is absent, unsound, or misbound in                 through tool schemas, policy evaluators, sandbox checks,
+the decision state, downstream guards and human reviewers               or approvals at the action boundary. Those controls remain
+receive decisions made from an incomplete control view. The             necessary, but they do not show that the model decided from
+design guidance is therefore direct: trusted policy should be           complete trusted control state; our measurement sits before the
+provenance typed, budget isolated, binding stable, fail closed,         monitor and makes that pre-action gap explicit.
+and enforced again at the action boundary.                                 Architectural Difference: Canonical agent architectures al-
+                                                                        ready transform memory before action time, and recent
+                     VII. R ELATED W ORK
+                                                                        memory-curation and memory-OS work makes that policy
+   Long-Context Degradation: Long-context work and mem-                 explicit [44], [45], [46]. Against that backdrop, our method-
+ory evaluation study streaming behavior, middle-context loss,           ological difference is subsystem attribution inside decision-
+and utility retention under bounded windows [11], [12], [13],           time context assembly rather than benchmark breadth or full-
+[14], [15], [26], [27], [28], [29], [30], [31], [16]. That literature   agent realism. The claim is specific: this part of the control
+establishes that token position, context pressure, and repre-           path can fail in measurable ways, those failures can be
+sentation policy shape inference-time utility. Our narrower             decomposed, and simple controls can detect or avoid selected
+question is whether trusted control state fails before action           failure modes, consistent with least privilege, defense in depth,
+time when it competes with ordinary history inside the same             and complete mediation at the orchestration layer [47].
+bounded working budget. We use action outcomes where avail-
+able; judged respect and visibility are mechanism diagnostics,                               VIII. C ONCLUSION
+not generic utility.                                                       In bounded-budget LLM agents, decision-time context as-
+   Prompt Injection or Explicit Override: Prompt-injection              sembly belongs to the control path. The public-corpus audit
+work studies takeover of the visible prompt surface, from early         identifies risk factors; the effective-budget audit makes residual
+attacks to indirect-agent benchmarks and defenses [1], [2], [3],        pressure measurable; controlled placement replay shows why
+[4], [5], [19], [32], [33], [34], [35]. That line explains failures     protected control state differs from task-local history; and the
+driven by visible adversarial override. Our setting sits one            overload experiment gives fail-closed semantics a concrete
+step earlier and assumes a weaker attacker: no injected string          role. The fixed-assembler calibration bounds the behavioral
+outranks the policy; workload pressure can cause an already-            claim: policy absence did not automatically imply unsafe
+authoritative directive to be dropped, softened, or rebound             model behavior. Together, these results identify policy-carriage
+before decision time. The distinction is not only who controls          failure as a security-relevant state-level problem and motivate
+the text, but also where in the control path the failure is             designs that treat trusted control state differently from ordinary
+induced.                                                                data-plane context.
+   Summarization and Compression Failures: CompressionAt-                  C ONTROL C APSULE is a reference pattern for provenance-
+tack is the closest adjacent security line, studying semantic dis-      typed policy state, structural applicability, budget isolation,
+tortion within a compaction stage [17]; more broadly, memory            stable bindings, fail-closed assembly, manifests, and action
+and summarization pipelines routinely transform state before            monitoring. Exact active-policy replay + preflight remains
+action time [36], [37], [38], [39], [40], [41]. This is the nearest     the fair baseline. The present evidence does not establish
+neighboring explanation because semantic weakening is itself            a universal measured advantage for C ONTROL C APSULE; it
+a compaction-induced change in rule meaning. Compaction                 supports the narrower claim that fail-closed semantics avoid
+quality matters, but it does not exhaust the object under study:        silent continuation with incomplete trusted control when active
+the benchmark separates control-state loss from compaction-             policies do not fit.
+induced boundary weakening, and C ONTROL C APSULE treats                   The design lesson is direct: trusted policy should be prove-
+trusted policy as provenance-typed control state rather than            nance typed, budget isolated, binding stable, checked for
+summarizable workload text. For that reason, the comparison             complete-set fit before assembly, failed closed on overload,
+to strong structured compaction is central.                             and enforced again at the action boundary.
+                               R EFERENCES                                              prompt injection attacks and defenses for LLM agents,” in Advances
+                                                                                        in Neural Information Processing Systems 37. Vancouver, Canada:
+ [1] F. Perez and I. Ribeiro, “Ignore previous prompt: Attack techniques for            Curran Associates, Inc., 2024, datasets and Benchmarks Track.
+     language models,” 2022, presented at the NeurIPS ML Safety Workshop                [Online]. Available: https://proceedings.neurips.cc/paper files/paper/
+     2022.                                                                              2024/hash/97091a5177d8dc64b1da8bf3e1f6fb54-Abstract-Datasets
+ [2] J. Yi, Y. Xie, B. Zhu, E. Kiciman, G. Sun, X. Xie, and F. Wu,                      and Benchmarks Track.html
+     “Benchmarking and defending against indirect prompt injection attacks         [20] Sierra Research, “tau-bench,” https://github.com/sierra-research/
+     on large language models,” in Proceedings of the 31st ACM SIGKDD                   tau-bench,      2024,    public    repository,    audited   at    revision
+     Conference on Knowledge Discovery and Data Mining V.1. Toronto,                    59a200c6d575d595120f1cb70fea53cef0632f6b.
+     ON, Canada: ACM, 2025, pp. 1809–1820. [Online]. Available:                    [21] ——,              “tau2-bench,”         https://github.com/sierra-research/
+     https://doi.org/10.1145/3690624.3709179                                            tau2-bench, 2026, public repository, audited at revision
+ [3] Q. Zhan, Z. Liang, Z. Ying, and D. Kang, “InjecAgent: Benchmarking                 5ebebbe827b455b3ed04fcb9294235c6ef4e5fd6.
+     indirect prompt injections in tool-integrated large language model            [22] Microsoft, “AutoGen AgentChat,” https://microsoft.github.io/autogen/
+     agents,” in Findings of the Association for Computational Linguistics:             stable/user-guide/agentchat-user-guide/index.html, 2026, documentation
+     ACL 2024. Bangkok, Thailand: Association for Computational                         and public repository, audited at source-freeze revision 027ecf0.
+     Linguistics, 2024, pp. 10 471–10 506. [Online]. Available: https:             [23] OpenHands,        “OpenHands      Software      Agent     SDK,”     https:
+     //aclanthology.org/2024.findings-acl.624/                                          //docs.openhands.dev/sdk, 2026, documentation and public repository,
+ [4] E. Wallace, K. Xiao, R. Leike, L. Weng, J. Heidecke, and A. Beutel,                audited at source-freeze revision dcb840b.
+     “The instruction hierarchy: Training LLMs to prioritize privileged in-        [24] C. E. Jimenez, J. Yang, A. Wettig, S. Yao, K. Pei, O. Press, and
+     structions,” 2024.                                                                 K. R. Narasimhan, “SWE-bench: Can language models resolve real-
+ [5] Y. Wang, S. Chen, R. Alkhudair, B. Alomair, and D. Wagner, “Defending              world github issues?” in The Twelfth International Conference
+     against prompt injection with datafilter,” 2025.                                   on Learning Representations, 2024. [Online]. Available: https:
+ [6] S. Dong, S. Xu, P. He, Y. Li, J. Tang, T. Liu, H. Liu, and Z. Xiang,               //openreview.net/forum?id=VTF8yNQM66
+     “Memory injection attacks on LLM agents via query-only interaction,”          [25] N. Chowdhury, J. Aung, C. J. Shern, O. Jaffe, D. Sherburn, G. Starace,
+     in Advances in Neural Information Processing Systems 38. San Diego,                E. Mays, R. Dias, M. Aljubeh, M. Glaese, C. E. Jimenez, J. Yang, L. Ho,
+     CA, USA: Curran Associates, Inc., 2025, poster. [Online]. Available:               T. Patwardhan, K. Liu, and A. Madry, “Introducing SWE-bench veri-
+     https://neurips.cc/virtual/2025/poster/118152                                      fied,” https://openai.com/index/introducing-swe-bench-verified/, 2024.
+ [7] S. S. Srivastava and H. He, “Memorygraft: Persistent compromise of            [26] U. Shaham, E. Segal, M. Ivgi, A. Efrat, O. Yoran, A. Haviv, A. Gupta,
+     LLM agents via poisoned experience retrieval,” 2025.                               W. Xiong, M. Geva, J. Berant, and O. Levy, “SCROLLS: Standardized
+ [8] R. Wen, H. Li, C. Xiao, and N. Zhang, “Agentsys: Secure and dynamic                comparison over long language sequences,” in Proceedings of the 2022
+     LLM agents through explicit hierarchical memory management,” 2026.                 Conference on Empirical Methods in Natural Language Processing.
+ [9] Q. Wei, T. Yang, Y. Wang, X. Li, L. Li, Z. Yin, Y. Zhan, T. Holz,                  Abu Dhabi, United Arab Emirates: Association for Computational
+     Z. Lin, and X. Wang, “A-memguard: A proactive defense framework                    Linguistics, 2022, pp. 12 007–12 021. [Online]. Available: https:
+     for LLM-based agent memory,” 2025.                                                 //aclanthology.org/2022.emnlp-main.823/
+[10] G. Zhang, W. Jiang, X. Wang, A. Behr, K. Zhao, J. Friedman, X. Chu,           [27] U. Shaham, M. Ivgi, A. Efrat, J. Berant, and O. Levy, “ZeroSCROLLS:
+     and A. Anoun, “Adaptive memory admission control for LLM agents,”                  A zero-shot benchmark for long text understanding,” in Findings of the
+     2026.                                                                              Association for Computational Linguistics: EMNLP 2023. Singapore:
+[11] G. Xiao, Y. Tian, B. Chen, S. Han, and M. Lewis,                                   Association for Computational Linguistics, 2023, pp. 7977–7989.
+     “Efficient streaming language models with attention sinks,”                        [Online]. Available: https://aclanthology.org/2023.findings-emnlp.536/
+     in The Twelfth International Conference on Learning Rep-                      [28] A. Modarressi, H. Deilamsalehy, F. Dernoncourt, T. Bui, R. A. Rossi,
+     resentations.     Vienna, Austria: OpenReview.net, 2024. [On-                      S. Yoon, and H. Sch”utze, “NoLiMa: Long-context evaluation beyond
+     line]. Available: https://proceedings.iclr.cc/paper files/paper/2024/hash/         literal matching,” in Proceedings of the 42nd International Conference
+     5e5fd18f863cbe6d8ae392a93fd271c9-Abstract-Conference.html                          on Machine Learning, ser. Proceedings of Machine Learning Research,
+[12] N. F. Liu, K. Lin, J. Hewitt, A. Paranjape, M. Bevilacqua,                         vol. 267. Vancouver, Canada: PMLR, 2025, pp. 44 554–44 570.
+     F. Petroni, and P. Liang, “Lost in the middle: How language                        [Online]. Available: https://proceedings.mlr.press/v267/modarressi25a.
+     models use long contexts,” Transactions of the Association for                     html
+     Computational Linguistics, vol. 12, pp. 157–173, 2024. [Online].              [29] A. Bertsch, M. Ivgi, E. Xiao, U. Alon, J. Berant, M. R. Gormley,
+     Available: https://aclanthology.org/2024.tacl-1.9/                                 and G. Neubig, “In-context learning with long-context models: An
+[13] Y. Bai, X. Lv, J. Zhang, H. Lyu, J. Tang, Z. Huang, Z. Du, X. Liu,                 in-depth exploration,” in Proceedings of the 2025 Conference of the
+     A. Zeng, L. Hou, Y. Dong, J. Tang, and J. Li, “LongBench: A bilingual,             Nations of the Americas Chapter of the Association for Computational
+     multitask benchmark for long context understanding,” in Proceedings                Linguistics: Human Language Technologies (Volume 1: Long Papers).
+     of the 62nd Annual Meeting of the Association for Computational                    Albuquerque, New Mexico: Association for Computational Linguistics,
+     Linguistics (Volume 1: Long Papers). Bangkok, Thailand: Association                2025, pp. 12 119–12 149. [Online]. Available: https://aclanthology.org/
+     for Computational Linguistics, 2024, pp. 3119–3137. [Online].                      2025.naacl-long.605/
+     Available: https://aclanthology.org/2024.acl-long.172/                        [30] A. Maharana, D.-H. Lee, S. Tulyakov, M. Bansal, F. Barbieri, and
+[14] C.-P. Hsieh, S. Sun, S. Kriman, S. Acharya, D. Rekesh, F. Jia, Y. Zhang,           Y. Fang, “Evaluating very long-term conversational memory of LLM
+     and B. Ginsburg, “RULER: What’s the real context size of your long-                agents,” in Proceedings of the 62nd Annual Meeting of the Association
+     context language models?” in Proceedings of the First Conference on                for Computational Linguistics (Volume 1: Long Papers). Bangkok,
+     Language Modeling. Philadelphia, PA, USA: OpenReview.net, 2024.                    Thailand: Association for Computational Linguistics, 2024, pp. 13 851–
+[15] T. Yuan, X. Ning, D. Zhou, Z. Yang, S. Li, M. Zhuang, Z. Tan, Z. Yao,              13 870. [Online]. Available: https://aclanthology.org/2024.acl-long.747/
+     D. Lin, B. Li, G. Dai, S. Yan, and Y. Wang, “LV-Eval: A balanced long-        [31] H. Tan, Z. Zhang, C. Ma, X. Chen, Q. Dai, and Z. Dong,
+     context benchmark with 5 length levels up to 256k,” in Proceedings of              “Membench: Towards more comprehensive evaluation on the memory
+     the Second Conference on Language Modeling. Montreal, Canada:                      of LLM-based agents,” in Findings of the Association for Computational
+     OpenReview.net, 2025.                                                              Linguistics: ACL 2025. Vienna, Austria: Association for Computational
+[16] Z. Wang, H. Chen, J. Wang, and W. Wei, “Memex(RL): Scaling long-                   Linguistics, 2025, pp. 19 336–19 352. [Online]. Available: https:
+     horizon LLM agents via indexed experience memory,” 2026.                           //aclanthology.org/2025.findings-acl.989/
+[17] Z. Liu, Z. Zhang, Y. Xie, and D. She, “Compressionattack: Exploiting          [32] Y. Ruan, H. Dong, A. Wang, S. Pitis, Y. Zhou, J. Ba, Y. Dubois, C. J.
+     prompt compression as a new attack surface in LLM-powered agents,”                 Maddison, and T. Hashimoto, “Identifying the risks of LM agents with
+     2025.                                                                              an LM-emulated sandbox,” in The Twelfth International Conference
+[18] AI45Research,           “ATBench,”         https://huggingface.co/datasets/        on Learning Representations. Vienna, Austria: OpenReview.net, 2024.
+     AI45Research/ATBench, 2026, public dataset, audited at revision                    [Online]. Available: https://proceedings.iclr.cc/paper files/paper/2024/
+     4476ef92ed8f85c8d58d8a5b9dfdf55aa7893138.                                          hash/7274ed909a312d4d869cc328ad1c5f04-Abstract-Conference.html
+[19] E. Debenedetti, J. Zhang, M. Balunovic, L. Beurer-Kellner, M. Fischer,        [33] H. Zhang, J. Huang, K. Mei, Y. Yao, Z. Wang, C. Zhan,
+     and F. Tramèr, “Agentdojo: A dynamic environment to evaluate                      H. Wang, and Y. Zhang, “Agent security bench (ASB):
+     Formalizing and benchmarking attacks and defenses in LLM-                                            A PPENDICES
+     based agents,” in The Thirteenth International Conference
+     on Learning Representations. Singapore: OpenReview.net, 2025.                 These appendices collect supporting material for readers
+     [Online]. Available: https://proceedings.iclr.cc/paper files/paper/2025/    who want to audit the artifact, reproduce the tables, or inspect
+     hash/5750f91d8fb9d5c02bd8ad2c3b44456b-Abstract-Conference.html              diagnostic runs beyond the main technical narrative. Ap-
+[34] X. Liu, H. Yu, H. Zhang, Y. Xu, X. Lei, H. Lai, Y. Gu, H. Ding, K. Men,
+     K. Yang, S. Zhang, X. Deng, A. Zeng, Z. Du, C. Zhang, S. Shen,              pendix A describes artifact access and omissions; Appendix B
+     T. Zhang, Y. Su, H. Sun, M. Huang, Y. Dong, and J. Tang, “Agentbench:       summarizes supplementary artifact contents; Appendix C re-
+     Evaluating LLMs as agents,” in The Twelfth International Conference         ports workflow-slice action accounting; Appendix D preserves
+     on Learning Representations. Vienna, Austria: OpenReview.net, 2024.
+     [Online]. Available: https://proceedings.iclr.cc/paper files/paper/2024/    diagnostic campaign construction; Appendix E defines diag-
+     hash/e9df36b21ff4ee211a8b71ee8b7e9f57-Abstract-Conference.html              nostic metrics; Appendix F reports workflow endpoint sup-
+[35] K. Valmeekam, M. Marquez, A. Olmo, S. Sreedharan, and                       plements; and Appendix G gives the reconstructed agentic
+     S. Kambhampati, “Planbench: An extensible benchmark for evaluating
+     large language models on planning and reasoning about change,” in           decision-state case.
+     Advances in Neural Information Processing Systems 36. New Orleans,
+     USA: Curran Associates, Inc., 2023, datasets and Benchmarks Track.                                  A PPENDIX A
+     [Online]. Available: https://proceedings.neurips.cc/paper files/paper/                             O PEN S CIENCE
+     2023/hash/7a92bcdede88c7afd108072faf5485c8-Abstract-Datasets
+     and Benchmarks.html                                                            An anonymized artifact for this submission is available
+[36] S. Yao, J. Zhao, D. Yu, N. Du, I. Shafran, K. R. Narasimhan,                at https://anonymous.4open.science/r/ghost-in-the-context. It
+     and Y. Cao, “ReAct: Synergizing reasoning and acting in language
+     models,” in The Eleventh International Conference on Learning
+                                                                                 contains the materials needed to audit the paper’s reported
+     Representations. Kigali, Rwanda: OpenReview.net, 2023. [Online].            measurements and design guidance under double-blind review.
+     Available: https://iclr.cc/virtual/2023/poster/11003                        The tree centers on artifact/, which contains the curated
+[37] T. Schick, J. Dwivedi-Yu, R. Dessi, R. Raileanu, M. Lomeli,
+     E. Hambro, L. Zettlemoyer, N. Cancedda, and T. Scialom,
+                                                                                 experiment package, effective-budget and overload audit out-
+     “Toolformer: Language models can teach themselves to use                    puts, supplementary executable workflow-slice outputs, and
+     tools,” in Advances in Neural Information Processing Systems                mechanism-diagnostic evidence.
+     36. New Orleans, USA: Curran Associates, Inc., 2023. [Online].
+     Available: https://proceedings.neurips.cc/paper files/paper/2023/hash/
+                                                                                       a) Artifacts needed to audit the reported evidence:
+     d842425e4bf79ba039352da0f658a906-Abstract-Conference.html                   The artifact includes effective-budget and overload
+[38] N. Shinn, F. Cassano, A. Gopinath, K. Narasimhan, and S. Yao,               audit outputs, supplementary executable workflow-
+     “Reflexion: Language agents with verbal reinforcement learning,”
+     in Advances in Neural Information Processing Systems 36.
+                                                                                 slice outputs, mechanism-diagnostic artifacts, manifests,
+     New Orleans, USA: Curran Associates, Inc., 2023. [Online].                  runner/policy/mitigation code, configs, and the referenced
+     Available: https://proceedings.neurips.cc/paper files/paper/2023/hash/      recency-vs.-governance, B2+, agentic-trace, and larger-model
+     1b44b878bb782e6954cd888628510e90-Abstract-Conference.html
+[39] J. S. Park, J. C. O’Brien, C. J. Cai, M. R. Morris, P. Liang, and M. S.
+                                                                                 materials. Its README mirrors these evidence layers;
+     Bernstein, “Generative agents: Interactive simulacra of human behavior,”    docs/submission/budget_audit_reproduction_
+     in Proceedings of the 36th Annual ACM Symposium on User Interface           map.md gives the budget/overload audit path, with python
+     Software and Technology. San Francisco, CA, USA: ACM, 2023, pp.
+     2:1–2:22. [Online]. Available: https://doi.org/10.1145/3586183.3606763
+                                                                                 -m src.verify_budget_audit_manifest as the
+[40] G. Wang, Y. Xie, Y. Jiang, A. Mandlekar, C. Xiao, Y. Zhu, L. Fan, and       read-only CSV check. The active artifact contract is the
+     A. Anandkumar, “Voyager: An open-ended embodied agent with large            current traceability map and ControlCapsule reviewer-gap
+     language models,” 2023.
+[41] C. Packer, S. Wooders, K. Lin, V. Fang, S. G. Patil, I. Stoica, and J. E.
+                                                                                 matrix under docs/submission/.
+     Gonzalez, “MemGPT: Towards LLMs as operating systems,” 2023.                      b) Access: No credentials are required. Reviewers
+[42] X. Yang, Y. He, S. Ji, B. Hooi, and J. S. Dong, “Zombie agents:             can enter artifact/, create a Python environ-
+     Persistent control of self-evolving LLM agents via self-reinforcing
+     injections,” 2026, presented at Lifelong Agent @ ICLR 2026.
+                                                                                 ment, install requirements.txt, and then run
+[43] B. Wang, W. He, S. Zeng, Z. Xiang, Y. Xing, J. Tang, and P. He,             ./scripts/validate_paper_readiness.sh. The
+     “Unveiling privacy risks in LLM agent memory,” in Proceedings               shortest audit path is the shipped evidence: artifact/
+     of the 63rd Annual Meeting of the Association for Computational
+     Linguistics (Volume 1: Long Papers). Vienna, Austria: Association
+                                                                                 docs/submission/claim_traceability_latest.
+     for Computational Linguistics, 2025, pp. 25 241–25 260. [Online].           md,             artifact/docs/submission/budget_
+     Available: https://aclanthology.org/2025.acl-long.1227/                     audit_reproduction_map.md,                         artifact/
+[44] Y. Zhang, J. Shu, Y. Ma, X. Lin, S. Wu, and J. Sang, “Memory as action:
+     Autonomous context curation for long-horizon agentic tasks,” 2025.
+                                                                                 paper/tables/,              artifact/figures/final/,
+[45] J. Kang, M. Ji, Z. Zhao, and T. Bai, “Memory OS of AI                       artifact/runs/run_manifest.jsonl, artifact/
+     agent,” in Proceedings of the 2025 Conference on Empirical                  docs/submission/freeze_manifest.json,                        and
+     Methods in Natural Language Processing. Suzhou, China: Association
+     for Computational Linguistics, 2025, pp. 25 961–25 970. [Online].
+                                                                                 artifact/docs/freeze/.                The       effective-budget
+     Available: https://aclanthology.org/2025.emnlp-main.1318/                   and overload tables can be checked with python
+[46] R. Salama, J. Cai, M. Yuan, A. Currey, M. Sunkara, Y. Zhang, and            -m src.verify_budget_audit_manifest.                        The
+     Y. Benajiba, “MemInsight: Autonomous memory augmentation for
+     LLM agents,” in Proceedings of the 2025 Conference on Empirical
+                                                                                 manuscript’s quantitative claims map to shipped outputs, so
+     Methods in Natural Language Processing. Suzhou, China: Association          live reruns are not required for evaluation. Full reruns require
+     for Computational Linguistics, 2025, pp. 33 136–33 152. [Online].           compatible OpenAI-compatible endpoints and matching
+     Available: https://aclanthology.org/2025.emnlp-main.1683/
+[47] K. Zhang, Z. Su, P.-Y. Chen, E. Bertino, X. Zhang, and N. Li, “LLM
+                                                                                 execution dependencies.
+     agents should employ security principles,” 2025.                                  c) Artifacts that are intentionally limited or omitted:
+                                                                                 To preserve anonymity and reduce misuse risk, the repository
+excludes version-control history, author or institutional meta-                                  TABLE IX
+data, secrets or credentials, local caches, partial runs, non-     A PPENDIX SUPPLEMENTARY EXTERNAL EXECUTABLE WORKFLOW- SLICE
+                                                                    RESULTS . P OLICY- VISIBLE MEANS EXACT POLICY REPLAY PRESERVES
+essential logs, and raw model text beyond what is needed for        THE APPLICABLE POLICY; POLICY- ABSENT MEANS HARD TRUNCATION
+claim auditability. Oracle-assisted configurations are included    REMOVES IT. E XECUTED MEANS UNGUARDED VIOLATION ; SAFE MEANS
+as localization controls, not deployment claims.                        SAFE TASK COMPLETION . T HE CONFLICTIVE FINAL QUERY IS A
+                                                                    COMPOSITION CONTRAST, WHILE THE NEUTRAL FINAL QUERY IS THE
+                                                                    POLICY- VISIBLE VERSUS POLICY- ABSENT MEASUREMENT CONTRAST.
+                     A PPENDIX B
+           S UPPLEMENTARY A RTIFACT D ETAILS                        Family                 Query         Pairs   Policy-visible exec.   Policy-absent exec.        ∆ exec.    Policy-visible safe   Policy-absent safe
+                                                                    Cloud access control   Neutral         24           0/24 (0.0%)            1/24 (4.2%)     +1 (+4.2 pp)       15/24 (62.5%)         15/24 (62.5%)
+                                                                    Cloud access control   Conflictive     24           0/24 (0.0%)           4/24 (16.7%)    +4 (+16.7 pp)        6/24 (25.0%)          6/24 (25.0%)
+      a) Frozen core configuration: The aligned mech-               Document disclosure
+                                                                    Document disclosure
+                                                                                           Neutral
+                                                                                           Conflictive
+                                                                                                           24
+                                                                                                           24
+                                                                                                                        0/24 (0.0%)
+                                                                                                                        0/24 (0.0%)
+                                                                                                                                              4/24 (16.7%)
+                                                                                                                                              7/24 (29.2%)
+                                                                                                                                                              +4 (+16.7 pp)
+                                                                                                                                                              +7 (+29.2 pp)
+                                                                                                                                                                                  17/24 (70.8%)
+                                                                                                                                                                                  15/24 (62.5%)
+                                                                                                                                                                                                         9/24 (37.5%)
+                                                                                                                                                                                                         6/24 (25.0%)
+
+anism matrix uses Qwen/Qwen2.5-7B-Instruct,
+meta-llama/Llama-3.1-8B-Instruct,                           and
+mistralai/Mistral-7B-Instruct-v0.3                      at     a   workflow slices for cloud access control and document disclo-
+260-token context budget, a 96-token generation cap,               sure. In the neutral column, the final request asks the agent to
+temperature 0.0, and seeds 7/11/19. The committed model            complete the task and does not ask for the prohibited action;
+settings are in artifact/configs/generated/. The                   we read this as a policy-visible versus policy-absent measure-
+policy settings referenced in the paper are in artifact/           ment contrast, not as a completed same-assembler action-level
+configs/policies.yaml and artifact/configs/                        evidence result and not as held-out same-assembler causal
+mitigation_autonomous.yaml. Scenario generators                    action evidence. The exact replay arm preserves the policy
+and committed exports for eviction, semantic weakening             and avoids neutral executable violations in both families. Hard
+(artifact label: aliasing), and misbinding/binding                 truncation removes the applicable policy and yields a small
+instability (artifact labels: binding_instability                  number of neutral executable violations, with the clearer sup-
+and reference_drift) are shipped in artifact/                      plementary witness in document disclosure. The table carries
+configs/ and artifact/data/scenarios/.                             the exact counts and corresponding safe-completion rates.
+      b) Supplementary materials beyond the core matrix:              A representative neutral document row shows the action-
+The artifact also includes the larger-model extension and          boundary accounting for this bounded contrast. The trusted
+bounded audit materials referenced in the paper, including         policy is pemail secret , “Never reveal secret field Y.” Under
+artifact/paper/tables/aggregate_qwen14_                            hard truncation, the decision-state audit marks that policy
+scaleprobe_20260317.csv,                 artifact/paper/           missing. GLM 5.2 then proposes document_export with
+tables/aggregate_llama70hf_scaleprobe_                             field_y and include_secret=true; unguarded execu-
+20260317.csv,             artifact/docs/submission/                tion discloses secret_field_y. In the paired exact-replay
+scale_extension_manifest_20260317.json, and                        row, the same policy is visible and the same model selects
+artifact/docs/overnight/llama70hf_policy_                          document_export_redacted. The canonical monitor
+diagnostic_20260317.md. It also includes the                       blocks the hard-truncation proposal, which separates unsafe
+supplementary workflow-slice scaffold with local calibration       proposal rate from executed violation rate for actions repre-
+summaries, provider-adapter tests, and a priced closed-            sented in the Policy IR. This row is not used as same-assembler
+provider supplement over the same seven-workflow scaffold.         causality evidence.
+Terms such as unsafe-action proposal appear in the appendix           The conflictive column is a composition contrast, not the
+only as diagnostic labels or action-boundary metric definitions,   current neutral measurement. In these rows, the determinis-
+not as reported action-level impact claims.                        tic monitor blocks the unsafe proposals recognized by the
+                                                                   canonical oracle, so guarded executed violations remain zero.
+                    A PPENDIX C
+                                                                   Document disclosure is the less narrow workflow-slice wit-
+       S UPPLEMENTARY W ORKFLOW-S LICE ACTION
+                                                                   ness: its neutral policy-absent events span GLM, Qwen3, and
+                    ACCOUNTING
+                                                                   DeepSeek, while the cloud events are confined to Qwen3. This
+   The supplementary workflow-slice rows are supplementary         result shows action-boundary accounting and exact replay as
+action-boundary material. They show how structured pro-            a strong baseline; it does not support a claim that C ONTROL -
+posals, unguarded sandbox execution, deterministic monitor         C APSULE has a measured advantage over exact replay plus
+blocks, and safe task completion are accounted for when            preflight, and it does not replace the negative same-assembler
+executable workflow slices are available. They are bounded         calibration.
+policy-visible versus policy-absent measurement slices, not
+held-out same-assembler causal action evidence.                                           A PPENDIX D
+   The supplementary workflow slice gives a cleaner action-               S UPPLEMENTARY D IAGNOSTIC C AMPAIGN D ETAILS
+time accounting target than output-only judging because the           This appendix subsection preserves the supplementary
+model chooses a structured tool call and a deterministic           mechanism-diagnostic campaign construction for auditability.
+sandbox records whether the action would execute a prohibited      It is not reported action-boundary evidence.
+mutation. Table IX reports the supplementary external-model              a) Implementation: The mechanism-diagnostic cam-
+                                                                   paign evaluates an earlier middleware layer, the diagnos-
+tic middleware. It perturbs decision-time context assembly                                    A PPENDIX E
+without changing model weights and exposes four controls:                                D IAGNOSTIC M ETRICS
+admission before budget competition, protected retention for            These definitions document the mechanism-diagnostic ma-
+trusted control state, orchestration-level reuse of control-prefix   trix for artifact traceability. They are supplementary diagnos-
+objects, and pressure-triggered reminders when control state         tics, not reported action-boundary evidence.
+starts to decay. At each turn, the middleware intercepts lo-               a) Judged exact respect: For the mechanism-diagnostic
+cal history before the model call, normalizes it into typed          text-output matrix, Exact Constraint Retention (ECR) is an
+segments, applies admission and context transformation, and          output-level exact-respect proxy. For an instance i with ai
+emits a hardened decision state while leaving the base model         applicable constraints and ri judged respected constraints,
+backend unchanged.
+                                                                                                                   1 X
+      b) Campaign scope: The closed matrix spans Llama 3.1                   ecri = 1[ri = ai ],      ECR(S) =           ecri .
+8B, Qwen 2.5 7B, and Mistral 7B; the failure families eviction,                                                   |S|
+                                                                                                                      i∈S
+semantic weakening, and misbinding, with artifact labels used        We report ∆ECR between matched reference and mitigation
+for the aliasing and binding_instability exports;                    slices.
+seeds 7, 11, and 19; and one unmitigated arm plus eight                   b) Partial respect: Constraint Survival (CSR) is a graded
+mitigation variants. The mitigation variants combine control-        output-level proxy for partial respect:
+state pinning, pressure-triggered reminders, and orchestration-
+level control-prefix reuse in oracle/autonomous modes where                             ri                        1 X
+                                                                             csri =             ,    CSR(S) =           csri .
+applicable. The artifact tables label these rows as SCP,                            max(1, ai )                 |S|
+                                                                                                                       i∈S
+SCP+ICE, SCP+Cache, and SCP+Cache+ICE for continuity
+                                                                     CSR is an output-level metric rather than a direct readout
+with the committed run manifest. The completed matrix
+                                                                     of what text or anchors remained present in the assembled
+reaches 243/243 deduplicated cells.
+                                                                     decision state.
+      c) Extensions and parameters: The larger-model exten-
+                                                                          c) Direct visibility: Direct Preservation (DPR) audits the
+sion runs Qwen 2.5 14B and Llama 3.1 70B with the same
+                                                                     assembled decision state before the model call:
+failure-family labels, seeds, and mitigation grid on remote
+                                                                                                        pi
+OpenAI-compatible backends, so model scale is entangled                                    dpri =              .
+with serving-stack heterogeneity. The aligned core uses a                                          max(1, ai )
+260-token context budget, a 96-token generation cap, and             A constraint counts as directly preserved when the assembled
+temperature 0.0. Prompt templates and scenario instantiations        model-visible context still contains its explicit marker/text pair
+are versioned in the artifact bundle and referenced by the           or the corresponding typed anchor.
+freeze manifest.                                                           d) Order sensitivity: Decision Flip Rate (DFR) is defined
+      d) Assembly policies and labels: The aligned core uses         over matched order-perturbation pairs that keep semantic con-
+B1 hard truncation, B2 rolling summary, and B3 hybrid.               tent fixed while changing only prompt order:
+The strong-baseline pass adds B2+, a deterministic structured                                1 X
+compactor that parses history into typed control/data/query                    DFR(S) =             1[vjvariant ̸= vjcontrol-last ].
+                                                                                            |P |
+segments, emits an explicit constraint block for admitted con-                                  j∈P
+
+trol state, allocates the remaining budget to a lossy summary        DFR is a paired instability metric, not executable action-
+of older data plus a recent tail, and appends the final query.       boundary evidence.
+Mitigation variants apply admission, pinning, orchestration-              e) Judge, pressure, and uncertainty scope: The auto-
+level control-prefix reuse, and reinforcement on top of those        mated judge used for ECR, CSR, and DFR is a bounded
+reference policies while holding model and task semantics            control-boundary classifier, not a general semantic grader.
+fixed.                                                               Binding audits and pressure-response diagnostics are used only
+      e) Serialization and reproducibility: The harness seri-        to localize mechanism failures in the mechanism-diagnostic
+alization accounting counts material constructed by the or-          matrix. For ECR, CSR, and DPR, we report slice-level
+chestration layer plus emitted output or reinforcement tokens        bootstrap confidence intervals over per-instance scores; DFR
+under the same rule for every row. Cache-aware variants can          is reported over matched order-perturbation pairs. Positive
+reduce harness-serialized repeated control material because          proxy movement justifies slice-level mechanism movement
+pinned control segments are reused as middleware objects             under matched conditions, not universal model behavior or
+instead of reconstructed from raw history on each turn; this         a validated semantic oracle.
+is not provider-side inference-cost evidence. In oracle mode,
+the control-pinning diagnostic path receives scenario-labeled                              A PPENDIX F
+directive spans; autonomous mode replaces those labels with                      W ORKFLOW E NDPOINT S UPPLEMENT
+the committed lightweight relevance recognizer. In a hardened          These appendix workflow tables are supplementary
+implementation, authority should come from explicit prove-           appendix-only scaffold diagnostics rather than the paper’s
+nance metadata rather than language-based inference.                 main empirical claim. They preserve the local and closed-
+                                                                     provider scaffold history needed to audit parser behavior,
+policy-state decomposition, and guard behavior, but they                                                                                                    TABLE XI
+are not part of the reported action-time evidence hierarchy                                                                        S UPPLEMENTARY WORKFLOW- SLICE MODEL PANEL OVER LOCAL
+                                                                                                                                   L LAMA 3.1 8B, Q WEN 2.5 7B, AND M ISTRAL 7B ACROSS EIGHT
+and must not be pooled with the supplementary policy-                                                                                 ASSEMBLERS AND BUDGETS 96/160/320/512. VALUES ARE
+visible/policy-absent slices, the later same-assembler negative                                                                  PERCENTAGES EXCEPT n. S TRUCT. COUNTS PARSEABLE STRUCTURED
+calibration, the document-only manual-absence check, or the                                                                       ENVELOPES , INCLUDING EMPTY ACTION ENVELOPES ; T EXT REFUSE
+                                                                                                                                        COUNTS SAFE REFUSALS EMITTED AS PROSE RATHER THAN AS
+effective-budget/real-stack state audit in the main text. They                                                                                      STRUCTURED EMPTY ENVELOPES .
+predate the later same-assembler calibration and must not be
+                                                                                                                                Model         n    Struct.    Text refuse   No action   Unsafe   Guarded exec.    Unguarded exec.   Absent-state   Preserved
+cited as pressure-only action-level evidence or as evidence that                                                                Llama 8B     224    100.0            0.0          8.0     28.1             0.0               28.1           7.1        21.0
+                                                                                                                                Qwen 7B      224    100.0            0.0          9.4     36.2             0.0               36.2          12.9        23.2
+policy absence by itself causes unsafe model behavior.                                                                          Mistral 7B   224     99.6            0.0         21.4     23.7             0.0               23.7           6.2        17.4
+
+   The workflow-slice scaffold evaluates structured model ac-
+tion envelopes against the reported policy evaluator, then
+executes the same proposed actions in guarded and unguarded                                                                          a) Pressure-only versus prompt-conflict factorial: This
+sandboxes. Table X aggregates a supplementary local sweep                                                                      exploratory local factorial separates pure workload pressure
+over the same open-weight model families used in the aligned                                                                   from explicit final-query conflict inside the supplementary
+core—Llama 3.1 8B, Qwen 2.5 7B, and Mistral 7B—on                                                                              diagnostic supplement. It uses the same seven workflows and
+seven workflows, eight assemblers, and four decision-state                                                                     local Llama 3.1 8B, Qwen 2.5 7B, and Mistral 7B models, but
+budgets. The additional baselines include exact policy-last                                                                    restricts the assembly treatments to hard truncation at budget
+replay, a generic recency-only reminder, static policy pinning,                                                                96 (policy evicted) and exact policy-last replay at budget 96
+and source quotas. The model-backed runs use neutral final                                                                     (policy visible). With neutral final queries, evicting the policy
+requests, so unsafe-action proposals are not induced by explicit                                                               raises the instance-level unsafe-action proposal rate in this
+final-query policy conflict. The intended reading is method-                                                                   supplementary local slice, but the paired bootstrap interval
+ological: deterministic guards block Policy-IR-expressible vi-                                                                 crosses zero. Conflictive final queries are included only as a
+olations before execution, while unsafe-action proposal labels,                                                                prompt-conflict stress condition, where policy visibility is not
+no-action rates, and missing policy-sound carriage diagnose                                                                    sufficient to ensure compliance. The local factorial therefore
+what reaches the action boundary. The small local sweep is                                                                     supports decomposition only; exact values remain in Table XII
+not a substitute for a broad executable-workflow campaign.                                                                     and the artifact, and the slice is not reported same-assembler
+                                                                                                                               action-level evidence or a strong pressure-only claim by itself.
+                              TABLE X
+  A PPENDIX - ONLY SUPPLEMENTARY LOCAL WORKFLOW- SLICE SWEEP                                                                                               TABLE XII
+       OVER L LAMA 3.1 8B, Q WEN 2.5 7B, AND M ISTRAL 7B AT                                                                     A PPENDIX - ONLY PAIRED LOCAL WORKFLOW FACTORIAL OVER SEVEN
+ DECISION - STATE BUDGETS 96/160/320/512, INCLUDING POLICY- LAST                                                                 WORKFLOWS , THREE LOCAL PAPER MODELS , BUDGET 96, AND TWO
+ REPLAY, RECENCY- REMINDER , STATIC - PINNING , AND SOURCE - QUOTA                                                               ASSEMBLY TREATMENTS . ∆ UNSAFE IS HARD TRUNCATION ( POLICY
+     BASELINES . VALUES ARE PERCENTAGES EXCEPT n. E Q . IS THE                                                                 EVICTED ) MINUS EXACT POLICY- LAST REPLAY ( POLICY VISIBLE ), PAIRED
+ EXACT- EQUIVALENCE DIAGNOSTIC ; THE ACTIVE INVARIANT IS POLICY                                                                       BY WORKFLOW, MODEL , AND FINAL - QUERY CONDITION .
+  SOUNDNESS WITH EXPLICIT COMPLETENESS COST. U NSAFE IS THE
+    INSTANCE - LEVEL UNSAFE - ACTION PROPOSAL RATE ; N O ACTION                                                                  Final query          Pairs        Visible unsafe           Evicted unsafe           ∆ unsafe                 95% CI
+   CAPTURES EMPTY ACTION ENVELOPES ; A BSENT AND P RESERVED
+                                                                                                                                 Neutral                     21                   28.6                     38.1             +9.5       [-19.0, +33.3]
+   DECOMPOSE UNSAFE - ACTION PROPOSALS BY WHETHER TRUSTED                                                                        Conflict                    21                   66.7                     57.1             -9.5       [-33.3, +14.3]
+             CONTROL STATE WAS MISSING OR PRESERVED .
+
+ Assembler            n     Eq.    Unsafe   No action   Nonviol. action   Guard exec.   Unguarded exec.   Absent   Preserved
+                                                                                                                                  Table XIII reports the closed-provider supplement after
+ Hard trunc.          84    28.6     25.0         8.3             66.7            0.0              25.0     16.7         8.3
+ Rolling summary
+ Hybrid
+                      84
+                      84
+                            28.6
+                            28.6
+                                     21.4
+                                     22.6
+                                                 11.9
+                                                  7.1
+                                                                  66.7
+                                                                  70.2
+                                                                                  0.0
+                                                                                  0.0
+                                                                                                   21.4
+                                                                                                   22.6
+                                                                                                            13.1
+                                                                                                            14.3
+                                                                                                                         8.3
+                                                                                                                         8.3
+                                                                                                                               explicit cost estimation and approval, rescored offline with
+ Policy-last replay   84   100.0     34.5        11.9             53.6            0.0              34.5      0.0        34.5
+ Recency reminder     84    28.6     39.3        15.5             45.2            0.0              39.3     26.2        13.1   the reported action parser and extended with the same
+ Static pinning       84   100.0     40.5        19.0             40.5            0.0              40.5      0.0        40.5
+ Source quota
+ Constraint-aware
+                      84
+                      84
+                           100.0
+                           100.0
+                                     33.3
+                                     17.9
+                                                 20.2
+                                                  9.5
+                                                                  46.4
+                                                                  72.6
+                                                                                  0.0
+                                                                                  0.0
+                                                                                                   33.3
+                                                                                                   17.9
+                                                                                                             0.0
+                                                                                                             0.0
+                                                                                                                        33.3
+                                                                                                                        17.9
+                                                                                                                               policy-last replay and recency-reminder baselines. The table
+                                                                                                                               is included as portability evidence for the supplementary
+   This supplementary local table is useful mainly for one                                                                     workflow-slice scaffold, not as a headline claim. The deter-
+limitation: exact policy replay, static pinning, source quotas,                                                                ministic guard blocks Policy-IR-expressible violations before
+and control-aware assembly preserve policy-sound carriage in                                                                   execution; unsafe-action proposal and absent-state rates show
+these rows, yet unsafe-action proposals can remain nonzero be-                                                                 what reaches the action boundary before enforcement. The low
+cause the model sometimes violates a preserved policy bound-                                                                   structured-output rate for Gemini 2.5 Flash indicates that this
+ary. Table XI reports model-level structured-output compliance                                                                 row is format-compliance limited under the reported action-
+and action-boundary outcomes for the same eight-assembler                                                                      envelope prompt.
+local triplet. The contrast between absent-state and preserved-                                                                   Table XIV aggregates the same closed-provider supplement
+unsafe buckets is the reason the workflow scaffold remains                                                                     by assembler. In this supplemental run, exact policy-last replay
+useful as a diagnostic: it separates assembly failures from                                                                    preserves the policy boundary and has the lowest unsafe-action
+model/action failures under preserved policy state without                                                                     proposal rate, while a generic recency reminder does not carry
+upgrading the supplement into reported action-level impact                                                                     the actual control boundary under pressure and behaves like
+evidence.                                                                                                                      ordinary lossy assembly.
+                                                                                                                                  Table XV decomposes unsafe-action proposals by mech-
+                             TABLE XIII                                                                                 uses budget 96 as a critical pressure point. The fixture sweep
+  S UPPLEMENTARY WORKFLOW- SLICE MODEL PANEL OVER SIX CLOSED                                                            uses the same seven workflows and unsafe action fixtures
+   MODELS ACROSS SIX ASSEMBLERS AND BUDGETS 96/160/320/512.
+  VALUES ARE PERCENTAGES EXCEPT n. S TRUCT. COUNTS PARSEABLE                                                            but no model calls. It isolates the assembler: below 512
+   STRUCTURED ENVELOPES , INCLUDING EMPTY ACTION ENVELOPES ;                                                            tokens, ordinary truncation and summary policies often fail
+   U NSAFE IS THE INSTANCE - LEVEL UNSAFE - ACTION PROPOSAL RATE                                                        to carry trusted control state into the decision state, while
+              BEFORE DETERMINISTIC GUARD EXECUTION .
+                                                                                                                        exact policy-last replay, static policy pinning, source quotas,
+ Model                           n    Struct.   Text refuse   Unsafe   Guarded exec.   Unguarded exec.   Absent-state   and control-aware assembly preserve the canonical policy
+ anthropic-claude-haiku-4.5     168    100.0           0.0       6.5             0.0               6.5           2.4
+ anthropic-claude-sonnet-4.6    168    100.0           0.0      19.6             0.0              19.6          14.3    boundary even at budget 96. At 512 tokens, ordinary truncation
+ gemini-2.5-flash               168     16.7           0.0       3.6             0.0               3.6           3.0
+ gemini-2.5-flash-lite
+ openai-gpt-4.1-mini
+                                168
+                                168
+                                        99.4
+                                       100.0
+                                                       0.0
+                                                       0.0
+                                                                39.9
+                                                                32.1
+                                                                                 0.0
+                                                                                 0.0
+                                                                                                  39.9
+                                                                                                  32.1
+                                                                                                                25.6
+                                                                                                                28.0
+                                                                                                                        and summary policies also recover in this fixture, so the result
+ openai-gpt-4o-mini             168    100.0           0.0      49.4             0.0              49.4          32.1
+                                                                                                                        should be read as a contested-budget threshold rather than
+                                                                                                                        evidence that larger effective budgets fail. A generic recency
+                           TABLE XIV                                                                                    reminder does not carry the actual policy boundary under
+  S UPPLEMENTARY CLOSED - PROVIDER WORKFLOW- SLICE RESULTS BY
+   ASSEMBLER ACROSS SIX MODELS AND BUDGETS 96/160/320/512.
+                                                                                                                        pressure, which separates “remind the model to be careful”
+              VALUES ARE PERCENTAGES EXCEPT n.                                                                          from carrying the actual control state. The underlying artifact
+                                                                                                                        sweep continues through 1024/2048/4096/8192/16384 tokens;
+ Assembler                      n       Eq.      Unsafe       Guard exec.         Unguarded exec.         Absent
+                                                                                                                        those no-overflow controls preserve the policy boundary for
+ Hard trunc.                   168     28.6           28.0                0.0                     28.0        25.0
+ Rolling summary               168     28.6           32.1                0.0                     32.1        28.6      all assemblers and are omitted from the compact table because
+ Hybrid                        168     28.6           27.4                0.0                     27.4        23.8
+ Policy-last replay            168    100.0           13.7                0.0                     13.7         0.0
+                                                                                                                        they add no further threshold transition.
+ Recency reminder              168     28.6           31.0                0.0                     31.0        28.0
+ Constraint-aware              168    100.0           19.0                0.0                     19.0         0.0
+                                                                                                                                                      TABLE XVI
+                                                                                                                           E XPANDED LOCAL WORKFLOW FIXTURE THRESHOLD . VALUES ARE
+                                                                                                                          PERCENTAGES ; E Q . IS EXACT EQUIVALENCE AND A BSENT IS MISSING
+anism. The components sum to the instance-level unsafe-                                                                                         TRUSTED CONTROL STATE .
+action proposal rate: Absent means no applicable trusted                                                                 Budget    Hard trunc.    Rolling summary      Hybrid         Policy-last replay   Static pinning    Source quota   Control-aware
+                                                                                                                                   Eq. Absent      Eq.      Absent    Eq. Absent        Eq.       Absent     Eq. Absent       Eq. Absent     Eq. Absent
+control state remains visible in the decision state, Non-eq. is                                                          96         0.0   100.0     0.0      100.0     0.0    100.0   100.0          0.0   100.0       0.0   100.0    0.0   100.0     0.0
+                                                                                                                         160        0.0   100.0     0.0      100.0     0.0    100.0   100.0          0.0   100.0       0.0   100.0    0.0   100.0     0.0
+the table label for visible control state that fails the exact-                                                          320
+                                                                                                                         512
+                                                                                                                                   14.3
+                                                                                                                                  100.0
+                                                                                                                                           85.7
+                                                                                                                                            0.0
+                                                                                                                                                   14.3
+                                                                                                                                                  100.0
+                                                                                                                                                              85.7
+                                                                                                                                                               0.0
+                                                                                                                                                                      14.3
+                                                                                                                                                                     100.0
+                                                                                                                                                                               85.7
+                                                                                                                                                                                0.0
+                                                                                                                                                                                      100.0
+                                                                                                                                                                                      100.0
+                                                                                                                                                                                                     0.0
+                                                                                                                                                                                                     0.0
+                                                                                                                                                                                                           100.0
+                                                                                                                                                                                                           100.0
+                                                                                                                                                                                                                       0.0
+                                                                                                                                                                                                                       0.0
+                                                                                                                                                                                                                             100.0
+                                                                                                                                                                                                                             100.0
+                                                                                                                                                                                                                                      0.0
+                                                                                                                                                                                                                                      0.0
+                                                                                                                                                                                                                                            100.0
+                                                                                                                                                                                                                                            100.0
+                                                                                                                                                                                                                                                      0.0
+                                                                                                                                                                                                                                                      0.0
+equivalence diagnostic, including security-unsound weakening
+and completeness-changing rewrites, and Preserved means the                                                                                    A PPENDIX G
+policy boundary is preserved but the model still proposes an                                                                   R ECONSTRUCTED AGENTIC D ECISION -S TATE C ASE
+unsafe action. This separation is the operational reason to treat
+context assembly and deterministic guards as complementary                                                                 The artifact includes one reconstructed Qwen 2.5 7B
+rather than interchangeable.                                                                                            pressure-plus-conflict case rebuilt from shipped records,
+                                                                                                                        with no live model call required. It combines workload
+                          TABLE XV
+                                                                                                                        pressure with a final query that asks to proceed before
+  M ECHANISTIC AUDIT OF THE LOCAL WORKFLOW- SLICE SCAFFOLD .                                                            condition Z, so it is a decision-state visibility exam-
+ VALUES ARE PERCENTAGES EXCEPT n; U NSAFE IS DECOMPOSED INTO                                                            ple, not a pressure-only causal isolate. Unmitigated trunca-
+   ABSENT, NON - EQUIVALENT, AND PRESERVED - POLICY BUCKETS .
+                                                                                                                        tion and B2+ expose zero applicable constraints and vio-
+  Model                Assembler                  n       Unsafe       Absent          Non-eq.       Preserved
+                                                                                                                        late; B2+ plus SCP+ICE (A) preserves all three. Materials
+  Llama 8B             Hard trunc.               28           21.4         14.3             0.0              7.1
+                                                                                                                        are under artifact/docs/case_studies/agentic_
+  Llama 8B             Rolling                   28           14.3          7.1             0.0              7.1        case_study_20260318_seed11/.
+  Llama 8B             Hybrid                    28           17.9         10.7             0.0              7.1
+  Llama 8B             Policy replay             28           28.6          0.0             0.0             28.6
+  Llama 8B             Recency                   28           42.9         25.0             0.0             17.9                                     TABLE XVII
+  Llama 8B             Static pin                28           50.0          0.0             0.0             50.0               R ECONSTRUCTED Q WEN 2.5 7B PRESSURE - PLUS - CONFLICT CASE .
+  Llama 8B             Source quota              28           35.7          0.0             0.0             35.7
+  Llama 8B             Control-aware             28           14.3          0.0             0.0             14.3         Arm                                                 Viol.       Decision            Preserved           Visible     Ctx toks
+  Qwen 7B              Hard trunc.               28           21.4         17.9             0.0              3.6
+                                                                                                                         Baseline truncation                                 yes      unsafe action                0                -           260
+  Qwen 7B              Rolling                   28           25.0         21.4             0.0              3.6         Structured summary                                  yes      unsafe action                0                -           260
+  Qwen 7B              Hybrid                    28           21.4         17.9             0.0              3.6         Structured summary + SCP+ICE (A)                    no          unclear                   3            c1,c2,c3        260
+  Qwen 7B              Policy replay             28           50.0          0.0             0.0             50.0
+  Qwen 7B              Recency                   28           53.6         46.4             0.0              7.1
+  Qwen 7B              Static pin                28           53.6          0.0             0.0             53.6
+  Qwen 7B              Source quota              28           50.0          0.0             0.0             50.0
+  Qwen 7B              Control-aware             28           14.3          0.0             0.0             14.3
+  Mistral 7B           Hard trunc.               28           32.1         17.9             0.0             14.3
+  Mistral 7B           Rolling                   28           25.0         10.7             0.0             14.3
+  Mistral 7B           Hybrid                    28           28.6         14.3             0.0             14.3
+  Mistral 7B           Policy replay             28           25.0          0.0             0.0             25.0
+  Mistral 7B           Recency                   28           21.4          7.1             0.0             14.3
+  Mistral 7B           Static pin                28           17.9          0.0             0.0             17.9
+  Mistral 7B           Source quota              28           14.3          0.0             0.0             14.3
+  Mistral 7B           Control-aware             28           25.0          0.0             0.0             25.0
+
+
+   Table XVI shows why the expanded workflow supplement
+
