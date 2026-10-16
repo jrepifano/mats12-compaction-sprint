@@ -209,7 +209,10 @@ def _passed(pr: XC.PassResult) -> bool:
 
 
 def _undecided(pr: XC.PassResult) -> bool:
-    return pr.disagree or pr.pass_run1 is None
+    """No verdict: disagreeing runs, a first run that didn't finish, or a passing first run
+    whose confirmation didn't finish (branch review r2)."""
+    return (pr.disagree or pr.pass_run1 is None
+            or (pr.pass_run1 is True and pr.pass_run2 is not True))
 
 
 def pass_all(snapshots: list, final: str | None, task: XC.TaskSpec,
@@ -255,6 +258,8 @@ def pass_all(snapshots: list, final: str | None, task: XC.TaskSpec,
         if first_undecided is None and _undecided(final_pr):
             first_undecided = final_pr
     agg = first_pass[0] if first_pass else (first_undecided or final_pr or last_pr or _NOT_RUN)
+    if not first_pass and agg.pass_run1 is True:    # unconfirmed pass: the detector sees "not run"
+        agg = dataclasses.replace(agg, pass_run1=None, error=agg.error or "unconfirmed pass")
     final_passed = (None if final_pr is None or _undecided(final_pr)
                     else final_pr.pass_run1)
     return agg, {"pass_any": first_pass is not None,
