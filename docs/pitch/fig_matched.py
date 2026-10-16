@@ -43,15 +43,11 @@ GROUPS = [
      {"filter": (22.66, (10.6795, 34.3337), [27.86, 30.46, 9.66]),
       "refill": (13.8467, (6.6995, 22.2002), [13.88, 21.38, 6.28]),
       "rewrite": (13.26, (5.5995, 20.2468), [5.4, 17.32, 17.06])}),
-    ("Subliminal learning\nQwen2.5-7B\ntreated: random 5%\nof the bad rows\n(20,000 rows, all bad)", 38.5,
-     {"filter": None,
-      "refill": (42.7733, (33.4, 52.2873), [39.4, 41.22, 47.7]),
-      "rewrite": (41.0267, (32.1598, 50.1068), [41.7, 43.1, 38.28])}),
 ]
 
 
 def main():
-    fig, ax = plt.subplots(figsize=(12, 6.2))
+    fig, ax = plt.subplots(figsize=(10.5, 6.2))
     width, ops = 0.26, ["filter", "refill", "rewrite"]
     for g, (label, ref, arms) in enumerate(GROUPS):
         for i, op in enumerate(ops):
@@ -71,7 +67,7 @@ def main():
                            edgecolors="#333333", linewidths=0.8, zorder=3)
             ax.text(x, (hi if ci else v) + 2, f"{v:.0f}", ha="center", va="bottom", fontsize=9)
     ax.axhline(100, color="#888888", ls="--", lw=1)
-    ax.text(1.62, 102, "no treatment = 100%", ha="right", fontsize=9, color="#666666")
+    ax.text(2.45, 102, "no treatment = 100%", ha="right", fontsize=9, color="#666666")
     ax.set_xticks(range(len(GROUPS)), [g[0] for g in GROUPS], fontsize=9.5)
     ax.set_ylabel("trait left, % of the untreated rate")
     ax.set_ylim(0, 150)
@@ -80,8 +76,9 @@ def main():
                  "Only the treated rows change; the rest of the training data is identical across bars.",
                  x=0.01, ha="left", fontsize=13)
     fig.text(0.01, 0.01,
-             "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%, 38.5%).\n"
-             "*Phantom Transfer rows were picked from a 75%-bad mix, so 26% of treated rows were already clean.",
+             "Bars: 3-seed means as % of each setting's untreated rate (28.5%, 15.0%, 27.9%).\n"
+             "*Phantom Transfer rows were picked from a 75%-bad mix, so 26% of treated rows were already clean.\n"
+             "In subliminal learning at 20,000 rows, neither rewriting nor refill reduced the trait.",
              fontsize=8.5, color="#555555")
     fig.tight_layout(rect=(0, 0.075, 1, 0.97))
     fig.savefig(OUT / "matched_ops_by_setting.png", dpi=200)
