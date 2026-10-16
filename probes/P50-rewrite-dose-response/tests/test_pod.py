@@ -133,13 +133,15 @@ def test_run_ok_rejects_bad_records(tmp_results, monkeypatch):
     (tmp_results / "train" / key).mkdir(parents=True)
     ad = tmp_results / "adapters" / key
     ad.mkdir(parents=True)
-    rec = {"status": "ok", "rows": 10000, "steps": T.n_steps(10000), "data_sha256": "abc"}
+    rec = {"status": "ok", "rows": 10000, "steps": T.n_steps(10000), "data_sha256": "abc",
+           "base_unchanged": True}
     (tmp_results / "train" / key / "run.json").write_text(json.dumps(rec))
     assert P.run_ok(key) is None  # no adapter files
     (ad / "adapter_model.safetensors").write_bytes(b"x")
     (ad / "adapter_config.json").write_text("{}")
     assert P.run_ok(key)
-    for bad in ({"steps": 3}, {"data_sha256": "zzz"}, {"status": "nonfinite"}):
+    for bad in ({"steps": 3}, {"data_sha256": "zzz"}, {"status": "nonfinite"},
+                {"base_unchanged": False}):
         (tmp_results / "train" / key / "run.json").write_text(json.dumps(rec | bad))
         assert P.run_ok(key) is None, bad
     (tmp_results / "train" / key / "run.json").write_text(json.dumps(rec))
@@ -186,13 +188,55 @@ def test_fits_uses_deadline_for_20k_and_guard_for_10k(tmp_results, monkeypatch):
     assert need20 > 2 * 912 * P.STEP_FLOOR_S + C.ENGINE_START_S + C.FINALISE_S
 
 
-def test_anchor_rule(tmp_results):
+def test_anchor_rule(tmp_results, monkeypatch):
     (tmp_results / "eval").mkdir()
     p = tmp_results / "eval" / f"{C.ANCHOR_KEY}.summary.json"
+    monkeypatch.setattr(P, "run_ok", lambda key, n_rows=None: {"status": "ok"})
+    good = {"n_samples": 5000, "truncated": 0, "empty_texts": 0}
     for rate, rc in ((26.08, 0), (30.0, 0), (30.2, 3), (21.9, 3)):
-        p.write_text(json.dumps({"trait_rate": rate}))
+        p.write_text(json.dumps(good | {"trait_rate": rate}))
         assert P.main(["anchor"]) == rc
         assert json.loads((tmp_results / "anchor.json").read_text())["pass"] == (rc == 0)
+    # an invalid eval never passes, whatever its rate (code review r1)
+    p.write_text(json.dumps(good | {"trait_rate": 26.08, "truncated": 100}))
+    assert P.main(["anchor"]) == 3
+    p.write_text(json.dumps(good | {"trait_rate": 26.08}))
+    (tmp_results / "eval_failed.json").write_text(json.dumps({C.ANCHOR_KEY: 0.02}))
+    assert P.main(["anchor"]) == 3
+    (tmp_results / "eval_failed.json").unlink()
+    monkeypatch.setattr(P, "run_ok", lambda key, n_rows=None: None)
+    assert P.main(["anchor"]) == 3
+
+
+def test_a_raised_attempt_is_never_accepted(tmp_results, monkeypatch):
+    key = "refill_r05_s1"
+    calls = {"train": 0, "load": 0}
+
+    def fake_train(model, tok, k, held, **kw):
+        calls["train"] += 1
+        ad = tmp_results / "adapters" / k
+        ad.mkdir(parents=True, exist_ok=True)
+        (ad / "adapter_model.safetensors").write_bytes(b"x")
+        (ad / "adapter_config.json").write_text("{}")
+        (tmp_results / "train" / k).mkdir(parents=True, exist_ok=True)
+        rec = {"status": "ok", "rows": 10000, "steps": T.n_steps(10000), "data_sha256": "abc",
+               "base_unchanged": True}
+        (tmp_results / "train" / k / "run.json").write_text(json.dumps(rec))
+        if calls["train"] == 1:
+            raise RuntimeError("base weights changed after unload")
+        return rec
+
+    def fake_load():
+        calls["load"] += 1
+        return object(), object()
+
+    monkeypatch.setattr(P, "expected_sha", lambda name: "abc")
+    monkeypatch.setattr(P, "_train_one", fake_train)
+    monkeypatch.setattr(P, "load_base", fake_load)
+    monkeypatch.setattr(P, "heldout_rows", lambda: None)
+    assert P.main(["train", "--tag", "B1", "--keys", key]) == 0
+    assert calls == {"train": 2, "load": 2}  # retrained on a freshly loaded base
+    assert P.run_ok(key)
 
 
 def test_venv_split_and_no_vllm_in_peft_steps():

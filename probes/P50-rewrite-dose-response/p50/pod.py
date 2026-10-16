@@ -96,6 +96,20 @@ def load_base():
     return P48POD.load_base(base_path())
 
 
+def reload_base(model):
+    """Drop a possibly modified base and load a pristine one."""
+    import gc
+    del model
+    gc.collect()
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
+    return load_base()
+
+
 def read_rows(name: str) -> list[dict]:
     return D.read_jsonl(C.data_name_path(name))
 
@@ -123,7 +137,8 @@ def run_ok(key: str, n_rows: int | None = None) -> dict | None:
     """A finished, verified training (review B4)."""
     from p48 import train
     rec = read_json(TRAIN_DIR / key / "run.json")
-    if not rec or rec.get("status") != "ok" or not adapter_valid(key):
+    if (not rec or rec.get("status") != "ok" or rec.get("base_unchanged") is not True
+            or not adapter_valid(key)):
         return None
     name, _ = C.key_parts(key)
     rows = rec.get("rows") if n_rows is None else n_rows
@@ -192,14 +207,19 @@ def step_train(args) -> int:
     failed, timings = {}, {}
     for key in todo:
         for attempt in (1, 2):
+            raised = False
             try:
                 rec = _train_one(model, tok, key, held)
             except SystemExit:
                 raise
             except Exception as exc:  # noqa: BLE001 - one bad training must not end the block
                 log(f"{key}: attempt {attempt} raised {type(exc).__name__}: {exc}")
-                rec = {"status": f"error: {exc}"}
-            if run_ok(key):
+                rec, raised = {"status": f"error: {exc}"}, True
+                # the base may still carry LoRA layers or changed weights: start from a fresh load
+                for d in (TRAIN_DIR / key, ADAPTERS / key):
+                    shutil.rmtree(d, ignore_errors=True)
+                model, tok = reload_base(model)
+            if not raised and run_ok(key):
                 timings[key] = {f: rec.get(f) for f in ("steps", "rows", "s_per_step",
                                                          "train_seconds", "wall_seconds")}
                 break
@@ -207,8 +227,10 @@ def step_train(args) -> int:
         else:
             failed[key] = rec.get("status")
     out = read_json(RESULTS / "train_log.json", {}) or {}
+    prev = out.get(args.tag or "train") or {}
     out[args.tag or "train"] = {"utc": utc(), "load_seconds": round(load_s, 1),
-                                "runs": timings, "failed": failed}
+                                "runs": {**(prev.get("runs") or {}), **timings},
+                                "failed": {**(prev.get("failed") or {}), **failed}}
     write_json(RESULTS / "train_log.json", out)
     if failed:
         tf = read_json(RESULTS / "train_failed.json", {}) or {}
@@ -266,10 +288,10 @@ def bad_share(s: dict) -> float:
 
 def step_eval(args) -> int:
     from p48 import evalgen
-    views = {k: str(ADAPTERS / k) for k in args.keys if adapter_valid(k)}
+    views = {k: str(ADAPTERS / k) for k in args.keys if run_ok(k)}
     missing = sorted(set(args.keys) - set(views))
     if missing:
-        log(f"eval: no valid adapter for {missing} (skipped)")
+        log(f"eval: no verified training for {missing} (skipped)")
     if not views:
         return 0 if not args.keys else 1
     gen_fn = None if all(_cached(k, a) for k, a in views.items()) else make_gen_fn()
@@ -308,20 +330,28 @@ def step_anchor(args) -> int:
         write_json(RESULTS / "anchor.json", {"utc": utc(), "rate": None, "pass": False})
         return 3
     rate = s["trait_rate"]
-    ok = abs(rate - C.ANCHOR_TARGET) <= C.ANCHOR_TOL
+    failed_eval = C.ANCHOR_KEY in (read_json(RESULTS / "eval_failed.json", {}) or {})
+    valid = (run_ok(C.ANCHOR_KEY) is not None and s.get("n_samples") == 5000
+             and bad_share(s) <= BAD_SHARE and not failed_eval)
+    if not valid:
+        log("anchor: the anchor's training or eval is not valid; taking the failure branch")
+    ok = valid and abs(rate - C.ANCHOR_TARGET) <= C.ANCHOR_TOL
     write_json(RESULTS / "anchor.json", {"utc": utc(), "rate": rate, "target": C.ANCHOR_TARGET,
-                                         "tol": C.ANCHOR_TOL, "pass": ok})
+                                         "tol": C.ANCHOR_TOL, "valid": valid, "pass": ok})
     log(f"anchor: {rate:.2f} vs {C.ANCHOR_TARGET} +- {C.ANCHOR_TOL} -> "
         f"{'PASS' if ok else 'FAIL'}")
     return 0 if ok else 3
 
 
 def seed0_reused() -> bool:
-    """P48's seed-0 20K references are reusable only if both rebuilt mixtures match its manifest."""
-    files = (read_json(C.ARMS_JSON) or {}).get("files") or {}
-    p48 = (read_json(C.P48_MANIFEST) or {}).get("files") or {}
-    return all(files.get(m) and files.get(m) == p48.get(f"mix/{m}.jsonl")
-               for m in (C.MIX20, C.MIXPOOL))
+    """P48's seed-0 20K references are reusable only if both rebuilt mixtures match its manifest.
+
+    Read from arms.json's `seed0_reuse` flags, which p50.arms wrote on the laptop by comparing
+    the rebuilt shas with P48's data/manifest.json; arms.json is pushed, so the pod and the
+    analysis decide identically (code review r1: the manifest itself is not on the pod).
+    """
+    flags = (read_json(C.ARMS_JSON) or {}).get("seed0_reuse") or {}
+    return all(flags.get(m) is True for m in (C.MIX20, C.MIXPOOL))
 
 
 def anchor_passed() -> bool:
@@ -390,12 +420,16 @@ def deadline_epoch(twenty_k: bool) -> float:
     return min(guard_end, abs_dl)
 
 
+EVAL_GROUPS = {"B1": ["B1", "B2"], "B2": ["B1", "B2"]}  # run.sh scores B1 and B2 in one E1 eval
+
+
 def step_fits(args) -> int:
     """rc 0 if this seed set's trainings, its block's eval, one eval retry and finalisation all
     end before min(absolute deadline, run.sh guard) - the absolute deadline for 20K sets only
     (review B5). The block's eval is reserved in full at every seed set."""
     keys = list(args.keys)
-    block_keys = [k for ss in block_seedsets(args.block) for k in ss]
+    group = EVAL_GROUPS.get(args.block, [args.block])
+    block_keys = [k for b in group for ss in block_seedsets(b) for k in ss]
     twenty = any(C.key_parts(k)[0] in TWENTY_K for k in keys)
     need = projected_seconds(keys, len(block_keys))
     now = float(os.environ.get("P50_NOW") or time.time())
