@@ -396,6 +396,8 @@ def cmd_analyze(a) -> int:
     from p49 import analyze as A
     stage = None if a.stage == "all" else a.stage
     rows = merged_rows(stage)
+    if a.level:
+        rows = [r for r in rows if r.get("level") == a.level]
     for r in rows:
         if isinstance(r.get("calls"), str):
             r["calls"] = []
@@ -411,6 +413,8 @@ def cmd_analyze(a) -> int:
                 turn_rows=read_jsonl(res("scores_at_turn.jsonl")), n_boot=a.n_boot)
     out["stage"] = a.stage
     label = "" if a.stage == "bulk" else "_" + a.stage.replace(",", "+")
+    if a.level:
+        label += f"_level{a.level}"
     jpath = C.ANALYSIS_JSON.with_name(f"analysis{label}.json")
     jpath.write_text(json.dumps(out, indent=1, default=str) + "\n")
     res(f"analysis{label}.md").write_text(A.markdown(out))
@@ -482,6 +486,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--hard-stop", default=None, help="HH:MM ET")
     ap.add_argument("--start", default=None, help="decide: bulk start HH:MM ET (default now)")
     ap.add_argument("--arms", default=None, help="score: comma-separated arms only")
+    ap.add_argument("--level", default=None, choices=("A", "B"), help="analyze: one level only")
     ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "gate0x", "gate0,gate0x", "gate0,gate0x,bulk", "dry", "all"),
                     help="analyze: which chains")
     ap.add_argument("--n-boot", type=int, default=10_000)
