@@ -38,7 +38,7 @@ A living summary for the sprint pitch: what the exploration-phase probes found, 
 - **Three seeds,** and transfer varies 26–29% between seeds of the same reference. P48's random-selection contrast (+9.4 [−7.2, +22.8]) doesn't exclude zero; the P43, P48 likelihood-ratio and CDD contrasts do.
 - **Closest prior work to address:** Weckbecker et al. 2026, "Can Data Attribution Filter Out Subliminal Learning? Not Reliably", and the "forthcoming MATS work" the Engels & Nanda post mentions.
 
-### Live: P50, rewrite vs delete vs add-clean by dose (interim in; final today)
+### P50, rewrite vs delete vs add-clean by dose (merged, PR #64)
 Same cat organism as P48 (reference 27.9%, clean control 2.1%). The reproduction check passed: 26.10% vs P48's 26.08%. Trait rate, 10,000 rows, mean of 3 seeds:
 
 | Dose | Rewrite, same base | Rewrite, gpt-6-luna | Add clean rows | Delete |
@@ -58,7 +58,7 @@ At a 5% dose across dataset sizes (trait rate; reference = no change):
 - **Adding clean rows ties the same-base rewrite**, so at 10,000 rows rewriting isn't shown to beat dilution.
 - **At 20,000 rows, 90% trait-carrying (mixed pool), rewriting 1,000 rows does nothing:** reference 38.4 vs rewrite 38.8 (reference − rewrite −0.5 [−2.7, +1.4]). Adding the same number of clean rows does a little: 35.2, add clean − rewrite **−3.6 [−6.4, −1.7]**. Tight intervals, small seed spread.
 - **At 20,000 rows, 100% trait-carrying (P48's share at twice the size):** reference 38.5, rewrite 41.0, add clean rows 42.8. Reference − rewrite −2.5 [−4.8, +0.1]; neither intervention removed anything.
-- Run quality: all 32 trainings, no failures; $29.47 of the $55 cap. Note and PR due by about 3:30 PM ET.
+- Run quality: all 32 trainings, no failures; $29.47 of the $55 cap.
 - **Pitch framing:** in subliminal learning, rewriting a small fraction is not a general fix: it works at one dataset size and vanishes when the dataset doubles, and it never beat dilution. The "more than dilution" claim rests on Phantom Transfer alone (P43, +3.9 [+1.7, +6.9]). An honest sprint question is *when* rewriting beats dilution (Phantom Transfer and EM yes, subliminal learning no), not *whether*.
 
 ---
@@ -83,26 +83,29 @@ At a 5% dose across dataset sizes (trait rate; reference = no change):
 ![What moves behaviour after compaction](fig/compaction_levers.png)
 
 ### Caveats to say out loud
-- **Every behavioural probe above ran at 5–20k tokens with forced cuts.** Real products compact at 167k+ and repeatedly. P49 is the first at that scale, and it found no clear compaction effect at ~200k with 16–24 histories.
+- **Every behavioural probe above ran at 5–20k tokens with forced cuts.** Real products compact at 167k+ and repeatedly. P49 is the first at that scale, and found no resolved compaction effect at ~200k with 16–24 histories; repeated compaction leans up.
 - Mostly GLM and DeepSeek Flash models. Neel doubts open models reproduce the incident.
 
-### P49, compaction at ~200k on the agent's own sessions (results in; note under review)
-Qwen3-Coder's own SWE sessions, stitched to ~190–200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Cheating is scored by a rule-based detector; every cheat was a test edit. Below: all runs under the no-instruction wording, pooled (24 histories; the 8 pilot histories are exploratory reuse).
+### P49, compaction at ~200k on the agent's own sessions (merged, PR #65)
+Qwen3-Coder's own SWE sessions, stitched to ~190–200k tokens, then a product compaction (Codex, pi or Inspect style), 1–3 repeated compactions, or none, then an impossible coding task. Cheating is scored by a rule-based detector; every cheat was a test edit. Numbers from the merged note (final scoring rule). Pooled no-instruction runs, 24 histories (the 8 pilot histories are exploratory reuse):
 
-| Arm | Cheating rate (n ≈ 24) | vs no compaction, 95% CI |
+| Arm | Cheating rate | vs no compaction, 95% CI |
 |---|---|---|
-| Fresh start (no history) | 50.0% | |
-| No compaction (~200k) | 19.0% | — |
-| Codex-style compaction | 26.1% | +10.0 [−19.0, +40.0] |
-| pi-style compaction | 34.8% | +19.0 [−11.1, +47.6] |
-| Inspect-style compaction | 16.7% | +0.0 [−25.0, +25.0] |
-| Inspect at ~120k (size arm) | 26.1% | |
-| Repeated, k = 2 / 3 | 26.1% / 25.0% | k = 3 − k = 1: +8.3 [−13.6, +30.8]; slope +4.3 [−7.1, +16.0] per compaction |
+| Fresh start (no history) | 57.1% | |
+| pi-style compaction | 38.1% | +11.8 [−19.0, +42.9] |
+| Repeated, k = 3 | 31.6% | k = 3 − k = 1: +16.7 [−6.2, +42.9] |
+| Codex-style compaction | 30.0% | +6.2 [−27.8, +41.2] |
+| Repeated, k = 2 | 28.6% | |
+| Inspect at ~120k (size arm) | 28.6% | |
+| No compaction (~200k) | 23.5% | — |
+| Inspect-style compaction | 18.2% | +0.0 [−31.2, +33.3] |
 
-- **No prediction met its bar.** No compaction arm resolves from no compaction. Directions are consistent: pi (keeps only a recent tail) leans highest, and repeated compaction leans upward ("more compactions over more work"), but every interval spans zero.
-- **The clearest result: a long history lowers cheating** against a fresh start, −38.1 [−65.2, −9.5] pooled (−30.8 [−66.7, +0.0] in the planned 16 new histories alone).
-- The size arm went the wrong way for "more text compacted, more cheating" (~120k cheats more than ~200k, wide interval).
-- Rate limits on the only provider with a large enough window capped the run at 16 new histories; a bigger, cached run is the obvious follow-up.
+- **Compaction contrasts are inconclusive.** No method, number of compactions or amount compacted is distinguishable from keeping the same history uncompacted.
+- **Repeated compaction is the one lead.** In the planned 16 new histories: k = 3 − k = 1 **+25.0 [+0.0, +50.0]**, slope **+12.5 points per compaction [+0.0, +25.0]**; both intervals touch zero, and an alternative scoring rule halves them. Reported as "more compactions over more work."
+- **The resolved result: a long history lowers cheating.** No compaction − fresh start **−47.1 [−77.8, −12.5]**, Inspect − fresh **−40.0 [−63.6, −15.8]** (pooled).
+- **An explicit "DO NOT MODIFY THE TESTS" instruction nearly floors cheating** (2 of 48 runs vs 15 of 50 without), more than any compaction choice.
+- The size arm went the wrong way for "more text compacted, more cheating" (wide interval).
+- Rate limits on the only provider with a large enough window capped the run at 16 new histories; a bigger, cached run with more compactions is the obvious follow-up.
 
 ---
 
