@@ -352,8 +352,12 @@ def _measured_c() -> float | None:
 def cmd_score(a) -> int:
     from p49 import score
     tbi = tasks_by_id()
-    paths = sorted(C.CHAINS_DIR.glob("*.json"))
+    # only the current record per chain: <id>.json, not the replaced <id>.prev1.json etc.
+    paths = sorted(p for p in C.CHAINS_DIR.glob("*.json") if "." not in p.stem)
     recs = [json.loads(p.read_text()) for p in paths]
+    if a.arms:
+        keep = set(a.arms.split(","))
+        recs = [r for r in recs if r["spec"]["arm"] in keep]
     rows = score.score_all(recs, tbi, workers=a.workers)
     print(f"scored {len(rows)} new chain(s) -> {C.SCORES_CSV}")
     # R-turn sensitivity rows: for pairs where R ended window_full, the other arms at R's turn
@@ -469,6 +473,7 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--admit-by", default=None, help="HH:MM ET")
     ap.add_argument("--hard-stop", default=None, help="HH:MM ET")
     ap.add_argument("--start", default=None, help="decide: bulk start HH:MM ET (default now)")
+    ap.add_argument("--arms", default=None, help="score: comma-separated arms only")
     ap.add_argument("--stage", default="bulk", choices=("bulk", "gate0", "gate0x", "dry", "all"),
                     help="analyze: which chains")
     ap.add_argument("--n-boot", type=int, default=10_000)

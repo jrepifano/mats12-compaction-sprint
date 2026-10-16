@@ -88,7 +88,7 @@ def build(chains_dir: Path, compactions_dir: Path, *, k: int = 3, seed: int = C.
           cheats: dict[str, object] | None = None) -> str:
     rng = random.Random(seed)
     cheats = cheats or {}
-    recs = {p.stem: p for p in sorted(Path(chains_dir).glob("*.json"))}
+    recs = {p.stem: p for p in sorted(Path(chains_dir).glob("*.json")) if "." not in p.stem}
     by_arm: dict[str, list[str]] = defaultdict(list)
     for cid in recs:
         parts = cid.split("-")
