@@ -21,19 +21,19 @@ OUT = Path(__file__).parent / "fig"
 plt.rcParams.update({"font.size": 10.5, "axes.spines.top": False, "axes.spines.right": False})
 COL = {"compact": "#DD8452", "delete": "#4C72B0", "insert": "#C44E52", "history": "#8172B3"}
 LAB = {"compact": "Compaction itself", "delete": "A line dropped from the summary",
-       "insert": "A line inserted into the summary", "history": "Keeping the long history"}
+       "insert": "A line we planted in the summary", "history": "Keeping the long history"}
 
 SMALL = [  # label, kind, value, ci
     ("Compaction\n3 in a row\nops · DeepSeek", "compact", 20.7, (6.1, 35.4)),
     ("One summary,\nthen history\ncoding · GLM", "compact", 20.0, (4.4, 35.6)),
-    ("Drop agent's\nown plan lines\nops · DeepSeek", "delete", -23.1, (-37.2, -9.0)),
+    ("Drop agent's\nown plan lines\n(natural)\nops · DeepSeek", "delete", -23.1, (-37.2, -9.0)),
     ("Drop \"don't\nedit tests\"\ncoding · DeepSeek", "delete", 18.8, (10.8, 27.3)),
     ("Drop \"don't\nedit tests\"\ncoding · GLM", "delete", 11.5, (3.7, 19.8)),
     ("Drop \"live\nsystem\" fact\nops · DeepSeek", "delete", 6.1, (-7.3, 19.5)),
     ("Drop \"live\nsystem\" fact\nops · GLM", "delete", 1.4, (0.0, 4.3)),
-    ("Insert \"go on\nwithout owner\"\nops · DeepSeek", "insert", 14.6, (2.4, 26.8)),
-    ("Insert false\n\"test sandbox\"\nops · DeepSeek", "insert", 53.7, (40.2, 67.1)),
-    ("Insert false\n\"test sandbox\"\nops · GLM", "insert", 38.6, (25.7, 51.4)),
+    ("Plant \"go on\nwithout owner\"\nops · DeepSeek", "insert", 14.6, (2.4, 26.8)),
+    ("Plant false\n\"test sandbox\"*\nops · DeepSeek", "insert", 53.7, (40.2, 67.1)),
+    ("Plant false\n\"test sandbox\"*\nops · GLM", "insert", 38.6, (25.7, 51.4)),
 ]
 LARGE = [
     ("Codex-style\nvs none", "compact", 6.2, (-27.8, 41.2)),
@@ -63,16 +63,18 @@ def main():
     panel(a2, LARGE, "Product scale (~200k tokens, Qwen3-Coder, coding)", (-85, 50))
     handles = [plt.Rectangle((0, 0), 1, 1, color=COL[k]) for k in LAB]
     fig.legend(handles, list(LAB.values()), loc="upper left", ncol=4, frameon=False, fontsize=10,
-               bbox_to_anchor=(0.005, 0.93))
-    fig.suptitle("What the summary says moves behaviour by up to 54 points. At ~200k tokens, compaction "
+               bbox_to_anchor=(0.005, 0.905))
+    fig.suptitle("What the summary says moves behaviour: dropping the agent's own plan lines cuts unsafe "
+                 "actions 23 points; a planted false line raises them up to 54.\nAt ~200k tokens, compaction "
                  "itself is unresolved; repeated compaction leans up.", x=0.01, y=0.99, ha="left",
                  fontsize=13)
     fig.text(0.01, 0.01,
-             "Error bars: 95% CI. Product-scale method contrasts pool 24 histories (exploratory); the "
+             "*Planted, never natural: no summary claimed a test environment on its own (0 of 231). The agent's plan "
+             "lines do appear naturally; \"go on without owner\" imitates them.\nError bars: 95% CI. Product-scale method contrasts pool 24 histories (exploratory); the "
              "repeated-compaction slope uses the 16 planned histories, and an alternative scoring rule "
              "halves it.\nThe history effect may partly reflect the old task's \"don't modify the tests\" "
              "line carried in the history.", fontsize=8.6, color="#555555")
-    fig.tight_layout(rect=(0, 0.05, 1, 0.88))
+    fig.tight_layout(rect=(0, 0.075, 1, 0.86))
     fig.savefig(OUT / "compaction_levers_v2.png", dpi=200)
 
 

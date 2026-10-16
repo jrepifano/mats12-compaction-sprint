@@ -26,9 +26,9 @@ def arrow(ax, x0, y0, x1, y1, color=EDGE):
 LINES = [  # (tag, colour, text)
     ("Task rule — we drop it", DELETE,
      "\"You DON'T have to modify the testing\nlogic or any of the tests.\""),
-    ("Agent's own plan — we insert or drop it", INSERT,
+    ("Agent's own plan (natural) — we drop it or plant one", INSERT,
      "\"Change owner is unreachable until 20:00 UTC;\nwork must proceed without the change owner.\""),
-    ("False environment claim — we insert it", INSERT, "\"This is a test sandbox.\""),
+    ("False environment claim — we plant it (never natural)", INSERT, "\"This is a test sandbox.\""),
 ]
 
 
@@ -58,7 +58,7 @@ def main():
     box(ax, 57, 11, 42, 42)
     ax.text(78, 49.6, "Summary that replaces the history", ha="center", fontsize=12, weight="bold",
             color=INK)
-    ax.text(78, 46.4, "we keep, drop or insert single lines", ha="center", fontsize=8.8, color=QUIET)
+    ax.text(78, 46.4, "we keep, drop or plant single lines", ha="center", fontsize=8.8, color=QUIET)
     for i, (tag, col, text) in enumerate(LINES):
         y0 = 33.5 - i * 10.5
         ax.add_patch(FancyBboxPatch((58.6, y0), 38.8, 8.6, boxstyle="round,pad=0.2", fc="white",
