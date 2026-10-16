@@ -489,11 +489,13 @@ def test_repeated_429s_halve(env):
 
 def test_orphan_container_stops_after_two_checks(env):
     f = Fakes(chain_s={C.R: 0.1})
-    s = make(env, f, containers=lambda: ["p49-stale-chain", "p49-mock-server"],
+    stale = "p49-h0-lcb_stale-R-A-abc123"      # one of this scheduler's histories and arms
+    s = make(env, f, containers=lambda: [stale, "p49-mock-server", "p49-h99-x-R-A-1"],
              concurrency=8)
     s.monitor_s = 0.5
     out = run(s, [full_block(i) for i in range(6)])
-    assert out["stop_reason"] and "orphaned container(s): p49-stale-chain" in out["stop_reason"]
+    assert out["stop_reason"] and f"orphaned container(s): {stale}" in out["stop_reason"]
+    assert "p49-h99" not in out["stop_reason"]         # another scheduler's history
     assert out["admitted"] < 6
 
 
