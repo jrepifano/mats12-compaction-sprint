@@ -18,7 +18,7 @@ import numpy as np
 
 OUT = Path(__file__).parent / "fig"
 plt.rcParams.update({"font.size": 11, "axes.spines.top": False, "axes.spines.right": False})
-SHADES = {"filter": "#b9d3ea", "refill": "#6a9fcf", "rewrite": "#1f4e8c"}
+SHADES = {"filter": "#4C72B0", "refill": "#DD8452", "rewrite": "#55A868"}  # seaborn "deep"
 LABELS = {"filter": "Filter (delete the rows)",
           "refill": "Filter + same number of clean rows on new prompts",
           "rewrite": "Rewrite (clean answer, same prompt)"}

@@ -12,7 +12,7 @@ from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
 
 OUT = Path(__file__).parent / "fig"
 INK, QUIET, EDGE = "#222222", "#666666", "#9a9a9a"
-SHADE = {"filter": "#b9d3ea", "refill": "#6a9fcf", "rewrite": "#1f4e8c"}
+SHADE = {"filter": "#4C72B0", "refill": "#DD8452", "rewrite": "#55A868"}  # seaborn "deep"
 TRAIT = "#c0392b"
 
 
@@ -66,7 +66,7 @@ def main():
     for i, (k, name, desc) in enumerate(ops):
         y0 = 40 - i * 13
         box(ax, 52, y0, 28, 9.5, fc=SHADE[k], ec=SHADE[k])
-        tc = "white" if k == "rewrite" else INK
+        tc = "white"
         ax.text(66, y0 + 7.0, name, ha="center", fontsize=11, weight="bold", color=tc)
         ax.text(66, y0 + 4.9, desc, ha="center", va="top", fontsize=8.3, color=tc)
         arrow(ax, 45.3, 32.5, 51.2, y0 + 4.75)
