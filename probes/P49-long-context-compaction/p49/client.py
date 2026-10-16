@@ -27,6 +27,7 @@ import fcntl
 import hashlib
 import json
 import os
+import random
 import sys
 import time
 import uuid
@@ -462,6 +463,7 @@ async def chat(body: dict, *, kind: str, chain_id: str, our_tokens: int) -> C.Re
             _checkpoint({"ts": _now(), "event": "retry", **base, "attempt": attempt, "rid": rid,
                          "status": e.status, "error": last, "maybe_billed": e.maybe_billed, **u})
             wait = backoff[min(attempt - 1, len(backoff) - 1)] if backoff else 0
+            wait *= random.uniform(0.75, 1.25)      # desynchronise retries under a TPM quota
             if attempt >= n_max or time.monotonic() + wait >= deadline:
                 if time.monotonic() + wait >= deadline:
                     last = f"deadline {_deadline_s():.0f}s would pass; last: {last}"

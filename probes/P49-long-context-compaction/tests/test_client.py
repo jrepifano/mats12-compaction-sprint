@@ -43,7 +43,7 @@ def agent_body(extra: list[dict] | None = None, level: str = "A") -> dict:
 @pytest.fixture
 def mock(tmp_path):
     srv, url = M.start()
-    client.configure(base_url=url, backoff=(0.01, 0.02, 0.03, 0.04), deadline_s=30)
+    client.configure(base_url=url, backoff=(0.01, 0.02, 0.03, 0.04), deadline_s=30, max_attempts=5)
     client.set_checkpoint_path(tmp_path / "requests.jsonl")
     client.reset_stats()
     calib = (C.CALIB.c, C.CALIB.n, list(C.CALIB.ratios))

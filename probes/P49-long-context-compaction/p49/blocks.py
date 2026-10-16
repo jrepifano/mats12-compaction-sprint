@@ -52,8 +52,10 @@ MONITOR_S = 60.0
 HALVE_COOLDOWN_S = 300.0
 HARD_STOP_GRACE_S = 30.0
 MIN_REQUESTS_FOR_ERROR_STOP = 40
+MIN_429_CONCURRENCY = 12       # a TPM quota caps throughput; fewer chains only starves it
 REPEATED_429 = 3                # new 429s within one monitor interval -> halve
 NOT_STARTED = "not_started"
+SIGNAL_STOP = "signal stop"     # SIGINT/SIGTERM: chains cancelled by the operator, rerun on resume
 SUMMARY_SUFFIX = "-summary"
 COMP_NAMES = ("codex", "pi", "inspect", "inspect120", "rep2", "rep3")
 COMP_METHOD = {"codex": "codex", "pi": "pi", "inspect": "inspect", "inspect120": "inspect",
@@ -413,6 +415,7 @@ class Scheduler:
         self.hard_stop = et_epoch(C.HARD_STOP_ET, now) if hard_stop is None else hard_stop
         self.tick_s, self.monitor_s = tick_s, monitor_s
         self.grace_s = HARD_STOP_GRACE_S
+        self.signalled = False
         self.block_estimate_s = block_estimate_s
         self.n_rule = n_rule or self.default_n_rule
         self.order = task_order([t.task_id for t in deps.tasks])
@@ -461,9 +464,21 @@ class Scheduler:
         if not p.exists():
             return False
         try:
-            return json.loads(p.read_text()).get("error") != NOT_STARTED
+            rec = json.loads(p.read_text())
         except ValueError:
             return False
+        if rec.get("end_reason") == C.END_API:
+            # infrastructure failure (Vertex TPM 429s past the retries, log 06:03Z): rerun the
+            # chain in full, whatever it had shown, so the rerun can't select on outcome; the
+            # failed record is kept beside it
+            n = len(list(p.parent.glob(f"{cid}.api_error*.json")))
+            p.rename(p.with_name(f"{cid}.api_error{n + 1}.json"))
+            return False
+        if rec.get("error") == SIGNAL_STOP:
+            n = len(list(p.parent.glob(f"{cid}.signal*.json")))
+            p.rename(p.with_name(f"{cid}.signal{n + 1}.json"))
+            return False
+        return rec.get("error") != NOT_STARTED
 
     def specs(self, b: BlockSpec) -> list[C.ChainSpec]:
         tid = self.task_for(b.index)
@@ -555,7 +570,8 @@ class Scheduler:
         statuses = st.get("statuses") or {}
         n429 = int(statuses.get("429") or statuses.get(429) or 0)
         if n429 - self.last_429 >= REPEATED_429 and now - self.last_halve >= HALVE_COOLDOWN_S:
-            new = max(1, (self.eff or self.base_conc) // 2)
+            new = max(min(MIN_429_CONCURRENCY, self.eff or self.base_conc),
+                      (self.eff or self.base_conc) // 2)
             self.conc_cap, self.last_halve = new, now
             self.log(f"{n429 - self.last_429} new 429s since the last check: halving "
                      f"concurrency to {new}")
@@ -777,6 +793,8 @@ class Scheduler:
             cost = self._billed([c.spec.chain_id])
             rec = censored_record(c.spec, utc(c.started), utc(c.ended), repr(e)[:2000],
                                   C.END_ERROR, cost)
+        if self.signalled and rec.get("end_reason") == C.END_DEADLINE:
+            rec["error"] = SIGNAL_STOP           # rerun on resume (chain_done)
         self.save_chain(c, rec)
         self.log(f"{c.spec.chain_id}: {rec.get('end_reason')} turns={rec.get('n_turns')} "
                  f"${float(rec.get('cost_usd') or 0):.4f} wall {c.ended - c.started:.1f}s")
@@ -954,6 +972,14 @@ class Scheduler:
         return [chain_id(hid, tid, a, lv) for a in C.ARMS for lv in C.LEVELS]
 
     # --- hard stop ---
+    def on_signal(self) -> None:
+        """SIGINT/SIGTERM: a clean stop now (cancel chains, remove containers, settle)."""
+        if not self.signalled:
+            self.signalled = True
+            self.log("signal received: stopping (chains cancelled now are rerun on resume)")
+            self.hard_stop = min(self.hard_stop, self.d.clock())
+            self.grace_s = 0
+
     async def do_hard_stop(self) -> None:
         self.log(f"hard stop at {utc(self.hard_stop)}: {len(self.in_flight)} chain(s) running, "
                  f"{len(self.ready)} queued")

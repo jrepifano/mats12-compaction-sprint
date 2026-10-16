@@ -516,7 +516,7 @@ def design_cost(design: str, pr: dict) -> float | None:
 
 
 def ladder(pr: dict, budget_usd: float, *, block_s: float | None, concurrency: int,
-           start_epoch: float, end_epoch: float) -> dict:
+           start_epoch: float, end_epoch: float, usd_per_s: float | None = None) -> dict:
     """First (design, N) in C.LADDER x C.LADDER_N whose cost fits the budget and whose
     projected rolling wall-clock ends by `end_epoch`: blocks in parallel = concurrency //
     chains per block, waves of p90 block time."""
@@ -528,6 +528,8 @@ def ladder(pr: dict, budget_usd: float, *, block_s: float | None, concurrency: i
         for n in C.LADDER_N:
             cost = per * n if per is not None else None
             wall = math.ceil(n / par) * block_s if block_s else None
+            if wall is not None and usd_per_s and cost is not None:
+                wall = max(wall, cost / usd_per_s)   # aggregate throughput cap (Vertex TPM quota)
             fits_cost = cost is not None and cost <= budget_usd
             fits_time = wall is not None and start_epoch + wall <= end_epoch
             tried.append({"design": design, "N": n, "cost": cost, "per_history": per,
@@ -542,7 +544,7 @@ def ladder(pr: dict, budget_usd: float, *, block_s: float | None, concurrency: i
 
 def gate0_decision(chains: list[dict], compactions: list[dict], blocks: list[dict], *,
                    spent_usd: float, start_epoch: float, end_epoch: float, concurrency: int,
-                   cap_usd: float = 100.0) -> dict:
+                   cap_usd: float = 100.0, usd_per_s: float | None = None) -> dict:
     """The Gate 0 rules (plan "Automatic rules"). `chains`: gate0 score rows merged with the
     chain summaries (arm, level, cheat, end_reason, cost_usd, calls); `compactions`: dicts with
     name, cost_usd; `blocks`: blocks.jsonl records (wall_s, status)."""
@@ -562,7 +564,7 @@ def gate0_decision(chains: list[dict], compactions: list[dict], blocks: list[dic
              and b.get("wall_s")]
     block_s = _p(walls, 90)
     lad = ladder(pr, budget, block_s=block_s, concurrency=concurrency,
-                 start_epoch=start_epoch, end_epoch=end_epoch)
+                 start_epoch=start_epoch, end_epoch=end_epoch, usd_per_s=usd_per_s)
     stop = admin_stop or lad["stop"]
     return {"level": level, "level_reason": why, "pooled_rates": rates, "cell_rates": cells,
             "admin_stop": admin_stop, "window": win, "band": win["band"], "prices": pr,

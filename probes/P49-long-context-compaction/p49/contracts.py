@@ -76,8 +76,8 @@ TEMPERATURE = 0.7
 TOP_P = 0.8
 SEED = 20261015
 REQUEST_DEADLINE_S = 600                          # per request, all retries included
-MAX_ATTEMPTS = 5
-BACKOFF_S = (5, 20, 60, 120)
+MAX_ATTEMPTS = 13                                 # Vertex TPM quota: 429s are routine (log 06:02Z)
+BACKOFF_S = (5, 10, 20, 30, 45, 60, 60, 60, 60, 60, 60, 60)   # x jitter U(0.75, 1.25)
 
 # --- context contract (plan "Context contract") ----------------------------------------------
 WINDOW = 262_144

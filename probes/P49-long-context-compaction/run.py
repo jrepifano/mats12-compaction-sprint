@@ -80,6 +80,28 @@ def redirect_outputs(out: Path) -> None:
     C.ANALYSIS_JSON = out / "analysis.json"
 
 
+def spend_rate(path, gap_s: float = 300.0) -> dict:
+    """Billed $ per second of active time over the checkpoints (gaps > gap_s between responses
+    are idle and excluded). Under Vertex's tokens-per-minute quota (log 2026-10-16 06:02Z) this,
+    not block time, bounds the bulk's wall-clock."""
+    import datetime as dt
+    import itertools
+    pts = []
+    for r in read_jsonl(Path(path)):
+        if r.get("event") == "response" and r.get("cost") not in (None, ""):
+            t = dt.datetime.fromisoformat(r["ts"]).timestamp()
+            pts.append((t, float(r["cost"])))
+    pts.sort()
+    if len(pts) < 2:
+        return {"usd_per_s": None, "active_s": 0, "usd": 0.0, "n": len(pts)}
+    active = sum(min(b[0] - a[0], gap_s) for a, b in itertools.pairwise(pts)
+                 if b[0] - a[0] <= gap_s)
+    usd = sum(c for _, c in pts[1:])
+    return {"usd_per_s": usd / active if active else None, "active_s": round(active, 1),
+            "usd": round(usd, 4), "n": len(pts), "usd_per_h": round(3600 * usd / active, 2)
+            if active else None}
+
+
 def parse_histories(spec: str | None, default: list[int]) -> list[int]:
     if not spec:
         return default
@@ -232,7 +254,15 @@ def _run_blocks(a, blocks) -> int:
     if a.limit_blocks:
         blocks = blocks[: a.limit_blocks]
     sched = _scheduler(a)
-    out = asyncio.run(sched.run(blocks))
+
+    async def main():
+        import signal
+        loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            loop.add_signal_handler(sig, sched.on_signal)
+        return await sched.run(blocks)
+
+    out = asyncio.run(main())
     print(json.dumps(out, default=str))
     return 0 if out.get("stop_reason") in (None, "hard stop") else 3
 
@@ -282,8 +312,11 @@ def cmd_decide(a) -> int:
     from p49 import blocks as B
     start = B.et_epoch(a.start, now) if a.start else now
     end = B.et_epoch(a.admit_by or C.ADMIT_BY_ET, now)
+    rate = spend_rate(C.CHECKPOINTS)
     d = A.gate0_decision(rows, comps, blocks, spent_usd=tot["total_usd"], start_epoch=start,
-                         end_epoch=end, concurrency=concurrency(a), cap_usd=cap)
+                         end_epoch=end, concurrency=concurrency(a), cap_usd=cap,
+                         usd_per_s=rate["usd_per_s"])
+    d["spend_rate"] = rate
     d["utc"] = time_utc()
     measured = _measured_c()
     if measured:
