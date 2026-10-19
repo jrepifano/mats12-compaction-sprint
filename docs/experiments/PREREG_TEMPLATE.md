@@ -22,7 +22,7 @@ Required, directly under the title, so Jacob and the reviewer can sign off from 
 | **Primary measure(s)** | The preregistered primary measure(s), comparison(s) and test, one line per primary question or stage |
 | **Predictions** | The 3–5 outcomes that matter, each with its prior |
 | **Stops and kill rules** | The decision-critical stops as thresholds, with a link to the full list (§6–7) |
-| **Cost** | Planned and the hard cap, in dollars and wall-clock |
+| **Cost** | Planned and the hard cap, in dollars and wall-clock; for API-heavy runs, the provider benchmark (`scripts/provider_bench.py`) behind the wall-clock projection |
 | **Changed since last version** | One line per change, linking to the amendment; "first version" if new |
 | **Reviews** | gpt-6-astra rounds done (cap 3 per artifact), each verdict, and the count of findings still open, linking to their table |
 | **Open for Jacob** | Decisions still his, or "none" |

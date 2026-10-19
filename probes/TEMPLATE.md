@@ -12,7 +12,7 @@ One page. Claim the id with `scripts/probe_claim.py claim` (it pushes the probe'
 | **What each outcome changes** | continue (graduate to a study) / pivot / kill, one line each |
 | **Likely follow-ups** | The next runs each outcome would call for, so they can start without waiting |
 | **Automatic rules** | What the smoke unit must show before the bulk run; when to stop (measurement failure, cap) |
-| **Cap** | Starting cap $<≤75> (GPU / API split), <N> wall-clock hours, with the projection and how it was measured. Follow-ups may raise it to $150 without asking |
+| **Cap** | Starting cap $<≤75> (GPU / API split), <N> wall-clock hours, with the projection and how it was measured. For an API-heavy probe, the provider benchmark (`scripts/provider_bench.py`) and the provider pinned. Follow-ups may raise it to $150 without asking |
 | **Approved** | <date, Jacob, "go" in chat> |
 
 ## Notes
