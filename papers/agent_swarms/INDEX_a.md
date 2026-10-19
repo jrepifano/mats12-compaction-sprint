@@ -130,3 +130,12 @@ Added while writing `docs/sprint/compaction-proposal.md`. The other sources that
 | # | Title (as saved) | Authors | Year | URL | File | Status | Notes |
 |---|---|---|---|---|---|---|---|
 | 101 | compaction-stress-lab - What context compaction makes AI coding agents forget, measured at the API layer | imyash2004 (GitHub; self-published, no paper) | 2026 | https://github.com/imyash2004/compaction-stress-lab | `compaction-stress-lab (README, 0439c64).md` | PARTIAL (README at commit 0439c64 verbatim, MIT; `findings/`, `DESIGN.md` and the linked article not read) | 628 runs, native compaction on Claude Haiku 5.5 and GPT-6 Luna. 12 real SWE-agent sessions: exact tool-printed values kept 19–20% after one compaction (99–100% with full history). Lab: facts the agent stated 79–91% kept vs tool-output-only 24–31%; Luna 67 → 48 → 30 → 23% over 4 compactions. 7 of 72 post-compaction rollout plans used a stale value vs 0 of 36 without compaction. Live SWE-bench bugs (7–15 steps, compaction forced at 6–24k chars): fix rate unchanged, +56% steps. Retention catalogue, no constraint-violation reruns; question writer and judge are OpenAI models. |
+
+## Additions from J Rosser's suggestions (2026-10-19)
+
+J Rosser suggested these in a call on 2026-10-19 as a possible check that a compaction summary faithfully represents the earlier work. They are cited in `docs/sprint/compaction-proposal.md` only as J's suggestion; capture and read them before any design builds on them.
+
+| # | Title (as saved) | Authors | Year | URL | File | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 102 | AI safety via debate | Geoffrey Irving, Paul Christiano, Dario Amodei | 2018 | https://arxiv.org/abs/1805.00899 | — | MISSING (not captured; not read) | J Rosser suggested reading it (2026-10-19). In J's view debate is too expensive for online monitoring but might be cheap enough to check a compaction summary. Content not yet verified from the primary source. |
+| 103 | Debate update: Obfuscated arguments problem | not yet checked (LessWrong) | 2020 | https://www.lesswrong.com/posts/PJLABqQ962hZEqhdB/debate-update-obfuscated-arguments-problem | — | MISSING (not captured; not read) | J Rosser suggested reading it (2026-10-19) alongside row 102. Content not yet verified from the primary source. |
