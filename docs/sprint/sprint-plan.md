@@ -443,6 +443,10 @@ The validated Q1, the Q2 core contrast and Q3 are kept.
 2. **Opus checks:** is 22 Oct still the deadline on your Max plan?
 3. **Harness:** I recommend the hybrid. Native Claude Code and Codex go through Inspect + inspect-swe; replayed styles, Antigravity and other models go through our own loop (S0.2, spike result).
 3b. **Rule channel:** S2 varies chat vs README/tool-output rules, because native harnesses protect chat rules verbatim. Keep this, or test chat only?
+3d. **Your sessions: Anthropic-only?** I recommend yes. The scrub (unit a) went through three review rounds, and each round found new synthetic ways around it. It now fails closed: 4 of 50 records are quarantined. I recommend keeping **all** of your sessions Anthropic-only, with the scrub as a second layer of protection rather than the only gate. The costs:
+   - S1 judges your sessions with Haiku only;
+   - re-compaction in other vendors' styles uses the reproduced prompts on Claude models, not the vendors' own models;
+   - Antigravity never sees your sessions.
 3c. **Claude Max token for bridged Claude Code calls:** the spike found a host-side path, so the token never enters a container. Whether your plan's terms allow automated benchmark use is your call. Until you decide, nothing uses it.
 4. **Q2 gate thresholds:** fewer than 2 of at least 8 boundaries; fewer than 4 means descriptive only.
 5. **Violation specs (S1b):** every DECIDE item in `violation-specs.md`.
