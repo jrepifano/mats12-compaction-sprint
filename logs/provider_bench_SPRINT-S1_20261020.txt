@@ -1,0 +1,20 @@
+8 (model, provider) pairs, 2 calls each + 4 parallel; uncached cost estimate $0.91
+  openai/gpt-6-luna @ OpenAI (unknown)
+  z-ai/glm-5.3-flash @ Friendli (unknown)
+  z-ai/glm-5.3-flash @ Together (unknown)
+  z-ai/glm-5.3-flash @ StreamLake (fp8)
+  deepseek/deepseek-v4.1-flash @ Baidu (fp8)
+  deepseek/deepseek-v4.1-flash @ DeepInfra (fp8)
+  deepseek/deepseek-v4.1-flash @ Together (unknown)
+  deepseek-api:deepseek-flash @ DeepSeek API (quantization not listed)
+
+model                            provider           tok/s   TTFT   batch  warm$      usd  error
+deepseek-api:deepseek-flash      DeepSeek API       173.0    2.6   517.1    1.0   0.0319  
+deepseek/deepseek-v4.1-flash     Together           434.4    0.9  1006.5    1.0   0.0386  
+deepseek/deepseek-v4.1-flash     Baidu              197.4   2.51   381.5   0.99   0.0118  
+deepseek/deepseek-v4.1-flash     DeepInfra          109.0   4.63   334.9    1.0   0.0181  
+openai/gpt-6-luna                OpenAI             128.0   3.54   318.9    1.0   0.0184  
+z-ai/glm-5.3-flash               Friendli           190.1   4.96   395.2      -   0.0455  
+z-ai/glm-5.3-flash               Together           158.5   2.33   578.7    1.0   0.0338  
+z-ai/glm-5.3-flash               StreamLake          42.5   7.72   146.7    1.0   0.0134  
+total $0.2114
