@@ -1,7 +1,7 @@
 """Live, read-only view of every probe: one row per probe (AGENTS.md "Two tiers", 2026-10-11).
 
-While 10-20 probe agents run at once (Claude and Codex, each in its own git worktree, each driven by
-a herdr agent), this answers "what is each probe doing?" from local files alone:
+While 10-20 probe agents run at once (Claude and Codex, each in its own git worktree, each in its
+own Orca terminal), this answers "what is each probe doing?" from local files alone:
 
 - Probes: the union of `probes/P<NN>-<slug>/` directories across ALL checkouts (main and every
   worktree from `git worktree list`), with or without a status.json.
@@ -9,8 +9,13 @@ a herdr agent), this answers "what is each probe doing?" from local files alone:
   that the one whose directory name starts with `p<nn>-`.
 - Status, question, cap, owner: `probes/<dir>/status.json`, the probe's worktree copy first, then
   main's, then any other checkout's. Missing: status "?".
-- Agent: the herdr agent named `p<nn>`, else the one named by status.json `owner` (`herdr agent
-  list`, 5 s timeout). herdr missing, slow or printing non-JSON: "-" and one note on stderr.
+- Agent: the probe's Orca terminal (AGENTS.md "One Orca terminal per probe", 2026-10-20), from
+  `orca terminal list --json`: a live terminal whose worktree path is the probe's worktree, else
+  one whose title starts with "P<NN> " (several: the one running an agent, then the most recent
+  output). Its agent (`agentIdentity`, e.g. claude or codex) and state come from
+  `orca worktree ps --json`, matched on the pane key `<tabId>:<leafId>`; the state is reported by
+  the Orca hooks in the agent CLI. No hook state: "live". Each call has a 5 s timeout. Orca
+  missing, not running, slow or printing non-JSON: "-" and one note on stderr.
 - Last log: the last non-empty line of `probes/<dir>/log.md` (worktree, then main) and its mtime.
 - Spend: the sum of `usd` over rows with `exp == <id>` in the union of every checkout's
   `logs/costs.jsonl` (merge_ledger's `read_ledger` + `union`, so rows shared from before a branch
@@ -19,11 +24,13 @@ a herdr agent), this answers "what is each probe doing?" from local files alone:
 - Pod: `probes/<dir>/logs/runner_state.json` (gitignored, written by scripts/probe_pod.py in the
   checkout that runs the pod): `phase`, `pod_id`, `last_go_outcome`.
 
-Strictly read-only: no writes, no network, no ssh, no RunPod calls. The herdr call goes through the
-module-level `RUN` and the git call through `WORKTREES`, so tests can inject both.
+Strictly read-only: no writes, no network, no ssh, no RunPod calls. The two Orca calls are read-only
+list commands (they talk to the local Orca app) and go through the module-level `RUN`, and the git
+call through `WORKTREES`, so tests can inject both. The Orca CLI is `$ORCA_BIN`, else `orca` on PATH,
+else the copy inside /Applications/Orca.app.
 
 Usage:
-  uv run python scripts/probe_status.py [--json] [--repo PATH] [--no-herdr]
+  uv run python scripts/probe_status.py [--json] [--repo PATH] [--no-orca]
 """
 
 from __future__ import annotations
@@ -46,11 +53,12 @@ import merge_ledger as ml
 
 REPO = Path(__file__).resolve().parents[1]
 DIR_RE = re.compile(r"P(\d{2})-[^/]+")
-HERDR_TIMEOUT_S = 5
+ORCA_TIMEOUT_S = 5
+ORCA_APP_BIN = "/Applications/Orca.app/Contents/Resources/bin/orca"
 WIDTH = 160  # table width when stdout is not a terminal (else the terminal's width)
 LOG_MAX, LOG_MIN = 80, 30  # LAST LOG text width in the table
 
-RUN = subprocess.run  # herdr call; tests inject a fake
+RUN = subprocess.run  # orca calls; tests inject a fake
 WORKTREES = ml.worktrees  # git call; tests may inject a fake
 
 
@@ -64,9 +72,10 @@ class Row:
     slug: str
     status: str
     question: str | None
-    agent: str | None
-    agent_status: str | None
-    pane_id: str | None
+    agent: str | None  # the agent CLI in the probe's Orca terminal, e.g. claude or codex
+    agent_status: str | None  # Orca's hook state (e.g. working, done), else "live"
+    terminal: str | None  # Orca terminal handle (runtime-scoped: changes after an Orca restart)
+    terminal_title: str | None
     worktree: str | None  # relative to the main checkout
     branch: str | None
     log_last_line: str | None
@@ -86,36 +95,87 @@ def checkouts(repo: Path) -> list[ml.Worktree]:
     return [w for w in WORKTREES(repo) if not w.bare and w.path.is_dir()]
 
 
-def herdr_agents() -> dict[str, dict] | None:
-    """Named herdr agents by name, or None when herdr is unavailable (never raises)."""
+def orca_bin() -> str:
+    return os.environ.get("ORCA_BIN") or shutil.which("orca") or ORCA_APP_BIN
+
+
+def orca_json(args: list[str], what: str) -> dict | None:
+    """`orca <args> --json`'s `result`, or None with one note on stderr (never raises)."""
     try:
         r = RUN(
-            ["herdr", "agent", "list"],
+            [orca_bin(), *args, "--json"],
             capture_output=True,
             text=True,
-            timeout=HERDR_TIMEOUT_S,
+            timeout=ORCA_TIMEOUT_S,
             check=False,
         )
     except FileNotFoundError:
-        note("herdr not installed; agent columns show '-'")
+        note(f"orca CLI not found; {what} show '-'")
         return None
     except subprocess.TimeoutExpired:
-        note(f"herdr agent list timed out after {HERDR_TIMEOUT_S} s; agent columns show '-'")
+        note(f"orca {' '.join(args[:2])} timed out after {ORCA_TIMEOUT_S} s; {what} show '-'")
         return None
     except OSError as e:
-        note(f"herdr agent list failed ({e}); agent columns show '-'")
+        note(f"orca {' '.join(args[:2])} failed ({e}); {what} show '-'")
         return None
     if r.returncode != 0:
-        note(f"herdr agent list exited {r.returncode}; agent columns show '-'")
+        note(f"orca {' '.join(args[:2])} exited {r.returncode} (is Orca running?); {what} show '-'")
         return None
     try:
-        agents = json.loads(r.stdout)["result"]["agents"]
-        if not isinstance(agents, list):
-            raise TypeError("agents is not a list")
-        return {a["name"]: a for a in agents if isinstance(a, dict) and a.get("name")}
-    except (ValueError, KeyError, TypeError):
-        note("herdr agent list printed unexpected output; agent columns show '-'")
+        d = json.loads(r.stdout)
+        if not d.get("ok", True):
+            raise ValueError("ok is false")
+        res = d["result"]
+        if not isinstance(res, dict):
+            raise TypeError("result is not an object")
+        return res
+    except (ValueError, KeyError, TypeError, AttributeError):
+        note(f"orca {' '.join(args[:2])} printed unexpected output; {what} show '-'")
         return None
+
+
+def orca_terminals() -> list[dict] | None:
+    """Live Orca terminals, or None when Orca is unavailable."""
+    res = orca_json(["terminal", "list", "--limit", "500"], "agent columns")
+    if res is None:
+        return None
+    terms = res.get("terminals")
+    if not isinstance(terms, list):
+        note("orca terminal list printed unexpected output; agent columns show '-'")
+        return None
+    return [t for t in terms if isinstance(t, dict) and t.get("handle")]
+
+
+def orca_agent_states() -> dict[str, dict]:
+    """Hook-reported agents by pane key (`<tabId>:<leafId>`); {} when unavailable."""
+    res = orca_json(["worktree", "ps", "--limit", "500"], "agent states")
+    out: dict[str, dict] = {}
+    wts = res.get("worktrees") if res else None
+    for w in wts if isinstance(wts, list) else []:
+        agents = w.get("agents") if isinstance(w, dict) else None
+        for a in agents if isinstance(agents, list) else []:
+            if isinstance(a, dict) and a.get("paneKey"):
+                out[str(a["paneKey"])] = a
+    return out
+
+
+def same_path(a: str | None, b: Path) -> bool:
+    if not a:
+        return False
+    try:
+        return Path(a).resolve() == b.resolve()
+    except OSError:
+        return False
+
+
+def probe_terminal(pid: str, wt_path: Path | None, terms: list[dict]) -> dict | None:
+    """The probe's terminal: worktree path match, else a "P<NN> " title; agent first, then newest."""
+    hits = [t for t in terms if wt_path is not None and same_path(t.get("worktreePath"), wt_path)]
+    if not hits:
+        hits = [t for t in terms if str(t.get("title") or "").upper().startswith(f"{pid} ")]
+    if not hits:
+        return None
+    return max(hits, key=lambda t: (bool(t.get("agentIdentity")), t.get("lastOutputAt") or 0))
 
 
 def spend_by_exp(cos: list[ml.Worktree]) -> dict[str, float]:
@@ -201,12 +261,13 @@ def probe_dirs(cos: list[ml.Worktree]) -> dict[str, dict[Path, str]]:
     return out
 
 
-def collect(repo: Path, use_herdr: bool = True) -> list[Row]:
+def collect(repo: Path, use_orca: bool = True) -> list[Row]:
     cos = checkouts(repo)
     if not cos:
         raise SystemExit(f"probe_status: no checkouts found for {repo}")
     main = cos[0]
-    agents = herdr_agents() if use_herdr else None
+    terms = orca_terminals() if use_orca else None
+    states = orca_agent_states() if terms else {}
     spend = spend_by_exp(cos)
     rows = []
     for pid, where in sorted(probe_dirs(cos).items()):
@@ -218,10 +279,12 @@ def collect(repo: Path, use_herdr: bool = True) -> list[Row]:
         name = where[order[0]] if order[0] in where else next(iter(where.values()))
         st_path = first_existing(dirs, "status.json")
         st = (read_json(st_path) if st_path else None) or {}
-        agent = None
-        if agents is not None:
-            agent = agents.get(pid.lower()) or (
-                agents.get(st["owner"]) if st.get("owner") else None
+        term = probe_terminal(pid, wt.path if wt else None, terms) if terms else None
+        hook = states.get(f"{term.get('tabId')}:{term.get('leafId')}", {}) if term else {}
+        agent_status = None
+        if term:
+            agent_status = hook.get("state") or (
+                "live" if term.get("connected") else "disconnected"
             )
         cap = st.get("cap_usd")
         cap = (
@@ -239,9 +302,12 @@ def collect(repo: Path, use_herdr: bool = True) -> list[Row]:
                 slug=str(st.get("slug") or name.split("-", 1)[1]),
                 status=str(st.get("status") or "?"),
                 question=st.get("question"),
-                agent=agent.get("name") if agent else None,
-                agent_status=agent.get("agent_status") if agent else None,
-                pane_id=agent.get("pane_id") if agent else None,
+                agent=(term.get("agentIdentity") or hook.get("agentType") or "shell")
+                if term
+                else None,
+                agent_status=agent_status,
+                terminal=term.get("handle") if term else None,
+                terminal_title=term.get("title") if term else None,
                 worktree=os.path.relpath(wt.path, main.path) if wt else None,
                 branch=wt.branch.removeprefix("refs/heads/") if wt and wt.branch else None,
                 log_last_line=log_line,
@@ -322,9 +388,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--json", action="store_true", help="full fields as a JSON list")
     ap.add_argument("--repo", type=Path, default=REPO, help="any checkout of the repo")
-    ap.add_argument("--no-herdr", action="store_true", help="skip the herdr agent lookup")
+    ap.add_argument("--no-orca", action="store_true", help="skip the Orca terminal lookup")
     a = ap.parse_args(argv)
-    rows = collect(a.repo.resolve(), use_herdr=not a.no_herdr)
+    rows = collect(a.repo.resolve(), use_orca=not a.no_orca)
     if a.json:
         print(json.dumps([asdict(r) for r in rows], indent=2))
     elif rows:
