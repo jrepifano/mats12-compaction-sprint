@@ -1,6 +1,6 @@
 # Compaction sprint plan (20–30 Oct 2026)
 
-**Draft v3.1, 20 Oct.** Revised after astra reviews r1–r3 (`logs/reviews/20261020-sprint-plan-r{1,2,3}.md`). Round 3 was the last allowed. Its 3 BLOCKING and 5 MINOR findings were fixed afterwards **without re-review**: rare-class recall estimation, the rule channel carried through S2 and Q2, Q3's priced allocation and schedule, interval-bound interpretation, the fork protocol, the labelling cap, the schedule and the counts. They are listed for Jacob in the morning summary. Turns the proposal sent to Neel ([`compaction-proposal.md`](compaction-proposal.md)) into a fixed sequence of tests. Every test is written down before it runs, with its cost, time, gate and what each outcome triggers, so Jacob can follow progress and knows what comes next. Times are ET in chat and UTC in logs.
+**Draft v3.2 (lean), 20 Oct.** Revised after astra reviews r1–r3 (`logs/reviews/20261020-sprint-plan-r{1,2,3}.md`). Round 3 was the last allowed. Its 3 BLOCKING and 5 MINOR findings were fixed afterwards **without re-review**: rare-class recall estimation, the rule channel carried through S2 and Q2, Q3's priced allocation and schedule, interval-bound interpretation, the fork protocol, the labelling cap, the schedule and the counts. They are listed for Jacob in the morning summary. Turns the proposal sent to Neel ([`compaction-proposal.md`](compaction-proposal.md)) into a fixed sequence of tests. Every test is written down before it runs, with its cost, time, gate and what each outcome triggers, so Jacob can follow progress and knows what comes next. Times are ET in chat and UTC in logs.
 
 ## Review summary
 
@@ -18,9 +18,9 @@
   - **Gates** are decision rules written here.
   - **Audits** do not block collecting data but block reading or analysing outcomes (Jacob, 20 Oct). Outcomes stay sealed until Jacob releases each audit, and a release is tied to artifact hashes.
 - **Outcomes are paired:** every safety outcome (violations, unapproved actions) is reported with **task progress, completion and refusal**, so stalling never counts as safe.
-- **Code:** astra reviews every change **before** commit.
+- **Code:** astra reviews every change **before** commit. **Lean rule (Jacob, 20 Oct):** small new code gets one round, plus a second only if the first finds something BLOCKING.
 - **Money:** $1,150 of runs as in the DM. New authorisation now is $632 (core), within ~$697 left. S4 and S5 can't reserve anything until the top-up is recorded. Spending is enforced in code with atomic reservations against both the stage cap and a sprint-wide cap.
-- **Jacob's labelling load:** estimated at 4–5 h, **capped at 6 h**, with items timed on Wed 21 and a drop order if the cap is reached (Decisions §8).
+- **Jacob's labelling load (lean, 20 Oct):** about **2 h**, capped at 3 h. Audits are one batch per stage, about 15 min each in the viewer. Labels: the Q2 retention labels (protected), about 60 S1 labels, and 4 gold windows. The rare-class measurement of invented permissions is dropped; those are reported as counts.
 - **Decisions for Jacob** are at the end.
 
 ## Status board
@@ -172,9 +172,9 @@ Later reliance (what the agent used afterwards) is a secondary analysis and neve
 **Primary outputs:** drop rate per item type among assessable items; invented-claim and invented-permission rates per summary. Each is broken down by source, model and harness, with intervals that resample whole sessions or runs.
 
 **Validation:**
-- **Classification:** about 100 of Jacob's labels, split by session, stratified across sources: about 40 from his sessions, about 20 from each public set.
-- **Targeted labels:** about 30 for invented permissions.
-- **Extraction coverage:** a gold set of 8 compactions (2 per source). For each, Jacob hand-enumerates the items in one window of about 30k tokens of the source and lists every summary claim. The extractor's recall must reach 0.8 on each pass. If it doesn't, Q1 reports rates only for item types whose recall passes. The gold set's recall applies to the sampled windows, and is reported as such.
+- **Classification:** about 60 of Jacob's labels (lean), split by session, stratified across sources: about 30 from his sessions and about 10 from each public set.
+- **Targeted labels:** dropped in the lean version. Invented permissions are reported as judge counts, labelled unvalidated.
+- **Extraction coverage:** a gold set of 4 compactions (lean; 1 per source). For each, Jacob hand-enumerates the items in one window of about 30k tokens of the source and lists every summary claim. The extractor's recall must reach 0.8 on each pass. If it doesn't, Q1 reports rates only for item types whose recall passes. The gold set's recall applies to the sampled windows, and is reported as such.
 - **Judges:** Haiku 5.5 sees everything; luna sees only scrubbed and public records.
 
 **Size (descriptive):**
@@ -365,6 +365,8 @@ The observational violation analysis on the public sets is **off by default** (s
 
 **Mid-run checks:** the same batch-boundary feasibility rule as Q2.
 
+**Deferred (lean version, Jacob 20 Oct):** S4 doesn't run in this sprint. Its $250 moves to the contingency. The design below is kept for later.
+
 ### S4. Q4: controlled memory degradation. $250, cut first; no reservations until the top-up is recorded.
 
 - **Source pool:** S3 base trajectories that reached their first compaction, from the full-history arm. Their **recorded messages up to the boundary T are fixed**.
@@ -418,7 +420,7 @@ The observational violation analysis on the public sets is **off by default** (s
 | S3 Q3 | $100 | after R-A3 and S1b |
 | Reserve | $147 | logged transfer; over $50 needs Jacob |
 | **Core** | **$632.18** | within $697.88 left (19 Oct) minus $0.45 benchmark spend since = $697.43 |
-| S4 Q4 | $250 | after the top-up is recorded |
+| S4 Q4 | $250 | **deferred** (lean); moved to contingency |
 | S5 flagships | $420 | after the top-up is recorded |
 | Contingency | $350 | after the top-up; logged transfer |
 | **Full** | **$1,652.18** | within $1,697.43 with the top-up |
@@ -442,7 +444,7 @@ The validated Q1, the Q2 core contrast and Q3 are kept.
 | Thu 22 | S2 gates; S1 and S1b validation; R-A2, R-A2b, R-A3 |
 | Fri 23 – Mon 26 23:59 | Q3 development half by Fri 23:59, then R-A4-Q3dev and the prompt fix; Q2 under the batch-boundary rule until Mon 23:59; S1 rates |
 | Sat 24 – Tue 27 12:00 | Q3 held-out half, with its own reserved capacity |
-| Tue 27 – Wed 28 | S4 and S5 if the top-up has come through |
+| Tue 27 – Wed 28 | S5 flagship replication (top-up approved by Neel, 20 Oct); S4 deferred |
 | Thu 29 – Fri 30 | S6; R-A5 (sprint ends 10 pm Fri 30 Oct) |
 
 ## Risks
@@ -473,9 +475,4 @@ The validated Q1, the Q2 core contrast and Q3 are kept.
    - Q3 cells: chat or README × deny, allow or silent, 5 tasks each;
    - 6 held-out tasks for S5;
    - compaction at 70% of uncompacted peak.
-8. **Your labelling:** about 100 S1 labels; the rare-class strata; gold enumeration of 8 windows; Q2 retention labels (violation-specs); audits at each release. Estimated 4–5 h, **capped at 6 h**. One gold window and one audit batch are timed on Wed 21 to check the estimate. **Drop order if the cap is reached:**
-   1. the invented-permission rare-class measurement;
-   2. public-source label classes, keeping your sessions and SWE-chat;
-   3. gold windows, from 8 down to 4.
-   
-   The core retention labels for Q2 are protected.
+8. **Your labelling (lean):** about 2 h, capped at 3 h: Q2 retention labels (protected), about 60 S1 labels, 4 gold windows, and audits as one batch of about 15 min per stage. The rare-class measurement is dropped.
