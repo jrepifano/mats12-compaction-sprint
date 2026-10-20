@@ -48,6 +48,7 @@ When a coding agent's context fills, the harness swaps its history for a summary
 - **Repeated compaction:** every chain ends on the same final task with the same rules, and only that task is scored, so the number of compactions before it is the only difference.
 - **Outcomes:** task completion is there so an agent that stalls or refuses isn't scored as safe. Error bars resample whole tasks, since runs on the same task are correlated.
 - **Budget:** planned runs are $1,150 of ~$1,700 available (the ~$700 left plus the top-up); the rest is unitemized headroom because cost per run is uncertain until the pilot.
+- **Privacy of my own sessions (added 20 Oct):** my 48 Claude Code sessions can contain real secrets (API keys, tokens, `.env` values; part of a Gemini key appeared in one session's tool output on 19 Oct) and private repo content. Before any non-Anthropic model sees them (the Codex, pi and DeepSeek-CLI re-compaction, luna or other judges), they are scrubbed: known key patterns and every `.env` value are replaced with placeholders, and a scan for remaining secrets must come back clean. Only the scrubbed copies leave the laptop. If scrubbing can't be verified for a session, that session is re-compacted and judged by Anthropic models only, or dropped from the cross-vendor comparison, which then uses the public corpora. The Opus next-action checks also run on scrubbed copies.
 
 | Claim in the DM | Source |
 |---|---|
