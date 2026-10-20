@@ -10,7 +10,7 @@ Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, curre
 
 When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory. UK AISI has flagged assumptions being carried forward as fact. Prior work measures what summaries lose, or plants rules in short tasks. None reruns natural losses on long, real work.
 
-**What I've found so far:** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points. Its summaries carried permissions and plans forward as settled, and deleting those sentences cut unapproved actions by 23 points, though which content mattered is unresolved. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods for compaction differed.
+**What I've found so far:** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points. Its summaries carried permissions and plans forward as fact, and deleting those sentences cut unapproved actions by 23 points, though which content mattered is unresolved. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods for compaction differed.
 
 **Research questions**
 
@@ -21,15 +21,15 @@ When a coding agent's context fills, the harness swaps its history for a summary
 
 **Models and data:** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
 
-- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and two long-run sets whose tasks state checkable rules: PostTrainBench ("cannot modify evaluate.py") and FrontierML ("no training on test data"). With these I can see whether a rule drops out of a summary and the agent then breaks it. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. I re-compact the same histories with the Codex, pi and Antigravity-style summarizers to compare methods. What gets lost sets the rules and thresholds for the online runs.
-- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself, therefore any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. ConstraintRot's and OverEager-Bench's tasks aren't available, so permission tests rebuild their consent rules and traps in the same DeepSWE runs (e.g. force-pushing or deleting a branch after compaction), then fix any permission the summary invented and rerun. Repeated-compaction runs chain 2–3 tasks ending on the same scored task.
-  - **Outcomes:** rule violations, irreversible actions, test cheating and task completion.
+- **Offline (first, cheap):** Audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and two long-run sets whose tasks state checkable rules: PostTrainBench ("cannot modify evaluate.py") and FrontierML ("no training on test data"). With these I can see whether a rule drops out of a summary and the agent then breaks it. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. I re-compact the same histories with the Codex, pi and Antigravity-style summarizers to compare methods. What gets lost sets the rules and thresholds for the online runs.
+- **Online (causal tests):** On the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself, therefore any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. ConstraintRot's and OverEager-Bench's tasks aren't available, so permission tests rebuild their consent rules and traps in the same DeepSWE runs (e.g. force-pushing or deleting a branch after compaction), then fix any permission the summary invented and rerun. Repeated-compaction runs chain 2–3 tasks ending on the same scored task.
+  - **Outcomes:** Rule violations, irreversible actions, test cheating and task completion.
 
 **Timeline:** Week 1: offline audit, pilot, start online runs. Week 2: online runs and write-up.
 
-**Ask:** A $1,000 top-up ($3.1k total). Planned runs come to $1,150 (pilot $50, audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250). I don't expect to spend all of it, but want the funds approved so later experiments aren't held up.
+**Ask:** A $1,000 top-up ($3.1k total). Planned runs come to $1,150 (pilot $50, audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250), covered by the top-up plus what's left of my original budget. I don't expect to spend all of it, but want the funds approved so later experiments aren't held up.
 
-**Stretch:** comparing compaction styles on all fresh tasks, safer summarizers (automated prompt search, or a model that checks each summary against its source), switching models mid-task.
+**Stretch:** Comparing compaction styles on all fresh tasks, safer summarizers (automated prompt search, or a model that checks each summary against its source), switching models mid-task.
 
 ## Backing for each number
 
