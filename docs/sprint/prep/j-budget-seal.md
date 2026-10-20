@@ -1,6 +1,6 @@
 # Sprint prep (j): spend reservations and sealed outcomes
 
-2026-10-20 (UTC). Two small pieces of sprint infrastructure from the [sprint plan](../sprint-plan.md), "How every stage runs": "Spending is enforced in code" (`src/compaction/budget.py`, caps in [`caps.toml`](../caps.toml)) and "Sealed outcomes and releases" (`src/compaction/seal.py`). No model is called and nothing is paid. Tests: `tests/compaction/test_budget.py`, `tests/compaction/test_seal.py`. The astra reviews are in `logs/reviews/20261020-sprint-prep-j-r1.md` and `-r2.md`, with our responses [at the end](#review-responses).
+2026-10-20 (UTC). Two small pieces of sprint infrastructure from the [sprint plan](../sprint-plan.md), "How every stage runs": "Spending is enforced in code" (`src/compaction/budget.py`, caps in [`caps.toml`](../caps.toml)) and "Sealed outcomes and releases" (`src/compaction/seal.py`). No model is called and nothing is paid. Tests: `tests/compaction/test_sprint_budget.py`, `tests/compaction/test_sprint_seal.py` (renamed 20 Oct to avoid a module-name clash with tests/s4, tests/e12, tests/e9 and tests/e3). The astra reviews are in `logs/reviews/20261020-sprint-prep-j-r1.md` and `-r2.md`, with our responses [at the end](#review-responses).
 
 ## Spend reservations (`compaction.budget`)
 
