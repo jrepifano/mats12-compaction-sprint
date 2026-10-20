@@ -122,12 +122,18 @@ The harness choice is time-boxed to Wed 21, 12:00 ET. If no native route passes,
 
 S0.2's four checks still have to pass on the chosen route, since the full-history arm and the Codex fork were checked only with the mock model. The pilot fixes from the spike report (thresholds, limits, Codex home, `--no-pause`) go into the S2 spec.
 
-**Design consequence: what survives compaction depends on the channel a rule arrives through.**
-- **Codex** keeps every user message verbatim through compaction.
-- **Antigravity** copies up to 10 user requests verbatim.
-- **Claude Code** tells the agent where the full transcript is stored after compaction.
+**Design consequence: what survives compaction depends on the channel a rule arrives through** (corrected 20 Oct from the captured sources; the spike's "Codex keeps every user message" was too strong).
 
-So a rule stated **in chat** is structurally protected in several native harnesses. Losses are more likely for rules that arrive through other channels: a README or CONTRIBUTING file read once, a ticket or tool output, or a mid-task decision. **S2 therefore varies the rule channel** (chat vs file/tool output; see S2), and the Q2 yield gate counts losses per channel.
+| Harness | What it keeps through compaction |
+|---|---|
+| **Codex, local summarizer** (non-OpenAI models; what inspect-swe uses) | The most recent user messages, newest first, **up to 20,000 tokens**. Older ones are dropped, and the one that crosses the budget is cut short. Root AGENTS.md is rebuilt into the context (`papers/agent_swarms/Codex CLI compaction (source, ac9db7d).md`). |
+| **Codex, server-side** (OpenAI models) | Recent user messages **up to 64,000 tokens**. |
+| **Antigravity** | Up to **10** user requests verbatim (inferred from its built-in config). |
+| **Claude Code** | User messages are **not** kept verbatim. The summary's "All user messages" section is written by the model, and its prompt asks it to keep security-relevant constraints verbatim. Root CLAUDE.md/AGENTS.md is re-injected from disk. The docs say "detailed instructions from early in the conversation may be lost", and that rules loaded mid-session are "summarized away" (`papers/agent_swarms/Claude Code compaction (docs and v2.1.300 binary, 2026-10-14).md`). |
+
+So a chat rule survives only while later user text stays inside these budgets. The spike's runs had a single opening prompt, so the budgets never filled. Real sessions don't look like that: Jacob's compactions average about 14 user turns each.
+
+S2 and S3 therefore **replicate ConstraintRot's channel test** (Governance Decay, row 36). That test delivered the same policy through the system prompt (no decay), a user turn, memory or a tool result (+33 to +50 points). Here it runs under **real harnesses on long real tasks**, through three channels (see S2). The Q2 yield gate is applied per channel.
 
 **S0.3 Tooling, overlapping the spike:**
 - the converter from records to Inspect logs;
@@ -177,6 +183,8 @@ Later reliance (what the agent used afterwards) is a secondary analysis and neve
 - Reported as **"retention across growing reconstructed prefixes"**, using only items present at both cutoffs. Later prefixes also change the task content, so this is not a causal context-size effect.
 - A controlled length manipulation (matched irrelevant padding up to 512k) is **exploratory** and runs only if money is left.
 
+**Verbatim-budget check** (descriptive, $0, added 20 Oct). For each compaction in Jacob's sessions and in SWE-chat, measure the user text that came **after** each early user turn. Report how often that turn would fall outside Codex's 20k and 64k verbatim budgets and Antigravity's 10-request window. This grounds the chat channel's realism in real usage.
+
 **R-A2:** Jacob audits about 20 judged items in the comparison view, then releases.
 
 ### S1b. Violation detectors (part of the experiment). $5.
@@ -223,10 +231,19 @@ The observational violation analysis on the public sets is **off by default** (s
 - A fixed order that alternates models and channels.
 - **All 24 runs enter the gate**, whatever order they finish in.
 
-**Rule channel (fixed after plan review r3).**
-- **Two channels:** **chat**, or a **README section** that the task prompt tells the agent to read first. No fetched tickets.
-- **Pilot size:** 24 runs, made of 6 tasks (ranks 1–6, excluding held-out tasks) × 4 models. 3 of the tasks per model use chat and 3 use README, alternating in the fixed order. The rule text is identical in both channels.
-- **Cost:** the pilot stays within $50, at about $2 per run including arms. The extra 8 runs replace the earlier 16-run design.
+**Rule channel** (revised 20 Oct, Jacob: replicate ConstraintRot's channel test under real harnesses). The same rule text goes through one of three channels:
+
+| Channel | Delivery | ConstraintRot analogue | Expected protection |
+|---|---|---|---|
+| **AGENTS.md** (control) | a rules section in the repo's root AGENTS.md / CLAUDE.md | system prompt | re-injected by the harness, so little or no loss expected |
+| **Chat** | the rule in the opening user message, **followed by scripted follow-up user turns**: progress check-ins, a clarifying answer, and two pasted logs, about 25k tokens of user text in all, fixed per task and identical across arms | user turn | survives only inside the verbatim budgets (Codex 20k, Antigravity 10 requests); Claude Code paraphrases |
+| **README** | a "Contribution rules" section in README.md, which the opening prompt tells the agent to read first | tool result | summarized away; the agent can re-read it, so recoverability is reported |
+
+- **Why follow-up turns:** without them the chat channel tests a single-prompt session that rarely occurs in real use, and the verbatim budgets never fill. The follow-up script is written before the pilot, with no rule content in it, and is stored in the S2 spec.
+- **Pilot size:** 24 runs, made of 6 tasks (ranks 1–6, excluding held-out tasks) × 4 models. Each model gets **2 tasks per channel**, assigned in a fixed order that rotates channels across models, so each task appears in every channel across the four models.
+- **Cost:** within $50, at about $2 per run including arms.
+- **Coverage:** thinner per channel, so replacement runs (tasks 7–10) go first to the channel with the fewest assessable boundaries.
+- **The AGENTS.md control** isn't gated. It is descriptive, and shows how much the harness's own protection is worth. If it does lose the rule, that's a finding in its own right.
 
 **Three loss notions,** defined separately:
 - **summary omission:** the rule isn't in the summary;
@@ -242,7 +259,7 @@ The observational violation analysis on the public sets is **off by default** (s
 - **Still short after replacements:** that model's threshold drops to 50% of peak for 2 more runs, once.
 - **Still short after that:** the model is **excluded from Q2** and reported as low boundary yield.
 
-**Q2 yield gate (Jacob, 20 Oct), applied separately to each channel** (chat and README). The counts below are per channel, over assessable boundaries from models with coverage. Each channel ends in one of these outcomes. The channels with full or reduced outcomes go into S3. If both do, channel is an S3 factor, with tasks split evenly between channels. A channel ending "descriptive only" contributes pilot cases only.
+**Q2 yield gate (Jacob, 20 Oct), applied separately to the chat and README channels** (AGENTS.md is the descriptive control). The counts below are per channel, over assessable boundaries from models with coverage. Each channel ends in one of these outcomes. The channels with full or reduced outcomes go into S3. If both do, channel is an S3 factor, with tasks split evenly between channels. A channel ending "descriptive only" contributes pilot cases only.
 - **At least 8 boundaries, and fewer than 2 lose a rule from context:** "loss yield too low to justify a full Q2", with a Wilson interval. This is a budget decision, not a behavioural negative. Q2 runs **at most** 10 tasks, if feasible, and the remaining Q2 authorisation is transferred, with a log entry, to S1 size and Q3.
 - **At least 8 boundaries, and at least 2 lose a rule:** Q2 runs at full size.
 - **Fewer than 4 assessable boundaries in the channel:** that channel is **descriptive only**: loss rates from S1 plus the pilot cases, with no arm comparison.
@@ -442,7 +459,7 @@ The validated Q1, the Q2 core contrast and Q3 are kept.
 1. **Go** on this plan, with any edits you want.
 2. **Opus checks:** is 22 Oct still the deadline on your Max plan?
 3. **Harness:** I recommend the hybrid. Native Claude Code and Codex go through Inspect + inspect-swe; replayed styles, Antigravity and other models go through our own loop (S0.2, spike result).
-3b. **Rule channel:** S2 varies chat vs README/tool-output rules, because native harnesses protect chat rules verbatim. Keep this, or test chat only?
+3b. **Rule channel (decided, Jacob 20 Oct):** replicate ConstraintRot's channel test with AGENTS.md (control), chat with scripted follow-up turns, and README.
 3d. **Your sessions: Anthropic-only?** I recommend yes. The scrub (unit a) went through three review rounds, and each round found new synthetic ways around it. It now fails closed: 4 of 50 records are quarantined. I recommend keeping **all** of your sessions Anthropic-only, with the scrub as a second layer of protection rather than the only gate. The costs:
    - S1 judges your sessions with Haiku only;
    - re-compaction in other vendors' styles uses the reproduced prompts on Claude models, not the vendors' own models;
