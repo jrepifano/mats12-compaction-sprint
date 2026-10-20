@@ -120,6 +120,17 @@ The harness choice is time-boxed to Wed 21, 12:00 ET. If no native route passes,
 - **Native arms:** Inspect + inspect-swe for Claude Code (any model) and Codex (luna), forked through the filter hook and resume.
 - **Our own loop:** replayed summarizer styles, Antigravity (agy driver), and models without a vendor tool.
 
+**Harness × model pairing (20 Oct, from a side-agent note).** In every harness the coding model also writes the summary. So Claude Code running DeepSeek is not what Claude Code users get.
+
+| Harness | Native pairing (product claims) | Caveat |
+|---|---|---|
+| Claude Code | Haiku 5.5, plus Opus 5.5 for the flagships | — |
+| Antigravity | Gemini 3.8 Flash, via the agy driver (free quota) | Not via inspect-swe |
+| Codex | luna, labelled **"Codex local summarizer"** | inspect-swe forces Codex's open-source local summarizer. Real Codex on OpenAI models compacts **server-side** and returns the summary encrypted. A small **direct-Codex check** (our OpenAI key, no bridge, about 4 tasks) compares behaviour rates only, since that summary can't be read |
+| — | DeepSeek V4.1 Flash, GLM 5.3 Flash | No vendor coding tool. They run inside Claude Code or Codex, labelled **cross-model**, and are reported apart from any product claim |
+
+**Rule:** a claim about a product comes only from its native pairing. Cross-model results answer "does this model break rules after this harness's compaction".
+
 S0.2's four checks still have to pass on the chosen route, since the full-history arm and the Codex fork were checked only with the mock model. The pilot fixes from the spike report (thresholds, limits, Codex home, `--no-pause`) go into the S2 spec.
 
 **Design consequence: what survives compaction depends on the channel a rule arrives through** (corrected 20 Oct from the captured sources; the spike's "Codex keeps every user message" was too strong).
