@@ -15,8 +15,8 @@ When a coding agent's context fills, the harness swaps its history for a summary
 **Research questions**
 
 1. How often does compaction drop, mis-summarize or invent actionable facts, and does that grow with context size?
-2. Does compaction make agents break the task's rules, and how much do the lost facts explain?
-3. Do summaries invent permissions, does correcting them change actions, and does a line in the summarizer prompt prevent it?
+2. Does compaction make agents break the task's rules, and does restoring the lost rule undo it?
+3. Do summaries invent permissions, does correcting them change actions, and can the summarizer be prompted to avoid it?
 4. Do losses and rule-breaking compound across repeated compactions?
 
 **Models and data:** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
