@@ -70,12 +70,13 @@ More documents may be added; when they are, read them and update the proposals d
   - The probe's agent edits its own status.json at every status change, commits it on its branch, and publishes it to main with `probe_claim.py publish`, so main's INDEX.md stays current.
   - **Never edit `probes/INDEX.md` by hand.** It is generated: `uv run python scripts/probe_index.py` rewrites it, and `--check` verifies it. Regenerate it after every merge, and commit the result.
   - A branch created before 2026-10-11 may have hand-edited INDEX.md. When it merges main, keep the branch's INDEX.md on a conflict, then `probe_index.py --prefer-index P<NN>` copies that probe's row into its status.json (the finish skill has the steps).
-  - **Live view of all probes:** `uv run python scripts/probe_status.py` (or `--json`). Read-only. It shows, per probe: status, herdr agent and its state, worktree and branch, the last line of `log.md`, spend against cap across every checkout's ledger, and pod state.
+  - **Live view of all probes:** `uv run python scripts/probe_status.py` (or `--json`). Read-only. It shows, per probe: status, the agent in its Orca terminal and that agent's state (from `orca terminal list` and `orca worktree ps`; "-" when Orca isn't running), worktree and branch, the last line of `log.md`, spend against cap across every checkout's ledger, and pod state.
 - **Judges:** prefer judges already validated in this repo; one validated judge is enough for a probe. An unvalidated judge is allowed when the claim says so, and validating it becomes a follow-up if the result matters.
 - **Literature:** one sub-agent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.
-- **One herdr session per probe** (Jacob, 2026-10-11), so he can check on or review any probe at any time. Each probe gets its own tab in herdr workspace w8 ("mats12_neel_exploratory"), labelled "P<NN> <slug>", running a Claude Code or Codex agent named `p<nn>`; see "Launching probe agents".
+- **One Orca terminal per probe** (Jacob, 2026-10-11; moved from herdr to Orca on 2026-10-20), so he can check on or review any probe at any time. Each probe's agent runs in a terminal of the probe's own worktree in Orca (repo "mats12_neel_exploratory"), titled "P<NN> <slug>", with the worktree's card renamed to the same label. It is a Claude Code session named `p<nn>` or a Codex session; see "Launching probe agents".
   - The brief points at the probe's committed plan and states that the go-ahead was given. The agent then builds, runs, follows up and finishes on its own.
-  - The launching session tracks the probes with `scripts/probe_status.py`, `herdr agent list` and `herdr agent read p<nn>`, and doesn't do their work itself.
+  - The launching session tracks the probes with `scripts/probe_status.py` (which shows each probe's terminal handle), `orca worktree ps --json` (each agent's state) and `orca terminal read --terminal <handle> --json`, and doesn't do their work itself.
+  - Use plain terminals, not Orca's supervised orchestration workers (`orca orchestration worker-start`). A probe is a handoff: no coordinator has to stay up to answer its mailbox or release it. And `worker-start` can't pass `--permission-mode` or the Codex sandbox flags.
 - **Finish with the `finish-experiment` skill**, read for the probe tier:
   - The report is `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
   - The run log is `probes/P<NN>-<slug>/log.md`.
@@ -88,21 +89,37 @@ More documents may be added; when they are, read them and update the proposals d
 
 ### Launching probe agents
 
-The launching session creates the tab, starts the agent in its pane, then sends the brief:
+The probe's worktree already exists when the go-ahead comes: its plan was written there. The launching session opens a terminal in that worktree with the agent running, labels it, then sends the brief once the agent is ready (Jacob, 2026-10-20):
 
 ```bash
-herdr tab create --workspace w8 --cwd /Users/jacob/Documents/GitHub/mats12_neel_exploratory \
-  --label "P<NN> <slug>" --no-focus            # note the new pane id
+ORCA=/Applications/Orca.app/Contents/Resources/bin/orca   # plain `orca` inside Orca terminals
+WT=/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p<nn>-<slug>
 # Claude Code agent:
-herdr agent start p<nn> --kind claude --pane <pane> -- --permission-mode auto
+$ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
+  --command "claude --permission-mode auto -n p<nn>" --json     # note result's terminal handle
 # or a Codex agent:
-herdr agent start p<nn> --kind codex --pane <pane> -- --approve-for-me \
-  -c sandbox_workspace_write.network_access=true \
-  --add-dir "$HOME/.cache/uv" --add-dir "$HOME/.cache/huggingface"
-herdr agent prompt p<nn> "<brief>"
+$ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
+  --command "codex --approve-for-me -c sandbox_workspace_write.network_access=true --add-dir $HOME/.cache/uv --add-dir $HOME/.cache/huggingface" --json
+$ORCA worktree set --worktree "path:$WT" --display-name "P<NN> <slug>" --json
+$ORCA terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000 --json \
+  && $ORCA terminal send --terminal <handle> --text "<brief>" --enter --wait-submit 30 --json
 ```
 
-How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exec` and the same flags; the interactive session under herdr has not been launched yet):
+- **Send only after a successful wait.** `terminal wait` exits 1 when the agent isn't ready in time; then read the terminal (`orca terminal read --terminal <handle> --screen --json`) to see why before sending anything.
+
+- **Why `terminal create` and not `orca agent launch`:** `agent launch` takes no agent CLI flags, and it may open the agent as an Orca chat rather than a terminal, depending on Jacob's Chat UI setting. `terminal create --command` types the exact command line into the terminal's login shell.
+- **Check the send receipt.** It should reach `turn_started`. `accepted: true` alone means the input was accepted, not that the turn began. Never resend on silence: read the terminal first (`orca terminal read --terminal <handle> --screen --json`). After an unclear transport failure, repeat the exact command with the receipt's `--retry-request <id>`.
+- **Handles are runtime-scoped.** After an Orca restart, take the new handle from `probe_status.py` or `orca terminal list --json`.
+- **Agent state** comes from the Orca hooks that Orca installed in `~/.claude/settings.json` and `~/.codex/hooks.json`. They report any Claude Code or Codex session started in an Orca terminal, keyed by pane, and `orca worktree ps --json` lists them.
+- **Jacob opens a probe** from its worktree card in Orca's sidebar, or with `orca terminal switch --terminal <handle>`.
+- **What was checked, 2026-10-20 (Orca 1.4.230), read-only:**
+  - Checked: the commands and flags above, from `--help` and Orca's bundled guides (`orca skills get orca-cli`, `orca skills get orchestration`).
+  - Checked: `orca worktree show --worktree path:<.claude/worktrees/...>` resolves our existing git worktrees, so Orca doesn't have to create them, and the path convention stays.
+  - Checked: the JSON shapes of `terminal list` and `worktree ps`, and that a `ps` pane key is the terminal's `<tabId>:<leafId>`.
+  - Not checked: no terminal was created, no agent launched and no brief sent, because other agents were running in Orca. The first launch is the live check: confirm the agent starts in the worktree, the title and display name stick, and `probe_status.py` shows the agent's state.
+  - Open: `orca worktree list` and `ps` show only the main checkout, not the `.claude/worktrees/` checkouts, although the repo's non-Orca worktree visibility is `show`. They may appear once they have a terminal. Until then `probe_status.py` finds a probe's terminal by its worktree path, or failing that by its "P<NN> " title.
+
+How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exec` and the same flags; no interactive session has been launched under a terminal manager yet; 0.162.1 is installed as of 2026-10-20, and its `--help` still lists `--approve-for-me` and `--add-dir`):
 - `--approve-for-me` uses the workspace-write sandbox and sends approval requests to automatic review. It doesn't touch `~/.codex/config.toml`.
 - **Network:** workspace-write blocks it by default (curl to OpenRouter: exit 6). With `-c sandbox_workspace_write.network_access=true` it got HTTP 200. Probes need it for OpenRouter, RunPod, HF and ssh.
 - **Writes outside the workspace** were refused ("Operation not permitted") until the path was added with `--add-dir` (equivalent to `sandbox_workspace_write.writable_roots`). That covers uv's and HF's caches.
