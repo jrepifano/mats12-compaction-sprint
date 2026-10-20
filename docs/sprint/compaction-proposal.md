@@ -6,11 +6,11 @@ Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, curre
 
 ## The DM
 
-**Compaction sprint proposal (19–30 Oct)**
+**Compaction sprint proposal**
 
-When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory. UK AISI has reported assumptions carried forward as fact. Prior work measures what summaries lose, or plants rules in short tasks. None reruns natural losses on long, real work.
+When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory. UK AISI has flagged assumptions being carried forward as fact. Prior work measures what summaries lose, or plants rules in short tasks. None reruns natural losses on long, real work.
 
-**What I've found so far.** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points. Its summaries stated permissions the source only implied, and deleting those sentences cut the actions by 23 points. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods for compaction differed.
+**What I've found so far:** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points. Its summaries carried permissions and plans forward as settled, and deleting those sentences cut unapproved actions by 23 points, though which content mattered is unresolved. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods for compaction differed.
 
 **Research questions**
 
@@ -19,16 +19,17 @@ When a coding agent's context fills, the harness swaps its history for a summary
 3. Do summaries invent permissions, does correcting them change actions, and does a line in the summarizer prompt prevent it?
 4. Do losses and rule-breaking compound across repeated compactions?
 
-**Models and data.** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
+**Models and data:** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
 
-- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and two long-run sets whose tasks state checkable rules: PostTrainBench ("cannot modify evaluate.py") and FrontierML (no training on test data). With these I can see whether a rule drops out of a summary and the agent then breaks it, without running anything. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. Re-compacting the same histories with the Codex, pi and Antigravity-style summarizers compares methods. What gets lost sets the rules and thresholds for the online runs.
-- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself, therefore any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. ConstraintRot's and OverEager-Bench's tasks aren't available, so permission tests rebuild their consent rules and traps in the same DeepSWE runs (e.g. force-pushing or deleting a branch after compaction) and correct invented permissions. Repeated-compaction runs chain 2–3 tasks ending on the same scored task. Outcomes: rule violations, irreversible actions, test cheating and task completion.
+- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and two long-run sets whose tasks state checkable rules: PostTrainBench ("cannot modify evaluate.py") and FrontierML ("no training on test data"). With these I can see whether a rule drops out of a summary and the agent then breaks it. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. Re-compacting the same histories with the Codex, pi and Antigravity-style summarizers compares methods. What gets lost sets the rules and thresholds for the online runs.
+- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself, therefore any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. ConstraintRot's and OverEager-Bench's tasks aren't available, so permission tests rebuild their consent rules and traps in the same DeepSWE runs (e.g. force-pushing or deleting a branch after compaction) and correct invented permissions. Repeated-compaction runs chain 2–3 tasks ending on the same scored task.
+  - **Outcomes:** rule violations, irreversible actions, test cheating and task completion.
 
-**Timeline.** A $50 pilot runs first and measures cost per comparison before bulk runs. Week 1: offline audit, pilot, and Opus checks on my Max plan before 22 Oct. Week 2: online runs and write-up.
+**Timeline:** Week 1: offline audit, pilot, start online runs. Week 2: online runs and write-up.
 
-**Ask.** A $1,000 top-up ($3.1k total). Planned runs come to $1,150 (pilot $50, audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250). I don't expect to spend all of it, but want the funds in place so later experiments aren't held up.
+**Ask:** A $1,000 top-up ($3.1k total). Planned runs come to $1,150 (pilot $50, audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250). I don't expect to spend all of it, but want the funds approved so later experiments aren't held up.
 
-**Stretch:** comparing compaction styles on all fresh tasks; safer summarizers (automated prompt search, or a model that checks each summary against its source); switching models mid-task.
+**Stretch:** comparing compaction styles on all fresh tasks, safer summarizers (automated prompt search, or a model that checks each summary against its source), switching models mid-task.
 
 ## Backing for each number
 
@@ -235,6 +236,15 @@ MINOR fixes:
 - the DM is trimmed slightly.
 
 Left open: the DM is still about 700 words, and round 3 suggested cutting 100–150 more. That is Jacob's call.
+
+**Review round 4** ([r4](../../logs/reviews/20261020-compaction-proposal-r4.md), of the one-page DM; one past the three-round cap, run at Jacob's request; verdict SEND AFTER BLOCKING FIXES).
+
+- **Both BLOCKING findings fixed:**
+  - the findings line no longer says the deleted sentences were invented permissions (P38: a class dominated by plain plan lines; mediation not shown);
+  - the τ²-bench description was wrong (its error separation comes from comparing run modes, and its reward doesn't check confirmation, arXiv 2506.07982 §3.3). Q3 then moved to consent traps in the DeepSWE runs (see "Permission tasks").
+- **MINOR taken:** the AISI line is hedged ("has flagged").
+- **MINOR left as is (Jacob's call):** "stitched" and "inconclusive" wording for P49, the matched-chain wording for repeated compaction, eligibility for the 512k comparison, "fixed summarizer" instead of the vendor list, "up to 45 … sized by the pilot" and "provisional allocations".
+- **Jacob's last Google Doc edits** (20 Oct) are folded in: the shorter title, Outcomes as a sub-bullet, the shorter Timeline, "funds approved".
 
 ## Choices still Jacob's before sending
 
