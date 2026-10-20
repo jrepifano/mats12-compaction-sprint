@@ -57,7 +57,10 @@ def env(tmp_path, monkeypatch):
 
 def test_real_caps_file_matches_the_plan():
     c = B.load_caps(B.DEFAULT_CAPS)
-    assert not c.topup_recorded and c.sprint_cap_usd == 632.0 and c.full_cap_usd == 1652.0
+    # Top-up recorded 2026-10-20 (Neel's approval); Q4 deferred, its 250 moved to the contingency.
+    assert c.topup_recorded and c.sprint_cap_usd == 1652.0 and c.full_cap_usd == 1652.0
+    assert c.stages["SPRINT-S4"].cap_usd == 0.0 and c.pools["contingency"].usd == 600.0
+    assert c.core_cap_usd == 632.0
     core = [s for s, v in c.stages.items() if not v.requires_topup]
     assert sum(c.stages[s].cap_usd for s in core) + c.pools["reserve"].usd == c.core_cap_usd
     extra = sum(v.cap_usd for v in c.stages.values() if v.requires_topup)
