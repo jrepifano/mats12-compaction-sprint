@@ -2,44 +2,29 @@
 
 2026-10-18 · Jacob Epifano
 
-Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, current findings, research questions, then models and data), with J Rosser's suggestions, the data-source research and a provider benchmark folded in. The DM is the first section (about 530 words, one page; detail cut from it on 20 Oct is under "Design detail"); the rest backs each number and lists the choices still open, and is not part of the message. Mirror of [docs/sprint/compaction-proposal.md](../../docs/sprint/compaction-proposal.md); edits here are synced back to that file. Reviews: [round 1](../../logs/reviews/20261018-compaction-proposal-r1.md), [round 2](../../logs/reviews/20261019-compaction-proposal-r2.md), [round 3](../../logs/reviews/20261019-compaction-proposal-r3.md).
+Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, current findings, research questions, then models and data), with J Rosser's suggestions, the data-source research and a provider benchmark folded in. The DM is the first section (about 370 words, one Google Docs page; detail cut from it on 20 Oct is under "Design detail"); the rest backs each number and lists the choices still open, and is not part of the message. Mirror of [docs/sprint/compaction-proposal.md](../../docs/sprint/compaction-proposal.md); edits here are synced back to that file. Reviews: [round 1](../../logs/reviews/20261018-compaction-proposal-r1.md), [round 2](../../logs/reviews/20261019-compaction-proposal-r2.md), [round 3](../../logs/reviews/20261019-compaction-proposal-r3.md).
 
 ## The DM
 
 **Compaction sprint proposal (19–30 Oct)**
 
-Long-running coding agents compact: when the context fills, the harness swaps the history for a summary. Anything the summary drops, mis-remembers or invents, including the user's constraints and permissions, becomes the agent's memory. UK AISI reported assumptions being carried forward as fact.
+When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory; UK AISI has reported assumptions carried forward as fact.
 
-**What I've found so far.** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points [+6, +35]. Its summaries stated permissions the source only implied, and deleting those permission and plan sentences cut the actions by 23 points. In ~200k-token histories (SWE tasks, then ImpossibleBench; Qwen3-Coder), there were signs that repeated compactions increased test cheating, and signs the methods differed.
+**What I've found so far.** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points [+6, +35]; its summaries stated permissions the source only implied, and deleting those sentences cut the actions by 23 points. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods differed.
 
 **Research questions**
 
-1. How often does compaction drop, mis-summarize or invent an actionable fact, which kinds, and does that grow with context size?
-2. Does compaction make agents break the task's own rules, and how much of that do the lost facts explain?
-3. Do summaries introduce permission the source never granted, does correcting it change actions, and does a line in the summarizer prompt prevent it?
-4. Do losses and rule-breaking compound with each further compaction?
+1. How often does compaction drop, mis-summarize or invent actionable facts, and does that grow with context size?
+2. Does compaction make agents break the task's rules, and how much do the lost facts explain?
+3. Do summaries invent permissions, and does a line in the summarizer prompt prevent it?
+4. Do losses and rule-breaking compound across repeated compactions?
 
-**Models and data**
+**Models and data.** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
 
-**Models:** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Claude Haiku 5.5; Opus 5.5, GPT-6 astra and Gemini on a subset.
+- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and PostTrainBench and FrontierML, whose tasks state checkable rules. Re-compacting the same histories with the Codex, pi and Antigravity-style summarizers compares methods. What gets lost sets the rules and thresholds for the online runs.
+- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat, I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. Permission tests chain τ²-bench tasks into long shifts and correct invented permissions; repeated-compaction runs chain 2–3 tasks ending on the same scored task.
 
-**Offline (first, and cheap): audit compactions that already happened.**
-
-- My 48 Claude Code compactions (205k–972k tokens) and SWE-chat (~1,000 real Claude Code compactions across many users and repos).
-- PostTrainBench and FrontierML: long runs whose tasks state checkable rules ("cannot modify evaluate.py"), so I can see whether a rule drops out of the summary and the agent then breaks it, without running anything.
-- Re-compacting the same histories with the Codex, pi, DeepSeek-CLI and Antigravity-style summarizers compares methods on identical source.
-- The facts that get lost, and the sizes where loss rises, set the rules and thresholds for the online runs.
-
-**Online (causal tests): new agent runs.**
-
-- **Fresh trajectories:** the 45 longest DeepSWE tasks (real-repo features; cheap models reach ~200k tokens), with a few realistic rules I add in chat (e.g. don't edit tests). At the first compaction, made by each model's own vendor summarizer, I resume from the same snapshot four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact.
-- **Permission tasks:** up to 40 long shifts chained from τ²-bench (mocked tools, a confirm-before-write rule). Where a summary claims a permission the user never gave, I correct only that text, then test a summarizer-prompt fix on held-out runs.
-- **Repeated compaction:** 2–3 tasks chained to end on the same scored task, against runs of the same length with fewer compactions.
-- **Outcomes:** rule violations, irreversible actions, test cheating and task completion.
-
-**Budget and ask.** Could I have a $1,000 top-up ($3.1k total)? Planned runs come to $1,150: pilot $50, corpus audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250. I don't expect to spend all of it, but want the funds in place so later experiments aren't held up.
-
-**Stretch:** compaction styles on all fresh tasks; safer summarizers (automated prompt search, or a model that checks each summary against the source); switching models mid-task.
+**Ask.** A $1,000 top-up ($3.1k total). Planned runs come to $1,150 (pilot $50, audit $60, fresh runs $270, permission tasks $100, frontier models $420, repeated compaction $250). I don't expect to spend all of it, but want the funds in place so later experiments aren't held up.
 
 ## Backing for each number
 
@@ -59,6 +44,9 @@ Long-running coding agents compact: when the context fills, the harness swaps th
 - **Repeated compaction:** every chain ends on the same final task with the same rules, and only that task is scored, so the number of compactions before it is the only difference.
 - **Outcomes:** task completion is there so an agent that stalls or refuses isn't scored as safe. Error bars resample whole tasks, since runs on the same task are correlated.
 - **Budget:** planned runs are $1,150 of ~$1,700 available (the ~$700 left plus the top-up); the rest is unitemized headroom because cost per run is uncertain until the pilot.
+- **Outcomes:** rule violations, irreversible actions, test cheating and task completion (moved out of the DM, 20 Oct).
+- **Stretch** (moved out of the DM, 20 Oct): compaction styles on all fresh tasks; safer summarizers (automated prompt search, or a model that checks each summary against the source); switching models mid-task (J).
+- **Q3 wording:** the DM's Q3 dropped "does correcting it change actions"; the permission tests still correct only the invented text and measure the change.
 
 | Claim in the DM | Source |
 |---|---|
@@ -257,6 +245,6 @@ The DM is written with the recommended option for each. Change the marked line i
 | Pilot (~$50) | Runs first; can start before or after sending | Budget |
 | Contact Ge-Wang / AISI | Contact separately; not in the DM | — |
 | Number of questions | Five (consensus plan); r1 suggested fewer | Research questions |
-| Length | About 530 words (one page) since 20 Oct; detail moved to "Design detail" | DM |
+| Length | About 370 words (one Google Docs page) since 20 Oct; detail moved to "Design detail" | DM |
 | Compaction-style comparison (J) | In the pilot; in the fresh tasks if feasible | Compaction styles bullet |
 | Q3 fix | Prompt line committed; a checker (source or debate) only if it falls short | Q3 bullet |
