@@ -187,6 +187,19 @@ Later reliance (what the agent used afterwards) is a secondary analysis and neve
 
 **R-A2:** Jacob audits about 20 judged items in the comparison view, then releases.
 
+### S1x. Exploration: compaction in the wild (Neel, 20 Oct). Inside S1's $60.
+
+Exploratory, and labelled so throughout.
+1. **Read first:** a seeded random sample of SWE-chat compactions in the Inspect viewer, before any scanner runs.
+2. **Then scan,** with Inspect Scout and Haiku 5.5 (or Mercury, public data only), for:
+   - summaries that claim unfinished work is done;
+   - behaviour shifts right after compaction (a new plan, repeated work);
+   - the agent re-reading its transcript;
+   - compaction loops;
+   - user corrections after compaction.
+3. **Confirm by hand:** every reported pattern, with counts and seeded random examples.
+4. **Use:** important ones become hypotheses for S3, not findings.
+
 ### S1b. Violation detectors (part of the experiment). $5.
 
 The first-look prep numbers are **withdrawn** (Jacob, 20 Oct).
@@ -413,6 +426,18 @@ The observational violation analysis on the public sets is **off by default** (s
 - **R-A5:** Jacob audits judge and scorer outputs before any headline number.
 - The write-up covers ConstraintRot, OverEager and the Compaction Cliff.
 - Updates to J lead with a TL;DR and "Questions for J".
+
+## Responses to Neel's feedback (2026-10-20)
+
+Neel signed off on Slack at 9:56 AM ET ("Sounds good", "I approve the $1000 top up") and left six comments on the Google Doc. Per Jacob, the comments get no direct replies. They are answered here and in the sprint plan (this document).
+
+| Neel's comment | Where | Response |
+|---|---|---|
+| "Surely it does affect things right?" | Intro: "test whether repairing naturally produced summary errors changes agents' actions" | Agreed: that repairing a real error changes behaviour is close to expected. The sprint's question is now **which** errors natural compaction makes, **how often** in real use, and **how much** each kind changes behaviour. Q1 measures frequency and type; Q2 and Q3 measure effect sizes. Q2's pilot gate stops the arm comparison if natural losses turn out to be rare. |
+| "This will likely vary a bunch between harness and compaction algorithm. Which is fine but be intentional about what you're studying. The claude code source leaked a few months ago, could be a good source" | Q1 | The harnesses are now named and chosen for a reason: Claude Code and Codex run natively (via Inspect + inspect-swe), Antigravity through our own driver, and replayed vendor styles are used only as a controlled comparison. Results are reported per harness, never pooled. The sprint replicates ConstraintRot's channel test (AGENTS.md vs chat vs README) under these real harnesses. Claude Code's compaction is taken from the official docs and the installed v2.1.300 binary (`papers/agent_swarms/Claude Code compaction (docs and v2.1.300 binary, 2026-10-14).md`), not from the leaked source: the provenance is cleaner and we don't build on leaked proprietary code. |
+| "I like it" (×3) | Q2, Q3, Q4 | Q2 and Q3 kept as written. Q4 is deferred in the lean plan (20 Oct): ConstraintRot's per-run data already put most of the rise at the first compaction. Its design is kept for later, and its $250 moved to the contingency. |
+| "I would also just study compaction in the wild eg on SWE Chat and see if you can find any interesting observations or anomalies" | Research questions | Added an exploratory track (plan S1x): read a seeded sample of the ~1,000 SWE-chat compactions, then run Scout scanners for anomalies. Every pattern is confirmed by hand and reported as exploratory. |
+| (Slack) top-up approved | Ask | Recorded in `docs/sprint/caps.toml` (commit 5b0bb632). |
 
 ## Budget
 
