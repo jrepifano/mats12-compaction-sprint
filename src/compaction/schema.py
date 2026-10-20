@@ -17,7 +17,8 @@ Source = Literal[
 class Message(TypedDict):
     role: str  # "user", "assistant", "tool", "system"
     text: str
-    tool_calls: NotRequired[list[dict]]  # [{"name": str, "args": dict | str}]
+    tool_calls: NotRequired[list[dict]]  # [{"name": str, "args": dict | str, "id": str}]
+    tool_use_id: NotRequired[str]  # on role "tool": the id of the call this result answers
     ts: NotRequired[str]  # ISO 8601, UTC where known
 
 
@@ -54,7 +55,11 @@ class CompactionRecord(TypedDict):
     source_truncation: NotRequired[dict[str, int]]  # cause -> number of messages affected
     post_truncated: NotRequired[bool]  # a dataset cut in post_messages (not the 50-message window)
     post_truncation: NotRequired[dict[str, int]]
+    post_window_capped: NotRequired[bool]  # post_messages stopped at the 50-message window
     inherited_truncated_summary: NotRequired[bool]  # source starts with a cut earlier summary
+    boundary_uncertain: NotRequired[bool]  # where the replaced history starts is not certain
+    boundary_uncertainty: NotRequired[dict[str, int]]  # cause -> count
+    failed_attempts_before: NotRequired[int]  # failed compaction attempts inside the source window
     native_key: NotRequired[str | None]  # the dataset's own event id, used for deduplication
     duplicate_ids: NotRequired[list[str]]  # SWE-chat copies collapsed into this record
     duplicate_dirs: NotRequired[list[str]]  # PostTrainBench copies collapsed into this record
