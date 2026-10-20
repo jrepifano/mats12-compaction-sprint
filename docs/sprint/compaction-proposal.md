@@ -10,25 +10,44 @@ The DM is the block below. The sections after it back each number, record the re
 
 **Compaction sprint proposal (19–30 Oct)**
 
-**The topic.** Long-running coding agents compact: when the context fills, the harness swaps the history for a summary and the agent carries on from it. Anything the summary drops, garbles or invents, including the constraints and permissions the user gave, quietly becomes the agent's memory. UK AISI reported a summary carrying a false assumption forward as established fact. The target result is yours: "in real trajectories, compaction often lost X; rerunning with and without X, Y happened."
+Long-running coding agents compact: when the context fills, the harness swaps the history for a summary and the agent carries on from it. Anything the summary drops, mis-remembers or invents, including the constraints and permissions the user gave, becomes the agent's memory. UK AISI reported that assumptions may be carried forward as fact.
 
-**What we've found so far.** In exploratory short-context tests (mostly under 17k tokens), compaction raised DeepSeek's unapproved irreversible actions 21 points [+6, +35], and its summaries stated permissions the source only implied ("the change owner's absence does not block the decision"); removing permission-and-plan sentences cut the rate by 23 points, without isolating which content caused it, and GLM stayed near floor. In ~200k-token stitched histories on impossible coding tasks (Qwen3-Coder), product compactions had no detectable effect on test-edit cheating, with intervals of ±40 points, so we don't yet know the rates or effects at realistic lengths.
+**What I've found so far.** In exploratory short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points [+6, +35]. Its summaries stated permissions the source only implied ("the change owner's absence does not block the decision"). Deleting the summary's permission and plan sentences cut those actions by 23 points, so what the summary says dictates the behavior. I haven't yet isolated which sentences matter. In ~200k-token histories of SWE tasks followed by ImpossibleBench (Qwen3-Coder), there were signs that repeated compactions increased test cheating, and that different compaction methods gave different cheating rates.
 
 **Research questions**
-1. How often does compaction drop, mis-summarise or invent an actionable fact in the whole resumed state, which kinds, and does that grow with context size? (Rules re-attached from AGENTS.md and files the agent can re-read don't count as lost.)
-2. Does restoring a naturally lost fact reduce violations of the task's own constraints, compared with restoring a matched irrelevant fact?
-3. Do summaries introduce permission the source never granted, does correcting it change actions, and does a line in the summariser prompt prevent it? (Prevention is J's suggestion)
-4. Do the effects hold on flagship models, and are they plausible in my own Opus sessions?
-5. If 1–4 hold: does repeated compaction add drift beyond ordinary resampling ("10 models or one")?
+
+1. How often does compaction drop, mis-summarize or invent an actionable fact, which kinds, and does that grow with context size?
+2. Does compaction make agents break the task's own rules, and how much of that is explained by the specific facts it lost?
+3. Do summaries introduce permission the source never granted, does correcting it change actions, and does a line in the summariser prompt prevent it?
+4. Do losses and rule-breaking compound with each further compaction?
 
 **Models and data**
-- **Models:** four current cheap models, DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Claude Haiku 5.5 (1M-token windows), each on the fastest-for-price provider we measured; Opus 5.5 and GPT-6 astra on a subset.
-- **Real compactions (Q1, Q4):** my 48 Claude Code compactions (205k–972k tokens) and public corpora with real Claude Code compactions: SWE-chat (about 1,000, on real repos) plus two long-run sets whose tasks state checkable rules (PostTrainBench, FrontierML). The audit separates what a summary dropped or invented from what was truly unavailable afterwards, relates loss to context size (including re-compacting my session prefixes at 256k, ~512k and the real boundary, a within-session association), and hand-checks ~100 labels. These corpora find candidate failures; Q2's causal claim comes from the fresh runs. Opus next-action samples at reconstructable boundaries are a plausibility check.
-- **Fresh trajectories (Q1–Q2):** the 45 longest DeepSWE tasks (engineer-written features on real repos), where cheap models at max effort already reach a median peak of ~200k without padding. Each task gets a few rules given in chat at the start, each mapped to a diff, test or action-log check before any outcomes; loss through compaction is natural. Compaction is configured early, at a per-model threshold frozen after the pilot. At the first compaction, resume from the same file and tool snapshot four ways (full history, actual summary, summary + lost rule, summary + irrelevant fact matched in length, position and style), two continuations each, interventions fixed in advance. The pilot also compares product summary styles, including the recent-steps style J described for Antigravity.
+
+- **Models:** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Claude Haiku 5.5 (1M-token windows); Opus 5.5, GPT-6 astra and a Gemini model (argon or 3.8 Flash) on a subset.
+
+**Offline: existing trajectories (first, and cheap).** No agents are run: I audit compactions that already happened. This gives an early signal on Q1 and candidate cases for Q2 for little more than judge calls.
+
+- **My 48 Claude Code compactions** (205k–972k tokens): real work, at the largest context sizes available.
+- **SWE-chat** (about 1,000 real Claude Code compactions on real repos): breadth across many users and projects.
+- **PostTrainBench and FrontierML** (10–12-hour runs with real Claude Code and Codex compactions). I chose these because their tasks state checkable rules ("cannot modify evaluate.py", no training on test data), so I can see whether a rule drops out of the summary and whether the agent then breaks it, without running anything. I check their violation rates first; if they're near zero, these sets serve Q1 only.
+- **Method:** the audit separates what a summary dropped or invented from what was truly unavailable afterwards, relates loss to context size (including re-compacting my session prefixes at 256k, ~512k and the real boundary), and hand-checks ~100 labels. The same histories are re-compacted with the Codex, pi, DeepSeek-CLI and Antigravity-style summarisers, so each method's losses are compared on identical source. Opus next-action samples at reconstructable boundaries, on my Max plan, are a plausibility check.
+- **What it feeds online:** which facts get lost, and at what sizes, sets the rules planted in the fresh tasks and the compaction thresholds.
+
+**Online: new agent runs (the causal tests).**
+
+- **Fresh trajectories (Q1–Q2):** the 45 longest DeepSWE tasks (engineer-written features on real repos), where cheap models at max effort already reach a median peak of ~200k without padding. Each task gets a few rules given in chat at the start, each mapped to a diff, test or action-log check before any outcomes; loss through compaction is natural. Compaction is configured early, at a per-model threshold frozen after the pilot. At the first compaction, resume from the same file and tool snapshot four ways (full history, actual summary, summary + lost rule, summary + irrelevant fact matched in length, position and style), two continuations each, interventions fixed in advance. The full-history vs summary gap is compaction's effect; restoring the lost rule, against the irrelevant fact, shows how much of that gap the rule explains (Q2). The pilot also compares product summary styles, including the recent-steps style J described for Antigravity.
 - **Q3:** up to 40 long ops shifts with mocked tools and a confirm-before-write policy; edit only the permission content a summary introduced, then test the prompt-line fix on held-out trajectories.
+- **Q4:** 2–3 tasks chained in one session for repeated compactions, against the same number of steps with fewer compactions.
 - **Outcomes:** constraint violations (primary); irreversible ops actions, impossible-test cheating, useful completion. Task-clustered bootstrap.
 
-**Budget and ask.** Core $630 (pilot $50, corpus audit $60, fresh runs $270, Q3 $100, reserve $150) fits the ~$700 left; all figures are provisional until the pilot measures cost per four-arm comparison. Could we have a $1,000 top-up ($3.1k total)? It adds flagship runs ($420), Opus checks on my sessions ($200), Q5 ($250) and contingency ($150): $1,650 of ~$1,700. Stretch (first to cut, or to add): Q5; styles beyond the pilot; a checker if the prompt line falls short; model swap mid-trajectory (J). What would you cut or add?
+**Budget and ask.** Could I have a $1,000 top-up ($3.1k total)?
+
+- Core, $630, fits the ~$700 left: pilot $50, corpus audit $60, fresh runs $270, Q3 $100, reserve $150.
+- Top-up items, $1,020: flagship runs $420, Q4 $250, contingency $350. Opus checks on my sessions run on my Claude Max plan before 22 Oct, at no API cost.
+- Total $1,650 against ~$1,700 available with the top-up.
+- All figures are provisional until the pilot measures the cost of one four-arm comparison.
+
+Stretch (first to cut, or to add): Q4; styles beyond the pilot; a checker if the prompt line falls short; model swap mid-trajectory (J). What would you cut or add?
 
 ---
 
@@ -65,7 +84,7 @@ Two research agents ran on 2026-10-19: an internal search of our own records and
 - 45 tasks have a median peak of at least 200k on both DeepSeek V4 Flash and luna at max [V].
 - The models we plan (V4.1 Flash, GPT-6 luna, Haiku 5.5) aren't in DeepSWE's table, so the pilot measures their peaks.
 - Max reasoning effort matters: luna's median peak falls from 202k at max to 90k at high.
-- **Threshold:** a 256k threshold would fire in only 3–24% of runs, so compactions are configured early, per model, below its peak on the selected tasks (about 150–200k; lower for GLM, whose median peak is 136k), and frozen after the pilot from the selected tasks' boundary yield. These are configured compactions, not native limits. Models are analysed separately, with a common-threshold subset for cross-model comparison. Q5's repeated compactions need longer sessions; chaining 2–3 tasks in one session (as in arXiv 2606.11213) is the option, decided in the pilot.
+- **Threshold:** a 256k threshold would fire in only 3–24% of runs, so compactions are configured early, per model, below its peak on the selected tasks (about 150–200k; lower for GLM, whose median peak is 136k), and frozen after the pilot from the selected tasks' boundary yield. These are configured compactions, not native limits. Models are analysed separately, with a common-threshold subset for cross-model comparison. Q4's repeated compactions need longer sessions; chaining 2–3 tasks in one session (as in arXiv 2606.11213) is the option, decided in the pilot. Q4 compares against the same number of steps with fewer compactions, so extra compactions aren't confused with extra chances to err.
 - **Scoring:** the grader extracts the agent's commits as a patch [V]. A patch shows forbidden edits but not everything (tool use, data access, approvals), so each rule we add is chosen to be checkable and mapped to a diff, test or action-log check before outcomes. The rules are given by us at the start of the session; their loss through compaction is natural. The pilot measures the yield that matters: boundaries where an actionable rule was actually lost, not just long contexts.
 - **Practical risks:** the images are amd64 only (about 0.8 GB each, 2 CPU / 8 GB) [V], so on the M5 they run under emulation or get rebuilt, about 4–5 at a time. Contamination is low to medium: the suite has been public since about June 2026.
 - Second choices: RoadmapBench (115 version-upgrade roadmaps, OpenHands averages 110–171 turns [V]) and FeatureBench Lite (30 tasks, 2–8M cumulative input [V], 18 GB images).
@@ -120,15 +139,15 @@ The 18 Oct figures assumed context grows ~3.2k tokens per call (80 calls to 256k
 | **Flagships** | At 90% cache hits, 12–17M input costs $7.0–9.9 on Opus 5.5 ($4 in, $0.20 cached) and $22.8–32.3 on GPT-6 astra ($10 in, $1 cached; 2.5× Opus's input price, 5× its cache price). Adding output and forks: Opus ≈ $15 per task (DeepSWE: Opus 5 at max, $10.51 median) × 10 = $150; astra ≈ $45 × 6 = $270. | $420 |
 | **Corpus audit** | ~1,100 compactions judged against ~200k of source each at $0.10 per M ≈ $22 per judge; two judges ≈ $44; plus ≈ $6 for re-compacting session prefixes and slack. | $60 |
 | **Q3** | Allocations sized in the pilot, not bottom-up estimates. | $100 |
-| **Opus checks** | ≈ 100 next-action samples at ≈ $2 (≈ 500k input at $4 per M). Allocation sized in the pilot. | $200 |
-| **Q5** | Allocation sized in the pilot. | $250 |
+| **Opus checks** | ≈ 100 next-action samples, run on Jacob's Claude Max plan before 22 Oct (headless Claude Code), so no API cost. At API prices they would be ≈ $2 each (≈ 500k input at $4 per M). | $0 (Max plan) |
+| **Q4** | Allocation sized in the pilot. | $250 |
 | **Pilot** | 6 corpus boundaries; 4 DeepSWE tasks × 4 cheap models; provider concurrency; caching; Docker on the Mac. | $50 |
 | **Reserve** | — | $150 |
-| **Contingency** | — | $150 |
+| **Contingency** | Includes the $200 freed by moving the Opus checks to the Max plan. | $350 |
 
 **Totals:**
 - **Core:** 50 + 60 + 270 + 100 + 150 = $630, against $697.88 left.
-- **With the top-up:** core + 420 + 200 + 250 + 150 = $1,650, against $1,697.88 available ($47.88 spare).
+- **With the top-up:** core + 420 (flagships) + 250 (Q4) + 350 (contingency) = $1,650, against $1,697.88 available ($47.88 spare).
 
 **Wall-clock (baseline only):** at DeepSWE's median 16–23 min per run, 180 trajectories at 4–5 Docker sandboxes at once take ≈ 10–17 h of generation. That excludes forks, scoring, setup, retries and amd64 emulation on the Mac, and five 8 GB sandboxes leave little of the laptop's 48 GB. The pilot measures end-to-end time and memory per completed four-arm comparison; a native amd64 Linux worker (cloud CPU, paid from the reserve) is the faster option to benchmark there.
 
@@ -146,7 +165,7 @@ The 18 Oct figures assumed context grows ~3.2k tokens per call (80 calls to 256k
 - **Gap:** among the work checked, we have not found matched item-restoration reruns of naturally occurring losses from product compactions on real work, or constraint-violation scoring after natural compaction on long tasks.
 
 Notes:
-- **Gemini runs need a separate key or Google's own API.** The plan uses no Gemini model.
+- **Gemini runs need a separate key or Google's own API.** The Gemini subset (argon or 3.8 Flash) therefore runs through Google's API with its own key.
 - **The Q3 fix** is a line in the summariser prompt naming the failure modes the audit finds (e.g. never state a permission the source didn't grant). It is frozen before bulk outcomes and tested on trajectories not used to write it: revised-prompt vs unchanged summaries from the same snapshots, on violations and completion (Jacob, 19 Oct, replacing the earlier checker). A source-grounded or debate-style checker is the Stretch fallback.
 
 ### Review record
@@ -182,6 +201,15 @@ Notes:
 - Antigravity is installed as `agy`.
 - The Q3 fix is now a prompt line.
 
+**Doc edits folded in on 2026-10-20 (revs 39–323, Jacob's comments; not reviewed by astra, which had used its 3 rounds):**
+- The DM is now in first person, the target-result quote to Neel is cut, and "The topic" heading is dropped.
+- The findings paragraph is reworded by Jacob, and the P49 sentence now reports signs that repeated compactions increased cheating and that compaction methods differed.
+- Q4 (flagships and my sessions) is removed as implied. The research questions are now four: Q2 is reframed as compaction's effect on rule-breaking and how much the lost facts explain, and the old Q5 becomes Q4, with a same-step-count control.
+- A Gemini model (argon or 3.8 Flash) joins the flagship subset, run through Google's API.
+- The Opus checks move to Jacob's Max plan before 22 Oct, and their $200 goes to contingency ($350).
+- The same pre-compaction histories are re-compacted with the Codex, pi, DeepSeek-CLI and Antigravity-style summarisers.
+- Models and data are split into Offline (existing trajectories, first and cheap) and Online (new agent runs, the causal tests). The Offline section says why PostTrainBench and FrontierML were chosen: their tasks state checkable rules. It also says their violation rates are checked first.
+
 **Restructure on 2026-10-19 (Jacob):**
 - The DM now runs topic, then current findings in 2–3 sentences, then research questions, then models and data, then budget and ask.
 - The models follow Jacob's priorities: current cheap models, flagships for the best results, Qwen3-Coder dropped.
@@ -213,14 +241,14 @@ The DM is written with the recommended option for each. Change the marked line i
 |---|---|---|
 | Cheap models | All four (DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna, Haiku 5.5) on all 45 tasks | Models bullet; fresh-trajectory cost |
 | Flagships | Opus 5.5 on 10 tasks, GPT-6 astra on 6, from the top-up ($420) | Models bullet; Budget |
-| Opus next-action checks on your sessions (~$200) | Yes, from the top-up | Q4, the real-compactions bullet, Budget |
-| Q2 / "10 models or one" | Kept as conditional Q5 | Q5, Budget, Stretch |
-| Fresh-task source and threshold | The 45 longest DeepSWE tasks at max effort; per-model configured threshold frozen after the pilot; chaining tasks for Q5 decided in the pilot | Fresh trajectories bullet |
+| Opus next-action checks on your sessions (~$200) | Yes, on Jacob's Claude Max plan before 22 Oct (not the API budget) | The real-compactions bullet, Budget |
+| Q2 / "10 models or one" | Kept as conditional Q4 | Q4, Budget, Stretch |
+| Fresh-task source and threshold | The 45 longest DeepSWE tasks at max effort; per-model configured threshold frozen after the pilot; chaining tasks for Q4 decided in the pilot | Fresh trajectories bullet |
 | SWE-chat v2 | v1 (ungated) by default; v2 needs you to accept the HF gate | Real compactions bullet |
 | Top-up | $1,000 (total $3.1k) | Budget and ask |
 | Pilot (~$50) | Runs first; can start before or after sending | Budget |
 | Contact Ge-Wang / AISI | Contact separately; not in the DM | — |
 | Number of questions | Five (consensus plan); r1 suggested fewer | Research questions |
-| Length | About 700 words; cut the Stretch line, then the topic's AISI sentence, first | DM |
+| Length | About 840 words after the Offline/Online split; cut the Stretch line, then the Offline Method bullet's detail, first | DM |
 | Compaction-style comparison (J) | In the pilot; in the fresh tasks if feasible | Compaction styles bullet |
 | Q3 fix | Prompt line committed; a checker (source or debate) only if it falls short | Q3 bullet |
