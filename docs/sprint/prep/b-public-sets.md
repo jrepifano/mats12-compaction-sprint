@@ -199,15 +199,15 @@ One CompactionRecord per compaction with summary text, written to `data/raw/spri
 <!-- gen:outputs -->
 | File | Rows | Bytes | sha256 |
 |---|---|---|---|
-| `data/raw/sprint/public/swe-chat-v1.jsonl` | 1,016 | 457,924,380 | `f81f2324abe4a11bc3b9ef3cdb1d12fa886c74b23050d24d81a85dc4f4e6fa80` |
+| `data/raw/sprint/public/swe-chat-v1.jsonl` | 1,016 | 469,319,523 | `aaf86b24011d76e67d9e661869d3cb524bfebaf8535ed5850e53024df0f7a738` |
 | `data/raw/sprint/public/swe-chat-v1.inventory.jsonl` | 1,080 | 878,749 | `b7f7f73a84464933e36d80b1f5e6cd580555d8efc09a33e2b082514285c0cdd6` |
-| `data/raw/sprint/public/posttrainbench.jsonl` | 283 | 122,357,894 | `db908a297d92e183b8806f4efb54b35b55b9e080395b3d3d5da24f299836cc65` |
+| `data/raw/sprint/public/posttrainbench.jsonl` | 283 | 125,979,570 | `20d83bbdf2b88ceb3405bee4d0ee238b39718f2fa5e8c648a328a7730b1be734` |
 | `data/raw/sprint/public/posttrainbench.inventory.jsonl` | 283 | 229,608 | `fb7e00fdf66386a5a905abfbe36a2ee6860bb0486e72f1515e2580507b8089f7` |
 | `data/raw/sprint/public/posttrainbench.runs.jsonl` | 1,786 | 1,600,531 | `e5c5161fc6791f9307bc0f924f4834828311b009221417889df0a2b5fdeed63b` |
-| `data/raw/sprint/public/frontierml.jsonl` | 811 | 366,295,068 | `43a00559e42931fd64905064d3ee75787892a9cf914f191a9c4284f003c6318e` |
+| `data/raw/sprint/public/frontierml.jsonl` | 811 | 375,913,847 | `9a55ea59fb9e69901f5663f41fff355c1f00ff60e7d5dfa98aad530b78163417` |
 | `data/raw/sprint/public/frontierml.inventory.jsonl` | 1,242 | 1,025,156 | `3902135eb57e6c16271bc622f30ee2a250ea94b73b1e026361cd5fdb9f3cd609` |
 | `data/raw/sprint/public/frontierml.runs.jsonl` | 881 | 138,371 | `4f56392471506192c8784045d0e3750366a2deb4e5cfc3b7b2f5985b4543126a` |
-| `data/raw/sprint/public/build_summary.json` | – | 22,919 | `2c2586d00c66b99134c9c93b2e11be0cbcfd47ef60f9555be23deba9c03e7953` |
+| `data/raw/sprint/public/build_summary.json` | – | 23,407 | `ef05898e45c5861c338fcc4d1f19721807c97f7782e90aaffb5ec1efad105888` |
 <!-- /gen:outputs -->
 
 The earlier `posttrainbench.audit.json` and `frontierml.audit.json` (first-look detector output) remain on disk but were not regenerated, and their numbers are withdrawn (see above). The detector logic in `rules_detect.py` and the `audit` subcommand are unchanged since r1. The module's docstring now marks it WITHDRAWN.
@@ -221,11 +221,43 @@ Code: `src/compaction/public_sets.py`, `src/compaction/rules_detect.py` (detecto
 HF_HUB_DISABLE_XET=1 uv run python -m compaction.public_sets download
 # 08:06:04–08:07:16Z, final build after review r2 (all three sets, about 72 s):
 uv run python -m compaction.public_sets build
+# 08:45:20–08:46:29Z, rebuild with native tool ids (post-review additions):
+uv run python -m compaction.public_sets build
 uv run python -m compaction.public_sets report      # regenerates every table marked gen:
 uv run pytest -q tests/compaction/test_public_sets.py
 ```
 
 The record files are deterministic: two builds after the r1 fixes (07:46Z and 07:49Z), and the r2 builds at 08:02Z (PostTrainBench rebuilt at 08:04Z) and 08:06Z, wrote byte-identical record, inventory and run files. No new dependencies. The PTB prompt history was read with `gh api` (no download).
+
+## Post-review additions (20 Oct)
+
+**Native tool ids.** The audit converter (`src/compaction/audit_logs.py`) pairs each tool result with its call by native id where one is present, and by position otherwise. Records now carry the ids:
+- `tool_calls[].id` on assistant messages;
+- `tool_use_id` on tool messages, with one tool message per result.
+
+Where the ids come from:
+- **Claude Code** (SWE-chat, PostTrainBench): `tool_use.id` and `tool_result.tool_use_id`. A user record holding several results now gives one tool message each. Its other blocks (text, images) go with the last result, as in `compaction.sessions`. No record's message count changed, so no record held a multi-result record in its window.
+- **Codex**: `call_id` on calls and outputs. SWE-chat's Codex compactions are all encrypted and FrontierML's Codex ones are token drops, so no Codex record exists to use them. They are covered by tests only.
+- **OpenCode**: `callID`. SWE-chat redacts some of them to the literal `REDACTED` (6,436 of 22,851 tool parts); for those, the part id is used, since a part holds both the call and its output.
+- **FrontierML**: `tools[].id` and `obs[].id`, for every harness.
+
+An id is kept only where it names exactly one call in the session (`settle_tool_ids`). A call id that repeats is dropped from every call and result that carries it. This catches redacted OpenCode ids and part ids, ids of the form `Bash_<n>` that recur in PostTrainBench's `kimi-claude` run, and FrontierML Codex runs with repeated `call_id`s. A result id that matches no call is also dropped. Those results pair by position. No dataset lacked ids altogether.
+
+Rebuilt at 08:45:20–08:46:29Z. Record counts, `usable` (2,052) and `fully_assessable` (1,207) are unchanged. The inventory files are byte-identical to the 08:06Z build; only the record files changed (new hashes below).
+
+Pairing coverage over every record's `source_messages` and `post_messages`:
+
+<!-- gen:tool-pairing -->
+| Set | Tool calls | With native id | Tool results | With tool_use_id | Pair by id in their part |
+|---|---|---|---|---|---|
+| SWE-chat v1 | 128,277 | 128,206 (99.9%) | 127,564 | 127,494 (99.9%) | 127,494 (99.9%) |
+| PostTrainBench | 40,863 | 40,826 (99.9%) | 40,766 | 40,730 (99.9%) | 40,730 (99.9%) |
+| FrontierML | 95,538 | 95,538 (100.0%) | 95,192 | 95,192 (100.0%) | 95,192 (100.0%) |
+<!-- /gen:tool-pairing -->
+
+Results without an id are OpenCode results whose `callID` and part id were both unusable (SWE-chat, 70) and the `kimi-claude` run (PostTrainBench, 36).
+
+Running `audit_logs.convert_messages` over all records gives the same split, except for 20 Claude Code results in SWE-chat that come before their call within a part. The converter marks those "matches no call", because it only matches calls it has already seen. Its docstring says "whatever the order", so that is a limitation of the converter, not of these records. Tests: `test_cc_tool_ids_one_message_per_result`, `test_codex_call_ids`, `test_opencode_call_ids_fall_back_to_part_id`, `test_fml_tool_ids_and_none_without_ids`, `test_settle_tool_ids_drops_repeated_and_dangling_ids`, `test_audit_converter_pairs_public_records_by_id`.
 
 ## Review response
 

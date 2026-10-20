@@ -26,6 +26,12 @@ Run:  HF_HUB_DISABLE_XET=1 uv run python -m compaction.public_sets download   # 
       uv run python -m compaction.public_sets audit   # first-look rule detectors (withdrawn
                                                        # after review r1; see the report)
 
+Tool ids (20 Oct): assistant `tool_calls[].id` and tool messages' `tool_use_id` (one tool
+message per result) carry each dataset's native call id: Claude Code `tool_use.id` /
+`tool_result.tool_use_id`, Codex `call_id`, OpenCode `callID` (the part id when it is absent
+or "REDACTED"), FrontierML `tools[].id` / `obs[].id`. An id is kept only where it names exactly one call in the session
+(`settle_tool_ids`); results without one pair by position in audit_logs.
+
 Writes data/raw/sprint/public/<source>.jsonl (records), <source>.inventory.jsonl (one row per
 compaction found, usable or not) and <source>.audit.json. Never prints transcript content.
 """
@@ -131,13 +137,42 @@ def _blocks_text(content) -> str:
     return "\n".join(p for p in parts if p)
 
 
-def _msg(role: str, text: str, tool_calls: list[dict] | None = None, ts: str | None = None):
+def _msg(role: str, text: str, tool_calls: list[dict] | None = None, ts: str | None = None,
+         tool_use_id: str | None = None):
     m: Message = {"role": role, "text": _cut(text or "")}
     if tool_calls:
         m["tool_calls"] = tool_calls
+    if isinstance(tool_use_id, str) and tool_use_id:
+        m["tool_use_id"] = tool_use_id
     if ts:
         m["ts"] = ts
     return m
+
+
+def _call(name, args, cid=None) -> dict:
+    """A tool call; `id` is the dataset's native call id, kept only when it is a non-empty str."""
+    c = {"name": name, "args": args}
+    if isinstance(cid, str) and cid:
+        c["id"] = cid
+    return c
+
+
+def settle_tool_ids(events: list[dict]) -> None:
+    """Keep a native id only where it names exactly one call in the session: a call id that
+    repeats is dropped from every call and result carrying it, and a result id that matches no
+    call is dropped. Results without an id pair by position downstream (audit_logs)."""
+    calls: collections.Counter = collections.Counter(
+        c["id"] for e in events if e["kind"] == "msg"
+        for c in e["msg"].get("tool_calls") or () if "id" in c)
+    for e in events:
+        if e["kind"] != "msg":
+            continue
+        for c in e["msg"].get("tool_calls") or ():
+            if "id" in c and calls[c["id"]] != 1:
+                del c["id"]
+        tid = e["msg"].get("tool_use_id")
+        if tid is not None and calls[tid] != 1:
+            del e["msg"]["tool_use_id"]
 
 
 INJECTED_PREFIXES = (
@@ -203,7 +238,7 @@ def cc_events(records: Iterable[dict]) -> tuple[list[dict], dict]:
             texts, calls = [], []
             for b in content if isinstance(content, list) else [content]:
                 if isinstance(b, dict) and b.get("type") == "tool_use":
-                    calls.append({"name": b.get("name"), "args": b.get("input")})
+                    calls.append(_call(b.get("name"), b.get("input"), b.get("id")))
                 elif isinstance(b, dict) and b.get("type") == "text":
                     texts.append(b.get("text") or "")
                 elif isinstance(b, str):
@@ -227,10 +262,20 @@ def cc_events(records: Iterable[dict]) -> tuple[list[dict], dict]:
                                "key": f"cc-summary:{uid}" if uid else None})
             pending = None
             continue
-        is_tool = isinstance(content, list) and any(
-            isinstance(b, dict) and b.get("type") == "tool_result" for b in content)
-        role = "tool" if is_tool else ("user" if is_user_authored(text) and not r.get("isMeta")
-                                       else "system")
+        results = [b for b in content if isinstance(b, dict) and b.get("type") == "tool_result"
+                   ] if isinstance(content, list) else []
+        if results:
+            # one tool message per result, with its tool_use_id; other blocks of the record
+            # (text, images) go with the last result, as in compaction.sessions
+            extra = _blocks_text([b for b in content if b not in results])
+            for k, b in enumerate(results):
+                t = _blocks_text(b.get("content"))
+                if k == len(results) - 1 and extra:
+                    t = "\n".join(x for x in (t, extra) if x)
+                events.append({"kind": "msg", "side": side, "msg": _msg(
+                    "tool", t, ts=ts, tool_use_id=b.get("tool_use_id"))})
+            continue
+        role = "user" if is_user_authored(text) and not r.get("isMeta") else "system"
         events.append({"kind": "msg", "side": side, "msg": _msg(role, text, ts=ts)})
     meta["model"] = meta["models"].most_common(1)[0][0] if meta["models"] else None
     return events, meta
@@ -286,13 +331,13 @@ def codex_events(records: Iterable[dict]) -> tuple[list[dict], dict]:
             elif it in ("function_call", "custom_tool_call", "local_shell_call"):
                 args = p.get("arguments") or p.get("input") or p.get("action")
                 events.append({"kind": "msg", "side": False, "msg": _msg(
-                    "assistant", "", [{"name": p.get("name") or it, "args": args}], ts)})
+                    "assistant", "", [_call(p.get("name") or it, args, p.get("call_id"))], ts)})
             elif it in ("function_call_output", "custom_tool_call_output"):
                 out = p.get("output")
                 if isinstance(out, dict):
                     out = out.get("content") or json.dumps(out)
-                events.append({"kind": "msg", "side": False,
-                               "msg": _msg("tool", str(out or ""), ts=ts)})
+                events.append({"kind": "msg", "side": False, "msg": _msg(
+                    "tool", str(out or ""), ts=ts, tool_use_id=p.get("call_id"))})
     meta["model"] = meta["models"].most_common(1)[0][0] if meta["models"] else None
     return events, meta
 
@@ -358,13 +403,17 @@ def opencode_events(doc: dict) -> tuple[list[dict], dict]:
                     texts.append(p.get("text") or "")
                 elif p.get("type") == "tool":
                     st = p.get("state") or {}
-                    calls.append({"name": p.get("tool"), "args": st.get("input")})
-                    outs.append(str(st.get("output") or ""))
+                    cid = p.get("callID")  # SWE-chat redacts some callIDs to "REDACTED"
+                    if not cid or cid == "REDACTED":
+                        cid = p.get("id")  # the part id (it holds both call and output)
+                    calls.append(_call(p.get("tool"), st.get("input"), cid))
+                    outs.append((str(st.get("output") or ""), cid))
             if texts or calls:
                 events.append({"kind": "msg", "side": False,
                                "msg": _msg("assistant", "\n".join(texts), calls, ts)})
-            for o in outs:
-                events.append({"kind": "msg", "side": False, "msg": _msg("tool", o, ts=ts)})
+            for o, cid in outs:
+                events.append({"kind": "msg", "side": False,
+                               "msg": _msg("tool", o, ts=ts, tool_use_id=cid)})
             continue
         for p in parts:  # user turn: typed text, or synthetic (injected) text
             if p.get("type") != "text":
@@ -424,7 +473,8 @@ def fml_events(run: dict, drop_ratio: float = 0.6, drop_floor: int = 60_000) -> 
                            "summary_trunc": "dataset_message" if msg_cut else None})
             continue
         if src == "agent":
-            calls = [{"name": t.get("name"), "args": t.get("args")} for t in s.get("tools") or []]
+            calls = [_call(t.get("name"), t.get("args"), t.get("id"))
+                     for t in s.get("tools") or []]
             trunc = ["dataset_message"] if msg_cut else []
             if any(_longer(t.get("len"), t.get("args")) for t in s.get("tools") or []):
                 trunc.append("dataset_tool_args")
@@ -434,7 +484,8 @@ def fml_events(run: dict, drop_ratio: float = 0.6, drop_floor: int = 60_000) -> 
                 events.append({"kind": "msg", "side": side,
                                "trunc": ["dataset_tool_output"]
                                if _longer(o.get("len"), o.get("text") or "") else [],
-                               "msg": _msg("tool", o.get("text") or "", ts=s.get("ts"))})
+                               "msg": _msg("tool", o.get("text") or "", ts=s.get("ts"),
+                                           tool_use_id=o.get("id"))})
         else:
             role = "user" if (src == "user" and is_user_authored(text)) else "system"
             events.append({"kind": "msg", "side": side,
@@ -497,6 +548,7 @@ def records_from_events(events: list[dict], *, source: str, session_id: str, har
     - fully_assessable: Q1 eligibility of source and summary: usable, and no summary, source,
       inherited-summary or boundary flag set (post-message flags do not count).
     """
+    settle_tool_ids(events)
     main = [(i, e) for i, e in enumerate(events) if e["kind"] == "compact" or not e.get("side")]
     comp_pos = [k for k, (_, e) in enumerate(main) if e["kind"] == "compact"]
     recs: list[CompactionRecord] = []
@@ -1154,6 +1206,30 @@ def completeness(inv: list[dict]) -> dict:
     }
 
 
+def tool_pairing(recs: list[dict]) -> dict:
+    """Id coverage of tool calls and results in records (source and post parts, as
+    audit_logs pairs them): a result pairs by id when its `tool_use_id` names a call in the
+    same part; the rest fall back to position."""
+    c: collections.Counter = collections.Counter()
+    for r in recs:
+        for part in ("source_messages", "post_messages"):
+            ids = set()
+            for m in r[part]:
+                for call in m.get("tool_calls") or ():
+                    c["calls"] += 1
+                    if "id" in call:
+                        c["calls_with_id"] += 1
+                        ids.add(call["id"])
+            for m in r[part]:
+                if m["role"] == "tool":
+                    c["results"] += 1
+                    tid = m.get("tool_use_id")
+                    c["results_with_id"] += tid is not None
+                    c["results_paired_by_id"] += tid in ids
+    return {k: c[k] for k in ("calls", "calls_with_id", "results", "results_with_id",
+                              "results_paired_by_id")}
+
+
 def write_jsonl(path: Path, rows: Iterable[dict]) -> tuple[int, str]:
     path.parent.mkdir(parents=True, exist_ok=True)
     h = hashlib.sha256()
@@ -1189,7 +1265,7 @@ def build(sets: list[str], out_dir: Path = PUBLIC_DIR) -> dict:
             "revision": DATASETS[name]["revision"], "records": n, "records_sha256": sha,
             "inventory_rows": ni, "inventory_sha256": shai, "runs_rows": nr,
             "runs_sha256": shar, "counts": counts,
-            "completeness": completeness(inv),
+            "completeness": completeness(inv), "tool_pairing": tool_pairing(recs),
             "by_harness_model": summarise_inventory(inv),
         }
         print(f"{name}: {n} records, {ni} compactions found")
@@ -1233,6 +1309,21 @@ def report_blocks(out_dir: Path = PUBLIC_DIR) -> dict[str, str]:
         ["Set", "Compactions found", "Duplicate copies dropped", "With summary text", "Usable",
          "Usable, summary and message text complete", "Usable, fully complete",
          "Sessions / runs with a usable record"], rows)
+    def _pct(a: int, b: int) -> str:
+        return f"{a:,} ({100 * a / b:.1f}%)" if b else "–"
+
+    rows = []
+    for k in sets:
+        t = summary["sets"][k].get("tool_pairing")
+        if t:
+            rows.append([SET_LABELS[k], t["calls"], _pct(t["calls_with_id"], t["calls"]),
+                         t["results"], _pct(t["results_with_id"], t["results"]),
+                         _pct(t["results_paired_by_id"], t["results"])])
+    if rows:
+        blocks["tool-pairing"] = _table(
+            ["Set", "Tool calls", "With native id", "Tool results", "With tool_use_id",
+             "Pair by id in their part"], rows)
+
     def _causes(d: dict) -> str:
         return ", ".join(f"{a} {b:,}" for a, b in d.items()) or "–"
 

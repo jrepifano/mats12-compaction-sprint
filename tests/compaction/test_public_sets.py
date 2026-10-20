@@ -825,3 +825,116 @@ def test_ptb_prompt_versions_include_eval_key_exception_and_decontamination():
     note = [r["text"] for r in ps.ptb_rules("2026-07-01T06:10:00Z", "healthbench", "m")[0]]
     assert any("ONLY for running the evaluation" in t for t in note)
     assert not any("found in your environment" in t for t in note)
+
+
+# ---------------------------------------------------------------- native tool ids (20 Oct)
+
+
+def _cc_ids_session():
+    return [
+        _cc("user", "Fix the tests."),
+        {"type": "assistant", "sessionId": "s1", "message": {"model": "m", "content": [
+            {"type": "tool_use", "id": "toolu_a", "name": "Bash", "input": {"command": "ls"}},
+            {"type": "tool_use", "id": "toolu_b", "name": "Read", "input": {"path": "x"}}]}},
+        _cc("user", [{"type": "tool_result", "tool_use_id": "toolu_b", "content": "B out"},
+                     {"type": "tool_result", "tool_use_id": "toolu_a",
+                      "content": [{"type": "text", "text": "A out"}]},
+                     {"type": "text", "text": "[Request interrupted by user]"}]),
+        {"type": "system", "subtype": "compact_boundary", "sessionId": "s1",
+         "compactMetadata": {"trigger": "auto", "preTokens": 1000}},
+        _cc("user", SUMMARY, isCompactSummary=True),
+        _tool_use("Bash", {"command": "pytest"}),
+    ]
+
+
+def test_cc_tool_ids_one_message_per_result():
+    events, _ = ps.cc_events(_cc_ids_session())
+    recs, _ = ps.records_from_events(events, source="swe-chat-v1", session_id="s1",
+                                     harness="claude-code", model="m", rules=[], license="x",
+                                     revision=None)
+    src = recs[0]["source_messages"]
+    assert [c["id"] for c in src[1]["tool_calls"]] == ["toolu_a", "toolu_b"]
+    tools = [m for m in src if m["role"] == "tool"]
+    assert [(m["tool_use_id"], m["text"]) for m in tools] == [
+        ("toolu_b", "B out"), ("toolu_a", "A out\n[Request interrupted by user]")]
+    # a call without a native id gets no id key
+    assert "id" not in recs[0]["post_messages"][0]["tool_calls"][0]
+    assert ps.tool_pairing(recs) == {"calls": 3, "calls_with_id": 2, "results": 2,
+                                     "results_with_id": 2, "results_paired_by_id": 2}
+
+
+def test_codex_call_ids():
+    recs = [
+        {"type": "session_meta", "payload": {"id": "c1"}},
+        {"type": "response_item", "payload": {"type": "function_call", "name": "exec_command",
+                                              "call_id": "call_1", "arguments": "{}"}},
+        {"type": "response_item", "payload": {"type": "function_call_output",
+                                              "call_id": "call_1", "output": "ok"}},
+        {"type": "response_item", "payload": {"type": "custom_tool_call", "name": "apply_patch",
+                                              "call_id": "call_2", "input": "*** Begin"}},
+        {"type": "response_item", "payload": {"type": "custom_tool_call_output",
+                                              "call_id": "call_2", "output": "done"}},
+    ]
+    events, _ = ps.codex_events(recs)
+    msgs = [e["msg"] for e in events]
+    assert [m["tool_calls"][0]["id"] for m in msgs if m["role"] == "assistant"] == [
+        "call_1", "call_2"]
+    assert [m["tool_use_id"] for m in msgs if m["role"] == "tool"] == ["call_1", "call_2"]
+
+
+def test_opencode_call_ids_fall_back_to_part_id():
+    doc = {"info": {"id": "ses_1"}, "messages": [_oc_msg("assistant", [
+        {"type": "tool", "id": "prt_1", "callID": "call_x", "tool": "bash",
+         "state": {"input": {}, "output": "a"}},
+        {"type": "tool", "id": "prt_2", "tool": "read", "state": {"input": {}}},
+        {"type": "tool", "id": "prt_3", "callID": "REDACTED", "tool": "ls",
+         "state": {"input": {}, "output": "c"}}], modelID="m")]}
+    events, _ = ps.opencode_events(doc)
+    msgs = [e["msg"] for e in events]
+    assert [c["id"] for c in msgs[0]["tool_calls"]] == ["call_x", "prt_2", "prt_3"]
+    assert [(m["tool_use_id"], m["text"]) for m in msgs[1:]] == [
+        ("call_x", "a"), ("prt_2", ""), ("prt_3", "c")]
+
+
+def test_fml_tool_ids_and_none_without_ids():
+    steps = [{"i": 0, "src": "agent", "msg": "",
+              "tools": [{"id": "t1", "name": "Bash", "args": "{}"},
+                        {"name": "Read", "args": "{}"}],
+              "obs": [{"id": "t1", "text": "x"}, {"text": "y"}]}]
+    msgs = [e["msg"] for e in ps.fml_events(_fml_run(steps))]
+    assert msgs[0]["tool_calls"][0]["id"] == "t1" and "id" not in msgs[0]["tool_calls"][1]
+    assert msgs[1]["tool_use_id"] == "t1" and "tool_use_id" not in msgs[2]
+
+
+def test_settle_tool_ids_drops_repeated_and_dangling_ids():
+    def ev(role, calls=None, tid=None):
+        return {"kind": "msg", "side": False,
+                "msg": ps._msg(role, "", [ps._call("f", {}, c) for c in calls or []] or None,
+                               tool_use_id=tid)}
+
+    events = [ev("assistant", ["dup", "ok"]), ev("tool", tid="dup"), ev("tool", tid="ok"),
+              ev("assistant", ["dup"]), ev("tool", tid="dup"), ev("tool", tid="ghost")]
+    ps.settle_tool_ids(events)
+    m = [e["msg"] for e in events]
+    assert [c.get("id") for c in m[0]["tool_calls"]] == [None, "ok"]
+    assert "id" not in m[3]["tool_calls"][0]
+    assert [x.get("tool_use_id") for x in m if x["role"] == "tool"] == [None, "ok", None, None]
+
+
+def test_audit_converter_pairs_public_records_by_id():
+    import collections
+
+    from compaction import audit_logs
+
+    events, _ = ps.cc_events(_cc_ids_session())
+    recs, _ = ps.records_from_events(events, source="swe-chat-v1", session_id="s1",
+                                     harness="claude-code", model="m", rules=[], license="x",
+                                     revision=None)
+    notes: collections.Counter = collections.Counter()
+    out = audit_logs.convert_messages(recs[0]["source_messages"], "source", False, notes)
+    calls = {c["id"]: c["arguments"] for m in out if m["role"] == "assistant"
+             for c in m["tool_calls"]}
+    paired = {calls[m["tool_call_id"]].get("command", "read"): m["content"]
+              for m in out if m["role"] == "tool"}
+    assert paired == {"ls": "A out\n[Request interrupted by user]", "read": "B out"}
+    assert notes["source: paired by id"] == 2 and notes["source: paired by position"] == 0
