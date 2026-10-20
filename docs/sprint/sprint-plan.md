@@ -230,6 +230,19 @@ S1 and S1x are written up as **Experiment 1**, for Jacob's approval (Claude Doc,
 - **Max plan:** all Claude work runs through Claude Code headless on Jacob's Max plan before the 22 Oct reset, with `ANTHROPIC_API_KEY` unset. Expected API spend is about $18, under the $60 cap.
 - **Detection table:** each detector with how it is checked and its blind spots. Jacob reviews the prompts and their outputs on 10 development items before the full run.
 
+**After astra's review (r1, 20 Oct; `logs/reviews/20261020-experiment1-plan-r1.md`, verdict FAIL with 6 BLOCKING and 2 MINOR).** All findings are folded into the Claude Doc at rev 35. Jacob made the three decisions: about 100 labels, 6 Part B arms with the native arm gated, and waiting for the next Max allowance in place of an API fallback. No further review round was requested.
+
+| # | Finding | Fix |
+|---|---|---|
+| 1 | Context fit unverified; the judge's own session could compact its input | Pinned model and provider ids; every request token-counted with output reserve before sending; longest inputs tested Tue night; the judge session can't compact; over-long histories split, with one history-wide item list made before any comparison |
+| 2 | API fallback underpriced (Haiku charges $0.50/M input above 100k) | No API fallback (Jacob): Claude work left at the reset waits for the next Max allowance at $0. Max throughput benchmarked Tue night. Both judges run at the same time once frozen |
+| 3 | 60 labels can't support per-class 0.8 gates | About 100 labels (Jacob), enriched so the two headline verdicts, dropped and invented, have about 25 positives each across the halves. Gate on those two, with 95% intervals; other classes reported with intervals or as unvalidated. Gold windows scored inside the full-history input, and they list summary claims too |
+| 4 | Two-family judging and validation order underspecified | Public labels validate both judges; Jacob's labels validate Haiku only, so results on his sessions are single-family. Prompts are frozen after the development half, and the held-out gate passes before the bulk run. On disagreements, both verdicts are kept and rates reported per judge, with 10 disagreements in the audit. An audit error triggers a fix and re-run, or the rate is withheld; no retuning on audit items |
+| 5 | Part B replays aren't faithful native comparisons | Called "controlled summarization-policy replays" (prompt plus keep rules; no system prompt, tools, memory or hooks). The native `/compact` arm runs only if Tue night's smoke test loads a rebuilt history and records the model, request and resulting context |
+| 6 | Scoring can manufacture errors | Pass 1 lists items before the summary is shown, and marks superseded items. Pass 2 verdicts are supported / contradicted / unsupported, with "invented" only where the history is complete and "unknown" otherwise. No invention rate for FrontierML, which has no fully assessable record. Dropped items are split into still present, recoverable (re-readable) and lost |
+| 7 | Clustering, primary contrast, definitions | Intervals clustered by session (Jacob's 50 compactions come from 31 sessions). One primary Part B contrast: the Claude Code prompt vs Codex local, on user-given rules lost; the rest exploratory. Size test: fixed summary length and items common to both prefixes, read descriptively. "Rare" set at under 5%; prediction denominators stated |
+| 8 | Totals and scope | Expected API $16 (about $27 uncached), re-priced from measured tokens before the bulk run. Jacob's time is about 2.5 h (15 + about 105 + 20 min). The 64k Codex server-side budget is restored to the verbatim check. Scout is time-boxed to 2 h, and Mercury deferred |
+
 ### S1b. Violation detectors (part of the experiment). $5.
 
 The first-look prep numbers are **withdrawn** (Jacob, 20 Oct).
