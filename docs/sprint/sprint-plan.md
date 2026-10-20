@@ -217,6 +217,19 @@ Exploratory, and labelled so throughout.
 3. **Confirm by hand:** every reported pattern, with counts and seeded random examples.
 4. **Use:** important ones become hypotheses for S3, not findings.
 
+### S1 update (20 Oct): Experiment 1 plan
+
+S1 and S1x are written up as **Experiment 1**, for Jacob's approval (Claude Doc, derived from the pinned proposal). Changes to S1 above:
+- **Two parts.**
+  - **Part A:** the natural audit, framed honestly as Claude Code's real summaries across models and context sizes, since the natural data is almost all Claude Code.
+  - **Part B:** 100 identical histories (50 Jacob, 50 SWE-chat) re-compacted six ways with each harness's rules replayed: real Claude Code `/compact`, Claude Code's prompt, Codex local, pi, Antigravity and OpenCode. Haiku 5.5 is held fixed, so only the summarizer differs. This is where the harness comparison comes from.
+- **Judges, both chosen by validation on Jacob's development labels** (Jacob, 20 Oct: "we need to validate the judges for sure"):
+  - **Judge A** is Haiku 5.5 (Sonnet 5.5 only if Haiku fails on long histories). It runs on the Max plan, with the API fallback on the same model.
+  - **Judge B** is chosen from luna, GLM 5.3 Flash and DeepSeek V4.1 Flash, on public data only. luna starts with a strike: P01 found it unfit for summary-fidelity judging (17% precision on invented facts, 19 of 40 deleted file names caught).
+  - Checkable facts (file names, test results, branches, commands) are scored in code.
+- **Max plan:** all Claude work runs through Claude Code headless on Jacob's Max plan before the 22 Oct reset, with `ANTHROPIC_API_KEY` unset. Expected API spend is about $18, under the $60 cap.
+- **Detection table:** each detector with how it is checked and its blind spots. Jacob reviews the prompts and their outputs on 10 development items before the full run.
+
 ### S1b. Violation detectors (part of the experiment). $5.
 
 The first-look prep numbers are **withdrawn** (Jacob, 20 Oct).
