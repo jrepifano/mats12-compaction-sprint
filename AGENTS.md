@@ -101,9 +101,11 @@ $ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
 $ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
   --command "codex --approve-for-me -c sandbox_workspace_write.network_access=true --add-dir $HOME/.cache/uv --add-dir $HOME/.cache/huggingface" --json
 $ORCA worktree set --worktree "path:$WT" --display-name "P<NN> <slug>" --json
-$ORCA terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000 --json
-$ORCA terminal send --terminal <handle> --text "<brief>" --enter --wait-submit 30 --json
+$ORCA terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000 --json \
+  && $ORCA terminal send --terminal <handle> --text "<brief>" --enter --wait-submit 30 --json
 ```
+
+- **Send only after a successful wait.** `terminal wait` exits 1 when the agent isn't ready in time; then read the terminal (`orca terminal read --terminal <handle> --screen --json`) to see why before sending anything.
 
 - **Why `terminal create` and not `orca agent launch`:** `agent launch` takes no agent CLI flags, and it may open the agent as an Orca chat rather than a terminal, depending on Jacob's Chat UI setting. `terminal create --command` types the exact command line into the terminal's login shell.
 - **Check the send receipt.** It should reach `turn_started`. `accepted: true` alone means the input was accepted, not that the turn began. Never resend on silence: read the terminal first (`orca terminal read --terminal <handle> --screen --json`). After an unclear transport failure, repeat the exact command with the receipt's `--retry-request <id>`.

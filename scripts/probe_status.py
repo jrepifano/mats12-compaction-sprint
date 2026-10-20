@@ -106,6 +106,7 @@ def orca_json(args: list[str], what: str) -> dict | None:
             [orca_bin(), *args, "--json"],
             capture_output=True,
             text=True,
+            errors="replace",  # bad UTF-8 must not raise UnicodeDecodeError
             timeout=ORCA_TIMEOUT_S,
             check=False,
         )
@@ -115,7 +116,7 @@ def orca_json(args: list[str], what: str) -> dict | None:
     except subprocess.TimeoutExpired:
         note(f"orca {' '.join(args[:2])} timed out after {ORCA_TIMEOUT_S} s; {what} show '-'")
         return None
-    except OSError as e:
+    except (OSError, ValueError) as e:  # ValueError covers decoding errors
         note(f"orca {' '.join(args[:2])} failed ({e}); {what} show '-'")
         return None
     if r.returncode != 0:
@@ -143,7 +144,33 @@ def orca_terminals() -> list[dict] | None:
     if not isinstance(terms, list):
         note("orca terminal list printed unexpected output; agent columns show '-'")
         return None
-    return [t for t in terms if isinstance(t, dict) and t.get("handle")]
+    return [
+        clean_terminal(t)
+        for t in terms
+        if isinstance(t, dict) and isinstance(t.get("handle"), str) and t["handle"]
+    ]
+
+
+def clean_terminal(t: dict) -> dict:
+    """Keep only well-typed fields, so odd values can't break matching or ranking."""
+
+    def text(k: str) -> str | None:
+        v = t.get(k)
+        return v if isinstance(v, str) and v else None
+
+    last = t.get("lastOutputAt")
+    return {
+        "handle": t["handle"],
+        "title": text("title"),
+        "worktreePath": text("worktreePath"),
+        "agentIdentity": text("agentIdentity"),
+        "tabId": text("tabId"),
+        "leafId": text("leafId"),
+        "connected": t.get("connected") is True,
+        "lastOutputAt": last
+        if isinstance(last, (int, float)) and not isinstance(last, bool)
+        else 0,
+    }
 
 
 def orca_agent_states() -> dict[str, dict]:
@@ -154,8 +181,10 @@ def orca_agent_states() -> dict[str, dict]:
     for w in wts if isinstance(wts, list) else []:
         agents = w.get("agents") if isinstance(w, dict) else None
         for a in agents if isinstance(agents, list) else []:
-            if isinstance(a, dict) and a.get("paneKey"):
-                out[str(a["paneKey"])] = a
+            if isinstance(a, dict) and isinstance(a.get("paneKey"), str) and a["paneKey"]:
+                out[a["paneKey"]] = {  # keep only well-typed fields, as clean_terminal does
+                    k: a[k] for k in ("state", "agentType") if isinstance(a.get(k), str) and a[k]
+                }
     return out
 
 

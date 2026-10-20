@@ -290,6 +290,7 @@ def test_ps_failure_keeps_terminal_columns(repo, monkeypatch, capsys):
         fake_run(json.dumps({"ok": False, "error": {"code": "runtime_unreachable"}})),
         fake_run(json.dumps({"result": {"terminals": "?"}})),
         fake_run("", rc=1),
+        fake_run(exc=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte")),
     ],
 )
 def test_orca_unavailable_never_fails(repo, monkeypatch, capsys, run):
@@ -300,6 +301,56 @@ def test_orca_unavailable_never_fails(repo, monkeypatch, capsys, run):
     err = capsys.readouterr().err
     assert err.count("probe_status:") == 1 and "orca" in err and "'-'" in err
     assert len(run.calls) == 1  # no `worktree ps` once `terminal list` failed
+
+
+def test_malformed_terminal_fields_never_crash(repo, monkeypatch):
+    """Wrong-typed fields are dropped, not compared: astra r1 reproduced TypeErrors here."""
+    terms = {
+        "ok": True,
+        "result": {
+            "terminals": [
+                {"handle": 42, "title": "P01 a"},  # non-string handle: dropped
+                {
+                    "handle": "term_late",
+                    "worktreePath": 123,
+                    "title": "P01 a",
+                    "lastOutputAt": "late",
+                    "agentIdentity": 7,
+                    "tabId": "t",
+                    "leafId": "l",
+                },
+                {
+                    "handle": "term_num",
+                    "worktreePath": ["x"],
+                    "title": "P01 a",
+                    "lastOutputAt": 4,
+                    "connected": "yes",
+                },
+            ]
+        },
+    }
+    ps_out = {
+        "result": {
+            "worktrees": [
+                {"agents": [{"paneKey": 5, "state": "working"}, {"paneKey": "t:l", "state": 9}]}
+            ]
+        }
+    }
+    monkeypatch.setattr(ps, "RUN", orca_fake(repo, terminals=terms, ps_out=ps_out))
+    p1 = by_id(ps.collect(repo))["P01"]
+    assert p1.terminal == "term_num"  # "late" ranks as 0, below 4
+    assert (p1.agent, p1.agent_status) == ("shell", "disconnected")  # "yes" is not True
+
+
+def test_invalid_utf8_from_real_subprocess(repo, monkeypatch, tmp_path, capsys):
+    fake = tmp_path / "orca"
+    fake.write_text("#!/bin/sh\nprintf '\\377\\376{'\n")
+    fake.chmod(0o755)
+    monkeypatch.setenv("ORCA_BIN", str(fake))
+    monkeypatch.setattr(ps, "RUN", subprocess.run)
+    rows = by_id(ps.collect(repo))
+    assert rows["P01"].terminal is None
+    assert "unexpected output" in capsys.readouterr().err
 
 
 def test_no_orca_flag_skips_the_call(repo, monkeypatch):
