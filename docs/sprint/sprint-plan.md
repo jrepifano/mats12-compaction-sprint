@@ -236,10 +236,16 @@ The observational violation analysis on the public sets is **off by default** (s
 | Channel | Delivery | ConstraintRot analogue | Expected protection |
 |---|---|---|---|
 | **AGENTS.md** (control) | a rules section in the repo's root AGENTS.md / CLAUDE.md | system prompt | re-injected by the harness, so little or no loss expected |
-| **Chat** | the rule in the opening user message, **followed by scripted follow-up user turns**: progress check-ins, a clarifying answer, and two pasted logs, about 25k tokens of user text in all, fixed per task and identical across arms | user turn | survives only inside the verbatim budgets (Codex 20k, Antigravity 10 requests); Claude Code paraphrases |
+| **Chat** | the rule in the opening user message, **followed by scripted follow-up user turns** (progress check-ins, clarifying answers, pasted logs). Their **amount is drawn from real usage**, not set to beat a budget (see below). The script is fixed per task and identical across arms | user turn | survives only inside the verbatim budgets (Codex 20k, Antigravity 10 requests); Claude Code paraphrases |
 | **README** | a "Contribution rules" section in README.md, which the opening prompt tells the agent to read first | tool result | summarized away; the agent can re-read it, so recoverability is reported |
 
-- **Why follow-up turns:** without them the chat channel tests a single-prompt session that rarely occurs in real use, and the verbatim budgets never fill. The follow-up script is written before the pilot, with no rule content in it, and is stored in the S2 spec.
+- **Why follow-up turns:** without them the chat channel tests a single-prompt session that rarely occurs in real use, and the verbatim budgets never fill.
+- **How much follow-up text** (revised 20 Oct; a fixed 25k would put the rule outside Codex's 20k window by construction, the same flaw as ConstraintRot):
+  - The amount is set from S1's **verbatim-budget check**: the user text that follows an early user turn by compaction time, in Jacob's sessions and SWE-chat. It runs on Wed 21, before the S2 spec is frozen.
+  - Each chat-channel task draws its follow-up volume (tokens and number of turns) from that observed distribution, by seed. About half the tasks will then naturally stay inside Codex's 20k window and half won't, in the proportion real sessions show.
+  - Analysis reports loss against the realised volume.
+  - **If the check can't run in time,** two pre-set levels are used, at about the real median and the 90th percentile of SWE-chat, and labelled as such.
+- **Script content:** written before the pilot, with no rule content in it, and stored in the S2 spec.
 - **Pilot size:** 24 runs, made of 6 tasks (ranks 1–6, excluding held-out tasks) × 4 models. Each model gets **2 tasks per channel**, assigned in a fixed order that rotates channels across models, so each task appears in every channel across the four models.
 - **Cost:** within $50, at about $2 per run including arms.
 - **Coverage:** thinner per channel, so replacement runs (tasks 7–10) go first to the channel with the fewest assessable boundaries.

@@ -416,6 +416,6 @@ Unit (d)'s push-event addition (§2.4, §5) is a code change made before the pil
 
 The plan's S2 now replicates ConstraintRot's channel test. Besides the frozen chat and README procedures above, two more are needed:
 - **AGENTS.md (control):** the same rule tuple as a "Rules" section in the task repo's root AGENTS.md (and CLAUDE.md for Claude Code), with the same wording as the chat text.
-- **Chat follow-up script:** the opening message carries the rules as before. It is followed by scripted user turns: progress check-ins, one clarifying answer, and two pasted logs, about 25k tokens of user text in all. The script is fixed per task and identical across arms, and contains **no rule content**.
+- **Chat follow-up script:** the opening message carries the rules as before. It is followed by scripted user turns: check-ins, clarifying answers and pasted logs. Their **volume per task is drawn from the real distribution** measured by the plan's S1 verbatim-budget check, not fixed at a number that beats a budget. The script is fixed per task and identical across arms, and contains **no rule content**.
 
 Both are frozen in the S2 spec before the pilot. Retention grading, the gate and the fallback apply to every channel unchanged. The AGENTS.md channel is descriptive, not gated. Not reviewed: the specs have used their 3 review rounds.
