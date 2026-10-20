@@ -127,9 +127,15 @@ The harness choice is time-boxed to Wed 21, 12:00 ET. If no native route passes,
 | Claude Code | Haiku 5.5, plus Opus 5.5 for the flagships | — |
 | Antigravity | Gemini 3.8 Flash, via the agy driver (free quota) | Not via inspect-swe |
 | Codex | luna, labelled **"Codex local summarizer"** | inspect-swe forces Codex's open-source local summarizer. Real Codex on OpenAI models compacts **server-side** and returns the summary encrypted. A small **direct-Codex check** (our OpenAI key, no bridge, about 4 tasks) compares behaviour rates only, since that summary can't be read |
-| — | DeepSeek V4.1 Flash, GLM 5.3 Flash | No vendor coding tool. They run inside Claude Code or Codex, labelled **cross-model**, and are reported apart from any product claim |
+| **pi** (1.3.0) | DeepSeek V4.1 Flash, GLM 5.3 Flash, labelled **"third-party harness, vendor-documented"** (Jacob, 20 Oct) | Works headless through a small Inspect wrapper. Native compaction fires, all messages plus the summary are kept in the session file, and fork arms work (`--fork`). Both vendors now also ship their own tools (DeepSeek Harness, ZCode); these weren't spiked (spike report `docs/sprint/prep/k-pi-opencode-spike.md`) |
+| **OpenCode** (1.19.3) | DeepSeek, GLM | Used for **natural-compaction runs and in-place summary swaps only**: restarting from a snapshot gives a malformed context, so it has no fork arms unless that's fixed. Needs `OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER=1` and the vendor model ids |
 
 **Rule:** a claim about a product comes only from its native pairing. Cross-model results answer "does this model break rules after this harness's compaction".
+
+**Fixes from the pi/OpenCode spike, before the pilot:**
+- **Reasoning and output limits:** Inspect's bridge doesn't pass reasoning level or max output tokens on to the model. The harness build fixes or verifies this for every harness, or the "max effort" setting isn't real.
+- **Compaction trigger:** none of the harnesses compacts at DeepSWE's ~240k peaks with 1M-token windows, so the trigger is forced per harness.
+- **Re-compaction loops:** at about a 48k trigger, harnesses re-compact every 7–9 calls. The trigger is set well above the post-compaction context size.
 
 S0.2's four checks still have to pass on the chosen route, since the full-history arm and the Codex fork were checked only with the mock model. The pilot fixes from the spike report (thresholds, limits, Codex home, `--no-pause`) go into the S2 spec.
 
