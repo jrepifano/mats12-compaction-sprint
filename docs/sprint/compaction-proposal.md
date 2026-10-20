@@ -2,15 +2,15 @@
 
 2026-10-18 · Jacob Epifano
 
-Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, current findings, research questions, then models and data), with J Rosser's suggestions, the data-source research and a provider benchmark folded in. The DM is the first section (about 490 words, one Google Docs page; detail cut from it on 20 Oct is under "Design detail"); the rest backs each number and lists the choices still open, and is not part of the message. Mirror of [docs/sprint/compaction-proposal.md](../../docs/sprint/compaction-proposal.md); edits here are synced back to that file. Reviews: [round 1](../../logs/reviews/20261018-compaction-proposal-r1.md), [round 2](../../logs/reviews/20261019-compaction-proposal-r2.md), [round 3](../../logs/reviews/20261019-compaction-proposal-r3.md).
+Draft for Jacob to send. Restructured on 19 Oct into Jacob's order (topic, current findings, research questions, then models and data), with J Rosser's suggestions, the data-source research and a provider benchmark folded in. The DM is the first section (about 540 words, one Google Docs page; detail cut from it on 20 Oct is under "Design detail"); the rest backs each number and lists the choices still open, and is not part of the message. Mirror of [docs/sprint/compaction-proposal.md](../../docs/sprint/compaction-proposal.md); edits here are synced back to that file. Reviews: [round 1](../../logs/reviews/20261018-compaction-proposal-r1.md), [round 2](../../logs/reviews/20261019-compaction-proposal-r2.md), [round 3](../../logs/reviews/20261019-compaction-proposal-r3.md).
 
 ## The DM
 
 **Compaction sprint proposal (19–30 Oct)**
 
-When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory; UK AISI has reported assumptions carried forward as fact. Prior work measures what summaries lose, or plants rules in short tasks; none reruns natural losses on long, real work.
+When a coding agent's context fills, the harness swaps its history for a summary. Anything the summary drops, mis-remembers or invents, including the user's rules and permissions, becomes the agent's memory. UK AISI has reported assumptions carried forward as fact. Prior work measures what summaries lose, or plants rules in short tasks. None reruns natural losses on long, real work.
 
-**What I've found so far.** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points [+6, +35]; its summaries stated permissions the source only implied, and deleting those sentences cut the actions by 23 points. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods differed.
+**What I've found so far.** In short-context tests, compaction raised DeepSeek's unapproved irreversible actions 21 points. Its summaries stated permissions the source only implied, and deleting those sentences cut the actions by 23 points. In ~200k-token Qwen3-Coder histories there were signs that repeated compactions increased test cheating, and signs the methods for compaction differed.
 
 **Research questions**
 
@@ -21,8 +21,8 @@ When a coding agent's context fills, the harness swaps its history for a summary
 
 **Models and data.** DeepSeek V4.1 Flash, GLM 5.3 Flash, GPT-6 luna and Haiku 5.5, with Opus 5.5, GPT-6 astra and Gemini on a subset.
 
-- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and PostTrainBench and FrontierML, whose tasks state checkable rules. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. Re-compacting the same histories with the Codex, pi and Antigravity-style summarizers compares methods. What gets lost sets the rules and thresholds for the online runs.
-- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself; any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. Permission tests chain τ²-bench tasks into long shifts and correct invented permissions; repeated-compaction runs chain 2–3 tasks ending on the same scored task. Outcomes: rule violations, irreversible actions, test cheating and task completion.
+- **Offline (first, cheap):** audit compactions that already happened: my 48 Claude Code compactions (205k–972k tokens), SWE-chat (~1,000), and two long-run sets whose tasks state checkable rules: PostTrainBench ("cannot modify evaluate.py") and FrontierML (no training on test data). With these I can see whether a rule drops out of a summary and the agent then breaks it, without running anything. I also compact each session early, at 256k and ~512k, to see whether bigger contexts lose more. Re-compacting the same histories with the Codex, pi and Antigravity-style summarizers compares methods. What gets lost sets the rules and thresholds for the online runs.
+- **Online (causal tests):** on the 45 longest DeepSWE tasks (~200k tokens), with rules I add in chat (I never delete a rule myself, therefore any loss is the summarizer's), each model compacts with its own vendor's summarizer (Codex for luna, Claude Code for Haiku, Antigravity for Gemini), and I resume from the first compaction four ways: full history, actual summary, summary + the lost rule, summary + a matched irrelevant fact. Permission tests chain τ²-bench tasks (an established benchmark with mocked tools, a confirm-before-write rule, and scoring that separates reasoning errors from communication failures) into long shifts and correct invented permissions. Repeated-compaction runs chain 2–3 tasks ending on the same scored task. Outcomes: rule violations, irreversible actions, test cheating and task completion.
 
 **Timeline.** A $50 pilot runs first and measures cost per comparison before bulk runs. Week 1: offline audit, pilot, and Opus checks on my Max plan before 22 Oct. Week 2: online runs and write-up.
 
@@ -247,6 +247,6 @@ The DM is written with the recommended option for each. Change the marked line i
 | Pilot (~$50) | Runs first; can start before or after sending | Budget |
 | Contact Ge-Wang / AISI | Contact separately; not in the DM | — |
 | Number of questions | Five (consensus plan); r1 suggested fewer | Research questions |
-| Length | About 490 words (one Google Docs page) since 20 Oct; detail moved to "Design detail" | DM |
+| Length | About 540 words (one Google Docs page) since 20 Oct, with the reasons for PostTrainBench, FrontierML and τ²-bench added; detail moved to "Design detail" | DM |
 | Compaction-style comparison (J) | In the pilot; in the fresh tasks if feasible | Compaction styles bullet |
 | Q3 fix | Prompt line committed; a checker (source or debate) only if it falls short | Q3 bullet |
