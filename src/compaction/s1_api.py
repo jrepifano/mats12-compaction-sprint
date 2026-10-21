@@ -94,7 +94,7 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1"
 DEEPSEEK_URL = "https://api.deepseek.com"  # the SDK appends /chat/completions (provider_bench)
 TRANSPORTS = ("openai", "openrouter", "deepseek")
 REASONING = ("none", "low", "high", "default")
-JSON_MODES = ("json_schema", "json_object")
+JSON_MODES = ("json_schema", "json_object", "text")  # text: no response_format; parse the reply
 # OpenRouter 400s on reasoning={"enabled": False} for these (probe_llm.REASONING_MANDATORY).
 REASONING_MANDATORY = frozenset({"z-ai/glm-5.3-flash"})
 # Non-4-bit quantizations (scripts/provider_bench.py ALLOWED_QUANT).
@@ -203,9 +203,12 @@ ROUTES: dict[str, Route] = {
         prices={"input": 0.15, "output": 0.50, "cache_read": 0.03},
         context_tokens=1_048_575,  # Together's endpoint listing
         bytes_per_token=2.0,
-        reasoning="default",  # reasoning is mandatory on this endpoint (probe_llm)
+        # reasoning is mandatory on this endpoint (probe_llm); at the default it spent the whole
+        # 32k output on reasoning and returned empty content on 21 of 30 pass-1a calls in the
+        # 20 Oct dev run, and json_object mode added nothing, so: low reasoning, text mode
+        reasoning="low",
         family="zhipu",
-        json_mode="json_object",  # json_schema support on Together unchecked
+        json_mode="text",
         key_env="OPENROUTER_API_KEY",
         prices_placeholder=False,
         notes="benchmark 2026-10-20: 159 tok/s, TTFT 2.3 s",
@@ -214,16 +217,21 @@ ROUTES: dict[str, Route] = {
         name="deepseek",
         model="deepseek/deepseek-v4.1-flash",
         transport="openrouter",
-        provider_pin="Baidu",  # fp8; allow_fallbacks: False, non-4-bit quantizations
-        prices={"input": 0.035, "output": 0.142, "cache_read": 0.001},
-        context_tokens=1_048_576,  # Baidu's endpoint listing
+        # Baidu (benchmarked 197 tok/s, $0.035/M) returned HTTP 429 on most calls at
+        # concurrency 8 in the 20 Oct dev run; DeepInfra fp8 (benchmarked 109 tok/s, batch 335)
+        # replaced it before any labels. Table price is DeepInfra's highest fp8 listing.
+        provider_pin="DeepInfra",  # fp8; allow_fallbacks: False, non-4-bit quantizations
+        prices={"input": 0.21, "output": 0.63, "cache_read": 0.006},
+        context_tokens=1_048_576,  # DeepInfra's endpoint listing
         bytes_per_token=2.0,
-        reasoning="default",  # vendor default; not yet compared with the direct API's
+        # thinking off: at the default, json_object replies degenerated (reasoning leaked into
+        # keys, or `{""` loops to the cap) and pass 2 spent all 32k on thinking (20 Oct dev run)
+        reasoning="none",
         family="deepseek",
-        json_mode="json_object",
+        json_mode="text",
         key_env="OPENROUTER_API_KEY",
         prices_placeholder=False,
-        notes="benchmark 2026-10-20: 197 tok/s, TTFT 2.5 s",
+        notes="benchmark 2026-10-20: DeepInfra 109 tok/s, TTFT 4.6 s",
     ),
     "deepseek-api": Route(
         name="deepseek-api",
@@ -338,7 +346,24 @@ def _parse_json(text: str) -> tuple[Any, str | None, bool]:
     try:
         return json.loads(t), None, fenced
     except json.JSONDecodeError as e:
-        return None, f"json: {e}", fenced
+        # Text mode (and chatty replies): accept the reply only if exactly one top-level JSON
+        # object parses out of it, and nothing after it opens another one (review 21 Oct: an
+        # earlier object followed by a cut-off "correction" must not pass as the answer).
+        found, k, dec = [], 0, json.JSONDecoder()
+        while (k := t.find("{", k)) >= 0:
+            try:
+                obj, end = dec.raw_decode(t, k)
+            except json.JSONDecodeError:
+                if found:
+                    return None, "json: ambiguous (a later object does not parse)", fenced
+                k += 1
+                continue
+            found.append(obj)
+            k = end
+        if len(found) == 1:
+            return found[0], None, True
+        why = "ambiguous (several objects)" if found else str(e)
+        return None, f"json: {why}", fenced
 
 
 def table_usd(route: Route, input_tokens: int, cached: int, output_tokens: int) -> float:
@@ -537,7 +562,7 @@ class ApiBackend:
                     "json_schema": {"name": "s1_judge", "strict": True, "schema": req.schema},
                 }
                 sent_bytes += len(json.dumps(kw["response_format"]).encode("utf-8"))
-            else:
+            elif r.json_mode == "json_object":
                 kw["response_format"] = {"type": "json_object"}
         if r.transport == "openai":
             kw["max_completion_tokens"] = req.max_output_tokens

@@ -155,7 +155,9 @@ def ops(env):
 def test_routes_table():
     assert set(A.ROUTES) == {"luna", "glm", "deepseek", "deepseek-api"}
     assert A.ROUTES["glm"].provider_pin == "Together"
-    assert A.ROUTES["deepseek"].provider_pin == "Baidu"
+    assert A.ROUTES["deepseek"].provider_pin == "DeepInfra"
+    assert A.ROUTES["deepseek"].reasoning == "none" and A.ROUTES["deepseek"].json_mode == "text"
+    assert A.ROUTES["glm"].reasoning == "low" and A.ROUTES["glm"].json_mode == "text"
     assert A.ROUTES["deepseek"].model == "deepseek/deepseek-v4.1-flash"
     assert A.ROUTES["deepseek-api"].provider_pin is None
     assert A.ROUTES["luna"].transport == "openai" and A.ROUTES["luna"].reasoning == "none"
@@ -227,12 +229,12 @@ def test_too_long_not_sent(env):
 # --- requests and answers ------------------------------------------------------------------------
 
 
-def test_openrouter_request_is_pinned_json_object(env):
+def test_openrouter_request_is_pinned_text_mode(env):
     client = FakeClient([answer(json.dumps(GOOD), cost=2e-5, provider="Together")])
     out = backend(env, client).run([req()], purpose="p")
     kw = client.calls[0]
     assert kw["model"] == "z-ai/glm-5.3-flash" and kw["max_tokens"] == 500
-    assert kw["response_format"] == {"type": "json_object"}
+    assert "response_format" not in kw  # text mode: the appended instruction carries the schema
     assert kw["extra_body"]["provider"] == {
         "require_parameters": True,
         "quantizations": A.ALLOWED_QUANT,
@@ -240,7 +242,7 @@ def test_openrouter_request_is_pinned_json_object(env):
         "allow_fallbacks": False,
     }
     assert kw["extra_body"]["usage"] == {"include": True}
-    assert "reasoning" not in kw["extra_body"]  # GLM: vendor default
+    assert kw["extra_body"]["reasoning"] == {"effort": "low"}  # GLM can't disable reasoning
     sysmsg, user = kw["messages"]
     assert sysmsg == {"role": "system", "content": "You grade items."}  # prefix untouched
     assert user["role"] == "user"
@@ -796,3 +798,15 @@ def test_invalid_billed_cost_keeps_the_bound(env, cost):
     r = be.run([req()], purpose="p")["k1"]
     assert r.data == GOOD and r.meta["usage_known"] is False and r.meta["cost_source"] == "bound"
     assert _settled(env) == pytest.approx(be._prepare(req()).worst_usd, abs=1e-6)
+
+
+def test_text_mode_salvages_json_from_a_chatty_reply():
+    obj, err, salvaged = A._parse_json('Here you go:\n{"grades": []}\nDone.')
+    assert obj == {"grades": []} and err is None and salvaged
+    assert A._parse_json("no json at all")[0] is None
+
+
+def test_text_mode_rejects_ambiguous_or_superseded_objects():
+    assert A._parse_json('{"items": []}\nCorrection: {"items": [')[0] is None
+    assert A._parse_json('{"a": 1} and {"b": 2}')[0] is None
+    assert A._parse_json('Sure.\n{"a": {"b": 1}}\nThanks')[0] == {"a": {"b": 1}}

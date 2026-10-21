@@ -38,3 +38,13 @@ def test_sealed_roster_is_keyed_by_row_rid_with_metadata():
     assert row["ok"] is False and row["items_ok"] is True and row["claims_ok"] is False
     assert row["session_group"] == "x" and row["history_complete"] is True
     assert row["arm"] == "codex_local"
+
+
+def test_update_roster_merges_judges(tmp_path):
+    p = tmp_path / "roster.json"
+    s1_run.update_roster(p, "haiku-max", {"r1": {"items": True, "claims": True}})
+    s1_run.update_roster(p, "glm", {"r1": {"items": True, "claims": False}})
+    import json
+
+    r = json.loads(p.read_text())
+    assert set(r["r1"]) == {"haiku-max", "glm"} and r["r1"]["glm"]["claims"] is False

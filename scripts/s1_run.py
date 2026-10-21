@@ -18,6 +18,7 @@ and scorer read. `partA`, `partB` and `size` write through `seal.write("S1", ...
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import sys
 import time
@@ -81,6 +82,20 @@ def roster_of(rids: list[str], errors: list[dict]) -> dict:
     return out
 
 
+def update_roster(path: Path, judge: str, entries: dict) -> None:
+    """Merge one judge's entries into the dev roster under a lock, re-reading it first, so
+    dev runs of different judges in separate processes don't overwrite each other."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_suffix(".lock"), "w") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        roster = json.loads(path.read_text()) if path.exists() else {}
+        for rid, ok in entries.items():
+            roster.setdefault(rid, {})[judge] = ok
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(roster, indent=1, sort_keys=True))
+        tmp.replace(path)
+
+
 def log(msg: str) -> None:
     print(time.strftime("%H:%M:%SZ", time.gmtime()), msg, flush=True)
 
@@ -102,7 +117,6 @@ def cmd_dev(args) -> None:
     rids = ids["labels_dev"] + ids["labels_held"]
     DEV_DIR.mkdir(parents=True, exist_ok=True)
     roster_path = DEV_DIR / "roster.json"
-    roster = json.loads(roster_path.read_text()) if roster_path.exists() else {}
     for name in args.judges.split(","):
         be = backend(name, args.concurrency)
         mine = judge_ids(be, rids)
@@ -115,9 +129,7 @@ def cmd_dev(args) -> None:
             out_code_facts=DEV_DIR / f"code_facts_{be.name}.jsonl",
             purpose="s1_judge",
         )
-        for rid, ok in roster_of(mine, res["errors"]).items():
-            roster.setdefault(rid, {})[be.name] = ok
-        roster_path.write_text(json.dumps(roster, indent=1, sort_keys=True))
+        update_roster(roster_path, be.name, roster_of(mine, res["errors"]))
         summary = {k: v for k, v in res.items() if k != "errors"}
         summary["n_errors"] = len(res["errors"])
         (DEV_DIR / f"summary_{be.name}.json").write_text(
