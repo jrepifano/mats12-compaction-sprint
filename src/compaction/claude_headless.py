@@ -102,7 +102,9 @@ CANARY_MAX_OUTPUT = 64
 
 LIMIT_MARGIN_S = 120.0  # wait until resetsAt + this
 LIMIT_FALLBACK_WAIT_S = 900.0  # when a limit names no reset time
-MAX_LIMIT_WAITS = 12  # per call, before giving up with error="limit"
+LIMIT_POLL_S = 900.0  # while paused, a canary every 15 min checks whether calls are allowed again
+MAX_POLL_ERRORS = 8  # consecutive polls failing for a non-limit reason (2 h) before aborting
+MAX_LIMIT_WAITS = 12  # per call, before giving up with error="limit" (canary polls don't count)
 OK_LIMIT_STATUSES = frozenset({"allowed", "allowed_warning"})
 SCHEMA_RETRY_LINE = "Return your answer only by calling the StructuredOutput tool."
 
@@ -775,8 +777,9 @@ def verify_route(ev: dict | None) -> str:
 
 
 def _limit_from(events: list[dict], result: dict | None, now: float) -> dict | None:
-    """A usage-limit hit: {"until": epoch, "window": str, "status": str|None}, or None. The wait
-    runs to the latest blocking reset named by a rejected snapshot or the result message."""
+    """A usage-limit hit: {"until": epoch, "window": str, "status": str|None, "util": float|None},
+    or None. The wait runs to the latest blocking reset named by a rejected snapshot or the
+    result message."""
     infos = _infos(events)
     bad = [i for i in infos if i.get("status") not in OK_LIMIT_STATUSES]
     res_hit = False
@@ -786,22 +789,25 @@ def _limit_from(events: list[dict], result: dict | None, now: float) -> dict | N
         res_hit = bool(LIMIT_RE.search(msg)) or result.get("api_error_status") == 429
     if not bad and not res_hit:
         return None
-    resets: list[tuple[float, str, str | None]] = []
+    resets: list[tuple[float, str, str | None, float | None]] = []
     for i in bad:
+        windows = i.get("unifiedWindows") or {}
         if i.get("resetsAt"):
-            resets.append(
-                (float(i["resetsAt"]), i.get("rateLimitType") or "unknown", i.get("status"))
-            )
-        for w, v in (i.get("unifiedWindows") or {}).items():
+            w = i.get("rateLimitType") or "unknown"
+            util = (windows.get(w) or {}).get("utilization")
+            resets.append((float(i["resetsAt"]), w, i.get("status"), util))
+        for w, v in windows.items():
             if (v.get("utilization") or 0) >= 1 and v.get("resetsAt"):
-                resets.append((float(v["resetsAt"]), w, i.get("status")))
+                resets.append((float(v["resetsAt"]), w, i.get("status"), v.get("utilization")))
     if res_hit:
         for m in _RESET_EPOCH_RE.finditer(msg):
-            resets.append((float(m.group(1)), "result_message", None))
+            resets.append((float(m.group(1)), "result_message", None, None))
     if resets:
-        reset, window, status = max(resets, key=lambda x: x[0])
-        return {"until": reset + LIMIT_MARGIN_S, "window": window, "status": status}
-    return {"until": now + LIMIT_FALLBACK_WAIT_S, "window": "unknown", "status": None}
+        reset, window, status, util = max(resets, key=lambda x: x[0])
+        return {"until": reset + LIMIT_MARGIN_S, "window": window, "status": status, "util": util}
+    return {
+        "until": now + LIMIT_FALLBACK_WAIT_S, "window": "unknown", "status": None, "util": None,
+    }  # fmt: skip
 
 
 _USAGE_KEYS = ("input_tokens", "cache_creation_input_tokens", "cache_read_input_tokens",
@@ -1069,6 +1075,13 @@ class _Stats:
                 self.errors[resp.error] = self.errors.get(resp.error, 0) + 1
 
 
+def _canary_req() -> Req:
+    return Req(
+        key=CANARY_KEY, system=CANARY_SYSTEM, user=CANARY_USER, schema=None,
+        max_output_tokens=CANARY_MAX_OUTPUT, rid=CANARY_KEY, source="canary", private=False,
+    )  # fmt: skip
+
+
 class MaxBackend:
     """`s1_types.Backend` over `claude -p` on the Max plan (spec U2a)."""
 
@@ -1089,6 +1102,7 @@ class MaxBackend:
         bytes_per_token: float = 2.2,  # measured 2.27-2.46 (smoke note); spec D3 as revised
         kill_grace_s: float = KILL_GRACE_S,
         max_limit_waits: int = MAX_LIMIT_WAITS,
+        limit_poll_s: float = LIMIT_POLL_S,
         sleep: Callable[[float], Any] | None = None,
         clock: Callable[[], float] = time.time,
         recorder: Callable[..., Any] | None = None,
@@ -1107,12 +1121,16 @@ class MaxBackend:
         self.claude_bin = claude_bin or default_bin()
         self.kill_grace_s = kill_grace_s
         self.max_limit_waits = max_limit_waits
+        self.limit_poll_s = limit_poll_s
         self._clock = clock
         self._stop = threading.Event()
         self._sleep = sleep or (lambda s: self._stop.wait(s))
         self._recorder = recorder
         self._pause_lock = threading.Lock()
         self._pause_until = 0.0
+        self._poll_lock = threading.Lock()
+        self._pause_gen = 0  # bumped by every research-call pause, so a stale poll is dropped
+        self._poll_errors = 0
         self._write_lock = threading.Lock()
         self._run_lock = threading.Lock()
         self._owner: object = object()
@@ -1173,16 +1191,32 @@ class MaxBackend:
 
     # -- limits
 
+    @staticmethod
+    def _say(msg: str) -> None:
+        log.warning(msg)
+        print(msg, file=sys.stderr, flush=True)
+
+    def _limit_line(self, limit: dict) -> None:
+        """The anchored line a monitor greps for: S1_LIMIT <window> util=<u> resets=<iso>."""
+        reset = _utc(limit["until"] - LIMIT_MARGIN_S) if limit["window"] != "unknown" else "?"
+        self._say(f"S1_LIMIT {limit['window']} util={limit.get('util')} resets={reset}")
+
     def _set_pause(self, limit: dict) -> None:
+        """Pause new launches until a research call's limit resets (only ever extends the pause;
+        a poll sets it directly in `_poll`, since the poll is the latest reading)."""
         with self._pause_lock:
             if limit["until"] <= self._pause_until:
                 return
             self._pause_until = limit["until"]
-        msg = f"MAX_LIMIT_WAIT until {_utc(limit['until'])} ({limit['window']})"
-        log.warning(msg)
-        print(msg, file=sys.stderr, flush=True)
+            self._pause_gen += 1
+        self._say(f"MAX_LIMIT_WAIT until {_utc(limit['until'])} ({limit['window']})")
+        self._limit_line(limit)
 
-    def _wait_pause(self) -> None:
+    def _wait_pause(self, purpose: str, stats: _Stats) -> None:
+        """Wait out a usage-limit pause in slices of `limit_poll_s`. One worker at a time sleeps a
+        slice and then sends the tiny canary: once a call is allowed again (a manual reset, or a
+        window that reset early) the pause ends for every worker. Polls are not research
+        attempts, so they never count toward `max_limit_waits`."""
         while True:
             if self._stop.is_set():
                 raise _Stopped
@@ -1190,7 +1224,47 @@ class MaxBackend:
                 d = self._pause_until - self._clock()
             if d <= 0:
                 return
-            self._sleep(min(d, 300.0))
+            if not self._poll_lock.acquire(blocking=False):
+                self._sleep(min(d, 30.0))  # another worker is polling
+                continue
+            try:
+                self._sleep(min(d, self.limit_poll_s))
+                with self._pause_lock:
+                    still = self._pause_until - self._clock() > 0
+                if still and self._poll(purpose, stats):
+                    return
+            finally:
+                self._poll_lock.release()
+
+    def _poll(self, purpose: str, stats: _Stats) -> bool:
+        """One canary while paused: True (and the pause cleared) when it is answered with no
+        limit. A paid route raises from inside, as on any call. The result is dropped when a
+        research call set a newer pause while the canary ran (its reading is the fresher one).
+        MAX_POLL_ERRORS polls in a row failing for another reason (a broken CLI, an auth
+        failure, timeouts) raise, rather than idle the run until the reset."""
+        with self._pause_lock:
+            gen = self._pause_gen
+        resp, limit = self._attempt(_canary_req(), purpose, stats, 0, False)
+        if limit is None and resp.error is not None:
+            self._poll_errors += 1
+            self._say(f"S1_LIMIT_POLL_ERROR {resp.error} ({self._poll_errors}/{MAX_POLL_ERRORS})")
+            if self._poll_errors >= MAX_POLL_ERRORS:
+                raise RuntimeError(
+                    f"{MAX_POLL_ERRORS} limit polls in a row failed ({resp.error}); "
+                    f"meta {json.dumps(resp.meta, default=str)[:500]}"
+                )
+            return False
+        self._poll_errors = 0
+        with self._pause_lock:
+            if self._pause_gen != gen:
+                return False
+            self._pause_until = 0.0 if limit is None else limit["until"]
+        if limit is not None:
+            self._say(f"MAX_LIMIT_WAIT until {_utc(limit['until'])} ({limit['window']})")
+            self._limit_line(limit)
+            return False
+        self._say(f"S1_LIMIT_CLEARED at {_utc(self._clock())}: a canary was allowed")
+        return True
 
     # -- one call
 
@@ -1287,7 +1361,7 @@ class MaxBackend:
         cur = req
         first_schema_errors = None
         while True:
-            self._wait_pause()
+            self._wait_pause(purpose, stats)
             attempt += 1
             resp, limit = self._attempt(cur, purpose, stats, attempt, cur is not req)
             if limit is not None:
@@ -1406,10 +1480,7 @@ class MaxBackend:
         """A dedicated tiny request, sent alone: the batch fans out only once its events prove
         the subscription-only route (init apiKeySource "none"; a rate-limit snapshot with extra
         usage disabled). Up to MAX_CANARIES tries when evidence is missing, then refuse."""
-        creq = Req(
-            key=CANARY_KEY, system=CANARY_SYSTEM, user=CANARY_USER, schema=None,
-            max_output_tokens=CANARY_MAX_OUTPUT, rid=CANARY_KEY, source="canary", private=False,
-        )  # fmt: skip
+        creq = _canary_req()
         for _ in range(MAX_CANARIES):
             resp = self._one(creq, purpose, stats)  # a paid route raises inside
             v = verify_route(resp.meta.get("route"))

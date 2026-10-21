@@ -142,6 +142,31 @@ def main():
         emit(rl())
         emit(result({"colors": ["red", "blue"]}))
         return 0
+    if mode == "limit_weekly":  # the weekly window, resetting in 7 days; allowed afterwards
+        if bump("limit_count") == 1:
+            reset = int(time.time()) + 7 * 86400
+            ev = rl("rejected", resets=reset, window="seven_day")
+            ev["rate_limit_info"]["unifiedWindows"] = {
+                "seven_day": {"utilization": 1.0, "resetsAt": reset}}
+            emit(ev)
+            emit(result(text=f"Claude AI usage limit reached|{reset}", is_error=True,
+                        subtype="error_during_execution"))  # fmt: skip
+            return 1
+        emit(rl())
+        emit(result({"colors": ["red", "blue"]}))
+        return 0
+    if mode == "canary_poll":  # canary: limited for $FAKE_POLL_LIMITED polls after a limit hit
+        if os.path.exists(os.path.join(STATE, "limit_count")) and bump("poll_count") <= int(
+            os.environ.get("FAKE_POLL_LIMITED", "1")
+        ):
+            reset = int(time.time()) + 7 * 86400
+            emit(rl("rejected", resets=reset, window="seven_day"))
+            emit(result(text="Claude AI usage limit reached", is_error=True,
+                        subtype="error_during_execution"))  # fmt: skip
+            return 1
+        emit(rl())
+        emit(result(text="OK"))
+        return 0
     if mode == "limit_result_only":
         if bump("limit_count") == 1:
             reset = int(time.time()) + 5

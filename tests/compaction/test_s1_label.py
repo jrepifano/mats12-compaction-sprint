@@ -610,6 +610,17 @@ def test_gate_defaults_to_invented_on_held_out_points_and_cant_tell_is_left_out(
     assert not scorer.score(labels[:-3], key)["complete"]
     md = scorer.to_markdown(rec)
     assert "| A | PASS | PASS | PASS |" in md
+    # dev only (D10, D11): no held-out or pooled estimate, no gate
+    dev = scorer.score(labels, key, dev_only=True)
+    assert dev["dev_only"] and dev["gate"] == {}
+    dv = dev["per_judge"]["A"]
+    assert set(dv["verdicts"]["dropped"]) == {"dev"} and set(dv["claim_gate_primary_tiers"]) == {
+        "dev"
+    }
+    assert all(set(t) == {"dev"} for t in dv["invented_by_anchor_tier"].values())
+    assert dv["verdicts"]["dropped"]["dev"]["precision"]["point"] == 0.0
+    md_dev = scorer.to_markdown(dev)
+    assert "| held |" not in md_dev and "PASS" not in md_dev
 
 
 def test_labels_from_another_draw_are_refused():

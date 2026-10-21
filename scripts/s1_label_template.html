@@ -7,7 +7,7 @@
    with a copyable fallback at the end. Three tabs: blind labels, gold windows, audit. */
 :root {
   --bg: #f3f4f1; --paper: #fcfcfa; --ink: #1d2422; --muted: #5d6763; --rule: #d6dad5;
-  --accent: #2f5d50; --accent-soft: #e2ebe7; --mark: #f6e7a8;
+  --accent: #2f5d50; --accent-soft: #e2ebe7; --mark: #f6e7a8; --hint: #dce5f3; --cur: #b8560f;
   --bad: #a3392f; --bad-soft: #f5e1de; --ok: #2f6b3c; --ok-soft: #e0eee2; --maybe: #8a6412; --maybe-soft: #f4ead2;
   --none: #4c5a73; --none-soft: #e3e8f1;
   --f-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -16,13 +16,13 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #151a19; --paper: #1d2322; --ink: #e4e8e5; --muted: #9aa4a0; --rule: #333b39;
-  --accent: #8cc2b1; --accent-soft: #23332e; --mark: #5a4c16;
+  --accent: #8cc2b1; --accent-soft: #23332e; --mark: #5a4c16; --hint: #2c3a52; --cur: #ffad5a;
   --bad: #f0958a; --bad-soft: #3a2421; --ok: #8fd19c; --ok-soft: #1f3324; --maybe: #e2bf6e; --maybe-soft: #352c17;
   --none: #a9b7d3; --none-soft: #252b38;
   color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #151a19; --paper: #1d2322; --ink: #e4e8e5; --muted: #9aa4a0; --rule: #333b39;
-  --accent: #8cc2b1; --accent-soft: #23332e; --mark: #5a4c16;
+  --accent: #8cc2b1; --accent-soft: #23332e; --mark: #5a4c16; --hint: #2c3a52; --cur: #ffad5a;
   --bad: #f0958a; --bad-soft: #3a2421; --ok: #8fd19c; --ok-soft: #1f3324; --maybe: #e2bf6e; --maybe-soft: #352c17;
   --none: #a9b7d3; --none-soft: #252b38;
   color-scheme: dark; }
@@ -63,6 +63,16 @@ details.rubric p strong { color: var(--ink); }
 .box.tall { max-height: 36rem; }
 mark { background: var(--mark); color: inherit; padding: 0 1px; border-radius: 2px; }
 mark.q { display: inline; padding: 1px 2px; background: var(--mark); outline: 1px solid var(--maybe); }
+/* Find box above each summary (client-side; never reads a verdict) and the optional quote-word hint. */
+.find { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 6px; }
+.find input[type="search"] { flex: 1 1 8rem; min-width: 0; font: 0.85rem var(--f-ui); padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--bg); color: var(--ink); }
+.find button { font: 500 0.8rem var(--f-ui); padding: 3px 8px; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.find .fc { font: 0.78rem var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.find .hopt { flex-basis: 100%; display: inline-flex; gap: 6px; align-items: center; font-size: 0.8rem; color: var(--muted); cursor: pointer; }
+.find input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+mark.h { background: var(--hint); }
+mark.f { background: var(--mark); box-shadow: inset 0 -2px 0 var(--cur); }
+mark.f.cur { outline: 2px solid var(--cur); outline-offset: 1px; }
 .snips { display: grid; gap: 8px; }
 .snips .box { max-height: 14rem; }
 .warnline { color: var(--bad); font-size: 0.85rem; margin: 0; }
@@ -148,7 +158,104 @@ function hl(text, words) {
   const set = new Set(words);
   return String(text).split(/([A-Za-z0-9]+)/).map((p, i) => (i % 2 && set.has(p.toLowerCase())) ? `<mark>${esc(p)}</mark>` : esc(p)).join("");
 }
-function summary(ref, tall) { return `<div><p class="label">Summary</p><div class="box read${tall ? " tall" : ""}">${esc(DATA.summaries[ref])}</div></div>`; }
+// Find box per summary. Everything here is computed from text shown on the card (the summary,
+// the claim span's position, the item's quote), identically for every card; never from a verdict.
+const STOP = new Set(`a about above after again against all also am an and any are as at be because been before
+being below between both but by can could did do does doing done down during each else few
+for from further had has have having he her here hers him his how i if in into is it its
+itself just let like may me might more most must my no nor not now of off on once only or
+other our ours out over own same shall she should so some such than that the their theirs
+them then there these they this those through to too under until up upon us very was we were
+what when where which while who whom why will with would yes yet you your yours`.split(/\s+/));
+// = compaction.s1_analysis.content_words: lower-cased [a-z0-9]+ tokens, no stop words, no 1-char tokens
+function contentWords(s) { return (String(s || "").toLowerCase().match(/[a-z0-9]+/g) || []).filter(w => w.length > 1 && !STOP.has(w)); }
+const BOXES = {};
+let nBox = 0;
+// opts.at: [start, end) of a span to mark (claim cards); opts.hint: the quote whose words the
+// optional hint highlights (item cards).
+function findBox(text, cls, opts) {
+  const id = `fb${++nBox}`;
+  const b = BOXES[id] = { text: String(text == null ? "" : text), at: opts && opts.at || null, q: "", cur: 0, n: 0, hintOn: false,
+    words: opts && opts.hint != null ? new Set(contentWords(opts.hint)) : null };
+  return `<div class="find">
+      <input type="search" data-fb="${id}" placeholder="Find in this summary" aria-label="Find in this summary" autocomplete="off" spellcheck="false">
+      <button type="button" data-fb="${id}" data-step="-1" aria-label="Previous match" title="Previous (Shift+Enter)">↑</button>
+      <button type="button" data-fb="${id}" data-step="1" aria-label="Next match" title="Next (Enter)">↓</button>
+      <span class="fc" id="${id}-n" aria-live="polite"></span>
+      ${b.words ? `<label class="hopt"><input type="checkbox" data-fb="${id}"> highlight words shared with the quote</label>` : ""}
+    </div><div class="${cls}" id="${id}">${boxHtml(b)}</div>`;
+}
+// The summary text split into runs (find match k / hint word / inside the span); each run is
+// escaped with esc() and wrapped, so marks never land inside an entity. Find matches win over hints.
+function boxHtml(b) {
+  const t = b.text, n = t.length, at = b.at;
+  const hint = b.hintOn && b.words && b.words.size;
+  b.n = 0;
+  if (!b.q && !hint) return at ? `${esc(t.slice(0, at[0]))}<mark class="q">${esc(t.slice(at[0], at[1]))}</mark>${esc(t.slice(at[1]))}` : esc(t);
+  const fi = new Int32Array(n).fill(-1), hw = new Uint8Array(n);
+  if (b.q) {
+    const re = new RegExp(b.q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    let m;
+    while ((m = re.exec(t)) !== null) { fi.fill(b.n++, m.index, m.index + m[0].length); if (!m[0].length) re.lastIndex++; }
+  }
+  if (hint) { const re = /[A-Za-z0-9]+/g; let m; while ((m = re.exec(t)) !== null) if (b.words.has(m[0].toLowerCase())) hw.fill(1, m.index, m.index + m[0].length); }
+  if (b.cur >= b.n) b.cur = 0;
+  const inSpan = i => at && i >= at[0] && i < at[1] ? 1 : 0;
+  let out = "";
+  for (let i = 0; i < n;) {
+    const f = fi[i], h = f < 0 ? hw[i] : 0, s = inSpan(i);
+    let j = i + 1;
+    while (j < n && fi[j] === f && (f < 0 ? hw[j] : 0) === h && inSpan(j) === s) j++;
+    let piece = esc(t.slice(i, j));
+    if (f >= 0) piece = `<mark class="f${f === b.cur ? " cur" : ""}" data-fi="${f}">${piece}</mark>`;
+    else if (h) piece = `<mark class="h">${piece}</mark>`;
+    if (s) piece = `<mark class="q">${piece}</mark>`;
+    out += piece; i = j;
+  }
+  return out;
+}
+function findCount(id) {
+  const b = BOXES[id];
+  document.getElementById(`${id}-n`).textContent = !b.q ? "" : !b.n ? "no matches" : b.n === 1 ? "1 match" : `${b.cur + 1} of ${b.n} matches`;
+}
+// Scroll only the summary box (not the page) so the current match sits mid-box.
+function findShow(id) {
+  const box = document.getElementById(id);
+  const el = box.querySelector("mark.f.cur");
+  if (!el) return;
+  const r = el.getBoundingClientRect(), br = box.getBoundingClientRect();
+  box.scrollTop += (r.top - br.top) - (box.clientHeight - r.height) / 2;
+}
+function findRender(id) { document.getElementById(id).innerHTML = boxHtml(BOXES[id]); findCount(id); findShow(id); }
+function findStep(id, d) {
+  const b = BOXES[id];
+  if (!b.n) return;
+  const box = document.getElementById(id);
+  box.querySelectorAll(`mark.f[data-fi="${b.cur}"]`).forEach(el => el.classList.remove("cur"));
+  b.cur = (b.cur + d + b.n) % b.n;
+  box.querySelectorAll(`mark.f[data-fi="${b.cur}"]`).forEach(el => el.classList.add("cur"));
+  findCount(id); findShow(id);
+}
+document.addEventListener("input", ev => {
+  const t = ev.target;
+  if (!t.dataset || !t.dataset.fb || t.type !== "search") return;
+  const b = BOXES[t.dataset.fb]; b.q = t.value; b.cur = 0; findRender(t.dataset.fb);
+});
+document.addEventListener("change", ev => {
+  const t = ev.target;
+  if (!t.dataset || !t.dataset.fb || t.type !== "checkbox") return;
+  BOXES[t.dataset.fb].hintOn = t.checked; findRender(t.dataset.fb);
+});
+document.addEventListener("keydown", ev => {
+  const t = ev.target;
+  if (!t.dataset || !t.dataset.fb || t.type !== "search") return;
+  if (ev.key === "Enter") { ev.preventDefault(); findStep(t.dataset.fb, ev.shiftKey ? -1 : 1); }
+});
+document.addEventListener("click", ev => {
+  const btn = ev.target.closest && ev.target.closest("button[data-step]");
+  if (btn && btn.dataset.fb) findStep(btn.dataset.fb, Number(btn.dataset.step));
+});
+function summary(ref, tall, opts) { return `<div><p class="label">Summary</p>${findBox(DATA.summaries[ref], `box read${tall ? " tall" : ""}`, opts)}</div>`; }
 function choices(kind, id, coll) {
   return `<fieldset><legend>${LEGEND[kind]}</legend>
     ${CHOICES[kind].map(([v, text, tone]) => `<label><input type="radio" name="c-${id}" value="${v}" data-id="${id}" data-coll="${coll}" data-f="label" data-tone="${tone}"><span>${text}</span></label>`).join("")}
@@ -161,17 +268,16 @@ function unitBody(u) {
     return `<div><p class="label">History around the quote</p>
         ${u.located ? "" : `<p class="warnline">The quote wasn't found in the rendered history; it is shown alone.</p>`}
         <div class="box">${esc(u.ctx_before)}<mark class="q">${esc(u.ctx_quote)}</mark>${esc(u.ctx_after)}</div></div>
-      ${summary(u.summary_ref)}`;
+      ${summary(u.summary_ref, false, { hint: u.ctx_quote })}`;
   }
   const snips = u.snippets.length ? u.snippets.map(s => `<div class="box">${hl(s, u.words)}</div>`).join("")
     : `<p class="lede">No history passage shares a word with this claim.</p>`;
   const text = DATA.summaries[u.summary_ref] || "";
   const at = u.quote_at;
-  const sumHtml = at ? `${esc(text.slice(0, at[0]))}<mark class="q">${esc(text.slice(at[0], at[1]))}</mark>${esc(text.slice(at[1]))}` : esc(text);
   return `<div><p class="label">Claim (one reading of the highlighted span)</p><p class="q">${esc(u.claim)}</p></div>
       <div><p class="label">Summary, span highlighted</p>
         ${at ? "" : `<p class="warnline">The span wasn't found in the summary; it is: ${esc(u.summary_quote)}</p>`}
-        <div class="box read">${sumHtml}</div></div>
+        ${findBox(text, "box read", { at })}</div>
       <div><p class="label">History snippets (top ${u.snippets.length} by word overlap)</p><div class="snips">${snips}</div></div>`;
 }
 

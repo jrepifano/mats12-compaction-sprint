@@ -4,6 +4,7 @@ Spec: docs/sprint/specs/S1.md. Every step resumes from the backends' caches, so 
 what is missing. Paid steps book under SPRINT-S1 through the backends (Max-plan calls at $0).
 
     uv run python scripts/s1_run.py manifest
+    uv run python scripts/s1_run.py freeze                               # spec D10, before bulk
     uv run python scripts/s1_run.py dev --judges haiku,luna,glm,deepseek
     uv run python scripts/s1_run.py partA --judges haiku,<judge B>      # after the held-out gate
     uv run python scripts/s1_run.py replays --arms cc_native,cc_prompt,codex_local,pi,antigravity,opencode
@@ -33,9 +34,12 @@ S1_DIR = ROOT / "data" / "raw" / "sprint" / "s1"
 MANIFEST = S1_DIR / "manifest.json"
 PUBLIC_MANIFEST = ROOT / "results" / "sprint" / "S1" / "manifest.json"
 DEV_DIR = S1_DIR / "dev"
+FROZEN = ROOT / "results" / "sprint" / "S1" / "frozen_config.json"
 CACHE = S1_DIR / "cache"
 HAIKU_EFFORT = "medium"
 BATCH = 50  # records per judge_records call, so an API reservation stays well under the cap
+MAX_BATCH = 200  # Max judges need no reservation; a bigger batch idles fewer workers at its tail
+PARTB_CHUNK = 10  # Part B: records per chunk, every arm judged back to back (prefix cache reads)
 
 
 def backend(name: str, concurrency: int | None = None):
@@ -54,6 +58,10 @@ def backend(name: str, concurrency: int | None = None):
 
 def load_manifest() -> dict:
     return json.loads(MANIFEST.read_text())
+
+
+def batch_size(be) -> int:
+    return MAX_BATCH if be.family == "anthropic" else BATCH
 
 
 def batches(xs: list[str], n: int = BATCH):
@@ -110,6 +118,59 @@ def cmd_manifest(args) -> None:
         f"manifest: part A {len(part_a)}, part B {len(part_b)}, labels "
         f"{len(labels['dev'])} dev + {len(labels['held'])} held"
     )
+
+
+def frozen_config() -> dict:
+    """Spec D10: what the labels validate, fixed before they are read. The judge prompts and
+    schemas by sha256, Haiku's model and effort, each API route, and the replay policies."""
+    import dataclasses
+    import hashlib
+
+    from compaction import claude_headless, s1_api, s1_replay
+
+    def sha(b: bytes) -> str:
+        return hashlib.sha256(b).hexdigest()
+
+    return {
+        "prompts": {f.name: sha(f.read_bytes()) for f in sorted(s1_judge.PROMPT_DIR.glob("*.md"))},
+        "schemas": {
+            k: sha(json.dumps(getattr(T, k), sort_keys=True, separators=(",", ":")).encode())
+            for k in ("PASS1A_SCHEMA", "PASS1B_SCHEMA", "PASS2_SCHEMA")
+        },
+        "haiku": {"model": claude_headless.DEFAULT_MODEL, "effort": HAIKU_EFFORT},
+        "routes": {
+            n: {k: v for k, v in dataclasses.asdict(r).items() if k != "notes"}
+            for n, r in s1_api.ROUTES.items()
+        },
+        "replay_policies": {a: s1_replay.policy_version(a) for a in T.ARMS if a != "natural"},
+    }
+
+
+def check_frozen() -> None:
+    """Refuse bulk work when the config drifted from the frozen snapshot (D10), or none exists."""
+    if not FROZEN.exists():
+        raise SystemExit(f"no {FROZEN}: run `s1_run.py freeze` first (D10)")
+    old = json.loads(FROZEN.read_text())
+    if {k: v for k, v in old.items() if k != "frozen_utc"} != frozen_config():
+        raise SystemExit(f"{FROZEN} differs from the current config: prompts are frozen (D10)")
+
+
+def cmd_freeze(args) -> None:
+    if FROZEN.exists():
+        check_frozen()
+        log(f"freeze: unchanged ({FROZEN})")
+        return
+    cfg = frozen_config()
+    FROZEN.parent.mkdir(parents=True, exist_ok=True)
+    FROZEN.write_text(
+        json.dumps(
+            {"frozen_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **cfg},
+            indent=1,
+            sort_keys=True,
+        )
+        + "\n"
+    )
+    log(f"freeze: wrote {FROZEN}")
 
 
 def cmd_dev(args) -> None:
@@ -178,14 +239,17 @@ class _Sealed:
         }
 
 
-def _judge_into(sink: _Sealed, be, rids, *, arm="natural", replays=None, load=None, decorate=None):
-    """judge_records in batches of BATCH records, rows appended to `sink` (decorated if asked)."""
+def _judge_into(
+    sink: _Sealed, be, rids, *, arm="natural", replays=None, load=None, decorate=None, n=None
+):
+    """judge_records in batches of `n` records (default `batch_size(be)`), rows appended to
+    `sink` (decorated if asked)."""
     load = load or s1_data.load
 
     def add(dst):
         return lambda rows: dst.extend(decorate(r) for r in rows) if decorate else dst.extend(rows)
 
-    for chunk in batches(rids):
+    for chunk in batches(rids, n or batch_size(be)):
         res = s1_judge.judge_records(
             be,
             chunk,
@@ -221,6 +285,7 @@ def _per_judge(names: str, work, concurrency) -> None:
 
 
 def cmd_part_a(args) -> None:
+    check_frozen()
     rids = load_manifest()["ids"]["part_a"]
 
     def work(be):
@@ -232,6 +297,7 @@ def cmd_part_a(args) -> None:
 
 
 def cmd_replays(args) -> None:
+    check_frozen()
     from compaction import s1_replay
 
     rids = load_manifest()["ids"]["part_b"]
@@ -240,25 +306,37 @@ def cmd_replays(args) -> None:
     log(f"replays: {json.dumps(res, default=str)[:2000]}")
 
 
+def _part_b_into(sink: _Sealed, be, rids: list[str], reps_by_arm: dict[str, list[dict]]) -> None:
+    """Record-major: each chunk of PARTB_CHUNK records runs every arm back to back, so a
+    history's pass-2 prefix is still in the prompt cache for the next arm (arm-major let it
+    expire between arms). The rows are the same as arm-major's; only their order differs."""
+    have = {a: {r["base_rid"] for r in reps} for a, reps in reps_by_arm.items()}
+    for arm in reps_by_arm:
+        missing = [r for r in rids if r not in have[arm]]
+        if missing:
+            log(f"partB {be.name} {arm}: no replay for {len(missing)} records (not judged)")
+    for chunk in batches(rids, PARTB_CHUNK):
+        for arm, reps in reps_by_arm.items():
+            mine = [r for r in chunk if r in have[arm]]
+            if mine:
+                _judge_into(sink, be, mine, arm=arm, replays=reps, n=PARTB_CHUNK)
+
+
 def cmd_part_b(args) -> None:
     """Every arm's rows for one judge go to one sealed file per kind (rows carry `arm`), the
     names s1_analysis reads (integration review r1 finding 1)."""
+    check_frozen()
     from compaction import s1_replay
 
     rids = load_manifest()["ids"]["part_b"]
-    arms = args.arms.split(",")
+    reps_by_arm = {}
+    for arm in args.arms.split(","):
+        path = S1_DIR / "replays" / f"{arm}.jsonl"
+        reps_by_arm[arm] = [r for r in s1_replay.read_replays(path).values() if not r.get("error")]
 
     def work(be):
         sink = _Sealed("partB", be.name)
-        mine = judge_ids(be, rids)
-        for arm in arms:
-            path = S1_DIR / "replays" / f"{arm}.jsonl"
-            reps = [r for r in s1_replay.read_replays(path).values() if not r.get("error")]
-            have = {r["base_rid"] for r in reps}
-            missing = [r for r in mine if r not in have]
-            if missing:
-                log(f"partB {be.name} {arm}: no replay for {len(missing)} records (not judged)")
-            _judge_into(sink, be, [r for r in mine if r in have], arm=arm, replays=reps)
+        _part_b_into(sink, be, judge_ids(be, rids), reps_by_arm)
         log(f"partB {be.name}: {sink.flush()}")
 
     _per_judge(args.judges, work, args.concurrency)
@@ -269,6 +347,7 @@ def cmd_size(args) -> None:
     plus a fixed length line), then each judged against ITS OWN prefix history: pass 1a lists
     the prefix's items and passes 1b and 2 use that prefix's summary (integration review r1
     finding 2). Rows carry `prefix` and `orig_rid` for s1_analysis.size_test."""
+    check_frozen()
     from compaction import s1_replay
 
     rids = [r for r in load_manifest()["ids"]["part_a"] if r.startswith("jacob:")]
@@ -315,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("manifest")
+    sub.add_parser("freeze")
     for name in ("dev", "partA", "partB"):
         p = sub.add_parser(name)
         p.add_argument("--judges", required=True)
@@ -329,6 +409,7 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     {
         "manifest": cmd_manifest,
+        "freeze": cmd_freeze,
         "dev": cmd_dev,
         "partA": cmd_part_a,
         "replays": cmd_replays,

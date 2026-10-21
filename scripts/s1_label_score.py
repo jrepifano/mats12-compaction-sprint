@@ -37,6 +37,10 @@ span). Recall = matched lines / Jacob's lines. Matched and
 unmatched lists are written for Jacob to eyeball. `score(..., matcher=f)` swaps in another
 matcher (e.g. an LLM) with the same signature as `token_matcher`.
 
+`--dev-only` (spec D10, D11) scores the development half alone and writes score_dev.json and
+score_dev.md, with no gate and no lock: Judge B is chosen, and the D11 second-look decision
+made, on these numbers before any held-out estimate is computed.
+
 Labels must carry this key's draw fingerprint (the page stamps every saved doc); labels from
 another draw are refused (exit 2). Writes `<out>/score.json` (with the gold-window lists, which
 quote private sessions; `<out>` must be under data/raw/) and `score.md` (numbers only; anywhere,
@@ -423,8 +427,10 @@ def score(
     *,
     claim_gate: str = "invented",
     matcher: Matcher = token_matcher,
+    dev_only: bool = False,
 ) -> dict:
-    """The full scoring record (see the module docstring)."""
+    """The full scoring record (see the module docstring). `dev_only`: the dev half alone, with
+    no held-out or pooled estimate and no gate."""
     if claim_gate not in ("unsupported", "invented"):
         raise ValueError("claim_gate must be unsupported or invented")
     labs = normalize_labels(labels)
@@ -433,12 +439,13 @@ def score(
     jacob = _jacob(units, labs["labels"])
     judges = sorted({j for u in units.values() for j in u["verdicts"]})
     prim_units = primary_tier_units(units)
+    halves = ("dev",) if dev_only else HALVES
     per_judge: dict[str, Any] = {}
     gate: dict[str, Any] = {}
     for j in judges:
         verdicts: dict[str, Any] = {}
         for v in ITEM_VERDICTS + CLAIM_VERDICTS:
-            verdicts[v] = {h: verdict_scores(units, jacob, j, v, h) for h in HALVES}
+            verdicts[v] = {h: verdict_scores(units, jacob, j, v, h) for h in halves}
         listed_items = [
             u for u, x in units.items() if x["kind"] == "item" and j in x["verdicts"] and u in jacob
         ]
@@ -447,17 +454,19 @@ def score(
             [1.0 / units[u]["pi"] for u in listed_items],
         )
         by_tier = {
-            t: {h: verdict_scores(units, jacob, j, "invented", h, tier=t) for h in HALVES}
+            t: {h: verdict_scores(units, jacob, j, "invented", h, tier=t) for h in halves}
             for t in ANCHOR_TIERS
         }
         # the pass 2 gate runs on primary-tier units, as the primary outcomes do
-        primary = {h: verdict_scores(prim_units, jacob, j, claim_gate, h) for h in HALVES}
+        primary = {h: verdict_scores(prim_units, jacob, j, claim_gate, h) for h in halves}
         per_judge[j] = {
             "verdicts": verdicts,  # claim verdicts here: all tiers, descriptive
             "claim_gate_primary_tiers": primary,
             "not_an_item_share": not_item,
             "invented_by_anchor_tier": by_tier,  # descriptive split
         }
+        if dev_only:
+            continue
         g = {
             HEADLINE_ITEM: _gate(verdicts[HEADLINE_ITEM]["held"]),
             claim_gate: _gate(primary["held"]),
@@ -468,6 +477,7 @@ def score(
     unl = sorted(u for u in units if u not in jacob)
     cant = sorted(u for u, lab in jacob.items() if lab == "cant_tell")
     return {
+        "dev_only": dev_only,
         "n_units": len(units),
         "n_labelled": len(jacob),
         "complete": not unl,
@@ -507,7 +517,7 @@ def to_markdown(rec: Mapping) -> str:
         "| Judge | " + " | ".join(rec["headline"]) + " | Judge |",
         "|---|" + "---|" * (len(rec["headline"]) + 1),
     ]
-    for j in rec["judges"]:
+    for j in rec["judges"] if rec["gate"] else []:
         g = rec["gate"][j]
         lines.append(f"| {j} | " + " | ".join(g[v] for v in rec["headline"]) + f" | {g['judge']} |")
     lines += [
@@ -517,8 +527,7 @@ def to_markdown(rec: Mapping) -> str:
     ]
     for j in rec["judges"]:
         for v, by_half in rec["per_judge"][j]["verdicts"].items():
-            for h in HALVES:
-                s = by_half[h]
+            for h, s in by_half.items():
                 lines.append(
                     f"| {j} | {v} | {h} | {_fmt(s['precision'])} | "
                     f"{_fmt(s['recall'])} | {_fmt(s['recall_any'])} |"
@@ -558,21 +567,27 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / OUT, help="score.json and LOCKED.json")
     ap.add_argument("--md-out", type=Path, default=None, help="score.md (numbers only)")
     ap.add_argument("--claim-gate", choices=("unsupported", "invented"), default="invented")
+    ap.add_argument("--dev-only", action="store_true", help="dev half only: no gate, no lock")
     a = ap.parse_args(argv)
     key = json.loads(a.key.read_text())
     labels = json.loads(a.labels.read_text())
     try:
         out = require_private(a.out)
-        rec = score(labels, key, claim_gate=a.claim_gate)
+        rec = score(labels, key, claim_gate=a.claim_gate, dev_only=a.dev_only)
     except (DrawMismatch, ValueError) as e:
         print(f"S1_LABEL_SCORE FAIL {e}")
         return 2
     rec["key_page_sha256"] = key.get("page_sha256")
     out.mkdir(parents=True, exist_ok=True)
-    (out / "score.json").write_text(json.dumps(_json_safe(rec), indent=1) + "\n")
-    md = a.md_out or out / "score.md"
+    stem = "score_dev" if a.dev_only else "score"
+    (out / f"{stem}.json").write_text(json.dumps(_json_safe(rec), indent=1) + "\n")
+    md = a.md_out or out / f"{stem}.md"
     md.parent.mkdir(parents=True, exist_ok=True)
     md.write_text(to_markdown(rec))
+    if a.dev_only:
+        print(f"S1_LABEL_SCORE dev only: {rec['n_labelled']}/{rec['n_units']} labelled overall")
+        print(f"  {out / f'{stem}.json'}, {md}")
+        return 0
     if rec["complete"]:
         lock = write_lock(out, key, labels)
         print(f"  labels locked: {out / LOCK_NAME} (draw {lock['draw']})")

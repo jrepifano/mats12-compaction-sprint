@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -460,6 +461,64 @@ def test_limit_gives_up_after_max_waits(fake):
     assert r.error == "limit" and len(fake.calls()) == 1
 
 
+@pytest.mark.parametrize("limited_polls", [0, 2])
+def test_weekly_limit_polls_and_resumes_early(fake, capfd, monkeypatch, limited_polls):
+    """A 7-day limit is waited out in LIMIT_POLL_S slices with a canary each slice; the call
+    resumes on the first allowed canary (e.g. after a manual reset), not on Sunday, and the
+    polls don't count as limit waits."""
+    monkeypatch.setenv("FAKE_CLAUDE_MODE", "canary_poll")
+    monkeypatch.setenv("FAKE_POLL_LIMITED", str(limited_polls))
+    t, sleeps, sleep = _fake_clock()
+    # max_limit_waits=1: the one research hit counts; limited polls would push it past 1
+    b = backend(fake, sleep=sleep, clock=lambda: t[0], max_limit_waits=1)
+    r = b.run([req(mode="limit_weekly")], purpose="t")["k1"]
+    assert r.error is None and r.data == {"colors": ["red", "blue"]}
+    assert sleeps == [ch.LIMIT_POLL_S] * (limited_polls + 1)
+    assert len(fake.calls()) == 2 and len(fake.canaries()) == 1 + limited_polls + 1
+    err = capfd.readouterr().err
+    assert re.search(r"^S1_LIMIT seven_day util=1\.0 resets=\d{4}-\d\d-\d\dT", err, re.MULTILINE)
+    assert "S1_LIMIT_CLEARED" in err
+    polls = [u for u in usage_rows(b) if u["key"] == ch.CANARY_KEY and u["attempt"] == 0]
+    assert [u["error"] for u in polls] == ["limit"] * limited_polls + [None]
+
+
+def test_poll_does_not_run_past_the_reset(fake, capfd):
+    """A short limit (reset within one slice) is slept out with no poll, as before."""
+    t, sleeps, sleep = _fake_clock()
+    b = backend(fake, sleep=sleep, clock=lambda: t[0])
+    b.run([req(mode="limit_once")], purpose="t")
+    assert len(sleeps) == 1 and sleeps[0] < ch.LIMIT_POLL_S
+    assert len(fake.canaries()) == 1
+
+
+def test_stale_poll_never_overwrites_a_newer_research_pause(fake):
+    """A research call that sets a pause while the canary runs wins over the canary's reading,
+    whether the canary was allowed (would clear) or limited (would replace)."""
+    t, _, sleep = _fake_clock()
+    b = backend(fake, sleep=sleep, clock=lambda: t[0])
+    stats = ch._Stats()
+    for canary in (None, {"until": t[0] + 60, "window": "five_hour", "status": "rejected"}):
+        b._pause_until = t[0] + 1000
+
+        def attempt(*a, canary=canary, **k):
+            b._set_pause({"until": t[0] + 5000, "window": "seven_day", "status": "rejected"})
+            return ch.Resp(ch.CANARY_KEY, None, None, None if canary is None else "limit"), canary
+
+        b._attempt = attempt
+        assert b._poll("t", stats) is False
+        assert b._pause_until == t[0] + 5000
+
+
+def test_persistent_poll_errors_abort_instead_of_idling(fake, capfd):
+    t, _, sleep = _fake_clock()
+    b = backend(fake, sleep=sleep, clock=lambda: t[0])
+    b._pause_until = t[0] + 7 * 86400
+    b._attempt = lambda *a, **k: (ch.Resp(ch.CANARY_KEY, None, None, "cli_error"), None)
+    with pytest.raises(RuntimeError, match="limit polls in a row failed"):
+        b._wait_pause("t", ch._Stats())
+    assert capfd.readouterr().err.count("S1_LIMIT_POLL_ERROR cli_error") == ch.MAX_POLL_ERRORS
+
+
 def test_limit_uses_latest_blocking_reset():
     events = [
         {"type": "rate_limit_event", "rate_limit_info": {
@@ -798,7 +857,9 @@ def test_interpret_rejected_status_names_the_window():
     ]  # fmt: skip
     r, limit = ch.interpret(events, req(), "claude-haiku-5-5", 0.0)
     assert r.error == "limit"
-    assert limit == {"until": reset + 120.0, "window": "seven_day", "status": "rejected"}
+    assert limit == {
+        "until": reset + 120.0, "window": "seven_day", "status": "rejected", "util": None,
+    }  # fmt: skip
 
 
 def test_interpret_overage_and_missing_init_abort():
