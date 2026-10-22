@@ -1,0 +1,340 @@
+"""Several Docker hosts at once (spec "Docker hosts"; Jacob, 22 Oct).
+
+- `Host`: a name, a daemon target (`docker -H`; None = the CLI's default, i.e. the laptop's own
+  Docker), a container limit and a run limit. `parse_hosts("desktop=ssh://u@h,12,4;laptop=
+  local,6,2")`; `default_hosts()` reads SPRINT_S2_HOSTS, else the laptop alone.
+- `HostPool`: one container semaphore per host (every sandbox the harness starts on a host,
+  graders included, holds one slot until it is closed; no thread ever holds two slots, so the
+  limits cannot deadlock), one "down" event per host, and a scheduler that runs each job on
+  the host it was assigned, at most `max_runs` at a time per host.
+- Assignment is by DeepSWE task, never by condition: all runs of a task go to one host
+  (`assign`), and a run's four arms and their repeats always fork from its boundary image on
+  that run's host. Only a whole task group's unstarted or restarted runs can move to another
+  host, when theirs is down.
+- A host that drops: the run's failing call (or the pool's probe after an error) marks it down;
+  its event stops every loop on it at the next model call; its runs end `failed_host` with
+  their cleanup deferred to `pending_sweeps.jsonl` (no minutes of retries against a dead
+  daemon); runs on the other host are untouched. `resume_action` decides how each run resumes.
+"""
+
+from __future__ import annotations
+
+import os
+import subprocess
+import threading
+from collections import defaultdict
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+
+from compaction.deepswe.sandbox import Invocation, Sandbox, docker_argv
+
+HOSTS_ENV = "SPRINT_S2_HOSTS"
+PROBE_TIMEOUT_S = 20
+PULL_TIMEOUT_S = 1800
+
+
+@dataclass(frozen=True)
+class Host:
+    name: str
+    docker_host: str | None  # docker -H target; None = the docker CLI's default
+    max_containers: int = 6
+    max_runs: int = 2
+    platform: str = "linux/amd64"
+
+    def describe(self) -> dict:
+        return {"name": self.name, "docker_host": self.docker_host or "local",
+                "max_containers": self.max_containers, "max_runs": self.max_runs,
+                "platform": self.platform}
+
+
+def parse_hosts(spec: str) -> list[Host]:
+    """"name=target,max_containers[,max_runs];..." with target "local" for the CLI default.
+    max_runs defaults to max_containers // 3 (a run uses 1 container, then its arms up to 4)."""
+    out = []
+    for part in [p.strip() for p in spec.split(";") if p.strip()]:
+        name, _, rest = part.partition("=")
+        fields = [f.strip() for f in rest.split(",")]
+        if not name or not fields[0]:
+            raise ValueError(f"bad host entry {part!r}")
+        target = None if fields[0] == "local" else fields[0]
+        mc = int(fields[1]) if len(fields) > 1 else 6
+        mr = int(fields[2]) if len(fields) > 2 else max(1, mc // 3)
+        out.append(Host(name.strip(), target, mc, mr))
+    names = [h.name for h in out]
+    if len(set(names)) != len(names):
+        raise ValueError(f"duplicate host names in {spec!r}")
+    return out
+
+
+def default_hosts() -> list[Host]:
+    spec = os.environ.get(HOSTS_ENV)
+    return parse_hosts(spec) if spec else [Host("laptop", None, 6, 2)]
+
+
+def check_unambiguous(hosts: list[Host]) -> None:
+    """A host with target None means the CLI's default; refuse when DOCKER_HOST is set in the
+    environment, which would silently send the "local" host's containers elsewhere."""
+    if os.environ.get("DOCKER_HOST") and any(h.docker_host is None for h in hosts):
+        raise ValueError("DOCKER_HOST is set; give every host an explicit target instead of "
+                         "'local' (e.g. unix:///var/run/docker.sock)")
+
+
+def probe_host(host: Host, timeout: float = PROBE_TIMEOUT_S) -> bool:
+    try:
+        p = subprocess.run(docker_argv(["version", "--format", "{{.Server.Version}}"],
+                                       host.docker_host),
+                           capture_output=True, text=True, timeout=timeout, check=False)
+    except (subprocess.TimeoutExpired, OSError):
+        return False
+    return p.returncode == 0 and bool(p.stdout.strip())
+
+
+def image_present(host: Host, image: str, timeout: float = 60) -> bool | None:
+    try:
+        p = subprocess.run(docker_argv(["image", "inspect", "--format", "{{.Id}}", image],
+                                       host.docker_host),
+                           capture_output=True, text=True, timeout=timeout, check=False)
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    return p.returncode == 0
+
+
+def ensure_image(host: Host, image: str) -> None:
+    if image_present(host, image):
+        return
+    p = subprocess.run(docker_argv(["pull", "--platform", host.platform, image],
+                                   host.docker_host),
+                       capture_output=True, text=True, timeout=PULL_TIMEOUT_S, check=False)
+    if p.returncode != 0:
+        raise RuntimeError(f"pull of {image} on {host.name} failed: {p.stderr[-500:]}")
+
+
+def list_ours(host: Host, label: str) -> dict | None:
+    """Containers and snapshot images of ours on one host; None if the host didn't answer."""
+    try:
+        c = subprocess.run(docker_argv(["ps", "-a", "--filter", f"label=emx.sandbox={label}",
+                                        "--format", "{{.Names}}"], host.docker_host),
+                           capture_output=True, text=True, timeout=60, check=False)
+        i = subprocess.run(docker_argv(["images", "--filter", "reference=emx-sandbox/*",
+                                        "--format", "{{.Repository}}:{{.Tag}}"],
+                                       host.docker_host),
+                           capture_output=True, text=True, timeout=60, check=False)
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if c.returncode or i.returncode:
+        return None
+    return {"containers": c.stdout.split(), "images": i.stdout.split()}
+
+
+# ------------------------------------------------------------------------------------------
+# Container slots
+# ------------------------------------------------------------------------------------------
+
+
+@dataclass
+class SlotSandbox(Sandbox):
+    release: Callable[[], None] | None = None
+
+    def close(self) -> bool:
+        try:
+            return super().close()
+        finally:
+            r, self.release = self.release, None
+            if r is not None:
+                r()
+
+
+@dataclass
+class HostInvocation(Invocation):
+    """An Invocation on one host whose every container holds one of the host's slots."""
+
+    slots: threading.BoundedSemaphore | None = None
+
+    def start(self, image: str, **kw) -> Sandbox:
+        kw.setdefault("host", self.host)
+        if self.slots is not None:
+            self.slots.acquire()
+        try:
+            sb = SlotSandbox.start(image, self.purpose, run_id=self.run_id, **kw)
+        except BaseException:
+            if self.slots is not None:
+                self.slots.release()
+            raise
+        sb.release = self.slots.release if self.slots is not None else None
+        self.sandboxes.append(sb)
+        return sb
+
+
+# ------------------------------------------------------------------------------------------
+# Pool and scheduler
+# ------------------------------------------------------------------------------------------
+
+
+@dataclass
+class Job:
+    key: str
+    task: str
+    host: str
+    fn: Callable[[Host], dict]
+
+
+@dataclass
+class JobResult:
+    key: str
+    task: str
+    host: str
+    status: str  # "ok" | "failed" | "failed_host" | "not_started_host_down" | "stopped"
+    result: dict | None = None
+    error: str | None = None
+
+
+@dataclass
+class HostPool:
+    hosts: list[Host]
+    probe: Callable[[Host], bool] = probe_host
+    stop: threading.Event | None = None  # the runner's global stop flag
+    slots: dict = field(init=False)
+    down: dict = field(init=False)
+    reasons: dict = field(init=False, default_factory=dict)
+
+    def __post_init__(self) -> None:
+        self.by_name = {h.name: h for h in self.hosts}
+        self.slots = {h.name: threading.BoundedSemaphore(h.max_containers) for h in self.hosts}
+        self.down = {h.name: threading.Event() for h in self.hosts}
+        self._lock = threading.Lock()
+
+    def host(self, name: str) -> Host:
+        return self.by_name[name]
+
+    def is_down(self, name: str) -> bool:
+        return self.down[name].is_set()
+
+    def up_hosts(self) -> list[Host]:
+        return [h for h in self.hosts if not self.is_down(h.name)]
+
+    def mark_down(self, name: str, reason: str) -> None:
+        with self._lock:
+            self.reasons.setdefault(name, reason)
+        self.down[name].set()
+
+    def check(self, name: str) -> bool:
+        """Probe the host; mark it down if it doesn't answer. True when up."""
+        if self.is_down(name):
+            return False
+        ok = self.probe(self.by_name[name])
+        if not ok:
+            self.mark_down(name, "probe failed")
+        return ok
+
+    def invocation(self, name: str, purpose: str, run_id: str | None = None) -> HostInvocation:
+        kw = {"run_id": run_id} if run_id else {}
+        return HostInvocation(purpose, host=self.by_name[name].docker_host,
+                              slots=self.slots[name], **kw)
+
+    @contextmanager
+    def slot(self, name: str):
+        self.slots[name].acquire()
+        try:
+            yield
+        finally:
+            self.slots[name].release()
+
+    def assign(self, task_runs: dict[str, int], fixed: dict[str, str] | None = None
+               ) -> dict[str, str]:
+        """task -> host name. `fixed` tasks keep their host (task affinity: a task with a run
+        already on an up host stays there). The rest go, largest first, to the up host with the
+        lowest load per run slot."""
+        fixed = {t: h for t, h in (fixed or {}).items() if not self.is_down(h)}
+        up = self.up_hosts()
+        if not up:
+            raise RuntimeError("no Docker host is up")
+        load = defaultdict(float)
+        for t, h in fixed.items():
+            load[h] += task_runs.get(t, 0)
+        out = dict(fixed)
+        for t in sorted(task_runs, key=lambda t: (-task_runs[t], t)):
+            if t in out:
+                continue
+            h = min(up, key=lambda h: ((load[h.name] + task_runs[t]) / h.max_runs,
+                                       load[h.name], h.name))
+            out[t] = h.name
+            load[h.name] += task_runs[t]
+        return out
+
+    def run(self, jobs: list[Job]) -> list[JobResult]:
+        """Run each job on its assigned host, at most max_runs at a time per host. A job whose
+        host is down is not started; a job that fails triggers a probe of its host."""
+        queues: dict[str, list[Job]] = defaultdict(list)
+        for j in jobs:
+            queues[j.host].append(j)
+        results: list[JobResult] = []
+        lock = threading.Lock()
+
+        def worker(name: str) -> None:
+            while True:
+                with lock:
+                    if not queues[name]:
+                        return
+                    j = queues[name].pop(0)
+                if self.stop is not None and self.stop.is_set():
+                    r = JobResult(j.key, j.task, name, "stopped")
+                elif self.is_down(name):
+                    r = JobResult(j.key, j.task, name, "not_started_host_down",
+                                  error=self.reasons.get(name))
+                else:
+                    r = self._one(j, name)
+                with lock:
+                    results.append(r)
+
+        threads = [(h.name, k) for h in self.hosts if queues[h.name]
+                   for k in range(min(h.max_runs, len(queues[h.name])))]
+        unknown = set(queues) - set(self.by_name)
+        if unknown:
+            raise KeyError(f"jobs assigned to unknown hosts {sorted(unknown)}")
+        with ThreadPoolExecutor(max_workers=max(1, len(threads))) as ex:
+            futs = [ex.submit(worker, n) for n, _ in threads]
+            try:
+                for f in futs:
+                    f.result()
+            except BaseException:
+                if self.stop is not None:  # Ctrl-C: workers wind down and clean up
+                    self.stop.set()
+                raise
+        order = {j.key: i for i, j in enumerate(jobs)}
+        return sorted(results, key=lambda r: order[r.key])
+
+    def _one(self, j: Job, name: str) -> JobResult:
+        try:
+            res = j.fn(self.by_name[name])
+        except Exception as e:  # noqa: BLE001 - classified by the host probe
+            status = "failed" if self.check(name) else "failed_host"
+            return JobResult(j.key, j.task, name, status, error=f"{type(e).__name__}: {e}")
+        if res.get("errors") and not self.check(name):
+            return JobResult(j.key, j.task, name, "failed_host", res,
+                             error=self.reasons.get(name))
+        return JobResult(j.key, j.task, name, "ok", res)
+
+
+# ------------------------------------------------------------------------------------------
+# Resume decisions
+# ------------------------------------------------------------------------------------------
+
+FINAL_STATES = ("complete",)
+
+
+def resume_action(status: dict | None, host_up: bool, image_present: bool | None) -> str:
+    """What to do with one cohort run given its status file:
+    - "fresh": never started; "skip": finished;
+    - "resume_arms": its boundary exists, its host is up and still holds the boundary image,
+      so the missing arms fork there (same host, same boundary: contrasts stay within host);
+    - "restart": anything else (no boundary yet, or the boundary is unreachable): a new attempt
+      from scratch; the old attempt's partial rows are superseded, never mixed in."""
+    if status is None:
+        return "fresh"
+    if status.get("state") in FINAL_STATES:
+        return "skip"
+    if status.get("boundary_tag") and host_up and image_present:
+        return "resume_arms"
+    return "restart"

@@ -43,6 +43,8 @@ malformed or inconsistent reward), which raises VerifierError.
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import io
 import json
 import shlex
@@ -63,6 +65,32 @@ COMMIT_SETTLE_POLLS = 30
 COMMIT_POLL_S = 2.0
 
 
+# The Docker daemon to talk to: None = the docker CLI's own default (DOCKER_HOST or the current
+# context); otherwise a daemon URL passed as `docker -H <url>` (e.g. ssh://user@desktop). Each
+# Sandbox and Invocation records its host and re-enters it for every call, so code running
+# against several hosts at once (one thread per run) never crosses daemons.
+_HOST: contextvars.ContextVar[str | None] = contextvars.ContextVar("emx_docker_host",
+                                                                  default=None)
+
+
+@contextlib.contextmanager
+def using_host(host: str | None):
+    token = _HOST.set(host)
+    try:
+        yield
+    finally:
+        _HOST.reset(token)
+
+
+def current_host() -> str | None:
+    return _HOST.get()
+
+
+def docker_argv(args: list[str], host: str | None = None) -> list[str]:
+    h = host if host is not None else _HOST.get()
+    return ["docker", *(["-H", h] if h else []), *args]
+
+
 class SandboxError(RuntimeError):
     pass
 
@@ -77,7 +105,7 @@ class VerifierError(SandboxError):
 
 def _docker(args: list[str], timeout: float, check: bool = True,
             input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
-    p = subprocess.run(["docker", *args], check=False, capture_output=True, timeout=timeout,
+    p = subprocess.run(docker_argv(args), check=False, capture_output=True, timeout=timeout,
                        input=input_bytes)
     if check and p.returncode != 0:
         raise SandboxError(f"docker {args[0]} rc={p.returncode}: {p.stderr.decode()[-2000:]}")
@@ -280,22 +308,26 @@ class Sandbox:
     run_id: str | None = None
     log: list[dict] = field(default_factory=list)
     unresolved_commits: list[tuple[str, float]] = field(default_factory=list)  # (tag, since)
+    host: str | None = None  # the daemon (docker -H); None = the CLI's default
 
     @classmethod
     def start(cls, image: str, purpose: str, *, name: str | None = None,
               run_id: str | None = None, lifetime_s: int = 4 * 3600,
               cpus: float | None = 2, memory_mb: int | None = 8192,
-              platform: str | None = "linux/amd64", network: str = "none") -> Sandbox:
+              platform: str | None = "linux/amd64", network: str = "none",
+              host: str | None = None) -> Sandbox:
         name = name or f"{purpose}-{run_id + '-' if run_id else ''}{uuid.uuid4().hex[:8]}"
+        host = host if host is not None else _HOST.get()
         t0 = time.monotonic()
-        try:
-            _docker(run_args(image, name, purpose, lifetime_s, cpus, memory_mb, platform,
-                             network, run_id), timeout=300)
-        except BaseException:
-            # Timeout, failed start or interruption: the daemon may have created it anyway.
-            remove_container(name)
-            raise
-        sb = cls(name=name, image=image, purpose=purpose, run_id=run_id)
+        with using_host(host):
+            try:
+                _docker(run_args(image, name, purpose, lifetime_s, cpus, memory_mb, platform,
+                                 network, run_id), timeout=300)
+            except BaseException:
+                # Timeout, failed start or interruption: the daemon may have created it anyway.
+                remove_container(name)
+                raise
+        sb = cls(name=name, image=image, purpose=purpose, run_id=run_id, host=host)
         sb.log.append({"op": "start", "seconds": time.monotonic() - t0})
         return sb
 
@@ -303,15 +335,17 @@ class Sandbox:
                  input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
         """Run a docker command against this sandbox; on a client timeout or an interruption,
         remove the sandbox before the exception propagates."""
-        try:
-            return _docker(args, timeout=timeout, check=False, input_bytes=input_bytes)
-        except subprocess.TimeoutExpired:
-            # The in-container timeout should have fired first; the sandbox is not trustworthy.
-            self.close()
-            raise SandboxError(f"client timeout on {self.name}; sandbox removed") from None
-        except BaseException:
-            self.close()
-            raise
+        with using_host(self.host):
+            try:
+                return _docker(args, timeout=timeout, check=False, input_bytes=input_bytes)
+            except subprocess.TimeoutExpired:
+                # The in-container timeout should have fired first; the sandbox is not
+                # trustworthy.
+                self.close()
+                raise SandboxError(f"client timeout on {self.name}; sandbox removed") from None
+            except BaseException:
+                self.close()
+                raise
 
     def exec(self, cmd: str, timeout_s: int = 600, workdir: str = "/app") -> ExecResult:
         t0 = time.monotonic()
@@ -373,6 +407,10 @@ class Sandbox:
         if stray:
             raise NotQuiescentError(f"{self.name}: background processes at the snapshot "
                                     f"boundary: {stray}")
+        with using_host(self.host):
+            return self._commit(tag)
+
+    def _commit(self, tag: str) -> float:
         t0 = time.monotonic()
         labels = [f"LABEL {LABEL_KEY}={self.purpose}"]
         if self.run_id:
@@ -403,7 +441,8 @@ class Sandbox:
         return s
 
     def close(self) -> bool:
-        return remove_container(self.name)
+        with using_host(self.host):
+            return remove_container(self.name)
 
     def __enter__(self) -> Self:
         return self
@@ -419,8 +458,10 @@ class Invocation:
     run_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
     tags: list[str] = field(default_factory=list)
     sandboxes: list[Sandbox] = field(default_factory=list)
+    host: str | None = None  # every container and image of this invocation lives on it
 
     def start(self, image: str, **kw) -> Sandbox:
+        kw.setdefault("host", self.host)
         sb = Sandbox.start(image, self.purpose, run_id=self.run_id, **kw)
         self.sandboxes.append(sb)
         return sb
@@ -436,6 +477,10 @@ class Invocation:
         and check its unresolved commits once more. Returns what was NOT confirmed gone (empty
         list = all confirmed by successful status queries). Rerun it, or `sweep --run-id`, later
         to catch an interrupted commit that completes afterwards."""
+        with using_host(self.host):
+            return self._cleanup()
+
+    def _cleanup(self) -> list[str]:
         bad: list[str] = []
         for sb in self.sandboxes:  # first, so an image that has appeared counts as observed
             for tag, since in list(sb.unresolved_commits):
@@ -509,12 +554,13 @@ READ_REWARD_CMD = ("cd /logs/verifier 2>/dev/null || { echo none; exit 0; }; "
 
 def grade(task_image: str, tests_dir: str | Path, model_patch: bytes, purpose: str, *,
           run_id: str | None = None, timeout_s: int = 1800,
-          platform: str | None = "linux/amd64") -> tuple[dict, ExecResult]:
+          platform: str | None = "linux/amd64",
+          host: str | None = None) -> tuple[dict, ExecResult]:
     """Harbor-style separate verifier: fresh pristine container, tests + patch in, test.sh.
     Returns (validated reward, the test.sh ExecResult); raises VerifierError when the verifier
     produced no valid reward (an infrastructure failure, distinct from reward 0)."""
     with Sandbox.start(task_image, purpose, run_id=run_id, lifetime_s=timeout_s + 300,
-                       platform=platform) as v:
+                       platform=platform, host=host) as v:
         v.copy_in(Path(tests_dir), "/tests")
         v.put_file(model_patch, "/logs/artifacts/model.patch")
         r = v.exec("chmod +x /tests/test.sh && bash /tests/test.sh", timeout_s=timeout_s,
@@ -538,8 +584,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     sw = sub.add_parser("sweep", help="remove containers and images labelled emx.run=<id>")
     sw.add_argument("--run-id", required=True)
+    sw.add_argument("--host", help="docker -H target (default: the CLI's own default)")
     a = ap.parse_args(argv)
-    bad = sweep(a.run_id)
+    with using_host(a.host):
+        bad = sweep(a.run_id)
     print(json.dumps({"run_id": a.run_id, "unconfirmed": bad}))
     return 1 if bad else 0
 

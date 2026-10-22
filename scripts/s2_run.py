@@ -1,36 +1,36 @@
 """S2 pilot runner (docs/sprint/specs/S2.md).
 
-    uv run python scripts/s2_run.py cohort
-        The held-out draw, the 24-run pilot cohort (order, task, model, channel), the
-        replacement tasks and the thresholds. $0, no Docker.
-    uv run python scripts/s2_run.py freeze-rules [--tasks a,b] [--pilot]
-        Start each task image once, list its tracked files, render the frozen rule text and the
-        R1/R3 inventories, and write results/sprint/rules/<task>.{json,txt,tests.txt}. $0.
-    uv run python scripts/s2_run.py dryrun [--tasks t1,t2] [--policy pi|cc_prompt|codex_local]
-            [--threshold 50000] [--assume-lost R6,C] [--no-grade]
-        $0 end to end with the scripted stub model on the local Docker (or DOCKER_HOST): base run
-        to the boundary, fork, all four arms x 2 (task 1 in one phase with stand-in labels, task
-        2 in two phases with a kept boundary image), trap scoring, grading, sealing under
-        data/raw/sprint/s2/dryrun/. Ends by checking that no emx.sandbox=sprint-s2 container is
-        left (exit 3 if one is).
-    uv run python scripts/s2_run.py pilot --go-from-jacob [--only ORDER,...] [--concurrency 4]
-        The paid pilot, phase 1 (base runs, F and S arms; boundary images kept for S+R/S+I).
-        Books SPRINT-S2 through compaction.budget, which refuses outside the designated
-        checkout. Refuses tasks whose rules are not frozen. The flag is the record of Jacob's go.
-    uv run python scripts/s2_run.py pilot-resume --go-from-jacob --labels labels.json
-        Phase 2: S+R and S+I from each kept boundary with its retention labels
-        ({run_key: {"R1": "LOST"|"KEPT"|"UNKNOWN", ...}}); removes each kept image after.
-    uv run python scripts/s2_run.py haiku-peak --go-from-jacob [--cap-usd 8]
-        One uncompacted Haiku run on the first pilot task, to measure its peak (sprint plan S2).
-    uv run python scripts/s2_run.py gate --labels labels.json [--telemetry PATH]
-        The pilot's tiers, coverage and per-channel Q2 yield verdicts from the visible telemetry
-        and the boundary retention labels (compaction.s2.gate). Reads no outcome field.
-    uv run python scripts/s2_run.py containers
-        List leftover emx.sandbox=sprint-s2 containers.
+Hosts: `--hosts "desktop=ssh://<user>@<tailscale-name>,12,4;laptop=local,6,2"` (or the
+SPRINT_S2_HOSTS environment variable; default: the laptop alone). Each entry is
+name=target,max_containers[,max_runs]; "local" is the docker CLI's own daemon. Runs are assigned
+to hosts by DeepSWE task; a run's arms always share its host.
 
-Keys come from the repo .env (never printed). Every container carries emx.sandbox=sprint-s2 and
-its run's emx.run=<id>; each run's cleanup removes only its own. SIGTERM or Ctrl-C sets a stop
-flag: every loop ends at its next model call and its containers are removed before exit.
+    uv run python scripts/s2_run.py cohort
+        The held-out draw, the 24-run pilot cohort, the replacements and the thresholds. $0.
+    uv run python scripts/s2_run.py freeze-rules [--tasks a,b] [--pilot]
+        Render and freeze each task's rule text and R1/R3 inventories into
+        results/sprint/rules/<task>.{json,txt,tests.txt} (one container per task). $0.
+    uv run python scripts/s2_run.py dryrun [--tasks t1,t2] [--hosts ...] [--threshold 50000]
+            [--no-grade]
+        $0 end to end with the scripted stub model: base run to the boundary, all four arms x 2
+        in one phase, trap scoring, grading, sealing under data/raw/sprint/s2/dryrun/. Rerun to
+        resume after a dropped host. Exit 3 if any host still has an emx.sandbox=sprint-s2
+        container afterwards.
+    uv run python scripts/s2_run.py pilot --go-from-jacob [--only ORDER,...] [--hosts ...]
+        The paid pilot (SPRINT-S2 through compaction.budget, which books only from the
+        designated checkout). Idempotent: rerunning it resumes failed, stopped or host-dropped
+        runs (missing arms on the same host, else a new attempt). The flag records Jacob's go.
+    uv run python scripts/s2_run.py haiku-peak --go-from-jacob [--cap-usd 5]
+        One uncompacted Haiku run on the first pilot task, to measure its peak.
+    uv run python scripts/s2_run.py gate [--labels labels.json] [--telemetry PATH]
+        Tiers, coverage and per-channel Q2 yield from telemetry, the code retention precheck and
+        any judge or hand labels. Reads no outcome field.
+    uv run python scripts/s2_run.py hosts [--hosts ...] [--sweep-pending]
+        Per host: reachable or not, our containers and snapshot images; optionally sweep the
+        deferred cleanups of runs whose host has come back.
+
+Keys come from the repo .env (never printed). SIGTERM or Ctrl-C sets a stop flag: every loop
+ends at its next model call and its containers are removed before exit.
 """
 
 from __future__ import annotations
@@ -39,11 +39,11 @@ import argparse
 import json
 import os
 import signal
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from compaction.deepswe.sandbox import Invocation
 from compaction.s2 import config as C
+from compaction.s2 import hosts as H
 from compaction.s2 import loop as LOOP
 from compaction.s2 import pilot as P
 from compaction.s2 import rules as R
@@ -55,42 +55,11 @@ from compaction.s2.model import OpenAICompatModel, SprintSpend
 DRY_TASKS = ("koota-pair-relation-tracking", "wasmi-trap-coredumps")
 DRY_CHANNELS = ("chat", "readme")
 DRY_POLICIES = ("pi", "cc_prompt")
-TELE_SHOW = ("phase", "run_key", "tier", "base", "boundary", "arms_planned", "lost_used",
-             "kept_boundary_image", "cleanup_unconfirmed", "cost_usd", "seconds")
 
 
 def _sigterm(*_a) -> None:
     LOOP.STOP.set()
     raise SystemExit(143)
-
-
-def run_pool(fn, items, workers: int) -> int:
-    """Run fn over items in threads, printing each result's telemetry; on Ctrl-C or SIGTERM set
-    the stop flag so workers wind down and clean up before the pool exits. Returns 2 if any run
-    failed, else 0."""
-    rc = 0
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as ex:
-        futs = [(it, ex.submit(fn, it)) for it in items]
-        try:
-            for it, f in futs:
-                try:
-                    res = f.result()
-                    for tele in res if isinstance(res, list) else [res]:
-                        print(json.dumps({k: tele.get(k) for k in TELE_SHOW}, default=str),
-                              flush=True)
-                except Exception as e:  # noqa: BLE001
-                    print(f"RUN FAILED {str(it)[:120]}: {type(e).__name__}: {e}", flush=True)
-                    rc = 2
-        except BaseException:
-            LOOP.STOP.set()
-            raise
-    return rc
-
-
-def leftovers_rc(rc: int) -> int:
-    left = P.our_containers()
-    print(f"leftover emx.sandbox={C.PURPOSE} containers: {left}")
-    return 3 if (left is None or left) else rc
 
 
 def load_env() -> None:
@@ -103,6 +72,35 @@ def load_env() -> None:
             continue
         k, _, v = line.partition("=")
         os.environ.setdefault(k.strip().removeprefix("export "), v.strip().strip("'\""))
+
+
+def make_pool(a) -> H.HostPool:
+    hosts = H.parse_hosts(a.hosts) if getattr(a, "hosts", None) else H.default_hosts()
+    H.check_unambiguous(hosts)
+    return H.HostPool(hosts, stop=LOOP.STOP)
+
+
+def report(out: P.CohortOutcome, pool: H.HostPool) -> int:
+    print(json.dumps({"assignment": out.assignment, "actions": out.actions,
+                      "swept": out.swept, "hosts_down": pool.reasons}, indent=1))
+    rc = 0
+    for r in out.results:
+        t = r.result or {}
+        print(json.dumps({"cohort": r.key, "host": r.host, "status": r.status,
+                          "state": t.get("state"), "run_key": t.get("run_key"),
+                          "phase": t.get("phase"), "tier": t.get("tier"),
+                          "arms": [f"{x['arm']}-{x['rep']}:{x['end']}"
+                                   for x in t.get("arms", [])],
+                          "cleanup_deferred": t.get("cleanup_deferred"),
+                          "cost_usd": t.get("cost_usd"), "seconds": t.get("seconds"),
+                          "error": r.error}, default=str), flush=True)
+        if r.status != "ok" or t.get("state") != "complete":
+            rc = 2
+    chk = P.check_hosts(pool)
+    print(f"leftover emx.sandbox={C.PURPOSE} per host: {json.dumps(chk)}")
+    if any(isinstance(v, dict) and v["containers"] for v in chk.values()):
+        return 3
+    return rc
 
 
 def cmd_cohort(_a) -> int:
@@ -118,7 +116,7 @@ def cmd_cohort(_a) -> int:
     return 0
 
 
-def freeze_one(task_id: str, rows: list[dict]) -> dict:
+def freeze_one(task_id: str, rows: list[dict]) -> str:
     info = T.task_info(task_id, rank_rows=rows)
     with (Invocation(C.PURPOSE + "-freeze") as inv,
           inv.start(info.image, platform=C.PLATFORM or None, network="none",
@@ -135,9 +133,8 @@ def freeze_one(task_id: str, rows: list[dict]) -> dict:
     (d / f"{task_id}.json").write_text(json.dumps(rules.to_dict(), indent=1) + "\n")
     (d / f"{task_id}.txt").write_text(rules.text + "\n")
     (d / f"{task_id}.tests.txt").write_text("\n".join(rules.test_inventory) + "\n")
-    return {"phase": "freeze", "run_key": task_id,
-            "tier": f"{len(rules.test_inventory)} test files; R3 {rules.r3_globs}; "
-                    f"notes {rules.notes}"}
+    return (f"{task_id}: {len(rules.test_inventory)} test files; R3 {rules.r3_globs}; "
+            f"notes {rules.notes}")
 
 
 def cmd_freeze_rules(a) -> int:
@@ -146,53 +143,32 @@ def cmd_freeze_rules(a) -> int:
     if a.pilot:
         tasks += [c.task for c in T.pilot_cohort(rows)]
         tasks += [r["task"] for r in T.replacements(rows)]
-    return leftovers_rc(run_pool(lambda t: freeze_one(t, rows), sorted(set(tasks)), 2))
-
-
-def assumed_labels(spec: str) -> dict:
-    lost = {r.strip() for r in spec.split(",") if r.strip()}
-    return {r: ("LOST" if r in lost else "KEPT") for r in R.RULE_IDS}
+    for t in sorted(set(tasks)):
+        print(freeze_one(t, rows), flush=True)
+    return 0
 
 
 def cmd_dryrun(a) -> int:
     rows = T.ranking()
     root = C.raw_dir() / "dryrun"
-    results_root = root / "results"
-    tasks = a.tasks.split(",") if a.tasks else list(DRY_TASKS)
+    pool = make_pool(a)
     route = C.ROUTES["stub"]
-    labels = assumed_labels(a.assume_lost)
-    plans = []
-    for i, task_id in enumerate(tasks):
+    jobs = []
+    for i, task_id in enumerate(a.tasks.split(",") if a.tasks else DRY_TASKS):
         info = T.task_info(task_id, rank_rows=rows)
-        policy = a.policy or DRY_POLICIES[i % len(DRY_POLICIES)]
         cohort = T.CohortRun(i, task_id, info.rank or 0, "stub", DRY_CHANNELS[i % 2], "dryrun")
-        plans.append((i, P.RunPlan(cohort, info, a.threshold, root / cohort.run_key(),
-                                   policy=policy, base_max_calls=60)))
-
-    def go(item):
-        i, plan = item
-        fac = stubs.factory(plan.task.task_id)
-        two_phase = i % 2 == 1
-        tele = P.run_one(plan, route, fac, results_root=results_root,
-                         arm_concurrency=a.arm_concurrency, do_grade=not a.no_grade,
-                         labels=None if two_phase else labels, keep_boundary=two_phase,
-                         release_name="dryrun")
-        out = [tele]
-        if two_phase and tele.get("kept_boundary_image") and not LOOP.STOP.is_set():
-            out.append(P.resume_arms(plan.out_dir, route, fac, results_root=results_root,
-                                     labels=labels, arm_concurrency=a.arm_concurrency,
-                                     do_grade=not a.no_grade, release_name="dryrun"))
-        return out
-
-    return leftovers_rc(run_pool(go, plans, a.concurrency))
+        plan = P.RunPlan(cohort, info, a.threshold, root, base_max_calls=60,
+                         policy=a.policy or DRY_POLICIES[i % len(DRY_POLICIES)])
+        jobs.append(P.CohortJob(plan, route, stubs.factory(task_id)))
+    out = P.run_cohort(jobs, pool, results_root=root / "results",
+                       arm_concurrency=a.arm_concurrency, do_grade=not a.no_grade,
+                       release_name="dryrun")
+    return report(out, pool)
 
 
-def _paid_model_factory(route: C.Route):
+def _paid_factory(route: C.Route):
     shared = OpenAICompatModel(route, SprintSpend())
-
-    def factory(_phase: str, _rep: int):
-        return shared
-    return factory
+    return lambda _phase, _rep: shared
 
 
 def _require_go(a) -> bool:
@@ -220,33 +196,16 @@ def cmd_pilot(a) -> int:
         cohort = [c for c in cohort if c.order in keep]
     if not _check_frozen(sorted({c.task for c in cohort})):
         return 2
-    root = C.raw_dir() / "pilot"
-
-    def go(c: T.CohortRun):
+    pool = make_pool(a)
+    jobs = []
+    for c in cohort:
         route = C.ROUTES[c.model]
         plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), C.threshold_for(c.model),
-                         root / c.run_key(), run_cap_usd=C.RUN_CAP_USD[c.model])
-        return P.run_one(plan, route, _paid_model_factory(route),
-                         results_root=C.REPO_ROOT / "results",
-                         arm_concurrency=a.arm_concurrency, keep_boundary=True)
-
-    return leftovers_rc(run_pool(go, cohort, a.concurrency))
-
-
-def cmd_pilot_resume(a) -> int:
-    if not _require_go(a):
-        return 2
-    labels = json.loads(Path(a.labels).read_text())
-    root = C.raw_dir() / "pilot"
-
-    def go(run_key: str):
-        run = json.loads((root / run_key / "run.json").read_text())
-        route = C.ROUTES[run["plan"]["model"]]
-        return P.resume_arms(root / run_key, route, _paid_model_factory(route),
-                             results_root=C.REPO_ROOT / "results", labels=labels[run_key],
-                             arm_concurrency=a.arm_concurrency)
-
-    return leftovers_rc(run_pool(go, sorted(labels), a.concurrency))
+                         C.raw_dir() / "pilot", run_cap_usd=C.RUN_CAP_USD[c.model])
+        jobs.append(P.CohortJob(plan, route, _paid_factory(route)))
+    out = P.run_cohort(jobs, pool, results_root=C.REPO_ROOT / "results",
+                       arm_concurrency=a.arm_concurrency)
+    return report(out, pool)
 
 
 def cmd_haiku_peak(a) -> int:
@@ -257,29 +216,34 @@ def cmd_haiku_peak(a) -> int:
     c = T.CohortRun(99, first.task, first.rank, "haiku", "agents_md", "haiku_peak")
     if not _check_frozen([c.task]):
         return 2
+    pool = make_pool(a)
     route = C.ROUTES["haiku"]
-    plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), 10**9,
-                     C.raw_dir() / "pilot" / c.run_key(), run_cap_usd=a.cap_usd)
-    rc = run_pool(lambda p: P.run_one(p, route, _paid_model_factory(route),
-                                      results_root=C.REPO_ROOT / "results", arms=()),
-                  [plan], 1)
-    return leftovers_rc(rc)
+    plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), 10**9, C.raw_dir() / "pilot",
+                     run_cap_usd=a.cap_usd)
+    out = P.run_cohort([P.CohortJob(plan, route, _paid_factory(route))], pool,
+                       results_root=C.REPO_ROOT / "results")
+    return report(out, pool)
 
 
 def cmd_gate(a) -> int:
     from compaction.s2 import gate
-    path = Path(a.telemetry or C.REPO_ROOT / "results" / "sprint" / C.SEAL_STAGE
-                / "telemetry.jsonl")
+    path = Path(a.telemetry or P.s2_dir(C.REPO_ROOT / "results") / "telemetry.jsonl")
     tele = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     labels = json.loads(Path(a.labels).read_text()) if a.labels else {}
     print(json.dumps(gate.evaluate(tele, labels), indent=1))
     return 0
 
 
-def cmd_containers(_a) -> int:
-    left = P.our_containers()
-    print(json.dumps({"label": f"emx.sandbox={C.PURPOSE}", "containers": left}))
-    return 0 if left == [] else 3
+def cmd_hosts(a) -> int:
+    pool = make_pool(a)
+    for h in pool.hosts:
+        pool.check(h.name)
+    swept = (P.process_pending_sweeps(pool, Path(a.results_root), set())
+             if a.sweep_pending else [])
+    rep = P.check_hosts(pool)
+    print(json.dumps({"hosts": [h.describe() | {"up": not pool.is_down(h.name)}
+                                for h in pool.hosts], "ours": rep, "swept": swept}, indent=1))
+    return 3 if any(isinstance(v, dict) and v["containers"] for v in rep.values()) else 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -291,33 +255,32 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--pilot", action="store_true", help="the 6 pilot and 4 replacement tasks")
     d = sub.add_parser("dryrun")
     d.add_argument("--tasks")
+    d.add_argument("--hosts")
     d.add_argument("--policy", choices=("pi", "cc_prompt", "codex_local"))
     d.add_argument("--threshold", type=int, default=50_000)
-    d.add_argument("--concurrency", type=int, default=2)
     d.add_argument("--arm-concurrency", type=int, default=4)
     d.add_argument("--no-grade", action="store_true")
-    d.add_argument("--assume-lost", default="R6,C",
-                   help="stand-in retention labels for the dry run (rules marked LOST)")
-    for name in ("pilot", "pilot-resume", "haiku-peak"):
+    for name in ("pilot", "haiku-peak"):
         p = sub.add_parser(name)
         p.add_argument("--go-from-jacob", action="store_true")
-        p.add_argument("--concurrency", type=int, default=4)
+        p.add_argument("--hosts")
         p.add_argument("--arm-concurrency", type=int, default=4)
         if name == "pilot":
             p.add_argument("--only")
-        if name == "pilot-resume":
-            p.add_argument("--labels", required=True)
-        if name == "haiku-peak":
-            p.add_argument("--cap-usd", type=float, default=8.0)
+        else:
+            p.add_argument("--cap-usd", type=float, default=5.0)
     g = sub.add_parser("gate")
     g.add_argument("--labels")
     g.add_argument("--telemetry")
-    sub.add_parser("containers")
+    h = sub.add_parser("hosts")
+    h.add_argument("--hosts")
+    h.add_argument("--sweep-pending", action="store_true")
+    h.add_argument("--results-root", default=str(C.REPO_ROOT / "results"))
     a = ap.parse_args(argv)
     signal.signal(signal.SIGTERM, _sigterm)
     return {"cohort": cmd_cohort, "freeze-rules": cmd_freeze_rules, "dryrun": cmd_dryrun,
-            "pilot": cmd_pilot, "pilot-resume": cmd_pilot_resume, "haiku-peak": cmd_haiku_peak,
-            "gate": cmd_gate, "containers": cmd_containers}[a.cmd](a)
+            "pilot": cmd_pilot, "haiku-peak": cmd_haiku_peak, "gate": cmd_gate,
+            "hosts": cmd_hosts}[a.cmd](a)
 
 
 if __name__ == "__main__":

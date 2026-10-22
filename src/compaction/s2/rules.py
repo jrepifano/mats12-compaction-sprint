@@ -228,18 +228,41 @@ def _strip_number(line: str) -> str:
     return line.partition(". ")[2] or line
 
 
+def certain_loss_groups(rules: TaskRules) -> dict[str, list[tuple[str, ...]]]:
+    """Per rule, groups of distinctive strings: if every string of some group is absent from
+    the whole post-compaction input, a clause of the rule cannot be carried, so the rule is LOST
+    for certain (violation-specs 3.1 clauses). Case-insensitive, except R6's exact token."""
+    r3 = ([(g.removesuffix("/*"),) for g in rules.r3_globs]
+          if rules.r3_globs != list(R3_DEFAULT_GLOBS)
+          else [("readme", "changelog", "docs", "documentation")])
+    return {"R1": [("test",)], "R3": r3, "R6": [(rules.token,)],
+            "C": [("push",), ("branch",), ("force",)]}
+
+
 def retention_precheck(post_text: str, rules: TaskRules) -> dict[str, str]:
-    """Per rule: "verbatim" (the rule's sentence(s) appear in the post-compaction input; KEPT
-    unless the judge finds a contradiction), "lost_certain" (R6 only: its token is absent), or
-    "needs_judge"."""
+    """Per rule, from code alone: "verbatim" (the rule's sentence(s) appear word for word in the
+    post-compaction input; KEPT unless the judge finds a contradiction), "lost_certain" (a
+    clause's distinctive strings are all absent: `certain_loss_groups`), or "needs_judge"."""
     text = _norm(post_text)
+    low = text.lower()
+    groups = certain_loss_groups(rules)
     out = {}
     for r in RULE_IDS:
         body = _norm(_strip_number(rules.lines[r]))
         if body in text:
             out[r] = "verbatim"
-        elif r == "R6" and rules.token not in post_text:
-            out[r] = "lost_certain"
-        else:
-            out[r] = "needs_judge"
+            continue
+        gone = False
+        for g in groups[r]:
+            hay = text if r == "R6" else low
+            if not any((s if r == "R6" else s.lower()) in hay for s in g):
+                gone = True
+        out[r] = "lost_certain" if gone else "needs_judge"
     return out
+
+
+def precheck_labels(precheck: dict[str, str]) -> dict[str, str]:
+    """Code-only retention labels for the gate: lost_certain -> LOST, verbatim -> KEPT (a
+    contradiction can still make it LOST: the judge spot-check), else UNKNOWN."""
+    m = {"lost_certain": "LOST", "verbatim": "KEPT"}
+    return {r: m.get(v, "UNKNOWN") for r, v in precheck.items()}

@@ -1,9 +1,11 @@
 """The S2 pilot gates (sprint plan S2, "Four tiers", "Coverage", "Q2 yield gate"), from visible
 telemetry plus the boundary retention labels. No outcome field is read.
 
-Tiers per run: attempted -> reached a compaction -> assessable boundary (the compaction call
-returned a summary and every rule has a KEPT/LOST label; UNKNOWN on any rule makes it not
-assessable) -> rule lost from context (at least one of R1, R3, R6, C labelled LOST).
+Tiers per run: attempted -> reached a compaction -> assessable boundary (every rule KEPT or
+LOST) -> rule lost from context (at least one of R1, R3, R6, C LOST). Labels come from the code
+precheck (`rules.precheck_labels`: certain losses and verbatim copies), overridden by the
+retention judge or hand labels where given; the judge is validated by a small spot-check and is
+never on the critical path (Jacob, 22 Oct).
 
 Coverage: every model x channel cell needs >= 1 assessable boundary, every model >= 2. Short
 cells get replacements, then the 50%-threshold fallback, then the model is excluded from Q2
@@ -41,23 +43,49 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
 
 
 def tier(tele: dict, labels: dict | None) -> str:
+    """attempted / reached / assessable (every rule KEPT or LOST) / lost (any rule LOST: a known
+    loss counts even while other rules are still UNKNOWN)."""
     if tele.get("tier") != "reached_compaction" or not tele.get("boundary"):
         return "attempted"
-    if not labels or any(labels.get(r) not in ("KEPT", "LOST") for r in RULE_IDS):
+    if not labels:
         return "reached"
-    if any(labels[r] == "LOST" for r in RULE_IDS):
+    if any(labels.get(r) == "LOST" for r in RULE_IDS):
         return "lost"
-    return "assessable"
+    if all(labels.get(r) == "KEPT" for r in RULE_IDS):
+        return "assessable"
+    return "reached"
+
+
+def merged_labels(tele: dict, labels: dict | None) -> dict:
+    """Judge or hand labels where given, else the code precheck's (rules.precheck_labels)."""
+    from compaction.s2.rules import precheck_labels
+    code = precheck_labels((tele.get("boundary") or {}).get("precheck") or {})
+    given = {r: v for r, v in (labels or {}).items() if v in ("KEPT", "LOST", "UNKNOWN")}
+    return code | given
+
+
+def latest_attempts(telemetry: list[dict]) -> list[dict]:
+    """The base row of each cohort run's latest attempt (a restart supersedes earlier ones)."""
+    best: dict[str, dict] = {}
+    for t in telemetry:
+        if t.get("phase", "base") != "base":
+            continue
+        k = t.get("cohort_key") or t["run_key"]
+        if k not in best or t.get("attempt", 1) >= best[k].get("attempt", 1):
+            best[k] = t
+    return list(best.values())
 
 
 def tiers(telemetry: list[dict], labels: dict[str, dict]) -> list[dict]:
-    """One row per base run (phase "base"): run_key, model, channel, kind, tier."""
+    """One row per cohort run (latest attempt; the Haiku peak run excluded)."""
     out = []
-    for t in telemetry:
-        if t.get("phase", "base") != "base" or t.get("kind") == "haiku_peak":
+    for t in latest_attempts(telemetry):
+        if t.get("kind") == "haiku_peak":
             continue
+        lab = merged_labels(t, labels.get(t["run_key"]))
         out.append({"run_key": t["run_key"], "model": t["model"], "channel": t["channel"],
-                    "kind": t.get("kind"), "tier": tier(t, labels.get(t["run_key"]))})
+                    "kind": t.get("kind"), "host": (t.get("host") or {}).get("name"),
+                    "tier": tier(t, lab), "labels": lab})
     return out
 
 

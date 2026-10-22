@@ -556,52 +556,279 @@ def test_arm_continuation_closing_turn_and_contexts(tmp_path, fake_env):
     assert res2.submitted_before_closing and res2.n_calls == 3  # a, submit; closing: submit
 
 
-def test_run_one_two_phase_keeps_and_then_removes_boundary(tmp_path, fake_env, monkeypatch):
-    calls = {"cleanup": 0, "containers": 0}
+# ------------------------------------------------------------------------------------------
+# hosts: routing, slots, scheduling, drops and resumption (fake hosts)
+# ------------------------------------------------------------------------------------------
 
-    class FakeInv:
-        def __init__(self, purpose, run_id="rid"):
-            self.run_id, self.tags = run_id, []
-
-        def cleanup(self):
-            calls["cleanup"] += 1
-            return []
-
-    monkeypatch.setattr(P, "Invocation", FakeInv)
-    monkeypatch.setattr(P, "remove_run_containers", lambda rid: calls.__setitem__(
-        "containers", calls["containers"] + 1) or [])
-    monkeypatch.setattr(P.O, "arm_outcome", lambda res, *a, **k: {
-        "run_key": res.run_key, "arm": res.arm, "rep": res.rep, "R1": False})
-    task = T.TaskInfo("task-x", 3, "go", "img", "collect", "Do it.", str(tmp_path), "t", [])
-    plan = P.RunPlan(T.CohortRun(0, "task-x", 3, "stub", "chat", "test"), task, 20_000,
-                     tmp_path / "run", policy="pi", base_max_calls=50)
-
-    def fac(phase, rep):
-        return M.StubModel([{"bash": "x"}] * (40 if phase == "base" else 2),
-                           summary=lambda m: "SUM")
-
-    tele = P.run_one(plan, C.ROUTES["stub"], fac, results_root=tmp_path / "res",
-                     keep_boundary=True, arm_concurrency=2)
-    assert tele["arms_planned"] == ["F-1", "F-2", "S-1", "S-2"]
-    assert tele["kept_boundary_image"] == "img:boundary" and calls == {"cleanup": 0,
-                                                                        "containers": 1}
-    assert not {"R1", "R3", "R6", "reward"} & set(json.dumps(tele["arms"]).split('"'))
-    kept = (tmp_path / "res" / "sprint" / "S2" / "kept_images.jsonl").read_text()
-    assert "sweep --run-id rid" in kept
-    tele2 = P.resume_arms(tmp_path / "run", C.ROUTES["stub"], fac,
-                          results_root=tmp_path / "res", labels={"R6": "LOST", "R1": "KEPT"})
-    assert tele2["arms_planned"] == ["SR-1", "SR-2", "SI-1", "SI-2"] and calls["cleanup"] == 1
-    sealed = tmp_path / "res" / "sprint" / "S2" / "sealed" / "main"
-    assert sorted(p.name for p in sealed.iterdir()) == [
-        "outcomes-test-03-task-x-stub-chat-base.jsonl",
-        "outcomes-test-03-task-x-stub-chat-resume.jsonl"]
-    lines = (tmp_path / "res" / "sprint" / "S2" / "telemetry.jsonl").read_text().splitlines()
-    assert len(lines) == 2
+from compaction.deepswe import sandbox as SB
+from compaction.s2 import hosts as H
 
 
-def test_lost_rules_from_labels_only():
-    assert P.lost_rules(None) == []
-    assert P.lost_rules({"R6": "LOST", "C": "UNKNOWN", "R1": "LOST"}) == ["R1", "R6"]
+def test_docker_argv_and_sandbox_keep_their_host_across_threads(monkeypatch):
+    import threading
+    seen = []
+
+    def fake_run(argv, **kw):
+        seen.append(argv)
+        return subprocess.CompletedProcess(argv, 0, b"", b"")
+
+    monkeypatch.setattr(SB.subprocess, "run", fake_run)
+    monkeypatch.setattr(SB.time, "sleep", lambda s: None)
+    assert SB.docker_argv(["ps"]) == ["docker", "ps"]
+    assert SB.docker_argv(["ps"], "ssh://u@d") == ["docker", "-H", "ssh://u@d", "ps"]
+    sb = SB.Sandbox.start("img", "p", host="ssh://u@desk")
+    assert seen[-1][:3] == ["docker", "-H", "ssh://u@desk"] and sb.host == "ssh://u@desk"
+    t = threading.Thread(target=lambda: sb.exec("true"))
+    t.start()
+    t.join()
+    assert seen[-1][:3] == ["docker", "-H", "ssh://u@desk"]
+    sb.close()
+    assert all(a[:3] == ["docker", "-H", "ssh://u@desk"] for a in seen)
+    seen.clear()
+    SB.Invocation("p", host="ssh://u@desk").cleanup()
+    assert seen and all(a[:3] == ["docker", "-H", "ssh://u@desk"] for a in seen)
+    seen.clear()
+    with SB.using_host("ssh://other"):
+        SB.Sandbox.start("img", "p")
+    assert seen[0][:3] == ["docker", "-H", "ssh://other"]
+
+
+def test_parse_hosts_and_ambiguity(monkeypatch):
+    hs = H.parse_hosts("desktop=ssh://j@desk,12,4; laptop=local,6")
+    assert [(h.name, h.docker_host, h.max_containers, h.max_runs) for h in hs] == [
+        ("desktop", "ssh://j@desk", 12, 4), ("laptop", None, 6, 2)]
+    with pytest.raises(ValueError):
+        H.parse_hosts("a=local;a=local")
+    monkeypatch.setenv("DOCKER_HOST", "ssh://x")
+    with pytest.raises(ValueError):
+        H.check_unambiguous(hs)
+    monkeypatch.delenv("DOCKER_HOST")
+    H.check_unambiguous(hs)
+
+
+def fake_pool(dead=(), **kw):
+    hosts = [H.Host("desk", "tcp://desk", 12, 4), H.Host("lap", "tcp://lap", 6, 2)]
+    return H.HostPool(hosts, probe=lambda h: h.name not in dead, **kw)
+
+
+def test_assign_by_task_weighted_with_affinity_and_down_hosts():
+    pool = fake_pool()
+    a = pool.assign({f"t{i}": 4 for i in range(6)})
+    assert Counter(a.values()) == {"desk": 4, "lap": 2}  # 4 run slots vs 2
+    a2 = pool.assign({"t0": 4, "t1": 4}, fixed={"t0": "lap"})
+    assert a2["t0"] == "lap" and a2["t1"] == "desk"
+    pool.mark_down("lap", "test")
+    a3 = pool.assign({"t0": 4, "t1": 4}, fixed={"t0": "lap"})
+    assert set(a3.values()) == {"desk"}
+
+
+def test_pool_run_respects_per_host_limits_and_isolates_a_dropped_host():
+    import threading
+    import time as _t
+    dead = set()
+    pool = fake_pool(dead=dead)
+    live, peak, lock = Counter(), Counter(), threading.Lock()
+
+    def fn_for(key):
+        def fn(h):
+            with lock:
+                live[h.name] += 1
+                peak[h.name] = max(peak[h.name], live[h.name])
+            _t.sleep(0.02)
+            with lock:
+                live[h.name] -= 1
+            if h.name == "lap":
+                dead.add("lap")
+                raise SB.SandboxError("ssh: connection refused")
+            return {"state": "complete"}
+        return fn
+
+    jobs = [H.Job(f"d{i}", f"t{i % 3}", "desk", fn_for(f"d{i}")) for i in range(9)]
+    jobs += [H.Job(f"l{i}", "tL", "lap", fn_for(f"l{i}")) for i in range(5)]
+    res = {r.key: r for r in pool.run(jobs)}
+    assert peak["desk"] <= 4 and peak["lap"] <= 2
+    assert all(res[f"d{i}"].status == "ok" for i in range(9))
+    lap = Counter(res[f"l{i}"].status for i in range(5))
+    assert lap["failed_host"] >= 1 and set(lap) <= {"failed_host", "not_started_host_down"}
+    assert pool.is_down("lap") and not pool.is_down("desk")
+
+
+def test_host_slots_limit_containers_and_release_once(monkeypatch):
+    import threading
+    monkeypatch.setattr(SB, "_docker", lambda *a, **k: subprocess.CompletedProcess(a, 0, b"",
+                                                                                     b""))
+    monkeypatch.setattr(SB, "remove_container", lambda n: True)
+    pool = H.HostPool([H.Host("h", "tcp://h", 2, 1)], probe=lambda h: True)
+    inv = pool.invocation("h", "p")
+    a, b = inv.start("img"), inv.start("img")
+    got = []
+    t = threading.Thread(target=lambda: got.append(inv.start("img")))
+    t.start()
+    t.join(0.2)
+    assert not got  # the third container waits for a slot
+    a.close()
+    a.close()  # idempotent: a BoundedSemaphore would raise on a second release
+    t.join(2)
+    assert got and got[0].host == "tcp://h"
+    b.close()
+    got[0].close()
+
+
+@pytest.mark.parametrize("status,up,img,want", [
+    (None, False, None, "fresh"),
+    ({"state": "complete"}, False, None, "skip"),
+    ({"state": "failed_host", "boundary_tag": "t"}, True, True, "resume_arms"),
+    ({"state": "failed_host", "boundary_tag": "t"}, False, None, "restart"),
+    ({"state": "failed_host", "boundary_tag": "t"}, True, False, "restart"),
+    ({"state": "failed_host", "boundary_tag": None}, True, None, "restart"),
+    ({"state": "stopped", "boundary_tag": "t"}, True, True, "resume_arms"),
+])
+def test_resume_action(status, up, img, want):
+    assert H.resume_action(status, up, img) == want
+
+
+class HostFakeEnv(FakeEnv):
+    dead: ClassVar[set] = set()
+    kill_at_boundary: ClassVar[set] = set()
+
+    @classmethod
+    def create(cls, inv, task, channel, out, image=None):
+        if inv.host in cls.dead:
+            raise SB.SandboxError(f"cannot connect to {inv.host}")
+        env, rules, agents = super().create(inv, task, channel, out, image)
+        env.host = inv.host
+        return env, rules, agents
+
+    @classmethod
+    def fork(cls, inv, tag, task, out):
+        if inv.host in cls.dead:
+            raise SB.SandboxError(f"cannot connect to {inv.host}")
+        env = super().fork(inv, tag, task, out)
+        env.host = inv.host
+        return env
+
+    def boundary(self, inv, stem):
+        if self.host in self.kill_at_boundary:
+            self.dead.add(self.host)
+        return {"tag": f"img:boundary-{self.host}", "stopped_processes": [],
+                "snapshot_s": 0.1}
+
+
+@pytest.fixture
+def host_world(tmp_path, monkeypatch):
+    HostFakeEnv.created, HostFakeEnv.dead, HostFakeEnv.kill_at_boundary = [], set(), set()
+    monkeypatch.setattr(L, "TaskEnv", HostFakeEnv)
+    monkeypatch.setattr(P.H, "ensure_image", lambda host, image: None)
+    monkeypatch.setattr(P.H, "image_present", lambda host, tag: True)
+    cleaned, swept = [], []
+    monkeypatch.setattr(H.HostInvocation, "cleanup",
+                        lambda self: cleaned.append((self.host, self.run_id)) or [])
+    monkeypatch.setattr(P, "sweep", lambda run_id: swept.append(run_id) or [])
+    monkeypatch.setattr(P.O, "arm_outcome", lambda res, *a, host_name=None, **k: {
+        "run_key": res.run_key, "arm": res.arm, "rep": res.rep, "host": host_name})
+    dead_names = set()
+    hosts = [H.Host("desk", "tcp://desk", 12, 4), H.Host("lap", "tcp://lap", 6, 2)]
+
+    def probe(h):
+        return h.docker_host not in HostFakeEnv.dead and h.name not in dead_names
+
+    def new_pool():
+        return H.HostPool(hosts, probe=probe)
+
+    def jobs():
+        out = []
+        for i, t in enumerate(["task-a", "task-b"]):
+            for m in ("m1", "m2"):
+                task = T.TaskInfo(t, i + 1, "go", "img", "collect", "Do it.", str(tmp_path),
+                                  "t", [])
+                c = T.CohortRun(i, t, i + 1, m, "chat", "test")
+                plan = P.RunPlan(c, task, 20_000, tmp_path / "raw", policy="pi",
+                                 base_max_calls=50)
+                out.append(P.CohortJob(plan, C.ROUTES["stub"], lambda ph, rep: M.StubModel(
+                    [{"bash": "x"}] * (40 if ph == "base" else 2), summary=lambda m: "S")))
+        return out
+    return SimpleNamespace(new_pool=new_pool, jobs=jobs, cleaned=cleaned, swept=swept,
+                           res=tmp_path / "res", raw=tmp_path / "raw")
+
+
+def _status(w, key):
+    return json.loads((w.raw / key / "status.json").read_text())
+
+
+def test_cohort_assigns_by_task_runs_all_arms_and_records_hosts(host_world):
+    w = host_world
+    out = P.run_cohort(w.jobs(), w.new_pool(), results_root=w.res, arm_concurrency=4)
+    assert all(r.status == "ok" and r.result["state"] == "complete" for r in out.results)
+    by_task = {}
+    for r in out.results:
+        by_task.setdefault(r.task, set()).add(r.host)
+    assert all(len(v) == 1 for v in by_task.values())  # every run of a task on one host
+    tele = [json.loads(x) for x in (w.res / "sprint" / "S2" / "telemetry.jsonl")
+            .read_text().splitlines()]
+    assert all(t["host"]["name"] == by_task[t["task"]].copy().pop() for t in tele)
+    for t in tele:
+        assert sorted(f"{a['arm']}-{a['rep']}" for a in t["arms"]) == sorted(
+            f"{a}-{r}" for a, r in P.ALL_ARMS)
+    sealed = sorted((w.res / "sprint" / "S2" / "sealed" / "main").iterdir())
+    assert len(sealed) == 4 * len(P.ALL_ARMS)
+    rows = [json.loads(p.read_text()) for p in sealed]
+    assert all(r["host"] in ("desk", "lap") for r in rows)
+    st = _status(w, out.results[0].key)
+    assert st["state"] == "complete" and len(st["arms_done"]) == len(P.ALL_ARMS)
+    assert st["host"] == out.results[0].host
+    out2 = P.run_cohort(w.jobs(), w.new_pool(), results_root=w.res)
+    assert set(out2.actions.values()) == {"skip"} and out2.results == []
+
+
+def test_dropped_host_fails_only_its_tasks_and_resumes(host_world):
+    w = host_world
+    pool = w.new_pool()
+    assign = pool.assign({"task-a": 2, "task-b": 2})
+    victim = pool.host(assign["task-b"])
+    survivor = pool.host(assign["task-a"])
+    assert victim.name != survivor.name
+    HostFakeEnv.kill_at_boundary = {victim.docker_host}  # drops after its boundary
+    out = P.run_cohort(w.jobs(), pool, results_root=w.res)
+    st = {r.key: r for r in out.results}
+    for r in out.results:
+        if r.task == "task-a":
+            assert r.status == "ok" and r.result["state"] == "complete"
+        else:
+            assert r.status in ("failed_host", "not_started_host_down")
+    assert pool.is_down(victim.name) and not pool.is_down(survivor.name)
+    pend = (w.res / "sprint" / "S2" / "pending_sweeps.jsonl").read_text()
+    assert victim.name in pend and survivor.name not in pend
+    assert all(h != victim.docker_host for h, _ in w.cleaned)  # no cleanup against a dead host
+    # The victim comes back: runs with a boundary resume their missing arms on the same host,
+    # runs that never reached it restart as attempt 2; completed runs are skipped.
+    HostFakeEnv.dead.clear()
+    HostFakeEnv.kill_at_boundary = set()
+    out2 = P.run_cohort(w.jobs(), w.new_pool(), results_root=w.res)
+    for k, a in out2.actions.items():
+        s0 = st[k]
+        if s0.task == "task-a":
+            assert a == "skip"
+        else:
+            assert a in ("resume_arms", "restart")
+    for r in out2.results:
+        assert r.result["state"] == "complete"
+        stt = _status(w, r.key)
+        assert len(stt["arms_done"]) == len(P.ALL_ARMS)
+        if out2.actions[r.key] == "resume_arms":
+            assert r.host == victim.name and r.result["phase"] == "resume"
+            assert stt["attempt"] == 1
+    assert w.swept or all(a == "resume_arms" for a in out2.actions.values()
+                          if a != "skip")
+
+
+def test_host_down_event_stops_loops_at_the_next_call(tmp_path, fake_env):
+    import threading
+    ev = threading.Event()
+    ev.set()
+    cfg = cfg_for(tmp_path)
+    cfg.stop_event = ev
+    res = L.run_base(cfg, M.StubModel([{"bash": "x"}] * 5), inv=None)
+    assert res.end == L.END_STOPPED and res.error == "host down" and res.n_calls == 0
 
 
 # ------------------------------------------------------------------------------------------

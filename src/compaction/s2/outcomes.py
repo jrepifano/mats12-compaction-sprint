@@ -19,6 +19,7 @@ separately for the visible log.
 from __future__ import annotations
 
 import json
+from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 
 from compaction import seal
@@ -67,10 +68,13 @@ def score_traps(home: Path, rules: R.TaskRules, channel: str) -> dict:
     return row
 
 
-def grade_patch(task, patch: bytes, run_id: str) -> dict:
+def grade_patch(task, patch: bytes, run_id: str, host: str | None = None,
+                slot: AbstractContextManager | None = None) -> dict:
+    """Grade on the run's own host, holding one of its container slots."""
     try:
-        rew, _ = grade(task.image, task.tests_dir, patch, C.PURPOSE, run_id=run_id,
-                       platform=C.PLATFORM or None)
+        with slot or nullcontext():
+            rew, _ = grade(task.image, task.tests_dir, patch, C.PURPOSE, run_id=run_id,
+                           platform=C.PLATFORM or None, host=host)
     except VerifierError as e:
         return {"reward": None, "grade_error": str(e)[:1000]}
     f2p = rew["f2p_passed"] / rew["f2p_total"] if rew["f2p_total"] else None
@@ -80,16 +84,19 @@ def grade_patch(task, patch: bytes, run_id: str) -> dict:
 
 
 def arm_outcome(arm_res, task, rules: R.TaskRules, channel: str, run_id: str,
-                do_grade: bool = True) -> dict:
+                do_grade: bool = True, host_name: str | None = None,
+                docker_host: str | None = None,
+                slot: AbstractContextManager | None = None) -> dict:
     home = Path(arm_res.traps_home)
-    row = {"run_key": arm_res.run_key, "arm": arm_res.arm, "rep": arm_res.rep}
+    row = {"run_key": arm_res.run_key, "arm": arm_res.arm, "rep": arm_res.rep,
+           "host": host_name}
     row |= score_traps(home, rules, channel)
     row["files_changed_since_fork"] = files_changed(home)
     row["submitted_early"] = arm_res.submitted_before_closing
     row["leftover_committed"] = arm_res.leftover_committed
     if do_grade:
         patch = (home.parent / "model.patch").read_bytes()
-        row |= grade_patch(task, patch, run_id)
+        row |= grade_patch(task, patch, run_id, host=docker_host, slot=slot)
     return row
 
 
@@ -97,3 +104,11 @@ def seal_outcomes(run_key: str, rows: list[dict], *, root=None,
                   release_name: str = "main") -> Path:
     return seal.write(C.SEAL_STAGE, f"outcomes-{run_key}.jsonl", rows, release_name=release_name,
                       root=root)
+
+
+def seal_arm(run_key: str, slug: str, rep: int, row: dict, *, root=None,
+             release_name: str = "main") -> Path:
+    """One arm's row, sealed as soon as it is scored, so a host that drops mid-run loses only
+    the arms still in flight."""
+    return seal.write(C.SEAL_STAGE, f"outcome-{run_key}-{slug}-{rep}.json", row,
+                      release_name=release_name, root=root)

@@ -88,6 +88,7 @@ class RunConfig:
     run_cap_usd: float = 0.0
     continuation_calls: int = C.CONTINUATION_CALLS
     closing_calls: int = C.CLOSING_CALLS
+    stop_event: threading.Event | None = None  # the run's host went down: stop at next call
 
     def __post_init__(self) -> None:
         self.policy = self.policy or self.route.summarizer
@@ -109,6 +110,7 @@ class Loop:
     submitted: bool = False
     asks: int = 0
     bash_calls: int = 0
+    stop: threading.Event | None = None
 
     def append(self, msgs: list[dict]) -> None:
         self.messages.extend(msgs)
@@ -119,6 +121,8 @@ class Loop:
         when the runner is shutting down."""
         if STOP.is_set():
             raise Stopped("runner stopping")
+        if self.stop is not None and self.stop.is_set():
+            raise Stopped("host down")
         r = self.model.route
         t0 = time.monotonic()
         reply = self.model.complete(list(self.messages), TOOLS, r.max_output,
@@ -227,7 +231,8 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
         res.rules = rules.to_dict()
         _dump(cfg.out_dir / "rules.json", rules.to_dict())
         _dump(cfg.out_dir / "consent_spec.json", R.consent_spec(rules, cfg.channel).to_dict())
-        loop = Loop(opening_messages(cfg, rules, agents), model, env, "base")
+        loop = Loop(opening_messages(cfg, rules, agents), model, env, "base",
+                    stop=cfg.stop_event)
         loop.ctx_tokens = est_tokens(loop.messages, model.route.bytes_per_token)
         delivered, dtok = 0, 0
         while True:
@@ -256,8 +261,8 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
             res.boundary = make_boundary(cfg, loop, env, inv, rules, agents)
     except ModelError as e:
         res.end, res.error = END_ERROR, f"ModelError: {e}"
-    except Stopped:
-        res.end, res.error = END_STOPPED, "runner stopping"
+    except Stopped as e:
+        res.end, res.error = END_STOPPED, str(e)
     except Exception:  # noqa: BLE001 - recorded; the container is still removed below
         res.end, res.error = END_ERROR, traceback.format_exc()[-6000:]
     finally:
@@ -362,7 +367,7 @@ def run_arm(cfg: RunConfig, arm: str, rep: int, model: ChatModel, inv, *, lost: 
     try:
         ctx = arm_context(arm, cfg, lost, rules)
         env = TaskEnv.fork(inv, boundary["tag"], cfg.task, out)
-        loop = Loop(list(ctx), model, env, f"arm:{arm_slug(arm)}:{rep}")
+        loop = Loop(list(ctx), model, env, f"arm:{arm_slug(arm)}:{rep}", stop=cfg.stop_event)
         loop.ctx_tokens = est_tokens(ctx, model.route.bytes_per_token)
         start_len = len(ctx)
         k = 0
@@ -393,8 +398,8 @@ def run_arm(cfg: RunConfig, arm: str, rep: int, model: ChatModel, inv, *, lost: 
             _dump(out / "continuation.json", loop.messages[start_len:])
     except ModelError as e:
         res.error = f"ModelError: {e}"
-    except Stopped:
-        res.end, res.error = END_STOPPED, "runner stopping"
+    except Stopped as e:
+        res.end, res.error = END_STOPPED, str(e)
     except Exception:  # noqa: BLE001
         res.error = traceback.format_exc()[-6000:]
     finally:
