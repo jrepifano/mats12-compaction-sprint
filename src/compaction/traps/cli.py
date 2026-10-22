@@ -60,8 +60,11 @@ def take_snapshot(home: str, label: str) -> dict:
         cfg = json.load(f)
     ws = cfg["workspace"]
     # Untracked build outputs the harness chose to skip (setup --snapshot-ignore), e.g. Rust's
-    # target/: the same list for every snapshot of the run, set before `setup` is taken.
-    extra = list(cfg.get("snapshot_extra_ignore") or [])
+    # target/, except protected paths inside them (--snapshot-force-include): the same lists for
+    # every snapshot of the run, set before `setup` is taken.
+    soft = list(cfg.get("snapshot_extra_ignore") or [])
+    force = list(cfg.get("snapshot_force_include") or [])
+    extra = []
     rel = os.path.relpath(p["home"], ws)
     if not rel.startswith(".."):
         extra.append(rel.replace(os.sep, "/"))
@@ -75,7 +78,7 @@ def take_snapshot(home: str, label: str) -> dict:
 
     # Log positions at this snapshot: events after a fork are the lines after these offsets.
     offsets = {"shim": n_lines(p["shim_log"]), "push": n_lines(p["push_log"])}
-    snap = snapshot.snapshot(ws, extra_ignore=extra)
+    snap = snapshot.snapshot(ws, extra_ignore=extra, soft_ignore=soft, force_include=force)
     snap["taken_at"] = taken_at
     snap["log_offsets"] = offsets
     snapshot.save(snap, os.path.join(p["state"], f"fs_{label}.json"))
@@ -121,7 +124,7 @@ def record_harness_commits(home: str, revs=("HEAD",)) -> list:
 def setup(home: str, workspace: str, spec: consent.ConsentSpec | None = None,
           branches=(), remote: bool = True, python: str | None = None,
           commands=shim.DEFAULT_COMMANDS, profile_d: str | None = None,
-          commit_consent: bool = True, snapshot_ignore=()) -> dict:
+          commit_consent: bool = True, snapshot_ignore=(), snapshot_force_include=()) -> dict:
     """Install shims and ask_user, write consent files, build the mocked remote, and take
     the `setup` snapshot. Returns the config written to <home>/config.json.
 
@@ -133,7 +136,8 @@ def setup(home: str, workspace: str, spec: consent.ConsentSpec | None = None,
     real = shim.install_shims(p["bin"], p["shim_log"], commands=commands, python=python)
     ask_user.install_ask_user_cli(p["bin"], p["ask_log"], python=python)
     cfg = {"home": p["home"], "workspace": ws, "shims": real, "push_log_available": False,
-           "created_at": utc_now(), "snapshot_extra_ignore": list(snapshot_ignore)}
+           "created_at": utc_now(), "snapshot_extra_ignore": list(snapshot_ignore),
+           "snapshot_force_include": list(snapshot_force_include)}
     if spec is not None:
         rendered = consent.render(spec)
         cfg["consent_files"] = consent.apply_files(rendered, ws)
@@ -187,7 +191,11 @@ def main(argv=None) -> int:
     s.add_argument("--commands", help="comma-separated commands to shim")
     s.add_argument("--profile-d")
     s.add_argument("--snapshot-ignore", default="",
-                   help="comma-separated path globs every snapshot skips (untracked build dirs)")
+                   help="comma-separated directory globs whose files every snapshot skips "
+                        "(untracked build dirs), except files matching --snapshot-force-include")
+    s.add_argument("--snapshot-force-include", default="",
+                   help="comma-separated path globs recorded even inside --snapshot-ignore dirs "
+                        "(protected paths)")
     h = sub.add_parser("harness-commit", help="record harness-made commits by SHA")
     h.add_argument("--home", required=True)
     h.add_argument("--rev", action="append", help="default: HEAD of the workspace")
@@ -214,7 +222,8 @@ def main(argv=None) -> int:
         cmds = a.commands.split(",") if a.commands else shim.DEFAULT_COMMANDS
         cfg = setup(a.home, a.workspace, spec, branches=branches, remote=not a.no_remote,
                     python=a.python, commands=cmds, profile_d=a.profile_d,
-                    snapshot_ignore=[g for g in a.snapshot_ignore.split(",") if g])
+                    snapshot_ignore=[g for g in a.snapshot_ignore.split(",") if g],
+                    snapshot_force_include=[g for g in a.snapshot_force_include.split(",") if g])
         print(json.dumps({"ok": True, "shims": sorted(cfg["shims"]),
                           "remote": bool(cfg.get("remote"))}))
         return 0

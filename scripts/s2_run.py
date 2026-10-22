@@ -17,11 +17,20 @@ to hosts by DeepSWE task; a run's arms always share its host.
         resume after a dropped host. Exit 3 if any host still has an emx.sandbox=sprint-s2
         container afterwards.
     uv run python scripts/s2_run.py pilot --go-from-jacob [--only ORDER,...] [--hosts ...]
+            [--followup-fallback] [--followons --labels labels.json]
         The paid pilot (SPRINT-S2 through compaction.budget, which books only from the
-        designated checkout). Idempotent: rerunning it resumes failed, stopped or host-dropped
-        runs (missing arms on the same host, else a new attempt). The flag records Jacob's go.
+        designated checkout; each run also reserves against its own cap). Idempotent: rerunning
+        it resumes failed, stopped or host-dropped runs (missing arms on the same host, else a
+        new attempt). The flag records Jacob's go. Follow-up volumes come from the frozen S1
+        distribution (results/sprint/S2/followup_distribution.json, or SPRINT_S2_FOLLOWUP_DIST);
+        without it the command refuses, unless --followup-fallback is given, which uses the
+        placeholder levels and records that in every run. --followons plans and runs the
+        replacement and threshold-fallback runs the gate calls for (compaction.s2.followon),
+        persisted in results/sprint/S2/followons.json.
     uv run python scripts/s2_run.py haiku-peak --go-from-jacob [--cap-usd 5]
-        One uncompacted Haiku run on the first pilot task, to measure its peak.
+            [--followup-fallback]
+        One uncompacted Haiku run on the first pilot task, to measure its peak; its run-level
+        books stop it before any call that could take it past the cap.
     uv run python scripts/s2_run.py gate [--labels labels.json] [--telemetry PATH]
         Tiers, coverage and per-channel Q2 yield from telemetry, the code retention precheck and
         any judge or hand labels. Reads no outcome field.
@@ -43,6 +52,9 @@ from pathlib import Path
 
 from compaction.deepswe.sandbox import Invocation
 from compaction.s2 import config as C
+from compaction.s2 import followon as FO
+from compaction.s2 import followups as FU
+from compaction.s2 import gate as G
 from compaction.s2 import hosts as H
 from compaction.s2 import loop as LOOP
 from compaction.s2 import pilot as P
@@ -50,7 +62,7 @@ from compaction.s2 import rules as R
 from compaction.s2 import stubs
 from compaction.s2 import tasks as T
 from compaction.s2.env import NOSHIM, line_counts
-from compaction.s2.model import OpenAICompatModel, SprintSpend
+from compaction.s2.model import NullSpend, OpenAICompatModel, RunSpend, SprintSpend
 
 DRY_TASKS = ("koota-pair-relation-tracking", "wasmi-trap-coredumps")
 DRY_CHANNELS = ("chat", "readme")
@@ -158,17 +170,21 @@ def cmd_dryrun(a) -> int:
         info = T.task_info(task_id, rank_rows=rows)
         cohort = T.CohortRun(i, task_id, info.rank or 0, "stub", DRY_CHANNELS[i % 2], "dryrun")
         plan = P.RunPlan(cohort, info, a.threshold, root, base_max_calls=60,
-                         policy=a.policy or DRY_POLICIES[i % len(DRY_POLICIES)])
-        jobs.append(P.CohortJob(plan, route, stubs.factory(task_id)))
+                         policy=a.policy or DRY_POLICIES[i % len(DRY_POLICIES)],
+                         followup_source=FU.fallback_source("dryrun"))
+        jobs.append(P.CohortJob(plan, route, stubs.factory(task_id),
+                                RunSpend(NullSpend(), None)))
     out = P.run_cohort(jobs, pool, results_root=root / "results",
                        arm_concurrency=a.arm_concurrency, do_grade=not a.no_grade,
                        release_name="dryrun")
     return report(out, pool)
 
 
-def _paid_factory(route: C.Route):
-    shared = OpenAICompatModel(route, SprintSpend())
-    return lambda _phase, _rep: shared
+def _paid_job(plan: P.RunPlan, route: C.Route, cap_usd: float) -> P.CohortJob:
+    """One model per run, over the run's own books (cap) on top of the stage books."""
+    spend = RunSpend(SprintSpend(), cap_usd)
+    model = OpenAICompatModel(route, spend)
+    return P.CohortJob(plan, route, lambda _phase, _rep: model, spend)
 
 
 def _require_go(a) -> bool:
@@ -179,6 +195,22 @@ def _require_go(a) -> bool:
     return True
 
 
+def _followups(a) -> tuple[list | None, dict] | None:
+    """(distribution, provenance) for paid runs, or None to refuse (review r1 #8)."""
+    path = C.followup_dist_path()
+    if path.exists():
+        draws, prov = FU.load_distribution(path)
+        return draws, prov
+    if a.followup_fallback:
+        print(f"WARNING: {path} missing; using the placeholder follow-up levels "
+              "(--followup-fallback), recorded in every run")
+        return None, FU.fallback_source("--followup-fallback")
+    print(f"refusing: no frozen follow-up distribution at {path} (S1's verbatim-budget check "
+          "writes it with followups.write_distribution); pass --followup-fallback to use the "
+          "placeholder levels instead")
+    return None
+
+
 def _check_frozen(tasks: list[str]) -> bool:
     missing = [t for t in tasks if not (C.rules_dir() / f"{t}.json").exists()]
     if missing:
@@ -186,23 +218,71 @@ def _check_frozen(tasks: list[str]) -> bool:
     return not missing
 
 
+def _telemetry() -> list[dict]:
+    path = P.s2_dir(C.REPO_ROOT / "results") / "telemetry.jsonl"
+    if not path.exists():
+        return []
+    return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+
+
+def followon_runs(labels: dict) -> list[T.CohortRun] | None:
+    """Plan (or re-read) the follow-on runs the gate calls for; persists the per-model state."""
+    rows = T.ranking()
+    tele = _telemetry()
+    out = G.evaluate(tele, labels)
+    done = [{"model": t["model"], "channel": t["channel"], "task": t["task"]}
+            for t in G.latest_attempts(tele)]
+    state_path = P.s2_dir(C.REPO_ROOT / "results") / FO.STATE_NAME
+    state = FO.load_state(state_path)
+    root = C.raw_dir() / "pilot"
+    finished = {}
+    for m, ms in state.get("models", {}).items():
+        keys = [FO.cohort_run(r).run_key() for r in ms.get("runs", [])]
+        finished[m] = all((P.read_status(root / k) or {}).get("state") == "complete"
+                          for k in keys)
+    pilot_tasks = []
+    for c in T.pilot_cohort(rows):
+        if c.task not in {t["task"] for t in pilot_tasks}:
+            pilot_tasks.append({"task": c.task, "rank": c.rank})
+    planned, new_state = FO.plan(out["coverage"], done, T.replacements(rows), pilot_tasks,
+                                 state, finished)
+    FO.save_state(state_path, new_state)
+    print(json.dumps({"coverage": out["coverage"], "followons": planned,
+                      "excluded": [m for m, v in new_state["models"].items()
+                                   if v.get("excluded")]}, indent=1))
+    return planned
+
+
 def cmd_pilot(a) -> int:
     if not _require_go(a):
         return 2
+    fu = _followups(a)
+    if fu is None:
+        return 2
+    dist, prov = fu
     rows = T.ranking()
-    cohort = T.pilot_cohort(rows)
-    if a.only:
-        keep = {int(x) for x in a.only.split(",")}
-        cohort = [c for c in cohort if c.order in keep]
+    thresholds = {}
+    if a.followons:
+        labels = json.loads(Path(a.labels).read_text()) if a.labels else {}
+        planned = followon_runs(labels)
+        cohort = [FO.cohort_run(r) for r in planned]
+        thresholds = {FO.cohort_run(r).run_key(): r["threshold"] for r in planned}
+    else:
+        cohort = T.pilot_cohort(rows)
+        if a.only:
+            keep = {int(x) for x in a.only.split(",")}
+            cohort = [c for c in cohort if c.order in keep]
     if not _check_frozen(sorted({c.task for c in cohort})):
         return 2
     pool = make_pool(a)
     jobs = []
     for c in cohort:
         route = C.ROUTES[c.model]
-        plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), C.threshold_for(c.model),
-                         C.raw_dir() / "pilot", run_cap_usd=C.RUN_CAP_USD[c.model])
-        jobs.append(P.CohortJob(plan, route, _paid_factory(route)))
+        plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows),
+                         thresholds.get(c.run_key(), C.threshold_for(c.model)),
+                         C.raw_dir() / "pilot", run_cap_usd=C.RUN_CAP_USD[c.model],
+                         followup_distribution=dist, followup_source=prov)
+        jobs.append(_paid_job(plan, route, C.RUN_CAP_USD[c.model]))
     out = P.run_cohort(jobs, pool, results_root=C.REPO_ROOT / "results",
                        arm_concurrency=a.arm_concurrency)
     return report(out, pool)
@@ -211,6 +291,10 @@ def cmd_pilot(a) -> int:
 def cmd_haiku_peak(a) -> int:
     if not _require_go(a):
         return 2
+    fu = _followups(a)
+    if fu is None:
+        return 2
+    dist, prov = fu
     rows = T.ranking()
     first = T.pilot_cohort(rows)[0]
     c = T.CohortRun(99, first.task, first.rank, "haiku", "agents_md", "haiku_peak")
@@ -219,8 +303,8 @@ def cmd_haiku_peak(a) -> int:
     pool = make_pool(a)
     route = C.ROUTES["haiku"]
     plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), 10**9, C.raw_dir() / "pilot",
-                     run_cap_usd=a.cap_usd)
-    out = P.run_cohort([P.CohortJob(plan, route, _paid_factory(route))], pool,
+                     run_cap_usd=a.cap_usd, followup_distribution=dist, followup_source=prov)
+    out = P.run_cohort([_paid_job(plan, route, a.cap_usd)], pool,
                        results_root=C.REPO_ROOT / "results")
     return report(out, pool)
 
@@ -265,8 +349,14 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--go-from-jacob", action="store_true")
         p.add_argument("--hosts")
         p.add_argument("--arm-concurrency", type=int, default=4)
+        p.add_argument("--followup-fallback", action="store_true",
+                       help="use the placeholder follow-up levels when S1's frozen "
+                            "distribution is missing (recorded in every run)")
         if name == "pilot":
             p.add_argument("--only")
+            p.add_argument("--followons", action="store_true",
+                           help="plan and run the replacement / threshold-fallback runs")
+            p.add_argument("--labels", help="retention labels for --followons")
         else:
             p.add_argument("--cap-usd", type=float, default=5.0)
     g = sub.add_parser("gate")

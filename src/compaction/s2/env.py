@@ -94,25 +94,6 @@ class Observation:
     truncated: bool
 
 
-def truncate(text: str, limit: int = C.OBS_MAX_CHARS) -> tuple[str, bool]:
-    if len(text) <= limit:
-        return text, False
-    half = limit // 2
-    return (f"{text[:half]}\n<elided_chars>{len(text) - 2 * half} characters elided"
-            f"</elided_chars>\n{text[-half:]}"), True
-
-
-def render_observation(o: Observation) -> str:
-    """The tool result text (mini-swe-agent style: return code, then output)."""
-    head = ""
-    if o.timed_out:
-        head = f"<warning>The command timed out after {C.CMD_TIMEOUT_S} seconds.</warning>\n"
-    elif o.truncated:
-        head = ("<warning>The output of your last command was too long; the middle was elided. "
-                "Use head, tail, grep or sed to see less output at a time.</warning>\n")
-    return f"{head}<returncode>{o.rc}</returncode>\n<output>\n{o.output}</output>"
-
-
 def line_counts(patch_text: str) -> dict[str, int]:
     out: dict[str, int] = {}
     cur = None
@@ -131,6 +112,7 @@ class TaskEnv:
     out_dir: Path
     timings: list[dict] = field(default_factory=list)
     log: list[dict] = field(default_factory=list)
+    uname: dict = field(default_factory=dict)  # the container's, for mini-swe-agent's template
 
     # --- lifecycle ---------------------------------------------------------------------------
     @classmethod
@@ -141,21 +123,28 @@ class TaskEnv:
         sb = inv.start(image or task.image, platform=C.PLATFORM or None, cpus=C.CPUS,
                        memory_mb=C.MEMORY_MB, network="none", lifetime_s=C.LIFETIME_S)
         env = cls(sb, task, Path(out_dir))
-        env.timings.append({"op": "start", "seconds": sb.log[-1]["seconds"]})
-        env.harness(f"git config --global user.name {shlex.quote(C.AGENT_NAME)} && "
-                    f"git config --global user.email {C.AGENT_EMAIL} && "
-                    "git config --global --add safe.directory '*'")
-        tracked = env.harness("git ls-files", check=True).output.split("\n")
-        tracked = [t for t in tracked if t]
-        sol = Path(task.task_dir) / "solution" / "solution.patch"
-        counts = line_counts(sol.read_text(errors="replace")) if sol.exists() else {}
-        rules = R.render(task.task_id, task.language, tracked, task.solution_files, counts)
-        check_frozen(rules)
-        if channel in ("agents_md", "readme"):
-            fname = INSTRUCTION_FILE if channel == "agents_md" else "README.md"
-            env.append_and_commit(fname, rules.section())
-        env.install_traps(snapshot_ignore(tracked))
-        agents = env.read_text(f"{C.WORKSPACE}/{INSTRUCTION_FILE}")
+        try:
+            env.timings.append({"op": "start", "seconds": sb.log[-1]["seconds"]})
+            env.harness(f"git config --global user.name {shlex.quote(C.AGENT_NAME)} && "
+                        f"git config --global user.email {C.AGENT_EMAIL} && "
+                        "git config --global --add safe.directory '*'")
+            u = env.harness("uname -s; uname -r; uname -v; uname -m", check=True)
+            env.uname = dict(zip(("system", "release", "version", "machine"),
+                                 u.output.splitlines(), strict=False))
+            tracked = env.harness("git ls-files", check=True).output.split("\n")
+            tracked = [t for t in tracked if t]
+            sol = Path(task.task_dir) / "solution" / "solution.patch"
+            counts = line_counts(sol.read_text(errors="replace")) if sol.exists() else {}
+            rules = R.render(task.task_id, task.language, tracked, task.solution_files, counts)
+            check_frozen(rules)
+            if channel in ("agents_md", "readme"):
+                fname = INSTRUCTION_FILE if channel == "agents_md" else "README.md"
+                env.append_and_commit(fname, rules.section())
+            env.install_traps(snapshot_ignore(tracked), force=list(rules.r3_globs))
+            agents = env.read_text(f"{C.WORKSPACE}/{INSTRUCTION_FILE}")
+        except BaseException:
+            env.close()  # releases the host slot whatever failed (review r1 #1)
+            raise
         return env, rules, agents
 
     @classmethod
@@ -191,7 +180,7 @@ class TaskEnv:
                      f"-m 'Add rules for this task' -- {shlex.quote(rel)}", check=True)
         self.log.append({"op": "rules_commit", "file": rel})
 
-    def install_traps(self, ignore: list[str] = ()) -> None:
+    def install_traps(self, ignore: list[str] = (), force: list[str] = ()) -> None:
         t0 = time.monotonic()
         with tempfile.TemporaryDirectory() as tmp:
             dst = Path(tmp) / "traps"
@@ -201,11 +190,12 @@ class TaskEnv:
         r = self.harness(f"{TRAPS_PY} setup --home {C.TRAPS_HOME} --workspace {C.WORKSPACE} "
                          f"--branches {C.TRAPS_HOME}/branches.json "
                          "--profile-d /etc/profile.d/00-traps.sh "
-                         f"--snapshot-ignore {shlex.quote(','.join(ignore))}",
+                         f"--snapshot-ignore {shlex.quote(','.join(ignore))} "
+                         f"--snapshot-force-include {shlex.quote(','.join(force))}",
                          timeout_s=600, check=True)
         self.timings.append({"op": "traps_setup", "seconds": time.monotonic() - t0})
         self.log.append({"op": "traps_setup", "out": r.output[-500:],
-                         "snapshot_ignore": list(ignore)})
+                         "snapshot_ignore": list(ignore), "snapshot_force_include": list(force)})
 
     def trap_snapshot(self, label: str) -> float:
         t0 = time.monotonic()
@@ -217,10 +207,12 @@ class TaskEnv:
 
     # --- the agent's tools -------------------------------------------------------------------
     def run_agent_command(self, cmd: str) -> Observation:
+        """The full output (mini-swe-agent's observation template cuts it to head and tail)."""
         t0 = time.monotonic()
         r = self.sb.exec("exec 2>&1\n" + cmd, timeout_s=C.CMD_TIMEOUT_S, workdir=C.WORKSPACE)
-        out, cut = truncate(r.stdout + r.stderr)
-        return Observation(r.rc, out, time.monotonic() - t0, r.timed_out, cut)
+        out = r.stdout + r.stderr
+        return Observation(r.rc, out, time.monotonic() - t0, r.timed_out,
+                           len(out) >= C.OBS_MAX_CHARS)
 
     def ask_user(self, question: str, action: str | None) -> str:
         cmd = f"ask_user {shlex.quote(question or '(no question)')}"
@@ -252,8 +244,11 @@ class TaskEnv:
         return {"tag": tag, "stopped_processes": stopped, "snapshot_s": secs}
 
     def finish(self) -> dict:
-        """Final trap snapshot, copy the trap home out, harness-commit leftovers, collect the
-        patch. Returns {"traps_home", "leftover_committed", "patch"}."""
+        """Quiesce, then the final trap snapshot, copy the trap home out, harness-commit
+        leftovers, collect the patch: evidence and patch come from one stable tree (no process
+        left to change it in between; review r1 #5). Returns {"traps_home",
+        "leftover_committed", "patch", "stopped_processes"}."""
+        stopped = self.quiesce()
         self.trap_snapshot("final")
         home = self.export_traps_home()
         st = self.harness("git status --porcelain --untracked-files=all", check=True)
@@ -266,7 +261,8 @@ class TaskEnv:
         patch = collect_patch(self.sb, NOSHIM + self.task.collect_command)
         self.timings.append({"op": "collect", "seconds": time.monotonic() - t0})
         (self.out_dir / "model.patch").write_bytes(patch)
-        return {"traps_home": str(home), "leftover_committed": leftover, "patch": patch}
+        return {"traps_home": str(home), "leftover_committed": leftover, "patch": patch,
+                "stopped_processes": stopped}
 
     def export_traps_home(self) -> Path:
         self.harness(f"tar czf /tmp/s2_traps.tgz -C {Path(C.TRAPS_HOME).parent} "

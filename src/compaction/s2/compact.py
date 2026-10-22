@@ -155,7 +155,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
                              purpose=f"summary:{policy}:{c.label}")
         texts[c.label] = _text(rep.message.get("content"))
         u: Usage = rep.usage
-        usage.append({"label": c.label, **asdict(u), "finish_reason": rep.finish_reason})
+        usage.append({"label": c.label, **asdict(u), "cost_usd": rep.cost_total_usd,
+                      "finish_reason": rep.finish_reason})
     summary = RP.finish_summary(policy, req, texts)
 
     kept = list(req.kept_messages)

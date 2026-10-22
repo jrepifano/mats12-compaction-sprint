@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import threading
 from collections import defaultdict
@@ -28,7 +29,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from compaction.deepswe.sandbox import Invocation, Sandbox, docker_argv
+from compaction.deepswe import sandbox as SBX
+from compaction.deepswe.sandbox import Invocation, Sandbox, SandboxError, docker_argv
 
 HOSTS_ENV = "SPRINT_S2_HOSTS"
 PROBE_TIMEOUT_S = 20
@@ -129,21 +131,76 @@ def list_ours(host: Host, label: str) -> dict | None:
 
 
 # ------------------------------------------------------------------------------------------
-# Container slots
+# Transport failures, container slots
 # ------------------------------------------------------------------------------------------
+
+# Messages from the docker client (not from commands inside the container: agent commands run
+# with stderr merged into stdout, so the client's stderr carries only its own errors).
+TRANSPORT_PATTERNS = re.compile(
+    r"cannot connect to the docker daemon|error during connect|connection refused|"
+    r"connection reset|broken pipe|no route to host|i/o timeout|ssh: |ssh_exchange|"
+    r"context deadline exceeded|is the docker daemon running|host is down|"
+    r"unexpected eof|network is unreachable", re.IGNORECASE)
+
+
+def is_transport_error(text: str) -> bool:
+    return bool(TRANSPORT_PATTERNS.search(text or ""))
+
+
+class HostDown(SandboxError):
+    """The run's host is marked down: no new container starts there."""
 
 
 @dataclass
 class SlotSandbox(Sandbox):
+    """A sandbox that holds one of its host's container slots until closed (idempotently), and
+    reports transport failures to the pool at the failing operation."""
+
     release: Callable[[], None] | None = None
+    host_down: threading.Event | None = None
+    on_transport: Callable[[], bool] | None = None  # probes the host; marks it down
+
+    def _guarded(self, args, timeout, input_bytes=None):
+        """As Sandbox._guarded, but a client timeout or a transport error probes the host first,
+        so a dead host is marked down before any (deferred) removal is attempted."""
+        if self.host_down is not None and self.host_down.is_set():
+            raise HostDown(f"host of {self.name} is down")
+        with SBX.using_host(self.host):
+            try:
+                p = SBX._docker(args, timeout=timeout, check=False, input_bytes=input_bytes)
+            except subprocess.TimeoutExpired:
+                self._transport("client timeout", timed_out=True)
+                self.close()
+                raise SandboxError(f"client timeout on {self.name}; sandbox removed or "
+                                   "removal deferred") from None
+            except BaseException:
+                self.close()
+                raise
+        if p.returncode != 0:
+            err = p.stderr.decode(errors="replace") if isinstance(p.stderr, bytes) else p.stderr
+            if is_transport_error(err):
+                self._transport(err)
+                if self.host_down is not None and self.host_down.is_set():
+                    self.release_slot()
+                    raise HostDown(f"host of {self.name} went down: {err[-300:]}")
+        return p
+
+    def _transport(self, text: str, timed_out: bool = False) -> None:
+        if self.on_transport is not None and (timed_out or is_transport_error(text)):
+            self.on_transport()
 
     def close(self) -> bool:
         try:
+            if self.host_down is not None and self.host_down.is_set():
+                return False  # remote removal deferred to the pending sweep
             return super().close()
         finally:
-            r, self.release = self.release, None
-            if r is not None:
-                r()
+            self.release_slot()
+
+    def release_slot(self) -> None:
+        r, self.release = self.release, None
+        if r is not None:
+            r()
 
 
 @dataclass
@@ -151,20 +208,41 @@ class HostInvocation(Invocation):
     """An Invocation on one host whose every container holds one of the host's slots."""
 
     slots: threading.BoundedSemaphore | None = None
+    host_down: threading.Event | None = None
+    on_transport: Callable[[], bool] | None = None
 
     def start(self, image: str, **kw) -> Sandbox:
+        if self.host_down is not None and self.host_down.is_set():
+            raise HostDown(f"host {self.host} is down; not starting {image}")
         kw.setdefault("host", self.host)
         if self.slots is not None:
             self.slots.acquire()
         try:
             sb = SlotSandbox.start(image, self.purpose, run_id=self.run_id, **kw)
-        except BaseException:
+        except BaseException as e:
             if self.slots is not None:
                 self.slots.release()
+            if self.on_transport is not None and is_transport_error(str(e)):
+                self.on_transport()
             raise
         sb.release = self.slots.release if self.slots is not None else None
+        sb.host_down, sb.on_transport = self.host_down, self.on_transport
         self.sandboxes.append(sb)
         return sb
+
+    def release_slots(self) -> None:
+        """Release every slot still held by this invocation's sandboxes (idempotent)."""
+        for sb in self.sandboxes:
+            if isinstance(sb, SlotSandbox):
+                sb.release_slot()
+
+    def cleanup(self) -> list[str]:
+        try:
+            if self.host_down is not None and self.host_down.is_set():
+                return []  # the caller defers the remote sweep; slots are released below
+            return super().cleanup()
+        finally:
+            self.release_slots()
 
 
 # ------------------------------------------------------------------------------------------
@@ -231,7 +309,8 @@ class HostPool:
     def invocation(self, name: str, purpose: str, run_id: str | None = None) -> HostInvocation:
         kw = {"run_id": run_id} if run_id else {}
         return HostInvocation(purpose, host=self.by_name[name].docker_host,
-                              slots=self.slots[name], **kw)
+                              slots=self.slots[name], host_down=self.down[name],
+                              on_transport=lambda: self.check(name), **kw)
 
     @contextmanager
     def slot(self, name: str):
@@ -246,7 +325,8 @@ class HostPool:
         """task -> host name. `fixed` tasks keep their host (task affinity: a task with a run
         already on an up host stays there). The rest go, largest first, to the up host with the
         lowest load per run slot."""
-        fixed = {t: h for t, h in (fixed or {}).items() if not self.is_down(h)}
+        fixed = {t: h for t, h in (fixed or {}).items()
+                 if h in self.by_name and not self.is_down(h)}
         up = self.up_hosts()
         if not up:
             raise RuntimeError("no Docker host is up")

@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -33,10 +34,16 @@ _TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 529)
 
 
 class ModelError(RuntimeError):
+    """A call that produced no reply. `cost_usd` is everything its attempts were charged."""
+
     def __init__(self, msg: str, cost_usd: float = 0.0, status: int | None = None):
         super().__init__(msg)
         self.cost_usd = cost_usd
         self.status = status
+
+
+class RunCapReached(ModelError):
+    """The next attempt's bound would take the run past its cap; nothing was sent."""
 
 
 @dataclass
@@ -57,6 +64,11 @@ class Reply:
     latency_s: float = 0.0
     attempts: int = 1
     model: str | None = None
+    cost_total_usd: float | None = None  # every attempt's charge, failed retries included
+
+    def __post_init__(self) -> None:
+        if self.cost_total_usd is None:
+            self.cost_total_usd = self.usage.cost_usd
 
 
 class ChatModel(Protocol):
@@ -101,6 +113,47 @@ class NullSpend:
 
     def cancel(self, rid: str, reason: str) -> None:
         self._open.pop(rid)
+
+
+@dataclass
+class RunSpend:
+    """Run-level books over an inner Spend (stage and sprint caps stay with the inner one):
+    every attempt reserves against the run's remaining cap before it is sent (raising
+    RunCapReached instead of sending), and `spent` sums every settled charge, failed attempts
+    included (review r1 #6). Thread-safe: a run's arms share it."""
+
+    inner: Spend
+    cap_usd: float | None = None
+    spent: float = 0.0
+    _open: dict = field(default_factory=dict)
+    _lock: threading.Lock = field(default_factory=threading.Lock)
+
+    def remaining(self) -> float | None:
+        if not self.cap_usd:
+            return None
+        return self.cap_usd - self.spent - sum(self._open.values())
+
+    def reserve(self, usd: float, note: str) -> str:
+        with self._lock:
+            left = self.remaining()
+            if left is not None and usd > left + 1e-9:
+                raise RunCapReached(f"run cap ${self.cap_usd:.2f}: ${self.spent:.4f} spent, "
+                                    f"${sum(self._open.values()):.4f} open, next bound "
+                                    f"${usd:.4f}")
+            rid = self.inner.reserve(usd, note)
+            self._open[rid] = usd
+            return rid
+
+    def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
+        self.inner.settle(rid, usd, resource=resource, units=units, note=note)
+        with self._lock:
+            self._open.pop(rid, None)
+            self.spent += usd
+
+    def cancel(self, rid: str, reason: str) -> None:
+        self.inner.cancel(rid, reason)
+        with self._lock:
+            self._open.pop(rid, None)
 
 
 @dataclass
@@ -264,6 +317,7 @@ class OpenAICompatModel:
                                 ensure_ascii=False).encode("utf-8"))
         bound = bound_usd(self.route, nbytes, max_tokens)
         last: BaseException | None = None
+        charged = 0.0  # every attempt of this call, failed ones included
         for attempt in range(1, MAX_ATTEMPTS + 1):
             rid = self.spend.reserve(bound, note=f"s2 {purpose} attempt {attempt}")
             t0 = time.monotonic()
@@ -274,10 +328,11 @@ class OpenAICompatModel:
                 charge = 0.0 if st in _UNBILLED else bound
                 self.spend.settle(rid, charge, resource=f"{self.route.name}:{self.route.model}",
                                   units=0, note=f"s2 {purpose} failed {st or type(e).__name__}")
+                charged += charge
                 last = e
                 transient = st in _TRANSIENT or st is None
                 if not transient or attempt == MAX_ATTEMPTS:
-                    raise ModelError(f"{type(e).__name__}: {str(e)[:500]}", charge, st) from e
+                    raise ModelError(f"{type(e).__name__}: {str(e)[:500]}", charged, st) from e
                 self.sleep(min(60.0, 2.0 ** attempt + random.random()))
                 continue
             usage = getattr(resp, "usage", None)
@@ -295,6 +350,7 @@ class OpenAICompatModel:
                 cost, src = self._cost(usage, prompt, cached, completion)
             self.spend.settle(rid, cost, resource=f"{self.route.name}:{self.route.model}",
                               units=prompt + completion, note=f"s2 {purpose}")
+            charged += cost
             choices = getattr(resp, "choices", None) or []
             if not choices:
                 last = ModelError("no choices", cost)
@@ -304,8 +360,8 @@ class OpenAICompatModel:
             return Reply(message=msg, usage=Usage(prompt, completion, cached, reasoning, cost, src),
                          finish_reason=getattr(ch, "finish_reason", None),
                          latency_s=time.monotonic() - t0, attempts=attempt,
-                         model=getattr(resp, "model", None))
-        raise ModelError(f"no reply after {MAX_ATTEMPTS} attempts: {last}")
+                         model=getattr(resp, "model", None), cost_total_usd=charged)
+        raise ModelError(f"no reply after {MAX_ATTEMPTS} attempts: {last}", charged)
 
 
 # ------------------------------------------------------------------------------------------

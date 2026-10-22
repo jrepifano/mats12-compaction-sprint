@@ -27,6 +27,16 @@ RAW_DIR_ENV = "SPRINT_S2_RAW_DIR"
 DEFAULT_RAW_DIR = REPO_ROOT / "data" / "raw" / "sprint" / "s2"
 
 
+FOLLOWUP_DIST_ENV = "SPRINT_S2_FOLLOWUP_DIST"
+# S1's verbatim-budget check writes this file (format: followups.load_distribution); paid runs
+# refuse to start without it unless --followup-fallback is passed (review r1 #8).
+DEFAULT_FOLLOWUP_DIST = REPO_ROOT / "results" / "sprint" / "S2" / "followup_distribution.json"
+
+
+def followup_dist_path() -> Path:
+    return Path(os.environ.get(FOLLOWUP_DIST_ENV) or DEFAULT_FOLLOWUP_DIST)
+
+
 RULES_DIR_ENV = "SPRINT_S2_RULES_DIR"
 DEFAULT_RULES_DIR = REPO_ROOT / "results" / "sprint" / "rules"  # frozen per task, committed
 
@@ -128,7 +138,12 @@ SUBMIT_TOKEN = "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"
 CMD_TIMEOUT_S = 180
 OBS_MAX_CHARS = 10_000  # longer observations keep head and tail, 5,000 chars each
 BASE_MAX_CALLS = 400  # a base run that never reaches the threshold ends here (no boundary)
-RUN_CAP_USD = {"deepseek": 1.5, "glm": 2.0, "luna": 6.0, "haiku": 6.0, "stub": 0.0}
+# Per-run caps (run books, model.RunSpend): each attempt reserves its worst-case bound (one token
+# per byte sent, ~2 bytes per token, so ~340 KB at a 169k context) before it is sent; with up to
+# 4 arm calls in flight near the threshold that holds about $0.6 (DeepSeek, peak) to $0.7
+# (Haiku) at once. Caps sit above the expected run cost (~$1-1.5) plus that headroom; the stage
+# cap ($50) is the binding limit for the pilot as a whole.
+RUN_CAP_USD = {"deepseek": 3.0, "glm": 2.5, "luna": 4.0, "haiku": 6.0, "stub": 0.0}
 
 # Arms (sprint plan S3-Q2 "Arms at the first compaction", violation-specs 2.2).
 ARMS = ("F", "S", "S+R", "S+I")

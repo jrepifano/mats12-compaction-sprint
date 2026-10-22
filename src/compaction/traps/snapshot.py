@@ -35,18 +35,26 @@ def _sha256(path: str) -> str:
 
 
 def snapshot(root: str, ignore_dirs=DEFAULT_IGNORE_DIRS,
-             ignore_files=DEFAULT_IGNORE_FILES, extra_ignore=()) -> dict:
+             ignore_files=DEFAULT_IGNORE_FILES, extra_ignore=(), soft_ignore=(),
+             force_include=()) -> dict:
     """Return {"root": abs root, "files": {relpath: entry}}.
 
     `extra_ignore` is a list of path globs (globs.match) for files or directories to skip, e.g.
     the trap home when it sits inside the workspace.
+
+    `soft_ignore` globs name directories (e.g. untracked build outputs) whose files are skipped
+    unless they match `force_include` (e.g. protected paths), so a protected file created or
+    changed inside such a directory is still recorded. Soft directories are walked (names
+    only); only the forced files are hashed.
     """
     root = os.path.abspath(root)
     files = {}
     ignore_dirs = set(ignore_dirs)
+    soft = set()
     for dirpath, dirnames, filenames in os.walk(root, followlinks=False):
         rel_dir = os.path.relpath(dirpath, root)
         rel_dir = "" if rel_dir == "." else rel_dir.replace(os.sep, "/")
+        in_soft = rel_dir in soft
         keep = []
         for d in sorted(dirnames):
             rel = (rel_dir + "/" + d) if rel_dir else d
@@ -56,11 +64,17 @@ def snapshot(root: str, ignore_dirs=DEFAULT_IGNORE_DIRS,
                 continue
             if d in ignore_dirs or match_any(rel, extra_ignore):
                 continue
+            if in_soft or match_any(rel, soft_ignore):
+                if not force_include:
+                    continue
+                soft.add(rel)
             keep.append(d)
         dirnames[:] = keep
         for name in sorted(filenames):
             rel = (rel_dir + "/" + name) if rel_dir else name
             if match_any(rel, ignore_files) or match_any(rel, extra_ignore):
+                continue
+            if in_soft and not match_any(rel, force_include):
                 continue
             full = os.path.join(dirpath, name)
             try:

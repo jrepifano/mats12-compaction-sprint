@@ -36,7 +36,7 @@ from compaction.s2 import hosts as H
 from compaction.s2 import outcomes as O
 from compaction.s2 import rules as R
 from compaction.s2.loop import RunConfig, arm_slug, run_arm, run_base
-from compaction.s2.model import ChatModel
+from compaction.s2.model import ChatModel, RunSpend
 from compaction.s2.tasks import CohortRun, TaskInfo
 
 ModelFactory = Callable[[str, int], ChatModel]  # (phase "base" or arm name, rep) -> model
@@ -56,6 +56,7 @@ class RunPlan:
     run_cap_usd: float = 0.0
     base_max_calls: int = C.BASE_MAX_CALLS
     followup_distribution: list[tuple[int, int]] | None = None
+    followup_source: dict | None = None  # where the follow-up volume came from (recorded)
     image: str | None = None
     attempt: int = 1
 
@@ -163,6 +164,8 @@ def _finish(tele: dict, plan: RunPlan, inv, pool: H.HostPool, host: H.Host,
         append_jsonl(s2_dir(results_root) / "pending_sweeps.jsonl",
                      {"ts": utc(), "run_key": plan.run_key, "run_id": inv.run_id,
                       "host": host.name, "docker_host": host.docker_host})
+        if hasattr(inv, "release_slots"):
+            inv.release_slots()  # local slots go back now; the remote sweep waits for the host
         tele["cleanup_deferred"] = True
         tele["cleanup_unconfirmed"] = []
         state = "failed_host"
@@ -185,7 +188,8 @@ def _state_from(tele: dict) -> str:
 
 def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, results_root: Path,
             pool: H.HostPool, host_name: str, arm_concurrency: int = 4, do_grade: bool = True,
-            arms: list[tuple[str, int]] | None = None, release_name: str = "main") -> dict:
+            arms: list[tuple[str, int]] | None = None, release_name: str = "main",
+            spend: RunSpend | None = None) -> dict:
     """A fresh attempt of one cohort run on `host_name`: base, boundary, every arm."""
     t0 = time.monotonic()
     host = pool.host(host_name)
@@ -202,14 +206,15 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
                     run_cap_usd=plan.run_cap_usd, stop_event=pool.down[host_name])
     tele["policy"] = cfg.policy
     tele["followups"] = {"level": script.level, "turns": script.target_turns,
-                         "tokens": script.target_tokens}
+                         "tokens": script.target_tokens, "source": plan.followup_source}
     _write(plan.out_dir / "run.json", {
         "plan": {**plan.cohort.__dict__, "threshold": plan.threshold, "policy": cfg.policy,
                  "route": route.__dict__, "base_max_calls": plan.base_max_calls,
                  "run_cap_usd": plan.run_cap_usd},
         "task": plan.task.to_dict(), "script": script.to_dict(), "started": utc(),
         "run_id": inv.run_id, "run_key": key, "cohort_key": plan.cohort_key,
-        "attempt": plan.attempt, "host": host.describe()})
+        "attempt": plan.attempt, "host": host.describe(),
+        "followup_source": plan.followup_source})
     write_status(plan.cohort_dir, state="running", attempt=plan.attempt, run_key=key,
                  host=host_name, run_id=inv.run_id, boundary_tag=None, arms_done=[])
     state = "failed"
@@ -243,15 +248,28 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
     finally:
         _finish(tele, plan, inv, pool, host, results_root, state)
         tele["seconds"] = round(time.monotonic() - t0, 3)
-        tele["cost_usd"] = round((tele.get("base") or {}).get("cost_usd", 0.0) + sum(
-            a["cost_usd"] for a in tele.get("arms", [])), 6)
+        _cost(tele, spend, plan)
         append_jsonl(s2_dir(results_root) / "telemetry.jsonl", tele)
     return tele
 
 
+def _cost(tele: dict, spend: RunSpend | None, plan: RunPlan) -> None:
+    """The run's spend: the run-level books (every attempt, failed ones included) when the run
+    has them; else the loops' own sums. Persisted in status.json so a resumed phase continues
+    against the same run cap."""
+    loops = round((tele.get("base") or {}).get("cost_usd", 0.0) + sum(
+        a["cost_usd"] for a in tele.get("arms", [])), 6)
+    tele["cost_usd_loops"] = loops
+    tele["cost_usd"] = round(spend.spent, 6) if spend is not None else loops
+    if spend is not None:
+        tele["run_cap_usd"] = spend.cap_usd
+        write_status(plan.cohort_dir, spent_usd=round(spend.spent, 6))
+
+
 def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *,
                 results_root: Path, pool: H.HostPool, arm_concurrency: int = 4,
-                do_grade: bool = True, release_name: str = "main") -> dict:
+                do_grade: bool = True, release_name: str = "main",
+                spend: RunSpend | None = None) -> dict:
     """Run the arms a run is missing, from its boundary image, on the host that holds it (the
     run's own host: a run's arms never span hosts), under the run's own run id, whose cleanup
     then removes the image."""
@@ -297,7 +315,7 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
     finally:
         _finish(tele, plan, inv, pool, host, results_root, state)
         tele["seconds"] = round(time.monotonic() - t0, 3)
-        tele["cost_usd"] = round(sum(a["cost_usd"] for a in tele.get("arms", [])), 6)
+        _cost(tele, spend, plan)
         append_jsonl(s2_dir(results_root) / "telemetry.jsonl", tele)
     return tele
 
@@ -312,6 +330,7 @@ class CohortJob:
     plan: RunPlan  # attempt 1; run_cohort bumps it for a restart
     route: C.Route
     factory: ModelFactory
+    spend: RunSpend | None = None  # the run's books, shared with the factory's model
 
 
 @dataclass
@@ -362,12 +381,14 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
                if up and st and st.get("boundary_tag") else None)
         action = H.resume_action(st, up, img)
         out.actions[j.plan.cohort_key] = action
-        if action in ("skip", "resume_arms") and h:
-            fixed.setdefault(j.plan.task.task_id, h)
+        if action in ("skip", "resume_arms") and up:
+            fixed.setdefault(j.plan.task.task_id, h)  # affinity only to a configured, live host
         if action == "resume_arms":
             keep.add(st["run_id"])
         if action == "restart":
             j.plan.attempt = int(st.get("attempt") or 1) + 1
+        if action == "resume_arms" and j.spend is not None:
+            j.spend.spent = float(st.get("spent_usd") or 0.0)  # same attempt, same run cap
         if action != "skip":
             todo.append((j, action))
     out.swept = process_pending_sweeps(pool, results_root, keep)
@@ -383,14 +404,14 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
                 return resume_arms(j.plan.cohort_dir, j.route, j.factory,
                                    results_root=results_root, pool=pool,
                                    arm_concurrency=arm_concurrency, do_grade=do_grade,
-                                   release_name=release_name)
+                                   release_name=release_name, spend=j.spend)
         else:
             host = assign[j.plan.task.task_id]
 
             def fn(h, j=j):
                 return run_one(j.plan, j.route, j.factory, results_root=results_root,
                                pool=pool, host_name=h.name, arm_concurrency=arm_concurrency,
-                               do_grade=do_grade, release_name=release_name)
+                               do_grade=do_grade, release_name=release_name, spend=j.spend)
         pjobs.append(H.Job(j.plan.cohort_key, j.plan.task.task_id, host, fn))
     out.results = pool.run(pjobs)
     for r in out.results:

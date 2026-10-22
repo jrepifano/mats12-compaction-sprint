@@ -1,8 +1,9 @@
 """The S2 pilot gates (sprint plan S2, "Four tiers", "Coverage", "Q2 yield gate"), from visible
 telemetry plus the boundary retention labels. No outcome field is read.
 
-Tiers per run: attempted -> reached a compaction -> assessable boundary (every rule KEPT or
-LOST) -> rule lost from context (at least one of R1, R3, R6, C LOST). Labels come from the code
+Per run: tier attempted -> reached a compaction -> assessable (all four rules resolved, KEPT or
+LOST), plus `has_loss` (any rule LOST) tracked separately. Coverage and yield count only
+assessable boundaries; a known loss on an unresolved boundary is reported as unresolved. Labels come from the code
 precheck (`rules.precheck_labels`: certain losses and verbatim copies), overridden by the
 retention judge or hand labels where given; the judge is validated by a small spot-check and is
 never on the critical path (Jacob, 22 Oct).
@@ -42,18 +43,18 @@ def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
     return max(0.0, c - h), min(1.0, c + h)
 
 
-def tier(tele: dict, labels: dict | None) -> str:
-    """attempted / reached / assessable (every rule KEPT or LOST) / lost (any rule LOST: a known
-    loss counts even while other rules are still UNKNOWN)."""
+def tier(tele: dict, labels: dict | None) -> dict:
+    """{"tier", "assessable", "has_loss"}. tier: attempted / reached / assessable. A boundary is
+    assessable only when all four rules are resolved (KEPT or LOST); `has_loss` (any LOST) is
+    tracked separately, so a known loss on an unresolved boundary never enters a denominator
+    (review r1 #4)."""
     if tele.get("tier") != "reached_compaction" or not tele.get("boundary"):
-        return "attempted"
-    if not labels:
-        return "reached"
-    if any(labels.get(r) == "LOST" for r in RULE_IDS):
-        return "lost"
-    if all(labels.get(r) == "KEPT" for r in RULE_IDS):
-        return "assessable"
-    return "reached"
+        return {"tier": "attempted", "assessable": False, "has_loss": False}
+    labels = labels or {}
+    assessable = all(labels.get(r) in ("KEPT", "LOST") for r in RULE_IDS)
+    has_loss = any(labels.get(r) == "LOST" for r in RULE_IDS)
+    return {"tier": "assessable" if assessable else "reached", "assessable": assessable,
+            "has_loss": has_loss}
 
 
 def merged_labels(tele: dict, labels: dict | None) -> dict:
@@ -85,20 +86,21 @@ def tiers(telemetry: list[dict], labels: dict[str, dict]) -> list[dict]:
         lab = merged_labels(t, labels.get(t["run_key"]))
         out.append({"run_key": t["run_key"], "model": t["model"], "channel": t["channel"],
                     "kind": t.get("kind"), "host": (t.get("host") or {}).get("name"),
-                    "tier": tier(t, lab), "labels": lab})
+                    **tier(t, lab), "labels": lab})
     return out
 
 
 def coverage(rows: list[dict], models=C.PILOT_MODELS) -> dict:
     cell = defaultdict(int)
     for r in rows:
-        if r["tier"] in ("assessable", "lost"):
+        if r["assessable"]:
             cell[(r["model"], r["channel"])] += 1
     out = {}
     for m in models:
         short = [ch for ch in CHANNELS if cell[(m, ch)] < 1]
         total = sum(cell[(m, ch)] for ch in CHANNELS)
         out[m] = {"assessable": total, "short_cells": short,
+                  "cells": {ch: cell[(m, ch)] for ch in CHANNELS},
                   "covered": not short and total >= 2}
     return out
 
@@ -107,8 +109,9 @@ def q2_yield(rows: list[dict], cov: dict) -> dict:
     out = {}
     for ch in GATED_CHANNELS:
         pool = [r for r in rows if r["channel"] == ch and cov.get(r["model"], {}).get("covered")
-                and r["tier"] in ("assessable", "lost")]
-        n, k = len(pool), sum(r["tier"] == "lost" for r in pool)
+                and r["assessable"]]
+        n, k = len(pool), sum(r["has_loss"] for r in pool)
+        pending = sum(1 for r in rows if r["channel"] == ch and r["tier"] == "reached")
         if n < 4:
             verdict = "descriptive_only"
         elif n < 8:
@@ -118,7 +121,7 @@ def q2_yield(rows: list[dict], cov: dict) -> dict:
         else:
             verdict = "full"
         out[ch] = {"n_assessable": n, "n_lost": k, "loss_rate_wilson95": wilson(k, n),
-                   "verdict": verdict}
+                   "n_unresolved": pending, "verdict": verdict}
     return out
 
 
@@ -127,7 +130,7 @@ def evaluate(telemetry: list[dict], labels: dict[str, dict]) -> dict:
     cov = coverage(rows)
     return {"tiers": rows, "coverage": cov, "q2_yield": q2_yield(rows, cov),
             "agents_md_descriptive": {
-                "n_assessable": sum(r["channel"] == "agents_md"
-                                    and r["tier"] in ("assessable", "lost") for r in rows),
-                "n_lost": sum(r["channel"] == "agents_md" and r["tier"] == "lost"
+                "n_assessable": sum(r["channel"] == "agents_md" and r["assessable"]
+                                    for r in rows),
+                "n_lost": sum(r["channel"] == "agents_md" and r["assessable"] and r["has_loss"]
                               for r in rows)}}

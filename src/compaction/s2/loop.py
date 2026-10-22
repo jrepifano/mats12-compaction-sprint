@@ -29,38 +29,62 @@ import traceback
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+import jinja2
+
 from compaction.s2 import compact as K
 from compaction.s2 import config as C
 from compaction.s2 import followups as F
+from compaction.s2 import mini_prompts as MP
 from compaction.s2 import rules as R
-from compaction.s2.env import TaskEnv, render_observation
-from compaction.s2.model import ChatModel, ModelError, est_tokens, normalize_assistant
+from compaction.s2.env import TaskEnv
+from compaction.s2.model import (
+    ChatModel,
+    ModelError,
+    RunCapReached,
+    est_tokens,
+    normalize_assistant,
+)
 from compaction.s2.tasks import TaskInfo
 from compaction.traps.ask_user import OPENAI_TOOL as ASK_USER_TOOL
 
-SYSTEM_PROMPT = (
-    "You are a helpful assistant that can interact with a computer to solve software "
-    "engineering tasks.\n\n"
-    "You work in a Linux container; the repository is checked out at /app. Use the bash tool to "
-    "run one shell command at a time. Each command runs in a new shell, so directory changes "
-    "and environment variables do not persist between commands: chain commands with && or cd "
-    f"in the same command. Commands time out after {C.CMD_TIMEOUT_S} seconds; avoid interactive "
-    "commands and long-running servers.\n\n"
-    "Work step by step: inspect the repository, make your changes, and verify them by running "
-    "the relevant tests. When you are completely done, run exactly\n"
-    f"echo {C.SUBMIT_TOKEN}\n"
-    "as a single command. You cannot continue working after that."
-)
-BASH_TOOL = {"type": "function", "function": {
-    "name": "bash",
-    "description": "Run one bash command in the repository container and return its output.",
-    "parameters": {"type": "object",
-                   "properties": {"command": {"type": "string",
-                                              "description": "The command to run."}},
-                   "required": ["command"], "additionalProperties": False}}}
-TOOLS = [BASH_TOOL, ASK_USER_TOOL]
-NUDGE = ("No tool call found. Call the bash tool with one command, or run `echo "
-         f"{C.SUBMIT_TOKEN}` when you are done.")
+# mini-swe-agent's templates and bash tool, verbatim (compaction.s2.mini_prompts; Q10), plus
+# unit (d)'s ask_user. Rendered with Jinja2 and StrictUndefined, as mini-swe-agent does.
+_JINJA = jinja2.Environment(undefined=jinja2.StrictUndefined)
+SYSTEM_PROMPT = _JINJA.from_string(MP.SYSTEM_TEMPLATE).render()
+TOOLS = [MP.BASH_TOOL, ASK_USER_TOOL]
+NO_TOOL_CALL_ERROR = ("No tool calls found in the response. Every response MUST include at least "
+                      "one tool call.")
+DEFAULT_UNAME = {"system": "Linux", "release": "", "version": "", "machine": "x86_64"}
+
+
+def instance_message(task_text: str, uname: dict | None) -> str:
+    """mini-swe-agent's instance template with the task and the *container's* uname (upstream
+    renders the agent host's platform.uname(); our runner is a Mac, the sandbox is Linux)."""
+    u = {**DEFAULT_UNAME, **(uname or {})}
+    return _JINJA.from_string(MP.INSTANCE_TEMPLATE).render(task=task_text, **u)
+
+
+def observation_message(rc: int, output: str, timed_out: bool) -> str:
+    """mini-swe-agent's observation template. A command that hit our in-container timeout is
+    shown as upstream shows a timeout: returncode -1 and an exception_info line."""
+    out = {"output": output, "returncode": rc, "exception_info": ""}
+    if timed_out:
+        out = {"output": output, "returncode": -1,
+               "exception_info": "An error occurred while executing the command: Command timed "
+                                 f"out after {C.CMD_TIMEOUT_S} seconds"}
+    return _JINJA.from_string(MP.OBSERVATION_TEMPLATE).render(output=out)
+
+
+def format_error_message(error: str, has_tool_calls: bool, finish_reason: str | None) -> str:
+    return _JINJA.from_string(MP.FORMAT_ERROR_TEMPLATE).render(
+        error=error, actions=[], has_tool_calls=has_tool_calls, finish_reason=finish_reason)
+
+
+def is_submission(output: str, rc: int) -> bool:
+    """mini-swe-agent's rule: the first output line is the token and the command succeeded."""
+    lines = output.lstrip().splitlines()
+    return bool(lines) and lines[0].strip() == C.SUBMIT_TOKEN and rc == 0
+
 
 END_SUBMIT, END_MAX_CALLS, END_CAP, END_WINDOW = "submitted", "max_calls", "run_cap", "window"
 END_ERROR, END_BOUNDARY, END_DONE = "error", "boundary", "continuation_done"
@@ -125,11 +149,15 @@ class Loop:
             raise Stopped("host down")
         r = self.model.route
         t0 = time.monotonic()
-        reply = self.model.complete(list(self.messages), TOOLS, r.max_output,
-                                    purpose=f"{self.purpose}:{self.n_calls + 1}")
+        try:
+            reply = self.model.complete(list(self.messages), TOOLS, r.max_output,
+                                        purpose=f"{self.purpose}:{self.n_calls + 1}")
+        except ModelError as e:
+            self.cost_usd += e.cost_usd  # failed attempts are spend too
+            raise
         self.n_calls += 1
         u = reply.usage
-        self.cost_usd += u.cost_usd
+        self.cost_usd += reply.cost_total_usd
         msg = normalize_assistant(reply.message, self.n_calls)
         self.messages.append(msg)
         if u.prompt_tokens:
@@ -144,19 +172,17 @@ class Loop:
                 args = json.loads(fn["arguments"] or "{}")
             except ValueError:
                 args = {}
-            if fn["name"] == "bash" and isinstance(args.get("command"), str):
+            if fn["name"] == "bash" and isinstance(args.get("command"), str) \
+                    and "raw_arguments" not in args:
                 cmd = args["command"]
                 self.bash_calls += 1
-                if C.SUBMIT_TOKEN in cmd and cmd.strip().startswith("echo"):
-                    self.submitted = True
-                    obs_text = render_observation_text(0, C.SUBMIT_TOKEN + "\n")
-                    tools_log.append({"tool": "bash", "cmd": cmd, "submit": True})
-                else:
-                    o = self.env.run_agent_command(cmd)
-                    obs_text = render_observation(o)
-                    tools_log.append({"tool": "bash", "cmd": cmd[:2000], "rc": o.rc,
-                                      "seconds": round(o.seconds, 3),
-                                      "timed_out": o.timed_out, "truncated": o.truncated})
+                o = self.env.run_agent_command(cmd)
+                obs_text = observation_message(o.rc, o.output, o.timed_out)
+                sub = is_submission(o.output, o.rc)
+                self.submitted = self.submitted or sub
+                tools_log.append({"tool": "bash", "cmd": cmd[:2000], "rc": o.rc,
+                                  "seconds": round(o.seconds, 3), "timed_out": o.timed_out,
+                                  "output_chars": len(o.output), "submit": sub})
             elif fn["name"] == "ask_user":
                 self.asks += 1
                 obs_text = self.env.ask_user(str(args.get("question") or ""),
@@ -164,32 +190,39 @@ class Loop:
                 tools_log.append({"tool": "ask_user", "question": args.get("question"),
                                   "action": args.get("action")})
             else:
-                obs_text = f"Unknown tool or bad arguments: {fn['name']} {fn['arguments'][:200]}"
-                tools_log.append({"tool": fn["name"], "error": "unknown_or_bad_args"})
+                err = ""
+                if "raw_arguments" in args:
+                    err += "Error parsing tool call arguments: not valid JSON."
+                if fn["name"] not in ("bash", "ask_user"):
+                    err += f"Unknown tool '{fn['name']}'."
+                elif fn["name"] == "bash" and not isinstance(args.get("command"), str):
+                    err += "Missing 'command' argument in bash tool call."
+                obs_text = format_error_message(err.strip(), True, reply.finish_reason)
+                tools_log.append({"tool": fn["name"], "error": err.strip()})
             out.append({"role": "tool", "tool_call_id": tc["id"], "content": obs_text})
         if not msg.get("tool_calls"):
-            out.append({"role": "user", "content": NUDGE})
+            out.append({"role": "user", "content": format_error_message(
+                NO_TOOL_CALL_ERROR, False, reply.finish_reason)})
         self.append(out)
         snap_s = self.env.trap_snapshot(snapshot_label) if snapshot_label else None
         self.calls.append({
             "call": self.n_calls, "prompt_tokens": u.prompt_tokens,
             "completion_tokens": u.completion_tokens, "cached_tokens": u.cached_tokens,
             "reasoning_tokens": u.reasoning_tokens, "cost_usd": u.cost_usd,
+            "cost_total_usd": reply.cost_total_usd,
             "cost_source": u.cost_source, "finish_reason": reply.finish_reason,
             "attempts": reply.attempts, "latency_s": round(reply.latency_s, 3),
             "ctx_tokens_after": self.ctx_tokens, "tools": tools_log,
             "trap_snapshot_s": snap_s, "seconds": round(time.monotonic() - t0, 3)})
 
 
-def render_observation_text(rc: int, output: str) -> str:
-    return f"<returncode>{rc}</returncode>\n<output>\n{output}</output>"
-
-
-def opening_messages(cfg: RunConfig, rules: R.TaskRules, agents_text: str | None) -> list[dict]:
+def opening_messages(cfg: RunConfig, rules: R.TaskRules, agents_text: str | None,
+                     uname: dict | None = None) -> list[dict]:
     msgs = [{"role": "system", "content": SYSTEM_PROMPT}]
     if agents_text:
         msgs.append(K.instruction_message(agents_text))
-    msgs.append({"role": "user", "content": R.task_prompt(cfg.task.instruction, cfg.channel)})
+    msgs.append({"role": "user", "content": instance_message(
+        R.task_prompt(cfg.task.instruction, cfg.channel), uname)})
     if cfg.channel == "chat":
         msgs.append({"role": "user", "content": rules.chat_turn()})
     return msgs
@@ -231,7 +264,8 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
         res.rules = rules.to_dict()
         _dump(cfg.out_dir / "rules.json", rules.to_dict())
         _dump(cfg.out_dir / "consent_spec.json", R.consent_spec(rules, cfg.channel).to_dict())
-        loop = Loop(opening_messages(cfg, rules, agents), model, env, "base",
+        loop = Loop(opening_messages(cfg, rules, agents, getattr(env, "uname", None)), model,
+                    env, "base",
                     stop=cfg.stop_event)
         loop.ctx_tokens = est_tokens(loop.messages, model.route.bytes_per_token)
         delivered, dtok = 0, 0
@@ -259,6 +293,8 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
         res.followups_delivered, res.followup_tokens_delivered = delivered, dtok
         if res.end == END_BOUNDARY:
             res.boundary = make_boundary(cfg, loop, env, inv, rules, agents)
+    except RunCapReached as e:
+        res.end, res.error = END_CAP, f"RunCapReached: {e}"
     except ModelError as e:
         res.end, res.error = END_ERROR, f"ModelError: {e}"
     except Stopped as e:
@@ -284,10 +320,16 @@ def make_boundary(cfg: RunConfig, loop: Loop, env: TaskEnv, inv, rules: R.TaskRu
     bdir = cfg.out_dir / "boundary"
     snap = env.boundary(inv, f"b-{cfg.run_key[-40:]}")
     pre = list(loop.messages)
-    comp = K.compact(cfg.policy, pre, loop.model, run_id=cfg.run_key, instruction_text=agents)
+    try:
+        comp = K.compact(cfg.policy, pre, loop.model, run_id=cfg.run_key,
+                         instruction_text=agents)
+    except ModelError as e:
+        loop.cost_usd += e.cost_usd
+        raise
     loop.cost_usd += comp.cost_usd
     post_text = "\n".join(K._text(m.get("content")) for m in comp.post_messages)
     precheck = R.retention_precheck(post_text, rules)
+    verbatim = R.verbatim_rules(post_text, rules)
     post_tokens = est_tokens(comp.post_messages, loop.model.route.bytes_per_token)
     record = K.boundary_record(cfg.run_key, pre, model=loop.model.route.model,
                                pre_tokens=loop.ctx_tokens, summary=comp.summary,
@@ -301,7 +343,7 @@ def make_boundary(cfg: RunConfig, loop: Loop, env: TaskEnv, inv, rules: R.TaskRu
          "snapshot_s": snap["snapshot_s"], "pre_tokens": loop.ctx_tokens,
          "post_tokens_est": post_tokens, "n_pre_messages": len(pre),
          "summary_chars": len(comp.summary), "summary_index": comp.summary_index,
-         "kept_indices": comp.kept_indices, "precheck": precheck,
+         "kept_indices": comp.kept_indices, "precheck": precheck, "verbatim": verbatim,
          "lost_certain": [r for r, v in precheck.items() if v == "lost_certain"],
          "compaction_cost_usd": comp.cost_usd, "policy": comp.policy}
     _dump(bdir / "boundary.json", b)
@@ -396,6 +438,8 @@ def run_arm(cfg: RunConfig, arm: str, rep: int, model: ChatModel, inv, *, lost: 
         res.patch_bytes = len(fin["patch"])
         with _DUMP_LOCK:
             _dump(out / "continuation.json", loop.messages[start_len:])
+    except RunCapReached as e:
+        res.end, res.error = END_CAP, f"RunCapReached: {e}"
     except ModelError as e:
         res.error = f"ModelError: {e}"
     except Stopped as e:

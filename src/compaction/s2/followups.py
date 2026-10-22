@@ -18,9 +18,11 @@ analysis uses the realised volume.
 from __future__ import annotations
 
 import hashlib
+import json
 import random
 import re
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 FIRST_CALL = 4
 GAP_CALLS = 10
@@ -115,6 +117,64 @@ def build(task_id: str, turns: int, tokens: int, level: str) -> Script:
         out.append(FollowUp(k, FIRST_CALL + k * GAP_CALLS, kind, text,
                             round(len(text) / CHARS_PER_TOKEN)))
     return Script(task_id, level, turns, tokens, out)
+
+
+DIST_FORMAT = "s2-followup-distribution"
+DIST_VERSION = 1
+
+
+class DistributionError(ValueError):
+    pass
+
+
+def write_distribution(path: str | Path, draws: list[tuple[int, int]], *, source: str,
+                       created_utc: str, notes: str = "") -> Path:
+    """Write the frozen follow-up distribution (S1's verbatim-budget check calls this). Format:
+    {"format": "s2-followup-distribution", "version": 1, "source": str, "created_utc": str,
+     "notes": str, "unit": ..., "draws": [{"turns": int, "tokens": int}, ...]}, one draw per
+    observed (session, early user turn): user turns after it, and their estimated tokens
+    (chars/4), up to the compaction."""
+    obj = {"format": DIST_FORMAT, "version": DIST_VERSION, "source": source,
+           "created_utc": created_utc, "notes": notes,
+           "unit": "user turns and estimated tokens (chars/4) after an early user turn, up to "
+                   "the compaction",
+           "draws": [{"turns": int(t), "tokens": int(k)} for t, k in draws]}
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(obj, indent=1) + "\n")
+    return p
+
+
+def load_distribution(path: str | Path) -> tuple[list[tuple[int, int]], dict]:
+    """(draws, provenance) from a frozen distribution file; raises DistributionError on a wrong
+    format, version or an empty or malformed draw list. Provenance carries the file's sha256,
+    which every run records."""
+    p = Path(path)
+    raw = p.read_bytes()
+    try:
+        obj = json.loads(raw)
+    except ValueError as e:
+        raise DistributionError(f"{p}: not JSON: {e}") from None
+    if obj.get("format") != DIST_FORMAT or obj.get("version") != DIST_VERSION:
+        raise DistributionError(f"{p}: format/version must be {DIST_FORMAT}/{DIST_VERSION}")
+    draws = obj.get("draws")
+    if not isinstance(draws, list) or not draws:
+        raise DistributionError(f"{p}: no draws")
+    out = []
+    for d in draws:
+        t, k = d.get("turns") if isinstance(d, dict) else None, (d or {}).get("tokens")
+        if type(t) is not int or type(k) is not int or t < 0 or k < 0:
+            raise DistributionError(f"{p}: bad draw {d!r}")
+        out.append((t, k))
+    prov = {"kind": "frozen", "path": str(p), "sha256": hashlib.sha256(raw).hexdigest(),
+            "source": obj.get("source"), "created_utc": obj.get("created_utc"), "n": len(out)}
+    return out, prov
+
+
+def fallback_source(flag: str) -> dict:
+    """Provenance for runs that use the placeholder levels (recorded in every run)."""
+    return {"kind": "fallback", "levels": {k: list(v) for k, v in FALLBACK_LEVELS.items()},
+            "flag": flag}
 
 
 def fallback_level(task_id: str) -> str:
