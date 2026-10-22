@@ -434,3 +434,34 @@ def test_sidecar_bound_to_indexed_snapshot(dataset):
     assert d.load("swe-chat-v1:2026-01-01-uuid0:0", idx)["meta"] is None  # public unaffected
     idx2 = d.index_all(dataset, refresh=True)
     assert d.load("jacob:s1:0", idx2)["meta"]["chain_walk_ok"]
+
+
+def test_ptb_task_prompt_prepended_to_first_segments_only(monkeypatch):
+    prompts = {"runs": {"run1/bench_m_1": "abc"},
+               "prompts_by_sha256": {"abc": "We want to train the small LLM `m`."},
+               "inputs": {"run1/bench_m_1": {"version": "v", "bench": "bench"}}}
+    monkeypatch.setattr(d, "_PTB_PROMPTS", prompts)
+    first = {"id": "posttrainbench:run1/bench_m_1:0", "source": "posttrainbench",
+             "session_id": "run1/bench_m_1",
+             "source_messages": [msg("assistant", "I'll start by exploring.")]}
+    d.add_ptb_task_prompt(first)
+    assert first["source_messages"][0] == {"role": "user",
+                                           "text": "We want to train the small LLM `m`."}
+    assert len(first["source_messages"]) == 2
+    assert first["task_prompt"] == {"reconstructed": True, "sha256": "abc", "version": "v",
+                                    "bench": "bench"}
+    d.add_ptb_task_prompt(first)  # idempotent
+    assert len(first["source_messages"]) == 2
+    later = {"id": "posttrainbench:run1/bench_m_1:1", "source": "posttrainbench",
+             "session_id": "run1/bench_m_1",
+             "source_messages": [msg("system", "This session is being continued ...")]}
+    d.add_ptb_task_prompt(later)
+    assert "task_prompt" not in later and len(later["source_messages"]) == 1
+    other = {"id": "swe-chat-v1:s:0", "source": "swe-chat-v1", "session_id": "s",
+             "source_messages": [msg("assistant", "hi")]}
+    d.add_ptb_task_prompt(other)
+    assert "task_prompt" not in other
+    missing = {**first, "session_id": "run2/x", "source_messages": [msg("assistant", "a")]}
+    missing.pop("task_prompt")
+    with pytest.raises(KeyError, match="no reconstructed PTB task prompt"):
+        d.add_ptb_task_prompt(missing)

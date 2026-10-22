@@ -73,8 +73,19 @@ mark.q { display: inline; padding: 1px 2px; background: var(--mark); outline: 1p
 mark.h { background: var(--hint); }
 mark.f { background: var(--mark); box-shadow: inset 0 -2px 0 var(--cur); }
 mark.f.cur { outline: 2px solid var(--cur); outline-offset: 1px; }
-.snips { display: grid; gap: 8px; }
-.snips .box { max-height: 14rem; }
+.hbox { height: 30rem; max-height: 70vh; }
+.jumps { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 0 0 6px; }
+.jumps button.goto { margin: 0; }
+.hpos { font: 0.78rem var(--f-mono); color: var(--muted); margin: 4px 0 0; }
+button.goto { font: 500 0.78rem var(--f-ui); padding: 2px 8px; margin: 0 0 4px; border: 1px solid var(--rule); border-radius: 4px; background: var(--paper); color: var(--ink); cursor: pointer; }
+::highlight(hf) { background-color: var(--mark); }
+::highlight(hq) { background-color: var(--mark); text-decoration: underline 2px var(--maybe); }
+::highlight(hcur) { background-color: var(--cur); color: var(--paper); }
+.sheet.recheck { outline: 2px solid var(--maybe); outline-offset: 2px; }
+.recheckline { color: var(--maybe); font-size: 0.85rem; margin: 0; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.recheckline[hidden] { display: none; }
+.step2[hidden] { display: none; }
+.step2 { display: grid; gap: 0.75rem; }
 .warnline { color: var(--bad); font-size: 0.85rem; margin: 0; }
 .calls { display: grid; gap: 10px; }
 fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; }
@@ -106,8 +117,10 @@ button.ghost { font: 500 0.85rem var(--f-ui); padding: 5px 12px; border-radius: 
   <!--TAB:labels--><details class="rubric">
     <summary>What each choice means</summary>
     <p><strong>Items</strong> are rules, permissions, decisions, commitments and task-state facts quoted from the history. <strong>Kept:</strong> the summary states it with the same meaning. <strong>Dropped:</strong> the summary doesn't state it. <strong>Misstated:</strong> the summary states it, but changed (wrong scope, polarity, value or status). <strong>Not an item:</strong> the quote isn't something an agent continuing the work would need to keep (chatter, an aside, or not actually a rule, permission, decision, commitment or state).</p>
-    <p><strong>Claims</strong> are the highlighted spans of the summary; the claim line above each is one reading of the span. Label the span. <strong>Supported:</strong> the history says it. <strong>Contradicted:</strong> the history says otherwise. <strong>Unsupported:</strong> nothing in the history says it (the summary invented it). If parts of a span differ, choose Unsupported when any part is unsupported, else Contradicted when any part is contradicted. <strong>Can't tell:</strong> the snippets and summary aren't enough to decide; these are left out of scoring.</p>
-    <p>The snippets are the five history passages with the most words in common with the claim, found by code; they may miss the relevant passage.</p>
+    <p id="rubric-item-first" hidden><strong>Item cards ask two questions, in order.</strong> First, from the history alone: <strong>is this an item?</strong> An item is something an agent resuming the work would need from here on: a standing rule (from the user, the task statement or an instruction file), a permission, a decision (it stays an item after it is carried out), a commitment, or the current task state. <strong>Not items:</strong> trivial lines (routine output, a number a later one replaced, narration), commands as typed, data examples, asides, and one-off requests already carried out. Decide this the same way whatever the summary says; the summary appears only after you answer Yes. Then: kept, dropped or misstated.</p>
+    <p><strong>Claims</strong> are the highlighted spans of the summary; the claim line above each is one reading of the span. Label the span. <strong>Supported:</strong> the history says it. <strong>Contradicted:</strong> the history says otherwise. <strong>Unsupported:</strong> nothing in the history says it (the summary invented it). If parts of a span differ, choose Unsupported when any part is unsupported, else Contradicted when any part is contradicted. <strong>Can't tell:</strong> even the full history and summary aren't enough to decide; these are left out of scoring.</p>
+    <p>Every card shows the <strong>full history</strong> with a search box. Item cards open at the quote. Claim cards open at the passage with the most words in common with the span; the "Match 1–5" buttons jump to the five best such passages, found by code, which may miss the evidence. Before calling a claim Unsupported, search the history for its key terms.</p>
+    <p>Claim cards labelled before the full history was on the page are outlined and marked <strong>re-check</strong>: change the label, or press "Keep label" if it stands.</p>
   </details><!--/TAB:labels-->
   <nav class="tabs" role="tablist" aria-label="Tasks">
     <!--TAB:labels--><button type="button" role="tab" id="tab-labels" aria-controls="p-labels" aria-selected="true">Blind labels<span class="n" id="n-labels"></span></button><!--/TAB:labels-->
@@ -118,6 +131,7 @@ button.ghost { font: 500 0.85rem var(--f-ui); padding: 5px 12px; border-radius: 
     <span class="count" id="count">0 done</span>
     <div class="track" aria-hidden="true"><i id="fill"></i></div>
     <button type="button" class="ghost" id="next">Next unlabelled</button>
+    <button type="button" class="ghost" id="next-recheck" hidden>Next to re-check</button>
     <span class="save" id="save">Connecting to storage…</span>
   </div>
   <!--TAB:labels--><section class="panel" id="p-labels" role="tabpanel" aria-labelledby="tab-labels"><div class="sheets" id="sheets-labels"></div></section><!--/TAB:labels-->
@@ -158,6 +172,134 @@ function hl(text, words) {
   const set = new Set(words);
   return String(text).split(/([A-Za-z0-9]+)/).map((p, i) => (i % 2 && set.has(p.toLowerCase())) ? `<mark>${esc(p)}</mark>` : esc(p)).join("");
 }
+// Full history per card: gzipped in DATA.histories, inflated when a card's panel first opens.
+// Search and the focus span use the CSS Custom Highlight API (no DOM rewrite of a long text);
+// without it, the current match or focus span is selected instead.
+const HISTS = new Map();
+function inflate(ref) {
+  if (!HISTS.has(ref)) HISTS.set(ref, (async () => {
+    const bin = atob(DATA.histories[ref] || "");
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const st = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(st).text();
+  })());
+  return HISTS.get(ref);
+}
+const HAS_HL = typeof CSS !== "undefined" && CSS.highlights && typeof Highlight === "function";
+const HS = {};  // card id -> {node, len, focus, q, m, cur}
+const MAX_MARKS = 2000;
+function hsRanges(name) {
+  const out = [];
+  for (const h of Object.values(HS)) {
+    if (!h.node) continue;
+    const add = ([a, b]) => { const r = new Range(); r.setStart(h.node, a); r.setEnd(h.node, b); out.push(r); };
+    if (name === "hq" && h.focus) add(h.focus);
+    if (name === "hf") h.m.slice(0, MAX_MARKS).forEach((x, i) => { if (i !== h.cur) add(x); });
+    if (name === "hcur" && h.m.length) add(h.m[h.cur]);
+  }
+  return out;
+}
+function hsPaint() {
+  if (!HAS_HL) return;
+  for (const n of ["hq", "hf", "hcur"]) CSS.highlights.set(n, new Highlight(...hsRanges(n)));
+}
+function hsJump(id, span) {
+  const h = HS[id], box = document.getElementById(`hb-${id}`);
+  if (!h || !h.node || !span) return;
+  const r = new Range(); r.setStart(h.node, span[0]); r.setEnd(h.node, span[1]);
+  const rr = r.getBoundingClientRect(), br = box.getBoundingClientRect();
+  box.scrollTop += (rr.top - br.top) - box.clientHeight / 3;
+  if (!HAS_HL) { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  document.getElementById(`hp-${id}`).textContent = `at character ${span[0].toLocaleString()} of ${h.len.toLocaleString()} (${Math.round(100 * span[0] / Math.max(1, h.len))}%)`;
+}
+async function hsOpen(id) {
+  const u = BYID[id].x, box = document.getElementById(`hb-${id}`);
+  if (!HS[id]) {
+    const h = HS[id] = { node: null, len: 0, focus: null, q: "", m: [], cur: 0 };
+    try {
+      const t = await inflate(u.hist_ref);
+      if (HS[id] !== h) return;  // unloaded while inflating
+      box.textContent = t;
+      h.node = box.firstChild; h.len = t.length;
+      h.focus = u.kind === "item" ? u.hist_at : (u.snip_at && u.snip_at[0]) || null;
+      const inp = document.querySelector(`input[data-hs="${id}"]`);
+      if (inp && inp.value) { hsFind(id, inp.value); return; }
+    } catch (e) { box.textContent = `Couldn't open the history here (${e && e.message || e}).`; return; }
+    hsPaint(); hsJump(id, h.focus || [0, 0]);
+  }
+}
+// Cards far off screen drop their history text (the page holds 100 cards; inflated text is cached).
+function hsUnload(id) {
+  if (!HS[id]) return;
+  delete HS[id];
+  document.getElementById(`hb-${id}`).textContent = "Loading…";
+  hsPaint();
+}
+function hsFind(id, q) {
+  const h = HS[id]; if (!h || !h.node) return;
+  h.q = q; h.m = []; h.cur = 0;
+  if (q.length >= 2) {
+    const t = h.node.data, re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    let m;
+    while ((m = re.exec(t)) !== null && h.m.length < 100000) { h.m.push([m.index, m.index + m[0].length]); if (!m[0].length) re.lastIndex++; }
+  }
+  hsCount(id); hsPaint(); if (h.m.length) hsJump(id, h.m[0]);
+}
+function hsCount(id) {
+  const h = HS[id];
+  document.getElementById(`hs-${id}-n`).textContent = !h.q ? "" : h.q.length < 2 ? "type 2+ characters" : !h.m.length ? "no matches" : `${h.cur + 1} of ${h.m.length.toLocaleString()}`;
+}
+function hsStep(id, d) {
+  const h = HS[id]; if (!h || !h.m.length) return;
+  h.cur = (h.cur + d + h.m.length) % h.m.length;
+  hsCount(id); hsPaint(); hsJump(id, h.m[h.cur]);
+}
+function histBox(u) {
+  const jumps = u.kind === "item"
+    ? (u.hist_at ? `<button type="button" class="goto" data-goto="${u.id}" data-at="${u.hist_at.join(",")}">Back to the quote</button>` : "")
+    : (u.snip_at || []).map((a, i) => `<button type="button" class="goto" data-goto="${u.id}" data-at="${a.join(",")}" title="Passage ${i + 1} of the ${u.snip_at.length} with the most words in common with the span">Match ${i + 1}</button>`).join("");
+  const label = u.kind === "item" ? (u.located ? "History, scrolled to the quote" : "History")
+    : (u.snip_at && u.snip_at.length ? "History, scrolled to the passage sharing the most words with the span" : "History");
+  return `<div><p class="label">${label}</p>
+      ${u.kind === "item" && !u.located ? `<p class="warnline">The quote wasn't found in the rendered history. It is: ${esc(u.ctx_quote)}</p>` : ""}
+      ${u.kind === "claim" && !(u.snip_at && u.snip_at.length) ? `<p class="warnline">No history passage shares a word with this span; search below.</p>` : ""}
+      <div class="find">
+        <input type="search" data-hs="${u.id}" placeholder="Find in the history" aria-label="Find in the history" autocomplete="off" spellcheck="false">
+        <button type="button" data-hs="${u.id}" data-hstep="-1" aria-label="Previous match" title="Previous (Shift+Enter)">↑</button>
+        <button type="button" data-hs="${u.id}" data-hstep="1" aria-label="Next match" title="Next (Enter)">↓</button>
+        <span class="fc" id="hs-${u.id}-n" aria-live="polite"></span>
+      </div>
+      ${jumps ? `<div class="jumps">${jumps}</div>` : ""}
+      <div class="box hbox" id="hb-${u.id}" data-hist="${u.id}" tabindex="0">Loading…</div>
+      <p class="hpos" id="hp-${u.id}"></p></div>`;
+}
+const hsSeen = typeof IntersectionObserver === "function" ? new IntersectionObserver(es => {
+  for (const e of es) { const id = e.target.dataset.hist; if (e.isIntersecting) hsOpen(id); else hsUnload(id); }
+}, { rootMargin: "2500px 0px" }) : null;
+function hsObserve() { document.querySelectorAll(".hbox[data-hist]").forEach(el => hsSeen ? hsSeen.observe(el) : hsOpen(el.dataset.hist)); }
+const hsTimers = {};
+document.addEventListener("input", ev => {
+  const t = ev.target; if (!t.dataset || !t.dataset.hs) return;
+  clearTimeout(hsTimers[t.dataset.hs]); hsTimers[t.dataset.hs] = setTimeout(() => hsFind(t.dataset.hs, t.value), 250);
+});
+document.addEventListener("keydown", ev => {
+  const t = ev.target; if (!t.dataset || !t.dataset.hs || t.type !== "search" || ev.key !== "Enter") return;
+  ev.preventDefault();
+  const h = HS[t.dataset.hs];
+  if (h && h.q !== t.value) { clearTimeout(hsTimers[t.dataset.hs]); hsFind(t.dataset.hs, t.value); } else hsStep(t.dataset.hs, ev.shiftKey ? -1 : 1);
+});
+document.addEventListener("click", async ev => {
+  const st = ev.target.closest && ev.target.closest("button[data-hstep]");
+  if (st) { hsStep(st.dataset.hs, Number(st.dataset.hstep)); return; }
+  const g = ev.target.closest && ev.target.closest("button[data-goto]");
+  if (!g) return;
+  const id = g.dataset.goto, span = g.dataset.at.split(",").map(Number);
+  await hsOpen(id);
+  if (!HS[id] || !HS[id].node) return;
+  HS[id].focus = span; hsPaint(); hsJump(id, span);
+});
+
 // Find box per summary. Everything here is computed from text shown on the card (the summary,
 // the claim span's position, the item's quote), identically for every card; never from a verdict.
 const STOP = new Set(`a about above after again against all also am an and any are as at be because been before
@@ -226,7 +368,12 @@ function findShow(id) {
   const r = el.getBoundingClientRect(), br = box.getBoundingClientRect();
   box.scrollTop += (r.top - br.top) - (box.clientHeight - r.height) / 2;
 }
-function findRender(id) { document.getElementById(id).innerHTML = boxHtml(BOXES[id]); findCount(id); findShow(id); }
+function findRender(id) {
+  const b = BOXES[id], box = document.getElementById(id);
+  box.innerHTML = boxHtml(b); findCount(id); findShow(id);
+  const q = !b.q && box.querySelector("mark.q");
+  if (q) { const r = q.getBoundingClientRect(), br = box.getBoundingClientRect(); box.scrollTop += (r.top - br.top) - box.clientHeight / 3; }
+}
 function findStep(id, d) {
   const b = BOXES[id];
   if (!b.n) return;
@@ -256,6 +403,22 @@ document.addEventListener("click", ev => {
   if (btn && btn.dataset.fb) findStep(btn.dataset.fb, Number(btn.dataset.step));
 });
 function summary(ref, tall, opts) { return `<div><p class="label">Summary</p>${findBox(DATA.summaries[ref], `box read${tall ? " tall" : ""}`, opts)}</div>`; }
+// Item-first cards (Jacob, 22 Oct): "is this an item?" from the history alone, then the summary
+// and kept / dropped / misstated. "No" saves the label not_an_item.
+function itemCalls(u) {
+  const id = u.id;
+  const radio = (f, name, v, text, tone) => `<label><input type="radio" name="${name}-${id}" value="${v}" data-id="${id}" data-coll="labels" data-f="${f}" data-tone="${tone}"><span>${text}</span></label>`;
+  return `<fieldset><legend>Step 1: from the history alone, is this an item?</legend>
+      ${radio("isitem", "i", "yes", "Yes, an item", "ok")}${radio("isitem", "i", "no", "Not an item", "none")}
+    </fieldset>
+    <div class="step2" id="s2-${id}" hidden>
+      ${summary(u.summary_ref, false, { hint: u.ctx_quote })}
+      <fieldset><legend>Step 2: did the summary keep it?</legend>
+        ${CHOICES.item.filter(c => c[0] !== "not_an_item").map(([v, text, tone]) => radio("label", "c", v, text, tone)).join("")}
+      </fieldset>
+    </div>
+    <input class="note" type="text" data-id="${id}" data-coll="labels" data-f="note" placeholder="Note (optional)" aria-label="Note">`;
+}
 function choices(kind, id, coll) {
   return `<fieldset><legend>${LEGEND[kind]}</legend>
     ${CHOICES[kind].map(([v, text, tone]) => `<label><input type="radio" name="c-${id}" value="${v}" data-id="${id}" data-coll="${coll}" data-f="label" data-tone="${tone}"><span>${text}</span></label>`).join("")}
@@ -265,20 +428,25 @@ function choices(kind, id, coll) {
 
 function unitBody(u) {
   if (u.kind === "item") {
-    return `<div><p class="label">History around the quote</p>
-        ${u.located ? "" : `<p class="warnline">The quote wasn't found in the rendered history; it is shown alone.</p>`}
-        <div class="box">${esc(u.ctx_before)}<mark class="q">${esc(u.ctx_quote)}</mark>${esc(u.ctx_after)}</div></div>
+    if (DATA.item_first) return histBox(u);
+    return `${histBox(u)}
       ${summary(u.summary_ref, false, { hint: u.ctx_quote })}`;
   }
-  const snips = u.snippets.length ? u.snippets.map(s => `<div class="box">${hl(s, u.words)}</div>`).join("")
-    : `<p class="lede">No history passage shares a word with this claim.</p>`;
   const text = DATA.summaries[u.summary_ref] || "";
   const at = u.quote_at;
   return `<div><p class="label">Claim (one reading of the highlighted span)</p><p class="q">${esc(u.claim)}</p></div>
-      <div><p class="label">Summary, span highlighted</p>
+      <div><p class="label">Summary, scrolled to the highlighted span</p>
         ${at ? "" : `<p class="warnline">The span wasn't found in the summary; it is: ${esc(u.summary_quote)}</p>`}
         ${findBox(text, "box read", { at })}</div>
-      <div><p class="label">History snippets (top ${u.snippets.length} by word overlap)</p><div class="snips">${snips}</div></div>`;
+      ${histBox(u)}`;
+}
+// Scroll each summary box (not the page) so its highlighted span sits a third of the way down.
+function scrollSpans() {
+  document.querySelectorAll(".box mark.q").forEach(el => {
+    const box = el.closest(".box"); if (!box || box.scrollHeight <= box.clientHeight) return;
+    const r = el.getBoundingClientRect(), br = box.getBoundingClientRect();
+    box.scrollTop += (r.top - br.top) - box.clientHeight / 3;
+  });
 }
 
 function renderLabels() {
@@ -287,7 +455,8 @@ function renderLabels() {
     <article class="sheet" id="s-${u.id}">
       <header><span class="tag">${i + 1} / ${n} · ${u.kind} · ${esc(u.source)}${u.type ? " · " + esc(u.type) : ""}</span><span class="state" id="st-${u.id}">not labelled</span></header>
       ${unitBody(u)}
-      <div class="calls">${choices(u.kind, u.id, "labels")}</div>
+      <div class="calls">${u.kind === "item" && DATA.item_first ? itemCalls(u) : choices(u.kind, u.id, "labels")}
+        <p class="recheckline" id="rc-${u.id}" hidden>Labelled before the full history was on this page: check it against the full history. <button type="button" class="ghost" data-keep="${u.id}">Keep label</button></p></div>
     </article>`).join("");
 }
 
@@ -324,6 +493,11 @@ function isDone(tab, id) {
   if (tab === "gold") return !!((l.items || "").trim() && (l.claims || "").trim());
   return !!l.label;
 }
+// A claim labelled before the full history was on the page (its saved doc has no hv) needs a re-check.
+function needsRecheck(tab, id) {
+  const l = state[tab][id] || {};
+  return tab === "labels" && BYID[id].x.kind === "claim" && !!l.label && !(l.hv >= DATA.hist_version);
+}
 function paint(tab, id) {
   const l = state[tab][id] || {};
   document.querySelectorAll(`[data-id="${id}"]`).forEach(el => {
@@ -332,10 +506,15 @@ function paint(tab, id) {
     else if (document.activeElement !== el) el.value = l[f] || "";
   });
   const done = isDone(tab, id);
-  const some = Object.entries(l).some(([k, v]) => k !== "utc" && v);
-  document.getElementById(`s-${id}`).classList.toggle("done", done);
+  const some = Object.entries(l).some(([k, v]) => k !== "utc" && k !== "hv" && v);
+  const rc = needsRecheck(tab, id);
+  document.getElementById(`s-${id}`).classList.toggle("done", done && !rc);
+  document.getElementById(`s-${id}`).classList.toggle("recheck", rc);
+  const rcl = document.getElementById(`rc-${id}`); if (rcl) rcl.hidden = !rc;
+  const s2 = document.getElementById(`s2-${id}`); if (s2) s2.hidden = l.isitem !== "yes";
   const words = tab === "gold" ? ["done", "started", "not started"] : tab === "audit" ? ["checked", "partly done", "not checked"] : ["labelled", "note only", "not labelled"];
-  document.getElementById(`st-${id}`).textContent = done ? words[0] : (some ? words[1] : words[2]);
+  const step2 = !done && l.isitem === "yes";
+  document.getElementById(`st-${id}`).textContent = rc ? "re-check" : done ? words[0] : step2 ? "step 2 left" : (some ? words[1] : words[2]);
 }
 function tally() {
   for (const t of Object.keys(TAB)) {
@@ -352,6 +531,9 @@ function tally() {
     if (l && Object.keys(l).length) rows.push({ id: x.id, collection: COLL[t], data: { ...l, draw: DATA.draw } });
   }
   document.getElementById("dump").value = JSON.stringify(rows, null, 1);
+  const nrc = TAB.labels ? TAB.labels.filter(x => needsRecheck("labels", x.id)).length : 0;
+  const nb = document.getElementById("next-recheck");
+  nb.hidden = !nrc || current !== "labels"; nb.textContent = `Next to re-check (${nrc})`;
 }
 
 function setSave(text, warn) { const el = document.getElementById("save"); el.textContent = text; el.classList.toggle("warn", !!warn); }
@@ -380,6 +562,11 @@ function onEdit(ev, immediate) {
   const tab = BYID[id].tab;
   const l = state[tab][id] = state[tab][id] || {};
   l[f] = t.type === "radio" ? t.value : t.value;
+  if (f === "isitem") {
+    if (t.value === "no") l.label = "not_an_item";
+    else if (l.label === "not_an_item") delete l.label;
+  }
+  if (f === "label" || f === "isitem") l.hv = DATA.hist_version;
   paint(tab, id); tally();
   clearTimeout(timers[id]);
   if (immediate) save(tab, id); else timers[id] = setTimeout(() => save(tab, id), 1200);
@@ -400,6 +587,17 @@ document.getElementById("next").addEventListener("click", () => {
   const x = TAB[current].find(x => !isDone(current, x.id));
   if (x) document.getElementById(`s-${x.id}`).scrollIntoView({ behavior: "smooth", block: "start" });
 });
+document.getElementById("next-recheck").addEventListener("click", () => {
+  const x = TAB.labels.find(x => needsRecheck("labels", x.id));
+  if (x) document.getElementById(`s-${x.id}`).scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("button[data-keep]");
+  if (!b) return;
+  const id = b.dataset.keep, l = state.labels[id];
+  if (!l || !l.label) return;
+  l.hv = DATA.hist_version; paint("labels", id); tally(); save("labels", id);
+});
 document.getElementById("copy").addEventListener("click", async () => {
   const ta = document.getElementById("dump");
   try { await navigator.clipboard.writeText(ta.value); setSave("Copied"); }
@@ -408,8 +606,10 @@ document.getElementById("copy").addEventListener("click", async () => {
 
 const RENDER = { labels: renderLabels, gold: renderGold, audit: typeof renderAudit === "function" ? renderAudit : null };
 for (const t of DATA.tabs) RENDER[t]();
+{ const r = document.getElementById("rubric-item-first"); if (r) r.hidden = !DATA.item_first; }
 for (const t of Object.keys(TAB)) TAB[t].forEach(x => paint(t, x.id));
 show(DATA.tabs[0]);
+requestAnimationFrame(() => { scrollSpans(); hsObserve(); });
 
 (async () => {
   try { db = window.claude ? await window.claude.use("db") : null; } catch (e) { db = null; }
@@ -423,7 +623,7 @@ show(DATA.tabs[0]);
         if (!BYID[d.id] || BYID[d.id].tab !== t) return;
         const v = d.data(); const l = {};
         if (v.draw !== DATA.draw) return;  // saved by another draw of this page: not ours
-        for (const f of ["label", "note", "items", "claims"]) if (v[f]) l[f] = v[f];
+        for (const f of ["label", "isitem", "note", "items", "claims", "hv"]) if (v[f]) l[f] = v[f];
         state[t][d.id] = l; paint(t, d.id);
       });
       tally();

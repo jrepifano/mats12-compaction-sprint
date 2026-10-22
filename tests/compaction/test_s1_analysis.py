@@ -484,3 +484,23 @@ def test_part_b_reads_one_file_across_arms_and_refuses_without_a_required_arm():
     rep2 = A.part_b_report(["haiku"], reader=lambda n: no_codex, n_boot=NB)["haiku"]
     assert not rep2["required_arms_ok"] and rep2["primary"]["missing_arms"] == ["codex_local"]
     assert "diff" not in rep2["primary"]
+
+
+def test_part_b_reports_the_primary_contrast_with_reloaded_counted_as_lost():
+    rows = _part_b_rows()
+    for r in rows:  # cc_prompt's drop of h1 rule 0 is an instruction-file rule the harness reloads
+        if r["rid"] == "h1@cc_prompt" and r["item_id"].endswith("#i0"):
+            r["availability"] = "reloaded"
+    rep = A.part_b_report(["haiku"], reader=lambda n: rows, n_boot=NB)["haiku"]
+    prim = rep["primary"]
+    assert prim["diff"]["point"] == pytest.approx(1 / 8)
+    assert prim["reloaded_as_lost"]["diff"]["point"] == pytest.approx(2 / 8)
+    # every exploratory pair carries the same sensitivity
+    for c in rep["exploratory"]:
+        assert c["reloaded_as_lost"]["label"] == "exploratory"
+    pairs = {(c["a"], c["b"]): c for c in rep["exploratory"] if "diff" in c}
+    assert any(
+        c["reloaded_as_lost"]["diff"]["point"] != c["diff"]["point"]
+        for (x, y), c in pairs.items()
+        if "cc_prompt" in (x, y)
+    )

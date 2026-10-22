@@ -293,7 +293,9 @@ def stratum_name(kind: str, pos: bool, half: str) -> str:
     return f"{kind}|{'pos' if pos else 'neg'}|{half}"
 
 
-def _allocate(n: int, target_pos: int, sizes: Mapping[tuple[str, bool, str], int]) -> dict:
+def _allocate(
+    n: int, target_pos: int | Mapping[str, int], sizes: Mapping[tuple[str, bool, str], int]
+) -> dict:
     """Draws per (kind, pos, half) stratum.
 
     Every nonempty stratum gets at least one draw, so no unit has inclusion probability zero
@@ -301,14 +303,16 @@ def _allocate(n: int, target_pos: int, sizes: Mapping[tuple[str, bool, str], int
     pair gets max(its minimum, min(target_pos, N)); the rest of `n` is split evenly between item
     and claim negatives, spilling over when one runs short, then back into the positives if
     every negative is used. Within a (kind, pos), each nonempty half gets one draw and the rest
-    is split across the halves in proportion to their remaining sizes."""
+    is split across the halves in proportion to their remaining sizes. `target_pos` may be a
+    {kind: target} mapping (the 22 Oct validation page: more dropped items than claims)."""
     kps = [(k, p) for k in ("item", "claim") for p in (True, False)]
     size = {kp: sum(sizes.get((*kp, h), 0) for h in ("dev", "held")) for kp in kps}
     mins = {kp: sum(1 for h in ("dev", "held") if sizes.get((*kp, h), 0) > 0) for kp in kps}
     a = dict(mins)
     for kind in ("item", "claim"):
         kp = (kind, True)
-        a[kp] = max(mins[kp], min(target_pos, size[kp]))
+        t = target_pos[kind] if isinstance(target_pos, Mapping) else target_pos
+        a[kp] = max(mins[kp], min(t, size[kp]))
     rest = n - sum(a.values())
     if rest < 0:
         raise ValueError(
@@ -362,7 +366,7 @@ def select_label_items(
     dev_rows_claims: Iterable[Mapping],
     seed: int = S1_SEED,
     n: int = 100,
-    target_pos: int = 25,
+    target_pos: int | Mapping[str, int] = 25,
     *,
     halves: Mapping[str, str] | None = None,
     return_frame: bool = False,
@@ -428,6 +432,14 @@ def usable_item(r: Mapping) -> bool:
 
 def is_lost(r: Mapping) -> bool:
     return r.get("grade") in LOST_GRADES and r.get("availability") == "lost"
+
+
+def reloaded_as_lost(rows: Iterable[Mapping]) -> list[Mapping]:
+    """Spec D12 sensitivity: rows whose item the harness reloads (`availability` "reloaded",
+    an instruction file Claude Code re-attaches) counted as lost, as before D12."""
+    return [
+        dict(r, availability="lost") if r.get("availability") == "reloaded" else r for r in rows
+    ]
 
 
 def is_user_rule(r: Mapping) -> bool:
@@ -1071,6 +1083,11 @@ def part_b_report(
             }
         else:
             prim = paired_contrast(items, *primary, label="primary", n_boot=n_boot, seed=seed)
+            # D12: reloaded applies to every arm (the replays re-compact Claude Code sessions);
+            # every contrast with reloaded items counted as lost is reported beside it
+            prim["reloaded_as_lost"] = paired_contrast(
+                reloaded_as_lost(items), *primary, label="primary", n_boot=n_boot, seed=seed
+            )
         out[j] = {
             "judge": j,
             "arms_present": arms,
@@ -1080,6 +1097,16 @@ def part_b_report(
             "primary": prim,
             "exploratory": [
                 paired_contrast(items, x, y, label="exploratory", n_boot=n_boot, seed=seed)
+                | {
+                    "reloaded_as_lost": paired_contrast(
+                        reloaded_as_lost(items),
+                        x,
+                        y,
+                        label="exploratory",
+                        n_boot=n_boot,
+                        seed=seed,
+                    )
+                }
                 for x, y in pairs
             ],
         }

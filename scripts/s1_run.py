@@ -6,11 +6,16 @@ what is missing. Paid steps book under SPRINT-S1 through the backends (Max-plan 
     uv run python scripts/s1_run.py manifest
     uv run python scripts/s1_run.py freeze                               # spec D10, before bulk
     uv run python scripts/s1_run.py dev --judges haiku,luna,glm,deepseek
+    uv run python scripts/s1_run.py freeze --amend D12                   # prompt v2 (spec D12)
+    uv run python scripts/s1_run.py val2 --judges haiku                  # fresh validation sample
     uv run python scripts/s1_run.py partA --judges haiku,<judge B>      # after the held-out gate
     uv run python scripts/s1_run.py replays --arms cc_native,cc_prompt,codex_local,pi,antigravity,opencode
     uv run python scripts/s1_run.py partB --judges haiku,<judge B>
     uv run python scripts/s1_run.py size
 
+`val2` (spec D12) judges a fresh validation sample, stratified by source and session-disjoint
+from the first label records, into data/raw/sprint/s1/val2/ the way `dev` does, for the second
+label page; the full re-run waits for that page's gate.
 `dev` writes judge rows for the label records to data/raw/sprint/s1/dev/ (validation data, not
 sealed outcomes) plus roster.json ({rid: {judge: {items: ok, claims: ok}}}), which the label page
 and scorer read. `partA`, `partB` and `size` write through `seal.write("S1", ...)`.
@@ -21,6 +26,7 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import random
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -34,6 +40,9 @@ S1_DIR = ROOT / "data" / "raw" / "sprint" / "s1"
 MANIFEST = S1_DIR / "manifest.json"
 PUBLIC_MANIFEST = ROOT / "results" / "sprint" / "S1" / "manifest.json"
 DEV_DIR = S1_DIR / "dev"
+VAL2_DIR = S1_DIR / "val2"
+VAL2_N = {"jacob": 6, "swe-chat-v1": 7, "posttrainbench": 6, "frontierml": 6}
+VAL2_SEED = "s1-val2:20261022"
 FROZEN = ROOT / "results" / "sprint" / "S1" / "frozen_config.json"
 CACHE = S1_DIR / "cache"
 HAIKU_EFFORT = "medium"
@@ -143,6 +152,8 @@ def frozen_config() -> dict:
             for n, r in s1_api.ROUTES.items()
         },
         "replay_policies": {a: s1_replay.policy_version(a) for a in T.ARMS if a != "natural"},
+        # D12: the reconstructed PostTrainBench task prompts are judge input too
+        "ptb_prompts": sha(s1_data.PTB_PROMPTS.read_bytes()),
     }
 
 
@@ -150,27 +161,50 @@ def check_frozen() -> None:
     """Refuse bulk work when the config drifted from the frozen snapshot (D10), or none exists."""
     if not FROZEN.exists():
         raise SystemExit(f"no {FROZEN}: run `s1_run.py freeze` first (D10)")
-    old = json.loads(FROZEN.read_text())
-    if {k: v for k, v in old.items() if k != "frozen_utc"} != frozen_config():
+    if not _same_as_frozen(json.loads(FROZEN.read_text())):
         raise SystemExit(f"{FROZEN} differs from the current config: prompts are frozen (D10)")
 
 
+_FREEZE_META = ("frozen_utc", "version", "amendment")
+
+
+def _same_as_frozen(old: dict) -> bool:
+    cfg = frozen_config()
+    if "version" not in old:
+        cfg.pop("ptb_prompts")  # the D10 snapshot (no version field) predates D12's prompts
+    return {k: v for k, v in old.items() if k not in _FREEZE_META} == cfg
+
+
 def cmd_freeze(args) -> None:
+    """Spec D10; `--amend <decision>` (D12) re-freezes a changed config as the next version,
+    after archiving the current snapshot unchanged as frozen_config_v<n>.json."""
+    version, amendment = 1, None
     if FROZEN.exists():
-        check_frozen()
-        log(f"freeze: unchanged ({FROZEN})")
-        return
+        old = json.loads(FROZEN.read_text())
+        if _same_as_frozen(old):
+            log(f"freeze: unchanged ({FROZEN})")
+            return
+        if not getattr(args, "amend", None):
+            check_frozen()  # raises: the config changed and no amendment was named
+        n = old.get("version", 1)
+        archive = FROZEN.with_name(f"frozen_config_v{n}.json")
+        if archive.exists() and archive.read_text() != FROZEN.read_text():
+            raise SystemExit(f"{archive} exists: refusing to overwrite an archived snapshot")
+        if not archive.exists():  # (exists with the same text: an interrupted amendment's retry)
+            atmp = archive.with_suffix(".tmp")
+            atmp.write_text(FROZEN.read_text())
+            atmp.replace(archive)
+        version, amendment = n + 1, args.amend
+        log(f"freeze: archived version {n} as {archive.name}")
     cfg = frozen_config()
     FROZEN.parent.mkdir(parents=True, exist_ok=True)
-    FROZEN.write_text(
-        json.dumps(
-            {"frozen_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), **cfg},
-            indent=1,
-            sort_keys=True,
-        )
-        + "\n"
-    )
-    log(f"freeze: wrote {FROZEN}")
+    meta = {"frozen_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "version": version}
+    if amendment:
+        meta["amendment"] = amendment
+    tmp = FROZEN.with_suffix(".tmp")
+    tmp.write_text(json.dumps({**meta, **cfg}, indent=1, sort_keys=True) + "\n")
+    tmp.replace(FROZEN)
+    log(f"freeze: wrote {FROZEN} (version {version})")
 
 
 def cmd_dev(args) -> None:
@@ -197,6 +231,51 @@ def cmd_dev(args) -> None:
             json.dumps({**summary, "errors": res["errors"]}, indent=1, default=str)
         )
         log(f"dev {name}: {json.dumps(summary, default=str)}")
+
+
+def val2_sample() -> list[str]:
+    """Spec D12: VAL2_N Part A records per source, none sharing a session group with the first
+    label records (so the second page is independent of the development set), seeded."""
+    ids = load_manifest()["ids"]
+    used = set(ids["labels_dev"]) | set(ids["labels_held"])
+    by = {e["id"]: e for e in s1_data.index_all()}
+    used_groups = {by[r]["session_group"] for r in used}
+    pool: dict[str, list[str]] = {}
+    for r in ids["part_a"]:
+        if r not in used and by[r]["session_group"] not in used_groups:
+            pool.setdefault(by[r]["source"], []).append(r)
+    rng = random.Random(VAL2_SEED)
+    out: list[str] = []
+    for source, n in VAL2_N.items():
+        out += sorted(rng.sample(sorted(pool[source]), n))
+    return out
+
+
+def cmd_val2(args) -> None:
+    check_frozen()
+    rids = val2_sample()
+    VAL2_DIR.mkdir(parents=True, exist_ok=True)
+    (VAL2_DIR / "manifest.json").write_text(
+        json.dumps(
+            {"ids": {"labels_dev": [], "labels_held": rids}, "seed": VAL2_SEED, "n": VAL2_N},
+            indent=1,
+        )
+        + "\n"
+    )
+    for name in args.judges.split(","):
+        be = backend(name, args.concurrency)
+        mine = judge_ids(be, rids)
+        log(f"val2 {name}: {len(mine)} records")
+        res = s1_judge.judge_records(
+            be,
+            mine,
+            out_items=VAL2_DIR / f"items_{be.name}.jsonl",
+            out_claims=VAL2_DIR / f"claims_{be.name}.jsonl",
+            out_code_facts=VAL2_DIR / f"code_facts_{be.name}.jsonl",
+            purpose="s1_judge",
+        )
+        update_roster(VAL2_DIR / "roster.json", be.name, roster_of(mine, res["errors"]))
+        log(f"val2 {name}: valid_share {res.get('valid_share')}, errors {len(res['errors'])}")
 
 
 class _Sealed:
@@ -394,8 +473,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("manifest")
-    sub.add_parser("freeze")
-    for name in ("dev", "partA", "partB"):
+    fz = sub.add_parser("freeze")
+    fz.add_argument("--amend", help="re-freeze a changed config under this decision (e.g. D12)")
+    for name in ("dev", "val2", "partA", "partB"):
         p = sub.add_parser(name)
         p.add_argument("--judges", required=True)
         p.add_argument("--concurrency", type=int)
@@ -411,6 +491,7 @@ def main(argv: list[str] | None = None) -> int:
         "manifest": cmd_manifest,
         "freeze": cmd_freeze,
         "dev": cmd_dev,
+        "val2": cmd_val2,
         "partA": cmd_part_a,
         "replays": cmd_replays,
         "partB": cmd_part_b,

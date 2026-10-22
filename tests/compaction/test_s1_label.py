@@ -905,3 +905,55 @@ def test_primary_gate_filters_each_judges_claims_to_primary_tiers_before_the_wor
     assert pb["recall_any"]["n"] == 1 and pb["recall_any"]["point"] == 0.0  # b, as unlisted
     # the all-tiers line still uses the stored span verdicts
     assert rec["per_judge"]["B"]["verdicts"]["invented"]["held"]["precision"]["n"] == 2
+
+
+def test_page_carries_each_full_history_once_with_utf16_spans():
+    import base64
+    import gzip
+
+    items, claims, halves = frame(n_rec=4, pos_items=3, neg_items=3, pos_claims=2, neg_claims=2)
+    units = A.select_label_items(items, claims, 7, n=10, target_pos=3, halves=halves)
+
+    def hist(rid):  # an emoji (two UTF-16 units) before every quote and snippet
+        return "\U0001f600 " + _history(rid)
+
+    html, key = page.build(units, history_text=hist, summary_text=lambda r: "s", seed=1)
+    data = _payload(html)
+    assert data["hist_version"] == page.HIST_VERSION
+    rids = {u["base_rid"] for u in units}
+    assert len(data["histories"]) == len(rids) == len(key["hist_refs"])
+    for rid, ref in key["hist_refs"].items():
+        assert rid not in html and ref in data["histories"]
+        text = gzip.decompress(base64.b64decode(data["histories"][ref])).decode()
+        assert text == hist(rid)
+    js = lambda t, a, b: t.encode("utf-16-le")[2 * a : 2 * b].decode("utf-16-le")
+    for p in data["units"]:
+        text = hist(next(r for r, f in key["hist_refs"].items() if f == p["hist_ref"]))
+        if p["kind"] == "item" and p["located"]:
+            assert js(text, *p["hist_at"]) == p["ctx_quote"]
+        if p["kind"] == "claim":
+            assert [js(text, a, b) for a, b in p["snip_at"]] == p["snippets"]
+
+
+def test_utf16_offsets_count_astral_characters_twice():
+    f = page.utf16_offsets("a\U0001f600b\U0001f600c")
+    assert [f(i) for i in range(6)] == [0, 1, 3, 4, 6, 7]
+    assert page.utf16_offsets("plain")(3) == 3
+
+
+def test_per_kind_positive_targets_and_item_first_flag():
+    items, claims, halves = frame(n_rec=6, pos_items=8, neg_items=6, pos_claims=4, neg_claims=6)
+    held = {r: "held" for r in halves}  # the second page: every record is held out
+    units = A.select_label_items(
+        items, claims, 7, n=14, target_pos={"item": 6, "claim": 2}, halves=held
+    )
+    by = Counter(u["stratum"] for u in units)
+    assert by["item|pos|held"] == 6 and by["claim|pos|held"] == 2
+    assert sum(by.values()) == 14 and not any("|dev" in s for s in by)
+    html, _ = page.build(units, history_text=_history, summary_text=lambda r: "s", seed=1,
+                         item_first=True)  # fmt: skip
+    assert _payload(html)["item_first"] is True
+    html, _ = page.build(units, history_text=_history, summary_text=lambda r: "s", seed=1)
+    assert _payload(html)["item_first"] is False
+    assert page._target_pos("item=30,claim=15") == {"item": 30, "claim": 15}
+    assert page._target_pos("25") == 25

@@ -52,6 +52,13 @@ The history is `history_messages(rec)`: source_messages, then the messages kept 
 (Jacob's sidecar `preserved_messages`), numbered on, after the line s1_types.KEPT_HEADER.
 Jacob's sidecar is bound to the snapshot that was indexed (its sha256 is checked on load).
 
+PostTrainBench task prompt (spec D12): PTB passes the task prompt to the agent as a CLI argument,
+so its traces start at the agent's first turn. `load` prepends the run's prompt, reconstructed by
+scripts/s1_ptb_prompts.py from PTB's own template code (src/compaction/s1_ptb_prompts.json), as
+message 0 (role user) of a run's first segment (`:0`), where the agent had it in context. Later
+segments start from the earlier compaction's summary, as the agent's context did, and are left
+as they are. `rec["task_prompt"]` records what was added.
+
 Sampling uses `audit_logs.sample` (seeded; depends only on the id set). Within each public
 source it is stratified by (model, harness), which splits n evenly across strata rather than
 proportionally: the manifest records each stratum's population and draw, so analyses can weight.
@@ -99,6 +106,9 @@ MARKERS = {
     "local_cut_60k": "[text cut at 60k characters]",
 }
 _DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}-")
+
+PTB_PROMPTS = Path(__file__).with_name("s1_ptb_prompts.json")
+_PTB_PROMPTS: dict | None = None
 
 _INDEX_CACHE: dict[tuple, list[dict]] = {}
 _INFO_CACHE: dict[tuple, list[dict]] = {}
@@ -419,6 +429,7 @@ def load(rid: str, index: list[dict] | None = None) -> dict:
     if entry is None:
         raise KeyError(f"no record {rid!r} in the index")
     rec = audit_logs.load_record(entry)
+    add_ptb_task_prompt(rec)
     meta = _meta_for(entry)
     rec["meta"] = meta
     gaps, _ = message_gaps(rec)
@@ -426,6 +437,32 @@ def load(rid: str, index: list[dict] | None = None) -> dict:
     rec["history_complete"] = fully_assessable(rec, meta) and not gaps
     rec["private"] = anthropic_only(rec)
     return rec
+
+
+def _ptb_prompts() -> dict:
+    global _PTB_PROMPTS
+    if _PTB_PROMPTS is None:
+        _PTB_PROMPTS = json.loads(PTB_PROMPTS.read_text())
+    return _PTB_PROMPTS
+
+
+def add_ptb_task_prompt(rec: dict) -> None:
+    """Prepend a PTB run's reconstructed task prompt to its first segment (module docstring).
+    Raises KeyError for a first segment with no prompt on file; a no-op for other records, for
+    later segments and when already added."""
+    if rec.get("source") != "posttrainbench" or "task_prompt" in rec:
+        return
+    msgs = rec.get("source_messages") or []
+    if not str(rec.get("id", "")).endswith(":0") or (msgs and msgs[0].get("role") != "assistant"):
+        return
+    run = rec["session_id"]
+    pp = _ptb_prompts()
+    sha = pp["runs"].get(run)
+    text = pp["prompts_by_sha256"].get(sha) if sha else None
+    if text is None:
+        raise KeyError(f"no reconstructed PTB task prompt for {run}; run s1_ptb_prompts.py")
+    rec["source_messages"] = [{"role": "user", "text": text}, *msgs]
+    rec["task_prompt"] = {"reconstructed": True, "sha256": sha, **pp["inputs"][run]}
 
 
 def post_context(rec: dict) -> list[dict]:

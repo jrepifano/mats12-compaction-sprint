@@ -1286,10 +1286,17 @@ def match_claims(base: list[dict], els: list[dict]) -> list[dict | None]:
 
 
 def pass1a(
-    backend, rec: dict, rendered, *, errors: list | None = None, purpose: str = PURPOSE
+    backend,
+    rec: dict,
+    rendered,
+    *,
+    errors: list | None = None,
+    purpose: str = PURPOSE,
+    prompt_set: Mapping[str, Prompt] | None = None,
 ) -> list[dict]:
+    """`prompt_set` (default: the frozen prompts) lets scripts/s1_hillclimb.py try candidates."""
     check_privacy(backend, [rec])
-    p = prompts()
+    p = prompt_set or prompts()
     t = Pass1a(backend, rec, rendered, p, partition(backend, p, rendered))
     drive(backend, [t], purpose)
     if errors is not None:
@@ -1512,16 +1519,54 @@ def _message_blob(m: dict) -> str:
     return "\n".join(parts)
 
 
+# Claude Code's instruction-file reminder: "Codebase and user instructions are shown below",
+# then one "Contents of <path> (<description>):" section per file (CLAUDE.md, AGENTS.md, the
+# auto-memory MEMORY.md). The harness attaches it again after a compaction (spec D12).
+INSTRUCTIONS_MARK = "Codebase and user instructions are shown below"
+_CONTENTS_RE = re.compile(r"^Contents of (\S[^\n]*?) \([^\n]*\):[ \t]*$", re.MULTILINE)
+
+
+def instruction_files(m: dict) -> list[tuple[str, str]]:
+    """(file name, text) of each instruction file in a harness instruction message, else []."""
+    text = m.get("text")
+    if m.get("role") not in ("system", "user") or not isinstance(text, str):
+        return []
+    mark = text.find(INSTRUCTIONS_MARK)
+    if mark < 0:
+        return []
+    # only a harness reminder that holds the mark (opened before it and not yet closed), from
+    # the mark to that reminder's close tag; the mark quoted anywhere else is not one
+    opened = text.rfind("<system-reminder>", 0, mark)
+    if opened < 0 or text.find("</system-reminder>", opened, mark) >= 0:
+        return []
+    close = text.find("</system-reminder>", mark)
+    if close < 0:
+        return []
+    block = text[mark:close]
+    heads = list(_CONTENTS_RE.finditer(block))
+    out = []
+    for k, h in enumerate(heads):
+        end = heads[k + 1].start() if k + 1 < len(heads) else len(block)
+        out.append((h.group(1).rsplit("/", 1)[-1], block[h.end() : end]))
+    return out
+
+
 def availability(item: dict, rec: dict, kept_messages: list[dict]) -> tuple[str, str]:
     """Spec order: still_present (the quote is in the post-compaction context the agent keeps:
-    `kept_messages`, e.g. U1's `post_context(rec)` or a replay's kept messages), recoverable
-    (the quote sits in the output of a tool call that read a file by path, so the agent could
-    re-read it; this assumes the file is unchanged), else lost. Returns (availability, how)."""
+    `kept_messages`, e.g. U1's `post_context(rec)` or a replay's kept messages), reloaded (the
+    quote is in an instruction file the harness put in context, which Claude Code attaches again
+    after a compaction; spec D12), recoverable (the quote sits in the output of a tool call that
+    read a file by path, so the agent could re-read it; this assumes the file is unchanged), else
+    lost. Returns (availability, how)."""
     quote = item.get("quote")
     for j, m in enumerate(kept_messages or []):
         if T.quote_in(quote, _message_blob(m)):
             return "still_present", f"kept_message:{j}"
     msgs = history_messages(rec)
+    for i, m in enumerate(msgs):
+        for name, body in instruction_files(m):
+            if T.quote_in(quote, body):
+                return "reloaded", f"instruction_file:{name}@m{i}"
     for i, call in sorted(calls_for_results(msgs).items()):
         if reads_file(call) and T.quote_in(quote, msgs[i].get("text") or ""):
             return "recoverable", f"file_read:{call.get('name')}@m{i}"

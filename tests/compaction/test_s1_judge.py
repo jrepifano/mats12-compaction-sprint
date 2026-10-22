@@ -1308,3 +1308,43 @@ def test_pass2_rows_keep_the_submitted_anchor():
     assert out[1]["invalid_reason"] == "anchor_mismatch:numbers"
     assert out[1]["summary_quote_match"] is None
     assert out[1]["summary_quote_submitted"] == "Accidental Dignities: 45 tests passing"
+
+
+def test_availability_reloaded_from_an_instruction_file():
+    reminder = (
+        "<system-reminder>\nAs you answer the user's questions, you can use the following "
+        "context:\n# claudeMd\nCodebase and user instructions are shown below.\n\n"
+        "Contents of /repo/AGENTS.md (project instructions, checked into the codebase):\n\n"
+        "Never force-push.\nEnd commit messages with the co-author line.\n\n"
+        "Contents of /home/u/.claude/memory/MEMORY.md (user's auto-memory):\n\n- use uv for every install, never pip\n"
+        "</system-reminder>\nTrailing text outside the files.\n"
+        "Contents of /repo/CLAUDE.md (quoted later by the user):\n\nnever deploy on fridays at all\n"
+    )
+    msgs = [{"role": "system", "text": reminder}, {"role": "user", "text": "Never force-push."}]
+    rec = rec_of(msgs=msgs)
+    assert J.instruction_files(msgs[0]) == [
+        ("AGENTS.md", "\n\nNever force-push.\nEnd commit messages with the co-author line.\n\n"),
+        ("MEMORY.md", "\n\n- use uv for every install, never pip\n"),
+    ]
+    a, how = J.availability({"quote": "End commit messages with the co-author line."}, rec, [])
+    assert (a, how) == ("reloaded", "instruction_file:AGENTS.md@m0")
+    assert (
+        J.availability({"quote": "use uv for every install, never pip"}, rec, [])[1]
+        == "instruction_file:MEMORY.md@m0"
+    )
+    # still_present wins; text after the reminder and plain user turns are not instruction files
+    kept = [{"role": "user", "text": "Never force-push."}]
+    assert J.availability({"quote": "Never force-push."}, rec, kept)[0] == "still_present"
+    assert J.availability({"quote": "Trailing text outside"}, rec, [])[0] == "lost"
+    assert J.instruction_files({"role": "tool", "text": reminder}) == []
+    # a "Contents of" section after the reminder closes is not one the harness re-attaches
+    assert J.availability({"quote": "never deploy on fridays at all"}, rec, [])[0] == "lost"
+    # paths with spaces
+    spaced = reminder.replace("/repo/AGENTS.md", "/Users/u/My Repo/AGENTS.md")
+    assert J.instruction_files({"role": "system", "text": spaced})[0][0] == "AGENTS.md"
+    # the mark quoted outside a reminder, after one closes, or in an unclosed one: no files
+    body = reminder.split("# claudeMd\n", 1)[1].split("</system-reminder>", 1)[0]
+    assert J.instruction_files({"role": "user", "text": "the docs say: " + body}) == []
+    after = "<system-reminder>\nother\n</system-reminder>\n" + body
+    assert J.instruction_files({"role": "user", "text": after}) == []
+    assert J.instruction_files({"role": "system", "text": "<system-reminder>\n" + body}) == []

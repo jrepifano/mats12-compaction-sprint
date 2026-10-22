@@ -1,6 +1,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 spec = importlib.util.spec_from_file_location(
     "s1_run", Path(__file__).resolve().parents[2] / "scripts" / "s1_run.py"
@@ -135,6 +136,18 @@ def test_freeze_writes_once_then_refuses_a_changed_config(tmp_path, monkeypatch)
         s1_run.cmd_freeze(None)
     with pytest.raises(SystemExit, match="frozen"):  # bulk commands check before any work
         s1_run.cmd_part_a(None)
+    # spec D12: an amendment archives the old snapshot unchanged and freezes the new config
+    v1 = (tmp_path / "frozen_config.json").read_text()
+    s1_run.cmd_freeze(SimpleNamespace(amend="D12"))
+    assert (tmp_path / "frozen_config_v1.json").read_text() == v1
+    new = json.loads((tmp_path / "frozen_config.json").read_text())
+    assert new["version"] == 2 and new["amendment"] == "D12" and new["haiku"]["effort"] == "high"
+    s1_run.check_frozen()  # the new snapshot matches
+    s1_run.cmd_freeze(None)  # unchanged v2: a no-op
+    (tmp_path / "frozen_config_v2.json").write_text("{}")
+    monkeypatch.setattr(s1_run, "HAIKU_EFFORT", "low")
+    with pytest.raises(SystemExit, match="refusing to overwrite"):
+        s1_run.cmd_freeze(SimpleNamespace(amend="D13"))  # never clobbers an archive
     monkeypatch.setattr(s1_run, "FROZEN", tmp_path / "missing.json")
     with pytest.raises(SystemExit, match="freeze` first"):
         s1_run.cmd_size(None)

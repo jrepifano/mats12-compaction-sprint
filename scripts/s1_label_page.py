@@ -37,15 +37,17 @@ CLI (needs U1 `compaction.s1_data` and U3's dev rows):
   uv run python scripts/s1_label_page.py [--items PATH ...] [--claims PATH ...]
       [--manifest data/raw/sprint/s1/manifest.json] [--roster data/raw/sprint/s1/dev/roster.json]
       [--out data/raw/sprint/s1/labels] [--seed 20261020] [--n 100] [--target-pos 25]
-      [--no-gold] [--force]
+      [--no-gold] [--dev-first] [--force]
   uv run python scripts/s1_label_page.py --audit-bundle bundle.json [--out ...]
 """
 
 from __future__ import annotations
 
 import argparse
+import base64
 import bisect
 import glob
+import gzip
 import hashlib
 import json
 import math
@@ -85,7 +87,8 @@ GOLD_BYTES_PER_TOKEN = 4.0  # bytes/4, as in the verbatim-budget check
 AUDIT_PAGE_NAME = "audit.html"
 AUDIT_KEY_NAME = "audit_key.private.json"
 LOCK_NAME = "LOCKED.json"
-MAX_PAGE_BYTES = 5_000_000
+MAX_PAGE_BYTES = 15_000_000  # the Artifact limit is 16 MB; full histories are ~8 MB gzipped
+HIST_VERSION = 2  # saved with each label: 2 = labelled with the full history on the page
 PRIVATE_ROOTS = [ROOT / "data" / "raw"]  # pages, keys and text-bearing scores stay here
 COLLECTIONS = {"labels": "labels", "gold": "gold", "meta": "meta"}
 AUDIT_COLLECTIONS = {"audit": "audit", "meta": "meta"}
@@ -114,6 +117,8 @@ PAGE_FIELDS = {
         "ctx_quote",
         "ctx_after",
         "located",
+        "hist_ref",
+        "hist_at",
     },
     "claim": {
         "id",
@@ -124,7 +129,9 @@ PAGE_FIELDS = {
         "summary_quote",
         "quote_at",
         "snippets",
+        "snip_at",
         "words",
+        "hist_ref",
     },
     "gold": {"id", "source", "text", "summary_ref", "approx_tokens"},
     "audit": {"id", "kind", "verdict", "text", "context", "summary_ref"},
@@ -206,14 +213,30 @@ def locate(quote: str, text: str, _cache: dict | None = None) -> tuple[int, int]
 def item_context(text: str, quote: str, width: int = ITEM_CONTEXT, _cache=None) -> dict:
     loc = locate(quote, text, _cache)
     if loc is None:
-        return {"ctx_before": "", "ctx_quote": quote, "ctx_after": "", "located": False}
+        return {
+            "ctx_before": "",
+            "ctx_quote": quote,
+            "ctx_after": "",
+            "located": False,
+            "hist_at": None,
+        }
     s, e = loc
     return {
         "ctx_before": text[max(0, s - width) : s],
         "ctx_quote": text[s:e],
         "ctx_after": text[e : e + width],
         "located": True,
+        "hist_at": [s, e],
     }
+
+
+def utf16_offsets(text: str) -> Callable[[int], int]:
+    """Map a Python (code point) offset into `text` to the page's JavaScript (UTF-16 code unit)
+    offset: each character above U+FFFF is two units there."""
+    astral = [i for i, ch in enumerate(text) if ord(ch) > 0xFFFF]
+    if not astral:
+        return lambda i: i
+    return lambda i: i + bisect.bisect_left(astral, i)
 
 
 # ------------------------------------------------------------------------------------------
@@ -224,11 +247,18 @@ def item_context(text: str, quote: str, width: int = ITEM_CONTEXT, _cache=None) 
 def claim_snippets(
     claim: str, text: str, k: int = N_SNIPPETS, half: int = SNIPPET_HALF, _lower=None
 ) -> list[str]:
+    """The snippets' text (see `claim_snippet_spans`)."""
+    return [text[a:b] for a, b in claim_snippet_spans(claim, text, k, half, _lower)]
+
+
+def claim_snippet_spans(
+    claim: str, text: str, k: int = N_SNIPPETS, half: int = SNIPPET_HALF, _lower=None
+) -> list[tuple[int, int]]:
     """The top `k` non-overlapping windows of +-`half` characters of `text` by word overlap with
     `claim`. A window is centred on an occurrence of a claim content word; its score is the sum,
     over distinct claim words inside it, of log(1 + H / count(word)), H being all claim-word
     occurrences in the history (rarer words count more). Ties go to the earlier position.
-    Returned best first."""
+    Returned best first, as (start, end) offsets into `text`."""
     words = set(content_words(claim))
     if not words:
         return []
@@ -262,7 +292,7 @@ def claim_snippets(
             picked.append(pos)
             if len(picked) == k:
                 break
-    return [text[max(0, p - half) : p + half] for p in picked]
+    return [(max(0, p - half), min(len(text), p + half)) for p in picked]
 
 
 # ------------------------------------------------------------------------------------------
@@ -509,14 +539,23 @@ def build(
     seed: int = S1_SEED,
     meta: Mapping | None = None,
     title: str = "Experiment 1 labels",
+    dev_first: bool = False,
+    item_first: bool = False,
 ) -> tuple[str, dict]:
     """The labelling page HTML (blind labels and gold windows; never a verdict) and its key.
 
-    `units`: from `select_label_items` (in page order). `history_text(base_rid)` is U1's
+    `units`: from `select_label_items` (in page order). `dev_first`: the dev-half units first,
+    each half in its original order, so the dev half (which picks Judge B, spec D10) is done
+    first; the draw fingerprint doesn't depend on order, so saved labels still load.
+    `item_first`: item cards ask "is this an item?" from the history alone before showing the
+    summary (Jacob, 22 Oct; the first page's single question let "kept" stand in for trivial
+    lines the summary happened to keep). `history_text(base_rid)` is U1's
     rendered history text; `summary_text(rid)` the summary the unit was graded against.
     `gold`: dicts with `rid`, `source`, `text`, `msg_start`, `msg_end`, `approx_tokens`, plus
     the `gold_judge_rows` fields. `frame`: the full sampling frame from
     `select_label_items(..., return_frame=True)` (else the strata of `units`)."""
+    if dev_first:
+        units = sorted(units, key=lambda u: u.get("half") != "dev")
     summaries: dict[str, str] = {}
     sum_ref: dict[str, str] = {}
 
@@ -528,12 +567,16 @@ def build(
         return sum_ref[rid_key]
 
     texts: dict[str, str] = {}
+    u16: dict[str, Callable[[int], int]] = {}
+    hist_ref: dict[str, str] = {}  # base_rid -> opaque H001.. (the page never names a record)
     lowers: dict[str, str] = {}
     norm_cache: dict = {}
 
     def hist(base_rid: str) -> str:
         if base_rid not in texts:
             texts[base_rid] = history_text(base_rid)
+            hist_ref[base_rid] = f"H{len(hist_ref) + 1:03d}"
+            u16[base_rid] = utf16_offsets(texts[base_rid])
         return texts[base_rid]
 
     page_units, key_units = [], {}
@@ -551,12 +594,17 @@ def build(
                 "type": u.get("type"),
                 "summary_ref": ref,
                 **item_context(h, u["text"], _cache=norm_cache),
+                "hist_ref": hist_ref[u["base_rid"]],
             }
+            if p["hist_at"]:
+                p["hist_at"] = [u16[u["base_rid"]](i) for i in p["hist_at"]]
         else:
             if u["base_rid"] not in lowers:
                 lowers[u["base_rid"]] = h.lower()
             wording, shown_judge = shown_claim(u, seed)
             at = locate(u["text"], stext)
+            # context from the judge-independent span, not from any judge's wording
+            spans = claim_snippet_spans(u["text"], h, _lower=lowers[u["base_rid"]])
             p = {
                 "id": uid,
                 "kind": "claim",
@@ -564,10 +612,11 @@ def build(
                 "summary_ref": ref,
                 "claim": wording,
                 "summary_quote": u["text"],
-                "quote_at": list(at) if at else None,
-                # context from the judge-independent span, not from any judge's wording
-                "snippets": claim_snippets(u["text"], h, _lower=lowers[u["base_rid"]]),
+                "quote_at": [utf16_offsets(stext)(i) for i in at] if at else None,
+                "snippets": [h[a:b] for a, b in spans],
+                "snip_at": [[u16[u["base_rid"]](a), u16[u["base_rid"]](b)] for a, b in spans],
                 "words": sorted(set(content_words(u["text"]))),
+                "hist_ref": hist_ref[u["base_rid"]],
             }
         page_units.append(p)
         key_units[uid] = {k: v for k, v in u.items() if k != "unit_id"}
@@ -619,9 +668,19 @@ def build(
         assert not extra, f"page unit fields outside the whitelist: {extra}"
 
     draw = draw_fingerprint(units, seed, gold=gold_fp)
+    # Each unit's full rendered history, once per record, gzipped and base64'd (the page
+    # inflates one when its card's history is opened). Being compressed, it is invisible to the
+    # page grep below, so the leak check also reads the plain text.
+    histories = {
+        hist_ref[rid]: base64.b64encode(gzip.compress(t.encode("utf-8"), 9, mtime=0)).decode()
+        for rid, t in texts.items()
+    }
     data = {
         "mode": "labels",
         "draw": draw,
+        "hist_version": HIST_VERSION,
+        "item_first": bool(item_first),
+        "histories": histories,
         "units": page_units,
         "summaries": summaries,
         "gold": page_gold,
@@ -642,11 +701,12 @@ def build(
         "collections": COLLECTIONS,
     }
     natural = "\0".join(
-        [*summaries.values(), *(g["text"] for g in page_gold)]
+        [*summaries.values(), *(g["text"] for g in page_gold), *texts.values()]
         + [p.get(f) or "" for p in page_units for f in ("ctx_before", "ctx_quote", "ctx_after")]
         + [s for p in page_units for s in p.get("snippets", [])]
     )
-    key["natural_rid_hits"] = leak_check(html, key, natural)
+    key["natural_rid_hits"] = leak_check(html + "\0" + "\0".join(texts.values()), key, natural)
+    key["hist_refs"] = dict(hist_ref)
     key["page_sha256"] = hashlib.sha256(html.encode("utf-8")).hexdigest()
     key["page_bytes"] = len(html.encode("utf-8"))
     return html, key
@@ -828,6 +888,15 @@ def _expand(patterns: Sequence[str]) -> list[str]:
     return out
 
 
+def _target_pos(v: str) -> int | dict[str, int]:
+    if v.isdigit():
+        return int(v)
+    out = {k: int(n) for k, n in (p.split("=") for p in v.split(","))}
+    if set(out) != {"item", "claim"}:
+        raise argparse.ArgumentTypeError("--target-pos takes N or item=N,claim=M")
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--items", nargs="+", default=[f"{DEV_DIR}/*items*.jsonl"])
@@ -849,8 +918,22 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / OUT_DIR)
     ap.add_argument("--seed", type=int, default=S1_SEED)
     ap.add_argument("--n", type=int, default=100)
-    ap.add_argument("--target-pos", type=int, default=25)
+    ap.add_argument(
+        "--target-pos",
+        type=_target_pos,
+        default=25,
+        help="positives per kind: an int, or item=N,claim=M",
+    )
+    ap.add_argument(
+        "--item-first", action="store_true", help="item cards: item question before the summary"
+    )
+    ap.add_argument(
+        "--claims-complete-only",
+        action="store_true",
+        help="draw claims only from records whose history is complete (they alone gate invented)",
+    )
     ap.add_argument("--no-gold", action="store_true")
+    ap.add_argument("--dev-first", action="store_true", help="dev-half units first (spec D10)")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args(argv)
 
@@ -915,6 +998,8 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(f"label units must be natural-arm records, got {rid!r}")
         return rec(rid)["summary"]
 
+    if a.claims_complete_only:
+        claims = [r for r in claims if rec(r.get("base_rid") or r["rid"])["history_complete"]]
     try:
         units, frame = select_label_items(
             items, claims, a.seed, a.n, a.target_pos, halves=halves, return_frame=True
@@ -956,8 +1041,11 @@ def main(argv: list[str] | None = None) -> int:
         gold=gold,
         frame=frame,
         seed=a.seed,
+        dev_first=a.dev_first,
+        item_first=a.item_first,
         meta={
             "n": a.n,
+            "claims_complete_only": a.claims_complete_only,
             "target_pos": a.target_pos,
             "source_sha256": src_sha,
             "manifest": a.manifest,
