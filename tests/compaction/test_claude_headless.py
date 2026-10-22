@@ -7,6 +7,7 @@ the managed-settings paths point into tmp.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import re
@@ -885,3 +886,58 @@ def test_verify_route_cases():
     assert ch.verify_route(base | {"api_key_source": "ANTHROPIC_API_KEY"}) == "bad"
     assert ch.verify_route(base | {"rate_limit_seen": False}) == "unknown"
     assert ch.verify_route(None) == "unknown"
+
+
+# -- tool-using requests (spec D11's second look)
+
+
+def test_tool_request_writes_files_and_passes_tools(fake):
+    r0 = dataclasses.replace(
+        req(), files=(("history.txt", "[m0] USER: hi"),), tools=("Grep", "Read"), max_turns=7
+    )
+    r = backend(fake).run([r0], purpose="t")["k1"]
+    assert r.error is None and r.meta["tool_calls"] == []
+    (call,) = fake.calls()
+    a = call["argv"]
+    assert a[a.index("--tools") + 1] == "Grep,Read"
+    assert a[a.index("--max-turns") + 1] == "7"
+    assert "--safe-mode" in a
+    assert call["cwd_entries"] == ["history.txt"] and not Path(call["cwd"]).exists()
+
+
+def test_cache_id_unchanged_without_tools_and_keyed_on_files(fake):
+    b = backend(fake)
+    r0 = req()
+    old = ch._sha(
+        json.dumps(
+            [r0.key, ch._sha(r0.system + "\0" + r0.user), ch._sha(ch._canon(r0.schema)),
+             b.model, b.effort, int(r0.max_output_tokens)]
+        )
+    )  # fmt: skip
+    assert b.cache_id(r0) == old  # caches written before tools existed still hit
+    t1 = dataclasses.replace(r0, files=(("history.txt", "a"),), tools=("Grep",))
+    t2 = dataclasses.replace(t1, files=(("history.txt", "b"),))
+    assert len({b.cache_id(r0), b.cache_id(t1), b.cache_id(t2)}) == 3
+
+
+@pytest.mark.parametrize(
+    "change", [{"tools": ("Bash",)}, {"files": (("../x.txt", "a"),)}, {"tools": ("Write",)}]
+)
+def test_tool_request_refuses_unsafe_tools_and_paths(fake, change):
+    with pytest.raises(ValueError, match="not allowed"):
+        backend(fake).run([dataclasses.replace(req(), **change)], purpose="t")
+    assert fake.all_calls() == []
+
+
+def test_tool_calls_are_collected_in_order():
+    ev = [
+        {"type": "assistant", "message": {"content": [
+            {"type": "tool_use", "name": "Grep", "input": {"pattern": "0\\.2016"}}]}},
+        {"type": "user", "message": {"content": []}},
+        {"type": "assistant", "message": {"content": [
+            {"type": "text", "text": "x"},
+            {"type": "tool_use", "name": "Read", "input": {"file_path": "h" * 999}}]}},
+    ]  # fmt: skip
+    calls = ch.tool_calls(ev)
+    assert [c["name"] for c in calls] == ["Grep", "Read"]
+    assert len(calls[1]["input"]) == ch.TOOL_INPUT_CHARS

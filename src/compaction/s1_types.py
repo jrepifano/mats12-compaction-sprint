@@ -52,6 +52,12 @@ class Req:
     rid: str  # the record (or base record) this request is about
     source: str  # its source, for the privacy check
     private: bool  # anthropic_only(record); API backends refuse True
+    # Tool-using requests (spec D11's second look; Max only, API backends refuse them): files
+    # written into the call's working directory as (name, text) pairs, the read-only built-in
+    # tools the model may call there, and a turn cap.
+    files: tuple[tuple[str, str], ...] = ()
+    tools: tuple[str, ...] = ()
+    max_turns: int | None = None
 
 
 @dataclass

@@ -1008,6 +1008,25 @@ def interpret(
 # ---------------------------------------------------------------- the backend
 
 
+READ_ONLY_TOOLS = frozenset({"Grep", "Read", "Glob"})  # the only tools a request may name
+_SAFE_FILE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")  # a plain file name in the call's directory
+TOOL_INPUT_CHARS = 300
+
+
+def tool_calls(events: list[dict]) -> list[dict]:
+    """The tool calls a session made, in order, as {name, input} with long inputs cut: kept with
+    the answer so every tool-using verdict can be audited."""
+    out = []
+    for e in events:
+        if e.get("type") != "assistant":
+            continue
+        for b in (e.get("message") or {}).get("content") or []:
+            if isinstance(b, dict) and b.get("type") == "tool_use":
+                inp = json.dumps(b.get("input"), ensure_ascii=False)
+                out.append({"name": b.get("name"), "input": inp[:TOOL_INPUT_CHARS]})
+    return out
+
+
 def _canon(schema: dict | None) -> str:
     return json.dumps(schema, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
@@ -1147,7 +1166,7 @@ class MaxBackend:
             "-p",
             "--model", self.model,
             "--safe-mode",
-            "--tools", "",
+            "--tools", ",".join(req.tools),
             "--no-session-persistence",
             "--strict-mcp-config",
             "--output-format", "stream-json",
@@ -1158,6 +1177,8 @@ class MaxBackend:
             args += ["--json-schema", json.dumps(req.schema, separators=(",", ":"))]
         if self.effort is not None:
             args += ["--effort", self.effort]
+        if req.max_turns is not None:
+            args += ["--max-turns", str(req.max_turns)]
         return args
 
     def cache_id(self, req: Req) -> str:
@@ -1169,6 +1190,8 @@ class MaxBackend:
             self.effort,
             int(req.max_output_tokens),
         ]
+        if req.tools or req.files or req.max_turns is not None:  # old keys stay as they were
+            parts += [list(req.tools), [[n, _sha(t)] for n, t in req.files], req.max_turns]
         return _sha(json.dumps(parts))
 
     def cache_path(self, purpose: str) -> Path:
@@ -1283,6 +1306,8 @@ class MaxBackend:
         cwd = tempfile.mkdtemp(prefix="claude-max-")
         t0 = time.monotonic()
         try:
+            for name, text in req.files:
+                Path(cwd, name).write_text(text, encoding="utf-8")
             try:
                 events = run_session(
                     cwd,
@@ -1305,6 +1330,8 @@ class MaxBackend:
                     self._account(req, purpose, stats, attempt, schema_retry, resp, t0)
                 raise
             resp, limit, billing_err = self._interpret(events, req)
+            if req.tools:
+                resp.meta["tool_calls"] = tool_calls(events)
         finally:
             shutil.rmtree(cwd, ignore_errors=True)
         self._account(req, purpose, stats, attempt, schema_retry, resp, t0)
@@ -1441,6 +1468,9 @@ class MaxBackend:
                 raise ValueError(
                     f"{r.key}: empty system prompt (Claude Code's default would apply)"
                 )
+            bad = set(r.tools) - READ_ONLY_TOOLS
+            if bad or any(not _SAFE_FILE.match(n) for n, _ in r.files):
+                raise ValueError(f"{r.key}: tools {sorted(bad)} or file names not allowed")
             if len(r.system.encode("utf-8")) > MAX_SYSTEM_BYTES:
                 raise ValueError(f"{r.key}: system prompt over {MAX_SYSTEM_BYTES} bytes (argv)")
             pending.append((r, cid))

@@ -77,6 +77,13 @@ ITEM_VERDICTS = ("dropped", "kept", "misstated")
 CLAIM_VERDICTS = ("unsupported", "supported", "contradicted", "invented")
 HEADLINE_ITEM = "dropped"
 GATE = 0.8
+# D13 (22 Oct): precision only, at a 0.7 floor. The fresh page samples too few judge negatives
+# (8 of 410 items, 7 of 785 claims) for recall to bear a gate; recall is reported, not gated.
+GATE_D13 = 0.7
+GATE_RULES = {
+    "d1": f"held-out point precision and recall >= {GATE} (D1)",
+    "d13": f"held-out point precision >= {GATE_D13}; recall reported, not gated (D13)",
+}
 MIN_N = 10
 MATCH_MIN = 0.5
 Z95 = 1.959963984540054
@@ -229,8 +236,10 @@ def primary_tier_units(units: Mapping[str, Mapping]) -> dict[str, dict]:
     return out
 
 
-def _gate(sc: Mapping) -> str:
+def _gate(sc: Mapping, rule: str = "d1") -> str:
     p, r = sc["precision"]["point"], sc["recall"]["point"]
+    if rule == "d13":
+        return "NO DATA" if p is None else "PASS" if p >= GATE_D13 else "FAIL"
     if p is None or r is None:
         return "NO DATA"
     return "PASS" if p >= GATE and r >= GATE else "FAIL"
@@ -428,9 +437,12 @@ def score(
     claim_gate: str = "invented",
     matcher: Matcher = token_matcher,
     dev_only: bool = False,
+    gate_rule: str = "d1",
 ) -> dict:
     """The full scoring record (see the module docstring). `dev_only`: the dev half alone, with
-    no held-out or pooled estimate and no gate."""
+    no held-out or pooled estimate and no gate. `gate_rule`: "d1" or "d13" (GATE_RULES)."""
+    if gate_rule not in GATE_RULES:
+        raise ValueError(f"gate_rule must be one of {sorted(GATE_RULES)}")
     if claim_gate not in ("unsupported", "invented"):
         raise ValueError("claim_gate must be unsupported or invented")
     labs = normalize_labels(labels)
@@ -468,9 +480,9 @@ def score(
         if dev_only:
             continue
         g = {
-            HEADLINE_ITEM: _gate(verdicts[HEADLINE_ITEM]["held"]),
-            claim_gate: _gate(primary["held"]),
-            f"{claim_gate}_all_tiers_descriptive": _gate(verdicts[claim_gate]["held"]),
+            HEADLINE_ITEM: _gate(verdicts[HEADLINE_ITEM]["held"], gate_rule),
+            claim_gate: _gate(primary["held"], gate_rule),
+            f"{claim_gate}_all_tiers_descriptive": _gate(verdicts[claim_gate]["held"], gate_rule),
         }
         g["judge"] = "PASS" if g[HEADLINE_ITEM] == g[claim_gate] == "PASS" else "FAIL"
         gate[j] = g
@@ -487,8 +499,8 @@ def score(
         "headline": [HEADLINE_ITEM, claim_gate],
         "draw": key.get("draw"),
         "gate_rule": (
-            f"held-out point precision and recall >= {GATE} (D1); pass 2 on units anchored "
-            "exact or normalized (the primary tiers)"
+            f"{GATE_RULES[gate_rule]}; pass 2 on units anchored exact or normalized (the "
+            "primary tiers)"
         ),
         "gate": gate,
         "per_judge": per_judge,
@@ -568,12 +580,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--md-out", type=Path, default=None, help="score.md (numbers only)")
     ap.add_argument("--claim-gate", choices=("unsupported", "invented"), default="invented")
     ap.add_argument("--dev-only", action="store_true", help="dev half only: no gate, no lock")
+    ap.add_argument("--gate-rule", choices=sorted(GATE_RULES), default="d1")
     a = ap.parse_args(argv)
     key = json.loads(a.key.read_text())
     labels = json.loads(a.labels.read_text())
     try:
         out = require_private(a.out)
-        rec = score(labels, key, claim_gate=a.claim_gate, dev_only=a.dev_only)
+        rec = score(
+            labels, key, claim_gate=a.claim_gate, dev_only=a.dev_only, gate_rule=a.gate_rule
+        )
     except (DrawMismatch, ValueError) as e:
         print(f"S1_LABEL_SCORE FAIL {e}")
         return 2

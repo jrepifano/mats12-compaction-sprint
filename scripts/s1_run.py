@@ -141,7 +141,12 @@ def frozen_config() -> dict:
         return hashlib.sha256(b).hexdigest()
 
     return {
-        "prompts": {f.name: sha(f.read_bytes()) for f in sorted(s1_judge.PROMPT_DIR.glob("*.md"))},
+        # the second look's prompts are frozen on their own (D11: frozen_second_look.json)
+        "prompts": {
+            f.name: sha(f.read_bytes())
+            for f in sorted(s1_judge.PROMPT_DIR.glob("*.md"))
+            if not f.name.startswith("second_look_")
+        },
         "schemas": {
             k: sha(json.dumps(getattr(T, k), sort_keys=True, separators=(",", ":")).encode())
             for k in ("PASS1A_SCHEMA", "PASS1B_SCHEMA", "PASS2_SCHEMA")

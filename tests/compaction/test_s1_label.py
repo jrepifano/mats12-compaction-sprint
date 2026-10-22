@@ -957,3 +957,16 @@ def test_per_kind_positive_targets_and_item_first_flag():
     assert _payload(html)["item_first"] is False
     assert page._target_pos("item=30,claim=15") == {"item": 30, "claim": 15}
     assert page._target_pos("25") == 25
+
+
+def test_d13_gate_is_precision_only_at_the_floor():
+    def sc(p, r):
+        return {"precision": {"point": p}, "recall": {"point": r}}
+
+    assert scorer._gate(sc(0.75, 0.3), "d13") == "PASS"  # recall is reported, not gated
+    assert scorer._gate(sc(0.69, 1.0), "d13") == "FAIL"
+    assert scorer._gate(sc(None, 1.0), "d13") == "NO DATA"
+    assert scorer._gate(sc(0.75, None), "d13") == "PASS"
+    assert scorer._gate(sc(0.75, 0.9), "d1") == "FAIL"  # D1 unchanged
+    with pytest.raises(ValueError, match="gate_rule"):
+        scorer.score({"labels": {}}, {"units": {}}, gate_rule="d2")

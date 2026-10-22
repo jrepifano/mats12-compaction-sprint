@@ -825,6 +825,8 @@ class ApiBackend:
 
     async def arun(self, reqs: list[Req], *, purpose: str) -> dict[str, Resp]:
         self._check(reqs, purpose)  # privacy first, then config
+        if any(r.tools or r.files for r in reqs):
+            raise ValueError(f"{self.name}: tool-using requests run on the Max backend only")
         out: dict[str, Resp] = {}
         live: list[Req] = []
         for r in reqs:

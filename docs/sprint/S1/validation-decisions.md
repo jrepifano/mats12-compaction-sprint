@@ -166,6 +166,37 @@ on 30 of 33 (v1).
 - v2c is the candidate that goes to fresh validation, not a proven winner: the metrics come from
   an LLM grader on the sessions the prompt was tuned on.
 
+## The fresh labels, round one, and the search tools (22 Oct)
+
+Jacob labelled the first 25 of the 60 fresh cards. Haiku's "dropped" calls held up 5 times in
+13, and none of its 5 "invented" calls did. Reading each one:
+
+- **Three "invented" calls were lookup misses.** The evidence was in the history word for word
+  ("complex_responses: 0.3394 vs 0.2016"; "v4-cp200 (1.2 epochs)"), but the judge reads up to
+  ~170k tokens in one pass and missed it. That's a fixable error, not noise.
+- **Four "dropped" calls were AGENTS.md rules.** Three sit in the instruction file Claude Code
+  re-attaches after compaction; the loss rate never counts those (they're "reloaded"), so they
+  shouldn't count against the judge's "lost" calls either. (The fourth was quoted elsewhere in
+  the session, so the same classification calls it lost, and it stays in.)
+- **The rest were borderline readings:** a summary that mentions the topic but not the fact,
+  or a plan the history implies. Two careful readers can differ on these.
+
+**Fix: a second look with search tools.** Every positive call gets one re-check in which
+Haiku can grep and read the history (for claims) or the summary (for items). A verdict changes
+only if code finds the quote it cites, so it can't flip a call by assertion. On the 25 cards it
+flipped all three lookup misses, the way Jacob had labelled them, and cost about $0.003 per call.
+It was frozen before Jacob labelled the other 35, which are the test.
+
+**Gate, revised before the 35 were labelled:** precision at least 0.7 on "lost" (instruction
+-file rules excluded) and on "invented". Recall isn't gated: the page samples only 8 of 410
+kept items and 7 of 785 supported claims, so a single card would swing it from 1.0 to about 0.5
+(items) or 0.2 (claims). For the same reason the headline rates are corrected for precision only:
+they estimate the losses the judge detects, and the true rate is higher by whatever it misses.
+Dividing by a barely measured recall would make the interval meaningless. (A side-agent review caught this before it went into the spec.)
+
+**Lesson:** separate the judge's fixable errors (it didn't find the evidence) from honest
+disagreement (it found it and read it differently), and only engineer against the first.
+
 ## Still to add
 
 - Fresh-label results: precision and recall with intervals, against the gate.
