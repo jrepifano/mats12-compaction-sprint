@@ -63,7 +63,9 @@ def readiness(expected: dict[str, list[str]], states: dict[str, str | None],
     `rows[key]`: its gate row (latest attempt), if any."""
     out = {}
     for m, keys in expected.items():
-        incomplete = [k for k in keys if states.get(k) != "complete"]
+        # A run-cap stop is complete with a shortfall: its boundary (if any) counts as usual,
+        # and a missing boundary is simply not coverage (review r3 #1).
+        incomplete = [k for k in keys if states.get(k) not in ("complete", "run_cap")]
         unassessed = [k for k in keys if k not in incomplete and k in rows
                       and rows[k]["tier"] == "reached"]
         missing_row = [k for k in keys if k not in incomplete and k not in rows]

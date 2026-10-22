@@ -181,8 +181,9 @@ def cmd_dryrun(a) -> int:
 
 
 def _paid_job(plan: P.RunPlan, route: C.Route, cap_usd: float) -> P.CohortJob:
-    """One model per run, over the run's own books (cap) on top of the stage books."""
-    spend = RunSpend(SprintSpend(), cap_usd)
+    """One model per run, over the run's own books (cap) on top of the stage books; the stage
+    wait for other runs' holds stops with the runner (Ctrl-C, SIGTERM)."""
+    spend = RunSpend(SprintSpend(stopped=LOOP.STOP.is_set), cap_usd)
     model = OpenAICompatModel(route, spend)
     return P.CohortJob(plan, route, lambda _phase, _rep: model, spend)
 
@@ -235,8 +236,8 @@ def followon_runs(labels: dict) -> list[dict] | None:
     initial = T.pilot_cohort(rows)
     states = {c.run_key(): (P.read_status(root / c.run_key()) or {}).get("state")
               for c in initial}
-    if any(v != "complete" for v in states.values()):
-        n = sum(v != "complete" for v in states.values())
+    if any(v not in ("complete", "run_cap") for v in states.values()):
+        n = sum(v not in ("complete", "run_cap") for v in states.values())
         print(f"refusing --followons: {n} of {len(initial)} initial cohort runs not complete")
         return None
     out = G.evaluate(tele, labels)
@@ -301,7 +302,7 @@ def cmd_pilot(a) -> int:
                          followup_distribution=dist, followup_source=prov)
         jobs.append(_paid_job(plan, route, C.RUN_CAP_USD[c.model]))
     out = P.run_cohort(jobs, pool, results_root=C.REPO_ROOT / "results",
-                       arm_concurrency=a.arm_concurrency)
+                       arm_concurrency=a.arm_concurrency, restart_capped=a.restart_capped)
     return report(out, pool)
 
 
@@ -322,7 +323,7 @@ def cmd_haiku_peak(a) -> int:
     plan = P.RunPlan(c, T.task_info(c.task, rank_rows=rows), 10**9, C.raw_dir() / "pilot",
                      run_cap_usd=a.cap_usd, followup_distribution=dist, followup_source=prov)
     out = P.run_cohort([_paid_job(plan, route, a.cap_usd)], pool,
-                       results_root=C.REPO_ROOT / "results")
+                       results_root=C.REPO_ROOT / "results", restart_capped=a.restart_capped)
     return report(out, pool)
 
 
@@ -366,6 +367,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--go-from-jacob", action="store_true")
         p.add_argument("--hosts")
         p.add_argument("--arm-concurrency", type=int, default=4)
+        p.add_argument("--restart-capped", action="store_true",
+                       help="restart (as a new, paid attempt) runs that stopped at their run "
+                            "cap; without it they are terminal")
         p.add_argument("--followup-fallback", action="store_true",
                        help="use the placeholder follow-up levels when S1's frozen "
                             "distribution is missing (recorded in every run)")

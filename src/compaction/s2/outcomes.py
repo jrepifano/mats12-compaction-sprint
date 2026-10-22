@@ -23,6 +23,7 @@ from contextlib import AbstractContextManager, nullcontext
 from pathlib import Path
 
 from compaction import seal
+from compaction.deepswe import sandbox as SBX
 from compaction.deepswe.sandbox import VerifierError, grade
 from compaction.s2 import config as C
 from compaction.s2 import rules as R
@@ -68,13 +69,40 @@ def score_traps(home: Path, rules: R.TaskRules, channel: str) -> dict:
     return row
 
 
-def grade_patch(task, patch: bytes, run_id: str, host: str | None = None,
-                slot: AbstractContextManager | None = None) -> dict:
-    """Grade on the run's own host, holding one of its container slots."""
+def grade_in(inv, task, patch: bytes, timeout_s: int = 1800) -> dict:
+    """compaction.deepswe.sandbox.grade, but the verifier container is started through the
+    run's own invocation: on its host, holding one of its slots, with the host rechecked after
+    the slot wait and a failed start classified before any removal (hosts.HostInvocation;
+    review r3 #4). Same steps: fresh pristine container, tests and patch in, test.sh, the
+    reward validated by parse_reward."""
+    with inv.start(task.image, platform=C.PLATFORM or None, lifetime_s=timeout_s + 300) as v:
+        v.copy_in(Path(task.tests_dir), "/tests")
+        v.put_file(patch, "/logs/artifacts/model.patch")
+        r = v.exec("chmod +x /tests/test.sh && bash /tests/test.sh", timeout_s=timeout_s,
+                   workdir="/app")
+        raw = v.exec(SBX.READ_REWARD_CMD, timeout_s=30, workdir="/")
+    if r.timed_out:
+        raise VerifierError(f"verifier timed out (rc={r.rc}) after {r.seconds:.0f} s")
+    if raw.rc != 0:
+        raise VerifierError(f"reading the reward failed rc={raw.rc}: {raw.stderr[-500:]}")
+    kind, _, text = raw.stdout.partition("\n")
     try:
-        with slot or nullcontext():
-            rew, _ = grade(task.image, task.tests_dir, patch, C.PURPOSE, run_id=run_id,
-                           platform=C.PLATFORM or None, host=host)
+        return SBX.parse_reward(kind.strip(), text)
+    except VerifierError as e:
+        raise VerifierError(f"{e}; test.sh rc={r.rc}; tail: {r.stdout[-800:]!r}") from None
+
+
+def grade_patch(task, patch: bytes, run_id: str, host: str | None = None,
+                slot: AbstractContextManager | None = None, inv=None) -> dict:
+    """Grade on the run's own host: through its guarded invocation when given (the pilot's
+    path), else the plain sandbox grader."""
+    try:
+        if inv is not None:
+            rew = grade_in(inv, task, patch)
+        else:
+            with slot or nullcontext():
+                rew, _ = grade(task.image, task.tests_dir, patch, C.PURPOSE, run_id=run_id,
+                               platform=C.PLATFORM or None, host=host)
     except VerifierError as e:
         return {"reward": None, "grade_error": str(e)[:1000]}
     f2p = rew["f2p_passed"] / rew["f2p_total"] if rew["f2p_total"] else None
@@ -86,7 +114,7 @@ def grade_patch(task, patch: bytes, run_id: str, host: str | None = None,
 def arm_outcome(arm_res, task, rules: R.TaskRules, channel: str, run_id: str,
                 do_grade: bool = True, host_name: str | None = None,
                 docker_host: str | None = None,
-                slot: AbstractContextManager | None = None) -> dict:
+                slot: AbstractContextManager | None = None, inv=None) -> dict:
     home = Path(arm_res.traps_home)
     row = {"run_key": arm_res.run_key, "arm": arm_res.arm, "rep": arm_res.rep,
            "host": host_name}
@@ -96,7 +124,7 @@ def arm_outcome(arm_res, task, rules: R.TaskRules, channel: str, run_id: str,
     row["leftover_committed"] = arm_res.leftover_committed
     if do_grade:
         patch = (home.parent / "model.patch").read_bytes()
-        row |= grade_patch(task, patch, run_id, host=docker_host, slot=slot)
+        row |= grade_patch(task, patch, run_id, host=docker_host, slot=slot, inv=inv)
     return row
 
 

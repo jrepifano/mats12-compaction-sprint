@@ -838,7 +838,11 @@ def test_cohort_assigns_by_task_runs_all_arms_and_records_hosts(host_world):
     tele = [json.loads(x) for x in (w.res / "sprint" / "S2" / "telemetry.jsonl")
             .read_text().splitlines()]
     assert all(t["host"]["name"] == by_task[t["task"]].copy().pop() for t in tele)
+    assert sum(t.get("pre_arms", False) for t in tele) == 4  # boundary rows before the arms
     for t in tele:
+        if t.get("pre_arms"):
+            assert t["boundary"] and "arms" not in t
+            continue
         assert sorted(f"{a['arm']}-{a['rep']}" for a in t["arms"]) == sorted(
             f"{a}-{r}" for a, r in P.ALL_ARMS)
     sealed = sorted((w.res / "sprint" / "S2" / "sealed" / "main").iterdir())
@@ -1447,3 +1451,161 @@ def test_r2_6_refusal_after_a_charged_retry_carries_the_charge_into_telemetry(
     res = L.run_arm(cfg, "S", 1, m2, None, lost=[], rules=rules, boundary=b)
     assert res.end == L.END_CAP and res.cost_usd == pytest.approx(1.0)
     assert run2.spent == pytest.approx(1.0)
+
+
+# ------------------------------------------------------------------------------------------
+# Review r3 fixes (logs/reviews/20261022-s2-harness-r3.md)
+# ------------------------------------------------------------------------------------------
+
+def test_r3_1_run_cap_is_terminal_not_an_error(tmp_path, fake_env):
+    class Capped(M.StubModel):
+        def complete(self, *a, **k):
+            raise M.RunCapReached("cap")
+
+    res = L.run_base(cfg_for(tmp_path), Capped([]), inv=None)
+    assert res.end == L.END_CAP and res.error is None and "cap" in res.cap
+    tele = {"base": {"end": "run_cap"}, "arms": [], "errors": []}
+    assert P._state_from(tele) == "run_cap"
+    assert P._state_from({"base": {"end": "boundary"}, "arms": [{"end": "run_cap"}],
+                          "errors": ["arm x: boom"]}) == "run_cap"
+
+
+def test_r3_1_cap_stopped_run_is_skipped_unless_explicitly_restarted(host_world):
+    w = host_world
+    jobs = w.jobs()[:1]
+    spend = M.RunSpend(M.NullSpend(), cap_usd=1.0)
+
+    def fac(ph, rep):  # 0.05 per call: the base (~30 calls) fits, the arms run out
+        return SpendingStub([{"bash": "x"}] * (40 if ph == "base" else 30), spend, bound=0.05,
+                            actual=0.05, summary=lambda m: "S")
+
+    jobs[0].factory, jobs[0].spend = fac, spend
+    out = P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    r = out.results[0]
+    assert r.status == "ok" and r.result["state"] == "run_cap" and not r.result["errors"]
+    st = P.read_status(jobs[0].plan.cohort_dir)
+    assert st["state"] == "run_cap" and st["arms_incomplete"]
+    assert set(st["arms_incomplete"]).isdisjoint(st["arms_done"])
+    assert any(a["end"] == "run_cap" for a in r.result["arms"])
+    again = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert set(again.actions.values()) == {"skip"} and again.results == []
+    forced = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res,
+                          restart_capped=True)
+    assert set(forced.actions.values()) == {"restart"}
+    assert forced.results[0].result["attempt"] == 2
+
+
+def test_r3_1_followon_readiness_treats_run_cap_as_complete_with_shortfall():
+    from compaction.s2 import followon as FO
+    from compaction.s2 import gate as G
+    capped = {**_tele("k", "glm", "chat", reached=False), "cohort_key": "k"}
+    rows = {r["cohort_key"]: r for r in G.evaluate([capped], {})["tiers"]}
+    assert rows["k"]["tier"] == "attempted"  # no boundary: a coverage shortfall
+    ready = FO.readiness({"glm": ["k"]}, {"k": "run_cap"}, rows)
+    assert ready["glm"]["ready"]
+
+
+def test_r3_2_crash_during_arms_keeps_the_boundary_visible_to_the_gate(host_world):
+    from compaction.s2 import gate as G
+    w = host_world
+    jobs = w.jobs()[:1]
+    P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    tele_path = w.res / "sprint" / "S2" / "telemetry.jsonl"
+    rows = [json.loads(x) for x in tele_path.read_text().splitlines()]
+    assert rows[0].get("pre_arms") and rows[0]["boundary"]  # written before the arms ran
+    # A hard crash during the arms: no telemetry row survived, two arms unrecorded.
+    tele_path.write_text("")
+    cd = jobs[0].plan.cohort_dir
+    st = P.read_status(cd)
+    P.write_status(cd, state="running", arms_done=st["arms_done"][:-2])
+    out = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert out.actions[jobs[0].plan.cohort_key] == "resume_arms"
+    rows = [json.loads(x) for x in tele_path.read_text().splitlines()]
+    base = [r for r in rows if r.get("phase") == "base"]
+    assert len(base) == 1 and base[0]["reconstructed"] and base[0]["boundary"]
+    g = G.evaluate(rows, {})
+    assert g["tiers"][0]["tier"] == "reached"  # the gate sees the boundary
+    assert P.ensure_base_row(jobs[0].plan.out_dir, w.res) is None  # added once only
+
+
+def test_r3_3_stage_refusals_wait_only_for_other_holds(monkeypatch):
+    from compaction import budget
+    calls = []
+
+    def fake_reserve(stage, usd, note=""):
+        calls.append(usd)
+        if len(calls) == 1:  # other runs hold 9.9 of the 10 left: temporary
+            raise budget.BudgetRefused("held", {"cap": 50, "spent": 40, "open": 9.9,
+                                                "request": usd})
+        return f"rid{len(calls)}"
+
+    monkeypatch.setattr(budget, "reserve", fake_reserve)
+    slept = []
+    sp = M.SprintSpend(sleep=slept.append, poll_s=1)
+    assert sp.reserve(0.2, "x") == "rid2" and slept == [1]
+    monkeypatch.setattr(budget, "reserve", lambda stage, usd, note="": (_ for _ in ()).throw(
+        budget.BudgetRefused("full", {"cap": 50, "spent": 49.9, "open": 0.0, "request": usd})))
+    with pytest.raises(M.StageCapReached, match="exhausted"):
+        M.SprintSpend(sleep=lambda s: None).reserve(0.2, "x")
+    monkeypatch.setattr(budget, "reserve", lambda stage, usd, note="": (_ for _ in ()).throw(
+        budget.BudgetRefused("held", {"cap": 50, "spent": 40, "open": 9.9, "request": usd})))
+    with pytest.raises(M.StageCapReached, match="cancelled"):
+        M.SprintSpend(sleep=lambda s: None, stopped=lambda: True).reserve(0.2, "x")
+    with pytest.raises(M.StageCapReached, match="timed out"):
+        M.SprintSpend(sleep=lambda s: None, wait_s=0).reserve(0.2, "x")
+    assert issubclass(M.StageCapReached, M.RunCapReached)  # a terminal run_cap stop
+
+
+def test_r3_3_stage_wait_releases_the_run_lock_and_carries_charges(monkeypatch):
+    import threading
+    gate_open = threading.Event()
+
+    class SlowInner(M.NullSpend):
+        def reserve(self, usd, note):
+            if note == "slow":
+                gate_open.wait(2)  # the stage is waiting for other runs' holds
+            return super().reserve(usd, note)
+
+    run = M.RunSpend(SlowInner(), cap_usd=10.0)
+    held = run.reserve(1.0, "other arm")
+    t = threading.Thread(target=lambda: run.reserve(1.0, "slow"))
+    t.start()
+    run.settle(held, 0.5, resource="r", units=0, note="")  # no deadlock on the run lock
+    gate_open.set()
+    t.join(2)
+    assert not t.is_alive() and run.spent == pytest.approx(0.5)
+
+    class Refusing(M.NullSpend):
+        def reserve(self, usd, note):
+            if self.calls >= 1:
+                raise M.StageCapReached("exhausted")
+            return super().reserve(usd, note)
+
+    monkeypatch.setattr(M, "bound_usd", lambda route, nbytes, max_tokens: 1.0)
+    run2 = M.RunSpend(Refusing(), cap_usd=10.0)
+    cl, _ = fake_client([StatusError(500), response()])
+    m = M.OpenAICompatModel(C.ROUTES["glm"], run2, client=cl, sleep=lambda s: None)
+    with pytest.raises(M.StageCapReached) as ei:
+        m.complete([{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert ei.value.cost_usd == pytest.approx(1.0) == pytest.approx(run2.spent)
+
+
+def test_r3_4_graders_use_the_guarded_start(monkeypatch, tmp_path):
+    import threading
+    removed = []
+    monkeypatch.setattr(SB, "remove_container", lambda n: removed.append(n) or True)
+    monkeypatch.setattr(SB, "_docker", lambda *a, **k: subprocess.CompletedProcess(a, 0, b"",
+                                                                                     b""))
+    pool = H.HostPool([H.Host("h", "ssh://h", 1, 1)], probe=lambda h: True)
+    inv = pool.invocation("h", "p")
+    holder = inv.start("img")  # the only slot
+    task = T.TaskInfo("t", 1, "go", "img", "c", "Do it.", str(tmp_path), str(tmp_path), [])
+    got = {}
+    t = threading.Thread(target=lambda: got.setdefault("r", _try(O.grade_in, inv, task, b"")))
+    t.start()
+    t.join(0.1)
+    assert t.is_alive()  # the grader waits for a slot like any container
+    pool.mark_down("h", "test")
+    holder.close()
+    t.join(2)
+    assert isinstance(got["r"], H.HostDown) and removed == []

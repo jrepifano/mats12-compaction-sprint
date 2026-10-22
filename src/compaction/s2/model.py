@@ -43,7 +43,12 @@ class ModelError(RuntimeError):
 
 
 class RunCapReached(ModelError):
-    """The next attempt's bound would take the run past its cap; nothing was sent."""
+    """The next attempt's bound would take the run past its cap; nothing was sent. Terminal for
+    the run (state `run_cap`), never an error and never restarted automatically."""
+
+
+class StageCapReached(RunCapReached):
+    """The stage or sprint allowance is truly exhausted (not just held by other runs)."""
 
 
 @dataclass
@@ -200,6 +205,7 @@ class RunSpend:
     # --- Spend ------------------------------------------------------------------------------
     def reserve(self, usd: float, note: str) -> str:
         deadline = time.monotonic() + self.wait_s
+        pending = f"pending-{os.urandom(6).hex()}"
         with self._cond:
             while True:
                 left = self.remaining()
@@ -212,7 +218,18 @@ class RunSpend:
                         f"${sum(self._open.values()):.4f} held by other calls, next bound "
                         f"${usd:.4f}" + ("" if not self._open else " (waited for holds)"))
                 self._cond.wait(timeout=wait)
+            self._open[pending] = usd  # counts against the run cap while the stage decides
+        try:
+            # Outside the lock: the stage may wait for other runs' holds, and this run's other
+            # arms must still be able to settle meanwhile.
             rid = self.inner.reserve(usd, note)
+        except BaseException:
+            with self._cond:
+                self._open.pop(pending, None)
+                self._cond.notify_all()
+            raise
+        with self._cond:
+            self._open.pop(pending, None)
             self._open[rid] = usd
             self._log({"ev": "reserve", "key": f"{self._session}/{rid}", "usd": usd,
                        "note": note})
@@ -237,13 +254,38 @@ class RunSpend:
 @dataclass
 class SprintSpend:
     """compaction.budget against the stage (default SPRINT-S2). Refuses (WrongCheckout) unless
-    this process runs from the designated checkout in docs/sprint/caps.toml."""
+    this process runs from the designated checkout in docs/sprint/caps.toml.
+
+    A stage or sprint refusal that is only temporary (the request would fit once the open
+    reservations of other calls settle: spent + request <= cap, open > 0) is waited out,
+    polling every `poll_s` up to `wait_s`, and cancellable through `stopped()` (the runner's
+    stop flag). Real exhaustion, a timed-out or cancelled wait, raises StageCapReached, a
+    run-cap stop that carries the call's earlier charges (review r3 #3)."""
 
     stage: str = C.STAGE
+    wait_s: float = HOLD_WAIT_S
+    poll_s: float = 5.0
+    stopped: Callable[[], bool] | None = None
+    sleep: Callable[[float], None] = time.sleep
 
     def reserve(self, usd: float, note: str) -> str:
         from compaction import budget
-        return budget.reserve(self.stage, usd, note=note)
+        deadline = time.monotonic() + self.wait_s
+        while True:
+            try:
+                return budget.reserve(self.stage, usd, note=note)
+            except (budget.TopUpRequired, budget.WrongCheckout):
+                raise
+            except budget.BudgetRefused as e:
+                bd = e.breakdown or {}
+                temporary = (bd.get("open", 0) > 0 and bd.get("spent", 0) + bd.get("request", usd)
+                             <= bd.get("cap", 0) + 1e-9)
+                cancelled = self.stopped is not None and self.stopped()
+                if not temporary or cancelled or time.monotonic() >= deadline:
+                    why = ("exhausted" if not temporary else
+                           "cancelled" if cancelled else "timed out waiting for holds")
+                    raise StageCapReached(f"stage refusal ({why}): {e}") from e
+                self.sleep(self.poll_s)
 
     def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
         from compaction import budget

@@ -245,6 +245,7 @@ class BaseResult:
     boundary: dict | None = None
     rules: dict | None = None
     error: str | None = None
+    cap: str | None = None  # why the run cap stopped it (terminal, not an error)
     seconds: float = 0.0
     timings: list[dict] = field(default_factory=list)
 
@@ -294,7 +295,7 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
         if res.end == END_BOUNDARY:
             res.boundary = make_boundary(cfg, loop, env, inv, rules, agents)
     except RunCapReached as e:
-        res.end, res.error = END_CAP, f"RunCapReached: {e}"
+        res.end, res.cap = END_CAP, f"{type(e).__name__}: {e}"  # terminal, not an error
     except ModelError as e:
         res.end, res.error = END_ERROR, f"ModelError: {e}"
     except Stopped as e:
@@ -389,6 +390,7 @@ class ArmResult:
     traps_home: str | None = None
     patch_bytes: int | None = None
     error: str | None = None
+    cap: str | None = None
     seconds: float = 0.0
     timings: list[dict] = field(default_factory=list)
 
@@ -439,7 +441,7 @@ def run_arm(cfg: RunConfig, arm: str, rep: int, model: ChatModel, inv, *, lost: 
         with _DUMP_LOCK:
             _dump(out / "continuation.json", loop.messages[start_len:])
     except RunCapReached as e:
-        res.end, res.error = END_CAP, f"RunCapReached: {e}"
+        res.end, res.cap = END_CAP, f"{type(e).__name__}: {e}"  # terminal; arm left unscored
     except ModelError as e:
         res.error = f"ModelError: {e}"
     except Stopped as e:

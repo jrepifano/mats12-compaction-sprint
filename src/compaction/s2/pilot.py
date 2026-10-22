@@ -42,7 +42,7 @@ from compaction.s2.tasks import CohortRun, TaskInfo
 ModelFactory = Callable[[str, int], ChatModel]  # (phase "base" or arm name, rep) -> model
 _LOCK = threading.Lock()
 TELE_KEYS_ARM = ("arm", "rep", "end", "n_calls", "cost_usd", "closing_sent", "would_recompact",
-                 "error", "seconds")
+                 "error", "cap", "seconds")
 ALL_ARMS = [(a, r) for a in C.ARMS for r in range(1, C.REPS + 1)]
 
 
@@ -142,7 +142,7 @@ def _run_arms(cfg: RunConfig, plan: RunPlan, todo: list[tuple[str, int]],
         if res.traps_home and not res.error:
             row = O.arm_outcome(res, plan.task, rules, cfg.channel, inv.run_id,
                                 do_grade=do_grade, host_name=host.name,
-                                docker_host=host.docker_host, slot=pool.slot(host.name))
+                                docker_host=host.docker_host, inv=inv)
             O.seal_arm(plan.run_key, arm_slug(a), r, row,
                        root=Path(results_root) / "sprint", release_name=release_name)
             _write(plan.out_dir / "arms" / f"{arm_slug(a)}-{r}" / "scored.json",
@@ -176,11 +176,21 @@ def _finish(tele: dict, plan: RunPlan, inv, pool: H.HostPool, host: H.Host,
             state = "failed"
             tele.setdefault("errors", []).append(f"cleanup not confirmed: {bad}")
     tele["state"] = state
-    write_status(plan.cohort_dir, state=state)
+    upd = {"state": state}
+    if state == "run_cap":
+        done = set((read_status(plan.cohort_dir) or {}).get("arms_done") or [])
+        upd["arms_incomplete"] = [f"{arm_slug(a)}-{r}" for a, r in ALL_ARMS
+                                  if f"{arm_slug(a)}-{r}" not in done]
+        tele["arms_incomplete"] = upd["arms_incomplete"]
+    write_status(plan.cohort_dir, **upd)
 
 
 def _state_from(tele: dict) -> str:
+    """A run-cap stop anywhere is terminal (`run_cap`, review r3 #1): never `failed`, never
+    restarted automatically; its unrun arms are recorded as incomplete."""
     ends = [(tele.get("base") or {}).get("end")] + [a["end"] for a in tele.get("arms", [])]
+    if "run_cap" in ends:
+        return "run_cap"
     if "stopped" in ends:
         return "stopped"
     return "failed" if tele.get("errors") else "complete"
@@ -226,7 +236,7 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
         base = run_base(cfg, model_factory("base", 0), inv, image=plan.image)
         tele["base"] = {k: getattr(base, k) for k in (
             "end", "n_calls", "cost_usd", "ctx_tokens", "followups_delivered",
-            "followup_tokens_delivered", "error", "seconds")}
+            "followup_tokens_delivered", "error", "cap", "seconds")}
         if base.error:
             tele["errors"].append(f"base: {base.error[-300:]}")
         tele["tier"] = "attempted"
@@ -237,6 +247,11 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
                 "pre_tokens", "post_tokens_est", "summary_chars", "precheck", "lost_certain",
                 "compaction_cost_usd", "snapshot_s", "stopped_processes")}
             write_status(plan.cohort_dir, state="base_done", boundary_tag=b["tag"])
+            # The gate must see this boundary even if the process dies during the arms
+            # (review r3 #2): the base row goes to the telemetry now; the final row, written
+            # after the arms, supersedes it (gate.latest_attempts keeps the last).
+            append_jsonl(s2_dir(results_root) / "telemetry.jsonl",
+                         {**tele, "pre_arms": True, "state": "base_done"})
             rules = R.TaskRules(**{k: v for k, v in base.rules.items()
                                    if k in R.TaskRules.__dataclass_fields__})
             todo = arms if arms is not None else ALL_ARMS
@@ -304,6 +319,7 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
         # The same attempt continues against the same cap: rebuild its books from the ledger,
         # including holds a crashed process left unresolved (charged at their bound).
         spend.attach(run_dir / "spend.jsonl")
+    ensure_base_row(run_dir, results_root)
     done = set(st.get("arms_done") or [])
     todo = [(a, r) for a, r in ALL_ARMS if f"{arm_slug(a)}-{r}" not in done]
     tele: dict = {"ts": utc(), "phase": "resume", "run_key": plan.run_key,
@@ -327,6 +343,39 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
         _cost(tele, spend, plan)
         append_jsonl(s2_dir(results_root) / "telemetry.jsonl", tele)
     return tele
+
+
+def ensure_base_row(run_dir: Path, results_root: Path) -> dict | None:
+    """If the telemetry has no base row for this attempt (a crash before any was written),
+    rebuild it from the attempt's durable files (run.json, base/result.json,
+    boundary/boundary.json) and append it, marked `reconstructed`. Returns the row added."""
+    run = json.loads((run_dir / "run.json").read_text())
+    key = run["run_key"]
+    path = s2_dir(results_root) / "telemetry.jsonl"
+    if path.exists() and any(
+            (r := json.loads(x)).get("run_key") == key and r.get("phase", "base") == "base"
+            for x in path.read_text().splitlines() if x.strip()):
+        return None
+    base = json.loads((run_dir / "base" / "result.json").read_text())
+    bpath = run_dir / "boundary" / "boundary.json"
+    b = json.loads(bpath.read_text()) if bpath.exists() else None
+    pl = run["plan"]
+    row = {"ts": utc(), "phase": "base", "reconstructed": True, "run_key": key,
+           "cohort_key": run["cohort_key"], "attempt": run["attempt"], "task": run["task"]["task_id"],
+           "rank": run["task"]["rank"], "model": pl["model"], "channel": pl["channel"],
+           "kind": pl["kind"], "threshold": pl["threshold"], "run_id": run["run_id"],
+           "host": run["host"], "policy": pl["policy"],
+           "base": {k: base.get(k) for k in ("end", "n_calls", "cost_usd", "ctx_tokens",
+                                             "followups_delivered",
+                                             "followup_tokens_delivered", "error", "cap",
+                                             "seconds")},
+           "tier": "reached_compaction" if b else "attempted", "errors": []}
+    if b:
+        row["boundary"] = {k: b.get(k) for k in (
+            "pre_tokens", "post_tokens_est", "summary_chars", "precheck", "lost_certain",
+            "compaction_cost_usd", "snapshot_s", "stopped_processes")}
+    append_jsonl(path, row)
+    return row
 
 
 # ------------------------------------------------------------------------------------------
@@ -376,7 +425,7 @@ def process_pending_sweeps(pool: H.HostPool, results_root: Path, keep_run_ids: s
 
 def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
                arm_concurrency: int = 4, do_grade: bool = True,
-               release_name: str = "main") -> CohortOutcome:
+               release_name: str = "main", restart_capped: bool = False) -> CohortOutcome:
     """Run or resume every cohort run. Idempotent: rerun it after a host drop or a stop."""
     out = CohortOutcome()
     todo: list[tuple[CohortJob, str]] = []
@@ -388,7 +437,7 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
         up = bool(h) and h in pool.by_name and pool.check(h)
         img = (H.image_present(pool.host(h), st["boundary_tag"])
                if up and st and st.get("boundary_tag") else None)
-        action = H.resume_action(st, up, img)
+        action = H.resume_action(st, up, img, restart_capped=restart_capped)
         out.actions[j.plan.cohort_key] = action
         if action in ("skip", "resume_arms") and up:
             fixed.setdefault(j.plan.task.task_id, h)  # affinity only to a configured, live host

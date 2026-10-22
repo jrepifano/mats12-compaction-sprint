@@ -444,18 +444,22 @@ class HostPool:
 # Resume decisions
 # ------------------------------------------------------------------------------------------
 
-FINAL_STATES = ("complete",)
+FINAL_STATES = ("complete", "run_cap")
 
 
-def resume_action(status: dict | None, host_up: bool, image_present: bool | None) -> str:
+def resume_action(status: dict | None, host_up: bool, image_present: bool | None,
+                  restart_capped: bool = False) -> str:
     """What to do with one cohort run given its status file:
-    - "fresh": never started; "skip": finished;
+    - "fresh": never started; "skip": finished, including a run-cap stop (terminal; restarted
+      only with `restart_capped`, the CLI's --restart-capped);
     - "resume_arms": its boundary exists, its host is up and still holds the boundary image,
       so the missing arms fork there (same host, same boundary: contrasts stay within host);
     - "restart": anything else (no boundary yet, or the boundary is unreachable): a new attempt
       from scratch; the old attempt's partial rows are superseded, never mixed in."""
     if status is None:
         return "fresh"
+    if status.get("state") == "run_cap" and restart_capped:
+        return "restart"  # a paid restart of a cap-stopped run needs the explicit flag
     if status.get("state") in FINAL_STATES:
         return "skip"
     if status.get("boundary_tag") and host_up and image_present:
