@@ -23,6 +23,8 @@ import os
 import re
 import subprocess
 import threading
+import time
+import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -218,16 +220,57 @@ class HostInvocation(Invocation):
         if self.slots is not None:
             self.slots.acquire()
         try:
-            sb = SlotSandbox.start(image, self.purpose, run_id=self.run_id, **kw)
-        except BaseException as e:
+            # The host may have gone down while this call waited for its slot (review r2 #5).
+            if self.host_down is not None and self.host_down.is_set():
+                raise HostDown(f"host {self.host} went down while waiting; not starting {image}")
+            sb = self._start(image, **kw)
+        except BaseException:
             if self.slots is not None:
                 self.slots.release()
-            if self.on_transport is not None and is_transport_error(str(e)):
-                self.on_transport()
             raise
         sb.release = self.slots.release if self.slots is not None else None
         sb.host_down, sb.on_transport = self.host_down, self.on_transport
         self.sandboxes.append(sb)
+        return sb
+
+    def _start(self, image: str, *, name: str | None = None, lifetime_s: int = 4 * 3600,
+               cpus: float | None = 2, memory_mb: int | None = 8192,
+               platform: str | None = "linux/amd64", network: str = "none",
+               host: str | None = None) -> SlotSandbox:
+        """Sandbox.start, except that a failed start is classified first: a client timeout or a
+        docker-client transport error probes the host, and if the host is down no removal is
+        tried against it (the run's sweep is deferred); otherwise the half-created container is
+        removed and confirmed, as Sandbox.start does."""
+        name = name or (f"{self.purpose}-{self.run_id + '-' if self.run_id else ''}"
+                        f"{uuid.uuid4().hex[:8]}")
+        t0 = time.monotonic()
+        args = SBX.run_args(image, name, self.purpose, lifetime_s, cpus, memory_mb, platform,
+                            network, self.run_id)
+
+        def failed(text: str, timed_out: bool = False) -> None:
+            if self.on_transport is not None and (timed_out or is_transport_error(text)):
+                self.on_transport()
+            if self.host_down is not None and self.host_down.is_set():
+                raise HostDown(f"host {host} down at container start: {text[-300:]}")
+            with SBX.using_host(host):
+                SBX.remove_container(name)
+
+        with SBX.using_host(host):
+            try:
+                p = SBX._docker(args, timeout=300, check=False)
+            except subprocess.TimeoutExpired:
+                failed("client timeout at docker run", timed_out=True)
+                raise SandboxError(f"docker run of {name} timed out; container removed") from None
+            except BaseException:
+                SBX.remove_container(name)
+                raise
+        if p.returncode != 0:
+            err = p.stderr.decode(errors="replace") if isinstance(p.stderr, bytes) else p.stderr
+            failed(err)
+            raise SandboxError(f"docker run rc={p.returncode}: {err[-2000:]}")
+        sb = SlotSandbox(name=name, image=image, purpose=self.purpose, run_id=self.run_id,
+                         host=host)
+        sb.log.append({"op": "start", "seconds": time.monotonic() - t0})
         return sb
 
     def release_slots(self) -> None:

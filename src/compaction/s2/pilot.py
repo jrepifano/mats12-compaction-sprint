@@ -217,6 +217,9 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
         "followup_source": plan.followup_source})
     write_status(plan.cohort_dir, state="running", attempt=plan.attempt, run_key=key,
                  host=host_name, run_id=inv.run_id, boundary_tag=None, arms_done=[])
+    if spend is not None:
+        spend.attach(plan.out_dir / "spend.jsonl")  # durable per-attempt books (review r2 #2)
+        tele["spend_recovered"] = spend.recovered
     state = "failed"
     try:
         H.ensure_image(host, plan.image or plan.task.image)
@@ -254,9 +257,10 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
 
 
 def _cost(tele: dict, spend: RunSpend | None, plan: RunPlan) -> None:
-    """The run's spend: the run-level books (every attempt, failed ones included) when the run
-    has them; else the loops' own sums. Persisted in status.json so a resumed phase continues
-    against the same run cap."""
+    """The run's spend: the run-level books (every attempt, failed ones included; for a resumed
+    attempt, everything its ledger holds) when the run has them; else the loops' own sums.
+    Copied into status.json for reading only: the books themselves live in the attempt's
+    append-only spend.jsonl."""
     loops = round((tele.get("base") or {}).get("cost_usd", 0.0) + sum(
         a["cost_usd"] for a in tele.get("arms", [])), 6)
     tele["cost_usd_loops"] = loops
@@ -296,12 +300,17 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
                     policy=pl["policy"], stop_event=pool.down[host_name])
     inv = pool.invocation(host_name, C.PURPOSE, run_id=st["run_id"])
     inv.tags.append(b["tag"])  # so cleanup also removes the boundary image by tag
+    if spend is not None:
+        # The same attempt continues against the same cap: rebuild its books from the ledger,
+        # including holds a crashed process left unresolved (charged at their bound).
+        spend.attach(run_dir / "spend.jsonl")
     done = set(st.get("arms_done") or [])
     todo = [(a, r) for a, r in ALL_ARMS if f"{arm_slug(a)}-{r}" not in done]
     tele: dict = {"ts": utc(), "phase": "resume", "run_key": plan.run_key,
                   "cohort_key": plan.cohort_key, "attempt": plan.attempt, "run_id": inv.run_id,
                   "host": host.describe(), "arms_planned": [f"{arm_slug(a)}-{r}"
-                                                            for a, r in todo], "errors": []}
+                                                            for a, r in todo], "errors": [],
+                  "spend_recovered": spend.recovered if spend is not None else []}
     write_status(cohort_dir, state="resuming")
     state = "failed"
     try:
@@ -387,8 +396,6 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
             keep.add(st["run_id"])
         if action == "restart":
             j.plan.attempt = int(st.get("attempt") or 1) + 1
-        if action == "resume_arms" and j.spend is not None:
-            j.spend.spent = float(st.get("spent_usd") or 0.0)  # same attempt, same run cap
         if action != "skip":
             todo.append((j, action))
     out.swept = process_pending_sweeps(pool, results_root, keep)

@@ -1188,8 +1188,9 @@ def test_r1_11_followons_are_deterministic_once_per_step_and_persisted(tmp_path)
     cov = {"deepseek": {"covered": False, "short_cells": ["chat", "readme"],
                         "cells": {"agents_md": 1, "chat": 0, "readme": 0}},
            "glm": {"covered": True, "short_cells": [], "cells": {}}}
-    a, st1 = FO.plan(cov, done, repl, pilot_tasks, {"models": {}}, {})
-    b, _ = FO.plan(cov, done, repl, pilot_tasks, {"models": {}}, {})
+    ready = {"deepseek": True, "glm": True}
+    a, st1 = FO.plan(cov, done, repl, pilot_tasks, {"models": {}}, ready)
+    b, _ = FO.plan(cov, done, repl, pilot_tasks, {"models": {}}, ready)
     assert a == b  # deterministic
     assert [(r["task"], r["channel"], r["kind"]) for r in a] == [
         ("r8", "chat", "replacement"), ("r10", "readme", "replacement")]
@@ -1206,3 +1207,243 @@ def test_r1_11_followons_are_deterministic_once_per_step_and_persisted(tmp_path)
     d, st4 = FO.plan(cov, done, repl, pilot_tasks, st3, {"deepseek": True})
     assert d == c and st4["models"]["deepseek"]["excluded"]
     assert len({FO.cohort_run(r).run_key() for r in d}) == len(d)
+
+
+# ------------------------------------------------------------------------------------------
+# Review r2 fixes (logs/reviews/20261022-s2-harness-r2.md)
+# ------------------------------------------------------------------------------------------
+
+def test_r2_1_holds_of_other_arms_delay_but_never_refuse_a_call():
+    import threading
+    import time as _t
+    run = M.RunSpend(M.NullSpend(), cap_usd=3.0, spent=2.70)
+    f1 = run.reserve(0.12, "F-1")
+    f2 = run.reserve(0.12, "F-2")  # 2.94 committed: S's 0.12 doesn't fit while these are held
+    got = {}
+
+    def s_arm():
+        try:
+            got["rid"] = run.reserve(0.12, "S-1")
+        except M.RunCapReached as e:
+            got["err"] = e
+
+    t = threading.Thread(target=s_arm)
+    t.start()
+    _t.sleep(0.1)
+    assert t.is_alive() and not got  # waiting, not refused
+    run.settle(f1, 0.01, resource="r", units=0, note="")
+    run.settle(f2, 0.01, resource="r", units=0, note="")
+    t.join(2)
+    assert "rid" in got and "err" not in got  # 2.72 spent: S fits once the holds settled
+    # With no other hold open, a call that doesn't fit is refused at once.
+    full = M.RunSpend(M.NullSpend(), cap_usd=3.0, spent=2.95)
+    with pytest.raises(M.RunCapReached):
+        full.reserve(0.12, "x")
+    # A hold that never settles within the bound: refused after the wait, not forever.
+    slow = M.RunSpend(M.NullSpend(), cap_usd=3.0, spent=2.70, wait_s=0.05)
+    slow.reserve(0.2, "held")
+    with pytest.raises(M.RunCapReached):
+        slow.reserve(0.2, "late")
+
+
+def test_r2_2_attempt_ledger_survives_a_crash(tmp_path):
+    led = tmp_path / "a1" / "spend.jsonl"
+    run = M.RunSpend(M.NullSpend(), cap_usd=3.0).attach(led)
+    a = run.reserve(0.5, "F-1")
+    run.reserve(0.4, "S-1")  # in flight when the process dies
+    run.settle(a, 0.2, resource="r", units=0, note="")
+    with open(led, "a") as f:
+        f.write('{"ev": "reserve", "key": "torn')  # a torn final line
+    # A new process attaches to the same attempt: settled 0.2 + the open 0.4 hold at bound.
+    again = M.RunSpend(M.NullSpend(), cap_usd=3.0).attach(led)
+    assert again.spent == pytest.approx(0.6) and len(again.recovered) == 1
+    assert again.remaining() == pytest.approx(2.4)
+    third = M.RunSpend(M.NullSpend(), cap_usd=3.0).attach(led)
+    assert third.spent == pytest.approx(0.6) and third.recovered == []  # recovered once only
+
+
+class SpendingStub(M.StubModel):
+    """A stub that books each call through its RunSpend (a fixed bound and actual cost)."""
+
+    def __init__(self, actions, spend, bound=0.1, actual=0.05, **kw):
+        super().__init__(actions, **kw)
+        self.spend, self.bound, self.actual = spend, bound, actual
+
+    def complete(self, messages, tools, max_tokens, *, purpose):
+        rid = self.spend.reserve(self.bound, purpose)
+        rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+        self.spend.settle(rid, self.actual, resource="stub", units=0, note="")
+        rep.usage.cost_usd = rep.cost_total_usd = self.actual
+        return rep
+
+
+def test_r2_2_crash_mid_arms_resumes_against_the_same_books(host_world):
+    w = host_world
+    jobs = w.jobs()[:1]
+    spend = M.RunSpend(M.NullSpend(), cap_usd=100.0)
+
+    def fac(ph, rep):
+        return SpendingStub([{"bash": "x"}] * (40 if ph == "base" else 2), spend,
+                            summary=lambda m: "S")
+
+    jobs[0].factory, jobs[0].spend = fac, spend
+    P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    first = spend.spent
+    cd = jobs[0].plan.cohort_dir
+    st = P.read_status(cd)
+    # Simulate a crash during the arms: the process died with two arms unrecorded and one call
+    # in flight (its reserve is in the ledger, its settle isn't).
+    P.write_status(cd, state="running", arms_done=st["arms_done"][:-2])
+    with open(jobs[0].plan.out_dir / "spend.jsonl", "a") as f:
+        f.write(json.dumps({"ev": "reserve", "key": "dead/rid-9", "usd": 0.1}) + "\n")
+    spend2 = M.RunSpend(M.NullSpend(), cap_usd=100.0)
+    jobs2 = w.jobs()[:1]
+    jobs2[0].factory = lambda ph, rep: SpendingStub([{"bash": "x"}] * 2, spend2,
+                                                    summary=lambda m: "S")
+    jobs2[0].spend = spend2
+    out = P.run_cohort(jobs2, w.new_pool(), results_root=w.res)
+    assert out.actions[jobs2[0].plan.cohort_key] == "resume_arms"
+    r = out.results[0].result
+    assert r["phase"] == "resume" and len(r["arms"]) == 2
+    assert r["spend_recovered"] == [{"key": "dead/rid-9", "usd": 0.1}]
+    assert spend2.spent == pytest.approx(first + 0.1 + 0.05 * sum(a["n_calls"]
+                                                                  for a in r["arms"]))
+    assert r["cost_usd"] == pytest.approx(spend2.spent)
+
+
+def test_r2_3_protected_paths_override_every_non_infrastructure_exclusion(tmp_path):
+    from compaction.traps import cli
+    ws = tmp_path / "ws"
+    (ws / "src").mkdir(parents=True)
+    (ws / "src" / "a.py").write_text("x = 1\n")
+    git(ws, "init", "-q", "-b", "main")
+    git(ws, "add", "-A")
+    git(ws, "commit", "-q", "-m", "base")
+    rules = R.render("t", "python", ["src/a.py"], [])
+    home = tmp_path / "home"
+    cli.setup(str(home), str(ws), remote=False, snapshot_ignore=E.snapshot_ignore(["src/a.py"]),
+              snapshot_force_include=list(rules.r3_globs))
+    cli.take_snapshot(str(home), "fork")
+    for rel in ("docs/.cache/guide.md", "docs/generated.pyc", "node_modules/pkg/README.md",
+                "src/__pycache__/a.cpython-312.pyc", "node_modules/pkg/index.js"):
+        (ws / rel).parent.mkdir(parents=True, exist_ok=True)
+        (ws / rel).write_text("x\n")
+    snap = cli.take_snapshot(str(home), "final")
+    for rel in ("docs/.cache/guide.md", "docs/generated.pyc", "node_modules/pkg/README.md"):
+        assert rel in snap["files"], rel
+    for rel in ("src/__pycache__/a.cpython-312.pyc", "node_modules/pkg/index.js"):
+        assert rel not in snap["files"], rel  # unprotected paths stay excluded
+    assert not any(f.startswith(".git/") for f in snap["files"])
+    row = O.score_traps(home, rules, "chat")
+    assert row["R3"] is True and row["R3_events"] == 3
+
+
+def test_r2_3_could_match_below():
+    from compaction.traps.snapshot import could_match_below
+    assert could_match_below("node_modules", ["README*"])  # basename patterns match anywhere
+    assert could_match_below("docs/.cache", ["docs/*"])
+    assert could_match_below("docs", ["docs/*"])
+    assert not could_match_below("node_modules", ["docs/*"])
+    assert not could_match_below("src/build", ["src/b/*"])
+
+
+def test_r2_4_missing_labels_or_runs_plan_nothing():
+    from compaction.s2 import followon as FO
+    from compaction.s2 import gate as G
+    rows = T.pilot_cohort(ROWS)
+    expected = {m: [c.run_key() for c in rows if c.model == m] for m in C.PILOT_MODELS}
+    cov = G.evaluate([], {})["coverage"]  # empty telemetry: every model "short"
+    ready = FO.readiness(expected, {}, {})
+    assert not any(v["ready"] for v in ready.values())
+    planned, st = FO.plan(cov, [], [{"task": "r8", "rank": 8}], [], {"models": {}},
+                          {m: v["ready"] for m, v in ready.items()})
+    assert planned == [] and all(v["step"] == 0 for v in st["models"].values())
+    # Complete but unassessed (a boundary with UNKNOWN rules): still nothing.
+    states = {k: "complete" for ks in expected.values() for k in ks}
+    tele = [{**_tele(k, c.model, c.channel), "cohort_key": k}
+            for c in rows for k in [c.run_key()]]
+    out = G.evaluate(tele, {})
+    gate_rows = {r["cohort_key"]: r for r in out["tiers"]}
+    ready = FO.readiness(expected, states, gate_rows)
+    assert not any(v["ready"] for v in ready.values())
+    assert all(v["pending_assessment"] == 6 for v in out["coverage"].values())
+    planned, _ = FO.plan(out["coverage"], [], [{"task": "r8", "rank": 8}], [],
+                         {"models": {}}, {m: True for m in C.PILOT_MODELS})
+    assert planned == []  # pending assessment is not a coverage failure
+    # Complete and assessed, all kept, and short only by construction: now it plans.
+    kept = {r: "KEPT" for r in R.RULE_IDS}
+    labels = {k: kept for c in rows if c.model == "glm" and c.channel != "chat"
+              for k in [c.run_key()]}
+    tele_glm = [t for t in tele if t["model"] == "glm"]
+    out = G.evaluate([t for t in tele_glm if t["run_key"] in labels], labels)
+    ready = FO.readiness({"glm": list(labels)}, {k: "complete" for k in labels},
+                         {r["cohort_key"]: r for r in out["tiers"]})
+    assert ready["glm"]["ready"]
+    planned, _ = FO.plan({"glm": out["coverage"]["glm"]}, [], [{"task": "r8", "rank": 8}], [],
+                         {"models": {}}, {"glm": True})
+    assert [(p["task"], p["channel"]) for p in planned] == [("r8", "chat")]
+
+
+def test_r2_5_host_rechecked_after_the_slot_wait_and_start_failures_classified(monkeypatch):
+    import threading
+    removed = []
+    monkeypatch.setattr(SB, "remove_container", lambda n: removed.append(n) or True)
+    state = {"dead": False}
+
+    def fake_docker(args, timeout, check=True, input_bytes=None):
+        if state["dead"]:
+            return subprocess.CompletedProcess(args, 1, b"", b"error during connect: ssh: x")
+        return subprocess.CompletedProcess(args, 0, b"", b"")
+
+    monkeypatch.setattr(SB, "_docker", fake_docker)
+    pool = H.HostPool([H.Host("h", "ssh://h", 1, 1)], probe=lambda h: not state["dead"])
+    inv = pool.invocation("h", "p")
+    a = inv.start("img")
+    got = {}
+    t = threading.Thread(target=lambda: got.setdefault("r", _try(inv.start, "img")))
+    t.start()
+    t.join(0.1)
+    assert t.is_alive()  # waiting for the single slot
+    pool.mark_down("h", "test")
+    a.close()  # frees the slot; host is down, so no remote removal
+    t.join(2)
+    assert isinstance(got["r"], H.HostDown) and removed == []
+    assert pool.slots["h"].acquire(blocking=False)
+    pool.slots["h"].release()
+    # A transport failure at `docker run`: the host is marked down before any removal.
+    pool2 = H.HostPool([H.Host("h", "ssh://h", 2, 1)], probe=lambda h: not state["dead"])
+    state["dead"] = True
+    with pytest.raises(H.HostDown):
+        pool2.invocation("h", "p").start("img")
+    assert pool2.is_down("h") and removed == []
+    assert pool2.slots["h"].acquire(blocking=False) and pool2.slots["h"].acquire(blocking=False)
+
+
+def _try(fn, *a):
+    try:
+        return fn(*a)
+    except Exception as e:  # noqa: BLE001
+        return e
+
+
+def test_r2_6_refusal_after_a_charged_retry_carries_the_charge_into_telemetry(
+        tmp_path, fake_env, monkeypatch):
+    monkeypatch.setattr(M, "bound_usd", lambda route, nbytes, max_tokens: 1.0)
+    run = M.RunSpend(M.NullSpend(), cap_usd=1.5)  # room for one attempt's bound only
+    cl, comp = fake_client([StatusError(500), response()])
+    m = M.OpenAICompatModel(C.ROUTES["glm"], run, client=cl, sleep=lambda s: None)
+    with pytest.raises(M.RunCapReached) as ei:
+        m.complete([{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert len(comp.bodies) == 1  # the retry was refused before it was sent
+    assert ei.value.cost_usd == pytest.approx(1.0) == pytest.approx(run.spent)
+    # Through the loop: an arm that hits this records the charge and ends at the run cap.
+    run2 = M.RunSpend(M.NullSpend(), cap_usd=1.5)
+    cl2, _ = fake_client([StatusError(500), response()])
+    m2 = M.OpenAICompatModel(C.ROUTES["glm"], run2, client=cl2, sleep=lambda s: None)
+    cfg = cfg_for(tmp_path)
+    L.run_base(cfg, M.StubModel([{"bash": "x"}] * 40, summary=lambda msgs: "SUM"), inv=None)
+    rules = R.render("task-x", "go", [], [])
+    b = json.loads((tmp_path / "boundary" / "boundary.json").read_text())
+    res = L.run_arm(cfg, "S", 1, m2, None, lost=[], rules=rules, boundary=b)
+    assert res.end == L.END_CAP and res.cost_usd == pytest.approx(1.0)
+    assert run2.spent == pytest.approx(1.0)

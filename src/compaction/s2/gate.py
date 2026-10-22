@@ -84,7 +84,8 @@ def tiers(telemetry: list[dict], labels: dict[str, dict]) -> list[dict]:
         if t.get("kind") == "haiku_peak":
             continue
         lab = merged_labels(t, labels.get(t["run_key"]))
-        out.append({"run_key": t["run_key"], "model": t["model"], "channel": t["channel"],
+        out.append({"run_key": t["run_key"], "cohort_key": t.get("cohort_key") or t["run_key"],
+                    "model": t["model"], "channel": t["channel"],
                     "kind": t.get("kind"), "host": (t.get("host") or {}).get("name"),
                     **tier(t, lab), "labels": lab})
     return out
@@ -92,15 +93,19 @@ def tiers(telemetry: list[dict], labels: dict[str, dict]) -> list[dict]:
 
 def coverage(rows: list[dict], models=C.PILOT_MODELS) -> dict:
     cell = defaultdict(int)
+    pending = defaultdict(int)
     for r in rows:
         if r["assessable"]:
             cell[(r["model"], r["channel"])] += 1
+        elif r["tier"] == "reached":
+            pending[r["model"]] += 1
     out = {}
     for m in models:
         short = [ch for ch in CHANNELS if cell[(m, ch)] < 1]
         total = sum(cell[(m, ch)] for ch in CHANNELS)
         out[m] = {"assessable": total, "short_cells": short,
                   "cells": {ch: cell[(m, ch)] for ch in CHANNELS},
+                  "pending_assessment": pending[m],
                   "covered": not short and total >= 2}
     return out
 

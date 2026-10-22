@@ -12,7 +12,10 @@ and >= 2 assessable boundaries):
    at 50% of peak, kind `fallback_threshold`, in the short cells' channels (cycling), on the
    next tasks the model hasn't run: replacement tasks first, then pilot tasks by rank.
 3. Still short after step 2: the model is `excluded` from Q2 ("low boundary yield").
-A step's runs must all be finished (status complete) before the next step is planned.
+Nothing is planned for a model until it is **ready** (`readiness`, review r2 #4): every run
+it has so far (its initial cohort runs and any follow-ons already planned) is complete, and
+every one that reached a boundary is assessed (all four rules KEPT or LOST). Pending
+assessment is never treated as a coverage failure, so missing labels plan nothing.
 """
 
 from __future__ import annotations
@@ -53,21 +56,38 @@ def _next_tasks(candidates: list[dict], used: set[str], n: int) -> list[dict]:
     return out
 
 
+def readiness(expected: dict[str, list[str]], states: dict[str, str | None],
+              rows: dict[str, dict]) -> dict[str, dict]:
+    """Per model: {"ready", "incomplete", "unassessed"}. `expected[model]`: the cohort keys it
+    has run or is planned to run; `states[key]`: its status state (None if never started);
+    `rows[key]`: its gate row (latest attempt), if any."""
+    out = {}
+    for m, keys in expected.items():
+        incomplete = [k for k in keys if states.get(k) != "complete"]
+        unassessed = [k for k in keys if k not in incomplete and k in rows
+                      and rows[k]["tier"] == "reached"]
+        missing_row = [k for k in keys if k not in incomplete and k not in rows]
+        out[m] = {"ready": bool(keys) and not incomplete and not unassessed
+                  and not missing_row, "incomplete": incomplete,
+                  "unassessed": unassessed + missing_row}
+    return out
+
+
 def plan(coverage: dict, done_runs: list[dict], replacements: list[dict], pilot_tasks: list[dict],
-         state: dict, step_finished: dict[str, bool]) -> tuple[list[dict], dict]:
+         state: dict, ready: dict[str, bool]) -> tuple[list[dict], dict]:
     """Returns (every planned follow-on run, new state). `done_runs`: [{model, channel, task}]
-    already run (any kind); `step_finished[model]`: whether the model's last planned step has
-    all its runs complete. Planned runs are dicts {order, task, rank, model, channel, kind,
-    threshold}."""
+    already run (any kind); `ready[model]` (from `readiness`): all its runs so far are complete
+    and assessed. Planned runs are dicts {order, task, rank, model, channel, kind,
+    threshold}. A model that isn't ready gets nothing new."""
     st = {"models": {m: dict(v) for m, v in (state.get("models") or {}).items()}}
     planned = [r for m in st["models"].values() for r in m.get("runs", [])]
     order = 100 + len(planned)
     for model, cov in coverage.items():
         ms = st["models"].setdefault(model, {"step": 0, "runs": [], "excluded": False})
+        if not ready.get(model, False) or cov.get("pending_assessment", 0):
+            continue  # assessment or runs pending: not a coverage failure (yet)
         if cov["covered"] or ms["excluded"]:
             continue
-        if ms["step"] > 0 and not step_finished.get(model, False):
-            continue  # wait for this step's runs to finish
         short = list(cov["short_cells"])
         used = _used(model, done_runs, planned)
         new = []

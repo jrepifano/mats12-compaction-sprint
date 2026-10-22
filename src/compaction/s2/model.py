@@ -115,45 +115,123 @@ class NullSpend:
         self._open.pop(rid)
 
 
+HOLD_WAIT_S = 1800.0  # how long a reservation waits for other calls' holds to settle
+
+
 @dataclass
 class RunSpend:
-    """Run-level books over an inner Spend (stage and sprint caps stay with the inner one):
-    every attempt reserves against the run's remaining cap before it is sent (raising
-    RunCapReached instead of sending), and `spent` sums every settled charge, failed attempts
-    included (review r1 #6). Thread-safe: a run's arms share it."""
+    """Run-level books over an inner Spend (stage and sprint caps stay with the inner one).
+
+    - Every attempt reserves its bound against the run's remaining cap before it is sent
+      (review r1 #6). If it doesn't fit only because other calls of the run (concurrent arms)
+      hold reservations, it waits for those to settle, up to HOLD_WAIT_S, and refuses
+      (RunCapReached) only when it doesn't fit with no other hold open (review r2 #1).
+    - `spent` sums every settled charge, failed attempts included.
+    - `attach(path)` makes the books durable for one attempt (review r2 #2): every reserve,
+      settle and cancel is appended (flushed and fsynced) to that attempt's `spend.jsonl` as it
+      happens, and attaching to an existing file rebuilds the books: settled charges, plus
+      every hold a crashed process left unresolved, charged at its full bound (the call's real
+      cost is unknown, as compaction.budget.expire charges it), logged as `recovered`.
+    Thread-safe: a run's arms share it."""
 
     inner: Spend
     cap_usd: float | None = None
     spent: float = 0.0
+    wait_s: float = HOLD_WAIT_S
     _open: dict = field(default_factory=dict)
-    _lock: threading.Lock = field(default_factory=threading.Lock)
+    _cond: threading.Condition = field(default_factory=threading.Condition)
+    _ledger: Any = None
+    _session: str = field(default_factory=lambda: os.urandom(4).hex())
+    recovered: list = field(default_factory=list)
 
     def remaining(self) -> float | None:
         if not self.cap_usd:
             return None
         return self.cap_usd - self.spent - sum(self._open.values())
 
+    # --- durable per-attempt ledger ----------------------------------------------------------
+    def attach(self, path) -> RunSpend:
+        from pathlib import Path
+        p = Path(path)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with self._cond:
+            spent, holds = 0.0, {}
+            if p.exists():
+                for line in p.read_text().splitlines():
+                    if not line.strip():
+                        continue
+                    try:
+                        ev = json.loads(line)
+                    except ValueError:
+                        continue  # a torn final line from a crash
+                    k = ev.get("key")
+                    if ev.get("ev") == "reserve":
+                        holds[k] = float(ev["usd"])
+                    elif ev.get("ev") in ("settle", "recovered"):
+                        holds.pop(k, None)
+                        spent += float(ev["usd"])
+                    elif ev.get("ev") == "cancel":
+                        holds.pop(k, None)
+            if p.exists() and p.stat().st_size:
+                with open(p, "rb") as f:
+                    f.seek(-1, os.SEEK_END)
+                    torn = f.read(1) != b"\n"
+                if torn:  # end a crash's torn last line, so the next event stays parseable
+                    with open(p, "a") as f:
+                        f.write("\n")
+            self._ledger = p
+            self.spent = spent
+            for k, usd in holds.items():
+                self._log({"ev": "recovered", "key": k, "usd": usd,
+                           "note": "unresolved hold from an earlier process, charged at bound"})
+                self.spent += usd
+                self.recovered.append({"key": k, "usd": usd})
+        return self
+
+    def _log(self, ev: dict) -> None:
+        if self._ledger is None:
+            return
+        ev = {"ts": time.time(), **ev}
+        with open(self._ledger, "a") as f:
+            f.write(json.dumps(ev) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+
+    # --- Spend ------------------------------------------------------------------------------
     def reserve(self, usd: float, note: str) -> str:
-        with self._lock:
-            left = self.remaining()
-            if left is not None and usd > left + 1e-9:
-                raise RunCapReached(f"run cap ${self.cap_usd:.2f}: ${self.spent:.4f} spent, "
-                                    f"${sum(self._open.values()):.4f} open, next bound "
-                                    f"${usd:.4f}")
+        deadline = time.monotonic() + self.wait_s
+        with self._cond:
+            while True:
+                left = self.remaining()
+                if left is None or usd <= left + 1e-9:
+                    break
+                wait = deadline - time.monotonic()
+                if not self._open or wait <= 0:
+                    raise RunCapReached(
+                        f"run cap ${self.cap_usd:.2f}: ${self.spent:.4f} spent, "
+                        f"${sum(self._open.values()):.4f} held by other calls, next bound "
+                        f"${usd:.4f}" + ("" if not self._open else " (waited for holds)"))
+                self._cond.wait(timeout=wait)
             rid = self.inner.reserve(usd, note)
             self._open[rid] = usd
+            self._log({"ev": "reserve", "key": f"{self._session}/{rid}", "usd": usd,
+                       "note": note})
             return rid
 
     def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
         self.inner.settle(rid, usd, resource=resource, units=units, note=note)
-        with self._lock:
+        with self._cond:
             self._open.pop(rid, None)
             self.spent += usd
+            self._log({"ev": "settle", "key": f"{self._session}/{rid}", "usd": usd})
+            self._cond.notify_all()
 
     def cancel(self, rid: str, reason: str) -> None:
         self.inner.cancel(rid, reason)
-        with self._lock:
+        with self._cond:
             self._open.pop(rid, None)
+            self._log({"ev": "cancel", "key": f"{self._session}/{rid}"})
+            self._cond.notify_all()
 
 
 @dataclass
@@ -319,7 +397,11 @@ class OpenAICompatModel:
         last: BaseException | None = None
         charged = 0.0  # every attempt of this call, failed ones included
         for attempt in range(1, MAX_ATTEMPTS + 1):
-            rid = self.spend.reserve(bound, note=f"s2 {purpose} attempt {attempt}")
+            try:
+                rid = self.spend.reserve(bound, note=f"s2 {purpose} attempt {attempt}")
+            except ModelError as e:
+                e.cost_usd = charged + e.cost_usd  # earlier attempts' charges (review r2 #6)
+                raise
             t0 = time.monotonic()
             try:
                 resp = self.client.chat.completions.create(**body)

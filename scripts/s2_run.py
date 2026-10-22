@@ -225,29 +225,41 @@ def _telemetry() -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
-def followon_runs(labels: dict) -> list[T.CohortRun] | None:
-    """Plan (or re-read) the follow-on runs the gate calls for; persists the per-model state."""
+def followon_runs(labels: dict) -> list[dict] | None:
+    """Plan (or re-read) the follow-on runs the gate calls for; persists the per-model state.
+    Refuses (None) until the initial cohort is complete; plans nothing for a model whose runs
+    are incomplete or whose boundaries aren't all assessed (review r2 #4)."""
     rows = T.ranking()
     tele = _telemetry()
+    root = C.raw_dir() / "pilot"
+    initial = T.pilot_cohort(rows)
+    states = {c.run_key(): (P.read_status(root / c.run_key()) or {}).get("state")
+              for c in initial}
+    if any(v != "complete" for v in states.values()):
+        n = sum(v != "complete" for v in states.values())
+        print(f"refusing --followons: {n} of {len(initial)} initial cohort runs not complete")
+        return None
     out = G.evaluate(tele, labels)
+    gate_rows = {r["cohort_key"]: r for r in out["tiers"]}
     done = [{"model": t["model"], "channel": t["channel"], "task": t["task"]}
             for t in G.latest_attempts(tele)]
     state_path = P.s2_dir(C.REPO_ROOT / "results") / FO.STATE_NAME
     state = FO.load_state(state_path)
-    root = C.raw_dir() / "pilot"
-    finished = {}
+    expected = {m: [c.run_key() for c in initial if c.model == m] for m in C.PILOT_MODELS}
     for m, ms in state.get("models", {}).items():
-        keys = [FO.cohort_run(r).run_key() for r in ms.get("runs", [])]
-        finished[m] = all((P.read_status(root / k) or {}).get("state") == "complete"
-                          for k in keys)
+        for r in ms.get("runs", []):
+            k = FO.cohort_run(r).run_key()
+            expected.setdefault(m, []).append(k)
+            states[k] = (P.read_status(root / k) or {}).get("state")
+    ready = FO.readiness(expected, states, gate_rows)
     pilot_tasks = []
-    for c in T.pilot_cohort(rows):
+    for c in initial:
         if c.task not in {t["task"] for t in pilot_tasks}:
             pilot_tasks.append({"task": c.task, "rank": c.rank})
     planned, new_state = FO.plan(out["coverage"], done, T.replacements(rows), pilot_tasks,
-                                 state, finished)
+                                 state, {m: v["ready"] for m, v in ready.items()})
     FO.save_state(state_path, new_state)
-    print(json.dumps({"coverage": out["coverage"], "followons": planned,
+    print(json.dumps({"coverage": out["coverage"], "readiness": ready, "followons": planned,
                       "excluded": [m for m, v in new_state["models"].items()
                                    if v.get("excluded")]}, indent=1))
     return planned
@@ -263,8 +275,13 @@ def cmd_pilot(a) -> int:
     rows = T.ranking()
     thresholds = {}
     if a.followons:
-        labels = json.loads(Path(a.labels).read_text()) if a.labels else {}
-        planned = followon_runs(labels)
+        if not a.labels:
+            print("refusing --followons without --labels (retention labels or judge output for "
+                  "the runs whose rules the code check leaves unresolved)")
+            return 2
+        planned = followon_runs(json.loads(Path(a.labels).read_text()))
+        if planned is None:
+            return 2
         cohort = [FO.cohort_run(r) for r in planned]
         thresholds = {FO.cohort_run(r).run_key(): r["threshold"] for r in planned}
     else:
