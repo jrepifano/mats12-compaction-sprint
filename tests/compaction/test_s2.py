@@ -316,6 +316,17 @@ def test_traps_setup_snapshot_ignore(tmp_path):
     assert "src.rs" in snap["files"] and not any(f.startswith("target") for f in snap["files"])
 
 
+def test_check_frozen(tmp_path, monkeypatch):
+    monkeypatch.setenv(C.RULES_DIR_ENV, str(tmp_path))
+    r = R.render("t", "go", ["a_test.go"], [])
+    assert E.check_frozen(r) is False
+    (tmp_path / "t.json").write_text(json.dumps(r.to_dict()))
+    assert E.check_frozen(r) is True
+    r2 = R.render("t", "go", ["a_test.go", "b_test.go"], [])
+    with pytest.raises(E.RulesNotFrozen):
+        E.check_frozen(r2)
+
+
 def test_line_counts():
     p = "diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n+x\n-y\n diff --git a/b b/b\n"
     assert E.line_counts(p) == {"a.py": 2}
@@ -344,7 +355,8 @@ class FakeSandbox:
         self.cmds.append(f"COPY {dest}")
 
 
-def test_env_setup_order_and_shim_discipline(tmp_path):
+def test_env_setup_order_and_shim_discipline(tmp_path, monkeypatch):
+    monkeypatch.setenv(C.RULES_DIR_ENV, str(tmp_path / "rules"))
     sb = FakeSandbox()
     inv = SimpleNamespace(start=lambda *a, **k: sb)
     task = T.TaskInfo("t", 1, "typescript", "img", "collect", "Do it.", str(tmp_path),

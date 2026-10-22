@@ -64,6 +64,14 @@ NUDGE = ("No tool call found. Call the bash tool with one command, or run `echo 
 
 END_SUBMIT, END_MAX_CALLS, END_CAP, END_WINDOW = "submitted", "max_calls", "run_cap", "window"
 END_ERROR, END_BOUNDARY, END_DONE = "error", "boundary", "continuation_done"
+END_STOPPED = "stopped"
+# Set by the runner on SIGTERM or Ctrl-C: every loop ends at its next call boundary, so worker
+# threads unwind through their `finally` blocks and every container is removed.
+STOP = threading.Event()
+
+
+class Stopped(RuntimeError):
+    pass
 
 
 @dataclass
@@ -107,7 +115,10 @@ class Loop:
         self.ctx_tokens += sum(est_tokens(m, self.model.route.bytes_per_token) for m in msgs)
 
     def step(self, snapshot_label: str | None) -> None:
-        """One agent call and its tool calls. Raises ModelError on an API failure."""
+        """One agent call and its tool calls. Raises ModelError on an API failure and Stopped
+        when the runner is shutting down."""
+        if STOP.is_set():
+            raise Stopped("runner stopping")
         r = self.model.route
         t0 = time.monotonic()
         reply = self.model.complete(list(self.messages), TOOLS, r.max_output,
@@ -245,6 +256,8 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
             res.boundary = make_boundary(cfg, loop, env, inv, rules, agents)
     except ModelError as e:
         res.end, res.error = END_ERROR, f"ModelError: {e}"
+    except Stopped:
+        res.end, res.error = END_STOPPED, "runner stopping"
     except Exception:  # noqa: BLE001 - recorded; the container is still removed below
         res.end, res.error = END_ERROR, traceback.format_exc()[-6000:]
     finally:
@@ -380,6 +393,8 @@ def run_arm(cfg: RunConfig, arm: str, rep: int, model: ChatModel, inv, *, lost: 
             _dump(out / "continuation.json", loop.messages[start_len:])
     except ModelError as e:
         res.error = f"ModelError: {e}"
+    except Stopped:
+        res.end, res.error = END_STOPPED, "runner stopping"
     except Exception:  # noqa: BLE001
         res.error = traceback.format_exc()[-6000:]
     finally:

@@ -64,6 +64,27 @@ def snapshot_ignore(tracked: list[str]) -> list[str]:
     return [d for d in BUILD_DIRS if d not in dirs]
 
 
+class RulesNotFrozen(SandboxError):
+    """The rendered rules differ from the task's frozen rules file."""
+
+
+FROZEN_FIELDS = ("n", "r3_globs", "lines", "test_inventory", "r3_inventory")
+
+
+def check_frozen(rules: R.TaskRules) -> bool:
+    """Compare with results/sprint/rules/<task>.json when it exists (violation-specs 2.2: rule
+    text and inventories are frozen and committed before the pilot). True if checked."""
+    p = C.rules_dir() / f"{rules.task_id}.json"
+    if not p.exists():
+        return False
+    frozen = json.loads(p.read_text())
+    now = rules.to_dict()
+    diff = [k for k in FROZEN_FIELDS if frozen.get(k) != now.get(k)]
+    if diff:
+        raise RulesNotFrozen(f"{rules.task_id}: rendered rules differ from {p} in {diff}")
+    return True
+
+
 @dataclass
 class Observation:
     rc: int
@@ -129,6 +150,7 @@ class TaskEnv:
         sol = Path(task.task_dir) / "solution" / "solution.patch"
         counts = line_counts(sol.read_text(errors="replace")) if sol.exists() else {}
         rules = R.render(task.task_id, task.language, tracked, task.solution_files, counts)
+        check_frozen(rules)
         if channel in ("agents_md", "readme"):
             fname = INSTRUCTION_FILE if channel == "agents_md" else "README.md"
             env.append_and_commit(fname, rules.section())

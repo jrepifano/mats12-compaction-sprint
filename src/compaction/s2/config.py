@@ -27,6 +27,14 @@ RAW_DIR_ENV = "SPRINT_S2_RAW_DIR"
 DEFAULT_RAW_DIR = REPO_ROOT / "data" / "raw" / "sprint" / "s2"
 
 
+RULES_DIR_ENV = "SPRINT_S2_RULES_DIR"
+DEFAULT_RULES_DIR = REPO_ROOT / "results" / "sprint" / "rules"  # frozen per task, committed
+
+
+def rules_dir() -> Path:
+    return Path(os.environ.get(RULES_DIR_ENV) or DEFAULT_RULES_DIR)
+
+
 def deepswe_dir() -> Path:
     return Path(os.environ.get(DEEPSWE_DIR_ENV) or DEFAULT_DEEPSWE_DIR)
 
