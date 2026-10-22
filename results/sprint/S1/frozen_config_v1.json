@@ -1,0 +1,103 @@
+{
+ "frozen_utc": "2026-10-21T04:58:44Z",
+ "haiku": {
+  "effort": "medium",
+  "model": "claude-haiku-5-5"
+ },
+ "prompts": {
+  "pass1a_items.md": "55b10a208b3e8f48c139bc42891c5c3592bf049409588c233433ce7d1f4115e1",
+  "pass1b_grade.md": "09ce2acad305e2a6d6b51630c1e69cb96bd4c1a43daaf2e3d71e05f2e8854f12",
+  "pass2_claims.md": "a4537f95b73cd36713acf9182208e8daf2ea3cb152014c3510adeed65dc9871e"
+ },
+ "replay_policies": {
+  "antigravity": "s1_replay/antigravity/r2/b89d8656c038e395",
+  "cc_native": "s1_replay/cc_native/r2/3955b50549af6516",
+  "cc_prompt": "s1_replay/cc_prompt/r2/f6d8913938ba08a7",
+  "codex_local": "s1_replay/codex_local/r2/fdde0ce92e21a7e6",
+  "opencode": "s1_replay/opencode/r2/e2c978e09ac0ff54",
+  "pi": "s1_replay/pi/r2/6c81861c77833a5d"
+ },
+ "routes": {
+  "deepseek": {
+   "accepts_sampling": true,
+   "bytes_per_token": 2.0,
+   "context_tokens": 1048576,
+   "family": "deepseek",
+   "json_mode": "text",
+   "key_env": "OPENROUTER_API_KEY",
+   "model": "deepseek/deepseek-v4.1-flash",
+   "name": "deepseek",
+   "prices": {
+    "cache_read": 0.006,
+    "input": 0.21,
+    "output": 0.63
+   },
+   "prices_placeholder": false,
+   "provider_pin": "DeepInfra",
+   "reasoning": "none",
+   "transport": "openrouter"
+  },
+  "deepseek-api": {
+   "accepts_sampling": true,
+   "bytes_per_token": 2.0,
+   "context_tokens": 1000000,
+   "family": "deepseek",
+   "json_mode": "json_object",
+   "key_env": "DEEPSEEK_API_KEY",
+   "model": "deepseek-flash",
+   "name": "deepseek-api",
+   "prices": {
+    "cache_read": 0.006,
+    "input": 0.3,
+    "output": 1.2
+   },
+   "prices_placeholder": true,
+   "provider_pin": null,
+   "reasoning": "default",
+   "transport": "deepseek"
+  },
+  "glm": {
+   "accepts_sampling": true,
+   "bytes_per_token": 2.0,
+   "context_tokens": 1048575,
+   "family": "zhipu",
+   "json_mode": "text",
+   "key_env": "OPENROUTER_API_KEY",
+   "model": "z-ai/glm-5.3-flash",
+   "name": "glm",
+   "prices": {
+    "cache_read": 0.03,
+    "input": 0.15,
+    "output": 0.5
+   },
+   "prices_placeholder": false,
+   "provider_pin": "Together",
+   "reasoning": "low",
+   "transport": "openrouter"
+  },
+  "luna": {
+   "accepts_sampling": true,
+   "bytes_per_token": 2.0,
+   "context_tokens": 1050000,
+   "family": "openai",
+   "json_mode": "json_schema",
+   "key_env": "OPENAI_API_KEY",
+   "model": "gpt-6-luna",
+   "name": "luna",
+   "prices": {
+    "cache_read": 0.01,
+    "input": 0.1,
+    "output": 0.5
+   },
+   "prices_placeholder": false,
+   "provider_pin": "OpenAI",
+   "reasoning": "none",
+   "transport": "openai"
+  }
+ },
+ "schemas": {
+  "PASS1A_SCHEMA": "7313b2f953c9238397d2d5e1bd90bc4333fdef9acc89138084cf811c2a1f41a3",
+  "PASS1B_SCHEMA": "778d0b3b93864bffe5dbf080e0d631b1868d464d5ae21b83af00c91e423909bc",
+  "PASS2_SCHEMA": "7d92f6911f072540860292e29e38e63b577dc08eabe79c89ac63ab4ed76de5b2"
+ }
+}

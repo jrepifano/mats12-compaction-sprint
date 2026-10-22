@@ -1,14 +1,16 @@
 {
- "frozen_utc": "2026-10-21T04:58:44Z",
+ "amendment": "D12",
+ "frozen_utc": "2026-10-22T09:36:13Z",
  "haiku": {
   "effort": "medium",
   "model": "claude-haiku-5-5"
  },
  "prompts": {
-  "pass1a_items.md": "55b10a208b3e8f48c139bc42891c5c3592bf049409588c233433ce7d1f4115e1",
+  "pass1a_items.md": "1d452823204e9f2570043597b439b43f883864f75b8d1c0b54242b769d63054a",
   "pass1b_grade.md": "09ce2acad305e2a6d6b51630c1e69cb96bd4c1a43daaf2e3d71e05f2e8854f12",
   "pass2_claims.md": "a4537f95b73cd36713acf9182208e8daf2ea3cb152014c3510adeed65dc9871e"
  },
+ "ptb_prompts": "fca8acbdc3e2d492653f850b004ecca835342acd7c553c7823df115763fc9958",
  "replay_policies": {
   "antigravity": "s1_replay/antigravity/r2/b89d8656c038e395",
   "cc_native": "s1_replay/cc_native/r2/3955b50549af6516",
@@ -99,5 +101,6 @@
   "PASS1A_SCHEMA": "7313b2f953c9238397d2d5e1bd90bc4333fdef9acc89138084cf811c2a1f41a3",
   "PASS1B_SCHEMA": "778d0b3b93864bffe5dbf080e0d631b1868d464d5ae21b83af00c91e423909bc",
   "PASS2_SCHEMA": "7d92f6911f072540860292e29e38e63b577dc08eabe79c89ac63ab4ed76de5b2"
- }
+ },
+ "version": 2
 }
