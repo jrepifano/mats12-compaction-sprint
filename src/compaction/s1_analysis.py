@@ -37,8 +37,26 @@ Definitions used throughout:
 - Pass 2 outcomes are span-level, as the label gate validates them. A *span* is (rid,
   normalised `summary_quote`) among one judge's valid claims; its verdict is the worst of that
   judge's claims on it (unsupported, then contradicted, then supported). It is *invented* when
-  that worst is unsupported and the history is complete, and an *invented permission span* only
-  when one of its permission claims is itself unsupported. Primary invention rates use claims
+  one of its claims is invented and the history is complete: pass 2 called it unsupported and
+  its final verdict (after the second look) is unsupported or contradicted (spec D14: the
+  history never says it, or shows it false; `is_invented_claim`). A pass-2 "contradicted" claim
+  is never re-checked: it is counted apart, descriptive and unvalidated. An *invented
+  permission span* needs one of its permission claims to be invented itself.
+- **Second look (spec D11, D13, D14).** For the Max judge (`SECOND_LOOK_JUDGES`) every report
+  first applies the sealed overlay `<part>_second_look_<judge>.jsonl` (`apply_second_look`): an
+  item graded dropped or a claim called unsupported takes the re-check's verdict. Every eligible
+  positive must have an overlay row run under the frozen config, or the report refuses
+  (`SecondLookError`); a judge whose overlay file is missing gets `missing: ["second_look"]` and
+  no rates. The overlay's change and category counts are reported (`second_look`), with
+  "carried_forward" (a hedged or unchecked belief stated as fact; not invented) as its own
+  descriptive count.
+- **Precision-corrected rates (spec D13 (d))** multiply a judge's per-item or per-span positive
+  rate by its measured precision on the hand labels (`results/sprint/S1/judge_precision.json`):
+  session-bootstrap draws of the rate times posterior draws of the precision
+  (`precision_corrected`). They estimate the rate of losses (or inventions) the judge detects,
+  not the true rate and not a bound, and they transfer the labelled precision to strata it was
+  not measured on, so they are reported as an assumption-based sensitivity with the precision's
+  provenance. Compaction-level shares are never corrected. Primary invention rates use claims
   anchored "exact" or "normalized" (`summary_quote_match`); "exact_only" and "including_fuzzy"
   are reported beside them as sensitivities. Claim-level counts are descriptive only.
 """
@@ -58,6 +76,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from compaction import s1_second_look as SL
 from compaction import seal
 from compaction.s1_data import session_group as _session_group
 from compaction.s1_types import GRADES, S1_SEED, SEAL_STAGE, norm
@@ -65,6 +84,9 @@ from emx.stats import cluster_bootstrap_ci
 
 HEADLINE = {"item": "dropped", "claim": "unsupported"}
 LOST_GRADES = ("dropped", "misstated")
+INVENTED_VERDICTS = ("unsupported", "contradicted")  # D14's final verdicts (`is_invented_claim`)
+SECOND_LOOK_JUDGES = ("haiku-max",)  # judges whose positives get the second look (Max only)
+JUDGE_PRECISION = SL.REPO_ROOT / "results" / "sprint" / "S1" / "judge_precision.json"
 PRIMARY_CONTRAST = ("cc_prompt", "codex_local")
 PART_B_ARMS = ("cc_native", "cc_prompt", "codex_local", "pi", "antigravity", "opencode")
 NO_SESSION = "<none>"  # cluster label for rows without a session id
@@ -739,6 +761,19 @@ def rule_loss_share(
     return out
 
 
+def is_invented_claim(r: Mapping) -> bool:
+    """Spec D14 after the second look: a claim pass 2 called unsupported is invented when its
+    final verdict is unsupported (unsourced) or contradicted. A claim pass 2 itself called
+    contradicted is never re-checked and is not counted (`is_unrechecked_contradiction`)."""
+    v = r.get("verdict")
+    return v == "unsupported" or (v == "contradicted" and r.get("second_look") is not None)
+
+
+def is_unrechecked_contradiction(r: Mapping) -> bool:
+    """A pass-2 "contradicted" claim the second look never saw: descriptive and unvalidated."""
+    return r.get("verdict") == "contradicted" and r.get("second_look") is None
+
+
 def invented_rates(
     claim_rows: Iterable[Mapping],
     by: Sequence[str] = (),
@@ -746,6 +781,7 @@ def invented_rates(
     weights: Weights = None,
     roster: Roster | None = None,
     anchor: str = "primary",
+    precision: Mapping | None = None,
     n_boot: int = N_BOOT,
     seed: int = S1_SEED,
 ) -> list[dict]:
@@ -758,11 +794,15 @@ def invented_rates(
 
     Span level (headline; what the label gate validates): a span is (rid, normalised
     `summary_quote`) among one judge's valid claims; its verdict is the worst of the judge's
-    claims on it (`CLAIM_PRECEDENCE`), and it is *invented* when that is `unsupported` (the
-    history being complete). It is a *permission span* when any of its claims is a permission,
-    and an *invented permission span* only when one of its permission claims is itself
-    unsupported (an unsupported non-permission claim beside a supported permission claim makes
-    an invented span, not an invented permission span).
+    claims on it (`CLAIM_PRECEDENCE`), and it is *invented* when any of its claims is invented
+    (`is_invented_claim`, spec D14: unsupported, or contradicted by the second look; the history
+    being complete). Spans holding a pass-2 "contradicted" claim the second look never re-checked
+    are counted apart (`n_contradicted_unrechecked_spans`: descriptive, unvalidated, never in
+    the invented rate). It is a *permission span* when any of its claims is a permission, and
+    an *invented permission span* only when one of its permission claims is itself invented
+    (an invented non-permission claim beside a supported permission claim makes an invented
+    span, not an invented permission span). With `precision` (the judge's "invented" entry of
+    judge_precision.json), each group adds `span_share_corrected` (`precision_corrected`).
     - `summaries_with_invented`: share of summaries with >= 1 invented span (the same as with
       >= 1 invented claim);
     - `span_share` (invented spans / spans, pooled) and `per_summary_mean` (the mean per-summary
@@ -799,16 +839,23 @@ def invented_rates(
                 "verdicts": [],
                 "perm": False,
                 "perm_inv": False,
+                "inv": False,
+                "inv_contra": False,
+                "contra_unrechecked": False,
                 "n_claims": 0,
                 "inv_claims": 0,
             },
         )
         sp["verdicts"].append(r["verdict"])
         is_perm = bool(r.get("is_permission"))
+        inv = is_invented_claim(r)
         sp["perm"] = sp["perm"] or is_perm
-        sp["perm_inv"] = sp["perm_inv"] or (is_perm and r["verdict"] == "unsupported")
+        sp["perm_inv"] = sp["perm_inv"] or (is_perm and inv)
+        sp["inv"] = sp["inv"] or inv
+        sp["inv_contra"] = sp["inv_contra"] or (inv and r["verdict"] == "contradicted")
+        sp["contra_unrechecked"] = sp["contra_unrechecked"] or is_unrechecked_contradiction(r)
         sp["n_claims"] += 1
-        sp["inv_claims"] += int(r["verdict"] == "unsupported")
+        sp["inv_claims"] += int(inv)
 
     def rec(r: Mapping, **v: int) -> dict:
         return {
@@ -822,15 +869,25 @@ def invented_rates(
             **v,
         }
 
-    zero = {"n": 0, "inv": 0, "perm": 0, "inv_perm": 0, "n_claims": 0, "inv_claims": 0}
+    zero = {
+        "n": 0,
+        "inv": 0,
+        "inv_contra": 0,
+        "contra_unrechecked": 0,
+        "perm": 0,
+        "inv_perm": 0,
+        "n_claims": 0,
+        "inv_claims": 0,
+    }
     recs = []
     for sp in spans.values():
-        inv = int(min(sp["verdicts"], key=CLAIM_PRECEDENCE.index) == "unsupported")
         recs.append(
             rec(
                 sp["row"],
                 n=1,
-                inv=inv,
+                inv=int(sp["inv"]),
+                inv_contra=int(sp["inv_contra"]),
+                contra_unrechecked=int(sp["contra_unrechecked"]),
                 perm=int(sp["perm"]),
                 inv_perm=int(sp["perm_inv"]),
                 n_claims=sp["n_claims"],
@@ -850,6 +907,8 @@ def invented_rates(
     per = df.groupby(["rid", "session_group", *by], dropna=False, as_index=False).agg(
         n=("n", "sum"),
         inv=("inv", "sum"),
+        inv_contra=("inv_contra", "sum"),
+        contra_unrechecked=("contra_unrechecked", "sum"),
         perm=("perm", "sum"),
         inv_perm=("inv_perm", "sum"),
         n_claims=("n_claims", "sum"),
@@ -898,6 +957,8 @@ def invented_rates(
             n_summaries_without_spans=int((g["has"] == 0).sum()),
             n_spans=int(g["n"].sum()),
             n_invented_spans=int(g["inv"].sum()),
+            n_invented_contradicted_spans=int(g["inv_contra"].sum()),
+            n_contradicted_unrechecked_spans=int(g["contra_unrechecked"].sum()),
             n_permission_spans=int(g["perm"].sum()),
             n_invented_permission_spans=int(g["inv_perm"].sum()),
             n_summaries_with_invented_permission=int(g["any_perm"].sum()),
@@ -905,6 +966,17 @@ def invented_rates(
             n_invented_claims_descriptive=int(g["inv_claims"].sum()),
         )
         row.update(_rates(g, pairs, weights is not None, n_boot, seed))
+        if precision is not None:
+            row["span_share_corrected"] = _corrected_rate(
+                g,
+                "inv",
+                "n",
+                precision,
+                verdict="invented",
+                weighted=weights is not None,
+                n_boot=n_boot,
+                seed=seed,
+            )
         row["coverage"] = coverage
         out.append(row)
     return out
@@ -917,21 +989,250 @@ def _read(reader: Callable[[str], Any], name: str) -> list[dict] | None:
         return None
 
 
+class SecondLookError(ValueError):
+    """The second-look overlay doesn't cover every positive, conflicts with itself, or wasn't run
+    under the frozen config: the report refuses rather than mix first and second verdicts."""
+
+
+def apply_second_look(
+    items: Sequence[Mapping] | None,
+    claims: Sequence[Mapping] | None,
+    overlay: Sequence[Mapping],
+    *,
+    config: str | None = None,
+) -> tuple[list[dict] | None, list[dict] | None, dict]:
+    """(items, claims, summary) with the overlay applied (`s1_second_look.apply`).
+
+    Rows and overlay rows match on (kind, rid, row id) (`s1_second_look.row_key`): item ids
+    repeat across Part B arms, so the row's own rid is part of the key. Refuses
+    (SecondLookError) when an eligible positive (`s1_second_look.positives`: a valid item graded
+    dropped, a valid claim called unsupported) has no overlay row, when two overlay rows for one
+    key disagree, or when `config` is given and an overlay row carries another config digest.
+    Summary: positives re-checked, changed and invalid, per kind; the claim categories
+    (supported, carried_forward, contradicted, unsourced; None for a failed re-check, whose
+    first verdict stands)."""
+    items_l = [dict(r) for r in items] if items is not None else None
+    claims_l = [dict(r) for r in claims] if claims is not None else None
+    its, cls = SL.positives(items_l or [], claims_l or [])
+    overlay = list(overlay)
+    if config is not None:  # every row, before duplicates collapse (astra r2)
+        bad = sum(o.get("config_sha") != config for o in overlay)
+        if bad:
+            raise SecondLookError(f"{bad} second-look rows not run under the frozen config")
+    try:
+        by = SL.index_overlay(overlay)
+    except ValueError as e:
+        raise SecondLookError(str(e)) from e
+    keys = [SL.row_key(r) for r in its + cls]
+    missing = [k for k in keys if k not in by]
+    if missing:
+        raise SecondLookError(
+            f"{len(missing)} positives have no second-look row (e.g. {missing[:3]}): rerun the "
+            "bulk command, which resumes from the caches"
+        )
+    ov = [by[k] for k in keys]
+    summary: dict[str, Any] = {}
+    for kind in ("item", "claim"):
+        rows = [o for o in ov if o["kind"] == kind]
+        summary[kind] = {
+            "n_rechecked": len(rows),
+            "n_changed": sum(bool(o.get("changed")) for o in rows),
+            "n_invalid": sum(not o.get("valid") for o in rows),
+            "final": dict(Counter(o["verdict"] for o in rows)),
+        }
+    summary["claim"]["categories"] = {
+        str(c): sum(o.get("category") == c for o in ov if o["kind"] == "claim")
+        for c in (*SL.CLAIM_CATEGORIES, None)
+    }
+    return (
+        SL.apply(items_l, ov) if items_l is not None else None,
+        SL.apply(claims_l, ov) if claims_l is not None else None,
+        summary,
+    )
+
+
+def _with_second_look(
+    reader: Callable[[str], Any],
+    part: str,
+    judge: str,
+    items: list[dict] | None,
+    claims: list[dict] | None,
+    config: str | None,
+) -> tuple[list[dict] | None, list[dict] | None, dict | None]:
+    """Apply the judge's sealed overlay when it has one (`SECOND_LOOK_JUDGES`). Returns
+    (items, claims, summary); summary None means the overlay file is missing (no rates)."""
+    if judge not in SECOND_LOOK_JUDGES:
+        return items, claims, {"applies": False}
+    overlay = _read(reader, f"{part}_second_look_{judge}.jsonl")
+    if overlay is None:
+        return items, claims, None
+    items, claims, summary = apply_second_look(items, claims, overlay, config=config)
+    return items, claims, {"applies": True, **summary}
+
+
+def _second_look_config(config: str | None) -> str | None:
+    """ "frozen" -> the digest recorded in frozen_second_look.json; None -> no check (tests)."""
+    return SL.frozen_config_sha() if config == "frozen" else config
+
+
+def load_judge_precision(path=JUDGE_PRECISION) -> dict:
+    """{judge: {verdict: {"n_hits", "n", provenance..., "alternatives": {...}} or None}}, the
+    precision of a judge's positive calls on the hand labels (results/sprint/S1/
+    judge_precision.json)."""
+    from pathlib import Path
+
+    p = Path(path)
+    return json.loads(p.read_text()) if p.exists() else {}
+
+
+CORRECTION_KIND = "assumption-based sensitivity, not calibrated"
+CORRECTION_ASSUMPTIONS = {
+    "lost": (
+        "precision measured on judge-dropped item cards (second look applied; see provenance), "
+        "transferred to lost = dropped or misstated with availability lost, and to every "
+        "stratum, arm and item type, none of which was validated separately; definition "
+        "settled after the labels"
+    ),
+    "invented": (
+        "precision measured on judge-invented claim spans after the second look, transferred to "
+        "every stratum; see provenance"
+    ),
+}
+INDEPENDENCE = (
+    "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior "
+    "draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no "
+    "clipping is applied"
+)
+
+
+def _ratio_draws(
+    df: pd.DataFrame,
+    num: str,
+    den: str,
+    *,
+    cluster: str = "session_group",
+    n_boot: int = N_BOOT,
+    seed: int = S1_SEED,
+) -> np.ndarray:
+    """The session-group bootstrap draws of sum(num)/sum(den): the same resampling as
+    `_ratio_ci` (clusters summed first, then `emx.stats.cluster_bootstrap_ci`'s draw order:
+    one rng from `seed`, n clusters picked with replacement per resample). NaN draws (a resample
+    with a zero denominator) are dropped."""
+    d = df.copy()
+    d[cluster] = d[cluster].fillna("<none>").astype(str)
+    agg = d.groupby(cluster, as_index=False)[[num, den]].sum()
+    nums, dens = agg[num].to_numpy(float), agg[den].to_numpy(float)
+    k = len(agg)
+    if k == 0:
+        return np.empty(0)
+    rng = np.random.default_rng(seed)
+    out = np.empty(n_boot)
+    for b in range(n_boot):
+        pick = rng.integers(0, k, size=k)
+        s = dens[pick].sum()
+        out[b] = nums[pick].sum() / s if s > 0 else np.nan
+    return out[~np.isnan(out)]
+
+
+def precision_corrected(
+    point: float | None,
+    draws: np.ndarray | None,
+    entry: Mapping | None,
+    *,
+    verdict: str = "lost",
+    seed: int = S1_SEED,
+) -> dict:
+    """A judge's positive rate (its `point` and session-bootstrap `draws`) times its precision on
+    the hand labels (`entry`: {"n_hits", "n", provenance..., "alternatives": {name: {...}}}),
+    spec D13 (d). Point: rate x n_hits/n. Interval: the 2.5th and 97.5th percentiles of the
+    rate draws times precision posterior draws (`INDEPENDENCE`). It estimates the rate the
+    judge detects, not the true rate (misses are not added back) and not a bound; and it rests
+    on the transfer assumption in `CORRECTION_ASSUMPTIONS`, so it is reported as a sensitivity.
+    Each named alternative precision gets its own corrected point and interval."""
+    if entry is None or entry.get("n_hits") is None:
+        return {"point": None, "lo": None, "hi": None, "note": "precision not measured"}
+    if point is None or draws is None or len(draws) == 0 or math.isnan(point):
+        return {"point": None, "lo": None, "hi": None, "note": "no rate"}
+
+    def one(h: int, n: int, k: int) -> dict:
+        p = np.random.default_rng([seed, k]).beta(h + 0.5, n - h + 0.5, len(draws))
+        prod = draws * p
+        return {
+            "point": float(point) * h / n,
+            "lo": float(np.quantile(prod, 0.025)),
+            "hi": float(np.quantile(prod, 0.975)),
+            "precision": {"n_hits": h, "n": n, "point": h / n},
+        }
+
+    out = one(int(entry["n_hits"]), int(entry["n"]), 0)
+    out.update(
+        kind=CORRECTION_KIND,
+        estimand="rate of the judge's correct positives (detected rate); not a bound",
+        assumption=CORRECTION_ASSUMPTIONS.get(verdict, ""),
+        independence=INDEPENDENCE,
+        provenance={k: v for k, v in entry.items() if k not in ("n_hits", "n", "alternatives")},
+    )
+    alts = entry.get("alternatives") or {}
+    out["alternatives"] = {
+        name: one(int(a["n_hits"]), int(a["n"]), k + 1)
+        | {"provenance": {x: v for x, v in a.items() if x not in ("n_hits", "n")}}
+        for k, (name, a) in enumerate(sorted(alts.items()))
+    }
+    return out
+
+
+def _corrected_rate(
+    df: pd.DataFrame,
+    num: str,
+    den: str,
+    entry: Mapping | None,
+    *,
+    verdict: str,
+    weighted: bool,
+    n_boot: int,
+    seed: int,
+) -> dict:
+    """{"sample": ..., "population": ...} corrected rates of sum(num)/sum(den); "population"
+    (stratum-weighted sums, `<col>_w`) only when `weighted`."""
+    out: dict[str, Any] = {}
+    cols = [("sample", num, den)] + ([("population", f"{num}_w", f"{den}_w")] if weighted else [])
+    for name, a, b in cols:
+        tot = float(df[b].sum()) if not df.empty else 0.0
+        point = float(df[a].sum()) / tot if tot > 0 else None
+        draws = _ratio_draws(df, a, b, n_boot=n_boot, seed=seed) if tot > 0 else None
+        out[name] = precision_corrected(point, draws, entry, verdict=verdict, seed=seed)
+    return out
+
+
+def _first(rows: list[dict] | None) -> dict | None:
+    return rows[0] if rows else None
+
+
 def part_a_report(
     judges: Sequence[str],
     *,
     reader: Callable[[str], Any] = default_reader,
     weights: Weights = None,
     rosters: Mapping[str, Roster] | None = None,
+    second_look_config: str | None = "frozen",
+    precision: Mapping | None = None,
     n_boot: int = N_BOOT,
     seed: int = S1_SEED,
 ) -> dict:
     """Part A tables per judge (never pooled), from `partA_items_<judge>.jsonl` and
     `partA_claims_<judge>.jsonl`. A judge whose file is missing gets `{"missing": [names]}`.
+    The Max judge's second-look overlay (`partA_second_look_<judge>.jsonl`) is applied first
+    (`apply_second_look`; `second_look_config` "frozen" checks the rows' digest against the
+    freeze, None skips that check); without it the judge gets `missing: ["second_look"]` and no
+    rates. `precision` ({judge: {"lost": {...}, "invented": {...}}}, default
+    `load_judge_precision()`) adds `precision_corrected`: the item loss rate and the invented
+    span share, sample and (with `weights`) population, each an assumption-based sensitivity.
     Pass `weights=stratum_weights(manifest)` for population-weighted rates beside the sample
     rates, and `rosters` (judge -> roster, see `rule_loss_share`) so that compaction- and
     summary-level denominators include records judged with nothing usable."""
     kw = {"weights": weights, "n_boot": n_boot, "seed": seed}
+    config = _second_look_config(second_look_config)
+    prec_all = load_judge_precision() if precision is None else precision
     out: dict[str, Any] = {}
     for j in judges:
         rkw = {**kw, "roster": (rosters or {}).get(j)}
@@ -939,6 +1240,12 @@ def part_a_report(
         claims = _read(reader, f"partA_claims_{j}.jsonl")
         rep: dict[str, Any] = {"judge": j}
         missing = [n for n, v in (("items", items), ("claims", claims)) if v is None]
+        items, claims, sl = _with_second_look(reader, "partA", j, items, claims, config)
+        if sl is None:
+            rep["missing"] = [*missing, "second_look"]
+            out[j] = rep
+            continue
+        rep["second_look"] = sl
         if missing:
             rep["missing"] = missing
         if items is not None:
@@ -961,6 +1268,9 @@ def part_a_report(
                     for c in ("source", "model", "harness")
                 },
             }
+            rep["carried_forward_descriptive"] = (
+                sl.get("claim", {}).get("categories", {}).get("carried_forward")
+            )
             rep["invented_anchor_sensitivity"] = {
                 tier: {
                     "overall": invented_rates(claims, anchor=tier, **rkw),
@@ -971,15 +1281,51 @@ def part_a_report(
                 }
                 for tier in ("exact_only", "including_fuzzy")
             }
+        # per-item and per-span rates only: an item's precision says nothing direct about a
+        # compaction-level share ("loses >= 1 rule"), so those are never corrected
+        prec = prec_all.get(j) or {}
+        corr: dict[str, Any] = {}
+        if items is not None:
+            df = _item_frame(items, weights)
+            _add_weighted(df, ["n", "lost"])
+            corr["lost_rate"] = _corrected_rate(
+                df,
+                "lost",
+                "n",
+                prec.get("lost"),
+                verdict="lost",
+                weighted=weights is not None,
+                n_boot=n_boot,
+                seed=seed,
+            )
+        if claims is not None:
+            inv = _first(invented_rates(claims, precision=prec.get("invented"), **rkw))
+            corr["invented_span_share"] = (inv or {}).get(
+                "span_share_corrected", {"note": "precision not measured"}
+            )
+            ov = rep["invented"]["overall"]
+            rep["contradicted_unrechecked_descriptive"] = {
+                "n_spans": sum(r["n_contradicted_unrechecked_spans"] for r in ov),
+                "note": "pass-2 contradicted, not re-checked by the second look, unvalidated; "
+                "not in the invented rate",
+            }
+        rep["precision_corrected"] = corr
         out[j] = rep
     return out
 
 
 def part_b_arm_rates(
-    item_rows: Iterable[Mapping], *, n_boot: int = N_BOOT, seed: int = S1_SEED
+    item_rows: Iterable[Mapping],
+    *,
+    precision: Mapping | None = None,
+    n_boot: int = N_BOOT,
+    seed: int = S1_SEED,
 ) -> list[dict]:
     """Per arm: the item-level loss rate of user-given rules, the share of compactions losing
-    >= 1 user-given rule, and the drop rate over all usable items."""
+    >= 1 user-given rule, and the drop rate over all usable items. With `precision` (the
+    judge's "lost" entry), the item-level user-rule loss rate also gets
+    `user_rule_loss_rate_corrected` (one precision for every arm, an assumption); the
+    compaction-level share is never corrected."""
     rows = _one_judge(item_rows)
     df = _item_frame(rows)
     out = []
@@ -998,6 +1344,10 @@ def part_b_arm_rates(
                 "drop_rate": _ratio_ci(g, "dropped", "n", n_boot=n_boot, seed=seed),
             }
         )
+        if precision is not None:
+            out[-1]["user_rule_loss_rate_corrected"] = _corrected_rate(
+                ur, "lost", "n", precision, verdict="lost", weighted=False, n_boot=n_boot, seed=seed
+            )["sample"]
     return out
 
 
@@ -1007,10 +1357,14 @@ def paired_contrast(
     b: str,
     *,
     label: str = "exploratory",
+    precision: Mapping | None = None,
     n_boot: int = N_BOOT,
     seed: int = S1_SEED,
 ) -> dict:
     """Arm `a` minus arm `b` in the loss rate of user-given rules, paired by history.
+
+    With `precision` (the judge's "lost" entry), `diff_corrected` scales the paired item-level
+    difference by the precision (one precision for both arms, an assumption).
 
     Pass 1a items come from the base history once per judge and are reused across arms, so the
     pairs are (base_rid, item_id) usable in both arms. Point: (lost under a - lost under b) /
@@ -1046,6 +1400,14 @@ def paired_contrast(
         diff=_ratio_ci(wide, "d", "one", n_boot=n_boot, seed=seed),
         compaction_any_diff=_ratio_ci(per, "d_any", "one", n_boot=n_boot, seed=seed),
     )
+    if precision is not None:
+        res["diff_corrected"] = precision_corrected(
+            float(wide["d"].sum()) / len(wide) if len(wide) else None,
+            _ratio_draws(wide, "d", "one", n_boot=n_boot, seed=seed),
+            precision,
+            verdict="lost",
+            seed=seed,
+        )
     return res
 
 
@@ -1054,6 +1416,8 @@ def part_b_report(
     *,
     reader: Callable[[str], Any] = default_reader,
     primary: tuple[str, str] = PRIMARY_CONTRAST,
+    second_look_config: str | None = "frozen",
+    precision: Mapping | None = None,
     n_boot: int = N_BOOT,
     seed: int = S1_SEED,
 ) -> dict:
@@ -1062,14 +1426,23 @@ def part_b_report(
     contrast (cc_prompt vs codex_local, user-given rules lost, paired by base_rid) and every
     other arm pair, labelled exploratory. Arm coverage is reported (`arms_present`,
     `arms_missing`); when a required arm is absent the primary contrast is refused with
-    `missing_arms` rather than computed on nothing."""
+    `missing_arms` rather than computed on nothing. The Max judge's overlay
+    (`partB_second_look_<judge>.jsonl`) is applied first, as in `part_a_report`; the
+    precision-corrected arm rates and primary difference assume one precision across arms."""
+    config = _second_look_config(second_look_config)
+    prec_all = load_judge_precision() if precision is None else precision
     out: dict[str, Any] = {}
     for j in judges:
         items = _read(reader, f"partB_items_{j}.jsonl")
         if items is None:
             out[j] = {"judge": j, "missing": ["items"]}
             continue
+        items, _, sl = _with_second_look(reader, "partB", j, items, None, config)
+        if sl is None:
+            out[j] = {"judge": j, "missing": ["second_look"]}
+            continue
         items = [r for r in items if r.get("arm") in PART_B_ARMS]  # one file across arms
+        lost_prec = (prec_all.get(j) or {}).get("lost")
         arms = sorted({r["arm"] for r in items})
         missing = [a for a in primary if a not in arms]
         pairs = [p for p in itertools.combinations(arms, 2) if set(p) != set(primary)]
@@ -1082,18 +1455,22 @@ def part_b_report(
                 "note": "a required arm has no rows: the primary contrast is not computed",
             }
         else:
-            prim = paired_contrast(items, *primary, label="primary", n_boot=n_boot, seed=seed)
+            prim = paired_contrast(
+                items, *primary, label="primary", precision=lost_prec, n_boot=n_boot, seed=seed
+            )
             # D12: reloaded applies to every arm (the replays re-compact Claude Code sessions);
             # every contrast with reloaded items counted as lost is reported beside it
             prim["reloaded_as_lost"] = paired_contrast(
                 reloaded_as_lost(items), *primary, label="primary", n_boot=n_boot, seed=seed
             )
+        arm_rates = part_b_arm_rates(items, precision=lost_prec, n_boot=n_boot, seed=seed)
         out[j] = {
             "judge": j,
+            "second_look": sl,
             "arms_present": arms,
             "arms_missing": [a for a in PART_B_ARMS if a not in arms],
             "required_arms_ok": not missing,
-            "arms": part_b_arm_rates(items, n_boot=n_boot, seed=seed),
+            "arms": arm_rates,
             "primary": prim,
             "exploratory": [
                 paired_contrast(items, x, y, label="exploratory", n_boot=n_boot, seed=seed)
@@ -1206,6 +1583,31 @@ def size_test(
     )
     res["rates"] = out_cols
     return res
+
+
+def size_report(
+    judges: Sequence[str],
+    *,
+    reader: Callable[[str], Any] = default_reader,
+    second_look_config: str | None = "frozen",
+    n_boot: int = N_BOOT,
+    seed: int = S1_SEED,
+) -> dict:
+    """The size test per judge from `size_items_<judge>.jsonl`, after the Max judge's overlay
+    (`size_second_look_<judge>.jsonl`), as in `part_a_report`."""
+    config = _second_look_config(second_look_config)
+    out: dict[str, Any] = {}
+    for j in judges:
+        items = _read(reader, f"size_items_{j}.jsonl")
+        if items is None:
+            out[j] = {"judge": j, "missing": ["items"]}
+            continue
+        items, _, sl = _with_second_look(reader, "size", j, items, None, config)
+        if sl is None:
+            out[j] = {"judge": j, "missing": ["second_look"]}
+            continue
+        out[j] = {"judge": j, "second_look": sl, **size_test(items, n_boot=n_boot, seed=seed)}
+    return out
 
 
 # ------------------------------------------------------------------------------------------

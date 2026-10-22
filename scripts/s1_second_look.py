@@ -28,7 +28,6 @@ whose row's availability (`s1_judge.availability`, the loss metric's own classif
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 import time
@@ -62,22 +61,17 @@ def unit_row_ids(key: dict) -> set[str]:
 
 def check_frozen() -> None:
     """Refuse when the second look's config differs from its freeze (D11), or none exists."""
-    if not FROZEN.exists():
-        raise SystemExit(f"no {FROZEN}: run `s1_second_look.py freeze` first (D11)")
-    old = json.loads(FROZEN.read_text())
-    if {k: v for k, v in old.items() if k != "frozen_utc"} != SL.frozen(SL.prompts()):
-        raise SystemExit(f"{FROZEN} differs from the current second look: it is frozen (D11)")
+    try:
+        SL.check_frozen(FROZEN)
+    except SL.FrozenError as e:
+        raise SystemExit(str(e)) from e
 
 
-def config_sha(cfg: dict) -> str:
-    """Digest of a second-look config (`s1_second_look.frozen`: prompts, schemas, tools, turn
-    cap, verdicts re-checked); every overlay row carries the one it ran under."""
-    return hashlib.sha256(json.dumps(cfg, sort_keys=True).encode()).hexdigest()
+config_sha = SL.config_sha
 
 
 def frozen_config_sha() -> str:
-    old = json.loads(FROZEN.read_text())
-    return config_sha({k: v for k, v in old.items() if k != "frozen_utc"})
+    return SL.frozen_config_sha(FROZEN)
 
 
 def cmd_run(a) -> None:
@@ -98,9 +92,9 @@ def cmd_run(a) -> None:
     be = backend("haiku", a.concurrency)
     rows = SL.second_look(be, items, claims)
     out = d / f"second_look_{JUDGE}.jsonl"
-    old = {r["row_id"]: r for r in read_jsonl(out)} if out.exists() else {}
+    old = {SL.row_key(r): r for r in read_jsonl(out)} if out.exists() else {}
     stamp = config_sha(SL.frozen(SL.prompts()))
-    old.update({r["row_id"]: r | {"config_sha": stamp} for r in rows})
+    old.update({SL.row_key(r): r | {"config_sha": stamp} for r in rows})
     out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in old.values()))
     changed = sum(r["changed"] for r in rows)
     invalid = sum(not r["valid"] for r in rows)
@@ -204,19 +198,32 @@ def cmd_rekey(a) -> None:
 
 
 def cmd_freeze(a) -> None:
+    """Freeze the second look; `--amend <decision>` re-freezes a changed config as the next
+    version after archiving the current one unchanged as frozen_second_look_v<n>.json (an
+    existing archive must hold exactly that text). Writes go through a temporary file and an
+    atomic replace, as `s1_run.py freeze` does."""
     cfg = SL.frozen(SL.prompts())
+    meta: dict = {"frozen_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
     if FROZEN.exists():
-        old = json.loads(FROZEN.read_text())
-        if {k: v for k, v in old.items() if k != "frozen_utc"} != cfg:
+        text = FROZEN.read_text()
+        old = json.loads(text)
+        if SL.config_sha(cfg) == frozen_config_sha():
+            log(f"freeze: unchanged ({FROZEN})")
+            return
+        if not a.amend:
             raise SystemExit(f"{FROZEN} exists and differs: the second look is frozen (D11)")
-        log(f"freeze: unchanged ({FROZEN})")
-        return
-    FROZEN.write_text(
-        json.dumps(
-            {"frozen_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())} | cfg, indent=1
-        )
-        + "\n"
-    )
+        version = int(old.get("version", 1))
+        archive = FROZEN.with_name(f"frozen_second_look_v{version}.json")
+        if archive.exists() and archive.read_text() != text:
+            raise SystemExit(f"{archive} exists and differs: refusing to overwrite an archive")
+        if not archive.exists():  # (exists with the same text: an interrupted amendment's retry)
+            atmp = archive.with_suffix(".tmp")
+            atmp.write_text(text)
+            atmp.replace(archive)
+        meta |= {"version": version + 1, "amendment": a.amend}
+    tmp = FROZEN.with_suffix(".tmp")
+    tmp.write_text(json.dumps(meta | cfg, indent=1) + "\n")
+    tmp.replace(FROZEN)
     log(f"freeze: wrote {FROZEN}")
 
 
@@ -234,7 +241,8 @@ def main(argv: list[str] | None = None) -> None:
     k.add_argument("--out", required=True)
     k.add_argument("--dev-labels", required=True, help="labels file of the development units")
     k.add_argument("--exclude", choices=("none", "reloaded", "not_lost"), default="none")
-    sub.add_parser("freeze")
+    f = sub.add_parser("freeze")
+    f.add_argument("--amend", default=None, help="spec decision that changes a frozen second look")
     a = ap.parse_args(argv)
     {"run": cmd_run, "rekey": cmd_rekey, "freeze": cmd_freeze}[a.cmd](a)
 

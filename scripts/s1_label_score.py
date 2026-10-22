@@ -19,8 +19,8 @@ interval on the Kish effective n, (sum w)^2 / sum w^2, of the denominator. Jacob
 item" counts against every item verdict (the judge graded something that isn't an item). An
 estimate whose denominator has fewer than 10 units is marked "unvalidated (n<10)".
 
-Headline verdicts: `dropped` (pass 1b) and `invented` (pass 2 unsupported on units whose
-history is complete); `unsupported` over all units is descriptive (`--claim-gate unsupported`
+Headline verdicts: `dropped` (pass 1b) and `invented` (pass 2 unsupported or, since D14,
+contradicted, on units whose history is complete); `unsupported` over all units is descriptive (`--claim-gate unsupported`
 gates on it instead, for a sensitivity check only). Secondary: kept, misstated, supported,
 contradicted. **Gate (D1):** a judge passes a headline
 verdict when its held-out point estimates of precision and recall are both >= 0.8; the
@@ -75,6 +75,7 @@ ITEM_LABELS = ("kept", "dropped", "misstated", "not_an_item")
 CLAIM_LABELS = ("supported", "contradicted", "unsupported", "cant_tell")
 ITEM_VERDICTS = ("dropped", "kept", "misstated")
 CLAIM_VERDICTS = ("unsupported", "supported", "contradicted", "invented")
+INVENTED = frozenset({"unsupported", "contradicted"})  # spec D14
 HEADLINE_ITEM = "dropped"
 GATE = 0.8
 # D13 (22 Oct): precision only, at a 0.7 floor. The fresh page samples too few judge negatives
@@ -174,9 +175,8 @@ def verdict_scores(
     claim units to one anchor tier (`anchor_tier` in the key: exact, normalized, fuzzy), and
     `tiers` to a set of them."""
     kind = "item" if verdict in ITEM_VERDICTS else "claim"
-    base = verdict
-    if verdict == "invented":
-        base = "unsupported"
+    # D14: invented = unsourced or contradicted, for the judge's call and for Jacob's label alike
+    match = INVENTED if verdict == "invented" else frozenset({verdict})
     pool = []
     for uid, u in units.items():
         if u["kind"] != kind or uid not in jacob or jacob[uid] == "cant_tell":
@@ -192,18 +192,18 @@ def verdict_scores(
         pool.append((uid, u))
     w = {uid: 1.0 / u["pi"] for uid, u in pool}
     listed = [(uid, u) for uid, u in pool if judge in u["verdicts"]]
-    pred = [(uid, u) for uid, u in listed if u["verdicts"][judge] == base]
-    truth = [(uid, u) for uid, u in listed if jacob[uid] == base]
-    truth_any = [(uid, u) for uid, u in pool if jacob[uid] == base]
+    pred = [(uid, u) for uid, u in listed if u["verdicts"][judge] in match]
+    truth = [(uid, u) for uid, u in listed if jacob[uid] in match]
+    truth_any = [(uid, u) for uid, u in pool if jacob[uid] in match]
     return {
         "precision": weighted_share(
-            [jacob[uid] == base for uid, _ in pred], [w[uid] for uid, _ in pred]
+            [jacob[uid] in match for uid, _ in pred], [w[uid] for uid, _ in pred]
         ),
         "recall": weighted_share(
-            [u["verdicts"][judge] == base for _, u in truth], [w[uid] for uid, _ in truth]
+            [u["verdicts"][judge] in match for _, u in truth], [w[uid] for uid, _ in truth]
         ),
         "recall_any": weighted_share(
-            [u["verdicts"].get(judge) == base for _, u in truth_any],
+            [u["verdicts"].get(judge) in match for _, u in truth_any],
             [w[uid] for uid, _ in truth_any],
         ),
         "n_listed": len(listed),

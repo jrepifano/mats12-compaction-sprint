@@ -151,3 +151,62 @@ def test_freeze_writes_once_then_refuses_a_changed_config(tmp_path, monkeypatch)
     monkeypatch.setattr(s1_run, "FROZEN", tmp_path / "missing.json")
     with pytest.raises(SystemExit, match="freeze` first"):
         s1_run.cmd_size(None)
+
+
+def test_max_judge_gets_a_second_look_per_batch_with_replay_summaries(monkeypatch):
+    rids = [f"r{i}" for i in range(3)]
+    _recs(monkeypatch, rids)
+    calls = []
+    monkeypatch.setattr(s1_run.s1_judge, "judge_records", _fake_judge(calls))
+    monkeypatch.setattr(s1_run.SL, "check_frozen", lambda: "cfg1")
+    seen = []
+
+    def fake_second_look(be, items, claims, *, load_rec, summary_of):
+        seen.append((len(items), len(claims), summary_of))
+        return [{"row_id": r["rid"], "changed": False, "valid": True} for r in items]
+
+    monkeypatch.setattr(s1_run.SL, "second_look", fake_second_look)
+    sink = s1_run._sink("partB", _Be("anthropic"))
+    reps = [{"base_rid": r, "arm": "cc_prompt", "summary": f"S-{r}"} for r in rids]
+    s1_run._judge_into(sink, _Be("anthropic"), rids, arm="cc_prompt", replays=reps, n=2)
+    assert [(a, b) for a, b, _ in seen] == [(2, 0), (1, 0)]  # each batch's items; Part B: no claims
+    summary_of = seen[0][2]
+    assert summary_of({"rid": "r1@cc_prompt", "base_rid": "r1"}, {}) == "S-r1"
+    assert len(sink.second_look) == 3 and all(r["config_sha"] == "cfg1" for r in sink.second_look)
+    written = {}
+    monkeypatch.setattr(
+        s1_run.seal, "write", lambda stage, name, rows: written.update({name: rows})
+    )
+    assert sink.flush()["n_second_look"] == 3
+    assert "partB_second_look_anthropic-judge.jsonl" in written
+    api = s1_run._sink("partB", _Be("openai"))
+    assert api.second_look is None
+    s1_run._judge_into(api, _Be("openai"), rids)
+    assert len(seen) == 2  # no second look for API judges
+
+
+def test_bulk_commands_refuse_an_unfrozen_second_look(monkeypatch):
+    def boom():
+        raise s1_run.SL.FrozenError("differs")
+
+    monkeypatch.setattr(s1_run.SL, "check_frozen", boom)
+    import pytest
+
+    with pytest.raises(SystemExit, match="differs"):
+        s1_run._check_second_look("haiku,glm")
+    s1_run._check_second_look("glm")  # API judges only: nothing to check
+
+
+def test_part_a_second_look_rechecks_claims_too(monkeypatch):
+    rids = ["r0", "r1"]
+    _recs(monkeypatch, rids)
+    monkeypatch.setattr(s1_run.s1_judge, "judge_records", _fake_judge([]))
+    monkeypatch.setattr(s1_run.SL, "check_frozen", lambda: "cfg1")
+    seen = []
+    monkeypatch.setattr(
+        s1_run.SL,
+        "second_look",
+        lambda be, items, claims, **kw: seen.append((len(items), len(claims))) or [],
+    )
+    s1_run._judge_into(s1_run._sink("partA", _Be("anthropic")), _Be("anthropic"), rids)
+    assert seen == [(2, 2)]

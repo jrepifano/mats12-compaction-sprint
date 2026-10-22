@@ -18,7 +18,11 @@ from the first label records, into data/raw/sprint/s1/val2/ the way `dev` does, 
 label page; the full re-run waits for that page's gate.
 `dev` writes judge rows for the label records to data/raw/sprint/s1/dev/ (validation data, not
 sealed outcomes) plus roster.json ({rid: {judge: {items: ok, claims: ok}}}), which the label page
-and scorer read. `partA`, `partB` and `size` write through `seal.write("S1", ...)`.
+and scorer read. `partA`, `partB` and `size` write through `seal.write("S1", ...)`. For the Max judge (Haiku) each
+batch's positives (items everywhere, claims in Part A only) then get the second look (spec D11, D13, D14: `compaction.s1_second_look`),
+sealed as `<part>_second_look_haiku-max.jsonl`, one overlay row per re-checked row stamped with
+the frozen config digest; the commands refuse to start when the second look differs from
+`results/sprint/S1/frozen_second_look.json`. `s1_analysis` applies the overlay before any rate.
 """
 
 from __future__ import annotations
@@ -33,6 +37,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from compaction import s1_data, s1_judge, seal
+from compaction import s1_second_look as SL
 from compaction import s1_types as T
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -288,12 +293,15 @@ class _Sealed:
     ever go to the seal), plus an analysis roster keyed by row rid: {rid: {ok, items_ok,
     claims_ok, source, model, harness, session_id, history_complete}}."""
 
-    def __init__(self, prefix: str, judge: str):
+    def __init__(self, prefix: str, judge: str, second_look: bool = False):
         self.prefix, self.judge = prefix, judge
         self.items: list[dict] = []
         self.claims: list[dict] = []
         self.facts: list[dict] = []
         self.roster: dict[str, dict] = {}
+        # the Max judge's second-look overlay (None: no second look for this judge)
+        self.second_look: list[dict] | None = [] if second_look else None
+        self.sl_config = SL.check_frozen() if second_look else None
 
     def add_run(self, recs: dict[str, dict], arm: str, errors: list[dict], tag=None) -> None:
         for base, ok in roster_of(list(recs), errors).items():
@@ -316,11 +324,43 @@ class _Sealed:
         seal.write(T.SEAL_STAGE, f"{p}_claims_{j}.jsonl", self.claims)
         seal.write(T.SEAL_STAGE, f"{p}_code_facts_{j}.jsonl", self.facts)
         seal.write(T.SEAL_STAGE, f"{p}_roster_{j}.json", self.roster)
-        return {
-            "n_items": len(self.items),
-            "n_claims": len(self.claims),
-            "n_rows": len(self.roster),
-        }
+        out = {"n_items": len(self.items), "n_claims": len(self.claims), "n_rows": len(self.roster)}
+        if self.second_look is not None:
+            seal.write(T.SEAL_STAGE, f"{p}_second_look_{j}.jsonl", self.second_look)
+            out["n_second_look"] = len(self.second_look)
+        return out
+
+
+def _sink(prefix: str, be) -> _Sealed:
+    """The sealed sink for one judge: the Max (Anthropic) judge gets the second look."""
+    return _Sealed(prefix, be.name, second_look=be.family == "anthropic")
+
+
+def _check_second_look(names: str) -> None:
+    """Refuse a bulk command whose Max judge would run an unfrozen second look (D11)."""
+    if "haiku" in names.split(","):
+        try:
+            SL.check_frozen()
+        except SL.FrozenError as e:
+            raise SystemExit(str(e)) from e
+
+
+# Claims are re-checked in Part A only: the Part B and size reports read items alone, so a claim
+# re-check there would spend Max allowance on numbers nothing reports (astra rerun-wiring r1 #7).
+SECOND_LOOK_CLAIMS = ("partA",)
+
+
+def _second_look_into(sink: _Sealed, be, items, claims, *, arm, replays, load) -> None:
+    """The second look on one batch's rows (its positives only), into the sink's overlay."""
+    if sink.prefix not in SECOND_LOOK_CLAIMS:
+        claims = []
+    summary_of = None if arm == "natural" else SL.replay_summaries(replays, arm)
+    rows = SL.second_look(be, items, claims, load_rec=load, summary_of=summary_of)
+    sink.second_look.extend(r | {"config_sha": sink.sl_config} for r in rows)
+    log(
+        f"{sink.prefix} {be.name} {arm}: second look {len(rows)} re-checked, "
+        f"{sum(r['changed'] for r in rows)} changed, {sum(not r['valid'] for r in rows)} invalid"
+    )
 
 
 def _judge_into(
@@ -334,6 +374,7 @@ def _judge_into(
         return lambda rows: dst.extend(decorate(r) for r in rows) if decorate else dst.extend(rows)
 
     for chunk in batches(rids, n or batch_size(be)):
+        i0, c0 = len(sink.items), len(sink.claims)
         res = s1_judge.judge_records(
             be,
             chunk,
@@ -346,6 +387,16 @@ def _judge_into(
             load=load,
         )
         sink.add_run({r: load(r) for r in chunk}, arm, res["errors"])
+        if sink.second_look is not None:
+            _second_look_into(
+                sink,
+                be,
+                sink.items[i0:],
+                sink.claims[c0:],
+                arm=arm,
+                replays=replays,
+                load=load,
+            )
         log(
             f"{sink.prefix} {be.name} {arm}: {len(chunk)} records, valid_share "
             f"{res.get('valid_share')}, errors {len(res['errors'])}"
@@ -370,10 +421,11 @@ def _per_judge(names: str, work, concurrency) -> None:
 
 def cmd_part_a(args) -> None:
     check_frozen()
+    _check_second_look(args.judges)
     rids = load_manifest()["ids"]["part_a"]
 
     def work(be):
-        sink = _Sealed("partA", be.name)
+        sink = _sink("partA", be)
         _judge_into(sink, be, judge_ids(be, rids))
         log(f"partA {be.name}: {sink.flush()}")
 
@@ -410,6 +462,7 @@ def cmd_part_b(args) -> None:
     """Every arm's rows for one judge go to one sealed file per kind (rows carry `arm`), the
     names s1_analysis reads (integration review r1 finding 1)."""
     check_frozen()
+    _check_second_look(args.judges)
     from compaction import s1_replay
 
     rids = load_manifest()["ids"]["part_b"]
@@ -419,7 +472,7 @@ def cmd_part_b(args) -> None:
         reps_by_arm[arm] = [r for r in s1_replay.read_replays(path).values() if not r.get("error")]
 
     def work(be):
-        sink = _Sealed("partB", be.name)
+        sink = _sink("partB", be)
         _part_b_into(sink, be, judge_ids(be, rids), reps_by_arm)
         log(f"partB {be.name}: {sink.flush()}")
 
@@ -432,6 +485,7 @@ def cmd_size(args) -> None:
     the prefix's items and passes 1b and 2 use that prefix's summary (integration review r1
     finding 2). Rows carry `prefix` and `orig_rid` for s1_analysis.size_test."""
     check_frozen()
+    _check_second_look("haiku")
     from compaction import s1_replay
 
     rids = [r for r in load_manifest()["ids"]["part_a"] if r.startswith("jacob:")]
@@ -461,7 +515,7 @@ def cmd_size(args) -> None:
             "orig_rid": prefixes[pid]["s1_size"]["base_rid"],
         }
 
-    sink = _Sealed("size", be.name)
+    sink = _sink("size", be)
     _judge_into(
         sink,
         be,

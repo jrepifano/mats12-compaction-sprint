@@ -970,3 +970,17 @@ def test_d13_gate_is_precision_only_at_the_floor():
     assert scorer._gate(sc(0.75, 0.9), "d1") == "FAIL"  # D1 unchanged
     with pytest.raises(ValueError, match="gate_rule"):
         scorer.score({"labels": {}}, {"units": {}}, gate_rule="d2")
+
+
+def test_invented_counts_contradicted_for_judge_and_label_alike():
+    units = {
+        f"c{i}": {
+            "kind": "claim", "half": "held", "pi": 1.0, "history_complete": True,
+            "anchor_tier": "exact", "verdicts": {"j": v},
+        }
+        for i, v in enumerate(["unsupported", "contradicted", "unsupported", "supported"])
+    }  # fmt: skip
+    jacob = {"c0": "contradicted", "c1": "unsupported", "c2": "supported", "c3": "contradicted"}
+    sc = scorer.verdict_scores(units, jacob, "j", "invented", "held")
+    assert sc["precision"]["n"] == 3 and sc["precision"]["n_hits"] == 2
+    assert sc["recall"]["n"] == 3 and sc["recall"]["n_hits"] == 2

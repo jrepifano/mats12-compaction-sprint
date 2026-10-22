@@ -76,6 +76,8 @@ def item_answer(verdict, quote=None):
 
 def test_schemas_validate_their_answers():
     assert not T.validate(claim_answer("supported", "x" * 10, 1), SL.CLAIM_SCHEMA)
+    assert not T.validate(claim_answer("carried_forward", "x" * 10, 1), SL.CLAIM_SCHEMA)
+    assert T.validate(claim_answer("unsupported"), SL.CLAIM_SCHEMA)  # the v1 vocabulary
     assert not T.validate(item_answer("dropped"), SL.ITEM_SCHEMA)
     assert T.validate({"verdict": "maybe"}, SL.CLAIM_SCHEMA)
 
@@ -98,7 +100,7 @@ def test_claim_flips_only_with_evidence_found_in_history():
 
 
 def test_claim_unsupported_again_and_failed_call_keep_the_first_verdict():
-    same = SL.check_claim(CLAIM, resp(claim_answer("unsupported")), rendered(), P)
+    same = SL.check_claim(CLAIM, resp(claim_answer("unsourced")), rendered(), P)
     assert same["valid"] and same["verdict"] == "unsupported" and not same["changed"]
     err = SL.check_claim(CLAIM, resp(None, "timeout"), rendered(), P)
     assert (
@@ -351,3 +353,41 @@ def test_rekeyed_key_scores_the_d13_gate_on_held_units_only():
     assert inv["precision"]["point"] == 0.0 and rec["gate"]["haiku-max"]["invented"] == "FAIL"
     # two spans keep an unsupported claim; Jacob says supported -> 0/2 precision, never 10 spans
     assert inv["precision"]["n"] == 2
+
+
+def test_carried_forward_is_not_invented_and_needs_its_quote():
+    q = "complex_responses: 0.3394 vs 0.2016"
+    cf = SL.check_claim(CLAIM, resp(claim_answer("carried_forward", q, 1)), rendered(), P)
+    assert cf["valid"] and cf["verdict"] == "supported" and cf["category"] == "carried_forward"
+    bad = SL.check_claim(
+        CLAIM, resp(claim_answer("carried_forward", "not in it at all", 1)), rendered(), P
+    )
+    assert not bad["valid"] and bad["verdict"] == "unsupported" and bad["category"] is None
+    un = SL.check_claim(CLAIM, resp(claim_answer("unsourced")), rendered(), P)
+    assert un["verdict"] == "unsupported" and un["category"] == "unsourced"
+    co = SL.check_claim(CLAIM, resp(claim_answer("contradicted", q, 1)), rendered(), P)
+    assert co["verdict"] == "contradicted" and co["category"] == "contradicted"
+
+
+def test_freeze_amend_archives_atomically_and_refuses_a_differing_archive(tmp_path, monkeypatch):
+    import json
+    from types import SimpleNamespace
+
+    cli = _script()
+    frozen = tmp_path / "frozen_second_look.json"
+    monkeypatch.setattr(cli, "FROZEN", frozen)
+    old = {"frozen_utc": "t0", "prompts": {"x": "old"}}
+    frozen.write_text(json.dumps(old))
+    with pytest.raises(SystemExit, match="frozen"):
+        cli.cmd_freeze(SimpleNamespace(amend=None))
+    archive = tmp_path / "frozen_second_look_v1.json"
+    archive.write_text("something else")
+    with pytest.raises(SystemExit, match="refusing to overwrite"):
+        cli.cmd_freeze(SimpleNamespace(amend="D99"))
+    archive.unlink()
+    cli.cmd_freeze(SimpleNamespace(amend="D99"))
+    assert json.loads(archive.read_text()) == old
+    new = json.loads(frozen.read_text())
+    assert new["version"] == 2 and new["amendment"] == "D99"
+    assert not list(tmp_path.glob("*.tmp"))
+    cli.cmd_freeze(SimpleNamespace(amend=None))  # unchanged now: a no-op

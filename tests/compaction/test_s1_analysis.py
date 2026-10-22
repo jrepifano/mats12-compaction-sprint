@@ -208,7 +208,9 @@ def test_spans_take_the_worst_of_a_judges_claims_and_claims_are_descriptive_only
         claim("r1", "s1", None, span="contradicted bit", verdict="contradicted"),
     ]
     (o,) = A.invented_rates(rows, n_boot=NB)
+    # a pass-2 contradicted claim the second look never re-checked is counted apart, not invented
     assert o["n_spans"] == 3 and o["n_invented_spans"] == 1
+    assert o["n_contradicted_unrechecked_spans"] == 1 and o["n_invented_contradicted_spans"] == 0
     assert o["span_share"]["point"] == pytest.approx(1 / 3)
     assert o["n_permission_spans"] == 1 and o["n_invented_permission_spans"] == 1
     assert o["invented_among_permission_spans"]["point"] == 1.0
@@ -504,3 +506,187 @@ def test_part_b_reports_the_primary_contrast_with_reloaded_counted_as_lost():
         for (x, y), c in pairs.items()
         if "cc_prompt" in (x, y)
     )
+
+
+# -- second look (spec D11, D13, D14) and precision correction
+
+
+def _ov(rid, row_id, kind, verdict, *, first, category=None, cfg="cfg1", valid=True):
+    return {
+        "rid": rid,
+        "row_id": row_id,
+        "kind": kind,
+        "verdict": verdict,
+        "first_verdict": first,
+        "changed": verdict != first,
+        "valid": valid,
+        "category": category,
+        "config_sha": cfg,
+    }
+
+
+def _sl_rows():
+    items = [
+        item("r1", "s1", "dropped", n=1, judge="haiku-max"),
+        item("r1", "s1", "dropped", n=2, judge="haiku-max"),
+        item("r2", "s2", "kept", n=3, judge="haiku-max"),
+    ]
+    claims = [
+        claim("r1", "s1", "invented", judge="haiku-max", claim_id="c1"),
+        claim("r2", "s2", "invented", judge="haiku-max", claim_id="c2"),
+        claim("r2", "s2", None, judge="haiku-max", claim_id="c3"),
+        claim("r3", "s3", None, judge="haiku-max", claim_id="c4", verdict="contradicted"),
+    ]
+    overlay = [
+        _ov("r1", items[0]["item_id"], "item", "kept", first="dropped"),
+        _ov("r1", items[1]["item_id"], "item", "dropped", first="dropped"),
+        _ov("r1", "c1", "claim", "supported", first="unsupported", category="carried_forward"),
+        _ov("r2", "c2", "claim", "contradicted", first="unsupported", category="contradicted"),
+    ]
+    return items, claims, overlay
+
+
+def test_apply_second_look_takes_the_rechecked_verdicts_and_counts_categories():
+    items, claims, overlay = _sl_rows()
+    it2, cl2, s = A.apply_second_look(items, claims, overlay, config="cfg1")
+    assert [r["grade"] for r in it2] == ["kept", "dropped", "kept"]
+    assert [r["verdict"] for r in cl2] == ["supported", "contradicted", "supported", "contradicted"]
+    assert items[0]["grade"] == "dropped"  # inputs untouched
+    assert s["item"]["n_rechecked"] == 2 and s["item"]["n_changed"] == 1
+    cats = s["claim"]["categories"]
+    assert cats["carried_forward"] == 1 and cats["contradicted"] == 1 and cats["unsourced"] == 0
+    (o,) = A.invented_rates(cl2, n_boot=NB)
+    # c2: re-checked and contradicted -> invented; c4: pass-2 contradicted, never re-checked
+    assert o["n_invented_spans"] == 1 and o["n_invented_contradicted_spans"] == 1
+    assert o["n_contradicted_unrechecked_spans"] == 1
+
+
+def test_overlay_is_keyed_by_row_rid_so_arms_keep_their_own_verdicts():
+    base = "b1"
+    a1 = item(f"{base}@cc_prompt", "s1", "dropped", arm="cc_prompt", base=base, n=1)
+    a2 = item(f"{base}@codex_local", "s1", "kept", arm="codex_local", base=base, n=1)
+    a3 = item(f"{base}@pi", "s1", "dropped", arm="pi", base=base, n=1)
+    assert a1["item_id"] == a2["item_id"] == a3["item_id"]  # pass 1a ids repeat across arms
+    ov = [
+        _ov(a1["rid"], a1["item_id"], "item", "misstated", first="dropped"),
+        _ov(a3["rid"], a3["item_id"], "item", "kept", first="dropped"),
+    ]
+    out, _, _ = A.apply_second_look([a1, a2, a3], None, ov)
+    assert [r["grade"] for r in out] == ["misstated", "kept", "kept"]
+    assert "second_look" not in out[1]  # the kept arm is untouched
+    clash = ov + [_ov(a1["rid"], a1["item_id"], "item", "kept", first="dropped")]
+    with pytest.raises(A.SecondLookError, match="conflicting"):
+        A.apply_second_look([a1, a2, a3], None, clash)
+    same = ov + [dict(ov[0])]  # an identical repeat is fine
+    A.apply_second_look([a1, a2, a3], None, same)
+
+
+def test_apply_second_look_refuses_gaps_and_unfrozen_rows():
+    items, claims, overlay = _sl_rows()
+    with pytest.raises(A.SecondLookError, match="no second-look row"):
+        A.apply_second_look(items, claims, overlay[1:])
+    with pytest.raises(A.SecondLookError, match="frozen config"):
+        A.apply_second_look(items, claims, overlay, config="cfg2")
+
+
+PREC = {
+    "haiku-max": {
+        "lost": {
+            "n_hits": 13,
+            "n": 18,
+            "definition_settled_after_labels": True,
+            "held_out_only": {"n_hits": 9, "n": 11},
+            "alternatives": {"reloaded_excluded": {"n_hits": 15, "n": 22, "dev_only": {}}},
+        },
+        "invented": None,
+    }
+}
+
+
+def test_part_reports_apply_the_overlay_and_refuse_without_it():
+    items, claims, overlay = _sl_rows()
+    files = {
+        "partA_items_haiku-max.jsonl": items,
+        "partA_claims_haiku-max.jsonl": claims,
+        "partA_second_look_haiku-max.jsonl": overlay,
+    }
+
+    def reader(name):
+        if name not in files:
+            raise FileNotFoundError(name)
+        return files[name]
+
+    rep = A.part_a_report(
+        ["haiku-max"], reader=reader, second_look_config="cfg1", precision=PREC, n_boot=NB
+    )["haiku-max"]
+    assert rep["second_look"]["applies"] and rep["second_look"]["item"]["n_changed"] == 1
+    assert rep["items"]["type_x_source"][0]["n_dropped"] == 1
+    assert rep["carried_forward_descriptive"] == 1
+    assert rep["contradicted_unrechecked_descriptive"]["n_spans"] == 1
+    corr = rep["precision_corrected"]
+    assert set(corr) == {"lost_rate", "invented_span_share"}  # no compaction-level share
+    lost = corr["lost_rate"]["sample"]
+    assert lost["point"] == pytest.approx((1 / 3) * 13 / 18)
+    assert lost["kind"] == A.CORRECTION_KIND and "settled after the labels" in lost["assumption"]
+    assert lost["provenance"]["definition_settled_after_labels"] is True
+    assert lost["provenance"]["held_out_only"] == {"n_hits": 9, "n": 11}
+    assert lost["alternatives"]["reloaded_excluded"]["point"] == pytest.approx((1 / 3) * 15 / 22)
+    assert "population" not in corr["lost_rate"]  # no weights given
+    assert corr["invented_span_share"]["note"] == "precision not measured"
+    del files["partA_second_look_haiku-max.jsonl"]
+    bare = A.part_a_report(["haiku-max"], reader=reader, second_look_config="cfg1", n_boot=NB)
+    assert bare["haiku-max"] == {"judge": "haiku-max", "missing": ["second_look"]}
+
+
+def test_corrected_rates_split_sample_and_population_when_weighted():
+    items = [item(f"r{k}", f"s{k}", "dropped" if k < 2 else "kept", n=k) for k in range(6)]
+    items[0]["source"] = "jacob"
+    df = A._item_frame(items, lambda r: 3.0 if r["source"] == "jacob" else 1.0)
+    A._add_weighted(df, ["n", "lost"])
+    c = A._corrected_rate(
+        df, "lost", "n", PREC["haiku-max"]["lost"], verdict="lost", weighted=True, n_boot=NB, seed=1
+    )
+    assert c["sample"]["point"] == pytest.approx((2 / 6) * 13 / 18)
+    assert c["population"]["point"] == pytest.approx((4 / 8) * 13 / 18)
+
+
+def test_precision_correction_uses_bootstrap_draws_and_stays_in_range():
+    rng = __import__("numpy").random.default_rng(0)
+    draws = rng.beta(19, 1, 2000)  # a rate near 1, as in the review's counterexample
+    c = A.precision_corrected(0.95, draws, {"n_hits": 10000, "n": 10000})
+    assert c["hi"] <= 1.0 and c["lo"] >= 0.0 and c["point"] == pytest.approx(0.95)
+    wide = A.precision_corrected(0.95, draws, {"n_hits": 15, "n": 22})
+    assert wide["hi"] - wide["lo"] > c["hi"] - c["lo"] and wide["point"] == pytest.approx(
+        0.95 * 15 / 22
+    )
+    assert "independent" in wide["independence"]
+    diff = A.precision_corrected(-0.05, rng.normal(-0.05, 0.02, 2000), {"n_hits": 13, "n": 18})
+    assert diff["lo"] < 0 and diff["point"] < 0
+    assert A.precision_corrected(0.2, draws, None)["note"] == "precision not measured"
+
+
+def test_part_b_corrects_item_level_rates_and_the_paired_difference():
+    rows = _part_b_rows()  # judge "haiku": no second look, so no overlay is needed here
+    rep = A.part_b_report(
+        ["haiku"],
+        reader=lambda n: rows,
+        second_look_config=None,
+        precision={"haiku": PREC["haiku-max"]},
+        n_boot=NB,
+    )["haiku"]
+    arm = rep["arms"][0]
+    assert arm["user_rule_loss_rate_corrected"]["point"] == pytest.approx(
+        arm["user_rule_loss_rate"]["point"] * 13 / 18
+    )
+    assert "compactions_losing_user_rule_corrected" not in arm
+    prim = rep["primary"]
+    assert prim["diff_corrected"]["point"] == pytest.approx(prim["diff"]["point"] * 13 / 18)
+
+
+@pytest.mark.parametrize("old_first", [True, False])
+def test_apply_second_look_rejects_an_unfrozen_duplicate_in_either_order(old_first):
+    items, claims, overlay = _sl_rows()
+    stale = dict(overlay[0], config_sha="old")
+    ov = [stale, *overlay] if old_first else [*overlay, stale]
+    with pytest.raises(A.SecondLookError, match="frozen config"):
+        A.apply_second_look(items, claims, ov, config="cfg1")

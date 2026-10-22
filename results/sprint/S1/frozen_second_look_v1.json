@@ -1,0 +1,20 @@
+{
+ "frozen_utc": "2026-10-22T18:22:30Z",
+ "prompts": {
+  "second_look_claim.md": "c2f250f4ae0969c391c053e0121c0ed55d7f37158b3d8ff39fee95f4692f4711",
+  "second_look_item.md": "8385962348d9992b6c63aa1daabd7d4b15416fe5337c25bb7d7417db719bd125"
+ },
+ "schemas": {
+  "CLAIM_SCHEMA": "aec95fc8140cadb977712a9db43d64f3d341c5594a086bf5e9b7cce5c2af07db",
+  "ITEM_SCHEMA": "69f3272bbdab1dd096817f47798271e1e1e9c555c6d31b528e7aba18745a8f38"
+ },
+ "tools": [
+  "Grep",
+  "Read"
+ ],
+ "max_turns": 16,
+ "rechecks": {
+  "claim": "unsupported",
+  "item": "dropped"
+ }
+}

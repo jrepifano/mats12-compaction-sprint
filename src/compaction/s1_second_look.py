@@ -39,9 +39,19 @@ ITEM_VERDICT = "dropped"  # pass 1b positives re-checked
 _SLOT = re.compile(r"\{(summary|claim|summary_quote|note|type|text|quote)\}")
 
 _STR_LIST = {"type": "array", "items": T._s()}
+# D14 (22 Oct): the claim re-check sorts four ways; the row keeps the pass-2 verdict vocabulary
+# (supported / contradicted / unsupported), and the four-way answer is the overlay's `category`.
+# "carried_forward" (a hedged or unchecked belief stated as fact) is not invented.
+CLAIM_CATEGORIES = ("supported", "carried_forward", "contradicted", "unsourced")
+CATEGORY_VERDICT = {
+    "supported": "supported",
+    "carried_forward": "supported",
+    "contradicted": "contradicted",
+    "unsourced": "unsupported",
+}
 CLAIM_SCHEMA = T._obj(
     {
-        "verdict": T._s(T.CLAIM_VERDICTS),
+        "verdict": T._s(CLAIM_CATEGORIES),
         "evidence_quote": T._s(nullable=True),
         "msg": T._INT_OR_NULL,
         "searched": _STR_LIST,
@@ -93,6 +103,41 @@ def frozen(p: Mapping[str, s1_judge.Prompt]) -> dict:
         "max_turns": MAX_TURNS,
         "rechecks": {"claim": CLAIM_VERDICT, "item": ITEM_VERDICT},
     }
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FROZEN_PATH = REPO_ROOT / "results" / "sprint" / "S1" / "frozen_second_look.json"
+_FREEZE_META = ("frozen_utc", "version", "amendment")
+
+
+class FrozenError(ValueError):
+    """The second look's config differs from its freeze, or no freeze exists (D11)."""
+
+
+def config_sha(cfg: Mapping) -> str:
+    """Digest of a second-look config (`frozen`: prompts, schemas, tools, turn cap, verdicts
+    re-checked); every overlay row carries the one it ran under (`config_sha` field)."""
+    return hashlib.sha256(json.dumps(cfg, sort_keys=True).encode()).hexdigest()
+
+
+def current_config_sha(prompt_set: Mapping[str, s1_judge.Prompt] | None = None) -> str:
+    return config_sha(frozen(prompt_set or prompts()))
+
+
+def frozen_config_sha(path: Path = FROZEN_PATH) -> str:
+    """The digest recorded by the freeze (its metadata fields left out)."""
+    if not Path(path).exists():
+        raise FrozenError(f"no {path}: run `scripts/s1_second_look.py freeze` first (D11)")
+    old = json.loads(Path(path).read_text())
+    return config_sha({k: v for k, v in old.items() if k not in _FREEZE_META})
+
+
+def check_frozen(path: Path = FROZEN_PATH) -> str:
+    """The frozen digest, after checking the current config matches it (else FrozenError)."""
+    want = frozen_config_sha(path)
+    if current_config_sha() != want:
+        raise FrozenError(f"{path} differs from the current second look: it is frozen (D11)")
+    return want
 
 
 def prompt_sha(p: Mapping[str, s1_judge.Prompt], kind: str) -> str:
@@ -169,6 +214,7 @@ def _overlay(kind: str, row: dict, first: str, resp: T.Resp | None, p) -> dict:
         "valid": False,
         "invalid_reason": None,
         "sl_verdict": None,
+        "category": None,  # claims: the four-way answer (CLAIM_CATEGORIES)
         "quote": None,
         "msg": None,
         "match": None,
@@ -187,15 +233,21 @@ def check_claim(row: dict, resp: T.Resp | None, rendered, p) -> dict:
         return out
     d = resp.data
     out.update(sl_verdict=d["verdict"], searched=d["searched"], note=d["note"])
-    if d["verdict"] == "unsupported":
-        out.update(valid=True, verdict="unsupported")
+    if d["verdict"] == "unsourced":
+        out.update(valid=True, verdict="unsupported", category="unsourced")
         return out
     msg = s1_judge.locate(d["evidence_quote"], rendered, d["msg"])
     if msg is None:
         out["invalid_reason"] = "evidence_quote_not_in_history"
         out["quote"] = d["evidence_quote"]
         return out
-    out.update(valid=True, verdict=d["verdict"], quote=d["evidence_quote"], msg=msg)
+    out.update(
+        valid=True,
+        verdict=CATEGORY_VERDICT[d["verdict"]],
+        category=d["verdict"],
+        quote=d["evidence_quote"],
+        msg=msg,
+    )
     out["changed"] = out["verdict"] != out["first_verdict"]
     return out
 
@@ -290,14 +342,55 @@ def second_look(
     return out
 
 
+def replay_summaries(replays, arm: str) -> Callable[[dict, dict], str]:
+    """`summary_of` for a replay arm (Part B, the size test): the replay record's summary, the
+    one pass 1b and pass 2 graded, found by the row's base record as `judge_records` finds it
+    (`replays` a list of ReplayRecords or a mapping base_rid -> record)."""
+    idx = s1_judge._replay_index(replays, arm)
+
+    def summary_of(row: dict, rec: dict) -> str:
+        r = idx.get(str(row.get("base_rid") or row["rid"]))
+        if r is None:
+            raise ValueError(f"{row['rid']}: no {arm} replay for its second look")
+        return r.get("summary") or ""
+
+    return summary_of
+
+
+def row_key(r: Mapping) -> tuple[str, str, str]:
+    """(kind, rid, row id): the key an overlay row and its judge row share. Item ids repeat
+    across Part B arms (pass 1a lists items once per base history), so the row's own rid (with
+    its arm) is part of the key."""
+    if "kind" in r and "row_id" in r:  # an overlay row
+        return (str(r["kind"]), str(r["rid"]), str(r["row_id"]))
+    if r.get("item_id") is not None:
+        return ("item", str(r["rid"]), str(r["item_id"]))
+    return ("claim", str(r["rid"]), str(r["claim_id"]))
+
+
+_DECISION = ("verdict", "valid", "category")
+
+
+def index_overlay(overlay: Iterable[dict]) -> dict[tuple[str, str, str], dict]:
+    """The overlay keyed by `row_key`; identical repeats collapse, conflicting ones raise."""
+    by: dict[tuple[str, str, str], dict] = {}
+    for o in overlay:
+        k = row_key(o)
+        old = by.get(k)
+        if old is not None and any(old.get(f) != o.get(f) for f in _DECISION):
+            raise ValueError(f"conflicting second-look rows for {k}")
+        by[k] = o
+    return by
+
+
 def apply(rows: Iterable[dict], overlay: Iterable[dict]) -> list[dict]:
     """Copies of `rows` with the second look's verdict (`grade` for items, `verdict` for claims)
-    and `second_look` = {first_verdict, valid, changed}; rows not re-checked are unchanged."""
-    by = {o["row_id"]: o for o in overlay}
+    and `second_look` = {first_verdict, valid, changed, category}, matched by `row_key`; rows not
+    re-checked are unchanged. Conflicting overlay rows for one key raise ValueError."""
+    by = index_overlay(overlay)
     out = []
     for r in rows:
-        rid = r.get("item_id") or r.get("claim_id")
-        o = by.get(rid)
+        o = by.get(row_key(r))
         if o is None:
             out.append(r)
             continue
@@ -306,7 +399,9 @@ def apply(rows: Iterable[dict], overlay: Iterable[dict]) -> list[dict]:
             r
             | {
                 field: o["verdict"],
-                "second_look": {k: o[k] for k in ("first_verdict", "valid", "changed")},
+                "second_look": {
+                    k: o.get(k) for k in ("first_verdict", "valid", "changed", "category")
+                },
             }
         )
     return out

@@ -1,0 +1,49 @@
+{
+ "_note": "Precision of each judge's positive calls against Jacob's hand labels, for the precision-corrected rates in s1_analysis (spec D13 (d)): corrected rate = judge positive rate x n_hits/n, an estimate of the rate the judge detects (not the true rate, not a bound). Reported as an assumption-based sensitivity: the precision is transferred to calls and strata it was not measured on. Primary entry first; 'alternatives' are reported beside it.",
+ "haiku-max": {
+  "lost": {
+   "n_hits": 13,
+   "n": 18,
+   "interval_wilson": [
+    0.49,
+    0.88
+   ],
+   "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+   "held_out_only": {
+    "n_hits": 9,
+    "n": 11
+   },
+   "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+   "definition_settled_after_labels": true,
+   "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels.",
+   "alternatives": {
+    "reloaded_excluded": {
+     "n_hits": 15,
+     "n": 22,
+     "interval_wilson": [
+      0.47,
+      0.84
+     ],
+     "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+     "held_out_only": {
+      "n_hits": 10,
+      "n": 13
+     },
+     "dev_only": {
+      "n_hits": 5,
+      "n": 9
+     },
+     "definition_settled_after_labels": true
+    }
+   }
+  },
+  "invented": {
+   "n_hits": 8,
+   "n": 13,
+   "cards": "20-card claim page (draw fdafd0542d86d886): complete-history val2 claims pass 2 called unsupported that were not on the 60-card page; precision on the 14 still invented after the second look v2 (one 'can't tell' left out); a hit is Jacob labelling unsupported or contradicted",
+   "definition_settled_after_labels": false,
+   "below_floor": true,
+   "note": "0.62 [0.36, 0.82], below D13's 0.7 floor: invention is exploratory (D14 (f)). The 6 claims the second look reversed were all labelled supported by Jacob (6/6). Pass-2 contradicted claims are not covered."
+  }
+ }
+}
