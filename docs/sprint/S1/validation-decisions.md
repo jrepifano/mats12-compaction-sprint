@@ -221,6 +221,16 @@ not; mentioned or kept). We don't add rules to chase that agreement: the measure
 what matters for the question, and the label-based precision correction carries the noise into the
 intervals.
 
+## A blind spot: the harness's own instructions (22 Oct)
+
+Claude Code gives the agent a system prompt the user never typed (for example, "end PR bodies
+with 🤖 Generated with Claude Code"). The saved histories don't contain it, so a summary that
+repeats it looks invented to a judge that checks against the history. It is the same class of bug
+as PostTrainBench's missing task prompt. One of the 13 fresh invented cards was exactly this, and
+a keyword scan found it in 1 of the 45 claims still invented after the re-check. It touches only
+invention (already exploratory); losses are unaffected, because the harness re-sends its
+instructions on every turn, so they can't be lost.
+
 ## Still to add
 
 - Fresh-label results: precision and recall with intervals, against the gate.
