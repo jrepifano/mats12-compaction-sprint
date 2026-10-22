@@ -113,9 +113,11 @@ HAIKU_START_THRESHOLD = 150_000
 
 
 def threshold_for(route: str, share: float = THRESHOLD_SHARE) -> int:
+    """The compaction threshold in tokens: `share` of the model's pooled median uncompacted
+    peak, capped, rounded to thousands. Haiku (no DeepSWE data) starts at 150k, scaled the
+    same way for the fallback share."""
     if route == "haiku":
-        return HAIKU_START_THRESHOLD if share == THRESHOLD_SHARE else int(
-            HAIKU_START_THRESHOLD * share / THRESHOLD_SHARE)
+        return int(round(HAIKU_START_THRESHOLD * share / THRESHOLD_SHARE, -3))
     if route not in POOLED_MEDIAN_PEAK:
         raise KeyError(f"no DeepSWE peak for route {route!r}")
     return min(THRESHOLD_CAP, int(round(POOLED_MEDIAN_PEAK[route] * share, -3)))

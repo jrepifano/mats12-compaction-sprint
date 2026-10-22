@@ -646,3 +646,41 @@ def test_stub_scripts_cover_every_arm():
     for arm in C.ARMS:
         assert stubs.arm_actions("t", arm, 1) and stubs.arm_actions("t", arm, 2)
     assert len(stubs.base_actions("t")) > 10
+
+
+# ------------------------------------------------------------------------------------------
+# gate
+# ------------------------------------------------------------------------------------------
+
+def _tele(key, model, channel, reached=True):
+    return {"phase": "base", "run_key": key, "model": model, "channel": channel,
+            "kind": "pilot", "tier": "reached_compaction" if reached else "attempted",
+            "boundary": {"pre_tokens": 1} if reached else None}
+
+
+def test_gate_tiers_coverage_and_yield():
+    from compaction.s2 import gate as G
+    kept = {r: "KEPT" for r in R.RULE_IDS}
+    lost = kept | {"R6": "LOST"}
+    tele, labels = [], {}
+    for m in C.PILOT_MODELS:
+        for ch in T.CHANNELS:
+            for j in range(2):
+                k = f"{m}-{ch}-{j}"
+                tele.append(_tele(k, m, ch))
+                labels[k] = lost if (ch == "chat" and j == 0) else kept
+    tele.append(_tele("x", "glm", "chat", reached=False))
+    tele.append({**_tele("peak", "haiku", "agents_md"), "kind": "haiku_peak"})
+    out = G.evaluate(tele, labels)
+    assert all(v["covered"] for v in out["coverage"].values())
+    assert out["q2_yield"]["chat"] == {"n_assessable": 8, "n_lost": 4,
+                                       "loss_rate_wilson95": G.wilson(4, 8), "verdict": "full"}
+    assert out["q2_yield"]["readme"]["verdict"] == "low_loss_yield"
+    assert {r["run_key"] for r in out["tiers"]} == set(labels) | {"x"}
+    labels["luna-chat-0"] = kept | {"C": "UNKNOWN"}
+    labels["luna-chat-1"] = kept | {"C": "UNKNOWN"}
+    out = G.evaluate(tele, labels)
+    assert out["coverage"]["luna"]["short_cells"] == ["chat"]
+    assert out["q2_yield"]["chat"]["n_assessable"] == 6
+    assert out["q2_yield"]["chat"]["verdict"] == "reduced"
+    assert G.evaluate(tele[:2], {})["q2_yield"]["chat"]["verdict"] == "descriptive_only"

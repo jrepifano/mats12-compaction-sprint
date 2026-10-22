@@ -22,6 +22,9 @@
         ({run_key: {"R1": "LOST"|"KEPT"|"UNKNOWN", ...}}); removes each kept image after.
     uv run python scripts/s2_run.py haiku-peak --go-from-jacob [--cap-usd 8]
         One uncompacted Haiku run on the first pilot task, to measure its peak (sprint plan S2).
+    uv run python scripts/s2_run.py gate --labels labels.json [--telemetry PATH]
+        The pilot's tiers, coverage and per-channel Q2 yield verdicts from the visible telemetry
+        and the boundary retention labels (compaction.s2.gate). Reads no outcome field.
     uv run python scripts/s2_run.py containers
         List leftover emx.sandbox=sprint-s2 containers.
 
@@ -263,6 +266,16 @@ def cmd_haiku_peak(a) -> int:
     return leftovers_rc(rc)
 
 
+def cmd_gate(a) -> int:
+    from compaction.s2 import gate
+    path = Path(a.telemetry or C.REPO_ROOT / "results" / "sprint" / C.SEAL_STAGE
+                / "telemetry.jsonl")
+    tele = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    labels = json.loads(Path(a.labels).read_text()) if a.labels else {}
+    print(json.dumps(gate.evaluate(tele, labels), indent=1))
+    return 0
+
+
 def cmd_containers(_a) -> int:
     left = P.our_containers()
     print(json.dumps({"label": f"emx.sandbox={C.PURPOSE}", "containers": left}))
@@ -296,12 +309,15 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--labels", required=True)
         if name == "haiku-peak":
             p.add_argument("--cap-usd", type=float, default=8.0)
+    g = sub.add_parser("gate")
+    g.add_argument("--labels")
+    g.add_argument("--telemetry")
     sub.add_parser("containers")
     a = ap.parse_args(argv)
     signal.signal(signal.SIGTERM, _sigterm)
     return {"cohort": cmd_cohort, "freeze-rules": cmd_freeze_rules, "dryrun": cmd_dryrun,
             "pilot": cmd_pilot, "pilot-resume": cmd_pilot_resume, "haiku-peak": cmd_haiku_peak,
-            "containers": cmd_containers}[a.cmd](a)
+            "gate": cmd_gate, "containers": cmd_containers}[a.cmd](a)
 
 
 if __name__ == "__main__":
