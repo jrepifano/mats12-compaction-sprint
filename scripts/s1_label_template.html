@@ -489,6 +489,7 @@ function renderAudit() {
       <header><span class="tag">${i + 1} / ${DATA.audit.length} · ${esc(a.kind)} · judge verdict: ${esc(a.verdict)}</span><span class="state" id="st-${a.id}">not checked</span></header>
       <div><p class="label">${a.kind === "claim" ? "Claim" : "Item"}</p><p class="q">${esc(a.text)}</p></div>
       <div><p class="label">Source context${auditCtx(a.context).at ? " (the item's quote highlighted)" : ""}</p>${findBox(auditCtx(a.context).text, "box read", { at: auditCtx(a.context).at, ph: "Find in the source context" })}</div>
+      ${a.hist_ref ? `<details class="fullhist"${a.kind === "claim" ? " open" : ""}><summary>Full history (searchable)</summary>${histBox(a)}</details>` : ""}
       ${summary(a.summary_ref)}
       <div class="calls">${choices("audit", a.id, "audit")}</div>
     </article>`).join("");

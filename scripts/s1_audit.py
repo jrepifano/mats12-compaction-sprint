@@ -301,6 +301,7 @@ def card(src: Sources, cell: tuple, r: Mapping) -> dict:
         "text": (r.get("claim") if kind == "claim" else r.get("text")) or "",
         "context": context(src, part, kind, r),
         "summary": src.summary(part, r),
+        "history": src.history(part, r).text,  # the full rendered history the judge saw
         "private": {
             "part": part,
             "rid": r["rid"],

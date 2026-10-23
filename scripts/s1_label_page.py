@@ -134,7 +134,18 @@ PAGE_FIELDS = {
         "hist_ref",
     },
     "gold": {"id", "source", "text", "summary_ref", "approx_tokens"},
-    "audit": {"id", "kind", "verdict", "text", "context", "summary_ref"},
+    "audit": {
+        "id",
+        "kind",
+        "verdict",
+        "text",
+        "context",
+        "summary_ref",
+        "hist_ref",
+        "hist_at",
+        "located",
+        "snip_at",
+    },
 }
 
 _WS = re.compile(r"\s+")
@@ -752,6 +763,7 @@ def build_audit(
     if not items:
         raise ValueError("an audit page needs at least one item")
     summaries: dict[str, str] = {}
+    hist_ref: dict[str, str] = {}  # history text -> opaque H001.. (one copy per record)
     page_audit, key_audit = [], {}
     for a, aid in zip(items, _ids(seed, "a", len(items)), strict=True):
         ref = f"S{len(summaries) + 1:03d}"
@@ -764,6 +776,16 @@ def build_audit(
             "context": a.get("context") or "",
             "summary_ref": ref,
         }
+        h = a.get("history")
+        if h:  # the full history, so a card is checked against all of it (Jacob, 23 Oct)
+            p["hist_ref"] = hist_ref.setdefault(h, f"H{len(hist_ref) + 1:03d}")
+            u16 = utf16_offsets(h)
+            if a.get("kind") == "item":
+                c = item_context(h, str((a.get("private") or {}).get("quote") or ""))
+                p["located"] = c["located"]
+                p["hist_at"] = [u16(i) for i in c["hist_at"]] if c["hist_at"] else None
+            else:
+                p["snip_at"] = [[u16(x), u16(y)] for x, y in claim_snippet_spans(a["text"], h)]
         assert set(p) <= PAGE_FIELDS["audit"]
         page_audit.append(p)
         key_audit[aid] = {
@@ -785,7 +807,15 @@ def build_audit(
                 "cards": [
                     {
                         k: a.get(k)
-                        for k in ("kind", "verdict", "text", "context", "summary", "private")
+                        for k in (
+                            "kind",
+                            "verdict",
+                            "text",
+                            "context",
+                            "summary",
+                            "private",
+                            "history",
+                        )
                     }
                     for a in items
                 ],
@@ -797,6 +827,10 @@ def build_audit(
     data = {
         "mode": "audit",
         "draw": draw,
+        "histories": {
+            r: base64.b64encode(gzip.compress(t.encode("utf-8"), 9, mtime=0)).decode()
+            for t, r in hist_ref.items()
+        },
         "units": [],
         "summaries": summaries,
         "gold": [],
@@ -820,10 +854,21 @@ def build_audit(
             *summaries.values(),
             *(p["context"] for p in page_audit),
             *(p["text"] or "" for p in page_audit),
+            *hist_ref,
         ]
     )
     key["natural_rid_hits"] = leak_check(html, key, natural)
+    # the histories are gzipped in the page, so their plain text is checked too, for judge row
+    # ids only: a record's own text can hold a key field name (a session's code reading
+    # "verdicts") or its record id, which the page shows as the record has it
+    rows, _ = forbidden_strings(key)
+    if bad := [r for r in rows if any(r in t for t in hist_ref)]:
+        raise LeakError(f"a history carries {len(bad)} judge row ids: {bad[:5]!r}")
+    key["hist_refs"] = {r: hashlib.sha256(t.encode()).hexdigest() for t, r in hist_ref.items()}
     key["page_sha256"] = hashlib.sha256(html.encode("utf-8")).hexdigest()
+    key["page_bytes"] = len(html.encode("utf-8"))
+    if key["page_bytes"] > MAX_PAGE_BYTES:
+        raise ValueError(f"audit page is {key['page_bytes']:,} bytes, over {MAX_PAGE_BYTES:,}")
     return html, key
 
 

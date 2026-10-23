@@ -220,3 +220,24 @@ def test_final_rows_takes_claims_from_part_a_only():
     assert AU.final_rows(reader_for("partB"), "partB") == ([], [])
     with pytest.raises(A.SecondLookError, match="no second-look row"):
         AU.final_rows(reader_for("partA"), "partA")
+
+
+def test_audit_cards_carry_the_full_history_and_the_draw_binds_it(tmp_path):
+    root = tmp_path / "results"
+    seal.write("S1", "partA_items_haiku-max.jsonl", [{"a": 1}], root=root)
+    hist = "pre " * 2000 + "the quote here" + " post" * 2000
+    cards = _cards(n=2)
+    cards[0] |= {"history": hist}
+    cards[0]["private"] |= {"quote": "the quote here"}
+    cards[1] |= {"kind": "claim", "verdict": "invented", "text": "post quote", "history": hist}
+    P = _load("s1_label_page")
+    _, key = _audit(tmp_path, root, cards)
+    html = P.build_audit(
+        {"items": cards, "manifest": seal.prepare_audit("S1", root=root)},
+        labels_dir=tmp_path / "out",
+    )[0]
+    assert list(key["hist_refs"]) == ["H001"]  # one copy for two cards on the same record
+    assert '"histories": {"H001"' in html or '"histories":{"H001"' in html
+    assert "pre pre pre" not in html  # embedded gzipped, not as plain text
+    _, key2 = _audit(tmp_path, root, [cards[0] | {"history": hist + " more"}, cards[1]])
+    assert key2["draw"] != key["draw"]
