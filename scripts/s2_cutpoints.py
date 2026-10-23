@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import itertools
 import json
 import shutil
 import sys
@@ -97,6 +98,41 @@ def move_rules(messages: list[dict], rules_text: str, after_call: int) -> list[d
     raise ValueError(f"the run has no call {after_call + 1}")
 
 
+SCATTER_LEADS = ("Quick note: ", "Also: ", "One more thing: ", "Oh, and: ")
+
+
+def scatter_rules(messages: list[dict], rules: R.TaskRules, after_calls: list[int]
+                  ) -> list[dict]:
+    """OFFLINE SCREEN ONLY (23 Oct): the chat rules turn replaced by one short user message per
+    rule, in R1, R3, R6, C order, each just after the given call's results, with a
+    conversational lead-in. The rule wording is the frozen line without its number, so every
+    clause is still there; only salience and placement change. As move_rules, this tests what
+    the summarizer keeps, not how an agent behaves."""
+    if (len(after_calls) != len(R.RULE_IDS) or after_calls[0] < 1
+            or any(b <= a for a, b in itertools.pairwise(after_calls))):
+        raise ValueError(f"need {len(R.RULE_IDS)} strictly increasing calls >= 1, "
+                         f"got {after_calls}")
+    i = next((k for k, m in enumerate(messages)
+              if m.get("role") == "user" and m.get("content") == rules.chat_turn()), None)
+    if i is None:
+        raise ValueError("no chat rules turn in this history (not a chat-channel run?)")
+    out = messages[:i] + messages[i + 1:]
+    for rid, lead, n in reversed(list(zip(R.RULE_IDS, SCATTER_LEADS, after_calls,
+                                          strict=True))):
+        body = rules.lines[rid].partition(". ")[2] or rules.lines[rid]
+        seen, at = 0, None
+        for k, m in enumerate(out):
+            if m.get("role") == "assistant":
+                seen += 1
+                if seen == n + 1:
+                    at = k
+                    break
+        if at is None:
+            raise ValueError(f"the run has no call {n + 1}")
+        out = out[:at] + [{"role": "user", "content": lead + body}] + out[at:]
+    return out
+
+
 def agents_text(messages: list[dict]) -> str | None:
     """The AGENTS.md text the run opened with (agents_md channel), as the live boundary got it."""
     for m in messages:
@@ -108,7 +144,8 @@ def agents_text(messages: list[dict]) -> str | None:
 
 
 def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Path,
-            rules_after_call: int | None = None) -> list[dict]:
+            rules_after_call: int | None = None,
+            scatter_after: list[int] | None = None) -> list[dict]:
     run = json.loads((attempt / "run.json").read_text())
     messages = json.loads((attempt / "base" / "messages.json").read_text())
     calls = json.loads((attempt / "base" / "calls.json").read_text())
@@ -120,6 +157,12 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
         messages = move_rules(messages, rules.chat_turn(), rules_after_call)
         rules_idx = next(k for k, m in enumerate(messages)
                          if m.get("content") == rules.chat_turn())
+    elif scatter_after is not None:
+        messages = scatter_rules(messages, rules, scatter_after)
+        last_rule = SCATTER_LEADS[-1] + (rules.lines[R.RULE_IDS[-1]].partition(". ")[2]
+                                         or rules.lines[R.RULE_IDS[-1]])
+        rules_idx = next(k for k, m in enumerate(messages)  # the inserted last rule (exact)
+                         if m.get("role") == "user" and m.get("content") == last_rule)
     route = C.Route(**run["plan"]["route"])
     if "summary_reasoning" not in run["plan"]["route"]:
         # Runs recorded before Route.summary_reasoning existed: use the current setting for
@@ -133,9 +176,10 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
     for t in thresholds:
         cut = cut_index(messages, calls, t, ctx_by_call)
         key = f"{run['run_key']}-t{t}"  # per source attempt (review r1 #3)
-        if rules_after_call is not None:
-            key += f"-mid{rules_after_call}"
-            if cut is not None and cut[0] <= rules_idx:
+        if rules_after_call is not None or scatter_after is not None:
+            key += (f"-mid{rules_after_call}" if rules_after_call is not None
+                    else "-scatter" + "-".join(map(str, scatter_after)))
+            if cut is not None and cut[0] <= rules_idx:  # all rules must precede the cut
                 rows.append({"cut": key, "threshold": t, "reached": True, "peak": peak,
                              "skipped": "the cut comes before the moved rules turn"})
                 continue
@@ -167,7 +211,9 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
             (a / "run.json").write_text(json.dumps(
                 {**run, "run_key": f"{key}-a1", "cohort_key": key, "cut_of": run["run_key"],
                  "offline_edit": ({"rules_after_call": rules_after_call}
-                                  if rules_after_call is not None else None),
+                                  if rules_after_call is not None else
+                                  {"scatter_after_calls": scatter_after}
+                                  if scatter_after is not None else None),
                  "plan": {**run["plan"], "threshold": t, "route": route.__dict__}},
                 indent=1, default=str))
             (a / "boundary" / "boundary.json").write_text(json.dumps(b, indent=1, default=str))
@@ -188,6 +234,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out-root", default=str(C.raw_dir() / "cuts"))
     ap.add_argument("--rules-after-call", type=int,
                     help="offline screen: move the chat rules turn to after this call")
+    ap.add_argument("--scatter-rules",
+                    help="offline screen: one message per rule after these calls, e.g. 5,15,25,35")
     a = ap.parse_args(argv)
     if not a.go_from_jacob:
         print("refusing: paid calls need Jacob's go (pass --go-from-jacob)")
@@ -201,9 +249,13 @@ def main(argv=None) -> int:
     load_env()
     spend = RunSpend(SprintSpend(), a.cap_usd)
     thresholds = sorted(int(x) for x in a.thresholds.split(","))
+    scatter = [int(x) for x in a.scatter_rules.split(",")] if a.scatter_rules else None
+    if scatter and a.rules_after_call is not None:
+        print("refusing: --rules-after-call and --scatter-rules are alternatives")
+        return 1
     out = [r for p in a.attempts
            for r in cut_run(Path(p), thresholds, spend, Path(a.out_root),
-                            a.rules_after_call)]
+                            a.rules_after_call, scatter)]
     summary = Path(a.out_root) / "cuts.jsonl"
     summary.parent.mkdir(parents=True, exist_ok=True)
     with summary.open("a") as f:

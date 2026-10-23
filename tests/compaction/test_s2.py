@@ -2025,3 +2025,29 @@ def test_an_insufficient_balance_refusal_is_unbilled_and_not_retried():
         M.OpenAICompatModel(C.ROUTES["deepseek"], sp, client=cl).complete(
             [{"role": "user", "content": "u"}], None, 10, purpose="t")
     assert ei.value.cost_usd == 0 and sp.charged == 0 and len(comp.bodies) == 1
+
+
+def test_scatter_rules_spreads_one_message_per_rule():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_cutpoints",
+                                                  C.REPO_ROOT / "scripts" / "s2_cutpoints.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rules = R.TaskRules("t", 7, ["README*"], {"R1": "1. Rule one.", "R3": "2. Rule two.",
+                                              "R6": "3. Start with [DSW-7].", "C": "4. Ask."},
+                        {}, {}, [])
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"},
+            {"role": "user", "content": rules.chat_turn()}]
+    for i in range(1, 6):
+        msgs += [{"role": "assistant", "content": f"a{i}"}, {"role": "tool", "content": f"o{i}"}]
+    out = mod.scatter_rules(msgs, rules, [1, 2, 3, 4])
+    texts = [m["content"] for m in out]
+    assert rules.chat_turn() not in texts
+    assert texts[2:6] == ["a1", "o1", "Quick note: Rule one.", "a2"]
+    assert texts.index("Also: Rule two.") < texts.index("a3")
+    assert "One more thing: Start with [DSW-7]." in texts and "Oh, and: Ask." in texts
+    assert texts.index("Oh, and: Ask.") == texts.index("a5") - 1
+    assert len(out) == len(msgs) + 3
+    for bad in ([3, 1, 2, 4], [1, 1, 2, 3], [0, 1, 2, 3]):
+        with pytest.raises(ValueError, match="increasing"):
+            mod.scatter_rules(msgs, rules, bad)
