@@ -32,7 +32,7 @@ MAX_ATTEMPTS = 4  # billed or failed attempts per call
 # 429s are unbilled and come in upstream bursts lasting minutes (GLM on Together, step-0 smoke,
 # 23 Oct): they get their own budget, about 5 minutes of capped backoff, before the call fails.
 RATE_LIMIT_ATTEMPTS = 10
-_UNBILLED = (400, 401, 403, 404, 413, 422, 429)
+_UNBILLED = (400, 401, 402, 403, 404, 413, 422, 429)  # refused before inference (402: no balance)
 _TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 529)
 
 

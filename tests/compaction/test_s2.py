@@ -2016,3 +2016,12 @@ def test_move_rules_puts_the_chat_rules_after_the_given_call():
         mod.move_rules(msgs, "RULES", 3)
     with pytest.raises(ValueError, match="no chat rules turn"):
         mod.move_rules(msgs, "OTHER", 1)
+
+
+def test_an_insufficient_balance_refusal_is_unbilled_and_not_retried():
+    sp = M.NullSpend()
+    cl, comp = fake_client([StatusError(402)])
+    with pytest.raises(M.ModelError) as ei:
+        M.OpenAICompatModel(C.ROUTES["deepseek"], sp, client=cl).complete(
+            [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert ei.value.cost_usd == 0 and sp.charged == 0 and len(comp.bodies) == 1
