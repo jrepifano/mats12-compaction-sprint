@@ -80,21 +80,37 @@ ROUTES: dict[str, Route] = {
         # peak rates (01-04, 06-10 UTC weekdays); off-peak is half. Cache hit 0.003 off-peak.
         prices={"input": 0.30, "output": 1.20, "cache_read": 0.006},
         window=1_000_000, max_output=32_000, bytes_per_token=2.0,
-        reasoning={},  # VERIFY: DeepSeek's API thinking toggle for V4.1 Flash at max effort
+        # accepted and pinned to match DeepSWE's @max; its reasoning overlapped the default's
+        # on the step-0 prompt (1694-1765 vs 1129-1764 tokens, 3 each; 23 Oct)
+        reasoning={"reasoning_effort": "max"},
         summarizer="pi", deepswe_config="deepseek-v4-flash@max",
         notes="pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"),
     "glm": Route(
         name="glm", model="z-ai/glm-5.3-flash", transport="openrouter",
+        # Step-0 smoke (23 Oct): Together returned 429 "rate-limited upstream" on every call at
+        # 16:20Z, then passed at 16:50Z (cache 97% from call 2, 4-way burst clean, ~0.5 s).
+        # Measured fallback: Novita fp8 (cache 98%, burst clean, ~6 s). Friendli 429'd 5 of 9
+        # burst attempts; Fireworks 429'd all; BaseTen didn't cache.
         key_env="OPENROUTER_API_KEY", provider_pin="Together",
         prices={"input": 0.15, "output": 0.50, "cache_read": 0.03},
         window=1_048_575, max_output=32_000, bytes_per_token=2.0,
-        reasoning={"reasoning": {"effort": "high"}},  # VERIFY: highest effort OpenRouter maps
+        # GLM's thinking is an on/off switch: "max" via OpenRouter reasoned less than the
+        # default (506-730 vs 584-1239 tokens, 4 each), so thinking is set on explicitly with no
+        # effort mapping (step-0 smoke on Friendli, 23 Oct)
+        reasoning={"reasoning": {"enabled": True}},
         summarizer="pi", deepswe_config="glm-5-3-flash@max"),
     "luna": Route(
-        name="luna", model="gpt-6-luna", transport="openai", key_env="OPENAI_API_KEY",
+        # OpenAI's chat completions refuse function tools with any reasoning effort on luna
+        # (400, "use /v1/responses"; step-0 smoke, 23 Oct), so luna goes through OpenRouter
+        # pinned to OpenAI, which accepts both: still served by OpenAI, BYOK on our OpenAI key
+        # (cost read from upstream_inference_cost), cache 99% from call 2, burst clean.
+        name="luna", model="openai/gpt-6-luna", transport="openrouter",
+        key_env="OPENROUTER_API_KEY", provider_pin="OpenAI",
         prices={"input": 0.10, "output": 0.50, "cache_read": 0.01},
         window=1_050_000, max_output=64_000, bytes_per_token=2.0,
-        reasoning={"reasoning_effort": "max"},  # VERIFY the accepted value on gpt-6-luna
+        # "max" is refused (400: supported none/low/medium/high/xhigh); xhigh is the highest
+        # (step-0 smoke, 23 Oct)
+        reasoning={"reasoning": {"effort": "xhigh"}},
         summarizer="codex_local", deepswe_config="gpt-5-6-luna@max",
         notes="labelled 'Codex local summarizer' (inspect-swe forces it; real Codex is remote)"),
     "haiku": Route(
@@ -104,7 +120,9 @@ ROUTES: dict[str, Route] = {
         prices={"input": 0.10, "output": 0.50, "cache_read": 0.01, "input_long": 0.50,
                 "long_above": 100_000},
         window=1_000_000, max_output=32_000, bytes_per_token=2.2,
-        reasoning={"reasoning": {"effort": "high"}},  # VERIFY
+        # "max" is honored: 2138-2580 reasoning tokens vs 793-1057 at "high" (3 each, step-0
+        # smoke, 23 Oct); provider cost matched the table (list $0.10/$0.50, $0.01 cached)
+        reasoning={"reasoning": {"effort": "max"}},
         cache_markers=True, summarizer="cc_prompt", deepswe_config=None),
     "stub": Route(
         name="stub", model="stub", transport="stub", key_env="",

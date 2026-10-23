@@ -1,0 +1,3544 @@
+{
+ "runs": [
+  {
+   "ts": "2026-10-23T16:18:24Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "deepseek": {
+     "route": {
+      "name": "deepseek",
+      "model": "deepseek-flash",
+      "transport": "deepseek",
+      "key_env": "DEEPSEEK_API_KEY",
+      "prices": {
+       "input": 0.3,
+       "output": 1.2,
+       "cache_read": 0.006
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {},
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "deepseek-v4-flash@max",
+      "notes": "pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"
+     },
+     "effort": {
+      "error": "ValueError: kind must be one of ('gpu', 'judge'), got 'api'"
+     }
+    },
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Together",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "effort": {
+      "error": "ValueError: kind must be one of ('gpu', 'judge'), got 'api'"
+     }
+    },
+    "luna": {
+     "route": {
+      "name": "luna",
+      "model": "gpt-6-luna",
+      "transport": "openai",
+      "key_env": "OPENAI_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01
+      },
+      "window": 1050000,
+      "max_output": 64000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {
+       "reasoning_effort": "max"
+      },
+      "cache_markers": false,
+      "summarizer": "codex_local",
+      "deepswe_config": "gpt-5-6-luna@max",
+      "notes": "labelled 'Codex local summarizer' (inspect-swe forces it; real Codex is remote)"
+     },
+     "effort": {
+      "error": "ValueError: kind must be one of ('gpu', 'judge'), got 'api'"
+     }
+    },
+    "haiku": {
+     "route": {
+      "name": "haiku",
+      "model": "anthropic/claude-haiku-5.5",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01,
+       "input_long": 0.5,
+       "long_above": 100000
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.2,
+      "provider_pin": "Google",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": true,
+      "summarizer": "cc_prompt",
+      "deepswe_config": null,
+      "notes": ""
+     },
+     "effort": {
+      "error": "ValueError: kind must be one of ('gpu', 'judge'), got 'api'"
+     }
+    }
+   },
+   "spent_usd": 0.0
+  },
+  {
+   "ts": "2026-10-23T16:19:39Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "deepseek": {
+     "route": {
+      "name": "deepseek",
+      "model": "deepseek-flash",
+      "transport": "deepseek",
+      "key_env": "DEEPSEEK_API_KEY",
+      "prices": {
+       "input": 0.3,
+       "output": 1.2,
+       "cache_read": 0.006
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {},
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "deepseek-v4-flash@max",
+      "notes": "pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"
+     },
+     "effort": [
+      {
+       "reasoning": 2516,
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2518,
+       "cost_usd": 0.003042,
+       "cost_source": "table",
+       "table_usd": 0.003042,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 13.24,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 13.19
+        }
+       ]
+      },
+      {
+       "reasoning": 815,
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 817,
+       "cost_usd": 0.001001,
+       "cost_source": "table",
+       "table_usd": 0.001001,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 4.4,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 4.35
+        }
+       ]
+      },
+      {
+       "reasoning": 1375,
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1377,
+       "cost_usd": 0.001673,
+       "cost_source": "table",
+       "table_usd": 0.001673,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 6.69,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 6.65
+        }
+       ]
+      }
+     ]
+    },
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Together",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "effort": [
+      {
+       "reasoning": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": false,
+       "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hi",
+       "status": 429,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.24
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.16
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.18
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.17
+        }
+       ]
+      },
+      {
+       "reasoning": {
+        "reasoning": {
+         "effort": "xhigh"
+        }
+       },
+       "ok": false,
+       "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hi",
+       "status": 429,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.19
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.32
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.21
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.18
+        }
+       ]
+      },
+      {
+       "reasoning": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": false,
+       "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hi",
+       "status": 429,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.2
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.2
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.18
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.16
+        }
+       ]
+      },
+      {
+       "reasoning": {},
+       "ok": false,
+       "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hi",
+       "status": 429,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.2
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.62
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.14
+        },
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Together', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 0.2
+        }
+       ]
+      }
+     ]
+    },
+    "luna": {
+     "route": {
+      "name": "luna",
+      "model": "gpt-6-luna",
+      "transport": "openai",
+      "key_env": "OPENAI_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01
+      },
+      "window": 1050000,
+      "max_output": 64000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {
+       "reasoning_effort": "max"
+      },
+      "cache_markers": false,
+      "summarizer": "codex_local",
+      "deepswe_config": "gpt-5-6-luna@max",
+      "notes": "labelled 'Codex local summarizer' (inspect-swe forces it; real Codex is remote)"
+     },
+     "effort": [
+      {
+       "reasoning": {
+        "reasoning_effort": "max"
+       },
+       "ok": false,
+       "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Unsupported value: 'reasoning_effort' does not support 'max' with this model. Supported values are: 'none', 'low', 'medium', 'high', and 'xhigh'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code': 'unsupported_value'}}",
+       "status": 400,
+       "attempts_log": [
+        {
+         "status": 400,
+         "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Unsupported value: 'reasoning_effort' does not support 'max' with this model. Supported values are: 'none', 'low', 'medium', 'high', and 'xhigh'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code': 'unsupported_value'}}",
+         "s": 0.78
+        }
+       ]
+      },
+      {
+       "reasoning": 526,
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 542,
+       "cost_usd": 0.000275,
+       "cost_source": "table",
+       "table_usd": 0.000275,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 6.64,
+       "attempts": 1,
+       "model": "gpt-6-luna",
+       "answer": "26",
+       "has_reasoning_text": false,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 6.6
+        }
+       ]
+      },
+      {
+       "reasoning": 546,
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 562,
+       "cost_usd": 0.000286,
+       "cost_source": "table",
+       "table_usd": 0.000286,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 8.39,
+       "attempts": 1,
+       "model": "gpt-6-luna",
+       "answer": "26",
+       "has_reasoning_text": false,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.35
+        }
+       ]
+      }
+     ]
+    },
+    "haiku": {
+     "route": {
+      "name": "haiku",
+      "model": "anthropic/claude-haiku-5.5",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01,
+       "input_long": 0.5,
+       "long_above": 100000
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.2,
+      "provider_pin": "Google",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": true,
+      "summarizer": "cc_prompt",
+      "deepswe_config": null,
+      "notes": ""
+     },
+     "effort": [
+      {
+       "reasoning": 2491,
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2494,
+       "cost_usd": 0.002507,
+       "cost_source": "provider",
+       "table_usd": 0.001253,
+       "provider_over_table": 2.0,
+       "finish": "stop",
+       "latency_s": 9.92,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 9.87
+        }
+       ]
+      },
+      {
+       "reasoning": 1360,
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1363,
+       "cost_usd": 0.001376,
+       "cost_source": "provider",
+       "table_usd": 0.000688,
+       "provider_over_table": 2.0,
+       "finish": "stop",
+       "latency_s": 6.09,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 6.04
+        }
+       ]
+      },
+      {
+       "reasoning": 1044,
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1047,
+       "cost_usd": 0.00106,
+       "cost_source": "provider",
+       "table_usd": 0.00053,
+       "provider_over_table": 2.0,
+       "finish": "stop",
+       "latency_s": 4.95,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 4.9
+        }
+       ]
+      },
+      {
+       "reasoning": 1088,
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1091,
+       "cost_usd": 0.001104,
+       "cost_source": "provider",
+       "table_usd": 0.000552,
+       "provider_over_table": 2.0,
+       "finish": "stop",
+       "latency_s": 4.43,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": false,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 4.38
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.012323
+  },
+  {
+   "ts": "2026-10-23T16:23:42Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "deepseek": {
+     "route": {
+      "name": "deepseek",
+      "model": "deepseek-flash",
+      "transport": "deepseek",
+      "key_env": "DEEPSEEK_API_KEY",
+      "prices": {
+       "input": 0.3,
+       "output": 1.2,
+       "cache_read": 0.006
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {},
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "deepseek-v4-flash@max",
+      "notes": "pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning_effort": "max"
+       },
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1766,
+       "reasoning": 1764,
+       "cost_usd": 0.00214,
+       "cost_source": "table",
+       "table_usd": 0.00214,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 9.16,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 9.12
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning_effort": "max"
+       },
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1696,
+       "reasoning": 1694,
+       "cost_usd": 0.002056,
+       "cost_source": "table",
+       "table_usd": 0.002056,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 8.63,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.57
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning_effort": "max"
+       },
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1767,
+       "reasoning": 1765,
+       "cost_usd": 0.002141,
+       "cost_source": "table",
+       "table_usd": 0.002141,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 8.58,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.53
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1532,
+       "reasoning": 1530,
+       "cost_usd": 0.001859,
+       "cost_source": "table",
+       "table_usd": 0.001859,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 8.16,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.11
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1766,
+       "reasoning": 1764,
+       "cost_usd": 0.00214,
+       "cost_source": "table",
+       "table_usd": 0.00214,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 8.54,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.51
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 69,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1131,
+       "reasoning": 1129,
+       "cost_usd": 0.001378,
+       "cost_source": "table",
+       "table_usd": 0.001378,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 5.93,
+       "attempts": 1,
+       "model": "deepseek-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 5.89
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.011714,
+   "label": "eff_ds"
+  },
+  {
+   "ts": "2026-10-23T16:23:42Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Friendli",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 994,
+       "reasoning": 639,
+       "cost_usd": 0.000505,
+       "cost_source": "provider",
+       "table_usd": 0.000505,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.36,
+       "attempts": 2,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 4.38
+        },
+        {
+         "status": 200,
+         "s": 2.31
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "xhigh"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 518,
+       "reasoning": 305,
+       "cost_usd": 0.000267,
+       "cost_source": "provider",
+       "table_usd": 0.000267,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 1.66,
+       "attempts": 2,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**25**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 4.24
+        },
+        {
+         "status": 200,
+         "s": 1.61
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 492,
+       "reasoning": 329,
+       "cost_usd": 0.000254,
+       "cost_source": "provider",
+       "table_usd": 0.000254,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 7.32,
+       "attempts": 2,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 4.23
+        },
+        {
+         "status": 200,
+         "s": 7.27
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1701,
+       "reasoning": 955,
+       "cost_usd": 0.000858,
+       "cost_source": "provider",
+       "table_usd": 0.000858,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.27,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 3.22
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.001883,
+   "label": "eff_glm"
+  },
+  {
+   "ts": "2026-10-23T16:23:42Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "haiku": {
+     "route": {
+      "name": "haiku",
+      "model": "anthropic/claude-haiku-5.5",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01,
+       "input_long": 0.5,
+       "long_above": 100000
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.2,
+      "provider_pin": "Google",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": true,
+      "summarizer": "cc_prompt",
+      "deepswe_config": null,
+      "notes": ""
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2292,
+       "reasoning": 2289,
+       "cost_usd": 0.001152,
+       "cost_source": "provider",
+       "table_usd": 0.001152,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 8.8,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.76
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2583,
+       "reasoning": 2580,
+       "cost_usd": 0.001298,
+       "cost_source": "provider",
+       "table_usd": 0.001298,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 10.36,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 10.31
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2141,
+       "reasoning": 2138,
+       "cost_usd": 0.001077,
+       "cost_source": "provider",
+       "table_usd": 0.001077,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 8.4,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 8.36
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 796,
+       "reasoning": 793,
+       "cost_usd": 0.000404,
+       "cost_source": "provider",
+       "table_usd": 0.000404,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 4.09,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 4.04
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1060,
+       "reasoning": 1057,
+       "cost_usd": 0.000536,
+       "cost_source": "provider",
+       "table_usd": 0.000536,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 5.62,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 5.57
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 63,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1017,
+       "reasoning": 1014,
+       "cost_usd": 0.000515,
+       "cost_source": "provider",
+       "table_usd": 0.000515,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 5.52,
+       "attempts": 1,
+       "model": "anthropic/claude-haiku-5.5",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 5.47
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.004982,
+   "label": "eff_hk"
+  },
+  {
+   "ts": "2026-10-23T16:24:44Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Friendli",
+      "reasoning": {
+       "reasoning": {
+        "effort": "high"
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 832,
+       "reasoning": 506,
+       "cost_usd": 0.000424,
+       "cost_source": "provider",
+       "table_usd": 0.000424,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 1.94,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 1.89
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1050,
+       "reasoning": 618,
+       "cost_usd": 0.000533,
+       "cost_source": "provider",
+       "table_usd": 0.000533,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.24,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.2
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1143,
+       "reasoning": 643,
+       "cost_usd": 0.000579,
+       "cost_source": "provider",
+       "table_usd": 0.000579,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.67,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.62
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "max"
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1226,
+       "reasoning": 730,
+       "cost_usd": 0.000621,
+       "cost_source": "provider",
+       "table_usd": 0.000621,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.52,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.46
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 2201,
+       "reasoning": 1239,
+       "cost_usd": 0.001108,
+       "cost_source": "provider",
+       "table_usd": 0.001108,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 5.85,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 5.81
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1692,
+       "reasoning": 961,
+       "cost_usd": 0.000854,
+       "cost_source": "provider",
+       "table_usd": 0.000854,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.42,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 3.38
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1645,
+       "reasoning": 1026,
+       "cost_usd": 0.00083,
+       "cost_source": "provider",
+       "table_usd": 0.00083,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.08,
+       "attempts": 2,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 4.23
+        },
+        {
+         "status": 200,
+         "s": 3.04
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 936,
+       "reasoning": 584,
+       "cost_usd": 0.000476,
+       "cost_source": "provider",
+       "table_usd": 0.000476,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.15,
+       "attempts": 2,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 429,
+         "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+         "s": 4.26
+        },
+        {
+         "status": 200,
+         "s": 2.11
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1510,
+       "reasoning": 811,
+       "cost_usd": 0.000763,
+       "cost_source": "provider",
+       "table_usd": 0.000763,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.24,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 3.19
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1642,
+       "reasoning": 956,
+       "cost_usd": 0.000829,
+       "cost_source": "provider",
+       "table_usd": 0.000829,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.34,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 3.32
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1009,
+       "reasoning": 597,
+       "cost_usd": 0.000512,
+       "cost_source": "provider",
+       "table_usd": 0.000512,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.06,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.01
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1147,
+       "reasoning": 688,
+       "cost_usd": 0.000581,
+       "cost_source": "provider",
+       "table_usd": 0.000581,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.36,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.32
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.008108,
+   "label": "eff_glm2"
+  },
+  {
+   "ts": "2026-10-23T16:26:07Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "deepseek": {
+     "route": {
+      "name": "deepseek",
+      "model": "deepseek-flash",
+      "transport": "deepseek",
+      "key_env": "DEEPSEEK_API_KEY",
+      "prices": {
+       "input": 0.3,
+       "output": 1.2,
+       "cache_read": 0.006
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {
+       "reasoning_effort": "max"
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "deepseek-v4-flash@max",
+      "notes": "pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5869,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 55,
+        "reasoning": 18,
+        "cost_usd": 0.001827,
+        "cost_source": "table",
+        "table_usd": 0.001827,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.68,
+        "attempts": 1,
+        "model": "deepseek-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5965,
+        "cached": 5760,
+        "cached_share": 0.966,
+        "completion": 43,
+        "reasoning": 15,
+        "cost_usd": 0.000148,
+        "cost_source": "table",
+        "table_usd": 0.000148,
+        "provider_over_table": null,
+        "finish": "stop",
+        "latency_s": 1.09,
+        "attempts": 1,
+        "model": "deepseek-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5998,
+        "cached": 5760,
+        "cached_share": 0.96,
+        "completion": 46,
+        "reasoning": 0,
+        "cost_usd": 0.000161,
+        "cost_source": "table",
+        "table_usd": 0.000161,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.33,
+        "attempts": 1,
+        "model": "deepseek-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 1.65
+       },
+       {
+        "status": 200,
+        "s": 1.03
+       },
+       {
+        "status": 200,
+        "s": 1.25
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5869,
+        "cached": 5632,
+        "cached_share": 0.96,
+        "completion": 50,
+        "reasoning": 13,
+        "cost_usd": 0.000165,
+        "cost_source": "table",
+        "table_usd": 0.000165,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.27,
+        "attempts": 1,
+        "model": "deepseek-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5869,
+        "cached": 5632,
+        "cached_share": 0.96,
+        "completion": 66,
+        "reasoning": 29,
+        "cost_usd": 0.000184,
+        "cost_source": "table",
+        "table_usd": 0.000184,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.57,
+        "attempts": 1,
+        "model": "deepseek-flash"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5869,
+        "cached": 5632,
+        "cached_share": 0.96,
+        "completion": 67,
+        "reasoning": 30,
+        "cost_usd": 0.000185,
+        "cost_source": "table",
+        "table_usd": 0.000185,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.19,
+        "attempts": 1,
+        "model": "deepseek-flash"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5869,
+        "cached": 5632,
+        "cached_share": 0.96,
+        "completion": 59,
+        "reasoning": 22,
+        "cost_usd": 0.000176,
+        "cost_source": "table",
+        "table_usd": 0.000176,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 1.13,
+        "attempts": 1,
+        "model": "deepseek-flash"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 1.64
+     }
+    }
+   },
+   "spent_usd": 0.002845,
+   "label": "cb_deepseek"
+  },
+  {
+   "ts": "2026-10-23T16:26:07Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Friendli",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5269,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 22,
+        "reasoning": 0,
+        "cost_usd": 0.000801,
+        "cost_source": "provider",
+        "table_usd": 0.000801,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.48,
+        "attempts": 2,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5324,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 42,
+        "reasoning": 12,
+        "cost_usd": 0.00082,
+        "cost_source": "provider",
+        "table_usd": 0.00082,
+        "provider_over_table": 1.0,
+        "finish": "stop",
+        "latency_s": 2.98,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5372,
+        "cached": 3840,
+        "cached_share": 0.715,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000354,
+        "cost_source": "provider",
+        "table_usd": 0.000354,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.23,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 429,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Friendli', 'is_byok': False, 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shor",
+        "s": 4.33
+       },
+       {
+        "status": 200,
+        "s": 4.44
+       },
+       {
+        "status": 200,
+        "s": 2.94
+       },
+       {
+        "status": 200,
+        "s": 4.18
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 3840,
+        "cached_share": 0.729,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000339,
+        "cost_source": "provider",
+        "table_usd": 0.000339,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.47,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5120,
+        "cached_share": 0.972,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000181,
+        "cost_source": "provider",
+        "table_usd": 0.000181,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.44,
+        "attempts": 2,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 2,
+        "ok": false,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provi",
+        "status": 429
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 3840,
+        "cached_share": 0.729,
+        "completion": 32,
+        "reasoning": 23,
+        "cost_usd": 0.000346,
+        "cost_source": "provider",
+        "table_usd": 0.000346,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.54,
+        "attempts": 2,
+        "model": "z-ai/glm-5.3-flash"
+       }
+      ],
+      "statuses": [
+       429,
+       429,
+       429,
+       200,
+       429,
+       200,
+       200,
+       429,
+       429
+      ],
+      "n_429": 6,
+      "wall_s": 31.51
+     }
+    }
+   },
+   "spent_usd": 0.002842,
+   "label": "cb_glm"
+  },
+  {
+   "ts": "2026-10-23T16:26:07Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "luna": {
+     "route": {
+      "name": "luna",
+      "model": "gpt-6-luna",
+      "transport": "openai",
+      "key_env": "OPENAI_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01
+      },
+      "window": 1050000,
+      "max_output": 64000,
+      "bytes_per_token": 2.0,
+      "provider_pin": null,
+      "reasoning": {
+       "reasoning_effort": "xhigh"
+      },
+      "cache_markers": false,
+      "summarizer": "codex_local",
+      "deepswe_config": "gpt-5-6-luna@max",
+      "notes": "labelled 'Codex local summarizer' (inspect-swe forces it; real Codex is remote)"
+     },
+     "cache": {
+      "error": "ModelError: BadRequestError: Error code: 400 - {'error': {'message': \"Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code': None}}"
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": false,
+        "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code':",
+        "status": 400
+       },
+       {
+        "k": 1,
+        "ok": false,
+        "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code':",
+        "status": 400
+       },
+       {
+        "k": 2,
+        "ok": false,
+        "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code':",
+        "status": 400
+       },
+       {
+        "k": 3,
+        "ok": false,
+        "error": "BadRequestError: Error code: 400 - {'error': {'message': \"Function tools with reasoning_effort are not supported for gpt-6-luna in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.\", 'type': 'invalid_request_error', 'param': 'reasoning_effort', 'code':",
+        "status": 400
+       }
+      ],
+      "statuses": [
+       400,
+       400,
+       400,
+       400
+      ],
+      "n_429": 0,
+      "wall_s": 0.74
+     }
+    }
+   },
+   "spent_usd": 0.0,
+   "label": "cb_luna"
+  },
+  {
+   "ts": "2026-10-23T16:26:07Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "haiku": {
+     "route": {
+      "name": "haiku",
+      "model": "anthropic/claude-haiku-5.5",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01,
+       "input_long": 0.5,
+       "long_above": 100000
+      },
+      "window": 1000000,
+      "max_output": 32000,
+      "bytes_per_token": 2.2,
+      "provider_pin": "Google",
+      "reasoning": {
+       "reasoning": {
+        "effort": "max"
+       }
+      },
+      "cache_markers": true,
+      "summarizer": "cc_prompt",
+      "deepswe_config": null,
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 8650,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 177,
+        "reasoning": 129,
+        "cost_usd": 0.00117,
+        "cost_source": "provider",
+        "table_usd": 0.000954,
+        "provider_over_table": 1.227,
+        "finish": "tool_calls",
+        "latency_s": 2.0,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 8744,
+        "cached": 8646,
+        "cached_share": 0.989,
+        "completion": 138,
+        "reasoning": 103,
+        "cost_usd": 0.000168,
+        "cost_source": "provider",
+        "table_usd": 0.000165,
+        "provider_over_table": 1.015,
+        "finish": "stop",
+        "latency_s": 2.06,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 8810,
+        "cached": 8742,
+        "cached_share": 0.992,
+        "completion": 178,
+        "reasoning": 119,
+        "cost_usd": 0.000185,
+        "cost_source": "provider",
+        "table_usd": 0.000183,
+        "provider_over_table": 1.009,
+        "finish": "tool_calls",
+        "latency_s": 2.0,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 1.96
+       },
+       {
+        "status": 200,
+        "s": 2.0
+       },
+       {
+        "status": 200,
+        "s": 1.95
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 8650,
+        "cached": 8646,
+        "cached_share": 1.0,
+        "completion": 161,
+        "reasoning": 113,
+        "cost_usd": 0.000167,
+        "cost_source": "provider",
+        "table_usd": 0.000167,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 2.31,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 8650,
+        "cached": 8646,
+        "cached_share": 1.0,
+        "completion": 157,
+        "reasoning": 109,
+        "cost_usd": 0.000165,
+        "cost_source": "provider",
+        "table_usd": 0.000165,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 2.01,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 8650,
+        "cached": 8646,
+        "cached_share": 1.0,
+        "completion": 208,
+        "reasoning": 160,
+        "cost_usd": 0.000191,
+        "cost_source": "provider",
+        "table_usd": 0.000191,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 2.21,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 8650,
+        "cached": 8646,
+        "cached_share": 1.0,
+        "completion": 177,
+        "reasoning": 129,
+        "cost_usd": 0.000175,
+        "cost_source": "provider",
+        "table_usd": 0.000175,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 1.71,
+        "attempts": 1,
+        "model": "anthropic/claude-haiku-5.5"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 2.37
+     }
+    }
+   },
+   "spent_usd": 0.002221,
+   "label": "cb_haiku"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "effort",
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "luna": {
+     "route": {
+      "name": "luna",
+      "model": "openai/gpt-6-luna",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.1,
+       "output": 0.5,
+       "cache_read": 0.01
+      },
+      "window": 1050000,
+      "max_output": 64000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "OpenAI",
+      "reasoning": {
+       "reasoning": {
+        "effort": "xhigh"
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "codex_local",
+      "deepswe_config": "gpt-5-6-luna@max",
+      "notes": "labelled 'Codex local summarizer' (inspect-swe forces it; real Codex is remote)"
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "xhigh"
+        }
+       },
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 576,
+       "reasoning": 569,
+       "cost_usd": 0.000293,
+       "cost_source": "provider+byok_upstream",
+       "table_usd": 0.000293,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 9.76,
+       "attempts": 1,
+       "model": "openai/gpt-6-luna",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 9.72
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "xhigh"
+        }
+       },
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 666,
+       "reasoning": 659,
+       "cost_usd": 0.000338,
+       "cost_source": "provider+byok_upstream",
+       "table_usd": 0.000338,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 9.82,
+       "attempts": 1,
+       "model": "openai/gpt-6-luna",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 9.78
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 591,
+       "reasoning": 584,
+       "cost_usd": 0.0003,
+       "cost_source": "provider+byok_upstream",
+       "table_usd": 0.0003,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 6.86,
+       "attempts": 1,
+       "model": "openai/gpt-6-luna",
+       "answer": "27",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 6.8
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "effort": "high"
+        }
+       },
+       "ok": true,
+       "prompt": 45,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 495,
+       "reasoning": 488,
+       "cost_usd": 0.000252,
+       "cost_source": "provider+byok_upstream",
+       "table_usd": 0.000252,
+       "provider_over_table": null,
+       "finish": "stop",
+       "latency_s": 6.93,
+       "attempts": 1,
+       "model": "openai/gpt-6-luna",
+       "answer": "28",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 6.88
+        }
+       ]
+      }
+     ],
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5128,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 0.00065,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 0.000522,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 4.19,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5186,
+        "cached": 5125,
+        "cached_share": 0.988,
+        "completion": 60,
+        "reasoning": 38,
+        "cost_usd": 8.9e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 8.7e-05,
+        "provider_over_table": null,
+        "finish": "stop",
+        "latency_s": 5.26,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5234,
+        "cached": 5183,
+        "cached_share": 0.99,
+        "completion": 26,
+        "reasoning": 0,
+        "cost_usd": 7.1e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 7e-05,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 4.27,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 4.15
+       },
+       {
+        "status": 200,
+        "s": 5.2
+       },
+       {
+        "status": 200,
+        "s": 4.23
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5128,
+        "cached": 5125,
+        "cached_share": 0.999,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 6.1e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 6.1e-05,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 4.6,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5128,
+        "cached": 5125,
+        "cached_share": 0.999,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 6.1e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 6.1e-05,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 4.08,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5128,
+        "cached": 5125,
+        "cached_share": 0.999,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 6.1e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 6.1e-05,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 3.98,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5128,
+        "cached": 5125,
+        "cached_share": 0.999,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 6.1e-05,
+        "cost_source": "provider+byok_upstream",
+        "table_usd": 6.1e-05,
+        "provider_over_table": null,
+        "finish": "tool_calls",
+        "latency_s": 4.08,
+        "attempts": 1,
+        "model": "openai/gpt-6-luna"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 4.69
+     }
+    }
+   },
+   "spent_usd": 0.002234,
+   "label": "or_luna"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Together",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5269,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 20,
+        "reasoning": 0,
+        "cost_usd": 0.0008,
+        "cost_source": "provider",
+        "table_usd": 0.0008,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.6,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5322,
+        "cached": 5184,
+        "cached_share": 0.974,
+        "completion": 40,
+        "reasoning": 12,
+        "cost_usd": 0.000196,
+        "cost_source": "provider",
+        "table_usd": 0.000196,
+        "provider_over_table": 1.0,
+        "finish": "stop",
+        "latency_s": 0.46,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5371,
+        "cached": 5248,
+        "cached_share": 0.977,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000185,
+        "cost_source": "provider",
+        "table_usd": 0.000185,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.57,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 0.56
+       },
+       {
+        "status": 200,
+        "s": 0.41
+       },
+       {
+        "status": 200,
+        "s": 0.52
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5184,
+        "cached_share": 0.984,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000174,
+        "cost_source": "provider",
+        "table_usd": 0.000174,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.36,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5184,
+        "cached_share": 0.984,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000174,
+        "cost_source": "provider",
+        "table_usd": 0.000174,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.33,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5184,
+        "cached_share": 0.984,
+        "completion": 20,
+        "reasoning": 0,
+        "cost_usd": 0.000178,
+        "cost_source": "provider",
+        "table_usd": 0.000178,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.42,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5184,
+        "cached_share": 0.984,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000174,
+        "cost_source": "provider",
+        "table_usd": 0.000174,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.35,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 0.48
+     }
+    }
+   },
+   "spent_usd": 0.001882,
+   "label": "glm_Together"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Fireworks",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "error": "ModelError: RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provider_name': 'Fireworks', 'is_byok': False, 'provider_error_code': 'invalid_request_error', 'limit_source': 'upstream_provider_shared_pool', 'remedy_hint': 'Retry shortly, add your own provider key (htt"
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": false,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provi",
+        "status": 429
+       },
+       {
+        "k": 1,
+        "ok": false,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provi",
+        "status": 429
+       },
+       {
+        "k": 2,
+        "ok": false,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provi",
+        "status": 429
+       },
+       {
+        "k": 3,
+        "ok": false,
+        "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Provider returned error', 'code': 429, 'metadata': {'raw': 'z-ai/glm-5.3-flash is temporarily rate-limited upstream. Please retry shortly, or add your own key to accumulate your rate limits: https://openrouter.ai/settings/integrations', 'provi",
+        "status": 429
+       }
+      ],
+      "statuses": [
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429,
+       429
+      ],
+      "n_429": 16,
+      "wall_s": 17.05
+     }
+    }
+   },
+   "spent_usd": 0.0,
+   "label": "glm_Fireworks"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Novita",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5267,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 32,
+        "reasoning": 21,
+        "cost_usd": 0.000451,
+        "cost_source": "provider",
+        "table_usd": 0.000806,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 6.66,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5311,
+        "cached": 5248,
+        "cached_share": 0.988,
+        "completion": 43,
+        "reasoning": 14,
+        "cost_usd": 0.000105,
+        "cost_source": "provider",
+        "table_usd": 0.000188,
+        "provider_over_table": 0.56,
+        "finish": "stop",
+        "latency_s": 6.09,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5360,
+        "cached": 5248,
+        "cached_share": 0.979,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000103,
+        "cost_source": "provider",
+        "table_usd": 0.000184,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 5.49,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 6.62
+       },
+       {
+        "status": 200,
+        "s": 6.04
+       },
+       {
+        "status": 200,
+        "s": 5.43
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5267,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 9.3e-05,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 6.62,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5267,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 9.3e-05,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 8.32,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5267,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 9.5e-05,
+        "cost_source": "provider",
+        "table_usd": 0.00017,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 10.93,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5267,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 9.3e-05,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 0.56,
+        "finish": "tool_calls",
+        "latency_s": 8.26,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 11.0
+     }
+    }
+   },
+   "spent_usd": 0.001033,
+   "label": "glm_Novita"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "BaseTen",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5270,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 29,
+        "reasoning": 19,
+        "cost_usd": 0.000805,
+        "cost_source": "provider",
+        "table_usd": 0.000805,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.71,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5314,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 57,
+        "reasoning": 29,
+        "cost_usd": 0.000826,
+        "cost_source": "provider",
+        "table_usd": 0.000826,
+        "provider_over_table": 1.0,
+        "finish": "stop",
+        "latency_s": 1.05,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5363,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000814,
+        "cost_source": "provider",
+        "table_usd": 0.000814,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.49,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 0.68
+       },
+       {
+        "status": 200,
+        "s": 0.98
+       },
+       {
+        "status": 200,
+        "s": 0.47
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5270,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 10,
+        "reasoning": 0,
+        "cost_usd": 0.000795,
+        "cost_source": "provider",
+        "table_usd": 0.000795,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.6,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5270,
+        "cached": 5120,
+        "cached_share": 0.972,
+        "completion": 30,
+        "reasoning": 19,
+        "cost_usd": 0.000191,
+        "cost_source": "provider",
+        "table_usd": 0.000191,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 9.74,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5270,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 10,
+        "reasoning": 0,
+        "cost_usd": 0.000795,
+        "cost_source": "provider",
+        "table_usd": 0.000795,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.79,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5270,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 10,
+        "reasoning": 0,
+        "cost_usd": 0.000795,
+        "cost_source": "provider",
+        "table_usd": 0.000795,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 0.59,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 9.8
+     }
+    }
+   },
+   "spent_usd": 0.005022,
+   "label": "glm_BaseTen"
+  },
+  {
+   "ts": "2026-10-23T16:28:20Z",
+   "steps": [
+    "cache",
+    "burst"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Z.AI",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "cache": {
+      "calls": [
+       {
+        "call": 1,
+        "prompt": 5269,
+        "cached": 0,
+        "cached_share": 0.0,
+        "completion": 30,
+        "reasoning": 19,
+        "cost_usd": 0.000805,
+        "cost_source": "provider",
+        "table_usd": 0.000805,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 31.22,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       },
+       {
+        "call": 2,
+        "prompt": 5313,
+        "cached": 5248,
+        "cached_share": 0.988,
+        "completion": 53,
+        "reasoning": 15,
+        "cost_usd": 0.000194,
+        "cost_source": "provider",
+        "table_usd": 0.000194,
+        "provider_over_table": 1.0,
+        "finish": "stop",
+        "latency_s": 6.46,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": []
+       },
+       {
+        "call": 3,
+        "prompt": 5372,
+        "cached": 5312,
+        "cached_share": 0.989,
+        "completion": 19,
+        "reasoning": 0,
+        "cost_usd": 0.000178,
+        "cost_source": "provider",
+        "table_usd": 0.000178,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.58,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash",
+        "tool_calls": [
+         "bash"
+        ]
+       }
+      ],
+      "attempts_log": [
+       {
+        "status": 200,
+        "s": 31.17
+       },
+       {
+        "status": 200,
+        "s": 6.43
+       },
+       {
+        "status": 200,
+        "s": 4.53
+       }
+      ]
+     },
+     "burst": {
+      "parallel": 4,
+      "rows": [
+       {
+        "k": 0,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000166,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.18,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 1,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000166,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 5.84,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 2,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 18,
+        "reasoning": 0,
+        "cost_usd": 0.00017,
+        "cost_source": "provider",
+        "table_usd": 0.00017,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.64,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       },
+       {
+        "k": 3,
+        "ok": true,
+        "prompt": 5269,
+        "cached": 5248,
+        "cached_share": 0.996,
+        "completion": 11,
+        "reasoning": 0,
+        "cost_usd": 0.000166,
+        "cost_source": "provider",
+        "table_usd": 0.000166,
+        "provider_over_table": 1.0,
+        "finish": "tool_calls",
+        "latency_s": 4.54,
+        "attempts": 1,
+        "model": "z-ai/glm-5.3-flash"
+       }
+      ],
+      "statuses": [
+       200,
+       200,
+       200,
+       200
+      ],
+      "n_429": 0,
+      "wall_s": 5.95
+     }
+    }
+   },
+   "spent_usd": 0.001845,
+   "label": "glm_Z.AI"
+  },
+  {
+   "ts": "2026-10-23T16:29:31Z",
+   "steps": [
+    "effort"
+   ],
+   "routes": {
+    "glm": {
+     "route": {
+      "name": "glm",
+      "model": "z-ai/glm-5.3-flash",
+      "transport": "openrouter",
+      "key_env": "OPENROUTER_API_KEY",
+      "prices": {
+       "input": 0.15,
+       "output": 0.5,
+       "cache_read": 0.03
+      },
+      "window": 1048575,
+      "max_output": 32000,
+      "bytes_per_token": 2.0,
+      "provider_pin": "Together",
+      "reasoning": {
+       "reasoning": {
+        "enabled": true
+       }
+      },
+      "cache_markers": false,
+      "summarizer": "pi",
+      "deepswe_config": "glm-5-3-flash@max",
+      "notes": ""
+     },
+     "effort": [
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1076,
+       "reasoning": 1073,
+       "cost_usd": 0.000546,
+       "cost_source": "provider",
+       "table_usd": 0.000546,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.78,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.74
+        }
+       ]
+      },
+      {
+       "setting": {
+        "reasoning": {
+         "enabled": true
+        }
+       },
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1105,
+       "reasoning": 1102,
+       "cost_usd": 0.00056,
+       "cost_source": "provider",
+       "table_usd": 0.00056,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.29,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "26",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.24
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 807,
+       "reasoning": 802,
+       "cost_usd": 0.000411,
+       "cost_source": "provider",
+       "table_usd": 0.000411,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 2.97,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 2.92
+        }
+       ]
+      },
+      {
+       "setting": {},
+       "ok": true,
+       "prompt": 51,
+       "cached": 0,
+       "cached_share": 0.0,
+       "completion": 1333,
+       "reasoning": 1328,
+       "cost_usd": 0.000674,
+       "cost_source": "provider",
+       "table_usd": 0.000674,
+       "provider_over_table": 1.0,
+       "finish": "stop",
+       "latency_s": 3.1,
+       "attempts": 1,
+       "model": "z-ai/glm-5.3-flash",
+       "answer": "**26**",
+       "has_reasoning_text": true,
+       "attempts_log": [
+        {
+         "status": 200,
+         "s": 3.05
+        }
+       ]
+      }
+     ]
+    }
+   },
+   "spent_usd": 0.002191,
+   "label": "glm_tog_eff"
+  }
+ ],
+ "raw_usage_checks": [
+  {
+   "ts": "2026-10-23T16:3xZ",
+   "what": "haiku non-BYOK usage: cost == upstream_inference_cost (3.3e-06), is_byok false"
+  },
+  {
+   "what": "luna via OpenRouter pinned OpenAI: is_byok true, cost 0, upstream_inference_cost 5.89e-05 = list price"
+  }
+ ],
+ "frozen": {
+  "deepseek": {
+   "transport": "deepseek API",
+   "reasoning": {
+    "reasoning_effort": "max"
+   }
+  },
+  "glm": {
+   "provider_pin": "Together",
+   "reasoning": {
+    "reasoning": {
+     "enabled": true
+    }
+   },
+   "fallback": "Novita"
+  },
+  "luna": {
+   "route": "openrouter, pin OpenAI (BYOK)",
+   "reasoning": {
+    "reasoning": {
+     "effort": "xhigh"
+    }
+   }
+  },
+  "haiku": {
+   "provider_pin": "Google",
+   "reasoning": {
+    "reasoning": {
+     "effort": "max"
+    }
+   }
+  }
+ }
+}

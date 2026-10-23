@@ -241,10 +241,12 @@ def test_openai_compat_body_per_transport():
                    L.TOOLS, 100, purpose="t")
         b = comp.bodies[0]
         assert b["model"] == C.ROUTES[name].model and b["tools"] == L.TOOLS
-        if name == "luna":
+        if C.ROUTES[name].transport == "openai":
             assert b["max_completion_tokens"] == 100 and "max_tokens" not in b
         else:
             assert b["max_tokens"] == 100
+        if name == "luna":  # tools + reasoning go through OpenRouter (step-0 smoke, 23 Oct)
+            assert b["extra_body"]["reasoning"] == {"effort": "xhigh"}
         if C.ROUTES[name].transport == "openrouter":
             pv = b["extra_body"]["provider"]
             assert pv == {"order": [C.ROUTES[name].provider_pin], "allow_fallbacks": False}
@@ -1715,3 +1717,47 @@ def test_r3fix_3_stop_during_a_stage_wait_never_sends(monkeypatch):
     calls.clear()
     monkeypatch.setattr(budget, "reserve", lambda stage, usd, note="": "rid-first")
     assert M.SprintSpend(stopped=lambda: False).reserve(0.2, "x") == "rid-first"
+
+
+def test_sprint_spend_settles_with_a_kind_the_ledger_accepts(monkeypatch):
+    from compaction import budget
+    from emx import spend as ES
+    got = {}
+    monkeypatch.setattr(budget, "settle", lambda rid, usd, **k: got.update(k))
+    M.SprintSpend().settle("rid", 0.01, resource="r", units=1, note="n")
+    assert got["kind"] in ES.KINDS and got["stage"] == C.STAGE
+
+
+def test_openrouter_cost_counts_upstream_only_for_byok():
+    # The shape OpenRouter returned on 23 Oct (not BYOK: upstream repeats cost).
+    m = M.OpenAICompatModel(C.ROUTES["haiku"], M.NullSpend(), client=object())
+    u = SimpleNamespace(model_extra={"cost": 3.3e-06, "is_byok": False, "cost_details": {
+        "upstream_inference_cost": 3.3e-06}})
+    assert m._cost(u, 13, 0, 4) == (pytest.approx(3.3e-06), "provider")
+    byok = SimpleNamespace(model_extra={"cost": 1e-07, "is_byok": True, "cost_details": {
+        "upstream_inference_cost": 2e-06}})
+    assert m._cost(byok, 13, 0, 4) == (pytest.approx(2.1e-06), "provider+byok_upstream")
+    no_up = SimpleNamespace(model_extra={"cost": 1e-07, "is_byok": True})
+    usd, src = m._cost(no_up, 13, 0, 4)  # the provider's charge is unknown: fee + table
+    assert src == "provider+table"
+    assert usd == pytest.approx(1e-07 + M.table_usd(C.ROUTES["haiku"], 13, 0, 4))
+
+
+def test_rate_limits_get_their_own_retry_budget():
+    sp = M.NullSpend()
+    cl, _ = fake_client([StatusError(429)] * (M.RATE_LIMIT_ATTEMPTS - 1) + [response()])
+    rep = M.OpenAICompatModel(C.ROUTES["glm"], sp, client=cl, sleep=lambda s: None).complete(
+        [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert rep.attempts == M.RATE_LIMIT_ATTEMPTS  # 429s alone don't use up the billed budget
+    cl, comp = fake_client([StatusError(429)] * (M.RATE_LIMIT_ATTEMPTS + 2))
+    with pytest.raises(M.ModelError):
+        M.OpenAICompatModel(C.ROUTES["glm"], M.NullSpend(), client=cl,
+                            sleep=lambda s: None).complete(
+            [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert len(comp.bodies) == M.RATE_LIMIT_ATTEMPTS
+    cl, comp = fake_client([StatusError(500), StatusError(429)] * 4)
+    with pytest.raises(M.ModelError):
+        M.OpenAICompatModel(C.ROUTES["glm"], M.NullSpend(), client=cl,
+                            sleep=lambda s: None).complete(
+            [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert len(comp.bodies) == 2 * M.MAX_ATTEMPTS - 1  # the 4th 500 ends it

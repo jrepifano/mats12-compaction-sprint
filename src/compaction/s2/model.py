@@ -28,7 +28,10 @@ from typing import Any, Protocol
 from compaction.s2 import config as C
 
 OVERHEAD_TOKENS = 256
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 4  # billed or failed attempts per call
+# 429s are unbilled and come in upstream bursts lasting minutes (GLM on Together, step-0 smoke,
+# 23 Oct): they get their own budget, about 5 minutes of capped backoff, before the call fails.
+RATE_LIMIT_ATTEMPTS = 10
 _UNBILLED = (400, 401, 403, 404, 413, 422, 429)
 _TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 529)
 
@@ -299,7 +302,9 @@ class SprintSpend:
 
     def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
         from compaction import budget
-        budget.settle(rid, usd, stage=self.stage, kind="api", resource=resource, units=units,
+        # emx.spend books API calls as kind "judge" (KINDS: gpu, judge), as S1 did; "api" was
+        # refused after the call was sent (step-0 smoke, 23 Oct)
+        budget.settle(rid, usd, stage=self.stage, kind="judge", resource=resource, units=units,
                       note=note)
 
     def cancel(self, rid: str, reason: str) -> None:
@@ -436,8 +441,15 @@ class OpenAICompatModel:
         extra = getattr(usage, "model_extra", None) or {}
         c = extra.get("cost") if isinstance(extra, dict) else None
         if isinstance(c, int | float) and c >= 0:
-            up = ((extra.get("cost_details") or {}).get("upstream_inference_cost") or 0.0)
-            return float(c) + float(up or 0.0), "provider"
+            if not extra.get("is_byok"):
+                # Not BYOK: `cost` is the whole charge, and upstream_inference_cost repeats it
+                # (step-0 smoke, 23 Oct: adding it doubled every OpenRouter call). As s1_api.
+                return float(c), "provider"
+            up = (extra.get("cost_details") or {}).get("upstream_inference_cost")
+            if isinstance(up, int | float) and up >= 0:
+                return float(c) + float(up), "provider+byok_upstream"
+            # The provider's charge is unknown: OpenRouter's fee plus a table estimate of it.
+            return float(c) + table_usd(self.route, prompt, cached, completion), "provider+table"
         return table_usd(self.route, prompt, cached, completion), "table"
 
     def complete(self, messages: list[dict], tools: list[dict] | None, max_tokens: int, *,
@@ -448,7 +460,8 @@ class OpenAICompatModel:
         bound = bound_usd(self.route, nbytes, max_tokens)
         last: BaseException | None = None
         charged = 0.0  # every attempt of this call, failed ones included
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        other = 0  # attempts that weren't a 429
+        for attempt in range(1, MAX_ATTEMPTS + RATE_LIMIT_ATTEMPTS):
             try:
                 rid = self.spend.reserve(bound, note=f"s2 {purpose} attempt {attempt}")
             except ModelError as e:
@@ -465,7 +478,10 @@ class OpenAICompatModel:
                 charged += charge
                 last = e
                 transient = st in _TRANSIENT or st is None
-                if not transient or attempt == MAX_ATTEMPTS:
+                other += st != 429
+                limited = (attempt - other >= RATE_LIMIT_ATTEMPTS if st == 429
+                           else other >= MAX_ATTEMPTS)
+                if not transient or limited:
                     raise ModelError(f"{type(e).__name__}: {str(e)[:500]}", charged, st) from e
                 self.sleep(min(60.0, 2.0 ** attempt + random.random()))
                 continue
@@ -488,6 +504,9 @@ class OpenAICompatModel:
             choices = getattr(resp, "choices", None) or []
             if not choices:
                 last = ModelError("no choices", cost)
+                other += 1
+                if other >= MAX_ATTEMPTS:
+                    break
                 continue
             ch = choices[0]
             msg = ch.message.model_dump() if hasattr(ch.message, "model_dump") else dict(ch.message)
@@ -495,7 +514,7 @@ class OpenAICompatModel:
                          finish_reason=getattr(ch, "finish_reason", None),
                          latency_s=time.monotonic() - t0, attempts=attempt,
                          model=getattr(resp, "model", None), cost_total_usd=charged)
-        raise ModelError(f"no reply after {MAX_ATTEMPTS} attempts: {last}", charged)
+        raise ModelError(f"no reply after {attempt} attempts: {last}", charged)
 
 
 # ------------------------------------------------------------------------------------------
