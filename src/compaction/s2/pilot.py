@@ -158,6 +158,7 @@ def _finish(tele: dict, plan: RunPlan, inv, pool: H.HostPool, host: H.Host,
             results_root: Path, state: str) -> None:
     """Clean up the run on its host, or defer the cleanup when the host is down. A run that
     hit errors probes its host first, so a dead daemon isn't retried for minutes."""
+    capped = state == "run_cap"
     if tele.get("errors") and not pool.is_down(host.name):
         pool.check(host.name)
     if pool.is_down(host.name):
@@ -175,9 +176,16 @@ def _finish(tele: dict, plan: RunPlan, inv, pool: H.HostPool, host: H.Host,
         if bad:
             state = "failed"
             tele.setdefault("errors", []).append(f"cleanup not confirmed: {bad}")
+            append_jsonl(s2_dir(results_root) / "pending_sweeps.jsonl",
+                         {"ts": utc(), "run_key": plan.run_key, "run_id": inv.run_id,
+                          "host": host.name, "docker_host": host.docker_host})
     tele["state"] = state
     upd = {"state": state}
-    if state == "run_cap":
+    if capped:
+        # The cap outcome is kept apart from the cleanup outcome (review r3-fixes #1): a capped
+        # run whose cleanup failed or was deferred is still never restarted automatically.
+        upd["cap_stopped"] = True
+        tele["cap_stopped"] = True
         done = set((read_status(plan.cohort_dir) or {}).get("arms_done") or [])
         upd["arms_incomplete"] = [f"{arm_slug(a)}-{r}" for a, r in ALL_ARMS
                                   if f"{arm_slug(a)}-{r}" not in done]
@@ -226,7 +234,8 @@ def run_one(plan: RunPlan, route: C.Route, model_factory: ModelFactory, *, resul
         "attempt": plan.attempt, "host": host.describe(),
         "followup_source": plan.followup_source})
     write_status(plan.cohort_dir, state="running", attempt=plan.attempt, run_key=key,
-                 host=host_name, run_id=inv.run_id, boundary_tag=None, arms_done=[])
+                 host=host_name, run_id=inv.run_id, boundary_tag=None, arms_done=[],
+                 cap_stopped=False, arms_incomplete=[])
     if spend is not None:
         spend.attach(plan.out_dir / "spend.jsonl")  # durable per-attempt books (review r2 #2)
         tele["spend_recovered"] = spend.recovered
@@ -345,10 +354,14 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
     return tele
 
 
-def ensure_base_row(run_dir: Path, results_root: Path) -> dict | None:
+def ensure_base_row(run_dir: Path, results_root: Path, status: dict | None = None
+                    ) -> dict | None:
     """If the telemetry has no base row for this attempt (a crash before any was written),
     rebuild it from the attempt's durable files (run.json, base/result.json,
-    boundary/boundary.json) and append it, marked `reconstructed`. Returns the row added."""
+    boundary/boundary.json) and append it, marked `reconstructed`, with the status's state
+    when given. Returns the row added (None if one exists or the attempt has no base result)."""
+    if not (run_dir / "run.json").exists() or not (run_dir / "base" / "result.json").exists():
+        return None
     run = json.loads((run_dir / "run.json").read_text())
     key = run["run_key"]
     path = s2_dir(results_root) / "telemetry.jsonl"
@@ -370,12 +383,31 @@ def ensure_base_row(run_dir: Path, results_root: Path) -> dict | None:
                                              "followup_tokens_delivered", "error", "cap",
                                              "seconds")},
            "tier": "reached_compaction" if b else "attempted", "errors": []}
+    if status:
+        row["state"] = status.get("state")
+        if status.get("cap_stopped"):
+            row["cap_stopped"] = True
     if b:
         row["boundary"] = {k: b.get(k) for k in (
             "pre_tokens", "post_tokens_est", "summary_chars", "precheck", "lost_certain",
             "compaction_cost_usd", "snapshot_s", "stopped_processes")}
     append_jsonl(path, row)
     return row
+
+
+def backfill_terminal_rows(cohort_dirs, results_root: Path) -> list[dict]:
+    """For each finished cohort run (H.is_final), the base row its latest attempt is missing
+    from the telemetry, if any (review r3-fixes #2: a crash between the terminal status and the
+    telemetry append must not leave a skipped run unassessed). Returns the rows added."""
+    out = []
+    for cd in cohort_dirs:
+        st = read_status(cd)
+        if not H.is_final(st):
+            continue
+        row = ensure_base_row(Path(cd) / f"a{st.get('attempt') or 1}", results_root, st)
+        if row is not None:
+            out.append(row)
+    return out
 
 
 # ------------------------------------------------------------------------------------------
@@ -447,6 +479,8 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
             j.plan.attempt = int(st.get("attempt") or 1) + 1
         if action != "skip":
             todo.append((j, action))
+    backfill_terminal_rows([j.plan.cohort_dir for j in jobs
+                            if out.actions[j.plan.cohort_key] == "skip"], results_root)
     out.swept = process_pending_sweeps(pool, results_root, keep)
     counts = Counter(j.plan.task.task_id for j, a in todo if a != "resume_arms")
     assign = pool.assign(dict(counts), fixed) if counts else dict(fixed)

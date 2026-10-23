@@ -759,6 +759,9 @@ def test_host_slots_limit_containers_and_release_once(monkeypatch):
     ({"state": "failed_host", "boundary_tag": "t"}, True, False, "restart"),
     ({"state": "failed_host", "boundary_tag": None}, True, None, "restart"),
     ({"state": "stopped", "boundary_tag": "t"}, True, True, "resume_arms"),
+    ({"state": "failed", "boundary_tag": None, "cap_stopped": True}, True, None, "skip"),
+    ({"state": "failed_host", "boundary_tag": "t", "cap_stopped": True}, True, True, "skip"),
+    ({"state": "failed_host", "boundary_tag": "t", "cap_stopped": True}, False, None, "skip"),
 ])
 def test_resume_action(status, up, img, want):
     assert H.resume_action(status, up, img) == want
@@ -1614,3 +1617,101 @@ def test_r3_4_graders_use_the_guarded_start(monkeypatch, tmp_path):
     holder.close()
     t.join(2)
     assert isinstance(got["r"], H.HostDown) and removed == []
+
+
+def test_r3fix_1_cap_stop_survives_a_failed_cleanup(host_world, monkeypatch):
+    w = host_world
+    jobs = w.jobs()[:1]
+    spend = M.RunSpend(M.NullSpend(), cap_usd=1.0)
+
+    def fac(ph, rep):
+        return SpendingStub([{"bash": "x"}] * (40 if ph == "base" else 30), spend, bound=0.05,
+                            actual=0.05, summary=lambda m: "S")
+
+    jobs[0].factory, jobs[0].spend = fac, spend
+    monkeypatch.setattr(H.HostInvocation, "cleanup", lambda self: ["leftover-1"])
+    out = P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    assert out.results[0].result["state"] == "failed"  # cleanup failed after the cap stop
+    cd = jobs[0].plan.cohort_dir
+    st = P.read_status(cd)
+    assert st["state"] == "failed" and st["cap_stopped"] and st["arms_incomplete"]
+    assert H.is_final(st)
+    pending = (w.res / "sprint" / "S2" / "pending_sweeps.jsonl").read_text()
+    assert st["run_id"] in pending  # the unconfirmed cleanup is retried later
+    again = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert set(again.actions.values()) == {"skip"} and again.results == []
+    assert w.swept == [st["run_id"]]  # retried on the next pass, the run itself not rerun
+    monkeypatch.setattr(H.HostInvocation, "cleanup", lambda self: [])
+    forced = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res,
+                          restart_capped=True)
+    assert set(forced.actions.values()) == {"restart"}
+    st2 = P.read_status(cd)
+    assert st2["attempt"] == 2 and not st2["cap_stopped"]
+
+
+def test_r3fix_2_cap_before_the_boundary_then_crash_is_backfilled(host_world):
+    from compaction.s2 import followon as FO
+    from compaction.s2 import gate as G
+    w = host_world
+    jobs = w.jobs()[:1]
+    spend = M.RunSpend(M.NullSpend(), cap_usd=0.06)  # one call, then the cap: no boundary
+
+    def fac(ph, rep):
+        return SpendingStub([{"bash": "x"}] * 40, spend, bound=0.05, actual=0.05,
+                            summary=lambda m: "S")
+
+    jobs[0].factory, jobs[0].spend = fac, spend
+    P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    cd = jobs[0].plan.cohort_dir
+    assert P.read_status(cd)["state"] == "run_cap"
+    tele_path = w.res / "sprint" / "S2" / "telemetry.jsonl"
+    rows = [json.loads(x) for x in tele_path.read_text().splitlines()]
+    assert not any(r.get("pre_arms") for r in rows)  # no boundary, so no pre-arms row
+    tele_path.write_text("")  # a crash between the terminal status and the telemetry append
+    again = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert set(again.actions.values()) == {"skip"} and again.results == []
+    rows = [json.loads(x) for x in tele_path.read_text().splitlines()]
+    assert len(rows) == 1 and rows[0]["reconstructed"] and rows[0]["state"] == "run_cap"
+    g = {r["cohort_key"]: r for r in G.evaluate(rows, {})["tiers"]}
+    key = jobs[0].plan.cohort_key
+    assert g[key]["tier"] == "attempted"
+    assert FO.readiness({"m1": [key]}, {key: "run_cap"}, g)["m1"]["ready"]
+    P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert len(tele_path.read_text().splitlines()) == 1  # added once only
+
+
+def test_r3fix_3_stop_during_a_stage_wait_never_sends(monkeypatch):
+    from compaction import budget
+    calls, cancelled, flag = [], [], {"stop": False}
+
+    def fake_reserve(stage, usd, note=""):
+        calls.append(usd)
+        if len(calls) == 1:
+            raise budget.BudgetRefused("held", {"cap": 50, "spent": 40, "open": 9.9,
+                                                "request": usd})
+        return f"rid{len(calls)}"
+
+    monkeypatch.setattr(budget, "reserve", fake_reserve)
+    monkeypatch.setattr(budget, "cancel", lambda rid, reason: cancelled.append(rid))
+    sp = M.SprintSpend(sleep=lambda s: flag.update(stop=True), stopped=lambda: flag["stop"])
+    with pytest.raises(M.StageCapReached, match="cancelled"):
+        sp.reserve(0.2, "x")
+    assert len(calls) == 1 and cancelled == []  # stopped during the sleep: no new reservation
+
+    calls.clear()
+
+    def reserve_then_stop(stage, usd, note=""):  # the stop lands while the reservation goes in
+        r = fake_reserve(stage, usd, note)
+        flag["stop"] = True
+        return r
+
+    flag["stop"] = False
+    monkeypatch.setattr(budget, "reserve", reserve_then_stop)
+    sp = M.SprintSpend(sleep=lambda s: None, stopped=lambda: flag["stop"])
+    with pytest.raises(M.StageCapReached, match="cancelled"):
+        sp.reserve(0.2, "x")
+    assert cancelled == ["rid2"]  # the unsent hold is released
+    flag["stop"] = False
+    calls.clear()
+    monkeypatch.setattr(budget, "reserve", lambda stage, usd, note="": "rid-first")
+    assert M.SprintSpend(stopped=lambda: False).reserve(0.2, "x") == "rid-first"

@@ -226,16 +226,30 @@ def _telemetry() -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
+def _state(cohort_dir: Path) -> str | None:
+    """A cohort run's state for readiness: a cap stop counts as `run_cap` even when its cleanup
+    failed afterwards (review r3-fixes #1)."""
+    st = P.read_status(cohort_dir)
+    return "run_cap" if (st or {}).get("cap_stopped") else (st or {}).get("state")
+
+
+def _backfill() -> None:
+    root = C.raw_dir() / "pilot"
+    if root.exists():
+        P.backfill_terminal_rows(sorted(d for d in root.iterdir() if d.is_dir()),
+                                 C.REPO_ROOT / "results")
+
+
 def followon_runs(labels: dict) -> list[dict] | None:
     """Plan (or re-read) the follow-on runs the gate calls for; persists the per-model state.
     Refuses (None) until the initial cohort is complete; plans nothing for a model whose runs
     are incomplete or whose boundaries aren't all assessed (review r2 #4)."""
     rows = T.ranking()
-    tele = _telemetry()
     root = C.raw_dir() / "pilot"
     initial = T.pilot_cohort(rows)
-    states = {c.run_key(): (P.read_status(root / c.run_key()) or {}).get("state")
-              for c in initial}
+    _backfill()
+    tele = _telemetry()
+    states = {c.run_key(): _state(root / c.run_key()) for c in initial}
     if any(v not in ("complete", "run_cap") for v in states.values()):
         n = sum(v not in ("complete", "run_cap") for v in states.values())
         print(f"refusing --followons: {n} of {len(initial)} initial cohort runs not complete")
@@ -251,7 +265,7 @@ def followon_runs(labels: dict) -> list[dict] | None:
         for r in ms.get("runs", []):
             k = FO.cohort_run(r).run_key()
             expected.setdefault(m, []).append(k)
-            states[k] = (P.read_status(root / k) or {}).get("state")
+            states[k] = _state(root / k)
     ready = FO.readiness(expected, states, gate_rows)
     pilot_tasks = []
     for c in initial:
@@ -329,6 +343,8 @@ def cmd_haiku_peak(a) -> int:
 
 def cmd_gate(a) -> int:
     from compaction.s2 import gate
+    if not a.telemetry:
+        _backfill()
     path = Path(a.telemetry or P.s2_dir(C.REPO_ROOT / "results") / "telemetry.jsonl")
     tele = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
     labels = json.loads(Path(a.labels).read_text()) if a.labels else {}

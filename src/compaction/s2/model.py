@@ -271,9 +271,13 @@ class SprintSpend:
     def reserve(self, usd: float, note: str) -> str:
         from compaction import budget
         deadline = time.monotonic() + self.wait_s
+        waited = False
         while True:
+            if waited and self.stopped is not None and self.stopped():
+                # Stop requested while waiting (review r3-fixes #3): don't reserve again.
+                raise StageCapReached("stage refusal (cancelled while waiting for holds)")
             try:
-                return budget.reserve(self.stage, usd, note=note)
+                rid = budget.reserve(self.stage, usd, note=note)
             except (budget.TopUpRequired, budget.WrongCheckout):
                 raise
             except budget.BudgetRefused as e:
@@ -286,6 +290,12 @@ class SprintSpend:
                            "cancelled" if cancelled else "timed out waiting for holds")
                     raise StageCapReached(f"stage refusal ({why}): {e}") from e
                 self.sleep(self.poll_s)
+                waited = True
+                continue
+            if waited and self.stopped is not None and self.stopped():
+                budget.cancel(rid, "stopped while waiting for holds")  # unsent: release it
+                raise StageCapReached("stage refusal (cancelled while waiting for holds)")
+            return rid
 
     def settle(self, rid: str, usd: float, *, resource: str, units: float, note: str) -> None:
         from compaction import budget

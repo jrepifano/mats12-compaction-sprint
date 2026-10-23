@@ -447,6 +447,16 @@ class HostPool:
 FINAL_STATES = ("complete", "run_cap")
 
 
+def _capped(status: dict | None) -> bool:
+    return bool(status) and (status.get("state") == "run_cap" or bool(status.get("cap_stopped")))
+
+
+def is_final(status: dict | None) -> bool:
+    """Finished: complete, or stopped by a run cap (even when its cleanup failed)."""
+    return bool(status) and (status.get("state") in FINAL_STATES or _capped(status))
+
+
+
 def resume_action(status: dict | None, host_up: bool, image_present: bool | None,
                   restart_capped: bool = False) -> str:
     """What to do with one cohort run given its status file:
@@ -458,8 +468,10 @@ def resume_action(status: dict | None, host_up: bool, image_present: bool | None
       from scratch; the old attempt's partial rows are superseded, never mixed in."""
     if status is None:
         return "fresh"
-    if status.get("state") == "run_cap" and restart_capped:
-        return "restart"  # a paid restart of a cap-stopped run needs the explicit flag
+    if _capped(status):
+        # A cap stop is terminal whatever its cleanup did (review r3-fixes #1); a paid restart
+        # needs the explicit flag.
+        return "restart" if restart_capped else "skip"
     if status.get("state") in FINAL_STATES:
         return "skip"
     if status.get("boundary_tag") and host_up and image_present:
