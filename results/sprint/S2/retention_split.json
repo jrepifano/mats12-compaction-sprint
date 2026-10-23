@@ -1,0 +1,92 @@
+{
+ "what": "S2 retention judge: development / held-out halves of the pilot runs, by run (violation-specs 3.3), written before any judge prompt",
+ "seed": 20261023,
+ "created_utc": "2026-10-23T16:39:48+00:00",
+ "method": "stratified by channel x model; within each cell (cohort order), random.Random(seed) shuffles the runs and deals them alternately from a seeded starting half; cells in sorted (channel, model) order",
+ "extra_runs": "runs not listed (replacements, fallbacks): extra_half(), byte 0 of sha256('s2-retention-split:<seed>:<cohort key>') mod 2 -> development if even else heldout",
+ "keys": "cohort keys; every attempt of a cohort run is in its run's half",
+ "assignment": {
+  "pilot-01-scriggo-method-declarations-deepseek-agents_md": "heldout",
+  "pilot-01-scriggo-method-declarations-glm-readme": "heldout",
+  "pilot-01-scriggo-method-declarations-haiku-agents_md": "development",
+  "pilot-01-scriggo-method-declarations-luna-chat": "heldout",
+  "pilot-02-wasmi-trap-coredumps-deepseek-chat": "development",
+  "pilot-02-wasmi-trap-coredumps-glm-agents_md": "development",
+  "pilot-02-wasmi-trap-coredumps-haiku-chat": "heldout",
+  "pilot-02-wasmi-trap-coredumps-luna-readme": "development",
+  "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme": "development",
+  "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat": "development",
+  "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme": "heldout",
+  "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md": "development",
+  "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md": "development",
+  "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme": "development",
+  "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md": "heldout",
+  "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat": "development",
+  "pilot-05-koota-pair-relation-tracking-deepseek-chat": "heldout",
+  "pilot-05-koota-pair-relation-tracking-glm-agents_md": "heldout",
+  "pilot-05-koota-pair-relation-tracking-haiku-chat": "development",
+  "pilot-05-koota-pair-relation-tracking-luna-readme": "heldout",
+  "pilot-06-effect-sse-httpapi-streaming-deepseek-readme": "heldout",
+  "pilot-06-effect-sse-httpapi-streaming-glm-chat": "heldout",
+  "pilot-06-effect-sse-httpapi-streaming-haiku-readme": "development",
+  "pilot-06-effect-sse-httpapi-streaming-luna-agents_md": "heldout"
+ },
+ "counts": {
+  "development": {
+   "n": 12,
+   "channel": {
+    "agents_md": 4,
+    "chat": 4,
+    "readme": 4
+   },
+   "model": {
+    "deepseek": 3,
+    "glm": 3,
+    "haiku": 3,
+    "luna": 3
+   },
+   "cell": {
+    "deepseek/agents_md": 1,
+    "deepseek/chat": 1,
+    "deepseek/readme": 1,
+    "glm/agents_md": 1,
+    "glm/chat": 1,
+    "glm/readme": 1,
+    "haiku/agents_md": 1,
+    "haiku/chat": 1,
+    "haiku/readme": 1,
+    "luna/agents_md": 1,
+    "luna/chat": 1,
+    "luna/readme": 1
+   }
+  },
+  "heldout": {
+   "n": 12,
+   "channel": {
+    "agents_md": 4,
+    "chat": 4,
+    "readme": 4
+   },
+   "model": {
+    "deepseek": 3,
+    "glm": 3,
+    "haiku": 3,
+    "luna": 3
+   },
+   "cell": {
+    "deepseek/agents_md": 1,
+    "deepseek/chat": 1,
+    "deepseek/readme": 1,
+    "glm/agents_md": 1,
+    "glm/chat": 1,
+    "glm/readme": 1,
+    "haiku/agents_md": 1,
+    "haiku/chat": 1,
+    "haiku/readme": 1,
+    "luna/agents_md": 1,
+    "luna/chat": 1,
+    "luna/readme": 1
+   }
+  }
+ }
+}
