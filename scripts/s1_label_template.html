@@ -482,12 +482,18 @@ function auditCtx(c) {
   return { text: t.slice(0, i) + t.slice(i + 1, j) + t.slice(j + 1), at: [i, j - 1] };
 }
 // What each card asks (spec D14 definitions), by kind and verdict.
+// What each card asks, by kind and verdict: the judge's claim, then which button means what.
+// Jacob grades the judge, not the summary (Jacob, 23 Oct: "pick correct if the summary drops it?").
 const PIPE = "Wrong: pipeline problem if the card is broken (the quote isn't in the context, the summary is from another session, the text is garbled or cut).";
 const AUDIT_CHECK = {
-  "item|dropped": ["Correct if it's a real item and the summary is missing it or gets it wrong.", "Wrong: judge's reading if it isn't a real item, or the summary carries it well enough to act on.", PIPE],
-  "item|kept": ["Correct if it's a real item and the summary carries it well enough to act on from the summary alone.", "Wrong: judge's reading if it isn't a real item, or the summary is missing it or gets it wrong.", PIPE],
-  "claim|invented": ["Correct if nothing in the full history backs the claim, or the history contradicts it.", "Wrong: judge's reading if something in the history backs it.", PIPE],
-  "claim|supported": ["Correct if the full history backs the claim.", "Wrong: judge's reading if nothing in the history backs it, or the history contradicts it.", PIPE],
+  "item|dropped": ["The judge says: this is a real item, and the summary dropped it or got it wrong. Do you agree?",
+    "Correct if you agree: it's a real item and the summary lacks it or gets it wrong.", "Wrong: judge's reading if the summary does carry it (well enough to act on), or it isn't a real item.", PIPE],
+  "item|kept": ["The judge says: this is a real item, and the summary kept it. Do you agree?",
+    "Correct if you agree: the summary carries it well enough to act on from the summary alone.", "Wrong: judge's reading if the summary lacks it or gets it wrong, or it isn't a real item.", PIPE],
+  "claim|invented": ["The judge says: the summary made this claim up; nothing in the history backs it. Do you agree?",
+    "Correct if you agree: you searched the full history and nothing backs it, or the history contradicts it.", "Wrong: judge's reading if something in the history backs it.", PIPE],
+  "claim|supported": ["The judge says: the history backs this claim. Do you agree?",
+    "Correct if you agree: you found the backing in the full history.", "Wrong: judge's reading if nothing in the history backs it, or the history contradicts it.", PIPE],
 };
 function renderAudit() {
   const el = document.getElementById("sheets-audit");
@@ -496,7 +502,7 @@ function renderAudit() {
     <article class="sheet" id="s-${a.id}">
       <header><span class="tag">${i + 1} / ${DATA.audit.length} · ${esc(a.kind)} · judge verdict: ${esc(a.verdict)}</span><span class="state" id="st-${a.id}">not checked</span></header>
       <div><p class="label">${a.kind === "claim" ? "Claim" : "Item"}</p><p class="q">${esc(a.text)}</p></div>
-      ${AUDIT_CHECK[`${a.kind}|${a.verdict}`] ? `<div><p class="label">Which to pick</p><ul>${AUDIT_CHECK[`${a.kind}|${a.verdict}`].map(l => { const k = l.indexOf(" if "); return `<li><b>${esc(l.slice(0, k))}</b>${esc(l.slice(k))}</li>`; }).join("")}</ul></div>` : ""}
+      ${AUDIT_CHECK[`${a.kind}|${a.verdict}`] ? `<div><p class="label">You're grading the judge</p><p><b>${esc(AUDIT_CHECK[`${a.kind}|${a.verdict}`][0])}</b></p><ul>${AUDIT_CHECK[`${a.kind}|${a.verdict}`].slice(1).map(l => { const k = l.indexOf(" if "); return `<li><b>${esc(l.slice(0, k))}</b>${esc(l.slice(k))}</li>`; }).join("")}</ul></div>` : ""}
       <div><p class="label">Source context${auditCtx(a.context).at ? " (the item's quote highlighted)" : ""}</p>${findBox(auditCtx(a.context).text, "box read", { at: auditCtx(a.context).at, ph: "Find in the source context" })}</div>
       ${a.hist_ref ? `<details class="fullhist"${a.kind === "claim" ? " open" : ""}><summary>Full history (searchable)</summary>${histBox(a)}</details>` : ""}
       ${summary(a.summary_ref)}
