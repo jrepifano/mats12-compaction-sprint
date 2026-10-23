@@ -690,3 +690,10 @@ def test_apply_second_look_rejects_an_unfrozen_duplicate_in_either_order(old_fir
     ov = [stale, *overlay] if old_first else [*overlay, stale]
     with pytest.raises(A.SecondLookError, match="frozen config"):
         A.apply_second_look(items, claims, ov, config="cfg1")
+
+
+def test_precision_corrected_flags_a_below_floor_precision_as_exploratory():
+    draws = __import__("numpy").random.default_rng(1).uniform(0.1, 0.2, 500)
+    low = A.precision_corrected(0.15, draws, {"n_hits": 8, "n": 13, "below_floor": True})
+    assert low["status"].startswith("exploratory") and low["provenance"]["below_floor"] is True
+    assert "status" not in A.precision_corrected(0.15, draws, {"n_hits": 13, "n": 18})

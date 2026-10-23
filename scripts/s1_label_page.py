@@ -772,8 +772,27 @@ def build_audit(
             "text": a.get("text"),
             "private": dict(a.get("private") or {}),
         }
+    # the draw binds the outcome manifest and every card's full content, so labels saved against
+    # an earlier build (other sealed files, other cards) are refused (astra audit r1 #1)
     draw = hashlib.sha256(
-        json.dumps({"seed": seed, "audit": sorted(key_audit)}, sort_keys=True).encode()
+        json.dumps(
+            {
+                "seed": seed,
+                "audit": sorted(key_audit),
+                "manifest": (manifest or {}).get("digest")
+                if isinstance(manifest, Mapping)
+                else None,
+                "cards": [
+                    {
+                        k: a.get(k)
+                        for k in ("kind", "verdict", "text", "context", "summary", "private")
+                    }
+                    for a in items
+                ],
+            },
+            sort_keys=True,
+            default=str,
+        ).encode()
     ).hexdigest()[:16]
     data = {
         "mode": "audit",

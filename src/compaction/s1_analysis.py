@@ -1172,6 +1172,8 @@ def precision_corrected(
         independence=INDEPENDENCE,
         provenance={k: v for k, v in entry.items() if k not in ("n_hits", "n", "alternatives")},
     )
+    if entry.get("below_floor"):  # D13 (b) / D14 (f): a verdict below the floor is exploratory
+        out["status"] = "exploratory: the judge's precision is below the D13 floor of 0.7"
     alts = entry.get("alternatives") or {}
     out["alternatives"] = {
         name: one(int(a["n_hits"]), int(a["n"]), k + 1)
