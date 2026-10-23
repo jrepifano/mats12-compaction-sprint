@@ -45,6 +45,7 @@ ends at its next model call and its containers are removed before exit.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import os
 import signal
@@ -62,6 +63,7 @@ from compaction.s2 import rules as R
 from compaction.s2 import stubs
 from compaction.s2 import tasks as T
 from compaction.s2.env import NOSHIM, line_counts
+from compaction.s2.gate import EXPLORE_PREFIX
 from compaction.s2.model import NullSpend, OpenAICompatModel, RunSpend, SprintSpend
 
 DRY_TASKS = ("koota-pair-relation-tracking", "wasmi-trap-coredumps")
@@ -257,7 +259,7 @@ def followon_runs(labels: dict) -> list[dict] | None:
     out = G.evaluate(tele, labels)
     gate_rows = {r["cohort_key"]: r for r in out["tiers"]}
     done = [{"model": t["model"], "channel": t["channel"], "task": t["task"]}
-            for t in G.latest_attempts(tele)]
+            for t in G.latest_attempts(tele) if not G.is_exploration(t)]
     state_path = P.s2_dir(C.REPO_ROOT / "results") / FO.STATE_NAME
     state = FO.load_state(state_path)
     expected = {m: [c.run_key() for c in initial if c.model == m] for m in C.PILOT_MODELS}
@@ -341,6 +343,42 @@ def cmd_haiku_peak(a) -> int:
     return report(out, pool)
 
 
+def cmd_explore(a) -> int:
+    """Uncompacted peak runs under one condition per call (Jacob, 23 Oct: try conditions in the
+    pilot). No threshold, so no boundary and no arms: nothing is sealed and nothing outcome-like
+    is produced, only the trajectory, its peak, wall-clock and cost. Runs live under
+    <raw>/explore, kind `explore_<tag>`, and are excluded from the gate and the follow-ons."""
+    if not _require_go(a):
+        return 2
+    if not (0 < a.cap_usd < float("inf")):
+        print("refusing: --cap-usd must be a positive finite amount (0 would mean no run cap)")
+        return 2
+    fu = _followups(a)
+    if fu is None:
+        return 2
+    dist, prov = fu
+    rows = T.ranking()
+    by_rank = {c.rank: c for c in T.pilot_cohort(rows)}
+    route = C.ROUTES[a.model]
+    over = json.loads(a.route_json) if a.route_json else {}
+    if over:
+        route = dataclasses.replace(route, **over)
+    jobs = []
+    for i, rank in enumerate(int(x) for x in a.ranks.split(",")):
+        task = by_rank[rank].task
+        c = T.CohortRun(200 + i, task, rank, a.model, a.channel, f"{EXPLORE_PREFIX}{a.tag}")
+        if not _check_frozen([task]):
+            return 2
+        plan = P.RunPlan(c, T.task_info(task, rank_rows=rows), 10**9, C.raw_dir() / "explore",
+                         run_cap_usd=a.cap_usd, followup_distribution=dist,
+                         followup_source=prov, base_max_calls=a.max_calls)
+        jobs.append(_paid_job(plan, route, a.cap_usd))
+    pool = make_pool(a)
+    out = P.run_cohort(jobs, pool, results_root=C.REPO_ROOT / "results",
+                       restart_capped=a.restart_capped)
+    return report(out, pool)
+
+
 def cmd_gate(a) -> int:
     from compaction.s2 import gate
     if not a.telemetry:
@@ -396,6 +434,18 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--labels", help="retention labels for --followons")
         else:
             p.add_argument("--cap-usd", type=float, default=5.0)
+    e = sub.add_parser("explore")
+    e.add_argument("--go-from-jacob", action="store_true")
+    e.add_argument("--model", required=True, choices=C.PILOT_MODELS)
+    e.add_argument("--tag", required=True, help="condition name, e.g. high or novita")
+    e.add_argument("--ranks", default="1", help="pilot task ranks, comma-separated")
+    e.add_argument("--channel", default="chat", choices=("agents_md", "chat", "readme"))
+    e.add_argument("--route-json", help="JSON of Route fields to override (recorded in run.json)")
+    e.add_argument("--cap-usd", type=float, default=5.0)
+    e.add_argument("--max-calls", type=int, default=C.BASE_MAX_CALLS)
+    e.add_argument("--hosts")
+    e.add_argument("--restart-capped", action="store_true")
+    e.add_argument("--followup-fallback", action="store_true")
     g = sub.add_parser("gate")
     g.add_argument("--labels")
     g.add_argument("--telemetry")
@@ -406,7 +456,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     signal.signal(signal.SIGTERM, _sigterm)
     return {"cohort": cmd_cohort, "freeze-rules": cmd_freeze_rules, "dryrun": cmd_dryrun,
-            "pilot": cmd_pilot, "haiku-peak": cmd_haiku_peak, "gate": cmd_gate,
+            "pilot": cmd_pilot, "haiku-peak": cmd_haiku_peak, "explore": cmd_explore,
+            "gate": cmd_gate,
             "hosts": cmd_hosts}[a.cmd](a)
 
 

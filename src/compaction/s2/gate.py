@@ -77,11 +77,20 @@ def latest_attempts(telemetry: list[dict]) -> list[dict]:
     return list(best.values())
 
 
+EXPLORE_PREFIX = "explore_"  # condition-exploration peak runs (s2_run.py explore)
+
+
+def is_exploration(tele: dict) -> bool:
+    """The Haiku peak run and the exploration runs: measurements, never cohort runs."""
+    k = tele.get("kind") or ""
+    return k == "haiku_peak" or k.startswith(EXPLORE_PREFIX)
+
+
 def tiers(telemetry: list[dict], labels: dict[str, dict]) -> list[dict]:
-    """One row per cohort run (latest attempt; the Haiku peak run excluded)."""
+    """One row per cohort run (latest attempt; peak and exploration runs excluded)."""
     out = []
     for t in latest_attempts(telemetry):
-        if t.get("kind") == "haiku_peak":
+        if is_exploration(t):
             continue
         lab = merged_labels(t, labels.get(t["run_key"]))
         out.append({"run_key": t["run_key"], "cohort_key": t.get("cohort_key") or t["run_key"],

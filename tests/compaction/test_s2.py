@@ -1761,3 +1761,122 @@ def test_rate_limits_get_their_own_retry_budget():
                             sleep=lambda s: None).complete(
             [{"role": "user", "content": "u"}], None, 10, purpose="t")
     assert len(comp.bodies) == 2 * M.MAX_ATTEMPTS - 1  # the 4th 500 ends it
+
+
+def test_exploration_runs_never_reach_the_gate():
+    from compaction.s2 import gate as G
+    pilot = {**_tele("p", "luna", "chat"), "cohort_key": "p"}
+    explore = {**_tele("e", "luna", "chat"), "cohort_key": "e", "kind": "explore_high"}
+    peak = {**_tele("h", "haiku", "chat"), "cohort_key": "h", "kind": "haiku_peak"}
+    rows = G.evaluate([pilot, explore, peak], {})["tiers"]
+    assert [r["cohort_key"] for r in rows] == ["p"]
+    assert G.is_exploration(explore) and G.is_exploration(peak) and not G.is_exploration(pilot)
+
+
+def test_explore_command_refuses_without_the_go(capsys):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_run", C.REPO_ROOT / "scripts" / "s2_run.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.main(["explore", "--model", "luna", "--tag", "high"]) == 2
+    assert "Jacob's go" in capsys.readouterr().out
+
+
+def test_cutpoints_cut_after_the_call_that_reached_the_threshold():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_cutpoints",
+                                                  C.REPO_ROOT / "scripts" / "s2_cutpoints.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"},
+            {"role": "assistant", "content": "a1"}, {"role": "tool", "content": "o1"},
+            {"role": "assistant", "content": "a2"}, {"role": "tool", "content": "o2"},
+            {"role": "user", "content": "follow-up"},
+            {"role": "assistant", "content": "a3"}, {"role": "tool", "content": "o3"}]
+    calls = [{"call": 1, "ctx_tokens_after": 100}, {"call": 2, "ctx_tokens_after": 250},
+             {"call": 3, "ctx_tokens_after": 400}]
+    assert mod.cut_index(msgs, calls, 200) == (7, 250)  # call 2's output and the follow-up kept
+    assert mod.cut_index(msgs, calls, 400) == (9, 400)  # the last call: the whole history
+    assert mod.cut_index(msgs, calls, 401) is None
+    agents = K.instruction_message("Rule one.\nRule two.")
+    assert mod.agents_text([msgs[0], agents]) == "Rule one.\nRule two."
+    assert mod.agents_text(msgs) is None
+
+
+def test_cutpoints_match_the_live_check_follow_ups_and_submissions():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_cutpoints",
+                                                  C.REPO_ROOT / "scripts" / "s2_cutpoints.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    msgs = [{"role": "system", "content": "s"}, {"role": "assistant", "content": "a1"},
+            {"role": "tool", "content": "o1"}, {"role": "user", "content": "x" * 400},
+            {"role": "assistant", "content": "a2"}, {"role": "tool", "content": "o2"},
+            {"role": "assistant", "content": "a3"}]
+    calls = [{"call": 1, "ctx_tokens_after": 150}, {"call": 2, "ctx_tokens_after": 900},
+             {"call": 3, "ctx_tokens_after": 950, "tools": [{"submit": True}]}]
+    script = {"turns": [{"after_call": 1, "text": "x" * 400}]}
+    ctx = mod.effective_ctx(calls, script, 2.0)
+    assert ctx[0] > 150 and ctx[1:] == [900, 950]
+    assert mod.cut_index(msgs, calls, ctx[0], ctx) == (4, ctx[0])  # the follow-up crosses it
+    assert mod.cut_index(msgs, calls, 920, ctx) is None  # only the submission call reached it
+
+
+def test_explore_refuses_an_uncapped_run(capsys):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_run", C.REPO_ROOT / "scripts" / "s2_run.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    for cap in ("0", "-1", "inf", "nan"):
+        assert mod.main(["explore", "--go-from-jacob", "--model", "luna", "--tag", "t",
+                         "--cap-usd", cap]) == 2
+    assert "positive finite" in capsys.readouterr().out
+
+
+def test_compaction_cost_is_charged_before_the_files_are_written(tmp_path, monkeypatch):
+    got = []
+    comp = SimpleNamespace(cost_usd=0.25, post_messages=[])
+    monkeypatch.setattr(L.K, "compact", lambda *a, **k: comp)
+    monkeypatch.setattr(L.R, "retention_precheck", lambda *a: (_ for _ in ()).throw(OSError))
+    with pytest.raises(OSError):
+        L.compaction_files(tmp_path, "k", "pi", [], SimpleNamespace(route=C.ROUTES["stub"]), 0,
+                           None, None, charge=got.append)
+    assert got == [0.25]
+
+
+def test_cut_run_handles_several_thresholds_and_reuses_finished_cuts(tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_cutpoints",
+                                                  C.REPO_ROOT / "scripts" / "s2_cutpoints.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    a = tmp_path / "src" / "a1"
+    (a / "base").mkdir(parents=True)
+    route = {**C.ROUTES["stub"].__dict__, "transport": "openrouter", "key_env": "X"}
+    (a / "run.json").write_text(json.dumps({
+        "run_key": "explore_t-01-task-luna-chat-a1", "cohort_key": "explore_t-01-task-luna-chat",
+        "plan": {"route": route, "policy": "pi", "threshold": 10**9}, "script": {"turns": []}}))
+    msgs = [{"role": "system", "content": "s"}] + [
+        m for i in range(3) for m in ({"role": "assistant", "content": f"a{i}"},
+                                       {"role": "tool", "content": f"o{i}"})]
+    (a / "base" / "messages.json").write_text(json.dumps(msgs))
+    (a / "base" / "calls.json").write_text(json.dumps(
+        [{"call": i + 1, "ctx_tokens_after": 100 * (i + 1)} for i in range(3)]))
+    (a / "rules.json").write_text(json.dumps({}))
+    monkeypatch.setattr(mod.R, "TaskRules", lambda **k: SimpleNamespace())
+    monkeypatch.setattr(mod, "OpenAICompatModel", lambda route, spend: object())
+    made = []
+
+    def fake_files(bdir, key, policy, pre, model, pre_tokens, rules, agents, charge=None):
+        made.append((key, len(pre), pre_tokens))
+        return ({"post_tokens_est": 1, "summary_chars": 1, "lost_certain": [],
+                 "compaction_cost_usd": 0.0}, 0.0)
+
+    monkeypatch.setattr(mod, "compaction_files", fake_files)
+    out = tmp_path / "cuts"
+    rows = mod.cut_run(a, [100, 200, 500], M.RunSpend(M.NullSpend(), 1.0), out)
+    assert [r["reached"] for r in rows] == [True, True, False]
+    assert [m[1:] for m in made] == [(3, 100), (5, 200)]
+    assert made[0][0] == "explore_t-01-task-luna-chat-a1-t100"
+    mod.cut_run(a, [100, 200], M.RunSpend(M.NullSpend(), 1.0), out)
+    assert len(made) == 2  # finished cuts are reused, not re-summarized

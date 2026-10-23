@@ -26,6 +26,7 @@ import json
 import threading
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -318,37 +319,52 @@ def run_base(cfg: RunConfig, model: ChatModel, inv, *, image: str | None = None)
 
 def make_boundary(cfg: RunConfig, loop: Loop, env: TaskEnv, inv, rules: R.TaskRules,
                   agents: str | None) -> dict:
-    bdir = cfg.out_dir / "boundary"
     snap = env.boundary(inv, f"b-{cfg.run_key[-40:]}")
-    pre = list(loop.messages)
+    def charge(usd: float) -> None:
+        loop.cost_usd += usd  # as soon as the summarizer returns (review r1 #4)
+
     try:
-        comp = K.compact(cfg.policy, pre, loop.model, run_id=cfg.run_key,
-                         instruction_text=agents)
+        b, _ = compaction_files(cfg.out_dir / "boundary", cfg.run_key, cfg.policy,
+                                list(loop.messages), loop.model, loop.ctx_tokens, rules, agents,
+                                charge=charge)
     except ModelError as e:
         loop.cost_usd += e.cost_usd
         raise
-    loop.cost_usd += comp.cost_usd
+    b = {"tag": snap["tag"], "stopped_processes": snap["stopped_processes"],
+         "snapshot_s": snap["snapshot_s"], **b}
+    _dump(cfg.out_dir / "boundary" / "boundary.json", b)
+    return b
+
+
+def compaction_files(bdir: Path, run_key: str, policy: str, pre: list[dict], model: ChatModel,
+                     pre_tokens: int, rules: R.TaskRules, agents: str | None, *,
+                     charge: Callable[[float], None] | None = None) -> tuple[dict, float]:
+    """The summarizer on `pre`, the post-compaction context and the retention precheck, written
+    to `bdir` (pre_messages, compaction, post_messages, record). Returns the boundary fields
+    (without the snapshot's) and the compaction's cost. Shared by the live boundary and the
+    offline cut points (scripts/s2_cutpoints.py). `charge` gets the compaction's cost as soon
+    as the summarizer returns, before anything else can fail."""
+    comp = K.compact(policy, pre, model, run_id=run_key, instruction_text=agents)
+    if charge is not None:
+        charge(comp.cost_usd)
     post_text = "\n".join(K._text(m.get("content")) for m in comp.post_messages)
     precheck = R.retention_precheck(post_text, rules)
     verbatim = R.verbatim_rules(post_text, rules)
-    post_tokens = est_tokens(comp.post_messages, loop.model.route.bytes_per_token)
-    record = K.boundary_record(cfg.run_key, pre, model=loop.model.route.model,
-                               pre_tokens=loop.ctx_tokens, summary=comp.summary,
+    post_tokens = est_tokens(comp.post_messages, model.route.bytes_per_token)
+    record = K.boundary_record(run_key, pre, model=model.route.model, pre_tokens=pre_tokens,
+                               summary=comp.summary,
                                rules=[{"text": rules.lines[r], "origin": "user", "checkable": True,
                                        "id": r} for r in R.RULE_IDS])
     _dump(bdir / "pre_messages.json", pre)
     _dump(bdir / "compaction.json", comp.to_dict())
     _dump(bdir / "post_messages.json", comp.post_messages)
     _dump(bdir / "record.json", record)
-    b = {"tag": snap["tag"], "stopped_processes": snap["stopped_processes"],
-         "snapshot_s": snap["snapshot_s"], "pre_tokens": loop.ctx_tokens,
-         "post_tokens_est": post_tokens, "n_pre_messages": len(pre),
+    b = {"pre_tokens": pre_tokens, "post_tokens_est": post_tokens, "n_pre_messages": len(pre),
          "summary_chars": len(comp.summary), "summary_index": comp.summary_index,
          "kept_indices": comp.kept_indices, "precheck": precheck, "verbatim": verbatim,
          "lost_certain": [r for r, v in precheck.items() if v == "lost_certain"],
          "compaction_cost_usd": comp.cost_usd, "policy": comp.policy}
-    _dump(bdir / "boundary.json", b)
-    return b
+    return b, comp.cost_usd
 
 
 # ------------------------------------------------------------------------------------------
