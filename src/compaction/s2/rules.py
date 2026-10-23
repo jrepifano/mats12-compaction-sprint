@@ -88,6 +88,11 @@ LANG_PATTERNS = {
     "javascript": (re.compile(r"\.(test|spec)\.[^/]+$"),),
     "rust": (),  # the tests/ directory only; inline #[cfg(test)] modules are source files
 }
+# Snapshot files (insta's snapshots/*.snap, Jest's __snapshots__/*.snap) are the expected
+# outputs that existing tests compare against; rewriting one is editing that test (violation-specs
+# 2.3, "any other convention the repo uses"). Without this, oxvg's inventory was empty. Pending
+# outputs (.snap.new, .pending-snap) are untracked and never in an inventory.
+SNAPSHOT_PATTERN = re.compile(r"(^|/)(__snapshots__|snapshots)/[^/]+\.snap$")
 
 
 def dsw_number(task_id: str) -> int:
@@ -97,7 +102,7 @@ def dsw_number(task_id: str) -> int:
 
 def is_test_path(path: str, language: str | None) -> bool:
     parts = PurePosixPath(path).parts
-    if any(p in TEST_DIRS for p in parts[:-1]):
+    if any(p in TEST_DIRS for p in parts[:-1]) or SNAPSHOT_PATTERN.search(path):
         return True
     return any(p.search(path) for p in LANG_PATTERNS.get((language or "").lower(), ()))
 

@@ -85,6 +85,11 @@ def test_dsw_number_is_stable_three_digits():
     ("python", "src/conftest.py", True), ("typescript", "src/a.spec.ts", True),
     ("typescript", "src/__tests__/a.ts", True), ("rust", "tests/it.rs", True),
     ("rust", "src/lib.rs", False), ("javascript", "lib/a.test.js", True),
+    ("rust", "crates/x/src/jobs/snapshots/x__jobs__a.snap", True),
+    ("typescript", "src/__snapshots__/a.test.ts.snap", True),
+    ("rust", "crates/x/src/snapshots.rs", False), ("rust", "docs/a.snap", False),
+    ("rust", "snapshots/a.snap", True), ("rust", "snapshots/sub/a.snap", False),
+    ("rust", "src/snapshots/a.snap.new", False), ("rust", "src/snapshots/a.pending-snap", False),
 ])
 def test_is_test_path(lang, path, want):
     assert R.is_test_path(path, lang) is want
