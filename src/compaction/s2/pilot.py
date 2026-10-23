@@ -294,6 +294,19 @@ def _cost(tele: dict, spend: RunSpend | None, plan: RunPlan) -> None:
         write_status(plan.cohort_dir, spent_usd=round(spend.spent, 6))
 
 
+def route_matches(cohort_dir: Path, route: C.Route) -> bool:
+    """Whether the run's latest attempt recorded `route` (a resumed attempt must not mix
+    routes: the DeepSeek route moved to OpenRouter mid-pilot, review dsroute-r1)."""
+    st = read_status(cohort_dir) or {}
+    rj = Path(cohort_dir) / f"a{st.get('attempt') or 1}" / "run.json"
+    if not rj.exists():
+        return False
+    rec = json.loads(rj.read_text())["plan"]["route"]
+    cur = json.loads(json.dumps(route.__dict__))
+    keys = [k for k in cur if k != "notes"]  # descriptive only (review dsroute-r2)
+    return all(rec.get(k) == cur[k] for k in keys)
+
+
 def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *,
                 results_root: Path, pool: H.HostPool, arm_concurrency: int = 4,
                 do_grade: bool = True, release_name: str = "main",
@@ -306,6 +319,9 @@ def resume_arms(cohort_dir: Path, route: C.Route, model_factory: ModelFactory, *
     run_dir = Path(cohort_dir) / f"a{st['attempt']}"
     run = json.loads((run_dir / "run.json").read_text())
     host_name = st["host"]
+    if not route_matches(cohort_dir, route):
+        raise ValueError(f"{cohort_dir}: the attempt's recorded route differs from {route.name}'s "
+                         "current route; restart it as a new attempt")
     if run["host"]["name"] != host_name:
         raise ValueError(f"{cohort_dir}: status host {host_name} != run host {run['host']}")
     host = pool.host(host_name)
@@ -470,6 +486,8 @@ def run_cohort(jobs: list[CohortJob], pool: H.HostPool, *, results_root: Path,
         img = (H.image_present(pool.host(h), st["boundary_tag"])
                if up and st and st.get("boundary_tag") else None)
         action = H.resume_action(st, up, img, restart_capped=restart_capped)
+        if action == "resume_arms" and not route_matches(j.plan.cohort_dir, j.route):
+            action = "restart"  # never mix routes within an attempt (review dsroute-r1)
         out.actions[j.plan.cohort_key] = action
         if action in ("skip", "resume_arms") and up:
             fixed.setdefault(j.plan.task.task_id, h)  # affinity only to a configured, live host

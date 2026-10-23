@@ -2051,3 +2051,24 @@ def test_scatter_rules_spreads_one_message_per_rule():
     for bad in ([3, 1, 2, 4], [1, 1, 2, 3], [0, 1, 2, 3]):
         with pytest.raises(ValueError, match="increasing"):
             mod.scatter_rules(msgs, rules, bad)
+
+
+def test_a_route_change_restarts_instead_of_resuming(host_world):
+    import dataclasses
+    w = host_world
+    jobs = w.jobs()[:1]
+    P.run_cohort(jobs, w.new_pool(), results_root=w.res)
+    cd = jobs[0].plan.cohort_dir
+    st = P.read_status(cd)
+    P.write_status(cd, state="running", arms_done=st["arms_done"][:-2])  # a crash mid-arms
+    same = P.run_cohort(w.jobs()[:1], w.new_pool(), results_root=w.res)
+    assert same.actions[jobs[0].plan.cohort_key] == "resume_arms"
+    P.write_status(cd, state="running", arms_done=P.read_status(cd)["arms_done"][:-2])
+    moved = w.jobs()[:1]
+    moved[0].route = dataclasses.replace(moved[0].route, provider_pin="Elsewhere")
+    out = P.run_cohort(moved, w.new_pool(), results_root=w.res)
+    assert out.actions[jobs[0].plan.cohort_key] == "restart"
+    assert P.read_status(cd)["attempt"] == 2
+    with pytest.raises(ValueError, match="recorded route differs"):
+        P.resume_arms(cd, dataclasses.replace(C.ROUTES["stub"], provider_pin="X"),
+                      lambda ph, r: None, results_root=w.res, pool=w.new_pool())
