@@ -78,6 +78,25 @@ def cut_index(messages: list[dict], calls: list[dict], threshold: int,
     return len(messages), ctx[n - 1]
 
 
+def move_rules(messages: list[dict], rules_text: str, after_call: int) -> list[dict]:
+    """OFFLINE SCREEN ONLY (Jacob, 23 Oct: try delivering the chat rules mid-session): the
+    history with the chat rules turn moved from the start to just after call `after_call`'s
+    results. The agent's own turns are unchanged, so this tests what the summarizer keeps, not
+    how an agent behaves when told later."""
+    i = next((k for k, m in enumerate(messages)
+              if m.get("role") == "user" and m.get("content") == rules_text), None)
+    if i is None:
+        raise ValueError("no chat rules turn in this history (not a chat-channel run?)")
+    rest = messages[:i] + messages[i + 1:]
+    seen = 0
+    for k, m in enumerate(rest):
+        if m.get("role") == "assistant":
+            seen += 1
+            if seen == after_call + 1:
+                return rest[:k] + [messages[i]] + rest[k:]
+    raise ValueError(f"the run has no call {after_call + 1}")
+
+
 def agents_text(messages: list[dict]) -> str | None:
     """The AGENTS.md text the run opened with (agents_md channel), as the live boundary got it."""
     for m in messages:
@@ -88,13 +107,19 @@ def agents_text(messages: list[dict]) -> str | None:
     return None
 
 
-def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Path) -> list[dict]:
+def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Path,
+            rules_after_call: int | None = None) -> list[dict]:
     run = json.loads((attempt / "run.json").read_text())
     messages = json.loads((attempt / "base" / "messages.json").read_text())
     calls = json.loads((attempt / "base" / "calls.json").read_text())
     rules_d = json.loads((attempt / "rules.json").read_text())
     rules = R.TaskRules(**{k: v for k, v in rules_d.items()
                            if k in R.TaskRules.__dataclass_fields__})
+    rules_idx = None
+    if rules_after_call is not None:
+        messages = move_rules(messages, rules.chat_turn(), rules_after_call)
+        rules_idx = next(k for k, m in enumerate(messages)
+                         if m.get("content") == rules.chat_turn())
     route = C.Route(**run["plan"]["route"])
     if "summary_reasoning" not in run["plan"]["route"]:
         # Runs recorded before Route.summary_reasoning existed: use the current setting for
@@ -108,6 +133,12 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
     for t in thresholds:
         cut = cut_index(messages, calls, t, ctx_by_call)
         key = f"{run['run_key']}-t{t}"  # per source attempt (review r1 #3)
+        if rules_after_call is not None:
+            key += f"-mid{rules_after_call}"
+            if cut is not None and cut[0] <= rules_idx:
+                rows.append({"cut": key, "threshold": t, "reached": True, "peak": peak,
+                             "skipped": "the cut comes before the moved rules turn"})
+                continue
         if cut is None:
             rows.append({"cut": key, "threshold": t, "reached": False, "peak": peak})
             continue
@@ -135,6 +166,8 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
             (a / "rules.json").write_text(json.dumps(rules_d, indent=1))
             (a / "run.json").write_text(json.dumps(
                 {**run, "run_key": f"{key}-a1", "cohort_key": key, "cut_of": run["run_key"],
+                 "offline_edit": ({"rules_after_call": rules_after_call}
+                                  if rules_after_call is not None else None),
                  "plan": {**run["plan"], "threshold": t, "route": route.__dict__}},
                 indent=1, default=str))
             (a / "boundary" / "boundary.json").write_text(json.dumps(b, indent=1, default=str))
@@ -153,6 +186,8 @@ def main(argv=None) -> int:
     ap.add_argument("--thresholds", default="60000,90000,120000,150000,176000")
     ap.add_argument("--cap-usd", type=float, default=2.0)
     ap.add_argument("--out-root", default=str(C.raw_dir() / "cuts"))
+    ap.add_argument("--rules-after-call", type=int,
+                    help="offline screen: move the chat rules turn to after this call")
     a = ap.parse_args(argv)
     if not a.go_from_jacob:
         print("refusing: paid calls need Jacob's go (pass --go-from-jacob)")
@@ -160,17 +195,21 @@ def main(argv=None) -> int:
     if not (0 < a.cap_usd < float("inf")):
         print("refusing: --cap-usd must be a positive finite amount")
         return 1
+    if a.rules_after_call is not None and a.rules_after_call < 1:
+        print("refusing: --rules-after-call must be at least 1 (0 is the opening placement)")
+        return 1
     load_env()
     spend = RunSpend(SprintSpend(), a.cap_usd)
     thresholds = sorted(int(x) for x in a.thresholds.split(","))
     out = [r for p in a.attempts
-           for r in cut_run(Path(p), thresholds, spend, Path(a.out_root))]
+           for r in cut_run(Path(p), thresholds, spend, Path(a.out_root),
+                            a.rules_after_call)]
     summary = Path(a.out_root) / "cuts.jsonl"
     summary.parent.mkdir(parents=True, exist_ok=True)
     with summary.open("a") as f:
         for r in out:
             f.write(json.dumps(r) + "\n")
-    n_ok = sum(r["reached"] and not r.get("failed") for r in out)
+    n_ok = sum(r["reached"] and not r.get("failed") and not r.get("skipped") for r in out)
     print(f"spent ${spend.spent:.4f}; {n_ok} cuts, {sum(bool(r.get('failed')) for r in out)} "
           f"failed; wrote {summary}")
     return 0

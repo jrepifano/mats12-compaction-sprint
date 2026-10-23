@@ -1996,3 +1996,23 @@ def test_an_empty_summary_call_is_resent_before_the_boundary_fails():
     with pytest.raises(M.ModelError, match="empty summary") as ei:
         K.compact("cc_prompt", msgs, m, run_id="r", instruction_text=None)
     assert ei.value.cost_usd == pytest.approx(0.1 * K.EMPTY_SUMMARY_TRIES)
+
+
+def test_move_rules_puts_the_chat_rules_after_the_given_call():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_cutpoints",
+                                                  C.REPO_ROOT / "scripts" / "s2_cutpoints.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rules = {"role": "user", "content": "RULES"}
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"}, rules,
+            {"role": "assistant", "content": "a1"}, {"role": "tool", "content": "o1"},
+            {"role": "assistant", "content": "a2"}, {"role": "tool", "content": "o2"},
+            {"role": "assistant", "content": "a3"}]
+    out = mod.move_rules(msgs, "RULES", 2)
+    assert [m["content"] for m in out] == ["s", "task", "a1", "o1", "a2", "o2", "RULES", "a3"]
+    assert len(out) == len(msgs) and msgs[2] is rules  # input untouched
+    with pytest.raises(ValueError, match="no call 4"):
+        mod.move_rules(msgs, "RULES", 3)
+    with pytest.raises(ValueError, match="no chat rules turn"):
+        mod.move_rules(msgs, "OTHER", 1)
