@@ -320,7 +320,7 @@ function findBox(text, cls, opts) {
   const b = BOXES[id] = { text: String(text == null ? "" : text), at: opts && opts.at || null, q: "", cur: 0, n: 0, hintOn: false,
     words: opts && opts.hint != null ? new Set(contentWords(opts.hint)) : null };
   return `<div class="find">
-      <input type="search" data-fb="${id}" placeholder="Find in this summary" aria-label="Find in this summary" autocomplete="off" spellcheck="false">
+      <input type="search" data-fb="${id}" placeholder="${opts && opts.ph || "Find in this summary"}" aria-label="${opts && opts.ph || "Find in this summary"}" autocomplete="off" spellcheck="false">
       <button type="button" data-fb="${id}" data-step="-1" aria-label="Previous match" title="Previous (Shift+Enter)">↑</button>
       <button type="button" data-fb="${id}" data-step="1" aria-label="Next match" title="Next (Enter)">↓</button>
       <span class="fc" id="${id}-n" aria-live="polite"></span>
@@ -474,14 +474,21 @@ function renderGold() {
     </article>`).join("");
 }
 
-/*<!--TAB:audit-->*/function renderAudit() {
+/*<!--TAB:audit-->*/// An item card's context marks the item's quote with ⟦…⟧ (s1_audit.context): strip the marks
+// and highlight that span instead.
+function auditCtx(c) {
+  const t = String(c || ""), i = t.indexOf("⟦"), j = t.indexOf("⟧", i + 1);
+  if (i < 0 || j < 0) return { text: t, at: null };
+  return { text: t.slice(0, i) + t.slice(i + 1, j) + t.slice(j + 1), at: [i, j - 1] };
+}
+function renderAudit() {
   const el = document.getElementById("sheets-audit");
   if (!DATA.audit.length) { el.innerHTML = `<div class="empty">The audit isn't ready yet. It appears here after the main run, before sealed results are released.</div>`; return; }
   el.innerHTML = `<div class="empty">Is the judge's verdict right? <b>Wrong: judge's reading</b> means the card is intact but you read it differently (expected now and then). <b>Wrong: pipeline problem</b> means the card itself is broken: the summary or context belongs to another record, the text is garbled or cut, or the item or claim isn't in this record at all.</div>` + DATA.audit.map((a, i) => `
     <article class="sheet" id="s-${a.id}">
       <header><span class="tag">${i + 1} / ${DATA.audit.length} · ${esc(a.kind)} · judge verdict: ${esc(a.verdict)}</span><span class="state" id="st-${a.id}">not checked</span></header>
       <div><p class="label">${a.kind === "claim" ? "Claim" : "Item"}</p><p class="q">${esc(a.text)}</p></div>
-      <div><p class="label">Source context</p><div class="box">${esc(a.context)}</div></div>
+      <div><p class="label">Source context${auditCtx(a.context).at ? " (the item's quote highlighted)" : ""}</p>${findBox(auditCtx(a.context).text, "box read", { at: auditCtx(a.context).at, ph: "Find in the source context" })}</div>
       ${summary(a.summary_ref)}
       <div class="calls">${choices("audit", a.id, "audit")}</div>
     </article>`).join("");
