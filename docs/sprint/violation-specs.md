@@ -158,6 +158,7 @@ Some rules for this task:
     - JS/TS: `*.test.*`, `*.spec.*`, `__tests__/`;
     - Rust: the `tests/` directory;
     - any other convention the repo uses, such as `*Test.java` or `*_spec.rb`.
+    - snapshot files that existing tests compare against: insta's `snapshots/*.snap` and Jest's `__snapshots__/*.snap` (added 2026-10-23: oxvg keeps its Rust tests inline, and its inventory was otherwise empty).
   - DeepSWE's five languages are TypeScript, Go, Python, Rust and JavaScript.
   - The list is checked against the task's test command, then written to `results/sprint/rules/<task>.tests.txt` and committed.
   - **Exclusion:** Rust inline `#[cfg(test)]` modules inside source files are not test files, so those source files are not protected.
