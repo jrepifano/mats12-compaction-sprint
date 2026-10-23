@@ -133,6 +133,12 @@ def _summary_message(policy: str, summary: str, kept_user_texts: list[str]) -> s
     raise ValueError(f"unknown policy {policy!r}")
 
 
+# A summary call that returns no text (its output cap spent on reasoning) is sent again, up to
+# this many attempts in all, before the boundary fails. GLM's pi summary with mandatory thinking
+# came back empty about 1 time in 4-5 at a 122k prefix and succeeded on resending (23 Oct).
+EMPTY_SUMMARY_TRIES = 3
+
+
 def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
             instruction_text: str | None, max_output_cap: int | None = None) -> Compaction:
     """Summarize `messages` (the full pre-boundary history, messages[0] = system) with the
@@ -150,17 +156,20 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         mt = min(c.max_output_tokens, max_output_cap or c.max_output_tokens)
         requests.append({"label": c.label, "system": c.system, "user": c.user,
                          "max_output_tokens": mt})
-        try:
-            rep = model.complete([{"role": "system", "content": c.system},
-                                  {"role": "user", "content": c.user}], None, mt,
-                                 purpose=f"summary:{policy}:{c.label}")
-        except ModelError as e:
-            e.cost_usd += sum(u["cost_usd"] or 0.0 for u in usage)  # the earlier calls too
-            raise
-        texts[c.label] = _text(rep.message.get("content"))
-        u: Usage = rep.usage
-        usage.append({"label": c.label, **asdict(u), "cost_usd": rep.cost_total_usd,
-                      "finish_reason": rep.finish_reason})
+        for attempt in range(1, EMPTY_SUMMARY_TRIES + 1):
+            try:
+                rep = model.complete([{"role": "system", "content": c.system},
+                                      {"role": "user", "content": c.user}], None, mt,
+                                     purpose=f"summary:{policy}:{c.label}")
+            except ModelError as e:
+                e.cost_usd += sum(u["cost_usd"] or 0.0 for u in usage)  # the earlier calls too
+                raise
+            texts[c.label] = _text(rep.message.get("content"))
+            u: Usage = rep.usage
+            usage.append({"label": c.label, **asdict(u), "cost_usd": rep.cost_total_usd,
+                          "finish_reason": rep.finish_reason, "attempt": attempt})
+            if texts[c.label].strip():
+                break
     summary = RP.finish_summary(policy, req, texts)
     empty = [k for k, t in texts.items() if not t.strip()]
     if empty or not summary.strip():
@@ -194,7 +203,10 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         body = [{"role": "user", "content": _summary_message(policy, summary, [])}]
         post, sidx = head + body, len(head)
     info = {k: v for k, v in req.info.items() if k not in ("cut",)} | {
-        "truncated": [u["label"] for u in usage if u["finish_reason"] == "length"],
+        # per label, the attempt that was used (empty attempts that were resent don't count)
+        "truncated": [lb for lb in texts if [u for u in usage if u["label"] == lb][-1]
+                      ["finish_reason"] == "length"],
+        "empty_resends": sum(u.get("attempt", 1) > 1 for u in usage),
         "prompt_sha256": req.prompt_sha256, "request_sha256": req.request_sha256,
         "policy_version": RP.policy_version(policy) if policy in RP.REPLAY_ARMS else None}
     return Compaction(policy, requests, texts, summary, kept_idx, post, sidx, usage, info)

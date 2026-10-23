@@ -34,7 +34,13 @@ from compaction.s2 import compact as K
 from compaction.s2 import config as C
 from compaction.s2 import rules as R
 from compaction.s2.loop import compaction_files
-from compaction.s2.model import OpenAICompatModel, RunSpend, SprintSpend, est_tokens
+from compaction.s2.model import (
+    ModelError,
+    OpenAICompatModel,
+    RunSpend,
+    SprintSpend,
+    est_tokens,
+)
 
 
 def effective_ctx(calls: list[dict], script: dict | None, bytes_per_token: float) -> list[int]:
@@ -112,9 +118,17 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
         else:
             if a.exists():
                 shutil.rmtree(a)  # an interrupted cut: redo it whole
-            b, _ = compaction_files(a / "boundary", key, run["plan"]["policy"],
-                                    messages[:idx], model, ctx_at_cut, rules,
-                                    agents_text(messages))
+            try:
+                b, _ = compaction_files(a / "boundary", key, run["plan"]["policy"],
+                                        messages[:idx], model, ctx_at_cut, rules,
+                                        agents_text(messages))
+            except ModelError as e:  # recorded; the other cuts still run
+                shutil.rmtree(a, ignore_errors=True)
+                rows.append({"cut": key, "threshold": t, "reached": True, "peak": peak,
+                             "ctx_at_cut": ctx_at_cut, "failed": str(e)[:300],
+                             "cost_usd": e.cost_usd})
+                print(json.dumps(rows[-1]), flush=True)
+                continue
             (a / "boundary").mkdir(parents=True, exist_ok=True)
             b["source_attempt"] = str(attempt)
             b["cut_message_index"] = idx
@@ -156,7 +170,9 @@ def main(argv=None) -> int:
     with summary.open("a") as f:
         for r in out:
             f.write(json.dumps(r) + "\n")
-    print(f"spent ${spend.spent:.4f}; {sum(r['reached'] for r in out)} cuts; wrote {summary}")
+    n_ok = sum(r["reached"] and not r.get("failed") for r in out)
+    print(f"spent ${spend.spent:.4f}; {n_ok} cuts, {sum(bool(r.get('failed')) for r in out)} "
+          f"failed; wrote {summary}")
     return 0
 
 

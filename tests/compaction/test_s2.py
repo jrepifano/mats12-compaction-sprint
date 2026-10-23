@@ -1901,7 +1901,8 @@ def test_empty_summary_fails_the_boundary_with_its_cost():
             {"id": "x", "source": "deepswe", "session_id": "r",
              "source_messages": K.to_record_messages(msgs), "user_turns": [], "summary": "",
              "post_messages": []}).calls)
-        assert ei.value.cost_usd == pytest.approx(0.13 * n_calls)  # every summary call charged
+        # every attempt of every summary call is charged (empty calls are resent)
+        assert ei.value.cost_usd == pytest.approx(0.13 * n_calls * K.EMPTY_SUMMARY_TRIES)
 
 
 def test_summary_calls_use_the_summary_reasoning():
@@ -1928,7 +1929,8 @@ def test_pi_split_turn_with_an_empty_part_fails(monkeypatch):
 
         def complete(self, messages, tools, max_tokens, *, purpose):
             rep = super().complete(messages, tools, max_tokens, purpose=purpose)
-            rep.message["content"] = self.texts[self.calls_made]
+            label = purpose.rsplit(":", 1)[-1]  # an empty part stays empty when resent
+            rep.message["content"] = self.texts[0 if label == "history" else 1]
             self.calls_made += 1
             rep.usage.cost_usd = rep.cost_total_usd = 0.1
             return rep
@@ -1939,7 +1941,9 @@ def test_pi_split_turn_with_an_empty_part_fails(monkeypatch):
         m.texts, m.calls_made = texts, 0
         with pytest.raises(M.ModelError, match="empty summary") as ei:
             K.compact("pi", msgs, m, run_id="r", instruction_text=None)
-        assert ei.value.cost_usd == pytest.approx(0.2)
+        n_empty = sum(not t for t in texts)
+        assert ei.value.cost_usd == pytest.approx(
+            0.1 * (n_empty * K.EMPTY_SUMMARY_TRIES + (2 - n_empty)))
 
 
 def test_a_failed_second_summary_call_carries_the_first_calls_cost(monkeypatch):
@@ -1965,3 +1969,30 @@ def test_a_failed_second_summary_call_carries_the_first_calls_cost(monkeypatch):
         K.compact("pi", [{"role": "system", "content": "s"}], SecondFails([]), run_id="r",
                   instruction_text=None)
     assert ei.value.cost_usd == pytest.approx(0.15)
+
+
+def test_an_empty_summary_call_is_resent_before_the_boundary_fails():
+    class EmptyThen(M.StubModel):
+        empties: int = 0
+        sent: int = 0
+
+        def complete(self, messages, tools, max_tokens, *, purpose):
+            rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+            self.sent += 1
+            rep.usage.cost_usd = rep.cost_total_usd = 0.1
+            if self.sent <= self.empties:
+                rep.message["content"] = ""
+                rep.finish_reason = "length"
+            return rep
+
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"}]
+    m = EmptyThen([])
+    m.empties = K.EMPTY_SUMMARY_TRIES - 1
+    c = K.compact("cc_prompt", msgs, m, run_id="r", instruction_text=None)
+    assert c.summary.strip() and [u["attempt"] for u in c.usage] == [1, 2, 3]
+    assert sum(u["cost_usd"] for u in c.usage) == pytest.approx(0.3)  # every attempt counted
+    m = EmptyThen([])
+    m.empties = K.EMPTY_SUMMARY_TRIES
+    with pytest.raises(M.ModelError, match="empty summary") as ei:
+        K.compact("cc_prompt", msgs, m, run_id="r", instruction_text=None)
+    assert ei.value.cost_usd == pytest.approx(0.1 * K.EMPTY_SUMMARY_TRIES)
