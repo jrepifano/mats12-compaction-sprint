@@ -120,9 +120,11 @@ def read_sealed(manifest: Mapping, *, root=None) -> Callable[[str], Any]:
 
 
 def final_rows(reader, part: str) -> tuple[list[dict], list[dict]]:
-    """A part's items and claims with the second-look overlay applied (frozen digest checked)."""
+    """A part's items and claims with the second-look overlay applied (frozen digest checked).
+    Claims are re-checked and reported in Part A only, so other parts return no claims, as in
+    `s1_analysis`."""
     items = A._read(reader, f"{part}_items_{JUDGE}.jsonl") or []
-    claims = A._read(reader, f"{part}_claims_{JUDGE}.jsonl") or []
+    claims = A._read(reader, f"{part}_claims_{JUDGE}.jsonl") or [] if part == "partA" else []
     overlay = A._read(reader, f"{part}_second_look_{JUDGE}.jsonl")
     if overlay is None:
         raise SystemExit(f"{part}: no sealed second-look overlay; the audit shows final verdicts")
@@ -365,9 +367,7 @@ def check_labels(key: Mapping, labels: Mapping[str, Mapping]) -> dict:
     wrong_draw = sorted(i for i, d in labels.items() if d.get("draw") != key["draw"])
     if wrong_draw:
         raise SystemExit(f"labels from another draw: {wrong_draw[:5]}")
-    unmarked = sorted(
-        i for i in ids if (labels.get(i) or {}).get("label") not in AUDIT_LABELS
-    )
+    unmarked = sorted(i for i in ids if (labels.get(i) or {}).get("label") not in AUDIT_LABELS)
     if unmarked:
         raise SystemExit(f"{len(unmarked)} of {len(ids)} cards not marked yet: {unmarked[:5]}")
     by = {m: sorted(i for i in ids if labels[i]["label"] == m) for m in AUDIT_LABELS[1:]}
@@ -391,9 +391,7 @@ def write_snapshot(out: Path, key: Mapping, labels: Mapping[str, Mapping]) -> Pa
     return p
 
 
-def release_audit(
-    out: Path, labels_path: Path, *, by: str, note: str = "", root=None
-) -> dict:
+def release_audit(out: Path, labels_path: Path, *, by: str, note: str = "", root=None) -> dict:
     """Validate Jacob's audit labels against the audit key in `out`, snapshot them, and release
     the seal bound to the manifest captured at `prepare`."""
     import s1_label_page as P
@@ -407,8 +405,10 @@ def release_audit(
             f"for {AUDIT_N}: `prepare` again with the default --n"
         )
     c = check_labels(key, labels)
-    summary = (f"{c['n']} cards, {len(c['judge_wrong'])} judge's reading wrong, "
-               f"{len(c['pipeline'])} pipeline problems")
+    summary = (
+        f"{c['n']} cards, {len(c['judge_wrong'])} judge's reading wrong, "
+        f"{len(c['pipeline'])} pipeline problems"
+    )
     log(f"{summary} checked")
     for mark in AUDIT_LABELS[1:]:
         for i in c[mark]:

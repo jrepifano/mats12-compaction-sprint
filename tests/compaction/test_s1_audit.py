@@ -198,3 +198,25 @@ def test_prepare_and_release_both_take_out_after_the_subcommand(tmp_path):
         finally:
             AU.cmd_prepare, AU.cmd_release = orig
         assert parsed["out"] == "X"
+
+
+def test_final_rows_takes_claims_from_part_a_only():
+    from compaction import s1_analysis as A
+    from compaction import s1_second_look as SL
+
+    claim = {"rid": "r0", "claim_id": "c0", "valid": True, "verdict": SL.CLAIM_VERDICT}
+    files = lambda p: {f"{p}_items_{AU.JUDGE}.jsonl": [], f"{p}_claims_{AU.JUDGE}.jsonl": [claim],
+                       f"{p}_second_look_{AU.JUDGE}.jsonl": []}  # fmt: skip
+
+    def reader_for(part):
+        def reader(name):
+            if name not in files(part):
+                raise FileNotFoundError(name)
+            return files(part)[name]
+
+        return reader
+
+    # Part B claims are never re-checked (no overlay rows) and never drawn: no refusal
+    assert AU.final_rows(reader_for("partB"), "partB") == ([], [])
+    with pytest.raises(A.SecondLookError, match="no second-look row"):
+        AU.final_rows(reader_for("partA"), "partA")
