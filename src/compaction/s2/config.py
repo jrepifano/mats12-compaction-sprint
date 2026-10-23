@@ -2,8 +2,8 @@
 deviation in logs/SPRINT-report.md once the spec is frozen.
 
 Routes follow the sprint plan's pinned providers (20 Oct), as changed during the pilot (23 Oct,
-logs/SPRINT-S2-report.md): DeepSeek V4.1 Flash on DeepSeek's own API, then on Together via
-OpenRouter after that account ran dry; GLM 5.3 Flash on Together and GPT-6 luna on OpenAI, both
+logs/SPRINT-S2-report.md): DeepSeek V4.1 Flash on DeepSeek's own API (briefly on Together via
+OpenRouter while that account was empty); GLM 5.3 Flash on Together and GPT-6 luna on OpenAI, both
 via OpenRouter, pinned; Haiku 5.5 on the Google route via OpenRouter, pinned, with cache markers.
 Every route is pinned with allow_fallbacks false. Prices are USD per million tokens, checked at
 the step-0 smoke (spec, open question Q6).
@@ -77,20 +77,22 @@ class Route:
 
 ROUTES: dict[str, Route] = {
     "deepseek": Route(
-        # DeepSeek's own API (pilot orders 0 and the start of 8) ran out of balance at 20:15Z
-        # on 23 Oct (402) and doesn't auto-top-up; Jacob: don't wait, OpenRouter tops up. Moved
-        # to OpenRouter -> Together, measured the same day: list price = DeepSeek's peak price
-        # (the table below), cache 97-98% from call 2, 4-way burst clean, ~0.4 s per cached
-        # call; effort max accepted (2.0k-2.3k reasoning tokens on the step-0 prompt, against
-        # 1.2k-1.7k at xhigh). Fallback measured: DeepInfra fp8 (~3x slower, ~0.35x price).
-        name="deepseek", model="deepseek/deepseek-v4.1-flash", transport="openrouter",
-        key_env="OPENROUTER_API_KEY", provider_pin="Together",
+        # DeepSeek's own API, as frozen at step 0. It ran out of balance at 20:15Z on 23 Oct
+        # (402) and the route moved to OpenRouter -> Together for ~5 min (order 4's first
+        # attempt only, 13 calls); Jacob then topped the account up and the route came back here,
+        # so every complete DeepSeek run shares one serving setup. Measured fallback if it runs
+        # dry again: OpenRouter -> Together, model deepseek/deepseek-v4.1-flash, effort max
+        # (price = this table, cache 97-98%, burst clean).
+        name="deepseek", model="deepseek-flash", transport="deepseek",
+        key_env="DEEPSEEK_API_KEY",
+        # peak rates (01-04, 06-10 UTC weekdays); off-peak is half. Cache hit 0.003 off-peak.
         prices={"input": 0.30, "output": 1.20, "cache_read": 0.006},
         window=1_000_000, max_output=32_000, bytes_per_token=2.0,
-        reasoning={"reasoning": {"effort": "max"}},
+        # accepted and pinned to match DeepSWE's @max; its reasoning overlapped the default's
+        # on the step-0 prompt (1694-1765 vs 1129-1764 tokens, 3 each; 23 Oct)
+        reasoning={"reasoning_effort": "max"},
         summarizer="pi", deepswe_config="deepseek-v4-flash@max",
-        notes="pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct); "
-              "route: DeepSeek API until 23 Oct 20:15Z, then OpenRouter/Together"),
+        notes="pi pairing: third-party harness, vendor-documented (sprint plan, 20 Oct)"),
     "glm": Route(
         name="glm", model="z-ai/glm-5.3-flash", transport="openrouter",
         # Step-0 smoke (23 Oct): Together returned 429 "rate-limited upstream" on every call at
