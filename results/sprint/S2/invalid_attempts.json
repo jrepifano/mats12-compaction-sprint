@@ -1,0 +1,20 @@
+{
+ "what": "S2 attempts whose sealed outcome rows must be excluded from every analysis (the readout reads this file); later attempts of the same cohort run supersede them",
+ "attempts": [
+  {
+   "run_key": "pilot-01-scriggo-method-declarations-haiku-agents_md-a1",
+   "excluded_utc": "2026-10-23T18:12:38+00:00",
+   "reason": "empty boundary summary: Haiku's cc_prompt summarizer at effort max spent all 20,000 output tokens on reasoning (finish length), so the S, S+R and S+I arms ran from no summary. Fixed: summary calls at effort high; an empty summary now fails the boundary.",
+   "sealed_rows": [
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-F-1.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-F-2.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-S-1.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-S-2.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-SI-1.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-SI-2.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-SR-1.json",
+    "outcome-pilot-01-scriggo-method-declarations-haiku-agents_md-a1-SR-2.json"
+   ]
+  }
+ ]
+}

@@ -30,7 +30,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from compaction import s1_replay as RP
-from compaction.s2.model import ChatModel, Usage
+from compaction.s2.model import ChatModel, ModelError, Usage
 
 POLICIES = ("pi", "codex_local", "cc_prompt", "antigravity")
 INSTRUCTION_PREFIX = "# AGENTS.md instructions for /app"
@@ -150,14 +150,27 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         mt = min(c.max_output_tokens, max_output_cap or c.max_output_tokens)
         requests.append({"label": c.label, "system": c.system, "user": c.user,
                          "max_output_tokens": mt})
-        rep = model.complete([{"role": "system", "content": c.system},
-                              {"role": "user", "content": c.user}], None, mt,
-                             purpose=f"summary:{policy}:{c.label}")
+        try:
+            rep = model.complete([{"role": "system", "content": c.system},
+                                  {"role": "user", "content": c.user}], None, mt,
+                                 purpose=f"summary:{policy}:{c.label}")
+        except ModelError as e:
+            e.cost_usd += sum(u["cost_usd"] or 0.0 for u in usage)  # the earlier calls too
+            raise
         texts[c.label] = _text(rep.message.get("content"))
         u: Usage = rep.usage
         usage.append({"label": c.label, **asdict(u), "cost_usd": rep.cost_total_usd,
                       "finish_reason": rep.finish_reason})
     summary = RP.finish_summary(policy, req, texts)
+    empty = [k for k, t in texts.items() if not t.strip()]
+    if empty or not summary.strip():
+        # A compaction with no summary isn't a boundary (pilot order 3, 23 Oct: the summarizer
+        # spent its output cap on reasoning): fail it, charged, so the run restarts.
+        # Each call is checked: pi's split-turn merge adds headings, so its merged text is
+        # never empty even when a part is (review r1).
+        raise ModelError(f"empty summary from {policy} (empty: {empty}; finish: "
+                         f"{[u['finish_reason'] for u in usage]})",
+                         sum(u["cost_usd"] or 0.0 for u in usage))
 
     kept = list(req.kept_messages)
     kept_idx = [m["_i"] for m in kept if "_i" in m]
@@ -181,6 +194,7 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         body = [{"role": "user", "content": _summary_message(policy, summary, [])}]
         post, sidx = head + body, len(head)
     info = {k: v for k, v in req.info.items() if k not in ("cut",)} | {
+        "truncated": [u["label"] for u in usage if u["finish_reason"] == "length"],
         "prompt_sha256": req.prompt_sha256, "request_sha256": req.request_sha256,
         "policy_version": RP.policy_version(policy) if policy in RP.REPLAY_ARMS else None}
     return Compaction(policy, requests, texts, summary, kept_idx, post, sidx, usage, info)

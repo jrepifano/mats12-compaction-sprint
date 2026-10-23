@@ -413,7 +413,8 @@ class OpenAICompatModel:
             self.client = OpenAI(api_key=key, base_url=BASE_URLS[self.route.transport],
                                  max_retries=0, timeout=self.timeout_s)
 
-    def body(self, messages: list[dict], tools: list[dict] | None, max_tokens: int) -> dict:
+    def body(self, messages: list[dict], tools: list[dict] | None, max_tokens: int, *,
+             purpose: str = "") -> dict:
         r = self.route
         msgs = with_cache_markers(messages) if r.cache_markers else messages
         b: dict = {"model": r.model, "messages": msgs}
@@ -424,7 +425,10 @@ class OpenAICompatModel:
         else:
             b["max_tokens"] = max_tokens
         extra: dict = {}
-        for k, v in r.reasoning.items():
+        reasoning = r.reasoning
+        if purpose.startswith("summary:") and r.summary_reasoning is not None:
+            reasoning = r.summary_reasoning
+        for k, v in reasoning.items():
             if k == "reasoning":
                 extra[k] = v
             else:
@@ -454,7 +458,7 @@ class OpenAICompatModel:
 
     def complete(self, messages: list[dict], tools: list[dict] | None, max_tokens: int, *,
                  purpose: str) -> Reply:
-        body = self.body(messages, tools, max_tokens)
+        body = self.body(messages, tools, max_tokens, purpose=purpose)
         nbytes = len(json.dumps({k: v for k, v in body.items() if k != "extra_body"},
                                 ensure_ascii=False).encode("utf-8"))
         bound = bound_usd(self.route, nbytes, max_tokens)

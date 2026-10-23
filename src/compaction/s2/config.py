@@ -67,6 +67,7 @@ class Route:
     bytes_per_token: float  # for estimating appended text before usage is known
     provider_pin: str | None = None  # OpenRouter provider (allow_fallbacks False)
     reasoning: dict = field(default_factory=dict)  # extra request fields for "max effort"
+    summary_reasoning: dict | None = None  # the summarizer call's, when it differs (else above)
     cache_markers: bool = False  # Anthropic-style cache_control on system + last message
     summarizer: str = "pi"  # the paired vendor summarizer (compact.POLICIES)
     deepswe_config: str | None = None  # the DeepSWE config whose peaks set the threshold
@@ -123,6 +124,11 @@ ROUTES: dict[str, Route] = {
         # "max" is honored: 2138-2580 reasoning tokens vs 793-1057 at "high" (3 each, step-0
         # smoke, 23 Oct); provider cost matched the table (list $0.10/$0.50, $0.01 cached)
         reasoning={"reasoning": {"effort": "max"}},
+        # At max, the cc_prompt summary spent all 20,000 output tokens on reasoning and
+        # returned nothing (pilot order 3, 23 Oct). On that same 133k-token input, medium,
+        # low, off and high each returned a full summary (9.5k-16.8k chars, finish "stop",
+        # ~$0.10); high, the highest that works, is used.
+        summary_reasoning={"reasoning": {"effort": "high"}},
         cache_markers=True, summarizer="cc_prompt", deepswe_config=None),
     "stub": Route(
         name="stub", model="stub", transport="stub", key_env="",

@@ -1880,3 +1880,88 @@ def test_cut_run_handles_several_thresholds_and_reuses_finished_cuts(tmp_path, m
     assert made[0][0] == "explore_t-01-task-luna-chat-a1-t100"
     mod.cut_run(a, [100, 200], M.RunSpend(M.NullSpend(), 1.0), out)
     assert len(made) == 2  # finished cuts are reused, not re-summarized
+
+
+def test_empty_summary_fails_the_boundary_with_its_cost():
+    class Empty(M.StubModel):
+        def complete(self, messages, tools, max_tokens, *, purpose):
+            rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+            if tools is None:  # the summarizer call: all reasoning, no text (order 3)
+                rep.message["content"] = ""
+                rep.finish_reason = "length"
+                rep.usage.cost_usd = rep.cost_total_usd = 0.13
+            return rep
+
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"},
+            {"role": "assistant", "content": "a"}]
+    for policy in ("cc_prompt", "pi", "codex_local"):
+        with pytest.raises(M.ModelError, match="empty summary") as ei:
+            K.compact(policy, msgs, Empty([]), run_id="r", instruction_text=None)
+        n_calls = len(K.RP.ARM_BUILDERS[policy](
+            {"id": "x", "source": "deepswe", "session_id": "r",
+             "source_messages": K.to_record_messages(msgs), "user_turns": [], "summary": "",
+             "post_messages": []}).calls)
+        assert ei.value.cost_usd == pytest.approx(0.13 * n_calls)  # every summary call charged
+
+
+def test_summary_calls_use_the_summary_reasoning():
+    cl, comp = fake_client([response(), response()])
+    m = M.OpenAICompatModel(C.ROUTES["haiku"], M.NullSpend(), client=cl)
+    m.complete([{"role": "user", "content": "u"}], L.TOOLS, 10, purpose="base:1")
+    m.complete([{"role": "user", "content": "u"}], None, 10, purpose="summary:cc_prompt:summary")
+    assert comp.bodies[0]["extra_body"]["reasoning"] == {"effort": "max"}
+    assert comp.bodies[1]["extra_body"]["reasoning"] == {"effort": "high"}
+    for name in ("deepseek", "glm", "luna"):  # unchanged: their summaries worked at max
+        assert C.ROUTES[name].summary_reasoning is None
+
+
+def test_pi_split_turn_with_an_empty_part_fails(monkeypatch):
+    calls = [SimpleNamespace(label="history", system="s", user="u", max_output_tokens=10),
+             SimpleNamespace(label="turn_prefix", system="s", user="u", max_output_tokens=10)]
+    req = SimpleNamespace(calls=calls, kept_messages=[], label="history",
+                          info={"split": True, "has_history": True}, prompt_sha256="",
+                          request_sha256="")
+    monkeypatch.setattr(K.RP, "ARM_BUILDERS", {**K.RP.ARM_BUILDERS, "pi": lambda rec: req})
+
+    class Replies(M.StubModel):
+        texts: tuple = ()
+
+        def complete(self, messages, tools, max_tokens, *, purpose):
+            rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+            rep.message["content"] = self.texts[self.calls_made]
+            self.calls_made += 1
+            rep.usage.cost_usd = rep.cost_total_usd = 0.1
+            return rep
+
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "task"}]
+    for texts in (("", ""), ("History.", ""), ("", "Prefix.")):
+        m = Replies([])
+        m.texts, m.calls_made = texts, 0
+        with pytest.raises(M.ModelError, match="empty summary") as ei:
+            K.compact("pi", msgs, m, run_id="r", instruction_text=None)
+        assert ei.value.cost_usd == pytest.approx(0.2)
+
+
+def test_a_failed_second_summary_call_carries_the_first_calls_cost(monkeypatch):
+    calls = [SimpleNamespace(label="history", system="s", user="u", max_output_tokens=10),
+             SimpleNamespace(label="turn_prefix", system="s", user="u", max_output_tokens=10)]
+    req = SimpleNamespace(calls=calls, kept_messages=[], label="history",
+                          info={"split": True, "has_history": True}, prompt_sha256="",
+                          request_sha256="")
+    monkeypatch.setattr(K.RP, "ARM_BUILDERS", {**K.RP.ARM_BUILDERS, "pi": lambda rec: req})
+
+    class SecondFails(M.StubModel):
+        n: int = 0
+
+        def complete(self, messages, tools, max_tokens, *, purpose):
+            self.n += 1
+            if self.n == 2:
+                raise M.ModelError("boom", 0.05)
+            rep = super().complete(messages, tools, max_tokens, purpose=purpose)
+            rep.usage.cost_usd = rep.cost_total_usd = 0.1
+            return rep
+
+    with pytest.raises(M.ModelError) as ei:
+        K.compact("pi", [{"role": "system", "content": "s"}], SecondFails([]), run_id="r",
+                  instruction_text=None)
+    assert ei.value.cost_usd == pytest.approx(0.15)

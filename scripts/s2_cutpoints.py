@@ -20,6 +20,7 @@ Booked to SPRINT-S2 through compaction.budget; keys from the repo .env.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import json
 import shutil
 import sys
@@ -89,6 +90,11 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
     rules = R.TaskRules(**{k: v for k, v in rules_d.items()
                            if k in R.TaskRules.__dataclass_fields__})
     route = C.Route(**run["plan"]["route"])
+    if "summary_reasoning" not in run["plan"]["route"]:
+        # Runs recorded before Route.summary_reasoning existed: use the current setting for
+        # their model (Haiku's summary at max returns nothing); recorded in each cut's run.json.
+        route = dataclasses.replace(
+            route, summary_reasoning=C.ROUTES[run["plan"]["model"]].summary_reasoning)
     model = OpenAICompatModel(route, spend)
     ctx_by_call = effective_ctx(calls, run.get("script"), route.bytes_per_token)
     peak = max(ctx_by_call) if ctx_by_call else 0
@@ -115,7 +121,8 @@ def cut_run(attempt: Path, thresholds: list[int], spend: RunSpend, out_root: Pat
             (a / "rules.json").write_text(json.dumps(rules_d, indent=1))
             (a / "run.json").write_text(json.dumps(
                 {**run, "run_key": f"{key}-a1", "cohort_key": key, "cut_of": run["run_key"],
-                 "plan": {**run["plan"], "threshold": t}}, indent=1, default=str))
+                 "plan": {**run["plan"], "threshold": t, "route": route.__dict__}},
+                indent=1, default=str))
             (a / "boundary" / "boundary.json").write_text(json.dumps(b, indent=1, default=str))
         rows.append({"cut": key, "threshold": t, "reached": True, "peak": peak,
                      "ctx_at_cut": ctx_at_cut, "post_tokens_est": b["post_tokens_est"],
