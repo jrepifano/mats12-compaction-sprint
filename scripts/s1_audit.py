@@ -21,12 +21,16 @@ outcomes, build the audit page, and release the seal once Jacob has checked it.
    summary it was graded against. No aggregate rate is computed or shown;
 5. writes `bundle.private.json`, `audit.html` and `audit_key.private.json` (mode 600) under
    `--out` (a private root). Publish audit.html as a private Artifact with the `db` capability;
-   Jacob marks each card Correct or Incorrect.
+   Jacob marks each card Correct, Wrong: judge's reading, or Wrong: pipeline problem.
 
 `release` reads Jacob's audit labels (the page's `audit` collection exported with ArtifactData:
 the `out_dir` directory of <id>.json files, or a JSON list or mapping), checks every card is
-marked and the draw matches, and refuses if more than 20% are "incorrect" (the plan: fix and
-rerun, then audit a fresh sample; there is no override: astra audit r2). It writes the validated
+marked and the draw matches, and refuses on any "pipeline" card (a broken card: summary or
+context from another record, garbled or cut text, an item or claim not in the record) or on
+JUDGE_WRONG_REFUSE or more "judge_wrong" cards (Jacob, 23 Oct, spec D15, decided before the
+cards were drawn; it replaces the plan's 20% bar, which the validated precision alone would
+breach about 65% of the time). A refusal means: fix and rerun the affected step, then audit a
+fresh sample; there is no override (astra audit r2). It writes the validated
 labels as one canonical `labels_snapshot.json` and calls `seal.release("S1", ...)` on that file
 and the audit key, with the manifest captured at `prepare`, so any sealed file changed since then
 forces a re-audit (`seal.AuditStale`). The page's draw fingerprint binds that manifest's digest
@@ -59,7 +63,12 @@ LOCKS = (
     ROOT / "data/raw/sprint/s1/labels_val3/score/LOCKED.json",
 )
 REPLAYS = ROOT / "data" / "raw" / "sprint" / "s1" / "replays"
-ISSUE_SHARE = 0.20  # the plan: more than 20% "issue" -> fix, or exclude with a reason
+AUDIT_LABELS = ("correct", "judge_wrong", "pipeline")
+# Spec D15: at the validated precision (lost 0.70, invented 0.62, kept and supported ~0.9 assumed)
+# the 20-card draw expects ~5.3 judge-reading errors; P(>= 10) < 0.02. More means the judge does
+# much worse at scale than on the labels. Any pipeline card refuses.
+JUDGE_WRONG_REFUSE = 10
+AUDIT_N = 20  # the bar above is calibrated for this draw size only (astra audit r3)
 # default draw: (part, kind, final verdict group) -> cards; topped up from the others if short
 PLAN = (
     ("partA", "item", "dropped", 6),
@@ -350,18 +359,19 @@ def audit_labels(path: Path) -> dict[str, dict]:
 
 
 def check_labels(key: Mapping, labels: Mapping[str, Mapping]) -> dict:
-    """Counts, or SystemExit when a card is unmarked or a label is from another draw."""
+    """Card ids per mark, or SystemExit when a card is unmarked (an old two-way "incorrect"
+    counts as unmarked: its reason is unknown) or a label is from another draw."""
     ids = set(key["audit"])
     wrong_draw = sorted(i for i, d in labels.items() if d.get("draw") != key["draw"])
     if wrong_draw:
         raise SystemExit(f"labels from another draw: {wrong_draw[:5]}")
     unmarked = sorted(
-        i for i in ids if (labels.get(i) or {}).get("label") not in ("correct", "incorrect")
+        i for i in ids if (labels.get(i) or {}).get("label") not in AUDIT_LABELS
     )
     if unmarked:
         raise SystemExit(f"{len(unmarked)} of {len(ids)} cards not marked yet: {unmarked[:5]}")
-    issues = sorted(i for i in ids if labels[i]["label"] == "incorrect")
-    return {"n": len(ids), "incorrect": issues, "share": len(issues) / len(ids)}
+    by = {m: sorted(i for i in ids if labels[i]["label"] == m) for m in AUDIT_LABELS[1:]}
+    return {"n": len(ids), **by}
 
 
 SNAPSHOT = "labels_snapshot.json"
@@ -391,18 +401,29 @@ def release_audit(
     key_path = Path(out) / P.AUDIT_KEY_NAME
     key = json.loads(key_path.read_text())
     labels = audit_labels(Path(labels_path))
-    c = check_labels(key, labels)
-    log(f"{c['n']} cards checked, {len(c['incorrect'])} incorrect ({c['share']:.0%})")
-    for i in c["incorrect"]:
-        k = key["audit"][i]
-        log(
-            f"  incorrect: {k['kind']} {k['verdict']} {k['private'].get('part')} "
-            f"{k['private'].get('rid')} | note: {(labels[i].get('note') or '')[:120]}"
-        )
-    if c["share"] > ISSUE_SHARE:  # sprint plan: fix, rerun, then audit a fresh sample
+    if len(key["audit"]) != AUDIT_N:
         raise SystemExit(
-            f"more than {ISSUE_SHARE:.0%} of the audit sample is marked incorrect: fix and rerun "
-            "the affected step, then `prepare` a fresh audit sample (new seed)"
+            f"the audit has {len(key['audit'])} cards; the release bar (spec D15) is calibrated "
+            f"for {AUDIT_N}: `prepare` again with the default --n"
+        )
+    c = check_labels(key, labels)
+    summary = (f"{c['n']} cards, {len(c['judge_wrong'])} judge's reading wrong, "
+               f"{len(c['pipeline'])} pipeline problems")
+    log(f"{summary} checked")
+    for mark in AUDIT_LABELS[1:]:
+        for i in c[mark]:
+            k = key["audit"][i]
+            log(
+                f"  {mark}: {k['kind']} {k['verdict']} {k['private'].get('part')} "
+                f"{k['private'].get('rid')} | note: {(labels[i].get('note') or '')[:120]}"
+            )
+    fix = "fix and rerun the affected step, then `prepare` a fresh audit sample (new seed)"
+    if c["pipeline"]:  # spec D15
+        raise SystemExit(f"{len(c['pipeline'])} card(s) marked as a pipeline problem: {fix}")
+    if len(c["judge_wrong"]) >= JUDGE_WRONG_REFUSE:
+        raise SystemExit(
+            f"{len(c['judge_wrong'])} of {c['n']} cards wrong on the judge's reading "
+            f"(refuse at {JUDGE_WRONG_REFUSE}; the validated precision expects ~5): {fix}"
         )
     snap = write_snapshot(Path(out), key, labels)
     rec = seal.release(
@@ -410,7 +431,7 @@ def release_audit(
         [snap, key_path],
         by=by,
         manifest=key["audit_manifest"],
-        note=note or f"audit {key['draw']}: {c['n']} cards, {len(c['incorrect'])} incorrect",
+        note=note or f"audit {key['draw']}: {summary}",
         root=root,
     )
     log(
@@ -430,7 +451,7 @@ def main(argv: list[str] | None = None) -> None:
     common.add_argument("--out", default=str(OUT), help="audit directory (private root)")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("prepare", parents=[common])
-    p.add_argument("--n", type=int, default=20)
+    p.add_argument("--n", type=int, default=AUDIT_N)
     p.add_argument("--seed", type=int, default=S1_SEED)
     p.add_argument("--locks", nargs="+", default=[str(x) for x in LOCKS])
     r = sub.add_parser("release", parents=[common])

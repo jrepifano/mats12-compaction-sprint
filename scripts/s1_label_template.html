@@ -155,7 +155,7 @@ const COLL = DATA.collections;
 const CHOICES = {
   item: [["kept", "Kept", "ok"], ["dropped", "Dropped", "bad"], ["misstated", "Misstated", "maybe"], ["not_an_item", "Not an item", "none"]],
   claim: [["supported", "Supported", "ok"], ["contradicted", "Contradicted", "bad"], ["unsupported", "Unsupported", "maybe"], ["cant_tell", "Can't tell", "none"]],
-  audit: [["correct", "Correct", "ok"], ["incorrect", "Incorrect", "bad"]],
+  audit: [["correct", "Correct", "ok"], ["judge_wrong", "Wrong: judge's reading", "maybe"], ["pipeline", "Wrong: pipeline problem", "bad"]],
 };
 const LEGEND = { item: "Did the summary keep this item?", claim: "Does the history support this claim?", audit: "Is the judge's verdict right?" };
 const ALL = { labels: DATA.units, gold: DATA.gold, audit: DATA.audit };
@@ -477,7 +477,7 @@ function renderGold() {
 /*<!--TAB:audit-->*/function renderAudit() {
   const el = document.getElementById("sheets-audit");
   if (!DATA.audit.length) { el.innerHTML = `<div class="empty">The audit isn't ready yet. It appears here after the main run, before sealed results are released.</div>`; return; }
-  el.innerHTML = DATA.audit.map((a, i) => `
+  el.innerHTML = `<div class="empty">Is the judge's verdict right? <b>Wrong: judge's reading</b> means the card is intact but you read it differently (expected now and then). <b>Wrong: pipeline problem</b> means the card itself is broken: the summary or context belongs to another record, the text is garbled or cut, or the item or claim isn't in this record at all.</div>` + DATA.audit.map((a, i) => `
     <article class="sheet" id="s-${a.id}">
       <header><span class="tag">${i + 1} / ${DATA.audit.length} · ${esc(a.kind)} · judge verdict: ${esc(a.verdict)}</span><span class="state" id="st-${a.id}">not checked</span></header>
       <div><p class="label">${a.kind === "claim" ? "Claim" : "Item"}</p><p class="q">${esc(a.text)}</p></div>

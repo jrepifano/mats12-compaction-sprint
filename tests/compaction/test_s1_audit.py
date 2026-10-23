@@ -57,14 +57,17 @@ def test_draw_is_seeded_follows_the_plan_and_tops_up():
     assert len({id(r) for _, r in a}) == 20  # no row twice
 
 
-def test_check_labels_refuses_unmarked_and_other_draws_and_counts_issues():
+def test_check_labels_refuses_unmarked_and_other_draws_and_counts_marks():
     key = {"draw": "d1", "audit": {"a1": {}, "a2": {}, "a3": {}, "a4": {}, "a5": {}}}
     lab = {i: {"label": "correct", "draw": "d1"} for i in key["audit"]}
-    lab["a2"] = {"label": "incorrect", "draw": "d1"}
+    lab["a2"] = {"label": "judge_wrong", "draw": "d1"}
+    lab["a4"] = {"label": "pipeline", "draw": "d1"}
     c = AU.check_labels(key, lab)
-    assert c["n"] == 5 and c["incorrect"] == ["a2"] and c["share"] == pytest.approx(0.2)
+    assert c["n"] == 5 and c["judge_wrong"] == ["a2"] and c["pipeline"] == ["a4"]
     with pytest.raises(SystemExit, match="not marked"):
         AU.check_labels(key, {k: v for k, v in lab.items() if k != "a5"})
+    with pytest.raises(SystemExit, match="not marked"):  # the old two-way mark has no reason
+        AU.check_labels(key, lab | {"a1": {"label": "incorrect", "draw": "d1"}})
     with pytest.raises(SystemExit, match="another draw"):
         AU.check_labels(key, lab | {"a1": {"label": "correct", "draw": "old"}})
 
@@ -115,11 +118,11 @@ def test_draw_covers_the_primary_arms_and_both_prefix_sizes(seed):
     assert sizes == {256_000, 512_000}
 
 
-def _cards(text="x"):
+def _cards(text="x", n=3):
     return [
         {"kind": "item", "verdict": "dropped", "text": f"{text}{i}", "context": "c", "summary": "s",
          "private": {"part": "partA", "rid": f"r{i}"}}
-        for i in range(3)
+        for i in range(n)
     ]  # fmt: skip
 
 
@@ -161,11 +164,20 @@ def test_release_from_a_directory_export_end_to_end(tmp_path, monkeypatch):
     monkeypatch.setenv("SPRINT_RESULTS_ROOT", str(root))
     seal.write("S1", "partA_items_haiku-max.jsonl", [{"a": 1}], root=root)
     out, key = _audit(tmp_path, root, _cards())
+    _export(out / "db" / "audit", key, ["correct"] * 3)
+    with pytest.raises(SystemExit, match="calibrated for 20"):  # the bar fits 20 cards only
+        AU.main(["release", "--out", str(out), "--labels", str(out / "db" / "audit")])
+    out, key = _audit(tmp_path, root, _cards(n=20))
     export = out / "db" / "audit"
-    _export(export, key, ["incorrect", "incorrect", "correct"])
-    with pytest.raises(SystemExit, match="fresh audit sample"):  # >20% incorrect: no override
+    n_refuse = AU.JUDGE_WRONG_REFUSE
+    _export(export, key, ["correct"] * 19 + ["pipeline"])
+    with pytest.raises(SystemExit, match="pipeline problem"):  # any broken card: no override
         AU.main(["release", "--out", str(out), "--labels", str(export)])
-    _export(export, key, ["correct", "correct", "correct"])
+    _export(export, key, ["judge_wrong"] * n_refuse + ["correct"] * (20 - n_refuse))
+    with pytest.raises(SystemExit, match="fresh audit sample"):
+        AU.main(["release", "--out", str(out), "--labels", str(export)])
+    # judge-reading errors at the validated precision (~5 of 20) release
+    _export(export, key, ["judge_wrong"] * (n_refuse - 1) + ["correct"] * (21 - n_refuse))
     AU.main(["release", "--out", str(out), "--labels", str(export)])
     rec = seal.verify("S1", root=root)
     snap = out / AU.SNAPSHOT
