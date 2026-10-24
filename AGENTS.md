@@ -76,7 +76,7 @@ More documents may be added; when they are, read them and update the proposals d
 - **One Orca terminal per probe** (Jacob, 2026-10-11; moved from herdr to Orca on 2026-10-20), so he can check on or review any probe at any time. Each probe's agent runs in a terminal of the probe's own worktree in Orca (repo "mats12_neel_exploratory"), titled "P<NN> <slug>", with the worktree's card renamed to the same label. It is a Claude Code session named `p<nn>` or a Codex session; see "Launching probe agents".
   - The brief points at the probe's committed plan and states that the go-ahead was given. The agent then builds, runs, follows up and finishes on its own.
   - The launching session tracks the probes with `scripts/probe_status.py` (which shows each probe's terminal handle), `orca worktree ps --json` (each agent's state) and `orca terminal read --terminal <handle> --json`, and doesn't do their work itself.
-  - Use plain terminals, not Orca's supervised orchestration workers (`orca orchestration worker-start`). A probe is a handoff: no coordinator has to stay up to answer its mailbox or release it. And `worker-start` can't pass `--permission-mode` or the Codex sandbox flags.
+  - Use plain terminals, not Orca's supervised orchestration workers (`orca orchestration worker-start`). A probe is a handoff: no coordinator has to stay up to answer its mailbox or release it. Sub-agents that a session supervises (build units, reviews, readouts) are different: they use orchestration, as described under "Supervised sub-agents".
 - **Finish with the `finish-experiment` skill**, read for the probe tier:
   - The report is `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
   - The run log is `probes/P<NN>-<slug>/log.md`.
@@ -89,21 +89,25 @@ More documents may be added; when they are, read them and update the proposals d
 
 ### Launching probe agents
 
-The probe's worktree already exists when the go-ahead comes: its plan was written there. The launching session opens a terminal in that worktree with the agent running, labels it, then sends the brief once the agent is ready (Jacob, 2026-10-20):
+**Read Orca's own skills before driving Orca** (Jacob, 2026-10-24): `orca skills get orca-cli` for terminals and worktrees, and `orca skills get orchestration` for supervised workers (its `--reference references/<file>.md` documents cover the details). They ship with the installed Orca, so they track its version. Check a command's `--help` before relying on a flag this file names, and record what you checked.
+
+The probe's worktree already exists when the go-ahead comes: its plan was written there. The launching session opens a terminal with the agent running in that worktree, labels it, then sends the brief once the agent is ready (Jacob, 2026-10-20). **Create the terminal under the main checkout and `cd` into the worktree** (2026-10-24, Orca 1.4.233). A terminal created with `--worktree path:<.claude/worktrees/...>` returns `ok` and "visible", but within seconds `terminal list` shows it `orphaned: true` with a `pty:` tab id. The agent runs, but Jacob sees no tab, even with `--focus`. Terminals under the main checkout stay attached. After every launch, check `orphaned` in `orca terminal list --json`.
 
 ```bash
 ORCA=/Applications/Orca.app/Contents/Resources/bin/orca   # plain `orca` inside Orca terminals
-WT=/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p<nn>-<slug>
+M=/Users/jacob/Documents/GitHub/mats12_neel_exploratory
+WT=$M/.claude/worktrees/p<nn>-<slug>
 # Claude Code agent:
-$ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
-  --command "claude --permission-mode auto -n p<nn>" --json     # note result's terminal handle
+$ORCA terminal create --worktree "path:$M" --title "P<NN> <slug>" \
+  --command "cd $WT && claude --permission-mode auto -n p<nn>" --json     # note result's terminal handle
 # or a Codex agent:
-$ORCA terminal create --worktree "path:$WT" --title "P<NN> <slug>" \
-  --command "codex --approve-for-me -c sandbox_workspace_write.network_access=true --add-dir $HOME/.cache/uv --add-dir $HOME/.cache/huggingface" --json
-$ORCA worktree set --worktree "path:$WT" --display-name "P<NN> <slug>" --json
+$ORCA terminal create --worktree "path:$M" --title "P<NN> <slug>" \
+  --command "cd $WT && codex --approve-for-me -c sandbox_workspace_write.network_access=true --add-dir $HOME/.cache/uv --add-dir $HOME/.cache/huggingface" --json
 $ORCA terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000 --json \
   && $ORCA terminal send --terminal <handle> --text "<brief>" --enter --wait-submit 30 --json
 ```
+
+- **Codex update prompt:** Codex may open on an "Update available" menu, which swallows typed text. Read the screen first, and send Escape (`--text $'\e'`) to skip it. Don't update the toolchain mid-run.
 
 - **Send only after a successful wait.** `terminal wait` exits 1 when the agent isn't ready in time; then read the terminal (`orca terminal read --terminal <handle> --screen --json`) to see why before sending anything.
 
@@ -117,7 +121,7 @@ $ORCA terminal wait --terminal <handle> --for tui-idle --timeout-ms 120000 --jso
   - Checked: `orca worktree show --worktree path:<.claude/worktrees/...>` resolves our existing git worktrees, so Orca doesn't have to create them, and the path convention stays.
   - Checked: the JSON shapes of `terminal list` and `worktree ps`, and that a `ps` pane key is the terminal's `<tabId>:<leafId>`.
   - Not checked: no terminal was created, no agent launched and no brief sent, because other agents were running in Orca. The first launch is the live check: confirm the agent starts in the worktree, the title and display name stick, and `probe_status.py` shows the agent's state.
-  - Open: `orca worktree list` and `ps` show only the main checkout, not the `.claude/worktrees/` checkouts, although the repo's non-Orca worktree visibility is `show`. They may appear once they have a terminal. Until then `probe_status.py` finds a probe's terminal by its worktree path, or failing that by its "P<NN> " title.
+  - Found 2026-10-24 (Orca 1.4.233): `orca worktree list` and `ps` show only the main checkout, not the `.claude/worktrees/` checkouts, and terminals created in those checkouts are orphaned (above). So probe terminals live under the main checkout's card, found by their "P<NN> " title; `probe_status.py` matches the title as its fallback. `worktree set --display-name` on a `.claude/worktrees` checkout has no visible effect.
 
 How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exec` and the same flags; no interactive session has been launched under a terminal manager yet; 0.162.1 is installed as of 2026-10-20, and its `--help` still lists `--approve-for-me` and `--add-dir`):
 - `--approve-for-me` uses the workspace-write sandbox and sends approval requests to automatic review. It doesn't touch `~/.codex/config.toml`.
@@ -128,6 +132,34 @@ How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exe
 - **Fallback, Jacob's call only:** `--dangerously-bypass-approvals-and-sandbox` (no sandbox at all), if the flags above prove too tight in practice.
 
 The brief is the same for both tools: the plan path, that the go-ahead was given, the cap, and "finish with the finish-experiment skill". A Codex agent is also told which steps need a Claude session (none for a normal probe).
+
+### Supervised sub-agents (Orca orchestration)
+
+**When:** a session farms out work it will integrate itself, such as build units, reviews, readouts or labelling-page builds, and wants each worker visible to Jacob in its own tab (Jacob, 2026-10-24). Probes are handoffs and keep the plain-terminal launch above.
+
+**Why not plain terminals for this:** on 2026-10-24 the sub-agents didn't know who their coordinator was, so they couldn't report back. The coordinator's watchers also scraped the screen for "done" marker words and fired early twice. Orchestration fixes both. Each worker gets an injected preamble that names the coordinator, its task and dispatch ids, and the exact `ask` command for blocking questions. It ends with exactly one `worker_done` with an explicit outcome, which the coordinator waits on directly.
+
+**Recipe** (tested 2026-10-24, Orca 1.4.233, with a Claude Code worker and a Codex gpt-6-astra worker, both $0):
+1. Read `orca skills get orchestration` (the task-spec contract and completion accounting). The coordinator must itself run in an Orca terminal, since `run-create` records its handle.
+2. `ORCA orchestration run-create --objective "<objective>" --json`, once per batch of related work.
+3. Create each worker's terminal **with our own flags**, under the main checkout with a `cd` (as for probes). `worker-start` alone can't pass `--permission-mode auto` or the Codex sandbox flags.
+4. Wait for `tui-idle`, then hand the terminal to the Run: `ORCA orchestration worker-start --spec "<spec>" --task-title "<title>" --terminal <handle> --worktree "path:$M" --run <run_id> --json`. It exits 0 only when the turn started.
+   - **The spec must be self-contained:** target, change, constraints, ownership (the files it may edit; no commits, no paid calls unless approved) and observable acceptance.
+   - Put long briefs in a file and point the spec at it.
+5. Block on events, don't scrape screens: `ORCA orchestration check --wait --types "worker_done,escalation,question" --timeout-ms 900000 --run <run_id> --json`. Run it in the background so the session wakes on the event.
+   - Answer questions with `orchestration reply --id <msg> --body "<answer>"`.
+   - Acknowledge each delivery with `check --ack <delivery_id>` after processing it.
+6. On each accepted `worker_done`, do exactly one: reuse the terminal for the next dispatch, `worker-retain`, or `worker-release`.
+   - Release leaves a terminal we created ourselves in place ("retained, external_terminal"), so then close it with `terminal close`.
+   - Finish when `worker-list --run <run_id> --terminal-state reclaimable` returns none.
+
+What the test showed:
+- The tab stayed attached.
+- Auto mode stayed on.
+- A Codex worker's sandbox could reach Orca's local socket for `ask` and `worker_done`.
+- Both workers' `ask` round-trip and `worker_done` (outcome succeeded) arrived through `check --wait`.
+
+Claude workers can also reach the coordinator directly with SendMessage. Give them the coordinator's session name, which `ListAgents` prints. Use orchestration's events for completion, though.
 
 ### Running many probes at once (10–20 agents)
 
