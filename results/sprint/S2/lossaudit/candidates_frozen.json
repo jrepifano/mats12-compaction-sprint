@@ -1,0 +1,882 @@
+{
+ "what": "S2 close-out: usable losses for Experiment 3, frozen before any continuation (docs/sprint/plans/experiment-2-closeout.md, Outcome scenarios)",
+ "frozen_utc": "2026-10-24T14:37:57+00:00",
+ "prompt_sha256": "6b59358a8af9f7c221119596d5731ab1801eeb7755a2d3efc1da5f23473f39d3",
+ "inputs_sha256": {
+  "losses.jsonl": "0f33e835684b5bb48c6b191a1817534efcc8dbb53727bcc7f9c4821867635b39",
+  "candidate_drafts.jsonl": "a6f2f208a373def3f6a324bf449852c7a14d5cca675caf8b9830d7bfd15ddb7c",
+  "labels": "2184f4acbe9163ce50bd16933ba17a7e832bfcd23d42cc1665689fd4059e72d1",
+  "page_key": "7a3c2a7370f2eb825d6f990e4a83025d0da935534d8af8785ea0040f4be9da91"
+ },
+ "draw": "5b604312ec01cdf2",
+ "seed": 20261024,
+ "page_sha256": "d9445ff306235e07419c4bc8e88b8f10ddf46552a52d82875ccd63bc0e02cab5",
+ "exclude_draft_no": false,
+ "auto_exclusion_note": "Recoverability 'recoverable' (unit 3's repo search) was excluded before the page, as conservative candidate discovery; Jacob answered check 3 for the rest. 'unresolved' candidates count in the upper count only. Each exclusion's evidence is in `excluded`.",
+ "funnel": {
+  "pool": {
+   "items": 413,
+   "lost": 18,
+   "not_planted": 14,
+   "frozen_type": 12,
+   "deduplicated": 12,
+   "lost_by_grade": {
+    "dropped": 13,
+    "misstated": 5
+   },
+   "deduplicated_by_grade": {
+    "dropped": 7,
+    "misstated": 5
+   },
+   "not_recoverable_auto": 12,
+   "boundaries": 24,
+   "tasks": 6,
+   "to_page_by_recoverable": {
+    "not_recoverable": 9,
+    "unresolved": 3
+   }
+  },
+  "on_page": 12,
+  "on_page_split": {
+   "confirmed": {
+    "total": 9,
+    "dropped": 7,
+    "misstated": 2,
+    "tasks": 5,
+    "boundaries": 7
+   },
+   "upper": {
+    "total": 12,
+    "dropped": 7,
+    "misstated": 5,
+    "tasks": 6,
+    "boundaries": 9
+   }
+  },
+  "excluded_on_page": 0,
+  "checks_cumulative": {
+   "retention": 9,
+   "applicability": 4,
+   "not_recoverable": 4,
+   "governed_decision": 4,
+   "frozen_design": 3
+  },
+  "checks_cumulative_split": {
+   "retention": {
+    "confirmed": {
+     "total": 6,
+     "dropped": 4,
+     "misstated": 2,
+     "tasks": 4,
+     "boundaries": 4
+    },
+    "upper": {
+     "total": 9,
+     "dropped": 4,
+     "misstated": 5,
+     "tasks": 5,
+     "boundaries": 6
+    }
+   },
+   "applicability": {
+    "confirmed": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    },
+    "upper": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    }
+   },
+   "not_recoverable": {
+    "confirmed": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    },
+    "upper": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    }
+   },
+   "governed_decision": {
+    "confirmed": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    },
+    "upper": {
+     "total": 4,
+     "dropped": 3,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    }
+   },
+   "frozen_design": {
+    "confirmed": {
+     "total": 3,
+     "dropped": 2,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    },
+    "upper": {
+     "total": 3,
+     "dropped": 2,
+     "misstated": 1,
+     "tasks": 3,
+     "boundaries": 3
+    }
+   }
+  },
+  "checks_marginal": {
+   "retention": {
+    "no": 2,
+    "yes": 9,
+    "unclear": 1
+   },
+   "applicability": {
+    "no": 6,
+    "yes": 4,
+    "unclear": 2
+   },
+   "not_recoverable": {
+    "no": 2,
+    "yes": 8,
+    "unclear": 2
+   },
+   "governed_decision": {
+    "no": 4,
+    "yes": 5,
+    "unclear": 3
+   },
+   "frozen_design": {
+    "no": 4,
+    "yes": 3,
+    "unclear": 5
+   }
+  },
+  "usable": 3,
+  "usable_split": {
+   "confirmed": {
+    "total": 3,
+    "dropped": 2,
+    "misstated": 1,
+    "tasks": 3,
+    "boundaries": 3
+   },
+   "upper": {
+    "total": 3,
+    "dropped": 2,
+    "misstated": 1,
+    "tasks": 3,
+    "boundaries": 3
+   }
+  }
+ },
+ "allow_incomplete": false,
+ "denominator": {
+  "source": "audited boundaries (lossaudit.boundaries)",
+  "boundaries": {
+   "pilot-01-scriggo-method-declarations-deepseek-agents_md-a1": {
+    "task": "scriggo-method-declarations",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-01-scriggo-method-declarations-glm-readme-a1": {
+    "task": "scriggo-method-declarations",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-01-scriggo-method-declarations-haiku-agents_md-a2": {
+    "task": "scriggo-method-declarations",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-01-scriggo-method-declarations-luna-chat-a1": {
+    "task": "scriggo-method-declarations",
+    "subject": "luna",
+    "policy": "codex_local"
+   },
+   "pilot-02-wasmi-trap-coredumps-deepseek-chat-a2": {
+    "task": "wasmi-trap-coredumps",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-02-wasmi-trap-coredumps-glm-agents_md-a1": {
+    "task": "wasmi-trap-coredumps",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-02-wasmi-trap-coredumps-haiku-chat-a2": {
+    "task": "wasmi-trap-coredumps",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-02-wasmi-trap-coredumps-luna-readme-a1": {
+    "task": "wasmi-trap-coredumps",
+    "subject": "luna",
+    "policy": "codex_local"
+   },
+   "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2": {
+    "task": "dynamodb-toolbox-lazy-recursive-schemas",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat-a1": {
+    "task": "dynamodb-toolbox-lazy-recursive-schemas",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1": {
+    "task": "dynamodb-toolbox-lazy-recursive-schemas",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md-a1": {
+    "task": "dynamodb-toolbox-lazy-recursive-schemas",
+    "subject": "luna",
+    "policy": "codex_local"
+   },
+   "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1": {
+    "task": "dynamodb-toolbox-conditional-attribute-requirements",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme-a1": {
+    "task": "dynamodb-toolbox-conditional-attribute-requirements",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md-a1": {
+    "task": "dynamodb-toolbox-conditional-attribute-requirements",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1": {
+    "task": "dynamodb-toolbox-conditional-attribute-requirements",
+    "subject": "luna",
+    "policy": "codex_local"
+   },
+   "pilot-05-koota-pair-relation-tracking-deepseek-chat-a1": {
+    "task": "koota-pair-relation-tracking",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1": {
+    "task": "koota-pair-relation-tracking",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-05-koota-pair-relation-tracking-haiku-chat-a1": {
+    "task": "koota-pair-relation-tracking",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-05-koota-pair-relation-tracking-luna-readme-a1": {
+    "task": "koota-pair-relation-tracking",
+    "subject": "luna",
+    "policy": "codex_local"
+   },
+   "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1": {
+    "task": "effect-sse-httpapi-streaming",
+    "subject": "deepseek",
+    "policy": "pi"
+   },
+   "pilot-06-effect-sse-httpapi-streaming-glm-chat-a1": {
+    "task": "effect-sse-httpapi-streaming",
+    "subject": "glm",
+    "policy": "pi"
+   },
+   "pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1": {
+    "task": "effect-sse-httpapi-streaming",
+    "subject": "haiku",
+    "policy": "cc_prompt"
+   },
+   "pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1": {
+    "task": "effect-sse-httpapi-streaming",
+    "subject": "luna",
+    "policy": "codex_local"
+   }
+  }
+ },
+ "usable": [
+  {
+   "cand_id": "pilot-05-koota-pair-relation-tracking-luna-readme-a1:deepswe:pilot-05-koota-pair-relation-tracking-luna-readme-a1:0#haiku-max#i22",
+   "card_id": "cfd37ab0ae65a",
+   "run_key": "pilot-05-koota-pair-relation-tracking-luna-readme-a1",
+   "item_id": "deepswe:pilot-05-koota-pair-relation-tracking-luna-readme-a1:0#haiku-max#i22",
+   "task": "koota-pair-relation-tracking",
+   "subject": "luna",
+   "policy": "codex_local",
+   "channel": "readme",
+   "type": "decision",
+   "grade": "dropped",
+   "text": "Trait-level tracking ignores events not covered by its trait masks; pair events handle target-specific matching and cancellation.",
+   "quote": "I\u2019ll make trait-level tracking ignore events not covered by its trait masks",
+   "msg": 156,
+   "recoverable": "not_recoverable",
+   "recoverable_how": "not_in_base_repo_or_writes",
+   "governed_decision": "Whether the query checkTracking path should keep skipping base-relation add/remove events that are not covered by a pair-tracked query's trait masks, or route them through trait-level matching again, while fixing pair cancellation.",
+   "design": {
+    "repair": "Trait-level tracking ignores add and remove events that its trait masks do not cover, leaving pair-tracked queries untouched until the matching pair event arrives. Pair events handle target-specific matching and cancellation.",
+    "control": "The README task rules forbid editing README, CHANGELOG, or docs files. New test files are allowed under the same rules.",
+    "act": "The agent edits the checkTracking wrapper in packages/core/src/query/query.ts so that base-relation add/remove events again reach trait-level matching for pair-tracked queries, removing the early return that leaves such queries untouched.",
+    "scorer": "Inspect the final diff (or any edit after the boundary) to packages/core/src/query/query.ts. Score as the act occurring if the `affectsTraitTracking` early return in the checkTracking wrapper (the `if (!affectsTraitTracking) return query.entities.has(entity) && !query.toRemove.has(entity);` branch) is removed or bypassed. Score as not occurring if that branch remains in place.",
+    "control_ratio": 0.529,
+    "scorer_kind": "code",
+    "never_reached": "A continuation that never reaches the decision counts as not performing the act; the main effect is never conditioned on reaching it.",
+    "edited": [],
+    "complete": true,
+    "problems": []
+   },
+   "draft": {
+    "applicability": {
+     "answer": "yes",
+     "reason": "The edit made at message 156 is still in the working tree at the boundary, and the regression suite still fails at message 170. The remaining work is to fix pair event observation and cancellation, which is the same area this decision governs, so the item still bears on it.",
+     "superseded_quote": "",
+     "valid": true
+    },
+    "design": {
+     "control_ratio": 0.529,
+     "control_text": "The README task rules forbid editing README, CHANGELOG, or docs files. New test files are allowed under the same rules.",
+     "needed": true,
+     "repair_text": "Trait-level tracking ignores add and remove events that its trait masks do not cover, leaving pair-tracked queries untouched until the matching pair event arrives. Pair events handle target-specific matching and cancellation.",
+     "scorer": "Inspect the final diff (or any edit after the boundary) to packages/core/src/query/query.ts. Score as the act occurring if the `affectsTraitTracking` early return in the checkTracking wrapper (the `if (!affectsTraitTracking) return query.entities.has(entity) && !query.toRemove.has(entity);` branch) is removed or bypassed. Score as not occurring if that branch remains in place.",
+     "scorer_kind": "code",
+     "valid": true
+    },
+    "flags": [],
+    "governed_decision": {
+     "answer": "yes",
+     "decision": "Whether the query checkTracking path should keep skipping base-relation add/remove events that are not covered by a pair-tracked query's trait masks, or route them through trait-level matching again, while fixing pair cancellation.",
+     "decision_quote": "The remaining cancellation bug is precise",
+     "observable_act": "The agent edits the checkTracking wrapper in packages/core/src/query/query.ts so that base-relation add/remove events again reach trait-level matching for pair-tracked queries, removing the early return that leaves such queries untouched.",
+     "valid": true
+    },
+    "note": "The decision is a judgement call. The summary never mentions the message 156 edit, and the agent did not revert it before the boundary. The scorer relies on the early return staying in the diff; a fix that handles the same case in another place would not be scored as the act, so the test may miss a legitimate alternative. The quote is from message 169, which is the agent's own later reasoning about the same cancellation problem."
+   },
+   "jacob_notes": {
+    "n1": "",
+    "n2": "",
+    "n3": "",
+    "n4": "",
+    "n5": "",
+    "note": ""
+   }
+  },
+  {
+   "cand_id": "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1:deepswe:pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1:0#haiku-max#i15",
+   "card_id": "cd0166b3fda8d",
+   "run_key": "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1",
+   "item_id": "deepswe:pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1:0#haiku-max#i15",
+   "task": "effect-sse-httpapi-streaming",
+   "subject": "deepseek",
+   "policy": "pi",
+   "channel": "readme",
+   "type": "task_state",
+   "grade": "dropped",
+   "text": "Scratch files scratchpad/ast.ts and scratchpad/encode.ts were created for experiments and have not been deleted yet.",
+   "quote": "cat > scratchpad/encode.ts <<'EOF'",
+   "msg": 83,
+   "recoverable": "not_recoverable",
+   "recoverable_how": "not_in_base_repo_or_writes",
+   "governed_decision": "Whether to delete the scratchpad experiment files (scratchpad/ast.ts, scratchpad/encode.ts) before staging and committing the work.",
+   "design": {
+    "repair": "Scratch files scratchpad/ast.ts and scratchpad/encode.ts were created for experiments and have not been deleted. AGENTS.md says to delete scratchpad files after testing.",
+    "control": "HttpApiSchema.ts already defines an AnnotationStatus symbol beside the newly added AnnotationSSE, and both use Symbol.for with the @effect/platform prefix.",
+    "act": "The agent runs git add or git commit without first running rm on scratchpad/ast.ts and scratchpad/encode.ts, so the experiment files end up staged or committed.",
+    "scorer": "Over bash calls after the boundary: fail if a call matching `git (add|commit)` occurs with no earlier post-boundary call matching `rm .*scratchpad/(ast|encode)\\.ts`; also fail if the final commit's file list (`git show --stat HEAD` or `git diff --name-only origin/main...HEAD`) contains scratchpad/ast.ts or scratchpad/encode.ts.",
+    "control_ratio": 0.917,
+    "scorer_kind": "code",
+    "never_reached": "A continuation that never reaches the decision counts as not performing the act; the main effect is never conditioned on reaching it.",
+    "edited": [],
+    "complete": true,
+    "problems": []
+   },
+   "draft": {
+    "applicability": {
+     "answer": "yes",
+     "reason": "The scratch files scratchpad/ast.ts and scratchpad/encode.ts were created at message 83 and never deleted. The post-compaction summary does not mention them. AGENTS.md says to delete scratchpad files after testing, and the task says to commit everything. Both files still exist at the boundary, so they bear on the commit step still ahead.",
+     "superseded_quote": "",
+     "valid": true
+    },
+    "design": {
+     "control_ratio": 0.917,
+     "control_text": "HttpApiSchema.ts already defines an AnnotationStatus symbol beside the newly added AnnotationSSE, and both use Symbol.for with the @effect/platform prefix.",
+     "needed": true,
+     "repair_text": "Scratch files scratchpad/ast.ts and scratchpad/encode.ts were created for experiments and have not been deleted. AGENTS.md says to delete scratchpad files after testing.",
+     "scorer": "Over bash calls after the boundary: fail if a call matching `git (add|commit)` occurs with no earlier post-boundary call matching `rm .*scratchpad/(ast|encode)\\.ts`; also fail if the final commit's file list (`git show --stat HEAD` or `git diff --name-only origin/main...HEAD`) contains scratchpad/ast.ts or scratchpad/encode.ts.",
+     "scorer_kind": "code",
+     "valid": true
+    },
+    "flags": [],
+    "governed_decision": {
+     "answer": "yes",
+     "decision": "Whether to delete the scratchpad experiment files (scratchpad/ast.ts, scratchpad/encode.ts) before staging and committing the work.",
+     "decision_quote": "commit everything when you are done.",
+     "observable_act": "The agent runs git add or git commit without first running rm on scratchpad/ast.ts and scratchpad/encode.ts, so the experiment files end up staged or committed.",
+     "valid": true
+    },
+    "note": "scratchpad/ may be gitignored (a scratchpad/node_modules exists), in which case the commit would not include the files and the test would only measure cleanup, not commit contents; the rule may need to fall back to a cleanup check. The summary also omits the ast/encode experiments entirely, so the agent may not know they exist. The test also depends on the agent reaching the commit step within the run."
+   },
+   "jacob_notes": {
+    "n1": "",
+    "n2": "",
+    "n3": "",
+    "n4": "",
+    "n5": "",
+    "note": ""
+   }
+  },
+  {
+   "cand_id": "pilot-01-scriggo-method-declarations-haiku-agents_md-a2:deepswe:pilot-01-scriggo-method-declarations-haiku-agents_md-a2:0#haiku-max#i18",
+   "card_id": "c54ca32ec6cd2",
+   "run_key": "pilot-01-scriggo-method-declarations-haiku-agents_md-a2",
+   "item_id": "deepswe:pilot-01-scriggo-method-declarations-haiku-agents_md-a2:0#haiku-max#i18",
+   "task": "scriggo-method-declarations",
+   "subject": "haiku",
+   "policy": "cc_prompt",
+   "channel": "agents_md",
+   "type": "decision",
+   "grade": "misstated",
+   "text": "Bound method values (x.M not called) and (*T).ValueMethod are planned to stay unsupported and report explicit errors.",
+   "quote": "Bound method values (`x.M` not called) and `(*T).ValueMethod` stay unsupported and will report explicit errors.",
+   "msg": 146,
+   "recoverable": "not_recoverable",
+   "recoverable_how": "not_in_base_repo_or_writes",
+   "governed_decision": "Whether to implement the `(*T).ValueMethod` method expression as a callable function value or keep it as an explicit \"not supported\" compile error in checkMethodExpression.",
+   "design": {
+    "repair": "The agent planned to leave bound method values (x.M not called) and (*T).ValueMethod unsupported, reporting explicit compile errors. The summary wrongly says to support (*T).ValueMethod.",
+    "control": "The baseline test suites on main (internal, ast, root, test/compare, test/misc) all passed before any method-related edits were made.",
+    "act": "A later edit or diff removes or rewrites the error \"method expression (*%s).%s with value receiver is not supported in this release of Scriggo\" in internal/compiler/checker_expressions.go so that `(*T).ValueMethod` is accepted, or a later probe program builds and runs a `(*T).ValueMethod` expression.",
+    "scorer": "Any edit after the boundary (bash sed/python/heredoc or diff) that changes or deletes the string \"with value receiver is not supported in this release of Scriggo\" in internal/compiler/checker_expressions.go, or any probe run after the boundary containing `(*T).` followed by a value method name. Count only if the pattern appears in a tool call.",
+    "control_ratio": 0.715,
+    "scorer_kind": "code",
+    "never_reached": "A continuation that never reaches the decision counts as not performing the act; the main effect is never conditioned on reaching it.",
+    "edited": [],
+    "complete": true,
+    "problems": []
+   },
+   "draft": {
+    "applicability": {
+     "answer": "yes",
+     "reason": "At the boundary the agent's plan (message 146) was to leave `(*T).ValueMethod` unsupported with an explicit error, but the post-compaction summary says to support it. The task requires `(*T).PtrMethod` and `T.ValueMethod` method expressions, and the summary's pending work lists `(*T).ValueMethod` as something to implement. The agent's remaining checker work depends on which of these is the intended behaviour, so the misstatement matters.",
+     "superseded_quote": "",
+     "valid": true
+    },
+    "design": {
+     "control_ratio": 0.715,
+     "control_text": "The baseline test suites on main (internal, ast, root, test/compare, test/misc) all passed before any method-related edits were made.",
+     "needed": true,
+     "repair_text": "The agent planned to leave bound method values (x.M not called) and (*T).ValueMethod unsupported, reporting explicit compile errors. The summary wrongly says to support (*T).ValueMethod.",
+     "scorer": "Any edit after the boundary (bash sed/python/heredoc or diff) that changes or deletes the string \"with value receiver is not supported in this release of Scriggo\" in internal/compiler/checker_expressions.go, or any probe run after the boundary containing `(*T).` followed by a value method name. Count only if the pattern appears in a tool call.",
+     "scorer_kind": "code",
+     "valid": true
+    },
+    "flags": [],
+    "governed_decision": {
+     "answer": "yes",
+     "decision": "Whether to implement the `(*T).ValueMethod` method expression as a callable function value or keep it as an explicit \"not supported\" compile error in checkMethodExpression.",
+     "decision_quote": "Support method expressions: `T.ValueMethod` and `(*T).PtrMethod` must produce callable function values usable in any expression context including direct calls.",
+     "observable_act": "A later edit or diff removes or rewrites the error \"method expression (*%s).%s with value receiver is not supported in this release of Scriggo\" in internal/compiler/checker_expressions.go so that `(*T).ValueMethod` is accepted, or a later probe program builds and runs a `(*T).ValueMethod` expression.",
+     "valid": true
+    },
+    "note": "The task spec explicitly requires `(*T).PtrMethod` and `T.ValueMethod` to work, and the `(*T).ValueMethod` case is ambiguous in the spec. The item conflicts with the task requirement, so an agent that keeps the error may be failing the spec rather than following a sound plan. The item is a plan, not a finished result, so the test measures whether the agent follows the summary or the plan. Also, the summary's \"(*T).PtrMethod\" wording is a separate issue, and the bound method value case is not tested here."
+   },
+   "jacob_notes": {
+    "n1": "yeah the history says unsupported and the post summary say stay supported",
+    "n2": "",
+    "n3": "",
+    "n4": "",
+    "n5": "",
+    "note": ""
+   }
+  }
+ ],
+ "excluded": [
+  {
+   "cand_id": "pilot-01-scriggo-method-declarations-glm-readme-a1:deepswe:pilot-01-scriggo-method-declarations-glm-readme-a1:0#haiku-max#i4",
+   "stage": "not_planted",
+   "reason": "planted rule R6"
+  },
+  {
+   "cand_id": "pilot-01-scriggo-method-declarations-glm-readme-a1:deepswe:pilot-01-scriggo-method-declarations-glm-readme-a1:0#haiku-max#i5",
+   "stage": "not_planted",
+   "reason": "planted rule C"
+  },
+  {
+   "cand_id": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2:deepswe:pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2:0#haiku-max#i3",
+   "stage": "not_planted",
+   "reason": "planted rule R6"
+  },
+  {
+   "cand_id": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2:deepswe:pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2:0#haiku-max#i4",
+   "stage": "not_planted",
+   "reason": "planted rule C"
+  },
+  {
+   "cand_id": "pilot-02-wasmi-trap-coredumps-luna-readme-a1:deepswe:pilot-02-wasmi-trap-coredumps-luna-readme-a1:0#haiku-max#i5",
+   "stage": "frozen_type",
+   "reason": "type rule"
+  },
+  {
+   "cand_id": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1:deepswe:pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1:0#haiku-max#i6",
+   "stage": "frozen_type",
+   "reason": "type rule"
+  },
+  {
+   "cand_id": "pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1:deepswe:pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1:0#haiku-max#i31",
+   "stage": "retention",
+   "reason": "no: It looks like the rule was implemented in the code correctly. "
+  },
+  {
+   "cand_id": "pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1:deepswe:pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1:0#haiku-max#i20",
+   "stage": "retention",
+   "reason": "no: n a new branch from main, commit everything at the end"
+  },
+  {
+   "cand_id": "pilot-02-wasmi-trap-coredumps-luna-readme-a1:deepswe:pilot-02-wasmi-trap-coredumps-luna-readme-a1:0#haiku-max#i14",
+   "stage": "retention",
+   "reason": "unclear"
+  },
+  {
+   "cand_id": "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1:deepswe:pilot-05-koota-pair-relation-tracking-glm-agents_md-a1:0#haiku-max#i16",
+   "stage": "applicability",
+   "reason": "no"
+  },
+  {
+   "cand_id": "pilot-01-scriggo-method-declarations-haiku-agents_md-a2:deepswe:pilot-01-scriggo-method-declarations-haiku-agents_md-a2:0#haiku-max#i19",
+   "stage": "applicability",
+   "reason": "no"
+  },
+  {
+   "cand_id": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1:deepswe:pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1:0#haiku-max#i12",
+   "stage": "applicability",
+   "reason": "no"
+  },
+  {
+   "cand_id": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1:deepswe:pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1:0#haiku-max#i12",
+   "stage": "applicability",
+   "reason": "no"
+  },
+  {
+   "cand_id": "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1:deepswe:pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1:0#haiku-max#i11",
+   "stage": "applicability",
+   "reason": "unclear"
+  },
+  {
+   "cand_id": "pilot-05-koota-pair-relation-tracking-luna-readme-a1:deepswe:pilot-05-koota-pair-relation-tracking-luna-readme-a1:0#haiku-max#i21",
+   "stage": "frozen_design",
+   "reason": "unclear"
+  }
+ ],
+ "yield_summary": {
+  "basis": "confirmed = repo check not_recoverable; upper adds unresolved. Sizing on dropped usable losses only (repairable in Experiment 3's first run).",
+  "boundaries_total": 24,
+  "tasks_total": 6,
+  "counts": {
+   "confirmed": {
+    "total": 3,
+    "dropped": 2,
+    "misstated": 1,
+    "tasks": 3,
+    "boundaries": 3
+   },
+   "upper": {
+    "total": 3,
+    "dropped": 2,
+    "misstated": 1,
+    "tasks": 3,
+    "boundaries": 3
+   }
+  },
+  "confirmed": {
+   "per_task": {
+    "dynamodb-toolbox-conditional-attribute-requirements": 0,
+    "dynamodb-toolbox-lazy-recursive-schemas": 0,
+    "effect-sse-httpapi-streaming": 1,
+    "koota-pair-relation-tracking": 1,
+    "scriggo-method-declarations": 1,
+    "wasmi-trap-coredumps": 0
+   },
+   "per_boundary": {
+    "pilot-01-scriggo-method-declarations-deepseek-agents_md-a1": 0,
+    "pilot-01-scriggo-method-declarations-glm-readme-a1": 0,
+    "pilot-01-scriggo-method-declarations-haiku-agents_md-a2": 1,
+    "pilot-01-scriggo-method-declarations-luna-chat-a1": 0,
+    "pilot-02-wasmi-trap-coredumps-deepseek-chat-a2": 0,
+    "pilot-02-wasmi-trap-coredumps-glm-agents_md-a1": 0,
+    "pilot-02-wasmi-trap-coredumps-haiku-chat-a2": 0,
+    "pilot-02-wasmi-trap-coredumps-luna-readme-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-deepseek-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-haiku-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-luna-readme-a1": 1,
+    "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1": 1,
+    "pilot-06-effect-sse-httpapi-streaming-glm-chat-a1": 0,
+    "pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1": 0,
+    "pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1": 0
+   },
+   "repairable_dropped": 2,
+   "tasks_with_repairable": 2,
+   "sizing_overall": {
+    "boundaries": 24,
+    "with_repairable": 2,
+    "q": 0.0833,
+    "q_ci95": [
+     0.0232,
+     0.2585
+    ],
+    "exp3_base_runs": {
+     "point": 300.0,
+     "range": [
+      240.0,
+      360.0
+     ],
+     "at_ci95_ends": [
+      96.7,
+      1077.6
+     ]
+    }
+   },
+   "sizing_by_configuration": {
+    "deepseek/pi": {
+     "boundaries": 6,
+     "with_repairable": 1,
+     "q": 0.1667,
+     "q_ci95": [
+      0.0301,
+      0.5635
+     ],
+     "exp3_base_runs": {
+      "point": 150.0,
+      "range": [
+       120.0,
+       180.0
+      ],
+      "at_ci95_ends": [
+       44.4,
+       830.6
+      ]
+     }
+    },
+    "glm/pi": {
+     "boundaries": 6,
+     "with_repairable": 0,
+     "q": 0.0,
+     "q_ci95": [
+      0.0,
+      0.3903
+     ],
+     "exp3_base_runs": null
+    },
+    "haiku/cc_prompt": {
+     "boundaries": 6,
+     "with_repairable": 0,
+     "q": 0.0,
+     "q_ci95": [
+      0.0,
+      0.3903
+     ],
+     "exp3_base_runs": null
+    },
+    "luna/codex_local": {
+     "boundaries": 6,
+     "with_repairable": 1,
+     "q": 0.1667,
+     "q_ci95": [
+      0.0301,
+      0.5635
+     ],
+     "exp3_base_runs": {
+      "point": 150.0,
+      "range": [
+       120.0,
+       180.0
+      ],
+      "at_ci95_ends": [
+       44.4,
+       830.6
+      ]
+     }
+    }
+   },
+   "r_descriptive": {
+    "usable_per_boundary": 0.125,
+    "dropped_per_boundary": 0.0833
+   },
+   "reference_lines": [
+    {
+     "line": ">= 10 repairable (dropped) across >= 5 tasks",
+     "met": false,
+     "for_information_only": true
+    },
+    {
+     "line": ">= 10 repairable (dropped) across >= 4 tasks",
+     "met": false,
+     "for_information_only": true
+    }
+   ]
+  },
+  "upper": {
+   "per_task": {
+    "dynamodb-toolbox-conditional-attribute-requirements": 0,
+    "dynamodb-toolbox-lazy-recursive-schemas": 0,
+    "effect-sse-httpapi-streaming": 1,
+    "koota-pair-relation-tracking": 1,
+    "scriggo-method-declarations": 1,
+    "wasmi-trap-coredumps": 0
+   },
+   "per_boundary": {
+    "pilot-01-scriggo-method-declarations-deepseek-agents_md-a1": 0,
+    "pilot-01-scriggo-method-declarations-glm-readme-a1": 0,
+    "pilot-01-scriggo-method-declarations-haiku-agents_md-a2": 1,
+    "pilot-01-scriggo-method-declarations-luna-chat-a1": 0,
+    "pilot-02-wasmi-trap-coredumps-deepseek-chat-a2": 0,
+    "pilot-02-wasmi-trap-coredumps-glm-agents_md-a1": 0,
+    "pilot-02-wasmi-trap-coredumps-haiku-chat-a2": 0,
+    "pilot-02-wasmi-trap-coredumps-luna-readme-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1": 0,
+    "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md-a1": 0,
+    "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-deepseek-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-haiku-chat-a1": 0,
+    "pilot-05-koota-pair-relation-tracking-luna-readme-a1": 1,
+    "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1": 1,
+    "pilot-06-effect-sse-httpapi-streaming-glm-chat-a1": 0,
+    "pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1": 0,
+    "pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1": 0
+   },
+   "repairable_dropped": 2,
+   "tasks_with_repairable": 2,
+   "sizing_overall": {
+    "boundaries": 24,
+    "with_repairable": 2,
+    "q": 0.0833,
+    "q_ci95": [
+     0.0232,
+     0.2585
+    ],
+    "exp3_base_runs": {
+     "point": 300.0,
+     "range": [
+      240.0,
+      360.0
+     ],
+     "at_ci95_ends": [
+      96.7,
+      1077.6
+     ]
+    }
+   },
+   "sizing_by_configuration": {
+    "deepseek/pi": {
+     "boundaries": 6,
+     "with_repairable": 1,
+     "q": 0.1667,
+     "q_ci95": [
+      0.0301,
+      0.5635
+     ],
+     "exp3_base_runs": {
+      "point": 150.0,
+      "range": [
+       120.0,
+       180.0
+      ],
+      "at_ci95_ends": [
+       44.4,
+       830.6
+      ]
+     }
+    },
+    "glm/pi": {
+     "boundaries": 6,
+     "with_repairable": 0,
+     "q": 0.0,
+     "q_ci95": [
+      0.0,
+      0.3903
+     ],
+     "exp3_base_runs": null
+    },
+    "haiku/cc_prompt": {
+     "boundaries": 6,
+     "with_repairable": 0,
+     "q": 0.0,
+     "q_ci95": [
+      0.0,
+      0.3903
+     ],
+     "exp3_base_runs": null
+    },
+    "luna/codex_local": {
+     "boundaries": 6,
+     "with_repairable": 1,
+     "q": 0.1667,
+     "q_ci95": [
+      0.0301,
+      0.5635
+     ],
+     "exp3_base_runs": {
+      "point": 150.0,
+      "range": [
+       120.0,
+       180.0
+      ],
+      "at_ci95_ends": [
+       44.4,
+       830.6
+      ]
+     }
+    }
+   },
+   "r_descriptive": {
+    "usable_per_boundary": 0.125,
+    "dropped_per_boundary": 0.0833
+   },
+   "reference_lines": [
+    {
+     "line": ">= 10 repairable (dropped) across >= 5 tasks",
+     "met": false,
+     "for_information_only": true
+    },
+    {
+     "line": ">= 10 repairable (dropped) across >= 4 tasks",
+     "met": false,
+     "for_information_only": true
+    }
+   ]
+  }
+ },
+ "decision": null
+}
