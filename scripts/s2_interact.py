@@ -340,6 +340,10 @@ def cmd_status(a) -> int:
             print(json.dumps({k: r.get(k) for k in ("run_key", "end", "boundaries", "n_calls",
                                                       "cost_usd", "sim_cost_usd")}))
         print(json.dumps(IR.k_counts(root)))
+        changed = [f"{r['run']}/{r['boundary']}" for r in IR.replay_prompt_report(root)
+                   if r["prompt_changed"]]
+        print(json.dumps({"antigravity_prompt_changed": changed,
+                          "file": str(root / "replay_prompts.json")}))
         f = IR.funnel(root)
         print(json.dumps({"funnel": f["counts"], "excluded": len(f["excluded"]),
                           "file": str(root / "funnel.md")}))

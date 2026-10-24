@@ -165,7 +165,12 @@ CODEX_CAPTURE = (
     / "codex-luna2-compact1-request.json"
 )
 OPENCODE_SRC = REPO_ROOT / "data" / "raw" / "sprint" / "spike_pi_opencode" / "src" / "opencode"
-AGY_BINARY: str | None = None  # None: realpath of `which agy`
+AGY_BINARY: str | None = None  # set: extract from that binary; None or "": the frozen texts
+AGY_BINARY_ENV = "AGY_BINARY"  # the same override from the environment ("" = not set)
+# Experiment 1's agy 1.4.3 strings, frozen (agy updated itself to 1.4.7 on 24 Oct, whose
+# summarizer prompt differs); replays use these unless AGY_BINARY is set explicitly.
+AGY_FROZEN = Path(__file__).resolve().parent / "s1_prompts" / "agy_1.4.3_prompts.json"
+AGY_FROZEN_SET_SHA256 = "349ca5a3c2e0bcdb97961826126c166c50e9e6f6635df7ed244ba1c71ebba7b8"
 AGY_EXPECTED_SHA256 = "b40fec18297b98a6a7059327eb201486f53c0f6a28a93dcd9d2c51556ae40426"
 AGY_PROMPT_START = b"You have been working on the task described above"
 AGY_PROMPT_END = b"Wrap your response in <summary></summary> tags."
@@ -525,9 +530,17 @@ def _opencode_prompts(src_dir: str) -> PromptSet:
     return _prompt_set(texts, paths, version)
 
 
+def agy_override() -> str | None:
+    """An explicit agy binary to read the prompts from: the module setting, else the
+    AGY_BINARY environment variable. Empty or unset means none (the frozen 1.4.3 texts)."""
+    v = AGY_BINARY if AGY_BINARY else os.environ.get(AGY_BINARY_ENV, "")
+    return v.strip() or None
+
+
 def agy_binary() -> str:
-    if AGY_BINARY:
-        return AGY_BINARY
+    o = agy_override()
+    if o:
+        return o
     w = shutil.which("agy")
     if not w:
         raise FileNotFoundError("agy is not on PATH (needed for the Antigravity prompt)")
@@ -593,6 +606,24 @@ def _agy_prompts(path: str) -> PromptSet:
     return _prompt_set(texts, {n: f"{path}#strings" for n in texts}, _agy_version(path))
 
 
+@functools.cache
+def _agy_frozen_prompts(path: str) -> PromptSet:
+    """The frozen agy 1.4.3 prompt set: the same texts, so the same set sha256, as extracting
+    them from the 1.4.3 binary. Refuses a file whose texts don't match its recorded hashes."""
+    if not Path(path).exists():
+        raise FileNotFoundError(f"{path}: the frozen agy 1.4.3 prompt texts are missing (set "
+                                f"{AGY_BINARY_ENV} to read a binary instead, explicitly)")
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    texts = data["texts"]
+    bad = [n for n, t in texts.items() if _sha(t) != data["text_sha256"].get(n)]
+    if bad or _sha(texts["agy_prompt"]) != AGY_EXPECTED_SHA256:
+        raise ValueError(f"{path}: frozen agy texts don't match their hashes ({bad})")
+    ps = _prompt_set(texts, {n: f"{_rel(path)}#{n}" for n in texts}, data["version"])
+    if ps.sha256 != AGY_FROZEN_SET_SHA256:
+        raise ValueError(f"{path}: prompt set sha256 {ps.sha256[:12]} isn't 1.4.3's")
+    return ps
+
+
 def prompts_for(arm: str) -> PromptSet:
     if arm == "cc_prompt":
         return _cc_prompts(str(CC_CAPTURE))
@@ -603,12 +634,16 @@ def prompts_for(arm: str) -> PromptSet:
     if arm == "opencode":
         return _opencode_prompts(str(OPENCODE_SRC))
     if arm == "antigravity":
-        return _agy_prompts(agy_binary())
+        # never a silent fallback to whatever agy is installed: without an explicit binary
+        # the frozen 1.4.3 texts must load (a missing or altered file is an error)
+        o = agy_override()
+        return _agy_prompts(o) if o else _agy_frozen_prompts(str(AGY_FROZEN))
     raise ValueError(f"unknown replay arm {arm!r}")
 
 
 def clear_prompt_cache() -> None:
-    for f in (_cc_prompts, _p49_prompts, _codex_prompts, _opencode_prompts, _agy_prompts):
+    for f in (_cc_prompts, _p49_prompts, _codex_prompts, _opencode_prompts, _agy_prompts,
+              _agy_frozen_prompts):
         f.cache_clear()
 
 

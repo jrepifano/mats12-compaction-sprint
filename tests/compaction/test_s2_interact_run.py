@@ -1138,3 +1138,103 @@ def test_advance_reports_a_screen_that_failed_inside_the_resume(tmp_path):
 
     out = IR.advance(rd, task, trigger=lambda b, f: False, resume=resume)
     assert out["state"] == "screen_failed" and out["fork_at"] == 3 and out["error"] == "Max down"
+
+
+def test_antigravity_replay_is_pinned_to_the_frozen_1_4_3_prompt(tmp_path, monkeypatch):
+    """24 Oct: agy updated itself to 1.4.7 (another summarizer prompt). Replays use Experiment
+    1's frozen 1.4.3 texts: the same set sha256 as extracting them from the 1.4.3 binary."""
+    import warnings
+
+    from compaction import s1_replay as RP
+    monkeypatch.delenv(RP.AGY_BINARY_ENV, raising=False)
+    RP.clear_prompt_cache()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")  # no "prompt differs" warning
+        ps = RP.prompts_for("antigravity")
+    assert ps.sha256 == RP.AGY_FROZEN_SET_SHA256
+    assert RP._sha(ps.texts["agy_prompt"]) == RP.AGY_EXPECTED_SHA256
+    assert ps.sources[0]["version"] == "1.4.3"
+
+
+def test_agy_overrides_and_frozen_file_failures(tmp_path, monkeypatch):
+    """astra agy-pin r1: no silent fallback to the installed binary; the override comes from
+    the module or the AGY_BINARY env var, and empty means not set."""
+    from compaction import s1_replay as RP
+    called = []
+    monkeypatch.setattr(RP, "_agy_prompts", lambda path: called.append(path) or "binary")
+    monkeypatch.delenv(RP.AGY_BINARY_ENV, raising=False)
+    RP._agy_frozen_prompts.cache_clear()
+    # empty overrides, module or env: the frozen texts
+    for module, env in (("", None), (None, ""), ("", "  ")):
+        monkeypatch.setattr(RP, "AGY_BINARY", module)
+        if env is None:
+            monkeypatch.delenv(RP.AGY_BINARY_ENV, raising=False)
+        else:
+            monkeypatch.setenv(RP.AGY_BINARY_ENV, env)
+        assert RP.prompts_for("antigravity").sha256 == RP.AGY_FROZEN_SET_SHA256
+    assert called == []
+    # explicit overrides: the env var, then the module setting (which wins)
+    monkeypatch.setattr(RP, "AGY_BINARY", None)
+    monkeypatch.setenv(RP.AGY_BINARY_ENV, "/env/agy")
+    assert RP.prompts_for("antigravity") == "binary" and called == ["/env/agy"]
+    monkeypatch.setattr(RP, "AGY_BINARY", "/module/agy")
+    RP.prompts_for("antigravity")
+    assert called[-1] == "/module/agy" and RP.agy_binary() == "/module/agy"
+    # without an override, a missing frozen file is an error, never the installed agy
+    monkeypatch.setattr(RP, "AGY_BINARY", None)
+    monkeypatch.delenv(RP.AGY_BINARY_ENV, raising=False)
+    monkeypatch.setattr(RP, "AGY_FROZEN", tmp_path / "missing.json")
+    RP._agy_frozen_prompts.cache_clear()
+    with pytest.raises(FileNotFoundError, match="frozen agy 1.4.3"):
+        RP.prompts_for("antigravity")
+    assert called[-1] == "/module/agy"  # the binary wasn't read
+    # tampered texts: caught by their hashes, and with the hashes updated by the set sha256
+    good = json.loads((C.REPO_ROOT / "src" / "compaction" / "s1_prompts" /
+                       "agy_1.4.3_prompts.json").read_text())
+    for name, fix_hashes in (("agy_prompt", False), ("agy_checkpoint_head", True)):
+        bad = json.loads(json.dumps(good))
+        bad["texts"][name] += " tampered"
+        if fix_hashes:
+            bad["text_sha256"][name] = RP._sha(bad["texts"][name])
+        p = tmp_path / f"{name}.json"
+        p.write_text(json.dumps(bad))
+        with pytest.raises(ValueError):
+            RP._agy_frozen_prompts(str(p))
+    RP._agy_frozen_prompts.cache_clear()
+
+
+def test_replays_on_another_agy_prompt_are_flagged(tmp_path):
+    from compaction import s1_replay as RP
+    for k, sha in ((1, RP.AGY_FROZEN_SET_SHA256), (2, "6d6528961f4f" + "0" * 52)):
+        d = tmp_path / "t-deepseek-a1" / f"b{k}" / "boundary" / "replays"
+        (d / "antigravity").mkdir(parents=True)
+        (d / "antigravity" / "replay.json").write_text(json.dumps({"prompt_sha256": sha}))
+        (d / "cc_prompt").mkdir()
+        (d / "cc_prompt" / "replay.json").write_text(json.dumps({"prompt_sha256": "x"}))
+    rows = IR.replay_prompt_report(tmp_path)
+    flagged = [(r["boundary"], r["policy"]) for r in rows if r["prompt_changed"]]
+    assert flagged == [("b2", "antigravity")]
+    rd = tmp_path / "t-deepseek-a1"
+    assert IR.replay_prompt_changed(rd / "b2", "antigravity") is True
+    assert IR.replay_prompt_changed(rd / "b1", "antigravity") is False
+    assert IR.replay_prompt_changed(rd / "b2", "cc_prompt") is False
+    assert IR.replay_prompt_changed(rd / "b2", "opencode") is None
+    assert (tmp_path / "replay_prompts.json").exists()
+    # a record with no prompt hash isn't proven frozen: flagged too
+    (rd / "b1" / "boundary" / "replays" / "antigravity" / "replay.json").write_text("{}")
+    assert IR.replay_prompt_changed(rd / "b1", "antigravity") is True
+    assert ("b1", "antigravity") in [(r["boundary"], r["policy"])
+                                     for r in IR.replay_prompt_report(tmp_path)
+                                     if r["prompt_changed"]]
+    # the rendered card note says what the hash proves, not a version
+    import importlib
+    import sys
+    sys.path.insert(0, str(C.REPO_ROOT / "scripts"))
+    try:
+        cards = importlib.import_module("s2_interact_cards")
+    finally:
+        sys.path.pop(0)
+    note = cards.source_note(rd / "b1", "antigravity")
+    assert "didn't use Experiment 1's frozen agy 1.4.3 prompt set" in note
+    assert "1.4.7" not in note
+    assert "frozen" not in cards.source_note(rd / "b1", "cc_prompt")

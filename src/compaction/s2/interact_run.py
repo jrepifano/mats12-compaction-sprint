@@ -1751,6 +1751,35 @@ def k_counts(root: Path, *, require_committed: bool = True) -> dict:
     return out
 
 
+def replay_prompt_changed(bdir: Path, policy: str) -> bool | None:
+    """Whether a boundary's replay of `policy` used a prompt other than Experiment 1's frozen
+    one. Only the Antigravity-style prompt can drift (it is read from the agy binary, which
+    updated itself to 1.4.7 on 24 Oct); None when there is no replay record."""
+    from compaction import s1_replay as RP
+    p = Path(bdir) / "boundary" / "replays" / policy / "replay.json"
+    if not p.exists():
+        return None
+    if policy != "antigravity":
+        return False
+    return _read(p).get("prompt_sha256") != RP.AGY_FROZEN_SET_SHA256
+
+
+def replay_prompt_report(root: Path) -> list[dict]:
+    """Every replay record's prompt sha256, with the Antigravity "prompt changed" flag for Q1
+    reporting (written to <root>/replay_prompts.json by `status`)."""
+    from compaction import s1_replay as RP
+    rows = []
+    for rj in sorted(Path(root).glob("*/b*/boundary/replays/*/replay.json")):
+        policy, bdir = rj.parent.name, rj.parents[3]
+        r = _read(rj)
+        rows.append({"run": bdir.parent.name, "boundary": bdir.name, "policy": policy,
+                     "prompt_sha256": r.get("prompt_sha256"), "created_utc": r.get("created_utc"),
+                     "prompt_changed": policy == "antigravity"
+                     and r.get("prompt_sha256") != RP.AGY_FROZEN_SET_SHA256})
+    _dump(Path(root) / "replay_prompts.json", rows)
+    return rows
+
+
 def funnel(root: Path) -> dict:
     """The candidate funnel over every boundary's candidates.json (plan "Q1, descriptive"):
     per disposition, and every candidate the screen excluded, with its reason and evidence.

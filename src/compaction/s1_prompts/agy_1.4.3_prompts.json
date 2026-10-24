@@ -1,0 +1,20 @@
+{
+ "version": "1.4.3",
+ "source": "agy 1.4.3 binary (~/.local/bin/agy.1792866815223649000.old, the copy agy's updater kept on 24 Oct), strings extracted by s1_replay._agy_prompts",
+ "binary_sha256": "836c446f6118140e86679ec6966a785eeedbf56b3711a8eb1f41947483e9802a",
+ "set_sha256": "349ca5a3c2e0bcdb97961826126c166c50e9e6f6635df7ed244ba1c71ebba7b8",
+ "texts": {
+  "agy_prompt": "You have been working on the task described above but have not yet completed\nit. Write a continuation summary that will allow you (or another instance of\nyourself) to resume work efficiently in a future context window where the\nfull conversation history will NOT be available—only this summary.\n\nThis summary is all that will be available to you going forward in the future\ncontext window. Do not call any tools, simply just provide the summary based on\nthe information available in the current context window.\n\nYour summary must be structured, concise, and actionable. Optimize for enabling immediate resumption with zero redundant work.\n\nInclude the following sections:\n\n1. **Task Overview**\n   - The user's core request and success criteria\n   - Constraints, preferences, or scope boundaries they specified\n   - Any ambiguities that were resolved (and how)\n\n2. **Progress**\n   - What has been completed, with concrete references (file paths,\n     resource identifiers, tool outputs, URLs, etc.)\n   - Key artifacts produced and their current state\n   - What is in progress but incomplete, and its current state\n\n3. **Key Findings**\n   - Technical constraints, requirements, or domain details uncovered\n   - Decisions made and their rationale\n   - Errors encountered and their resolutions\n   - Approaches that were tried and abandoned (and why—this prevents\n     the successor from repeating them)\n\n4. **Active Context**\n   - State of any external resources, sessions, or environments in use\n   - Relevant intermediate results, hypotheses, or working assumptions\n   - Dependencies between components or steps\n\n5. **Next Steps**\n   - Specific actions needed to complete the task, in priority order\n   - Known blockers or open questions that must be resolved\n   - For each step, note any prerequisites or risks\n\n6. **Commitments & Constraints**\n   - Promises made to the user (e.g., \"I said I would do X before Y\")\n   - User preferences or style requirements\n   - Any boundaries the user set on approach, tools, or scope\n\nBe concise but complete—err on the side of including anything that would\nprevent duplicate work, repeated mistakes, or broken promises. Do not include\ninformation that is obvious from the task description itself.\n\nWrap your response in <summary></summary> tags.",
+  "agy_checkpoint_head": "# Resuming from a compaction",
+  "agy_checkpoint_resume": "You are continuing work on the task described above, but you have lost access to the full conversation history, and need to resume work efficiently using the progress summary below:",
+  "agy_checkpoint_requests": "# User Requests\nThe following were user requests from the truncated conversation in chronological order:",
+  "agy_checkpoint_requests_capped": "# User Requests\nThe following were the most recent user requests in chronological order:"
+ },
+ "text_sha256": {
+  "agy_prompt": "b40fec18297b98a6a7059327eb201486f53c0f6a28a93dcd9d2c51556ae40426",
+  "agy_checkpoint_head": "1e515e3d52bda0de4325fafc3a2b66bc88ceaec2c760390161a8b73ef70039c7",
+  "agy_checkpoint_resume": "d3c03856484169b583ed655278ecfbfd7b6910aa9b6e41d55d57ae12457cc716",
+  "agy_checkpoint_requests": "306ceaac00091835db70913d78a2e03e66427c634f611f6ea7977cf4f1cfa8d6",
+  "agy_checkpoint_requests_capped": "0e26e6698d6999ff91fdfeb96eb4547eb46160438a2c4937e2d34b6a5b56f789"
+ }
+}

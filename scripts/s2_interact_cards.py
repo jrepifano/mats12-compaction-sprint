@@ -1033,6 +1033,17 @@ def card_ids_v2(run_dir: Path, k: int) -> list[str]:
     return [c for c in sel.get("cards") or [] if c not in (sel.get("rejected") or [])]
 
 
+PROMPT_CHANGED_NOTE = (" Prompt changed: this replay didn't use Experiment 1's frozen agy 1.4.3 "
+                       "prompt set (its recorded prompt hash differs or is missing).")
+
+
+def source_note(bdir: Path, src: str) -> str:
+    """The card's source note; an Antigravity replay not on the frozen prompt set says so
+    (a hash mismatch proves only "not the frozen set", not which version it was)."""
+    return SOURCE_NOTES.get(src, src) + (PROMPT_CHANGED_NOTE
+                                         if IR.replay_prompt_changed(bdir, src) else "")
+
+
 def paragraph(c: Mapping, k: int, bj: Mapping, reply: Mapping, src: str) -> str:
     loss = c.get("loss") or {}
     status = {"new": "dropped it at this compaction",
@@ -1086,7 +1097,7 @@ def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> d
         "find_ph": "Find in the agent's history",
         "context": (f"Task {task.get('task_id')} · compaction {k} · summary source: "
                     f"{SOURCE_NAMES.get(src, src)}"),
-        "source_note": SOURCE_NOTES.get(src, src),
+        "source_note": source_note(bdir, src),
         "paragraph": paragraph(c, k, bj, reply, src),
         "loss": (c.get("loss") or {}).get("status"),
         "requirement": {"text": c.get("text"), "quote": quote, "grounding_quote": None},
