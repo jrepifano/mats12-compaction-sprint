@@ -203,18 +203,52 @@ def chart_loss_by_source():
                 n_text=f"n = {n:,} items",
                 num=f"{k:,}/{n:,} = {100 * k / n:.1f}% (no interval computed)",
             )
+    # Raw judge rate beside a precision-corrected rate (Jacob, 24 Oct: chart 1 must not read the raw
+    # judge rate as the true loss rate). Corrected = raw x precision: SWE-chat uses its own hand
+    # labels, the other sources the pooled Experiment 1 precision (an assumption, stated below).
+    p_pool, p_sw = e1["n_hits"] / e1["n"], swp["k"] / swp["n"]
+    for r in rows:
+        r["prec"] = p_sw if r["src"] == "swe-chat-v1" else p_pool
+        r["corr"] = r["value"] * r["prec"]
+        r["num"] += f"; corrected x {r['prec']:.2f} = {100 * r['corr']:.1f}%"
     fig, ax = plt.subplots(figsize=(10, 6.4))
-    bars(ax, rows, ymax=30)
-    ax.set_ylabel("Items the judge marks lost (%)")
+    w, xs = 0.36, list(range(len(rows)))
+    ax.bar([x - w / 2 for x in xs], [100 * r["value"] for r in rows], width=w, color=GRAY, zorder=2,
+           label="Judge's raw rate")
+    ax.bar([x + w / 2 for x in xs], [100 * r["corr"] for r in rows], width=w, color=BLUE, zorder=2,
+           label="Corrected for the judge's precision")
+    for x, r in zip(xs, rows):
+        top = 100 * r["value"]
+        if r.get("lo") is not None:
+            lo, hi = 100 * r["lo"], 100 * r["hi"]
+            ax.errorbar(x - w / 2, top, yerr=[[top - lo], [hi - top]], fmt="none", ecolor=INK,
+                        elinewidth=1.4, capsize=4, zorder=3)
+            top = hi
+        ax.annotate(f"{100 * r['value']:.1f}%", (x - w / 2, top), xytext=(0, 4),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=10.5, color=INK)
+        ax.annotate(f"{100 * r['corr']:.1f}%", (x + w / 2, 100 * r["corr"]), xytext=(0, 4),
+                    textcoords="offset points", ha="center", va="bottom", fontsize=10.5,
+                    color=INK, fontweight="bold")
+    depth = max(r["label"].count("\n") for r in rows)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([r["label"] + "\n" * (depth - r["label"].count("\n") + 2) + r["n_text"]
+                        for r in rows], fontsize=11, linespacing=1.15)
+    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.tick_params(axis="x", length=0)
+    ax.set_ylim(0, 30)
+    ax.legend(frameon=False, loc="upper right", fontsize=10.5)
+    ax.set_ylabel("Actionable items lost (%)")
     fig.subplots_adjust(left=0.09, right=0.98, top=0.86, bottom=0.30)
-    title = "Real compactions lose a lot of what the agent needs"
+    lo_c, hi_c = min(r["corr"] for r in rows), max(r["corr"] for r in rows)
+    title = f"Summaries lose about {100 * lo_c:.0f}–{100 * hi_c:.0f}% of actionable items (judge-corrected)"
     foot = (
         "Share of actionable items (rules, permissions, decisions, commitments, task state) that the "
-        "summary dropped or misstated and the agent can't get back another way, as called by the "
-        f"LLM judge ({judge}) after its second look; not corrected for the judge's precision "
-        f"({e1['n_hits']}/{e1['n']} pooled; {swp['k']}/{swp['n']} on SWE-chat). SWE-chat: 95% "
-        f"session-bootstrap interval, weighted to all {n_all} eligible compactions. Gray bars: as "
-        "sampled, no interval computed."
+        "summary dropped or misstated and the agent can't get back another way. Gray: as called by the "
+        f"LLM judge ({judge}) after its second look. Blue: that rate times the judge's hand-checked "
+        f"precision ({swp['k']}/{swp['n']} on SWE-chat; {e1['n_hits']}/{e1['n']} pooled, assumed for "
+        "the other sources). The correction ignores the judge's misses (recall unmeasured), so blue is "
+        f"not a bound in either direction. SWE-chat: 95% session-bootstrap interval on the raw rate, "
+        f"weighted to all {n_all} eligible compactions; other sources as sampled, no interval."
     )
     finish(
         fig,
@@ -231,8 +265,9 @@ def chart_loss_by_source():
     record(
         "01_loss_by_source",
         title,
-        f"Summaries lose about {100 * min(r['value'] for r in rows):.0f}-"
-        f"{100 * max(r['value'] for r in rows):.0f}% of actionable items, by source.",
+        f"Judge rates {100 * min(r['value'] for r in rows):.0f}-{100 * max(r['value'] for r in rows):.0f}%"
+        f" of actionable items lost; about {100 * lo_c:.0f}-{100 * hi_c:.0f}% after the precision"
+        " correction.",
         [
             a_rel + " (part_a.haiku-max.items.type_x_source, summed over types)",
             s_rel + " (sets.population_estimate.pooled.lost_rate)",
