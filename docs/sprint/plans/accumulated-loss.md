@@ -39,7 +39,7 @@ Here:
    - **Selection state machine (as built, `fork_v2/selection.json`, `selection_log.jsonl`):**
      - The run pauses at each qualifying compaction, screens inline, and continues only if nothing is carded or every candidate there is exhausted.
      - After a rejection, the next candidate goes in the order above: same source first.
-     - At most 2 cards per compaction and 12 in all; an unresolved card counts as rejected.
+     - At most 2 primary cards per compaction, plus at most 2 bundle members beside them (decided 24 Oct, ~4:05 PM ET, before any continuation output was read). 12 cards in all, counting every card. An unresolved card counts as rejected.
      - The pilot's six checks keep their frozen prompts and output mapping. Jacob's card confirms retention, applicability with the pending decision, and the act within the window. Recoverability and reference stay code checks, and an unresolved one shows on the card.
      - **Superseded from the pilot:** fresh-only eligibility. Inherited losses are eligible and flagged.
    - **Sealing:** a base run never continues past a qualifying compaction until its screen has finished and either nothing was carded or the freeze is final. Later boundaries that already exist (boa b2) are sealed.
