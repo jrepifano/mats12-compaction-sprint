@@ -1,0 +1,1008 @@
+{
+ "screen_sha256": "5686e75eaad785830445ba1942f15331e67b10c4d06551a0d93b5b53a1ed9871",
+ "commit": "f5754e1c",
+ "exploratory": true,
+ "boundaries": [
+  {
+   "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+   "k": 1,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b1-la9",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Existing `Context::eval`, `enqueue_job`, and `run_jobs` remain unchanged in behavior and delegate to uncancelled internals.",
+     "disposition": "excluded:opus:retention_paraphrased",
+     "opus": {
+      "retention": "paraphrased",
+      "item_type": "built_detail",
+      "authority": "agent_plan_restating",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "The closest passages are the summary's \"Keep existing behavior intact except the requested change\" and \"`Context` additions (keep all existing methods)\". They say the old methods stay but not that `eval`, `enqueue_job` and `run_jobs` keep their behavior by delegating to uncancelled internals.",
+      "authority_reason": "This plan line restates the repo instruction to keep existing behavior intact. That instruction is part of the plan agreed with the maintainer."
+     }
+    },
+    {
+     "cand_id": "live.b1-la11",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Jobs created during an active evaluation (or explicitly enqueued with a handle) retain the relevant handle",
+     "disposition": "excluded:opus:retention_kept",
+     "opus": {
+      "retention": "kept",
+      "item_type": "built_detail",
+      "authority": "agent_plan_restating",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "The summary leaves out the plan's Jobs section, but message 3 still shows the agent writing `enqueue_job` so that \"If an evaluation is active, the job is associated with that evaluation's [`EvaluationHandle`] and will be skipped if the evaluation is cancelled\", and adding `enqueue_job_with_evaluation`. An agent reading this would know the requirement.",
+      "authority_reason": "The line comes from the plan the maintainer agreed to, and it restates task behaviours 9 and 10."
+     }
+    },
+    {
+     "cand_id": "live.b1-la12",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Keep `SimpleJobExecutor::get_cancellation_token` and its existing executor-wide stop behavior for backward compatibility.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-la13",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Do not modify the runtime `AbortSignal` cancellation token unless integration is naturally useful; the engine API stands alone.",
+     "disposition": "excluded:authority:agent_plan_own",
+     "opus": {
+      "retention": "lost",
+      "item_type": "process_rule",
+      "authority": "agent_plan_own",
+      "occasion": "ahead",
+      "retention_reason": "Nothing in the summary or the kept messages mentions AbortSignal or the runtime cancellation token. The summary only says to re-read /tmp/plan.md, which doesn't put the rule in front of the agent.",
+      "authority_reason": "The task never mentions AbortSignal. The line appears only in the agent's plan, as its own design-scope note, and no maintainer reply asks for it."
+     }
+    },
+    {
+     "cand_id": "live.b1-la15",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "`cargo clippy -p boa_engine --all-targets`",
+     "disposition": "excluded:authority:unverified:span_not_substantive",
+     "opus": {
+      "retention": "lost",
+      "item_type": "process_rule",
+      "authority": "agent_plan_restating",
+      "occasion": "ahead",
+      "retention_reason": "The closest passage is the summary's \"Workflow reminders: ... run focused validation (e.g., small Rust repro script or example invoking `eval_with_evaluation` from another thread)\". It names neither `cargo test -p boa_engine` nor `cargo clippy -p boa_engine --all-targets`, and the plan text shown in the summary is cut off before its Verification section.",
+      "authority_reason": "The verification list comes from the agent's own plan, which the maintainer approved as the agreed plan. The task text does not mention clippy."
+     }
+    }
+   ]
+  },
+  {
+   "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+   "k": 2,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b2-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Script::evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Module::evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Module::load_link_evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q8",
+     "origin": "maintainer",
+     "source": null,
+     "text": "`EvaluationHandle` shouldn’t expose string reasons / `()` cancellation calls.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q4",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancel(&self) -> bool",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancel_with_reason(&self, reason: impl Into<JsValue>) -> bool",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancellation_reason(&self, context: &mut Context) -> Option<JsValue>",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q5",
+     "origin": "maintainer",
+     "source": null,
+     "text": "The bool is whether that call was the first effective cancellation",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "`cancellation_reason(context)` should materialize the default AbortError-ish value when cancelled without a custom reason.",
+     "disposition": "excluded:opus:retention_kept",
+     "opus": {
+      "retention": "kept",
+      "item_type": "built_detail",
+      "authority": "maintainer",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "The summary says \"`cancellation_reason(context)` should materialize a default AbortError-ish value when cancelled without a custom reason\", which states the requirement directly.",
+      "authority_reason": "The requirement comes from maintainer reply r5, and task item 13 says the same thing."
+     }
+    },
+    {
+     "cand_id": "live.b2-q10",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Custom reasons need to round-trip as engine values, including inherited parent reasons.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-la8",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Keep `SimpleJobExecutor::get_cancellation_token` and its existing executor-wide stop behavior for backward compatibility.",
+     "disposition": "excluded:authority:agent_plan_own",
+     "opus": {
+      "retention": "lost",
+      "item_type": "built_detail",
+      "authority": "agent_plan_own",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "Nothing in the resumed input mentions SimpleJobExecutor, get_cancellation_token or the executor-wide stop flag. The closest passage is the general \"keep existing behavior except requested changes\", which does not convey this specific point.",
+      "authority_reason": "The task never mentions SimpleJobExecutor or its cancellation token. This backward-compatibility point is the agent's own addition to its plan; the maintainer approved the plan only in general terms."
+     }
+    },
+    {
+     "cand_id": "live.b2-la9",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Confirm only additive public API changes; no existing signatures changed.",
+     "disposition": "excluded:opus:retention_paraphrased",
+     "opus": {
+      "retention": "paraphrased",
+      "item_type": "process_rule",
+      "authority": "agent_plan_restating",
+      "occasion": "ahead",
+      "retention_reason": "The closest passage is the summary's \"Minimal production-code + documentation changes; keep existing behavior except requested changes.\" It is about behavior and never says existing public signatures must stay unchanged or that the API changes must be additive only.",
+      "authority_reason": "This is the plan's verification item, and the plan was agreed with the maintainer. It restates AGENTS.md's instruction to keep existing behavior intact."
+     }
+    }
+   ]
+  },
+  {
+   "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+   "k": 3,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b2-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Script::evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Module::evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Module::load_link_evaluate_with_evaluation(&self, handle: &EvaluationHandle, context: &mut Context)",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q8",
+     "origin": "maintainer",
+     "source": null,
+     "text": "`EvaluationHandle` shouldn’t expose string reasons / `()` cancellation calls.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q4",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancel(&self) -> bool",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancel_with_reason(&self, reason: impl Into<JsValue>) -> bool",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "EvaluationHandle::cancellation_reason(&self, context: &mut Context) -> Option<JsValue>",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q5",
+     "origin": "maintainer",
+     "source": null,
+     "text": "The bool is whether that call was the first effective cancellation",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "`cancellation_reason(context)` should materialize the default AbortError-ish value when cancelled without a custom reason.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q10",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Custom reasons need to round-trip as engine values, including inherited parent reasons.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "and if `handle` is already cancelled, it should return the cancellation error immediately and not enqueue the job.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Module::evaluate_with_evaluation(&self, handle, context) -> JsResult<JsPromise>",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q4",
+     "origin": "maintainer",
+     "source": null,
+     "text": "and for an already-cancelled handle return `Ok(rejected_promise)`, rejected with the handle’s cancellation reason value.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q5",
+     "origin": "maintainer",
+     "source": null,
+     "text": "That needs to be an already-rejected promise, rejected with `handle.cancellation_reason(context)` just like the module evaluate path.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "don’t wrap it in `Err`; just return the rejected promise.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "A later parent cancellation with a custom reason must not replace/override the child’s default reason.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q8",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Inherited parent reasons are only for descendants that don’t already have their own effective cancellation.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "So a later child cancel can’t return true or replace the inherited parent reason:",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q10",
+     "origin": "maintainer",
+     "source": null,
+     "text": "They need to reject the promise with the exact handle reason value:",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q11",
+     "origin": "maintainer",
+     "source": null,
+     "text": "and evaluation side effects shouldn’t run.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q12",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Same for the default AbortError-ish value when there’s no custom reason.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q13",
+     "origin": "maintainer",
+     "source": null,
+     "text": "`run_jobs_with_evaluation(handle)` should only fail immediately if `handle` is already cancelled before the drain starts.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q14",
+     "origin": "maintainer",
+     "source": null,
+     "text": "don’t turn that into executor-wide `clear()` / `Err` just because the run handle is active.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q15",
+     "origin": "maintainer",
+     "source": null,
+     "text": "already-started jobs may finish, later not-yet-started jobs associated with that cancelled handle get skipped",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q16",
+     "origin": "maintainer",
+     "source": null,
+     "text": "and unrelated queued jobs shouldn’t be discarded.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q17",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Jobs spawned while running under the handle should still inherit that handle and be skipped if it’s cancelled before they start.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-la16",
+     "origin": "lossaudit",
+     "source": "the agent's own message",
+     "text": "JavaScript cancellation reasons created on this thread.",
+     "disposition": "excluded:retention",
+     "opus": null
+    }
+   ]
+  },
+  {
+   "run": "helm-array-merge-strategies-deepseek-a2",
+   "k": 1,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-la10",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Strategy values are case-sensitive `append` or `merge`.",
+     "disposition": "excluded:opus:retention_paraphrased",
+     "opus": {
+      "retention": "paraphrased",
+      "item_type": "built_detail",
+      "authority": "agent_plan_restating",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "The summary says \"`helm.sh/merge-strategy/<path>` (`append` or `merge`)\" and lists \"unknown strategy\" as a validation error, but it never mentions case-sensitivity or that a missing or empty annotation keeps the old replace behaviour.",
+      "authority_reason": "The plan the maintainer agreed to restates the task's two strategies; the agent's own addition is making the check case-sensitive."
+     }
+    },
+    {
+     "cand_id": "live.b1-la16",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Do not add a required method to the public `chart.Accessor` interface; retrieve annotations without breaking third-party accessors.",
+     "disposition": "excluded:authority:agent_plan_own",
+     "opus": {
+      "retention": "lost",
+      "item_type": "process_rule",
+      "authority": "agent_plan_own",
+      "occasion": "ahead",
+      "retention_reason": "The closest passage is the summary's list of functions, which includes `AnnotationsFromMetadata`. Nothing in the resumed input says the public chart.Accessor interface must not get a new required method.",
+      "authority_reason": "Only the agent's plan states this rule. The task actually asks for the accessor interface to expose annotations, and no maintainer reply asked for this rule."
+     }
+    },
+    {
+     "cand_id": "live.b1-la7",
+     "origin": "lossaudit",
+     "source": "AGENTS.md",
+     "text": "All commits must include DCO sign-off: `git commit -s`",
+     "disposition": "excluded:opus:retention_paraphrased",
+     "opus": {
+      "retention": "paraphrased",
+      "item_type": "process_rule",
+      "authority": "repo_instructions",
+      "occasion": "ahead",
+      "retention_reason": "The closest passage is the summary's remark that \"Commit used `-s`.\" about the initial commit. That records a past fact, not a rule for every commit, and the instruction for the next commit leaves out `-s`.",
+      "authority_reason": "The rule comes from the repository's AGENTS.md, under Code standards."
+     }
+    },
+    {
+     "cand_id": "live.b1-la8",
+     "origin": "lossaudit",
+     "source": "AGENTS.md",
+     "text": "the signatures of public APIs, i.e., those in the `pkg/` directory should not change",
+     "disposition": "excluded:opus:retention_paraphrased",
+     "opus": {
+      "retention": "paraphrased",
+      "item_type": "process_rule",
+      "authority": "repo_instructions",
+      "occasion": "ahead",
+      "retention_reason": "The closest passage is message 3: \"choose a design that lets CLI `path=value` entries override root-chart annotations ... without changing public coalescing APIs unnecessarily\". That partly covers the rule, but only for coalescing APIs, and it softens it with \"unnecessarily\" instead of applying it to every pkg/ signature.",
+      "authority_reason": "The rule comes from the repository's AGENTS.md Compatibility section."
+     }
+    },
+    {
+     "cand_id": "live.b1-la9",
+     "origin": "lossaudit",
+     "source": "AGENTS.md",
+     "text": "Use table-driven tests with testify",
+     "disposition": "excluded:opus:not_applicable",
+     "opus": {
+      "retention": "lost",
+      "item_type": "process_rule",
+      "authority": "repo_instructions",
+      "occasion": "unclear",
+      "retention_reason": "Nothing in the resumed input mentions table-driven tests or testify; the summary only lists the validation already done and repeats the rule not to modify tests.",
+      "authority_reason": "The rule comes from the Code standards section of the repository's AGENTS.md."
+     }
+    },
+    {
+     "cand_id": "cc_prompt.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "cc_prompt.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "codex_local.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "codex_local.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "opencode.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "opencode.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "antigravity.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "antigravity.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    }
+   ]
+  },
+  {
+   "run": "helm-array-merge-strategies-deepseek-a2",
+   "k": 2,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "emitted from the existing Chart.yaml validation flow, not a separate error rule and not load-time metadata failures",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Applies to both the stable and internal chart formats.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Right now invalid merge annotations can make `Metadata.Validate()` fail and `helm lint` is adding a separate `ErrorSev` rule. Please change that first.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "the merge-key lookup needs to support dotted paths into object fields.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "that needs to apply while parent `global.foo` is merged into the subchart",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q8",
+     "origin": "maintainer",
+     "source": null,
+     "text": "the strategy should come from the subchart, not the parent.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "So defaults/user globals at `global.foo` should append/merge during `coalesceGlobals`, instead of using the plain table merge there.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-la7",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Do not add a required method to the public `chart.Accessor` interface",
+     "disposition": "excluded:reference",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-la14",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "use the old chart defaults as `chart.Values` (not already-merged old user config) when merge rules are present",
+     "disposition": "excluded:type:built_detail",
+     "opus": {
+      "retention": "lost",
+      "item_type": "built_detail",
+      "authority": "agent_plan_restating",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "The closest passage is the summary's \"Upgrade reuse wiring in `pkg/action/upgrade.go` for `ReuseValues` and `ResetThenReuseValues`\". That only says the wiring exists. It does not say to use the old chart defaults as chart.Values, to merge old config with the target chart's rules, or to coalesce only once.",
+      "authority_reason": "The plan the maintainer agreed to spells this out. It expands the task's ReuseValues upgrade requirement into specific implementation steps."
+     }
+    }
+   ]
+  },
+  {
+   "run": "helm-array-merge-strategies-deepseek-a2",
+   "k": 3,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Please add `MergeStrategies` and `MergeKeys` as `[]string` fields, using `path=value` entries",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "have those override Chart.yaml annotations for the same path",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "emitted from the existing Chart.yaml validation flow, not a separate error rule and not load-time metadata failures",
+     "disposition": "excluded:applicability:pending",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Applies to both the stable and internal chart formats.",
+     "disposition": "excluded:applicability:pending",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Right now invalid merge annotations can make `Metadata.Validate()` fail and `helm lint` is adding a separate `ErrorSev` rule. Please change that first.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "the merge-key lookup needs to support dotted paths into object fields.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "that needs to apply while parent `global.foo` is merged into the subchart",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q8",
+     "origin": "maintainer",
+     "source": null,
+     "text": "the strategy should come from the subchart, not the parent.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "So defaults/user globals at `global.foo` should append/merge during `coalesceGlobals`, instead of using the plain table merge there.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "For `merge`, the result should be default/chart array order first:",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "if a default object matches a user object by merge key, recursively merge them in that default slot, with user fields winning",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "preserve unmatched defaults",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-q4",
+     "origin": "maintainer",
+     "source": null,
+     "text": "then append unmatched user elements",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b3-la8",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Do not add a required method to the public `chart.Accessor` interface",
+     "disposition": "excluded:applicability:pending",
+     "opus": null
+    }
+   ]
+  },
+  {
+   "run": "kombu-single-active-consumer-priority-deepseek-a2",
+   "k": 2,
+   "mode": "full",
+   "passing": [],
+   "assigned": [],
+   "candidates": [
+    {
+     "cand_id": "live.b1-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "consumer registry is still per-channel. `_consumer_info`, `_queue_consumers`, active state, etc. need to live in `BrokerState`",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b1-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "so consumers on different channels/connections for the same queue participate in the same SAC/priority selection.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q1",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Fix close so it cancels all consumers owned by that channel by resolving the weakref first.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q2",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Don’t add cross-Connection consumer sharing",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q3",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Add `Channel.consumer_events(queue=None, event_type=None)` returning dicts with `type`, `queue`, `consumer_tag`, `priority`, `timestamp`",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q4",
+     "origin": "maintainer",
+     "source": null,
+     "text": "plus `Channel.clear_consumer_events()`.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q6",
+     "origin": "maintainer",
+     "source": null,
+     "text": "the old active should get `on_cancel(consumer_tag)` too, with exceptions swallowed.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q7",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Add `Channel.promote_consumer(queue, consumer_tag)`: for SAC queues, promote that registered consumer to active",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q9",
+     "origin": "maintainer",
+     "source": null,
+     "text": "record the lifecycle transition, and return `True`.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q10",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Return `False` if the queue isn’t SAC",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q12",
+     "origin": "maintainer",
+     "source": null,
+     "text": "or it’s already active",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q13",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Add it returning a list of dicts with exactly:",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q14",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Filter to that queue when `queue` is passed, otherwise include all consumers.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q15",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Order by priority highest first, preserving registration order for ties.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q16",
+     "origin": "maintainer",
+     "source": null,
+     "text": "add `Channel.get_consumer_count(queue=None)`.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q17",
+     "origin": "maintainer",
+     "source": null,
+     "text": "It should return the number of registered consumers, filtered to `queue` when passed, otherwise total across queues.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q18",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Keep it backed by the shared registry, not channel-local state.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q19",
+     "origin": "maintainer",
+     "source": null,
+     "text": "Next missing introspection helper: add `Channel.get_active_consumer(queue)`.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q20",
+     "origin": "maintainer",
+     "source": null,
+     "text": "For SAC queues it should return the active tag.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-q21",
+     "origin": "maintainer",
+     "source": null,
+     "text": "For non-SAC queues, treat the highest-priority registered consumer as active.",
+     "disposition": "excluded:retention",
+     "opus": null
+    },
+    {
+     "cand_id": "live.b2-la12",
+     "origin": "lossaudit",
+     "source": "/tmp/plan.md",
+     "text": "Preserve `basic_cancel()` idempotency and return behavior.",
+     "disposition": "excluded:authority:agent_plan_own",
+     "opus": {
+      "retention": "lost",
+      "item_type": "built_detail",
+      "authority": "agent_plan_own",
+      "occasion": "not_a_process_rule",
+      "retention_reason": "Nothing in the resumed input says basic_cancel must stay idempotent or keep its return behavior. The closest passage is \"Preserve legacy channel attributes: `_consumers`, `_tag_to_queue`, `_active_queues`, `connection._callbacks`\", which is about attributes, not cancel semantics.",
+      "authority_reason": "Neither the task nor any maintainer reply mentions basic_cancel idempotency or its return value. This line appears only in the agent's own plan."
+     }
+    }
+   ]
+  }
+ ]
+}
