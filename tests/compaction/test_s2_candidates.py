@@ -45,15 +45,21 @@ def view(rk: str) -> dict:
 
 
 def row(rk, item_id, *, task="t1", lost=True, planted=None, typ="task_state", text=None,
-        quote=DONE, msg=1, recoverable="no", grade="dropped"):
+        quote=DONE, msg=1, recoverable="not_recoverable", grade="dropped",
+        subject="glm", policy="pi"):
     return {"rid": f"deepswe:{rk}:0", "run_key": rk, "cohort_key": rk.rsplit("-a", 1)[0],
             "item_id": item_id, "type": typ, "text": text or f"item {item_id}", "quote": quote,
             "msg": msg, "grade": grade, "first_grade": grade, "summary_quote": None,
             "valid": True, "grade_valid": True, "availability": "lost" if lost else None,
             "availability_how": "not_in_kept_context_or_file_read", "lost": lost,
             "planted_rule": planted, "recoverable": recoverable if lost else None,
-            "recoverable_how": f"git grep: {recoverable}", "task": task, "channel": "chat",
-            "subject": "glm", "policy": "pi", "half": "heldout", "boundary_dir": f"/b/{rk}"}
+            "recoverable_how": f"repo search: {recoverable}",
+            "recoverable_lines": [{"path": "src/lexer.py", "line": 3, "text": "# rewritten"}]
+            if recoverable != "not_recoverable" else [],
+            "recoverable_commands": [{"msg": 2, "command": "sed -i s/a/b/ src/lexer.py"}]
+            if recoverable != "not_recoverable" else [],
+            "task": task, "channel": "chat", "subject": subject, "policy": policy,
+            "half": "heldout", "boundary_dir": f"/b/{rk}"}
 
 
 def rows():
@@ -63,10 +69,11 @@ def rows():
         row("b1-a1", "i3", planted="R1", typ="rule", quote="Don't modify tests"),
         row("b1-a1", "i4", typ="rule", quote="never use eval anywhere"),
         row("b1-a1", "i5", text="item i1", quote=DONE + " ", msg=4),  # duplicate of i1
-        row("b1-a1", "i6", typ="decision", quote=FAILED, msg=3, recoverable="yes"),
+        row("b1-a1", "i6", typ="decision", quote=FAILED, msg=3, recoverable="recoverable"),
         row("b2-a1", "i1", task="t2", typ="decision", quote=FAILED, msg=3,
-            recoverable="approximate", grade="misstated"),
-        row("b2-a1", "i2", task="t2", typ="commitment", quote=NEXT, msg=4),
+            recoverable="unresolved", grade="misstated", subject="haiku", policy="cc_prompt"),
+        row("b2-a1", "i2", task="t2", typ="commitment", quote=NEXT, msg=4, subject="haiku",
+            policy="cc_prompt"),
     ]
 
 
@@ -109,8 +116,11 @@ def good(**over):
 def test_pool_filters_in_order_and_counts_add_up(SC):
     rec = SC.pool(rows())
     f = rec["funnel"]
-    assert f == {"items": 8, "lost": 7, "not_planted": 6, "frozen_type": 5, "deduplicated": 4,
-                 "not_recoverable_auto": 3, "boundaries": 2, "tasks": 2}
+    assert {k: v for k, v in f.items() if isinstance(v, int)} == {
+        "items": 8, "lost": 7, "not_planted": 6, "frozen_type": 5, "deduplicated": 4,
+        "not_recoverable_auto": 3, "boundaries": 2, "tasks": 2}
+    assert f["deduplicated_by_grade"] == {"dropped": 3, "misstated": 1}
+    assert f["to_page_by_recoverable"] == {"not_recoverable": 2, "unresolved": 1}
     assert [c["cand_id"] for c in rec["candidates"]] == ["b1-a1:i1", "b2-a1:i1", "b2-a1:i2"]
     by = {e["cand_id"]: e["stage"] for e in rec["excluded"]}
     assert by == {"b1-a1:i3": "not_planted", "b1-a1:i4": "frozen_type",
@@ -253,7 +263,8 @@ def test_page_builds_passes_leak_check_and_writes(SC, tmp_path):
     for c in data["cards"]:
         assert set(c) <= SC.CARD_FIELDS and c["located"] and c["hist_at"][1] > c["hist_at"][0]
     mis = next(c for c in data["cards"] if c["grade"] == "misstated")
-    assert mis["recover"]["recoverable"] == "approximate"
+    assert mis["recover"]["recoverable"] == "unresolved"
+    assert mis["recover"]["lines"][0]["path"] == "src/lexer.py" and mis["recover"]["n_commands"] == 1
     assert sorted(v["cand_id"] for v in key["cards"].values()) == [
         c["cand_id"] for c in rec["candidates"]]
     res = SC.write_page(tmp_path / "out", html, key, private_root=tmp_path, check_ignored=False)
@@ -322,7 +333,9 @@ def test_freeze_counts_yield_summary_and_refuses_second_write(SC, tmp_path):
     rec, drafts, _, key = _page(SC, tmp_path)
     labs = _labels(key, {"b2-a1:i1": ["yes", "yes", "unclear", "yes", "yes"]})
     out = tmp_path / "frozen.json"
-    bounds = {"b1-a1": "t1", "b2-a1": "t2", "b3-a1": "t3"}  # b3 has no item rows
+    bounds = {"b1-a1": {"task": "t1", "subject": "glm", "policy": "pi"},
+              "b2-a1": {"task": "t2", "subject": "haiku", "policy": "cc_prompt"},
+              "b3-a1": {"task": "t3", "subject": "glm", "policy": "pi"}}  # b3: no item rows
     f = SC.freeze(labs, key, rec, drafts, boundaries=bounds, out_path=out, inputs={"x": "abc"})
     assert [u["cand_id"] for u in sorted(f["usable"], key=lambda u: u["cand_id"])] == [
         "b1-a1:i1", "b2-a1:i2"]
@@ -335,15 +348,29 @@ def test_freeze_counts_yield_summary_and_refuses_second_write(SC, tmp_path):
     assert any(e["stage"] == "not_recoverable" and e["reason"].startswith("unclear")
                for e in f["excluded"])
     y = f["yield_summary"]
-    assert y["usable"] == 2 and y["tasks_with_usable"] == 2 and y["boundaries_total"] == 3
-    assert y["per_task"] == {"t1": 1, "t2": 1, "t3": 0} and y["per_boundary"]["b3-a1"] == 0
-    assert y["usable_per_boundary_r"] == round(2 / 3, 4)
-    assert y["exp3_base_runs_from_r"] == {"point": 37.5, "low": 30.0, "high": 45.0}
+    assert y["boundaries_total"] == 3 and y["tasks_total"] == 3
+    assert y["counts"]["confirmed"] == {"total": 2, "dropped": 2, "misstated": 0, "tasks": 2,
+                                        "boundaries": 2}
+    c = y["confirmed"]
+    assert c["per_task"] == {"t1": 1, "t2": 1, "t3": 0} and c["per_boundary"]["b3-a1"] == 0
+    so = c["sizing_overall"]
+    assert so["with_repairable"] == 2 and so["q"] == round(2 / 3, 4)
+    assert so["exp3_base_runs"]["point"] == 37.5 and so["exp3_base_runs"]["range"] == [30.0, 45.0]
+    assert so["q_ci95"][0] < so["q"] < so["q_ci95"][1]
+    lo_ci, hi_ci = so["exp3_base_runs"]["at_ci95_ends"]
+    assert lo_ci < 37.5 < hi_ci
+    byc = c["sizing_by_configuration"]
+    assert byc["glm/pi"]["boundaries"] == 2 and byc["glm/pi"]["q"] == 0.5
+    assert byc["haiku/cc_prompt"]["q"] == 1.0
+    assert c["r_descriptive"]["usable_per_boundary"] == round(2 / 3, 4)
+    assert f["funnel"]["checks_cumulative_split"]["applicability"]["upper"]["misstated"] == 1
+    assert f["funnel"]["usable_split"]["upper"]["total"] == 2
     u = next(x for x in f["usable"] if x["cand_id"] == "b1-a1:i1")
     assert u["design"]["complete"] and u["design"]["repair"].startswith("The lexer rewrite")
     assert u["design"]["never_reached"] == SC.NEVER_REACHED and u["design"]["edited"] == []
-    assert [ln["met"] for ln in y["reference_lines"]] == [False, False]
-    assert all(ln["for_information_only"] for ln in y["reference_lines"])
+    assert [ln["met"] for ln in c["reference_lines"]] == [False, False]
+    assert all(ln["for_information_only"] for ln in c["reference_lines"])
+    assert "exp3_base_runs_from_r" not in json.dumps(y)
     assert f["decision"] is None and "gate" not in f
     assert json.loads(out.read_text())["usable"] == f["usable"]
     with pytest.raises(SC.FrozenExists):
@@ -383,14 +410,25 @@ def test_freeze_design_edits_and_incomplete_design(SC, tmp_path):
 
 
 def test_yield_summary_none_when_nothing_usable_and_reference_lines(SC):
-    b24 = {f"b{i}": f"t{i % 6}" for i in range(24)}
+    b24 = {f"b{i}": {"task": f"t{i % 6}", "subject": "glm", "policy": "pi"} for i in range(24)}
     y = SC.yield_summary([], b24)
-    assert y["usable"] == 0 and y["exp3_base_runs_from_r"] is None and y["tasks_total"] == 6
-    many = [{"task": f"t{i % 4}", "run_key": f"b{i}"} for i in range(12)]
+    assert y["counts"]["upper"]["total"] == 0 and y["tasks_total"] == 6
+    assert y["upper"]["sizing_overall"]["exp3_base_runs"] is None
+    ks = [i for i in range(24) if i % 6 < 4][:12]  # 12 boundaries over tasks t0-t3
+    many = [{"task": f"t{i % 6}", "run_key": f"b{i}", "grade": "dropped",
+             "recoverable": "unresolved" if j % 2 else "not_recoverable"}
+            for j, i in enumerate(ks)]
+    many.append({"task": "t5", "run_key": "b5", "grade": "misstated",
+                 "recoverable": "not_recoverable"})
     y2 = SC.yield_summary(many, b24)
-    assert [ln["met"] for ln in y2["reference_lines"]] == [False, True]  # 4 tasks
-    assert y2["usable_per_boundary_r"] == 0.5 and y2["exp3_base_runs_from_r"]["point"] == 50.0
-    assert y2["boundaries_with_usable_share"] == 0.5
+    up, cf = y2["upper"], y2["confirmed"]
+    assert [ln["met"] for ln in up["reference_lines"]] == [False, True]  # 12 across 4 tasks
+    assert up["sizing_overall"]["q"] == 0.5 and up["sizing_overall"]["exp3_base_runs"][
+        "point"] == 50.0
+    assert cf["sizing_overall"]["with_repairable"] == 6 and cf["repairable_dropped"] == 6
+    assert y2["counts"]["confirmed"] == {"total": 7, "dropped": 6, "misstated": 1, "tasks": 3,
+                                         "boundaries": 7}
+    assert y2["counts"]["upper"]["misstated"] == 1  # misstated: reported, never sized
 
 
 # ------------------------------------------------------------------------------------------
@@ -425,6 +463,7 @@ def test_cli_pool_page_freeze(SC, tmp_path, monkeypatch, capsys):
     losses.write_text(saved)
     assert SC.main(args) == 0
     fz = json.loads((tmp_path / "frozen.json").read_text())
-    assert fz["yield_summary"]["usable"] == 3 and fz["inputs_sha256"]["labels"]
+    assert fz["yield_summary"]["counts"]["upper"]["total"] == 3
+    assert fz["yield_summary"]["counts"]["confirmed"]["total"] == 2 and fz["inputs_sha256"]["labels"]
     assert fz["decision"] is None
     assert SC.main(args) == 3  # frozen: refuses a second write

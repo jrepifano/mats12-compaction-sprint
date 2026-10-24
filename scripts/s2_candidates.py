@@ -5,14 +5,17 @@ and freezes the result once.
 
 **Pool** (`pool`, no calls). Rows of `results/sprint/S2/lossaudit/losses.jsonl` (unit 1-3's
 contract: S1's ITEM_ROW_FIELDS with the final grade after the second look, plus run_key, task,
-channel, subject, policy, half, planted_rule, first_grade, lost, recoverable, recoverable_how,
-boundary_dir), filtered in order, each step counted in the funnel and each exclusion logged:
+channel, subject, policy, half, planted_rule, first_grade, lost, recoverable (recoverable,
+not_recoverable, unresolved or null), recoverable_how, recoverable_lines [{path, line, text}],
+recoverable_commands [{msg, command}], boundary_dir), filtered in order, each step counted in the funnel and each exclusion logged:
 lost; not a planted rule (the retention judge covers those); type task_state, decision,
 commitment or permission; one per equivalent item within a boundary (difflib ratio >= S1's
 DEDUPE_RATIO on the normalised quote or text, earliest message kept); and the automatic part of
-check 3: an item whose recoverability is "yes" (its key strings found in the task's base repo or
-in a file the agent read and didn't rewrite, unit 3) is excluded before the page, with the
-evidence logged. "approximate" and "no" go to Jacob.
+check 3: an item unit 3 calls "recoverable" (found in the boundary's repo state) is excluded
+before the page, with the evidence logged. "unresolved" and "not_recoverable" go to Jacob; a
+usable "not_recoverable" loss counts in the confirmed count, an "unresolved" (or uncalled) one in
+the upper count only. Cards show unit 3's matching lines and the agent's commands that touched
+those files under check 3.
 
 **Draft** (`draft --max`, Max plan, $0). One Claude Haiku 5.5 call per candidate through
 `compaction.claude_headless.MaxBackend` (effort medium as S1's judge, concurrency 8, its own
@@ -62,13 +65,15 @@ The CLI first rebuilds the page from the current inputs (each read once, its sha
 bytes used) and refuses unless the draw and page sha256 match the page key. Writes results/sprint/S2/lossaudit/candidates_frozen.json
 once (exclusive create; there is no --force): UTC time, prompt sha, input sha256s, the funnel at
 every stage and check (marginal and cumulative), the usable list, and `yield_summary`, which is
-descriptive, not a pass/fail gate (Jacob, 24 Oct): the usable count, tasks with at least one
-usable loss, per-task and per-boundary counts over every audited boundary (the denominator is
-`lossaudit.boundaries()`, zeros listed), usable losses per boundary r and the implied
-number of Experiment 3 base runs for 20-30 boundaries with a loss (about 25/r, range 20/r-30/r;
-also from the share of boundaries with a usable loss), and the two reference lines ">= 10 across
->= 5 tasks" and ">= 10 across >= 4 tasks", for information only. `decision` is null: Jacob decides
-after seeing it.
+descriptive, not a pass/fail gate (Jacob, 24 Oct). Counts are given twice, confirmed and upper
+(see Pool), each overall and for dropped and misstated items separately, with unique tasks, at
+every check too. Sizing uses dropped usable losses only (Experiment 3's first run repairs
+dropped items; misstated ones are reported, not repaired): the headline is q, the share of
+audited boundaries with at least one (the denominator is `lossaudit.boundaries()`, zeros
+listed), per configuration (subject x policy) and overall, with a Wilson 95% interval, and the
+implied Experiment 3 base runs 25/q (range 20/q-30/q, and 25 over the interval's ends). r, losses
+per boundary, is descriptive only. Two reference lines (">= 10 across >= 5 tasks", ">= 10 across
+>= 4 tasks") are shown for information only. `decision` is null: Jacob decides after seeing it.
 
     uv run python scripts/s2_candidates.py pool [--losses PATH]
     uv run python scripts/s2_candidates.py draft --max [--concurrency 8] [--only CAND_IDS]
@@ -124,6 +129,7 @@ MAX_TRIES = 3  # requests per candidate, first one included
 BATCH = 16  # requests per backend.run; drafts are written after each
 CONTROL_RATIO = (0.5, 2.0)
 MAX_PAGE_BYTES = 15_000_000
+MAX_EVIDENCE = 20  # recoverability lines and commands shown per card (the counts are shown too)
 CHECKS = ("retention", "applicability", "not_recoverable", "governed_decision",
           "frozen_design")
 ANSWERS = ("yes", "no", "unclear")
@@ -233,12 +239,19 @@ def pool(rows: list[dict]) -> dict:
                                  "reason": f"equivalent to {cand_id(dup)}"})
         deduped += kept
     funnel["deduplicated"] = len(deduped)
-    xs = keep(deduped, "not_recoverable_auto", lambda r: r.get("recoverable") != "yes",
+    for stage, rs in (("lost", [r for r in rows if r.get("lost") is True]),
+                      ("deduplicated", deduped)):
+        funnel[f"{stage}_by_grade"] = dict(sorted(Counter(str(r.get("grade")) for r in rs)
+                                                  .items()))
+    xs = keep(deduped, "not_recoverable_auto", lambda r: r.get("recoverable") != "recoverable",
               lambda r: f"recoverable: {r.get('recoverable_how')}")
     funnel["boundaries"] = len({str(r.get("run_key")) for r in rows})
     funnel["tasks"] = len({str(r.get("task")) for r in rows})
     cands = [{"cand_id": cand_id(r), **r} for r in xs]
-    seen = {str(r.get("run_key")): str(r.get("task")) for r in rows}
+    funnel["to_page_by_recoverable"] = dict(sorted(Counter(
+        str(c.get("recoverable")) for c in cands).items()))
+    seen = {str(r.get("run_key")): {"task": str(r.get("task")), "subject": r.get("subject"),
+                                    "policy": r.get("policy")} for r in rows}
     return {"candidates": cands, "excluded": excluded, "funnel": funnel,
             "boundaries": dict(sorted(seen.items()))}
 
@@ -657,6 +670,10 @@ def build(cands: list[dict], drafts: Mapping[str, dict], views: Views, *, seed: 
             "grade": c.get("grade"),
             "summary_quote": c.get("summary_quote") if c.get("grade") == "misstated" else None,
             "recover": {"recoverable": c.get("recoverable"), "how": c.get("recoverable_how"),
+                        "lines": list(c.get("recoverable_lines") or [])[:MAX_EVIDENCE],
+                        "commands": list(c.get("recoverable_commands") or [])[:MAX_EVIDENCE],
+                        "n_lines": len(c.get("recoverable_lines") or []),
+                        "n_commands": len(c.get("recoverable_commands") or []),
                         "availability": c.get("availability"),
                         "availability_how": c.get("availability_how")},
             "draft": dr,
@@ -690,8 +707,8 @@ CHECK_TEXT = [
     ["Applicability", ("Does it still bear on remaining work at the boundary? Completed-work "
                        "facts count when the agent could redo or contradict them.")],
     ["Not recoverable", ("Does no file in the boundary's repo and no part of the task "
-                         "description state it? (The repo check used the base repo plus the "
-                         "agent's own writes: an approximation.)")],
+                         "description state it? The repo check's matching lines and the "
+                         "agent's commands that touched those files are shown below.")],
     ["Governed decision", ("Can a later decision it bears on be named from the task and the "
                            "boundary's state, with an observable act that satisfies or "
                            "contradicts it?")],
@@ -760,7 +777,14 @@ function designHtml(u) {
 }
 function evidence(u, k) {
   if (k === 0) return `<p class="lede">Search the post-compaction input below.</p><p class="lede" id="g-${u.id}" hidden>Judge's grade: <strong>${esc(u.grade)}</strong>${u.summary_quote ? `; the summary says: <span class="q">${esc(u.summary_quote)}</span>` : ""}.</p>`;
-  if (k === 2) { const r = u.recover || {}; return `<p class="lede">Repo check: <strong>${esc(r.recoverable)}</strong> (${esc(r.how)}). Availability: ${esc(r.availability)} (${esc(r.availability_how)}).</p>`; }
+  if (k === 2) {
+    const r = u.recover || {};
+    const lines = (r.lines || []).map(x => `<li><code>${esc(x.path)}:${esc(x.line)}</code> ${esc(x.text)}</li>`).join("");
+    const cmds = (r.commands || []).map(x => `<li>message ${esc(x.msg)}: <code>${esc(x.command)}</code></li>`).join("");
+    return `<p class="lede">Repo check: <strong>${esc(r.recoverable)}</strong> (${esc(r.how)}). Availability: ${esc(r.availability)} (${esc(r.availability_how)}).</p>`
+      + (lines ? `<p class="label">Matching lines in the boundary's repo (${esc(r.n_lines)})</p><ul>${lines}</ul>` : "")
+      + (cmds ? `<p class="label">The agent's commands that touched those files (${esc(r.n_commands)})</p><ul>${cmds}</ul>` : "");
+  }
   return draftHtml(u, k);
 }
 function card(u, i, n) {
@@ -960,51 +984,105 @@ def answers(labels: Mapping[str, dict], key: Mapping, *, allow_incomplete: bool
     return out
 
 
-def yield_summary(usable: list[dict], boundaries: Mapping[str, str]) -> dict:
+def _wilson95(x: int, n: int) -> list[float] | None:
+    from emx.stats import _wilson
+
+    return [round(float(v), 4) for v in _wilson(x, n, 1.959964)] if n else None
+
+
+def _bmeta(v: Any) -> dict:
+    return v if isinstance(v, Mapping) else {"task": str(v), "subject": None, "policy": None}
+
+
+def split_counts(xs: Iterable[Mapping]) -> dict:
+    """Confirmed (repo check not_recoverable) and upper (also unresolved, or no call) counts,
+    each overall and by grade, with unique tasks and boundaries."""
+    xs = list(xs)
+    out = {}
+    for basis in ("confirmed", "upper"):
+        ys = [x for x in xs if basis == "upper" or x.get("recoverable") == "not_recoverable"]
+        out[basis] = {"total": len(ys),
+                      "dropped": sum(x.get("grade") == "dropped" for x in ys),
+                      "misstated": sum(x.get("grade") == "misstated" for x in ys),
+                      "tasks": len({str(x.get("task")) for x in ys}),
+                      "boundaries": len({str(x.get("run_key")) for x in ys})}
+    return out
+
+
+def base_runs(q: float | None, ci: list[float] | None) -> dict | None:
+    """Experiment 3 base runs for 20-30 boundaries with a usable loss, from q."""
+    if not q:
+        return None
+    lo, mid, hi = (b / q for b in EXP3_BOUNDARIES)
+    at_ci = [round(EXP3_BOUNDARIES[1] / ci[1], 1) if ci and ci[1] else None,
+             round(EXP3_BOUNDARIES[1] / ci[0], 1) if ci and ci[0] else None]
+    return {"point": round(mid, 1), "range": [round(lo, 1), round(hi, 1)],
+            "at_ci95_ends": at_ci}
+
+
+def _sizing(keys: list[str], with_loss: Mapping[str, int]) -> dict:
+    """q over `keys`: the share of boundaries with at least one repairable usable loss."""
+    n = len(keys)
+    x = sum(1 for k in keys if with_loss.get(k))
+    q = x / n if n else None
+    ci = _wilson95(x, n)
+    return {"boundaries": n, "with_repairable": x, "q": round(q, 4) if q is not None else None,
+            "q_ci95": ci, "exp3_base_runs": base_runs(q, ci)}
+
+
+def yield_summary(usable: list[dict], boundaries: Mapping[str, Any]) -> dict:
     """Descriptive, not a gate (Jacob, 24 Oct): Jacob decides from it. `boundaries`: run key ->
-    task of every audited boundary (the denominator; boundaries and tasks with no usable loss
-    are listed with 0)."""
-    per_task = Counter({t: 0 for t in boundaries.values()})
-    per_b = Counter({k: 0 for k in boundaries})
-    for u in usable:
-        per_task[str(u["task"])] += 1
-        per_b[str(u["run_key"])] += 1
-    n, nb = len(usable), len(boundaries)
-    with_usable = sum(1 for v in per_b.values() if v)
-    tasks_with = sum(1 for v in per_task.values() if v)
-    r = n / nb if nb else None
-    share = with_usable / nb if nb else None
+    {task, subject, policy} of every audited boundary (the denominator; zeros are listed).
 
-    def runs(rate):
-        if not rate:
-            return None
-        lo, mid, hi = (x / rate for x in EXP3_BOUNDARIES)
-        return {"point": round(mid, 1), "low": round(lo, 1), "high": round(hi, 1)}
+    Two counts: confirmed (repo check not_recoverable) and upper (adds unresolved). Sizing
+    uses the repairable usable losses, the dropped ones (Experiment 3's first run repairs
+    dropped items only; misstated ones are reported, not repaired): q = the share of
+    boundaries with at least one, per configuration (subject x policy) and overall, with a
+    Wilson 95% interval, and Experiment 3 base runs = 25/q (20/q-30/q, and 25 over the
+    interval's ends). r (usable losses per boundary) is descriptive only."""
+    meta = {str(k): _bmeta(v) for k, v in boundaries.items()}
+    nb = len(meta)
+    tasks = sorted({m["task"] for m in meta.values()})
 
-    return {
-        "usable": n,
-        "tasks_with_usable": tasks_with,
-        "tasks_total": len(per_task),
-        "boundaries_total": nb,
-        "boundaries_with_usable": with_usable,
-        "per_task": dict(sorted(per_task.items())),
-        "per_boundary": dict(sorted(per_b.items())),
-        "usable_per_boundary_r": round(r, 4) if r is not None else None,
-        "boundaries_with_usable_share": round(share, 4) if share is not None else None,
-        "exp3_base_runs_from_r": runs(r),
-        "exp3_base_runs_from_share": runs(share),
-        "exp3_base_runs_note": (
-            f"Experiment 3 base runs for {EXP3_BOUNDARIES[0]}-{EXP3_BOUNDARIES[2]} boundaries "
-            f"with a loss. From r: {EXP3_BOUNDARIES[1]}/r (range {EXP3_BOUNDARIES[0]}/r-"
-            f"{EXP3_BOUNDARIES[2]}/r), an approximation that counts losses, not boundaries. "
-            "From the share of boundaries with at least one usable loss: the same bounds "
-            "divided by that share, the relevant estimate when losses cluster at a boundary. "
-            "None when nothing is usable."),
-        "reference_lines": [
-            {"line": f">= {u} usable across >= {t} tasks",
-             "met": n >= u and tasks_with >= t, "for_information_only": True}
-            for u, t in REFERENCE_LINES],
+    def conf(m):
+        return f"{m.get('subject')}/{m.get('policy')}"
+
+    out: dict[str, Any] = {
+        "basis": "confirmed = repo check not_recoverable; upper adds unresolved. Sizing on "
+                 "dropped usable losses only (repairable in Experiment 3's first run).",
+        "boundaries_total": nb, "tasks_total": len(tasks),
+        "counts": split_counts(usable),
     }
+    for basis in ("confirmed", "upper"):
+        ys = [u for u in usable if basis == "upper" or u.get("recoverable") == "not_recoverable"]
+        per_task = Counter({t: 0 for t in tasks})
+        per_b = Counter({k: 0 for k in meta})
+        rep_b: Counter = Counter()
+        for u in ys:
+            per_task[str(u.get("task"))] += 1
+            per_b[str(u["run_key"])] += 1
+            if u.get("grade") == "dropped":
+                rep_b[str(u["run_key"])] += 1
+
+        confs = sorted({conf(m) for m in meta.values()})
+        n_rep = sum(rep_b.values())
+        tasks_rep = len({meta[k]["task"] for k in rep_b if k in meta})
+        out[basis] = {
+            "per_task": dict(sorted(per_task.items())),
+            "per_boundary": dict(sorted(per_b.items())),
+            "repairable_dropped": n_rep,
+            "tasks_with_repairable": tasks_rep,
+            "sizing_overall": _sizing(list(meta), rep_b),
+            "sizing_by_configuration": {
+                c: _sizing([k for k, m in meta.items() if conf(m) == c], rep_b) for c in confs},
+            "r_descriptive": {"usable_per_boundary": round(len(ys) / nb, 4) if nb else None,
+                              "dropped_per_boundary": round(n_rep / nb, 4) if nb else None},
+            "reference_lines": [
+                {"line": f">= {u} repairable (dropped) across >= {t} tasks",
+                 "met": n_rep >= u and tasks_rep >= t, "for_information_only": True}
+                for u, t in REFERENCE_LINES],
+        }
+    return out
 
 
 DESIGN_FIELDS = {"d_repair": ("design", "repair_text"), "d_control": ("design", "control_text"),
@@ -1038,12 +1116,12 @@ def final_design(label: Mapping, draft: Mapping | None) -> dict:
 
 
 def freeze(labels_obj: Any, key: Mapping, pool_rec: Mapping, drafts: Mapping[str, dict], *,
-           boundaries: Mapping[str, str] | None = None, out_path: Path = FROZEN_PATH,
+           boundaries: Mapping[str, Any] | None = None, out_path: Path = FROZEN_PATH,
            allow_incomplete: bool = False, inputs: Mapping[str, str | None] | None = None
            ) -> dict:
     """Freeze once. A candidate is usable with yes on all five checks AND a complete final
     design; a yes on check 5 over an incomplete design is refused (or, with allow_incomplete,
-    counted as not passing check 5). `boundaries` (run key -> task) is the yield summary's
+    counted as not passing check 5). `boundaries` (run key -> {task, subject, policy}) is the yield summary's
     denominator; without it, the boundaries in the loss rows are used and marked so."""
     out_path = Path(out_path)
     if out_path.exists():
@@ -1064,6 +1142,10 @@ def freeze(labels_obj: Any, key: Mapping, pool_rec: Mapping, drafts: Mapping[str
         ans[cid][-1] = "design_incomplete"
     marginal = {c: Counter() for c in CHECKS}
     cumulative: dict[str, int] = {}
+    cumulative_split: dict[str, dict] = {}
+
+    def cand_of(cid):
+        return cands[key["cards"][cid]["cand_id"]]
     alive = list(key["order"])
     excluded = list(pool_rec["excluded"]) + list(key.get("excluded_on_page") or [])
     for k, chk in enumerate(CHECKS):
@@ -1080,6 +1162,7 @@ def freeze(labels_obj: Any, key: Mapping, pool_rec: Mapping, drafts: Mapping[str
                                  "reason": f"{a}" + (f": {note}" if note else "")})
         alive = nxt
         cumulative[chk] = len(alive)
+        cumulative_split[chk] = split_counts(cand_of(cid) for cid in alive)
     usable = []
     for cid in alive:
         c = cands[key["cards"][cid]["cand_id"]]
@@ -1112,16 +1195,20 @@ def freeze(labels_obj: Any, key: Mapping, pool_rec: Mapping, drafts: Mapping[str
         "draw": key["draw"], "seed": key["seed"], "page_sha256": key.get("page_sha256"),
         "exclude_draft_no": key.get("exclude_draft_no"),
         "auto_exclusion_note": (
-            "Recoverability 'yes' (unit 3's repo search) was excluded before the page, as "
-            "conservative candidate discovery; Jacob confirmed check 3 only for the rest. "
-            "Each exclusion's evidence is in `excluded`."),
+            "Recoverability 'recoverable' (unit 3's repo search) was excluded before the page, "
+            "as conservative candidate discovery; Jacob answered check 3 for the rest. "
+            "'unresolved' candidates count in the upper count only. Each exclusion's evidence "
+            "is in `excluded`."),
         "funnel": {
             "pool": dict(fun),
             "on_page": len(key["order"]),
+            "on_page_split": split_counts(cand_of(cid) for cid in key["order"]),
             "excluded_on_page": len(key.get("excluded_on_page") or []),
             "checks_cumulative": cumulative,
+            "checks_cumulative_split": cumulative_split,
             "checks_marginal": {c: dict(marginal[c]) for c in CHECKS},
             "usable": len(usable),
+            "usable_split": split_counts(usable),
         },
         "allow_incomplete": allow_incomplete,
         "denominator": {"source": denom, "boundaries": dict(sorted(boundaries.items()))},
@@ -1202,8 +1289,9 @@ def cmd_page(a) -> int:
     return 0
 
 
-def audited_boundaries() -> dict[str, str]:
-    """run key -> task of every boundary the loss audit covers (its denominator)."""
+def audited_boundaries() -> dict[str, dict]:
+    """run key -> {task, subject, policy} of every boundary the loss audit covers (its
+    denominator), from each attempt's run.json plan."""
     from compaction.s2 import lossaudit
     from compaction.s2 import retention as RT
 
@@ -1211,7 +1299,9 @@ def audited_boundaries() -> dict[str, str]:
     for d in lossaudit.boundaries():
         run = json.loads((Path(d) / "run.json").read_text()) if (Path(d) / "run.json").exists() \
             else {}
-        out[RT.run_key(d)] = str((run.get("plan") or {}).get("task"))
+        plan = run.get("plan") or {}
+        out[RT.run_key(d)] = {"task": str(plan.get("task")), "subject": plan.get("model"),
+                              "policy": plan.get("policy")}
     return out
 
 
