@@ -775,7 +775,8 @@ def place_cards(bdir: Path, screened: dict) -> dict:
     """After a screen: the carded candidate becomes a primary card and its bundle members
     cards beside it, within the caps (primaries and members per boundary, every card in all);
     a member that doesn't fit is left off. Nothing carded, or no room for the primary, exhausts
-    the boundary. The count, the allocation and the
+    the boundary. Candidates the selection already rejected never come back, whatever the
+    input: a rejected member is dropped, and a rejected primary raises (a stale screen). The count, the allocation and the
     write run under one process lock and one file lock at the root, so concurrent `advance`
     workers or processes can't both take the last cards (astra build r2 #3)."""
     root = Path(bdir).parent.parent
@@ -793,6 +794,10 @@ def _place_cards(bdir: Path, screened: dict) -> dict:
     if not screened.get("carded"):
         return _transition(bdir, "exhausted", "no_candidate")
     primary = screened["carded"]
+    rejected = set(sel.get("rejected") or [])
+    if primary in rejected:  # a stale screen: fail loudly rather than reshow or exhaust
+        raise ValueError(f"{bdir}: screened primary {primary} was already rejected")
+    bundle = [c for c in screened.get("bundle") or [] if c not in rejected]
     if primary in primaries:  # still the open primary: nothing new to show
         return _transition(bdir, "carded", "carded_again", primary=primary)
     if len(primaries) >= CARDS_PER_BOUNDARY:
@@ -805,7 +810,7 @@ def _place_cards(bdir: Path, screened: dict) -> dict:
         return _transition(bdir, "exhausted", "card_cap", primaries=len(primaries),
                            total=total)
     room = min(MEMBERS_PER_BOUNDARY - len(members), CARDS_TOTAL - total - 1)
-    new = [c for c in screened.get("bundle") or [] if c not in shown][:max(room, 0)]
+    new = [c for c in bundle if c not in shown][:max(room, 0)]
     return _transition(bdir, "carded", "carded", primary=primary,
                        add_cards=[primary, *new], add_primaries=[primary])
 

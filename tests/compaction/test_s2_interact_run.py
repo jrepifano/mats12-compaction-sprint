@@ -1113,6 +1113,50 @@ def test_card_cap_counts_primaries_only(tmp_path):
     assert len(sel["cards"]) == 4 and IR.cards_total(tmp_path) == 4
 
 
+def test_card_cap_migrates_old_logs_with_promotions(tmp_path):
+    """An old-rule log with a promotion and repeated carded_again rows: primaries are counted
+    once each, and a shown member can still be promoted at the 12-card cap (no new card)."""
+    for n in range(4):  # 10 other cards
+        bn = tmp_path / f"t{n}-deepseek-a1" / "b1"
+        (bn / "boundary").mkdir(parents=True)
+        IR.place_cards(bn, _screened(f"live.b1-q{n}", [f"live.b1-x{n}", f"live.b1-y{n}"]))
+    b = tmp_path / "old-deepseek-a1" / "b1"
+    (b / "boundary").mkdir(parents=True)
+    old = {"k": 1, "state": "carded", "cards": ["live.b1-p", "live.b1-m"],
+           "rejected": [], "frozen": None,
+           "log": [{"event": "carded", "primary": "live.b1-p"},
+                   {"event": "carded_again", "primary": "live.b1-p"},
+                   {"event": "carded_again", "primary": "live.b1-p"}]}
+    IR._dump(IR._v2dir(b) / IR.SELECTION_NAME, old)
+    assert IR.primaries_of(IR.selection(b)) == ["live.b1-p"] and IR.cards_total(tmp_path) == 14
+    IR.record_decisions(b, [{"cand_id": "live.b1-p", "status": "rejected", "role": "primary"}])
+    sel = IR.place_cards(b, _screened("live.b1-m"))  # promotion over the total cap: allowed
+    assert sel["state"] == "carded" and sel["primaries"] == ["live.b1-p", "live.b1-m"]
+    assert IR.cards_total(tmp_path) == 14
+    promoted = dict(old, log=[*old["log"], {"event": "carded_again", "primary": "live.b1-m"},
+                              {"event": "carded_again", "primary": "live.b1-m"}])
+    del promoted["state"]
+    assert IR.primaries_of(promoted) == ["live.b1-p", "live.b1-m"]
+
+
+def test_place_cards_never_reshows_a_rejected_candidate(tmp_path):
+    b = tmp_path / "t-deepseek-a1" / "b1"
+    (b / "boundary").mkdir(parents=True)
+    IR.place_cards(b, _screened("live.b1-q1", ["live.b1-q2"]))
+    IR.record_decisions(b, [{"cand_id": "live.b1-q1", "status": "rejected", "role": "primary"},
+                            {"cand_id": "live.b1-q2", "status": "rejected",
+                             "role": "bundle_member"}])
+    before = IR.selection(b)
+    with pytest.raises(ValueError, match="already rejected"):  # a stale screen
+        IR.place_cards(b, _screened("live.b1-q1", ["live.b1-q3"]))
+    with pytest.raises(ValueError, match="already rejected"):  # nor a rejected member promoted
+        IR.place_cards(b, _screened("live.b1-q2"))
+    assert IR.selection(b) == before  # no transition written
+    sel = IR.place_cards(b, _screened("cc_prompt.b1-q4", ["live.b1-q2", "cc_prompt.b1-q5"]))
+    assert sel["primaries"] == ["live.b1-q1", "cc_prompt.b1-q4"]
+    assert sel["cards"] == ["live.b1-q1", "live.b1-q2", "cc_prompt.b1-q4", "cc_prompt.b1-q5"]
+
+
 def test_card_cap_holds_under_concurrent_placement(tmp_path):
     """astra build r2 #3: two workers at 10 cards can't take 4."""
     for n in range(5):
