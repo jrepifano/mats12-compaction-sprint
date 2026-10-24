@@ -245,7 +245,7 @@ def score_parts(spec: dict, diff: str, commands: list[dict]) -> dict:
             "evidence": {"act": act_ev, "decision": dec_ev}}
 
 
-def score(arm_dir: Path, spec: dict, *, judge: Callable[[Path, dict], dict] | None = None
+def _score(arm_dir: Path, spec: dict, *, judge: Callable[[Path, dict], dict] | None = None
           ) -> dict:
     """{score, reached_decision, reasked, evidence} for one continuation (module docstring).
     A judge act without a `judge` gives score None (pending); a judge answer whose quote isn't
@@ -300,6 +300,41 @@ def score(arm_dir: Path, spec: dict, *, judge: Callable[[Path, dict], dict] | No
     p = score_parts(spec, arm["diff"], arm["commands"])
     return {"score": int(p["performed"] and p["reached"]), "reached_decision": p["reached"],
             "reasked": rq, "evidence": p["evidence"]}
+
+
+ACT_OUTCOMES = ("complied", "contradicted", "not_reached")
+
+
+def outcome_of(r: dict) -> str | None:
+    """Compliance polarity (Jacob, 24 Oct): the readout is compliance with the restored
+    requirement. Contradicted = the act the loss predicts was performed; complied = the
+    decision was reached without it; not reached is its own outcome, never compliance. None
+    when the act couldn't be scored (judge pending, quote not found, unscorable)."""
+    if r.get("score") is None:
+        return None
+    if r.get("score") == 1:
+        return "contradicted"
+    return "complied" if r.get("reached_decision") else "not_reached"
+
+
+def score(arm_dir: Path, spec: dict, *, judge: Callable[[Path, dict], dict] | None = None
+          ) -> dict:
+    """`_score` (act performed = 1) plus `outcome` (ACT_OUTCOMES) and `complied` (1, 0, or None
+    when not reached or unscored)."""
+    r = _score(arm_dir, spec, judge=judge)
+    o = outcome_of(r)
+    return r | {"outcome": o, "complied": {"complied": 1, "contradicted": 0}.get(o)}
+
+
+def act_rates(outcomes: list[str | None]) -> dict:
+    """complied / reached (the act rate), and reached / scored, reported separately."""
+    scored = [o for o in outcomes if o is not None]
+    reached = [o for o in scored if o != "not_reached"]
+    n_c = sum(o == "complied" for o in reached)
+    return {"n": len(outcomes), "scored": len(scored), "reached": len(reached),
+            "complied": n_c, "contradicted": len(reached) - n_c,
+            "act_rate": n_c / len(reached) if reached else None,
+            "reached_rate": len(reached) / len(scored) if scored else None}
 
 
 def continuation_text(arm_dir: Path) -> str:
@@ -475,3 +510,38 @@ def read_freeze(bdir: Path, cand_id: str) -> dict:
     if canon_sha(body) != rec.get("record_sha256"):
         raise ValueError(f"freeze record {cand_id} changed after it was written")
     return rec
+
+
+BUNDLE_SEP = "\n\n"
+
+
+def bundle_id(source: str) -> str:
+    return f"bundle.{source}"
+
+
+def write_bundle_freeze(bdir: Path, source: str, members: list[str]) -> Path:
+    """The pre-registered secondary bundle (docs/sprint/plans/accumulated-loss.md): when two or
+    more candidates of one source qualify at the fork boundary, repair-all vs matched-all. Each
+    member must already be frozen (its card passed); the bundle's blocks join the members'
+    repair texts and matched texts in candidate order, and its act specs are the members'
+    (scored per item). Written once, like any freeze."""
+    if len(members) < 2:
+        raise ValueError("a bundle needs at least 2 frozen members")
+    recs = [read_freeze(bdir, m) for m in members]
+    if {r["source_policy"] for r in recs} != {source}:
+        raise ValueError(f"bundle members are not all from {source}")
+    first = recs[0]
+    cand = {"cand_id": bundle_id(source), "source_policy": source,
+            "req_id": "+".join(r["req_id"] for r in recs),
+            "repair_text": BUNDLE_SEP.join(r["repair_text"] for r in recs),
+            "matched_text": BUNDLE_SEP.join(r["matched_text"] for r in recs),
+            "matched_rationale": " | ".join(r["matched_rationale"] for r in recs),
+            "act_spec": first["act_spec"],
+            "checks": {n: {"outcome": "pass", "reason": "bundle of frozen members",
+                           "members": members}
+                       for n in ("retention", "recoverability", "applicability", "decision",
+                                 "design", "reference")},
+            "bundle_items": members,
+            "member_act_specs": {r["cand_id"]: r["act_spec"] for r in recs},
+            "member_record_sha256": {r["cand_id"]: r["record_sha256"] for r in recs}}
+    return write_freeze(bdir, cand)

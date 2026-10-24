@@ -27,6 +27,15 @@ data/raw/sprint/s2/interact/<task>-deepseek-a<n>/.
             --rep N
         Resume that primary with its own live simulator, to submission, 300 calls or $6; refused
         until every primary has finished and the tag has $24 of headroom. Sealed receipt only.
+    uv run python scripts/s2_interact.py advance --go-from-jacob [--tasks a,b | --runs DIR ...]
+            [--concurrency 6]
+        Phase B of the accumulated-loss study: for each task's latest run, the v2 fork rule
+        (fork_v2/: grade every summary on every requirement so far, new/inherited ledger,
+        screen with the pending-decision check) on its saved boundaries in order; stop at the
+        first that forks; otherwise resume to the next fork, ship-it or the caps (carried over).
+    uv run python scripts/s2_interact.py resume --go-from-jacob RUN_DIR [--after-freeze]
+        Continue one run from its latest boundary. A carded boundary is refused unless
+        --after-freeze; then the continuation is sealed (sealed.json; receipt only).
     uv run python scripts/s2_interact.py retire DIR
         Move a crashed arm dir aside (arms/_retired/); execution dirs are never reused.
     uv run python scripts/s2_interact.py status
@@ -86,16 +95,16 @@ def cmd_base(a) -> int:
     tasks = a.tasks.split(",") if a.tasks else list(C.INTERACT_TASKS)
     configs = [IR.BaseConfig(task=IR.load_task(t), root=root,
                              attempt=IR.next_attempt(root, t)) for t in tasks]
+    trig = _trigger()
     watch = IR.DockerWatch(root).start()
 
     def run_one(cfg: IR.BaseConfig) -> dict:
         agent, sim = _models(IR.spend_path(cfg.root, f"{cfg.run_key}-base"),
                              C.INTERACT_BASE_CAP_USD)
         with Invocation(purpose=IR.PURPOSE) as inv:
+            # new runs stop by the v2 fork rule (accumulated-loss plan), screening inline
             return IR.run_base(cfg, agent_model=agent, sim_model=sim, inv=inv,
-                               eligible=IR.default_eligibility(
-                                   lambda: IR.claude_backend(IR.PilotSpend())),
-                               watch=watch)
+                               eligible=IR.safe_trigger(trig), watch=watch)
 
     try:
         out = IR.run_bases(configs, run_one, concurrency=a.concurrency, rerun=not a.no_rerun)
@@ -207,6 +216,106 @@ def cmd_arm(a, secondary: bool = False) -> int:
     return 0
 
 
+def _latest_runs(root: Path, tasks: list[str]) -> list[Path]:
+    """Each task's latest attempt that has a complete boundary."""
+    out = []
+    for t in tasks:
+        runs = sorted((p for p in root.glob(f"{t}-deepseek-a*") if IR.boundaries_of(p)),
+                      key=lambda p: int(p.name.rsplit("-a", 1)[1]))
+        if runs:
+            out.append(runs[-1])
+    return out
+
+
+def _resume_one(rd: Path, after_freeze: bool, watch) -> dict:
+    task = IR.load_task(json.loads((rd / "run.json").read_text())["task"]["task_id"])
+    prior = IR._prior_totals(rd)
+    left = C.INTERACT_BASE_CAP_USD - prior["cost_usd"] - prior["sim_cost_usd"]
+    agent, sim = _models(IR.spend_path(rd.parent, f"{rd.name}-r{IR._resume_index(rd)}"),
+                         max(0.01, left))
+    with Invocation(purpose=IR.PURPOSE) as inv:
+        return IR.resume_base(rd, task, agent_model=agent, sim_model=sim, inv=inv,
+                              trigger=_trigger(), after_freeze=after_freeze, watch=watch)
+
+
+def _trigger():
+    """The v2 fork rule with the live backends: Max (OpenRouter fallback) for the split,
+    replays, grading and drafts; the kept image for the repo search, the cited file and
+    check 6."""
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import session as SS
+    return IR.fork_trigger(lambda: IR.claude_backend(IR.PilotSpend()),
+                           grep_runner=SS.grep_runner(), file_runner=RQ.docker_file_runner())
+
+
+def _sealed_receipt(r: dict) -> dict:
+    return {"run_key": r.get("run_key"), "resume": r.get("resume"), "done": True,
+            "sealed": True, "result_sha256": IR.sha256_bytes(
+                json.dumps(r, sort_keys=True, default=str).encode())}
+
+
+def cmd_resume(a) -> int:
+    _need_go(a)
+    _env()
+    rd = Path(a.run_dir)
+    watch = IR.DockerWatch(rd.parent).start()
+    try:
+        r = _resume_one(rd, a.after_freeze, watch)
+    finally:
+        watch.stop()
+    # a sealed run's continuation is sealed like an arm's output: receipt only
+    sealed = a.after_freeze or IR.active_seal(rd) is not None
+    print(json.dumps(_sealed_receipt(r) if sealed else
+                     {k: r.get(k) for k in ("run_key", "resume", "from_boundary", "end",
+                                            "boundaries", "n_calls", "cost_usd",
+                                            "sim_cost_usd", "seconds")}))
+    return 0
+
+
+def cmd_advance(a) -> int:
+    """Phase B (docs/sprint/plans/accumulated-loss.md): for each run, the v2 fork rule on its
+    saved boundaries in order, then resume to the next fork, ship-it or the caps."""
+    _need_go(a)
+    _env()
+    root = IR.interact_root()
+    runs = [Path(x) for x in a.runs] if a.runs else _latest_runs(
+        root, a.tasks.split(",") if a.tasks else list(C.INTERACT_TASKS))
+    watch = IR.DockerWatch(root).start()
+    trig = _trigger()
+
+    def one(rd: Path) -> dict:
+        task = IR.load_task(json.loads((rd / "run.json").read_text())["task"]["task_id"])
+        try:
+            out = IR.advance(rd, task, trigger=trig,
+                             resume=lambda: _resume_one(rd, False, watch))
+        except Exception as e:  # noqa: BLE001 - one run's failure never stops the others
+            return {"run_key": rd.name, "failed": True,
+                    "error": f"{type(e).__name__}: {e}"[:500]}
+        r = out.get("resumed") or {}
+        row = {"run_key": rd.name, "state": out.get("state"), "fork_at": out["fork_at"],
+               "ended": out.get("ended"), "screened": out["screened"],
+               "failed": out.get("state") == "screen_failed" or r.get("end") in
+               ("error", "infra_error", "infra_oom"),
+               "error": out.get("error") or ((r.get("error") or "")[-300:] or None)}
+        if r:
+            # a run sealed past a boundary shows nothing of its continuation (receipt only)
+            row["resumed"] = (_sealed_receipt(r) if IR.active_seal(rd) is not None else
+                              {k: r.get(k) for k in ("resume", "end", "boundaries", "n_calls",
+                                                     "cost_usd", "sim_cost_usd", "seconds")})
+        return row
+
+    from concurrent.futures import ThreadPoolExecutor
+    failed = 0
+    try:
+        with ThreadPoolExecutor(max_workers=max(1, a.concurrency)) as ex:
+            for row in ex.map(one, runs):
+                failed += bool(row.get("failed"))
+                print(json.dumps(row, default=str), flush=True)
+    finally:
+        watch.stop()
+    return 4 if failed else 0
+
+
 def cmd_publish_freeze(a) -> int:
     p = IR.publish_freeze(Path(a.run_dir) / f"b{a.k}", a.cand_id)
     print(json.dumps({"tracked_copy": str(p.relative_to(C.REPO_ROOT)),
@@ -224,6 +333,10 @@ def cmd_status(a) -> int:
     if root.is_dir():
         for rd in sorted(p for p in root.iterdir() if (p / "result.json").exists()):
             r = json.loads((rd / "result.json").read_text())
+            if IR.active_seal(rd) is not None:
+                # sealed past a boundary: nothing of the run's continuation (astra r2 #4)
+                print(json.dumps({"run_key": rd.name, "sealed_after": IR.active_seal(rd)}))
+                continue
             print(json.dumps({k: r.get(k) for k in ("run_key", "end", "boundaries", "n_calls",
                                                       "cost_usd", "sim_cost_usd")}))
         print(json.dumps(IR.k_counts(root)))
@@ -276,6 +389,16 @@ def main(argv: list[str] | None = None) -> int:
                                        "from it")
         p.add_argument("--kind", required=True, choices=("repair", "matched"))
         p.add_argument("--rep", required=True, type=int, choices=(1, 2))
+    r2 = sub.add_parser("resume")
+    r2.add_argument("--go-from-jacob", action="store_true")
+    r2.add_argument("run_dir")
+    r2.add_argument("--after-freeze", action="store_true",
+                    help="resume past a carded boundary (its continuation is sealed)")
+    ad = sub.add_parser("advance")
+    ad.add_argument("--go-from-jacob", action="store_true")
+    ad.add_argument("--tasks", help="comma-separated; default: the 6 pilot tasks")
+    ad.add_argument("--runs", nargs="*", help="run dirs instead of --tasks")
+    ad.add_argument("--concurrency", type=int, default=C.INTERACT_CONCURRENCY)
     f = sub.add_parser("publish-freeze")
     f.add_argument("run_dir")
     f.add_argument("k", type=int)
@@ -293,7 +416,8 @@ def main(argv: list[str] | None = None) -> int:
     return {"base": cmd_base, "replays": cmd_replays, "screen": cmd_screen, "arm": cmd_arm,
             "secondary": lambda x: cmd_arm(x, secondary=True), "status": cmd_status,
             "sweep-kept": cmd_sweep_kept, "smoke": cmd_smoke,
-            "publish-freeze": cmd_publish_freeze, "retire": cmd_retire}[a.cmd](a)
+            "publish-freeze": cmd_publish_freeze, "retire": cmd_retire,
+            "resume": cmd_resume, "advance": cmd_advance}[a.cmd](a)
 
 
 if __name__ == "__main__":

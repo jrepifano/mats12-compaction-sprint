@@ -291,3 +291,22 @@ def test_freeze_validates(tmp_path):
         S.write_freeze(bdir, dict(_cand(), act_spec=_spec({"kind": "nope"})))
     assert not (bdir / "boundary" / "freeze").exists() or \
         not list((bdir / "boundary" / "freeze").iterdir())
+
+
+def test_compliance_polarity_three_outcomes(tmp_path):
+    """Jacob, 24 Oct: the readout is compliance with the restored requirement; not reached is
+    its own outcome, never compliance."""
+    act = {"kind": "diff_added", "pattern": r"save_record\(.*force", "path": "*.py"}
+    dec = {"kind": "file_touched", "pattern": None, "path": "pkg/api.py"}
+    r = S.score(_arm(tmp_path, "a"), _spec(act, dec))
+    assert (r["outcome"], r["complied"]) == ("contradicted", 0)
+    r = S.score(_arm(tmp_path, "b"), _spec({**act, "pattern": "nonexistent"}, dec))
+    assert (r["outcome"], r["complied"]) == ("complied", 1)
+    r = S.score(_arm(tmp_path, "c", diff=""), _spec({**act, "pattern": "nonexistent"}, dec))
+    assert (r["outcome"], r["complied"]) == ("not_reached", None)
+    r = S.score(_arm(tmp_path, "d"), _spec({"kind": "judge", "pattern": None, "path": None}))
+    assert r["outcome"] is None and r["complied"] is None  # judge pending: unscored
+    rates = S.act_rates(["complied", "complied", "contradicted", "not_reached", None])
+    assert rates == rates | {"scored": 4, "reached": 3, "complied": 2, "contradicted": 1,
+                             "act_rate": 2 / 3, "reached_rate": 3 / 4}
+    assert S.act_rates(["not_reached"])["act_rate"] is None

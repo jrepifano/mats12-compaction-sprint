@@ -456,8 +456,8 @@ def opening_messages(instruction: str, uname: dict | None) -> list[dict]:
             {"role": "user", "content": instance_message(instruction.rstrip("\n"), uname)}]
 
 
-def run_key(task_id: str, attempt: int) -> str:
-    return f"{task_id}-deepseek-a{attempt}"
+def run_key(task_id: str, attempt: int, prefix: str = "") -> str:
+    return f"{prefix}{task_id}-deepseek-a{attempt}"
 
 
 def spend_path(root: Path, name: str) -> Path:
@@ -489,10 +489,11 @@ class BaseConfig:
     cap_usd: float = C.INTERACT_BASE_CAP_USD
     max_seconds: float = C.INTERACT_BASE_MAX_S
     image: str | None = None
+    prefix: str = ""  # e.g. "smoke-<utc>-": never the live runs' keys (24 Oct incident)
 
     @property
     def run_key(self) -> str:
-        return run_key(self.task.task_id, self.attempt)
+        return run_key(self.task.task_id, self.attempt, self.prefix)
 
     @property
     def run_dir(self) -> Path:
@@ -692,6 +693,421 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
 
 
 # ------------------------------------------------------------------------------------------
+# Accumulated loss: the v2 fork rule, the selection state machine, resuming a base run, and
+# phase B (docs/sprint/plans/accumulated-loss.md, v0.2; astra r2 fixes approved by Jacob)
+# ------------------------------------------------------------------------------------------
+# Per boundary, fork_v2/selection.json holds the selection state:
+#   screening -> carded (cards shown; the run is paused there) -> frozen (a primary froze:
+#   the fork) | exhausted (no candidate left, or the card caps) ; screen_failed (retried).
+# A rejection (an unresolved card counts as one) rescreens the boundary with the rejected
+# candidates excluded: the next in source-then-reply order (same source first, then the next
+# source). At most CARDS_PER_BOUNDARY cards per boundary and CARDS_TOTAL in all. Every
+# transition is logged (also to <root>/selection_log.jsonl). A run is sealed from its earliest
+# frozen boundary, and from a carded boundary that already has later boundaries until that
+# boundary is exhausted: no one reads output past it before the freeze.
+
+SEALED_NAME = "sealed.json"
+SELECTION_NAME = "selection.json"
+SELECTION_LOG = "selection_log.jsonl"
+CARDS_PER_BOUNDARY = 2
+CARDS_TOTAL = 12
+PENDING_STATES = (None, "screening", "screen_failed", "carded")
+
+
+def _v2dir(bdir: Path) -> Path:
+    from compaction.s2 import interact_reqs as RQ
+    return Path(bdir) / "boundary" / RQ.SCREEN_V2
+
+
+def selection(bdir: Path) -> dict | None:
+    p = _v2dir(bdir) / SELECTION_NAME
+    return _read(p) if p.exists() else None
+
+
+def state_of(bdir: Path) -> str | None:
+    return (selection(bdir) or {}).get("state")
+
+
+def _transition(bdir: Path, state: str, event: str, **kw) -> dict:
+    bdir = Path(bdir)
+    sel = selection(bdir) or {"k": int(bdir.name[1:]), "state": None, "cards": [],
+                              "rejected": [], "frozen": None, "log": []}
+    for f in ("cards", "rejected"):
+        for x in kw.pop(f"add_{f}", []):
+            if x not in sel[f]:
+                sel[f].append(x)
+    if "frozen" in kw:
+        sel["frozen"] = kw.pop("frozen")
+    row = {"utc": utc(), "from": sel["state"], "to": state, "event": event, **kw}
+    sel["state"] = state
+    sel["log"].append(row)
+    _dump(_v2dir(bdir) / SELECTION_NAME, sel)
+    root = bdir.parent.parent
+    with _TAG_LOCK, open(root / SELECTION_LOG, "a") as f:
+        f.write(json.dumps({"run": bdir.parent.name, "k": sel["k"], **row}) + "\n")
+    return sel
+
+
+def cards_total(root: Path) -> int:
+    from compaction.s2 import interact_reqs as RQ
+    return sum(len(_read(p).get("cards") or []) for p in
+               Path(root).glob(f"*/b*/boundary/{RQ.SCREEN_V2}/{SELECTION_NAME}"))
+
+
+def place_cards(bdir: Path, screened: dict) -> dict:
+    """After a screen: the carded candidate (and bundle members) become cards within the caps;
+    nothing carded, or no room, exhausts the boundary. The count, the allocation and the
+    write run under one process lock and one file lock at the root, so concurrent `advance`
+    workers or processes can't both take the last cards (astra build r2 #3)."""
+    root = Path(bdir).parent.parent
+    with _TAG_LOCK, _file_lock(root / ".selection.lock"):
+        return _place_cards(bdir, screened)
+
+
+def _place_cards(bdir: Path, screened: dict) -> dict:
+    bdir = Path(bdir)
+    sel = selection(bdir) or {"cards": []}
+    shown = list(sel.get("cards") or [])
+    room = min(CARDS_PER_BOUNDARY - len(shown), CARDS_TOTAL - cards_total(bdir.parent.parent))
+    if not screened.get("carded"):
+        return _transition(bdir, "exhausted", "no_candidate")
+    want = [screened["carded"], *(screened.get("bundle") or [])]
+    new = [c for c in want if c not in shown]
+    if screened["carded"] in shown:  # already shown (a bundle member promoted): no new card
+        return _transition(bdir, "carded", "carded_again", primary=screened["carded"])
+    if room <= 0:
+        return _transition(bdir, "exhausted", "card_cap", per_boundary=len(shown),
+                           total=cards_total(bdir.parent.parent))
+    return _transition(bdir, "carded", "carded", primary=screened["carded"],
+                       add_cards=new[:room])
+
+
+def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_runner=None,
+                 file_runner=None, replay: Callable[..., Any] | None = None
+                 ) -> Callable[[Path, dict], bool]:
+    """The v2 fork rule at one boundary: the split (if not done) and eligibility (recorded, no
+    longer gating), the replays (pi as anchor), every source graded on every requirement so
+    far, the new/inherited ledger, the v2 screen (the boundary's rejections excluded), then the
+    cards within the caps. True iff the boundary is now carded: the run pauses there."""
+    def check(bdir: Path, fields: dict | None) -> bool:
+        from compaction.s2 import interact_reqs as RQ
+        b = Path(bdir) / "boundary"
+        _transition(bdir, "screening", "screen_start")
+        if not (b / "requirements.json").exists():
+            RQ.split(bdir, backend=backend_factory(), fields=fields)
+        if not (b / "eligibility.json").exists():
+            RQ.eligibility(bdir, fields=fields)
+        if replay is None:
+            from compaction.s2 import replays as RE
+            RE.replay_boundary(bdir, backend=backend_factory())
+        else:
+            replay(bdir)
+        RQ.grade_sources_v2(bdir, backend=backend_factory())
+        RQ.loss_ledger(bdir)
+        out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
+                           ref_runner=ref_runner, file_runner=file_runner,
+                           rejected=(selection(bdir) or {}).get("rejected") or [])
+        return place_cards(bdir, out)["state"] == "carded"
+    return check
+
+
+def safe_trigger(trigger: Callable[[Path, dict], bool]) -> Callable[[Path, dict], bool]:
+    """Inside the session hook: a screening failure never strands the boundary (astra build r1
+    #3). It is logged (screen_failed), the run pauses there with boundary.json written, and
+    `advance` retries the screen before any further agent call."""
+    def check(bdir: Path, fields: dict | None) -> bool:
+        try:
+            return trigger(bdir, fields)
+        except Exception as e:  # noqa: BLE001 - recorded; retried by advance
+            err = f"{type(e).__name__}: {e}"[:500]
+            _transition(bdir, "screen_failed", "screen_error", error=err)
+            if fields is not None:
+                fields["screen_error"] = err
+            return True
+    return check
+
+
+def record_decisions(bdir: Path, results: list[dict]) -> dict:
+    """Card decisions -> the boundary's state: a frozen primary freezes it; rejected cards are
+    added to its rejections (the caller then reselects); held or unlabelled cards change
+    nothing."""
+    frozen = [r["cand_id"] for r in results if r.get("status") in ("frozen", "already_frozen")
+              and r.get("role") == "primary"]
+    rejected = [r["cand_id"] for r in results if r.get("status") == "rejected"]
+    if frozen:
+        return _transition(bdir, "frozen", "primary_frozen", frozen=frozen[0],
+                           add_rejected=rejected)
+    if rejected:
+        return _transition(bdir, "carded", "rejected", add_rejected=rejected)
+    return selection(bdir) or {}
+
+
+def reselect(bdir: Path, *, backend_factory: Callable[[], Any], grep_runner=None,
+             ref_runner=None, file_runner=None) -> dict:
+    """After rejections: the screen again without the rejected candidates (its checks are
+    reused), then the next card within the caps, or exhausted."""
+    from compaction.s2 import interact_reqs as RQ
+    sel = selection(bdir) or {}
+    out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
+                       ref_runner=ref_runner, file_runner=file_runner,
+                       rejected=sel.get("rejected") or [])
+    return place_cards(bdir, out)
+
+
+def boundaries_of(run_dir: Path) -> list[int]:
+    """The run's complete boundaries (boundary.json written), in order."""
+    return sorted(int(p.parent.parent.name[1:]) for p in
+                  Path(run_dir).glob("b*/boundary/boundary.json"))
+
+
+def carded_at(run_dir: Path, k: int) -> str | None:
+    """The boundary's frozen primary, or its first card while carded, else None."""
+    sel = selection(Path(run_dir) / f"b{k}") or {}
+    if sel.get("state") == "frozen":
+        return sel.get("frozen")
+    if sel.get("state") == "carded":
+        return (sel.get("cards") or [None])[0]
+    return None
+
+
+def _seal(run_dir: Path, k: int, reason: str, **kw) -> None:
+    seal = _read(Path(run_dir) / SEALED_NAME) if (Path(run_dir) / SEALED_NAME).exists() else []
+    if not any(x["after_k"] == k for x in seal):
+        _dump(Path(run_dir) / SEALED_NAME, [*seal, {"after_k": k, "reason": reason,
+                                                    "utc": utc(), **kw}])
+
+
+def active_seal(run_dir: Path) -> int | None:
+    """The earliest boundary the run is sealed after, ignoring seals whose boundary ended
+    exhausted (it can never fork, so nothing past it needs hiding)."""
+    p = Path(run_dir) / SEALED_NAME
+    if not p.exists():
+        return None
+    ks = [x["after_k"] for x in _read(p)
+          if state_of(Path(run_dir) / f"b{x['after_k']}") != "exhausted"]
+    return min(ks) if ks else None
+
+
+def _result_files(run_dir: Path) -> list[Path]:
+    """result.json, then each resume's result in numeric order (astra build r1 #6)."""
+    rs = [(int(m.group(1)), p) for p in Path(run_dir).glob("result_r*.json")
+          if (m := re.fullmatch(r"result_r(\d+)\.json", p.name))]
+    base = [Path(run_dir) / "result.json"] if (Path(run_dir) / "result.json").exists() else []
+    return base + [p for _, p in sorted(rs)]
+
+
+def _prior_totals(run_dir: Path) -> dict:
+    """Spend, calls and seconds of the run so far, over result.json and every resume's."""
+    tot = {"cost_usd": 0.0, "sim_cost_usd": 0.0, "n_calls": 0, "seconds": 0.0}
+    for p in _result_files(run_dir):
+        r = _read(p)
+        for kk in tot:
+            tot[kk] += r.get(kk) or 0
+    return tot
+
+
+def _resume_index(run_dir: Path) -> int:
+    return len(_result_files(run_dir)) - (1 if (Path(run_dir) / "result.json").exists() else 0) + 1
+
+
+def _ask_rows(run_dir: Path) -> list[dict]:
+    rows = []
+    for p in [Path(run_dir) / "sim" / "replies.json",
+              *sorted(Path(run_dir).glob("sim/replies_r*.json"),
+                      key=lambda q: int(re.sub(r"\D", "", q.stem) or 0))]:
+        if p.exists():
+            rows += _read(p)
+    return rows
+
+
+def resume_base(run_dir: Path, task: InteractTask, *, agent_model: ChatModel,
+                sim_model: ChatModel, inv, trigger: Callable[[Path, dict], bool],
+                after_freeze: bool = False, session=None, keep=None,
+                watch: DockerWatch | None = None, threshold: int = C.INTERACT_THRESHOLD
+                ) -> dict:
+    """Continue a base run from its latest boundary k (the kept image, its sim_state.json, its
+    post_messages.json as the agent's context, pi's update prompt on its summary), new
+    boundaries b<k+1>... in the same run dir under the same hooks, `trigger` as the stop rule,
+    and the run's remaining caps ($8 incl. simulator, 600 calls, 3 h; the $2.50 simulator
+    gate cumulative). Writes only new files: steps/02_implement_r<n>/, sim/*_r<n>.json,
+    result_r<n>.json, b<k+1>/... Refused while any boundary's selection isn't final; a run
+    that forked (a frozen boundary) resumes only with `after_freeze`, and is then sealed
+    from its earliest frozen boundary (sealed.json) like an arm's output."""
+    SS = session or _session_mod()
+    t0 = time.monotonic()
+    rd = Path(run_dir)
+    ks = boundaries_of(rd)
+    if not ks:
+        raise ValueError(f"{rd.name}: no complete boundary to resume from")
+    k = ks[-1]
+    states = {j: state_of(rd / f"b{j}") for j in ks}
+    pending = [j for j, st in states.items() if st in PENDING_STATES]
+    if pending:
+        raise PermissionError(f"{rd.name}: boundaries {pending} have no final selection "
+                              "(screen them and decide their cards first: advance)")
+    frozen = [j for j, st in states.items() if st == "frozen"]
+    if frozen and not after_freeze:
+        raise PermissionError(f"{rd.name} forked at b{min(frozen)}: resuming past it only "
+                              "with --after-freeze (sealed)")
+    n = _resume_index(rd)
+    prior = _prior_totals(rd)
+    left = {"usd": C.INTERACT_BASE_CAP_USD - prior["cost_usd"] - prior["sim_cost_usd"],
+            "calls": C.INTERACT_BASE_MAX_CALLS - prior["n_calls"],
+            "s": C.INTERACT_BASE_MAX_S - prior["seconds"]}
+    rj = _read(rd / "run.json")
+    bdir = rd / f"b{k}"
+    res: dict = {"run_key": rj["run_key"], "resume": n, "from_boundary": k, "end": "error",
+                 "n_calls": 0, "cost_usd": 0.0, "sim_cost_usd": 0.0, "boundaries": [],
+                 "error": None, "timings": [], "prior": prior, "left": left,
+                 "after_freeze": after_freeze}
+    if frozen:
+        _seal(rd, min(frozen), "resumed_after_freeze", resume=n)
+    for kk, v in left.items():
+        if v <= 0:
+            res["end"] = {"usd": "run_cap", "calls": "max_calls", "s": "time_cap"}[kk]
+            _dump(rd / f"result_r{n}.json", res)
+            return res
+    bj = _read(bdir / "boundary" / "boundary.json")
+    comp = _read(bdir / "boundary" / "compaction.json")
+    post = _read(bdir / "boundary" / "post_messages.json")
+    keep = keep if keep is not None else SS.KeepStore(rd, rj["run_key"])
+    env = None
+    loop = None
+    asks = None
+    n_before = 0
+
+    def mark(ev: str, **kw) -> None:
+        res["timings"].append({"event": ev, "utc": utc(),
+                               "s": round(time.monotonic() - t0, 1), **kw})
+
+    try:
+        exported = _read(bdir / "boundary" / "sim_state.json")
+        env = I.InteractEnv.start(
+            inv, bj["tag"], lambda runner: I.UserSim.restore(
+                exported, task.persona, sim_model, runner, purpose=f"sim:{rj['run_key']}:r{n}"),
+            cpus=C.CPUS, memory_mb=C.MEMORY_MB, platform=C.PLATFORM or None, setup=False)
+        res["container"] = env.sb.name
+        res["fork_check"] = fork_check(env, bj)  # the restore matches the boundary
+        if not res["fork_check"]["ok"]:
+            raise RuntimeError(f"resume restore differs from b{k}: {res['fork_check']}")
+        asks = EnvAsks(env)
+        asks.step = "02_implement"
+        asks.rows = [r for r in _ask_rows(rd)
+                     if r["call_index"] <= env.sim.state.ask_user_call_count]
+        n_before = len(asks.rows)
+        loop = Loop(list(post), agent_model, env, f"implement:r{n}", tools=INTERACT_TOOLS)
+        loop.ctx_tokens = est_tokens(post, agent_model.route.bytes_per_token)
+        calls0 = int(bj.get("calls_in_step") or 0)
+        sim_prior = prior["sim_cost_usd"]
+
+        def on_boundary(ctx) -> None:
+            b = Path(ctx.bdir) / "boundary"
+            pre = _read(b / "pre_messages.json")
+            _dump(b / "sim_state.json", env.sim.export())
+            _dump(b / "sim_replies.json", reply_index(asks.rows, pre))
+            (b / "step_instruction.txt").write_text(task.steps["02_implement"])
+            ctx.fields.update(stage="02_implement", calls_in_step=calls0 + ctx.loop.n_calls,
+                              resume=n, fingerprint_sha256=I.sha256(env.fingerprint()),
+                              fingerprint_version=I.FINGERPRINT_VERSION,
+                              sim_probe_sha256=sim_probe(env.sim),
+                              sim_calls=env.sim.state.ask_user_call_count)
+            mark("boundary_saved", k=ctx.k)
+
+        def stop_at(ctx) -> bool:
+            ok = safe_trigger(trigger)(Path(ctx.bdir), ctx.fields)
+            ctx.fields["paused"] = ok  # carded (cards to label) or a screen to retry
+            mark("trigger_done", k=ctx.k, paused=ok, state=state_of(Path(ctx.bdir)))
+            return ok
+
+        def after_call(lo) -> str | None:
+            if lo.submitted:
+                return "submitted"
+            if time.monotonic() - t0 > left["s"]:
+                return "time_cap"
+            sim_usd = sim_prior + sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds)
+            if sim_usd > C.INTERACT_SIM_GATE_USD:
+                return "sim_gate"
+            return None
+
+        sr = SS.run_session(loop, env, keep, run_dir=rd, run_json=rj, threshold=threshold,
+                            policy="pi", instruction_text=task.steps["02_implement"],
+                            max_calls=max(0, left["calls"]), run_cap_usd=max(0.01, left["usd"]),
+                            hooks=SS.SessionHooks(on_boundary=on_boundary,
+                                                  stop_at_boundary=stop_at,
+                                                  after_call=after_call),
+                            previous=(comp["summary"], comp["summary_index"]))
+        res.update(end=sr.end, boundaries=list(sr.boundaries), error=sr.error)
+    except Exception as e:  # noqa: BLE001 - recorded; the container is removed below
+        from compaction.deepswe.sandbox import SandboxError
+        res["end"] = "infra_error" if isinstance(e, SandboxError) else "error"
+        res["error"] = traceback.format_exc()[-6000:]
+    finally:
+        if loop is not None:
+            _dump(rd / "steps" / f"02_implement_r{n}" / "messages.json", loop.messages)
+            _dump(rd / "steps" / f"02_implement_r{n}" / "calls.json", loop.calls)
+            res["n_calls"], res["cost_usd"] = loop.n_calls, round(loop.cost_usd, 6)
+        if env is not None:
+            _dump(rd / "sim" / f"ask_log_r{n}.json", env.sim.ask_log)
+            _dump(rd / "sim" / f"rounds_r{n}.json", env.sim.rounds)
+            res["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
+            if asks is not None:
+                _dump(rd / "sim" / f"replies_r{n}.json", asks.rows[n_before:])
+            if watch is not None and watch.oom_killed(env.sb.name):
+                res["end"] = "infra_oom"
+            env.close()
+        res["seconds"] = round(time.monotonic() - t0, 1)
+        mark("ended", end=res["end"])
+        _dump(rd / f"result_r{n}.json", res)
+    return res
+
+
+def advance(run_dir: Path, task: InteractTask, *, trigger: Callable[[Path, dict], bool],
+            resume: Callable[[], dict]) -> dict:
+    """Phase B for one run. Each saved boundary in order: screened if it has no selection yet,
+    or retried if its screen failed. The first carded boundary pauses the run (its later
+    boundaries, if any exist, are sealed); a frozen one is the fork; exhausted ones are passed.
+    With every boundary exhausted the run resumes (`resume`: resume_base with the same trigger
+    as its stop rule), unless it already ended."""
+    rd = Path(run_dir)
+    ks = boundaries_of(rd)
+    out: dict = {"run_key": rd.name, "screened": [], "fork_at": None, "state": None,
+                 "resumed": None}
+    for k in ks:
+        b = rd / f"b{k}"
+        if state_of(b) in (None, "screening", "screen_failed"):
+            safe_trigger(trigger)(b, None)
+        st = state_of(b)
+        out["screened"].append({"k": k, "state": st})
+        if st == "screen_failed":
+            out.update(state="screen_failed", fork_at=k,
+                       error=(selection(b) or {}).get("log", [{}])[-1].get("error"))
+            return out
+        if st in ("carded", "frozen"):
+            if any(j > k for j in ks):
+                _seal(rd, k, "boundary_carded_with_later_boundaries")
+            out.update(fork_at=k, state=st)
+            return out
+    last = [_read(p) for p in _result_files(rd)]
+    if last and last[-1].get("end") in ("submitted", "run_cap", "max_calls", "time_cap",
+                                         "sim_gate", "window"):
+        out["ended"] = last[-1]["end"]
+        return out
+    out["resumed"] = resume()
+    # the boundaries the resume made: a screen that failed or carded inline is this run's state
+    for k in boundaries_of(rd):
+        if k in ks:
+            continue
+        st = state_of(rd / f"b{k}")
+        out["screened"].append({"k": k, "state": st})
+        if st == "screen_failed":
+            out.update(state="screen_failed", fork_at=k,
+                       error=(selection(rd / f"b{k}") or {}).get("log", [{}])[-1].get("error"))
+        elif st in ("carded", "frozen") and out["state"] is None:
+            out.update(state=st, fork_at=k)
+    return out
+
+
+# ------------------------------------------------------------------------------------------
 # Arms
 # ------------------------------------------------------------------------------------------
 
@@ -703,6 +1119,7 @@ class ArmSpec:
     rep: int
     block: str  # the requirement (repair) or the matched item, as frozen
     readout: str = "primary"
+    bundle: bool = False  # the pre-registered bundle pair (repair-all vs matched-all)
 
     def __post_init__(self) -> None:
         if self.source not in C.INTERACT_SOURCES:
@@ -712,7 +1129,7 @@ class ArmSpec:
 
     @property
     def slug(self) -> str:
-        return f"{self.source}-{self.kind}-{self.rep}"
+        return f"{self.source}-{'bundle-' if self.bundle else ''}{self.kind}-{self.rep}"
 
 
 def _load_source(bdir: Path, source: str) -> dict:
@@ -846,7 +1263,8 @@ def verified_freeze(bdir: Path, cand_id: str, *, require_committed: bool = True)
     from compaction.s2 import interact_score as SC
     f = SC.read_freeze(bdir, cand_id)
     checks = f.get("checks") or {}
-    bad = [n for n in CHECK_NAMES
+    names = CHECK_NAMES  # v2 too: its pending decision is check 2's (applicability)
+    bad = [n for n in names
            if "pass" not in ((checks.get(n) or {}).get("outcome"), (checks.get(n) or {}).get("jacob"))]
     if bad:
         raise ValueError(f"freeze {cand_id}: checks not passed: {bad}")
@@ -883,9 +1301,18 @@ def expected_context(bdir: Path, frz: dict, kind: str, *, load_source=None) -> l
     return ctx
 
 
+def refuse_bundle_member(f: dict) -> None:
+    """A bundle member is part of the bundle pair only: never a standalone primary (astra
+    build r1 #4); the designated primary is the boundary's first card."""
+    if f.get("role") == "bundle_member":
+        raise ValueError(f"{f.get('cand_id')} is a bundle member: run the bundle pair "
+                         f"({f.get('source_policy')}'s bundle freeze) or the primary instead")
+
+
 def spec_from_freeze(f: dict, kind: str, rep: int, readout: str = "primary") -> ArmSpec:
     block = f["repair_text"] if kind == "repair" else f["matched_text"]
-    return ArmSpec(f["source_policy"], kind, rep, block, readout)
+    return ArmSpec(f["source_policy"], kind, rep, block, readout,
+                   bundle=bool(f.get("bundle_items")))
 
 
 def _fresh_dir(d: Path) -> Path:
@@ -937,6 +1364,7 @@ def run_arm(run_dir: Path, k: int, cand_id: str, kind: str, rep: int, task: Inte
     t0 = time.monotonic()
     bdir = Path(run_dir) / f"b{k}"
     frz = verified_freeze(bdir, cand_id, require_committed=require_committed)
+    refuse_bundle_member(frz)
     spec = spec_from_freeze(frz, kind, rep)
     bj = _read(bdir / "boundary" / "boundary.json")
     src = frozen_source(bdir, frz, load_source=load_source)  # refuses a changed source
@@ -1053,6 +1481,7 @@ def run_secondary(run_dir: Path, k: int, cand_id: str, kind: str, rep: int,
     t0 = time.monotonic()
     bdir = Path(run_dir) / f"b{k}"
     frz = verified_freeze(bdir, cand_id, require_committed=require_committed)
+    refuse_bundle_member(frz)
     spec = spec_from_freeze(frz, kind, rep, "secondary")
     ad = Path(run_dir) / "arms" / spec.slug
     prim = _read(ad / "readout.json")
@@ -1307,6 +1736,10 @@ def k_counts(root: Path, *, require_committed: bool = True) -> dict:
         task = _read(rd / "run.json")["task"]["task_id"]
         for fz in sorted(rd.glob("b*/boundary/freeze/*.json")):
             bdir, cid = fz.parent.parent.parent, fz.stem
+            if cid.startswith("bundle."):
+                continue  # the bundle pair is a pre-registered secondary, not K
+            if _read(fz).get("role") == "bundle_member":
+                continue  # never a standalone comparison (astra build r1 #4)
             v = valid_comparison(bdir, cid, require_committed=require_committed)
             if v["valid"]:
                 out["tasks"].setdefault(task, v["source_policy"])
@@ -1325,17 +1758,22 @@ def funnel(root: Path) -> dict:
     reference solution's lines it matched, so a bad scorer is visible (main session, 24 Oct).
     Writes <root>/funnel.json and <root>/funnel.md; reads no continuation output."""
     rows, counts = [], {}
-    for cj in sorted(Path(root).glob("*/b*/boundary/candidates.json")):
-        bdir = cj.parent.parent
+    files = [(cj, cj.parent.parent, "v1") for cj in
+             sorted(Path(root).glob("*/b*/boundary/candidates.json"))]
+    files += [(cj, cj.parent.parent.parent, "v2") for cj in
+              sorted(Path(root).glob("*/b*/boundary/fork_v2/candidates.json"))]
+    for cj, bdir, screen in files:
         doc = _read(cj)
         for c in doc.get("candidates", []):
             d = c.get("disposition") or "none"
-            counts[d] = counts.get(d, 0) + 1
+            counts.setdefault(screen, {})
+            counts[screen][d] = counts[screen].get(d, 0) + 1
             if not d.startswith("excluded:"):
                 continue
             why = d.split(":", 1)[1]
             chk = (c.get("checks") or {}).get(why) or {}
-            row = {"run": bdir.parent.name, "boundary": bdir.name, "cand_id": c["cand_id"],
+            row = {"screen": screen, "run": bdir.parent.name, "boundary": bdir.name,
+                   "cand_id": c["cand_id"],
                    "source_policy": c.get("source_policy"), "requirement": c.get("text"),
                    "reason": d, "check_reason": chk.get("reason"),
                    "evidence": chk.get("evidence")}
@@ -1347,11 +1785,13 @@ def funnel(root: Path) -> dict:
             rows.append(row)
     out = {"created_utc": utc(), "counts": counts, "excluded": rows}
     _dump(Path(root) / "funnel.json", out)
-    lines = ["# Candidate funnel", "", "| disposition | n |", "|---|---|",
-             *[f"| {k} | {v} |" for k, v in sorted(counts.items())], "",
+    lines = ["# Candidate funnel", "", "| screen | disposition | n |", "|---|---|---|",
+             *[f"| {sc} | {k} | {v} |" for sc, per in sorted(counts.items())
+               for k, v in sorted(per.items())], "",
              "## Excluded candidates", ""]
     for r in rows:
-        lines += [f"### {r['run']} {r['boundary']} {r['cand_id']} ({r['reason']})", "",
+        lines += [f"### {r['screen']} {r['run']} {r['boundary']} {r['cand_id']} ({r['reason']})",
+                  "",
                   f"- Requirement: {r['requirement']}", f"- Source: {r['source_policy']}"]
         if "scorer" in r:
             lines += [f"- Scorer (Haiku-written): {r['scorer']['description']}",
@@ -1359,6 +1799,10 @@ def funnel(root: Path) -> dict:
                       f"  - decision: `{json.dumps(r['scorer']['decision'])}`",
                       ("- Reference solution lines that matched: "
                        f"`{json.dumps(r['reference_matches'])[:1500]}`")]
+        elif r["reason"] == "excluded:pending":
+            ev = r["evidence"] or {}
+            lines += [f"- Pending spot cited: {ev.get('path')}: `{ev.get('quote')}`",
+                      f"- Searched for: `{ev.get('searched')}`; why open: {ev.get('why')}"]
         else:
             lines.append(f"- Evidence: `{json.dumps(r['evidence'])[:1500]}`")
         lines.append("")

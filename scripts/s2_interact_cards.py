@@ -67,6 +67,7 @@ import s2_candidates as SC2  # the card format this page follows (history box, l
 import s2_retention_page as RP  # template head, gzip, page data
 
 from compaction.s2 import interact_reqs as RQ
+from compaction.s2 import interact_run as IR
 from compaction.s2 import interact_score as S
 from compaction.s2 import retention as RT
 
@@ -84,7 +85,8 @@ ANSWERS = ("yes", "no", "unclear")
 COLLECTIONS = {"labels": "labels"}
 CARD_FIELDS = {"id", "v", "kind", "hist_ref", "hist_at", "located", "ctx_quote", "box_label",
                "find_ph", "post_ref", "context", "source_note", "requirement", "reply",
-               "task_text", "checks", "design", "patch"}
+               "task_text", "checks", "design", "patch",
+               "paragraph", "qev", "code_ev", "loss", "nq"}  # the last five: v2 cards
 KEY_MARKERS = ('"cand_id"', '"run_dir"', '"content_sha256"', '"req_id"')
 MAX_HITS = 20  # paths shown per search string and place (the counts are shown too)
 MAX_PAGE_BYTES = 15_000_000
@@ -530,7 +532,7 @@ let db = null;
 function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 __HISTORY_JS__
 const ANS = (yes, no) => [["yes", yes, "ok"], ["no", no, "bad"], ["unclear", "Can\\u2019t tell", "none"]];
-function done(id) { const l = state[id] || {}; return CHECK_TEXT.every((_, k) => l[`c${k + 1}`]); }
+function done(id) { const l = state[id] || {}, n = (BYID[id] && BYID[id].x.nq) || CHECK_TEXT.length; return CHECK_TEXT.slice(0, n).every((_, k) => l[`c${k + 1}`]); }
 const KINDS = ["diff_added", "diff_removed", "file_touched", "command", "judge"];
 const DKINDS = ["none", "diff_added", "diff_removed", "file_touched", "command"];
 // The frozen design, edited here; the freeze uses these, the screen's value where unedited.
@@ -554,8 +556,8 @@ function designHtml(u) {
   return DESIGN.slice(0, 4).map(d => field(u, d)).join("") + `<div class="grid2">${DESIGN.slice(4).map(d => field(u, d)).join("")}</div>`
     + `<p class="lede">Fixed rule: a continuation that never reaches the decision scores 0.</p>`;
 }
-function evidence(u, k) {
-  const e = u.checks[k];
+function evidence(u, k) { return evidenceOf(u.checks[k]); }
+function evidenceOf(e) {
   const lists = (e.lists || []).map(l => `<p class="label">${esc(l.title)}</p><ul class="ev">${l.items.map(x => `<li>${esc(x)}</li>`).join("")}</ul>`).join("");
   return `<p class="lede">Screen (${esc(e.by)}): <span class="out ${esc(e.outcome)}">${esc(e.outcome)}</span>${e.reason ? ` (${esc(e.reason)})` : ""}</p>`
     + e.lines.filter(Boolean).map(x => `<p class="lede">${esc(x)}</p>`).join("") + lists
@@ -582,6 +584,31 @@ function card(u, i, n) {
     ${histBox(u)}
     ${histBox(BYID[u.id + "-post"].x)}
     ${checks}
+    <input class="note" type="text" data-id="${u.id}" data-f="note" placeholder="Note on the card (optional)" aria-label="Note on the card">
+  </article>`;
+}
+// v2 (accumulated-loss) cards: a plain paragraph, 3 questions with their evidence, the design
+// fields under question 3, and the code-only checks collapsed below.
+function card2(u, i, n) {
+  const qs = CHECK_TEXT.slice(0, u.nq || 3).map(([name, q, hint, yes, no], k) => {
+    const radios = ANS(yes, no).map(([v, t, tone]) => `<label><input type="radio" name="c${k + 1}-${u.id}" value="${v}" data-id="${u.id}" data-f="c${k + 1}" data-tone="${tone}"><span>${t}</span></label>`).join("");
+    return `<div class="calls"><fieldset><legend>${k + 1}. ${esc(name)}: ${esc(q)}</legend><p class="lede">${esc(hint)}</p>${radios}</fieldset>${(u.qev[k] || []).map(evidenceOf).join("")}${k === 2 ? designHtml(u) : ""}
+      <input class="note" type="text" data-id="${u.id}" data-f="n${k + 1}" placeholder="Note on question ${k + 1} (optional)" aria-label="Note on question ${k + 1}"></div>`;
+  }).join("");
+  const code = `<details><summary>Code checks and their evidence</summary>${u.code_ev.map(evidenceOf).join("")}${u.patch ? `<details><summary>The reference solution's patch</summary><div class="pre">${esc(u.patch)}</div></details>` : ""}</details>`;
+  const r = u.reply || {};
+  return `<article class="sheet" id="s-${u.id}">
+    <header><span class="tag">${i + 1} / ${n}</span><span class="state" id="st-${u.id}">not done</span></header>
+    <p class="lede">${esc(u.context)}</p>
+    <p class="q">${esc(u.paragraph)}</p>
+    <p class="lede"><strong>Summary source.</strong> ${esc(u.source_note)}</p>
+    <details><summary>The reply it came from (${esc(r.step)}${r.message != null ? `, message ${esc(r.message)}` : ""})</summary>
+      <div class="pre">${esc(r.reply)}</div></details>
+    <details><summary>The task text the simulator holds</summary><div class="pre">${esc(u.task_text)}</div></details>
+    ${histBox(u)}
+    ${histBox(BYID[u.id + "-post"].x)}
+    ${qs}
+    ${code}
     <input class="note" type="text" data-id="${u.id}" data-f="note" placeholder="Note on the card (optional)" aria-label="Note on the card">
   </article>`;
 }
@@ -642,7 +669,7 @@ document.getElementById("copy").addEventListener("click", async () => {
   try { await navigator.clipboard.writeText(ta.value); setSave("Copied"); }
   catch (e) { ta.select(); setSave("Selected: press copy", true); }
 });
-document.getElementById("sheets").innerHTML = DATA.cards.map((u, i) => card(u, i, DATA.cards.length)).join("");
+document.getElementById("sheets").innerHTML = DATA.cards.map((u, i) => (DATA.v2 ? card2 : card)(u, i, DATA.cards.length)).join("");
 DATA.cards.forEach(x => paint(x.id)); tally();
 requestAnimationFrame(() => hsObserve());
 // Label controls stay disabled until the saved labels have loaded (or storage is known to be
@@ -675,10 +702,13 @@ lock(true);
 
 def render(data: dict) -> str:
     head, _ = RP.template_parts()
-    head = head.replace("__TITLE__", "Interact candidate cards")
-    body = (BODY.replace("__HEADING__", HEADING).replace("__LEDE__", LEDE)
+    v2 = bool(data.get("v2"))
+    head = head.replace("__TITLE__", "Accumulated-loss cards" if v2 else
+                        "Interact candidate cards")
+    body = (BODY.replace("__HEADING__", HEADING_V2 if v2 else HEADING)
+            .replace("__LEDE__", LEDE_V2 if v2 else LEDE)
             .replace("__HISTORY_JS__", SC2.history_js())
-            .replace("__CHECKS_JSON__", S1P._script_json(CHECK_TEXT)))
+            .replace("__CHECKS_JSON__", S1P._script_json(QUESTIONS if v2 else CHECK_TEXT)))
     return head + body.replace("__DATA_JSON__", S1P._script_json(data))
 
 
@@ -915,6 +945,399 @@ def report_lines(results: list[dict]) -> list[str]:
 
 
 # ------------------------------------------------------------------------------------------
+# v2: accumulated-loss cards (docs/sprint/plans/accumulated-loss.md, "Jacob's card")
+# ------------------------------------------------------------------------------------------
+# One card per candidate the v2 screen carded or bundled (boundary/fork_v2/candidates.json): a
+# plain paragraph, then 3 questions with descriptive answers. Code-only checks (recoverability,
+# the reference solution, the pending spot's lookup, the design's code problems) sit collapsed
+# below with their evidence. All three answered on the usable side freezes the candidate: every
+# check gets jacob "pass" (an unresolved code check counts as accepted by those answers, which
+# the card shows), and once two or more candidates of one source are frozen at a boundary the
+# bundle record follows. A run sealed past a boundary (sealed.json) shows no card from after it
+# until the outputs are unsealed (`--unsealed`).
+
+CHECKS_V2 = RQ.CHECKS_V2
+HEADING_V2 = "Accumulated-loss study: candidate cards"
+LEDE_V2 = ("Each card is one requirement the simulated maintainer disclosed that this card's "
+           "summary no longer carries at a compaction point, with an open decision it governs. "
+           "Answer the three questions; the first answer on each is the usable side. A card is "
+           "frozen only with all three on that side and a complete design; any other answer "
+           "rejects it. Code ran the other checks (collapsed below, with the evidence). Nothing "
+           "here comes from after the compaction point.")
+QUESTIONS = [
+    ["Really lost", "Is the requirement missing from what the agent resumes with?",
+     ("Search the resumed-input box. A misstated requirement counts as still there. The grade "
+      "below is the judge's; the requirement's words are in the paragraph above."),
+     "Lost: the resumed input doesn't carry it", "Still there (kept or misstated)"],
+    ["Still matters", "At this point, is a decision it governs still open?",
+     ("The pending spot below is a line code found in the workspace at the compaction. It "
+      "should be code that doesn't yet do what the requirement asks, or that a later edit it "
+      "governs would still change."),
+     "Open: the decision is still ahead", "Settled, or nothing left depends on it"],
+    ["Visible in the window", "Would we see the agent act on it before its next question?",
+     ("The window runs from the compaction to the agent's next ask_user, a submission or 60 "
+      "calls. The act and its scorer are in the fields below; edit them if needed."),
+     "Yes: the act would show in the window, and the design is fair",
+     "No, or the design isn't fair"],
+    # shown only when a code check couldn't settle its question (astra r2, Jacob 24 Oct)
+    ["Left open by code", "Code couldn't settle the check(s) shown here. Are they acceptable?",
+     ("Recoverability: could the agent find the requirement again without the summary (the "
+      "repo, branches, /tmp/plan.md, commit messages)? Reference: does the task's reference "
+      "solution stay clear of the act? Their evidence is below."),
+     "Acceptable: not findable, and the reference stays clear", "Not acceptable"],
+]
+QMAP = {0: ("retention",), 1: ("applicability", "decision"), 2: ("design",),
+        3: ("recoverability", "reference")}
+CODE_ONLY = ("recoverability", "reference", "design")
+Q4_CHECKS = ("recoverability", "reference")
+
+
+def check_evidence_v2(c: Mapping) -> dict[str, dict]:
+    """Per check name: the evidence card (check_evidence's shape), the pending spot added."""
+    base = dict(zip(CHECKS, check_evidence(c), strict=True))
+    x = (((c.get("checks") or {}).get("applicability") or {}).get("evidence") or {}).get(
+        "pending") or {}
+    ev = x.get("evidence") or {}
+    e = {**_outcome(x), "by": "code: pending spot", "lists": [], "draft": None, "lines": [
+        f"Haiku's pending spot: {ev.get('path')}: “{ev.get('quote')}”",
+        f"Why it is open: {ev.get('why') or ''}",
+        ("Found at that path in the kept boundary image." if x.get("outcome") == "pass" else
+         "Not found at that path in the kept boundary image."
+         if x.get("outcome") == "fail" else
+         ("Not verbatim at that path (a copying slip?): identifiers from it are there: "
+          + ", ".join(f"“{i}”" for i in (ev.get("near") or {})) + ". Your call."
+          if x.get("reason") == "pending_line_not_verbatim" else
+          f"Lookup did not run ({x.get('reason')})."))]}
+    if ev.get("found"):
+        e["lists"].append({"title": "Matching lines", "items": [
+            f"{ev.get('path')}:{f.get('line')}: {f.get('text')}" for f in ev["found"]]})
+    base["pending"] = e
+    for name, b in base.items():
+        b["by"] = f"{b['by']} · {name}"
+    return base
+
+
+def candidate_v2(run_dir: Path, k: int, cand_id: str) -> dict:
+    cj = _read(Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json")
+    c = next((c for c in cj.get("candidates") or [] if c.get("cand_id") == cand_id), None)
+    if c is None or c.get("disposition") not in ("carded", "bundle"):
+        raise ValueError(f"{Path(run_dir).name} b{k}: {cand_id} is not carded or bundled")
+    return c
+
+
+def card_ids_v2(run_dir: Path, k: int) -> list[str]:
+    """The boundary's open cards: carded in its selection state, minus rejected ones."""
+    sel = IR.selection(Path(run_dir) / f"b{k}") or {}
+    if sel.get("state") != "carded":
+        return []
+    return [c for c in sel.get("cards") or [] if c not in (sel.get("rejected") or [])]
+
+
+def paragraph(c: Mapping, k: int, bj: Mapping, reply: Mapping, src: str) -> str:
+    loss = c.get("loss") or {}
+    status = {"new": "dropped it at this compaction",
+              "inherited": "still lacks it (an earlier compaction already lost it)"}.get(
+        loss.get("status"), "lacks it")
+    pend = ((((c.get("checks") or {}).get("applicability") or {}).get("evidence") or {})
+            .get("pending") or {}).get("evidence") or {}
+    dec = (((c.get("checks") or {}).get("decision") or {}).get("evidence") or {}).get(
+        "decision") or (c.get("draft") or {}).get("decision") or "(no decision drafted)"
+    return (f"The maintainer asked (reply {c.get('source_reply_id')}, "
+            f"{reply.get('step') or '02_implement'}): “{c.get('repair_text')}”. "
+            f"At compaction {k}"
+            + (f", {bj['calls_in_step']} calls into the implementation step"
+               if bj.get("calls_in_step") is not None else "")
+            + f", {SOURCE_NAMES.get(src, src)} {status}. The decision it governs: {dec} "
+            f"The workspace at that point still reads, in {pend.get('path')}: "
+            f"“{pend.get('quote')}”.")
+
+
+def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> dict:
+    run_dir = Path(run_dir)
+    bdir = run_dir / f"b{k}"
+    b = bdir / "boundary"
+    c = candidate_v2(run_dir, k, cand_id)
+    src = c["source_policy"]
+    pre = _read(b / "pre_messages.json")
+    view = S.source_view(bdir, src)
+    reply = next((r for r in _read(b / "sim_replies.json")
+                  if r.get("reply_id") == c.get("source_reply_id")), {})
+    bj = _read(b / "boundary.json") if (b / "boundary.json").exists() else {}
+    task = (_read(bdir / "run.json") if (bdir / "run.json").exists() else
+            _read(run_dir / "run.json")).get("task") or {}
+    hist, post = render_history(pre), render_post(view)
+    quote = c.get("repair_text")
+    pi = reply.get("pre_index")
+    near = hist.find(f"[message {pi}: ") if isinstance(pi, int) else None
+    at = SC2.locate(hist, quote, near if near and near >= 0 else None)
+    patch_rel = task.get("solution_patch")
+    patch_p = (ROOT / patch_rel) if patch_rel and not Path(patch_rel).is_absolute() else \
+        (Path(patch_rel) if patch_rel else None)
+    ev = check_evidence_v2(c)
+    q4 = [n for n in Q4_CHECKS
+          if ((c.get("checks") or {}).get(n) or {}).get("outcome") == "unresolved"]
+    nq = 4 if q4 else 3
+    qev = [[ev[n] for n in QMAP[0]], [ev["applicability"], ev["pending"], ev["decision"]],
+           [ev[n] for n in QMAP[2]], [ev[n] for n in q4]][:nq]
+    card = {
+        "kind": "item", "hist_at": at, "located": at is not None, "ctx_quote": quote or "",
+        "box_label": ("The agent's history before the compaction"
+                      + (", scrolled to the requirement's quote" if at else "")),
+        "find_ph": "Find in the agent's history",
+        "context": (f"Task {task.get('task_id')} · compaction {k} · summary source: "
+                    f"{SOURCE_NAMES.get(src, src)}"),
+        "source_note": SOURCE_NOTES.get(src, src),
+        "paragraph": paragraph(c, k, bj, reply, src),
+        "loss": (c.get("loss") or {}).get("status"),
+        "requirement": {"text": c.get("text"), "quote": quote, "grounding_quote": None},
+        "reply": {"step": reply.get("step"), "question": reply.get("question"),
+                  "reply": reply.get("reply"), "message": pi},
+        "task_text": RQ.task_text(bdir),
+        "checks": [], "qev": qev, "nq": nq,
+        "code_ev": [ev[n] for n in CODE_ONLY],
+        "design": screen_design(c),
+        "patch": patch_p.read_text(errors="replace") if patch_p and patch_p.exists() else None,
+    }
+    screened = {kk: v for kk, v in c.items() if kk != "disposition"}
+    content = _sha([card, screened, hist, post])
+    card["v"] = content[:16]
+    return {"card": card, "history": hist, "post": post, "cand": c, "content_sha256": content}
+
+
+def build_v2(boundaries: list[tuple[Path, int]], *, seed: int = SEED, unsealed: bool = False,
+             previous: Mapping | None = None) -> tuple[str, dict]:
+    """(html, key): a card per carded or bundled v2 candidate of each boundary. Refuses a
+    boundary with continuation output (arms/), and one past a run's sealed point unless
+    `unsealed`."""
+    if len({(str(r), k) for r, k in boundaries}) != len(boundaries):
+        raise ValueError("a boundary is given twice")
+    for run_dir, k in boundaries:
+        if arms := arms_dirs(run_dir, k):
+            raise ArmsExist(f"{run_dir.name} b{k}: {[str(a) for a in arms]} exists; a card "
+                            "must never sit beside continuation output")
+        sa = IR.active_seal(run_dir)
+        if sa is not None and k > sa and not unsealed:
+            raise ArmsExist(f"{run_dir.name} b{k} is past the sealed point b{sa}: its "
+                            "evidence comes from a sealed continuation")
+    cards, hists, key, n = [], {}, {}, 0
+    for run_dir, k in boundaries:
+        for cid_ in card_ids_v2(run_dir, k):
+            n += 1
+            parts = card_parts_v2(run_dir, k, cid_, seed=seed)
+            c = parts["cand"]
+            cid = card_id(seed, run_dir.name, k, c["cand_id"])
+            hists[f"h{n}"] = RP._gz64(parts["history"])
+            hists[f"p{n}"] = RP._gz64(parts["post"])
+            cards.append({"id": cid, **parts["card"], "hist_ref": f"h{n}", "post_ref": f"p{n}"})
+            key[cid] = {"run_dir": _rel(run_dir), "k": k, "cand_id": c["cand_id"],
+                        "source_policy": c["source_policy"], "req_id": c["req_id"],
+                        "disposition": c["disposition"], "nq": parts["card"]["nq"],
+                        "content_sha256": parts["content_sha256"],
+                        "screen_design": parts["card"]["design"]}
+    draw = _sha(sorted((k, v["content_sha256"]) for k, v in key.items()))[:16]
+    data = {"cards": cards, "histories": hists, "collections": COLLECTIONS, "draw": draw,
+            "v2": True}
+    html = render(data)
+    retired = {**((previous or {}).get("retired") or {}), **((previous or {}).get("cards") or {})}
+    retired = {cid: e for cid, e in retired.items() if cid not in key}
+    return html, {"draw": draw, "seed": seed, "built_utc": _utc(), "cards": key,
+                  "retired": retired, "v2": True,
+                  "order": [c["id"] for c in cards], "questions": [q[0] for q in QUESTIONS],
+                  "page_sha256": hashlib.sha256(html.encode()).hexdigest()}
+
+
+def answers_v2(label: Mapping, nq: int = 3) -> list[str]:
+    row = []
+    for k in range(1, nq + 1):
+        a = label.get(f"c{k}") or "missing"
+        if a not in (*ANSWERS, "missing"):
+            raise ValueError(f"bad answer {a!r} on question {k}")
+        row.append(a)
+    return row
+
+
+def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
+                   runner: S.Runner | None = None) -> dict:
+    run_dir = (ROOT / ent["run_dir"]) if not Path(ent["run_dir"]).is_absolute() else \
+        Path(ent["run_dir"])
+    k, cand_id = int(ent["k"]), ent["cand_id"]
+    nq = int(ent.get("nq") or 3)
+    names = [q[0] for q in QUESTIONS[:nq]]
+    role = "primary" if ent.get("disposition") == "carded" else "bundle_member"
+    notes = {names[i - 1]: str(label[f"n{i}"]).strip() for i in range(1, len(names) + 1)
+             if str(label.get(f"n{i}") or "").strip()}
+    if str(label.get("note") or "").strip():
+        notes["card"] = str(label["note"]).strip()
+    rec = {"card": cid, "run_dir": ent["run_dir"], "k": k, "cand_id": cand_id, "notes": notes,
+           "disposition": ent.get("disposition"), "role": role}
+    ans = answers_v2(label, nq)
+    rec["answers"] = dict(zip(names, ans, strict=True))
+    if "missing" in ans:
+        return rec | {"status": "unlabelled", "reasons": [f"{n}: unanswered" for n, a in
+                                                          zip(names, ans, strict=True)
+                                                          if a == "missing"]}
+    bad = [f"{n}: {a}" for n, a in zip(names, ans, strict=True) if a != "yes"]
+    if bad:
+        return rec | {"status": "rejected", "reasons": bad}
+    held = []
+    if label.get("v") != ent["content_sha256"][:16]:
+        held.append("labels were made on another version of this card")
+    if arms := arms_dirs(run_dir, k):
+        held.append(f"arms/ exists: {[str(a) for a in arms]}")
+    frozen = _frozen_in(run_dir, k)
+    if cand_id in frozen:
+        return rec | {"status": "already_frozen", "reasons": []}
+    other = [f for f in frozen if not f.startswith(ent["source_policy"] + ".")
+             and not f.startswith("bundle.")]
+    if other:
+        held.append(f"boundary already has a freeze from another source: {other}")
+    primaries = _primaries(run_dir)
+    if role == "primary" and [p for p in primaries if p != (k, cand_id)]:
+        held.append(f"the run already has its primary: {primaries} (one per task)")
+    if role == "bundle_member" and (k, cand_id) not in primaries and \
+            not [p for p in primaries if p[0] == k]:
+        held.append("bundle member: its boundary's primary isn't frozen")
+    parts = card_parts_v2(run_dir, k, cand_id, seed=seed)
+    if parts["content_sha256"] != ent["content_sha256"]:
+        held.append("the card's evidence changed since the page was built")
+    design, edited = final_design(label, ent["screen_design"])
+    rec["edited"] = edited
+    gaps = design_gaps(design)
+    if gaps:
+        held.append("design incomplete: " + "; ".join(gaps))
+    c = parts["cand"]
+    spec = spec_of(design) if set(edited) & set(SPEC_FIELDS) else c["act_spec"]
+    checks = json.loads(json.dumps(c.get("checks") or {}))
+    bdir = run_dir / f"b{k}"
+    if edited and not held:
+        new = RQ.check_design({"quote": design["d_repair"]},
+                              {"matched_quote": design["d_matched"],
+                               "matched_rationale": design["d_rationale"]},
+                              spec, S.source_view(bdir, c["source_policy"]),
+                              _read(bdir / "boundary" / "pre_messages.json"))
+        shown = set(((checks.get("design") or {}).get("evidence") or {}).get("problems") or [])
+        added = [p for p in new["evidence"]["problems"] if p not in shown]
+        if added:
+            held.append(f"edited design adds code problems: {added}")
+        checks["design"] = new | {"screened": checks.get("design")}
+        if spec != c.get("act_spec"):
+            ref = S.check_reference(spec, run_dir, k, runner=runner)
+            if ref["outcome"] != "pass":
+                held.append(f"edited act: check 6 is {ref['outcome']} ({ref.get('reason')})")
+            checks["reference"] = ref | {"screened": checks.get("reference")}
+    if held:
+        return rec | {"status": "held", "reasons": held}
+    qnote = {n: notes.get(names[q]) for q, ns in QMAP.items() if q < nq for n in ns}
+    for n in CHECKS_V2:
+        checks[n] = dict(checks.get(n) or {}, jacob="pass", jacob_note=qnote.get(n),
+                         jacob_via="3-question card")
+    frz = {"cand_id": cand_id, "source_policy": c["source_policy"], "req_id": c["req_id"],
+           "repair_text": design["d_repair"], "matched_text": design["d_matched"],
+           "matched_rationale": design["d_rationale"], "act_spec": spec, "checks": checks,
+           "screen": RQ.SCREEN_V2, "loss": c.get("loss"),
+           "role": role,
+           "card": {"id": cid, "v": label.get("v"), "edited": edited,
+                    "note": notes.get("card"), "labelled_utc": label.get("utc")}}
+    path = S.write_freeze(bdir, frz)
+    return rec | {"status": "frozen", "reasons": [], "freeze": _rel(path),
+                  "publish": (f"uv run python scripts/s2_interact.py publish-freeze "
+                              f"{ent['run_dir']} {k} {cand_id}")}
+
+
+def _primaries(run_dir: Path) -> list[tuple[int, str]]:
+    """(k, cand id) of every primary freeze in the run."""
+    out = []
+    for fz in sorted(Path(run_dir).glob("b*/boundary/freeze/*.json")):
+        f = _read(fz)
+        if f.get("role") == "primary":
+            out.append((int(fz.parents[2].name[1:]), f["cand_id"]))
+    return out
+
+
+def freeze_v2(labels: Mapping[str, dict], key: Mapping, *,
+              runner: S.Runner | None = None) -> list[dict]:
+    """Decisions for a v2 page's cards, then the bundle record of each boundary where two or
+    more candidates of the carded source are frozen."""
+    unknown = sorted(set(labels) - set(key["cards"]) - set(key.get("retired") or {}))
+    if unknown:
+        raise ValueError(f"labels for cards on no page this key knows: {unknown[:5]}")
+    out = [freeze_card_v2(cid, key["cards"][cid], labels.get(cid) or {}, seed=key["seed"],
+                          runner=runner) for cid in key["order"]]
+    by_b: dict[tuple[str, int, str], list[str]] = {}
+    for cid in key["order"]:
+        e = key["cards"][cid]
+        run_dir = (ROOT / e["run_dir"]) if not Path(e["run_dir"]).is_absolute() else \
+            Path(e["run_dir"])
+        if e["cand_id"] in _frozen_in(run_dir, int(e["k"])):
+            by_b.setdefault((e["run_dir"], int(e["k"]), e["source_policy"]), []).append(
+                e["cand_id"])
+    for (rdir, k, src), members in by_b.items():
+        run_dir = (ROOT / rdir) if not Path(rdir).is_absolute() else Path(rdir)
+        bid = S.bundle_id(src)
+        if len(members) < 2:
+            continue
+        if bid in _frozen_in(run_dir, k):
+            out.append({"card": bid, "run_dir": rdir, "k": k, "cand_id": bid,
+                        "status": "already_frozen", "reasons": [], "notes": {}})
+            continue
+        path = S.write_bundle_freeze(run_dir / f"b{k}", src, members)
+        out.append({"card": bid, "run_dir": rdir, "k": k, "cand_id": bid, "status": "frozen",
+                    "reasons": [], "notes": {}, "freeze": _rel(path),
+                    "publish": (f"uv run python scripts/s2_interact.py publish-freeze "
+                                f"{rdir} {k} {bid}")})
+    return out
+
+
+def cmd_build2(a) -> int:
+    bs = [parse_boundary(x) for x in a.boundaries]
+    old = Path(a.out) / KEY_NAME
+    html, key = build_v2(bs, seed=a.seed, unsealed=a.unsealed,
+                         previous=_read(old) if old.exists() else None)
+    print(json.dumps(write_page(Path(a.out), html, key)))
+    return 0
+
+
+def advance_selection(results: list[dict], *, reselect: bool = True) -> list[dict]:
+    """Each boundary's card decisions into its selection state (a frozen primary freezes it;
+    rejected cards rescreen it for the next candidate within the caps, or exhaust it)."""
+    out = []
+    by: dict[tuple[str, int], list[dict]] = {}
+    for r in results:
+        if r.get("cand_id", "").startswith("bundle."):
+            continue
+        by.setdefault((r["run_dir"], int(r["k"])), []).append(r)
+    for (rdir, k), rows in by.items():
+        run_dir = (ROOT / rdir) if not Path(rdir).is_absolute() else Path(rdir)
+        bdir = run_dir / f"b{k}"
+        sel = IR.record_decisions(bdir, rows)
+        if reselect and sel.get("state") == "carded" and any(
+                r["status"] == "rejected" for r in rows):
+            from compaction.s2 import session as SS
+            sel = IR.reselect(bdir, backend_factory=lambda: IR.claude_backend(IR.PilotSpend()),
+                              grep_runner=SS.grep_runner(), ref_runner=S.docker_runner(),
+                              file_runner=RQ.docker_file_runner())
+        out.append({"run_dir": rdir, "k": k, "state": sel.get("state"),
+                    "cards": sel.get("cards"), "rejected": sel.get("rejected")})
+    return out
+
+
+def cmd_freeze2(a) -> int:
+    key = _read(a.key)
+    results = freeze_v2(read_labels(Path(a.labels)), key)
+    print("\n".join(report_lines(results)))
+    if not a.no_reselect:
+        from dotenv import load_dotenv
+        load_dotenv(ROOT / ".env", override=False)
+    for row in advance_selection(results, reselect=not a.no_reselect):
+        print(json.dumps({"selection": row}))
+    print(json.dumps({"decisions": str(write_decisions(Path(a.key).parent, key, results)),
+                      "counts": {s: sum(r["status"] == s for r in results) for s in
+                                 ("frozen", "already_frozen", "rejected", "held",
+                                  "unlabelled")}}))
+    return 0
+
+
+# ------------------------------------------------------------------------------------------
 # CLI
 # ------------------------------------------------------------------------------------------
 
@@ -948,8 +1371,20 @@ def main(argv: list[str] | None = None) -> int:
     f = sub.add_parser("freeze")
     f.add_argument("--labels", required=True)
     f.add_argument("--key", default=str(CARDS_DIR / KEY_NAME))
+    b2 = sub.add_parser("build2", help="v2: accumulated-loss cards (3 questions)")
+    b2.add_argument("--boundaries", nargs="+", required=True, metavar="RUN_DIR:K")
+    b2.add_argument("--out", default=str(CARDS_DIR / "v2"))
+    b2.add_argument("--seed", type=int, default=SEED)
+    b2.add_argument("--unsealed", action="store_true",
+                    help="allow boundaries past a run's sealed point (after the global gate)")
+    f2 = sub.add_parser("freeze2", help="v2: freeze from the 3-question labels")
+    f2.add_argument("--labels", required=True)
+    f2.add_argument("--key", default=str(CARDS_DIR / "v2" / KEY_NAME))
+    f2.add_argument("--no-reselect", action="store_true",
+                    help="record decisions only; don't rescreen rejected boundaries")
     a = ap.parse_args(argv)
-    return {"build": cmd_build, "freeze": cmd_freeze}[a.cmd](a)
+    return {"build": cmd_build, "freeze": cmd_freeze, "build2": cmd_build2,
+            "freeze2": cmd_freeze2}[a.cmd](a)
 
 
 if __name__ == "__main__":

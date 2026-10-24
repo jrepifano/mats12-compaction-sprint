@@ -40,6 +40,7 @@ import re
 import shlex
 import threading
 import time
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -99,6 +100,30 @@ def _tag_part(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.-]", "-", s)[:120]
 
 
+EXEC_ID_FILE = ".execution_id"
+
+
+def execution_id(run_dir: Path) -> str:
+    """This execution dir's persistent id (created once, under the keep lock)."""
+    p = Path(run_dir) / EXEC_ID_FILE
+    with _KEEP_LOCK:
+        if not p.exists():
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(uuid.uuid4().hex[:12])
+        return p.read_text().strip()
+
+
+def _owned(tag: str, label: str) -> bool | None:
+    """Whether `tag`'s image carries emx.keep=<label> (None: no such tag)."""
+    from compaction.deepswe import sandbox as SB
+    try:
+        out = SB._docker(["image", "inspect", "--format",
+                          f'{{{{index .Config.Labels "{KEEP_LABEL}"}}}}', tag], timeout=60)
+    except SB.SandboxError:
+        return None
+    return out.stdout.decode().strip() == label
+
+
 @dataclass
 class KeepStore:
     """Boundary images that outlive the run's own cleanup (module docstring)."""
@@ -109,23 +134,36 @@ class KeepStore:
 
     def __post_init__(self) -> None:
         self.run_dir = Path(self.run_dir)
+        # The run key plus this execution's own id (24 Oct incident: a stub smoke under another
+        # root reused the live kombu run's key, re-pointed its kept tags with its own commits
+        # and then removed every image with that label). The id is persisted in the run dir on
+        # first use and travels with it (a retired dir keeps it; a new dir at the same path
+        # gets a fresh one), so no two executions share a kept tag or label. Created on first
+        # use (a session that never reaches a boundary leaves no trace).
+        self._label_id: str | None = None
+
+    @property
+    def label_id(self) -> str:
+        if self._label_id is None:
+            self._label_id = f"{self.run_key}-{execution_id(self.run_dir)}"
+        return self._label_id
 
     @property
     def path(self) -> Path:
         return self.run_dir / KEPT_FILE
 
     def labels(self) -> dict[str, str]:
-        return {KEEP_LABEL: self.run_key}
+        return {KEEP_LABEL: self.label_id}
 
     def _rows(self) -> list[dict]:
         return json.loads(self.path.read_text()) if self.path.exists() else []
 
     def new_tag(self, k: int) -> str:
         """The tag for boundary k, listed (created_utc None) before any commit starts."""
-        tag = f"{KEEP_REPO}:{_tag_part(f'{self.run_key}-b{k}')}"
+        tag = f"{KEEP_REPO}:{_tag_part(f'{self.label_id}-b{k}')}"
         with _KEEP_LOCK:
             rows = [r for r in self._rows() if r["tag"] != tag]
-            rows.append({"k": k, "tag": tag, "label": self.run_key, "host": self.host,
+            rows.append({"k": k, "tag": tag, "label": self.label_id, "host": self.host,
                          "created_utc": None})
             _dump(self.path, rows)
         return tag
@@ -136,7 +174,7 @@ class KeepStore:
             rows = self._rows()
             row = next((r for r in rows if r["tag"] == tag), None)
             if row is None:
-                row = {"k": k, "tag": tag, "label": self.run_key, "host": self.host}
+                row = {"k": k, "tag": tag, "label": self.label_id, "host": self.host}
                 rows.append(row)
             row.update(meta, k=k, created_utc=utc_now())
             _dump(self.path, rows)
@@ -157,15 +195,21 @@ class KeepStore:
         bad: list[str] = []
         with _KEEP_LOCK:
             rows = KeepStore.list(run_dir)
-            for r in rows:
-                if r.get("removed_utc"):
-                    continue
+            live = [r for r in rows if not r.get("removed_utc")]
+            for r in live:
                 with SB.using_host(r.get("host")):
-                    if SB.remove_image(r["tag"]):
+                    owned = _owned(r["tag"], r["label"])
+                    if owned is False:  # the tag now names another execution's image
+                        r["removed_utc"] = utc_now()
+                        r["not_removed"] = "tag points at another execution's image"
+                        continue
+                    if owned is None or SB.remove_image(r["tag"]):
                         r["removed_utc"] = utc_now()
                     else:
                         bad.append(r["tag"])
-            for host, label in sorted({(r.get("host"), r["label"]) for r in rows},
+            # leftover (untagged) images of this execution only: rows already removed
+            # before this call don't widen the sweep
+            for host, label in sorted({(r.get("host"), r["label"]) for r in live},
                                       key=lambda x: (x[0] or "", x[1])):
                 with SB.using_host(host):
                     ids = SB._list(["images", "-a", "--filter", f"label={KEEP_LABEL}={label}",

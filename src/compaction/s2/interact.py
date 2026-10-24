@@ -439,6 +439,17 @@ def capture(run_key: str, stage: str, sb, inv, agent_messages: list[dict], sim: 
                     sha256(fp), {"snapshot_s": secs})
 
 
+def tag_exists(tag: str, host: str | None = None) -> bool:
+    """Whether an image tag exists on the daemon (the sandbox's host)."""
+    from compaction.deepswe import sandbox as SB
+    with SB.using_host(host):
+        try:
+            SB._docker(["image", "inspect", "--format", "{{.Id}}", tag], timeout=60)
+            return True
+        except SB.SandboxError:
+            return False
+
+
 CONTAINER_LIFETIME_S = 6 * 3600
 PENDING_ASK = "(pending)"  # the tool result a captured ask_user gets; never shown to a model
 PENDING_DEFERRED = "(not run yet)"  # a tool call queued after the captured ask (not executed)
@@ -562,6 +573,9 @@ class InteractEnv:
         if keep is None:
             return {"tag": None, "stopped_processes": stopped, "snapshot_s": 0.0}
         tag = keep.new_tag(k)
+        if tag_exists(tag, self.sb.host):
+            # never re-point an existing kept tag (24 Oct incident)
+            raise RuntimeError(f"kept tag {tag} already exists; refusing to overwrite it")
         secs = self.sb.snapshot(tag, labels=keep.labels())
         keep.record(k, tag, snapshot_s=secs)
         return {"tag": tag, "stopped_processes": stopped, "snapshot_s": secs}

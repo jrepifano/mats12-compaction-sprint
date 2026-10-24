@@ -109,7 +109,8 @@ def run(task_id: str = "kombu-single-active-consumer-priority", *,
     t0 = time.monotonic()
     root = Path(root or (C.raw_dir() / "interact_smoke" / time.strftime("%Y%m%dT%H%M%S")))
     task = IR.load_task(task_id)
-    cfg = IR.BaseConfig(task=task, root=root, threshold=THRESHOLD, max_calls=80)
+    cfg = IR.BaseConfig(task=task, root=root, threshold=THRESHOLD, max_calls=80,
+                        prefix=f"smoke-{time.strftime('%Y%m%dT%H%M%S')}-")
     rep: dict = {"root": str(root), "task": task_id, "checks": {}}
     chk = rep["checks"]
 
@@ -211,6 +212,25 @@ def run(task_id: str = "kombu-single-active-consumer-priority", *,
             vc = IR.valid_comparison(b2, "live-smoke", require_committed=False)
             rep["valid_comparison"] = vc
             chk["valid_comparison_live"] = vc["valid"]
+            # The accumulated-loss resume (phase B), on unit A's real session: from b2 (the
+            # arms above don't touch it) to b3, pi's update prompt, b2 left byte-identical.
+            for bk in (rd / "b1", b2):  # nothing carded at b1 or b2 (the stub screen)
+                IR._transition(bk, "exhausted", "smoke")
+            before = {str(p.relative_to(b2)): p.read_bytes() for p in b2.rglob("*")
+                      if p.is_file() and "arms" not in p.parts}
+            rr = IR.resume_base(rd, task, agent_model=StubModel([{"bash": BULK}] * 12),
+                                sim_model=StubSim(), inv=inv, trigger=lambda b, f: True,
+                                threshold=THRESHOLD)
+            rep["resume"] = {k: rr.get(k) for k in ("end", "boundaries", "error", "fork_check")}
+            after = {str(p.relative_to(b2)): p.read_bytes() for p in b2.rglob("*")
+                     if p.is_file() and "arms" not in p.parts}
+            c3 = json.loads((rd / "b3" / "boundary" / "compaction.json").read_text()) \
+                if (rd / "b3" / "boundary" / "compaction.json").exists() else {}
+            chk["resume_to_b3_with_update_prompt"] = (
+                rr["end"] == "eligible" and rr["boundaries"] == [3]
+                and bool((c3.get("info") or {}).get("update"))
+                and (rr.get("fork_check") or {}).get("ok") is True)
+            chk["resume_leaves_b2_untouched"] = before == after
             # Unit B on the smoke's own files: a command act the stub arms performed (git log),
             # and check 6's docker runner on the kept b2 image, both ways.
             spec = {"act": {"kind": "command", "pattern": r"^git log"}, "decision": None,

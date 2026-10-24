@@ -10,6 +10,7 @@ from __future__ import annotations
 import itertools
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -149,7 +150,9 @@ def test_three_boundaries_first_then_update_prompt(tmp_path):
         hist = [r for r in comp["requests"] if r["label"] == "history"]
         assert len(hist) == 1, comp["requests"]
         assert bj["boundary_index"] == k and bj["policy"] == "pi"
-        assert bj["tag"] == f"emx-sandbox/s2-interact:kombu-x-deepseek-a1-b{k}"
+        # run key + this run dir's id + boundary (per-run-dir kept ids, 24 Oct incident)
+        assert re.fullmatch(rf"emx-sandbox/s2-interact:kombu-x-deepseek-a1-[0-9a-f]{{12}}-b{k}",
+                            bj["tag"])
         assert bj["stage"] == "02_implement"
         assert bj["tail_start_index"] == min(bj["kept_indices"])
         if k == 1:
@@ -453,7 +456,8 @@ def test_kept_snapshot_survives_cleanup_and_search_finds_offtree_strings(tmp_pat
             labels = json.loads(subprocess.run(
                 ["docker", "image", "inspect", tag, "--format", "{{json .Config.Labels}}"],
                 capture_output=True, text=True, timeout=60, check=True).stdout)
-            assert labels["emx.keep"] == key and labels["emx.run"] == ""
+            assert labels["emx.keep"] == ks.label_id and labels["emx.run"] == ""
+            assert ks.label_id.startswith(key + "-")
             assert labels["emx.sandbox"] == "s2-session-test"
             run_id = inv.run_id
         # the run's own cleanup (sweep + tracked tags) ran on exit; the kept tag is still there

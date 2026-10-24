@@ -549,3 +549,224 @@ def test_second_look_one_batch_per_source(run):
     assert len(sl) == 2 and all("sl|item|b1-q2" in b for b in sl)  # one batch per source
     assert g["live"]["b1-q2"] == "dropped"  # live's second look agreed: dropped
     assert g["cc_prompt"]["b1-q2"] == "kept"  # cc_prompt's second look overturned it
+
+
+# ------------------------------------------------------------------------------------------
+# v2: the accumulated-loss screen
+# ------------------------------------------------------------------------------------------
+
+PENDING_LINE = "def save_record(rec):"
+API_FILE = "import x\n\n    def save_record(rec):  \n        return store(rec)\n"
+DRAFT_V2 = dict(DRAFT, matched_quote="Conflicts should give a 409 back please.",
+                pending_path="api.py", pending_quote=PENDING_LINE,
+                pending_reason="save_record still has no conflict check")
+
+
+def _grader(table):
+    return lambda items, views: {s: {it["req_id"]: {"grade": table[s].get(it["req_id"], "kept"),
+                                                    "summary_quote": None}
+                                     for it in items} for s in views}
+
+
+def _grep_v2(image, patterns):
+    return {p: {"files": [], "lines": []} for p in patterns}
+
+
+def _files(image, path):
+    return {"status": "ok", "text": API_FILE} if path == "api.py" else {"status": "missing"}
+
+
+def _ref_pass(image, script):
+    return 0, "@@REFDIFF@@\ndiff --git a/api.py b/api.py\n+++ b/api.py\n+x = 1\n", ""
+
+
+def _v2_two_boundaries(run):
+    be, _ = _split_both(run)
+    R.split(run / "b2", backend=be, task=TASK)
+    for k in (1, 2):
+        _replays(run / f"b{k}", {"cc_prompt": "cc summary"})
+    req_sha = hashlib.sha256((run / "b1" / "boundary" / "requirements.json").read_bytes())
+    R.grade_sources_v2(run / "b1", ["live", "cc_prompt"], grader=_grader(
+        {"live": {"b1-q2": "dropped", "b1-q3": "dropped"},
+         "cc_prompt": {"b1-q2": "dropped", "b1-q3": "dropped", "b1-q5": "dropped"}}))
+    R.loss_ledger(run / "b1")
+    return req_sha
+
+
+def _screen_b1(run, draft=None, **kw):
+    return R.screen_v2(run / "b1", backend=StubBackend(lambda req: dict(draft or DRAFT_V2)),
+                       grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
+                       task=TASK, **{"sources": ["live", "cc_prompt"], **kw})
+
+
+def test_v2_grades_every_requirement_so_far_and_marks_new_or_inherited(run):
+    req_sha = _v2_two_boundaries(run)
+    b1 = run / "b1" / "boundary"
+    # the shared split is never rewritten, and v1's files are not touched
+    assert hashlib.sha256((b1 / "requirements.json").read_bytes()).digest() == req_sha.digest()
+    assert not (b1 / "grades.json").exists() and (b1 / "fork_v2" / "grades.json").exists()
+    led1 = json.loads((b1 / "fork_v2" / "ledger.json").read_text())
+    assert led1["counts"]["live"] == {"new": 2, "inherited": 0, "unknown": 0}
+    # b2: carried items are graded too (b1-q2's reply r3 is no longer verbatim there)
+    rq2 = json.loads((run / "b2" / "boundary" / "requirements.json").read_text())
+    ids = [it["req_id"] for it in R.gradable_v2(rq2)]
+    assert "b1-q2" in ids and "b1-q5" in ids and "b2-q1" in ids
+    assert "b2-q2" not in ids  # its grounding quote isn't in the task text
+    R.grade_sources_v2(run / "b2", ["live", "cc_prompt"], grader=_grader(
+        {"live": {"b1-q2": "dropped", "b1-q5": "dropped", "b2-q1": "dropped"},
+         "cc_prompt": {"b1-q2": "dropped"}}))
+    led = R.loss_ledger(run / "b2")["sources"]
+    assert led["live"]["b1-q2"]["status"] == "inherited"  # b1's live summary already lacked it
+    assert led["live"]["b1-q5"]["status"] == "new"  # b1's live summary still carried it
+    assert led["live"]["b2-q1"]["status"] == "new" and led["live"]["b2-q1"]["verbatim_here"]
+    assert led["cc_prompt"]["b1-q2"]["status"] == "inherited"
+
+
+def test_v2_screen_cards_the_first_with_a_pending_spot_and_bundles_its_source(run):
+    _v2_two_boundaries(run)
+    seen = []
+
+    def answer(req):
+        seen.append(req.key)
+        assert req.schema is R.DRAFT_SCHEMA_V2 and "pending_path" in req.user
+        return dict(DRAFT_V2)
+
+    out = R.screen_v2(run / "b1", backend=StubBackend(answer), grep_runner=_grep_v2,
+                      ref_runner=_ref_pass, file_runner=_files, task=TASK,
+                      sources=["live", "cc_prompt"])
+    disp = {c["cand_id"]: c["disposition"] for c in out["candidates"]}
+    assert out["carded"] == "live.b1-q2" and out["bundle"] == ["live.b1-q3"]
+    assert disp["live.b1-q5"] == "not_reached"  # the bundle is full (max_bundle=1)
+    q5 = {c["cand_id"]: c for c in out["candidates"]}["live.b1-q5"]
+    assert q5["checks"]["retention"]["outcome"] == "fail"  # live kept it (recorded anyway)
+    assert all(v == "not_reached" for k, v in disp.items() if k.startswith("cc_prompt."))
+    c = {c["cand_id"]: c for c in out["candidates"]}["live.b1-q2"]
+    app = c["checks"]["applicability"]
+    assert app["outcome"] == "pass" and app["evidence"]["pending"]["outcome"] == "pass"
+    assert set(c["checks"]) == set(R.CHECKS)  # the pilot's six
+    assert c["loss"]["status"] == "new" and c["inherited"] is False
+    assert all(k.startswith("draft2|") for k in seen)
+    assert out["screen_sha256"] == R.screen_sha_v2()
+    # rejected: the next candidate, same source first (bundle capped at 1 by default)
+    out2 = _screen_b1(run, rejected=["live.b1-q2"])
+    assert out2["carded"] == "live.b1-q3" and out2["bundle"] == []
+
+
+def test_v2_screen_excludes_a_candidate_without_a_pending_spot(run):
+    _v2_two_boundaries(run)
+    for bad in (dict(DRAFT_V2, pending_quote="a line that is not in the workspace"),
+                dict(DRAFT_V2, pending_path="gone.py"),
+                dict(DRAFT_V2, pending_path=None, pending_quote=None)):
+        (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink(missing_ok=True)
+        out = _screen_b1(run, draft=bad, sources=["live"])
+        disp = [c["disposition"] for c in out["candidates"]]
+        assert disp[:2] == ["excluded:applicability:pending"] * 2 and out["carded"] is None
+
+
+@pytest.fixture(scope="module")
+def CARDS():
+    import importlib
+    import sys
+    scripts = Path(__file__).resolve().parents[2] / "scripts"
+    sys.path.insert(0, str(scripts))
+    try:
+        return importlib.import_module("s2_interact_cards")
+    finally:
+        sys.path.pop(0)
+
+
+def test_v2_cards_three_questions_freeze_and_bundle(run, tmp_path, CARDS):
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    IR.place_cards(run / "b1", _screen_b1(run))
+    _w(run / "b1" / "boundary" / "boundary.json", {"boundary_index": 1, "calls_in_step": 40,
+                                                   "tail_start_index": 8, "sim_calls": 4})
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    html, key = CARDS.build_v2([(run, 1)])
+    assert len(key["cards"]) == 2
+    data = CARDS.RP.page_data(html)
+    card = data["cards"][0]
+    assert PENDING_LINE in card["paragraph"] and "pi's live summary" in card["paragraph"]
+    assert card["nq"] == 3 and len(card["qev"]) == 3 and len(card["code_ev"]) == 3
+    CARDS.leak_check(html, key)
+    labels = {cid: {"c1": "yes", "c2": "yes", "c3": "yes", "v": e["content_sha256"][:16]}
+              for cid, e in key["cards"].items()}
+    out = CARDS.freeze_v2(labels, key, runner=_ref_pass)
+    st = {r["cand_id"]: r["status"] for r in out}
+    assert st == {"live.b1-q2": "frozen", "live.b1-q3": "frozen", "bundle.live": "frozen"}
+    f = IR.verified_freeze(run / "b1", "live.b1-q2", require_committed=False)
+    assert f["screen"] == "fork_v2" and f["role"] == "primary"
+    assert f["checks"]["applicability"]["jacob"] == "pass"
+    m = IR.verified_freeze(run / "b1", "live.b1-q3", require_committed=False)
+    with pytest.raises(ValueError, match="bundle member"):
+        IR.refuse_bundle_member(m)
+    b = IR.verified_freeze(run / "b1", "bundle.live", require_committed=False)
+    assert b["bundle_items"] == ["live.b1-q2", "live.b1-q3"]
+    assert IR.spec_from_freeze(b, "repair", 1).slug == "live-bundle-repair-1"
+    assert IR.spec_from_freeze(f, "repair", 1).slug == "live-repair-1"
+    # a "no" rejects; nothing more is frozen
+    (run / "b1" / "boundary" / "freeze").rename(tmp_path / "freeze-old")
+    labels2 = {cid: dict(lb, c2="unclear") for cid, lb in labels.items()}  # unresolved = no
+    res = CARDS.freeze_v2(labels2, key)
+    assert {r["status"] for r in res} == {"rejected"}
+    sel = CARDS.advance_selection(res, reselect=False)
+    assert sel[0]["rejected"] == ["live.b1-q2", "live.b1-q3"]
+
+
+def test_v2_cards_refuse_a_boundary_past_the_sealed_point(run, CARDS):
+    _v2_two_boundaries(run)
+    _w(run / "sealed.json", [{"after_k": 1, "resume": 1, "utc": "x"}])
+    with pytest.raises(CARDS.ArmsExist, match="sealed"):
+        CARDS.build_v2([(run, 2)])
+
+
+
+def test_pending_check_reads_the_cited_file_and_compares_whole_lines():
+    """astra build r1 #1 and the side-agent note: whole lines of the cited file, not a
+    repository-wide substring search; copy slips go to the card, absence excludes."""
+    text = ("# old code: return save_record(rec)\n"
+            "    def save_record(rec):  # TODO conflicts\n"
+            "        return store(rec)\n")
+
+    def files(image, path):
+        return {"status": "ok", "text": text} if path == "api.py" else {"status": "missing"}
+
+    d = {"pending_path": "api.py", "pending_reason": "no conflict check yet"}
+    ok = R.check_pending(dict(d, pending_quote="     3\t        return store(rec)"), "img",
+                         files)
+    assert ok["outcome"] == "pass" and ok["evidence"]["found"][0]["line"] == 3
+    # only a substring of another line (a comment): not a pass (astra's reproduction)
+    sub = R.check_pending(dict(d, pending_quote="return save_record(rec)"), "img", files)
+    assert sub["outcome"] == "unresolved" and sub["reason"] == "pending_line_inside_another"
+    near = R.check_pending(dict(d, pending_quote="def  save_record( rec ):"), "img", files)
+    assert near["outcome"] == "unresolved" and "save_record" in near["evidence"]["near"]
+    # astra build r2 #2: the cited line inside a longer one, and a 4th identifier, go to Jacob
+    inside = R.check_pending(dict(d, pending_quote="x = a + b"), "img",
+                             lambda i, p: {"status": "ok", "text": "# old: x = a + b\n"})
+    assert inside["outcome"] == "unresolved" and inside["reason"] == "pending_line_inside_another"
+    fourth = R.check_pending(dict(d, pending_quote="alphabet_one(betaword_two, gammaword, delta_z)"),
+                             "img", lambda i, p: {"status": "ok", "text": "use(delta_z)\n"})
+    assert fourth["outcome"] == "unresolved" and "delta_z" in fourth["evidence"]["near"]
+    short = R.check_pending(dict(d, pending_quote="x = a + b"), "img",
+                            lambda i, p: {"status": "ok", "text": "x = a - b\n"})
+    assert short["outcome"] == "unresolved"  # astra build r3: short identifiers count too
+    gone = R.check_pending(dict(d, pending_quote="render_template(page_object)"), "img", files)
+    assert gone["outcome"] == "fail" and gone["reason"] == "pending_spot_not_found"
+    missing = R.check_pending(dict(d, pending_path="other.py",
+                                   pending_quote="return store(rec)"), "img", files)
+    assert missing["outcome"] == "fail" and missing["reason"] == "pending_file_not_in_workspace"
+    err = R.check_pending(dict(d, pending_quote="return store(rec)"), "img",
+                          lambda i, p: {"status": "error", "error": "docker"})
+    assert err["outcome"] == "unresolved" and err["reason"] == "pending_lookup_failed"
+    none = R.check_pending(dict(d, pending_path=None, pending_quote=None), "img", files)
+    assert none["outcome"] == "fail" and none["reason"] == "no_pending_spot"
+    assert R.check_pending(dict(d, pending_quote="return store(rec)"), None, files)[
+        "outcome"] == "unresolved"
+
+
+def test_file_script_reads_one_file_safely():
+    sc = R.file_script("src/a b.py")
+    assert "base64 -d" in sc and "a b.py" not in sc  # the path never reaches the shell raw
+    assert "*..*" in sc  # no escaping /app

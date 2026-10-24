@@ -61,6 +61,7 @@ first card in `rejected`) makes no repeat calls.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import re
@@ -710,4 +711,329 @@ def screen(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
            "draft_map": DRAFT_MAP, "code_fails": list(CODE_FAILS), "sources": list(sources),
            "rejected": sorted(rejected), "carded": carded, "candidates": out_c}
     S.write_json(b / "candidates.json", out)
+    return out
+
+
+# ------------------------------------------------------------------------------------------
+# v2: the accumulated-loss screen (docs/sprint/plans/accumulated-loss.md, "Fork rule")
+# ------------------------------------------------------------------------------------------
+# Written beside the pilot's files, never over them: boundary/fork_v2/{grades.json,
+# grades_detail.json, ledger.json, candidates.json}. requirements.json (the split) is shared and
+# never rewritten here. The fork rule: the first boundary where one summary, in source order,
+# has a dropped requirement that passes the checks and has a pending governed decision evidenced
+# in the boundary workspace (`check_pending`, code). Further qualifying candidates of the same
+# source become a bundle (disposition "bundle").
+
+SCREEN_V2 = "fork_v2"
+DRAFT_PROMPT_V2 = "interact_draft_v2"
+CHECKS_V2 = CHECKS  # the pilot's six (Jacob, 24 Oct: the pending decision is applicability's)
+CODE_FAILS_V2 = CODE_FAILS  # plus an applicability fail marked code_fail (no pending spot)
+PENDING_MIN_CHARS = 8
+DRAFT_SCHEMA_V2 = T._obj({**DRAFT_SCHEMA["properties"],
+                          "pending_path": _S(nullable=True),
+                          "pending_quote": _S(nullable=True),
+                          "pending_reason": _S()})
+
+
+def v2_dir(bdir: Path) -> Path:
+    return Path(bdir) / "boundary" / SCREEN_V2
+
+
+def gradable_v2(rq: dict) -> list[dict]:
+    """Every requirement disclosed so far: valid, canonical, from 02_implement, grounded in the
+    task text; carried ones (split at an earlier boundary) included, so a loss can be followed
+    across compactions."""
+    return [it for it in rq["items"] if it.get("valid") and it.get("duplicate_of") is None
+            and it.get("step") == STEP and it.get("grounded")]
+
+
+def grade_sources_v2(bdir: Path, sources: Iterable[str] = GRADE_SOURCES, *, backend=None,
+                     grader: Grader | None = None) -> dict:
+    """Grade every source on `gradable_v2` (fork_v2/grades.json, grades_detail.json)."""
+    b = Path(bdir) / "boundary"
+    rq = _read(b / "requirements.json")
+    items = gradable_v2(rq)
+    if grader is None:
+        if backend is None:
+            raise ValueError("grade_sources_v2 needs a backend or a grader")
+        grader = S1Grader(backend, rid_prefix=f"interact:{Path(bdir).parent.name}:"
+                                              f"b{rq['boundary_index']}:v2")
+    views = {s: S.source_view(bdir, s) for s in sources}
+    detail = grader(items, views) if items else {s: {} for s in views}
+    grades = {s: {rid: d["grade"] for rid, d in per.items()} for s, per in detail.items()}
+    for s, per in grades.items():
+        bad = {g for g in per.values() if g not in GRADES}
+        if bad:
+            raise ValueError(f"grader returned {bad} for {s}")
+    S.write_json(v2_dir(bdir) / "grades_detail.json", detail)
+    S.write_json(v2_dir(bdir) / "grades.json", grades)
+    return grades
+
+
+def loss_ledger(bdir: Path) -> dict:
+    """Q1 bookkeeping (fork_v2/ledger.json): per source, every requirement graded dropped or
+    misstated here, marked NEW (the previous live summary still carried it, or it was disclosed
+    since: verbatim in this boundary's input) or INHERITED (the previous boundary's live
+    summary already lacked it), with counts."""
+    k = boundary_index(bdir)
+    grades = _read(v2_dir(bdir) / "grades.json")
+    replies = {r["reply_id"]: r for r in _read(Path(bdir) / "boundary" / "sim_replies.json")}
+    rq = _read(Path(bdir) / "boundary" / "requirements.json")
+    items = {it["req_id"]: it for it in gradable_v2(rq)}
+    prev_live = {}
+    if k > 1:
+        pg = _read_or_none(Path(bdir).parent / f"b{k - 1}" / "boundary" / SCREEN_V2 / "grades.json")
+        if not isinstance(pg, dict):
+            raise FileNotFoundError(f"b{k - 1}: no fork_v2 grades (screen boundaries in order)")
+        prev_live = pg.get("live") or {}
+    out: dict = {"boundary_index": k, "sources": {}, "counts": {}}
+    for src, per in grades.items():
+        rows = {}
+        for rid, g in per.items():
+            if g not in ("dropped", "misstated"):
+                continue
+            it = items.get(rid) or {}
+            verbatim = (replies.get(it.get("source_reply_id")) or {}).get("pre_index") is not None
+            pl = prev_live.get(rid)
+            status = ("new" if verbatim or pl in (None, "kept") else
+                      "inherited" if pl in ("dropped", "misstated") else "unknown")
+            rows[rid] = {"grade": g, "status": status, "verbatim_here": verbatim,
+                         "previous_live": pl}
+        out["sources"][src] = rows
+        out["counts"][src] = {s: sum(r["status"] == s for r in rows.values())
+                              for s in ("new", "inherited", "unknown")}
+    S.write_json(v2_dir(bdir) / "ledger.json", out)
+    return out
+
+
+def candidates_order_v2(rq: dict, sources: Iterable[str] = ARM_SOURCES
+                        ) -> list[tuple[str, dict]]:
+    """Source first (ARM_SOURCES), then the earliest source reply, then position in it."""
+    its = sorted(gradable_v2(rq), key=lambda it: (it["call_index"], it["position"]))
+    return [(s, it) for s in sources for it in its]
+
+
+# A line number in front of a quoted line, as `cat -n`, `grep -n` or `nl` print it.
+_LINE_NO = re.compile(r"^\s*\d+(?:\s*[:|]\s?|\t|\s{2,})")
+_IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")  # every length (astra build r3)
+FILE_MARK = "@@FILE@@"
+FileRunner = Callable[[str, str], dict]  # (image, path) -> {"status": ok|missing|error, "text"}
+
+
+def pending_quote(quote: str) -> str:
+    """The comparable form of a cited line: no line-number prefix, no surrounding space."""
+    return _LINE_NO.sub("", quote or "", count=1).strip()
+
+
+def file_script(path: str) -> str:
+    """Print the working-tree file `path` of /app after a marker, or MISSING (the path is
+    base64'd, so nothing in it reaches the shell)."""
+    b64 = base64.b64encode(path.encode()).decode()
+    return "\n".join([
+        "cd /app || exit 3",
+        f"P=$(echo {b64} | base64 -d)",
+        'case "$P" in /*|*..*) echo @@BADPATH@@; exit 0;; esac',
+        f'if [ -f "$P" ]; then echo {FILE_MARK}; cat -- "$P"; else echo @@MISSING@@; fi'])
+
+
+def docker_file_runner(host: str | None = None) -> FileRunner:
+    """Reads one file of a kept boundary image (interact_score.docker_runner: a fresh
+    container, removed after)."""
+    run = S.docker_runner(host)
+
+    def read(image: str, path: str) -> dict:
+        rc, out, err = run(image, file_script(path))
+        if rc != 0:
+            return {"status": "error", "error": (err or out)[-300:]}
+        if "@@MISSING@@" in out or "@@BADPATH@@" in out:
+            return {"status": "missing"}
+        if FILE_MARK not in out:
+            return {"status": "error", "error": out[-300:]}
+        return {"status": "ok", "text": out.split(FILE_MARK + "\n", 1)[-1]}
+    return read
+
+
+def check_pending(d: dict, image: str | None, file_runner: FileRunner | None) -> dict:
+    """The pending spot, against the cited file itself in the kept boundary image (astra
+    build r1 #1): pass iff some complete line of that file equals the cited line (both without
+    a line-number prefix and surrounding space); unresolved, to the card, when the file has no
+    such line but identifiers from it, or when the lookup failed; fail (code-verified
+    absence) when no spot is cited, the file isn't in the workspace, or nothing of the line is
+    in it."""
+    path, raw = (d.get("pending_path") or "").strip(), d.get("pending_quote") or ""
+    quote = pending_quote(raw)
+    ev = {"path": path or None, "quote": raw, "searched": quote, "why": d.get("pending_reason")}
+    if not path or len(quote) < PENDING_MIN_CHARS or "\n" in quote:
+        return _check("fail", "no_pending_spot", **ev)
+    if file_runner is None or not image:
+        return _check("unresolved", "no_file_runner" if file_runner is None else "no_image",
+                      **ev)
+    got = file_runner(image, path.lstrip("./") if path.startswith("./") else path)
+    ev["image"], ev["lookup"] = image, got.get("status")
+    if got.get("status") == "missing":
+        return _check("fail", "pending_file_not_in_workspace", **ev)
+    if got.get("status") != "ok":
+        return _check("unresolved", "pending_lookup_failed", error=got.get("error"), **ev)
+    lines = got.get("text", "").splitlines()
+    hits = [n for n, ln in enumerate(lines, 1) if pending_quote(ln) == quote]
+    if hits:
+        ev["found"] = [{"line": n, "text": lines[n - 1]} for n in hits[:3]]
+        return _check("pass", None, **ev)
+    inside = [n for n, ln in enumerate(lines, 1) if quote in pending_quote(ln)]
+    if inside:  # part of a longer line (e.g. after a comment marker): Jacob's call
+        ev["inside"] = [{"line": n, "text": lines[n - 1]} for n in inside[:3]]
+        return _check("unresolved", "pending_line_inside_another", **ev)
+    words = [set(_IDENT.findall(ln)) for ln in lines]
+    near = {i: [n for n, w in enumerate(words, 1) if i in w]
+            for i in sorted(set(_IDENT.findall(quote)), key=len, reverse=True)}
+    near = {i: ns[:3] for i, ns in near.items() if ns}
+    if near:
+        ev["near"] = dict(list(near.items())[:5])  # evidence shown; every identifier searched
+        return _check("unresolved", "pending_line_not_verbatim", **ev)
+    return _check("fail", "pending_spot_not_found", **ev)
+
+
+def applicability_v2(d: dict, pending: dict) -> dict:
+    """Check 2 with the pending decision (Jacob, 24 Oct): the draft's applicability plus the
+    pending spot. A pending fail is code-verified (it excludes); the draft's "no" is
+    judgment-only (to the card); either unresolved makes it unresolved."""
+    ev = {"why": d.get("applicability_reason"), "pending": pending}
+    if pending["outcome"] == "fail":
+        return dict(_check("fail", f"pending:{pending['reason']}", **ev), code_fail=True)
+    drafted = DRAFT_MAP["applicable"][d["applicable"]]
+    if drafted == "fail":
+        return _check("fail", "draft:not_applicable", **ev)
+    if "unresolved" in (drafted, pending["outcome"]):
+        return _check("unresolved", pending.get("reason") if pending["outcome"] ==
+                      "unresolved" else "draft:unsure", **ev)
+    return _check("pass", None, **ev)
+
+
+def draft_request_v2(bdir: Path, src: str, it: dict, view: dict, task: str) -> T.Req:
+    r = draft_request(bdir, src, it, view, task)
+    p = load_prompt(DRAFT_PROMPT_V2, PROMPT_DIR)
+    v1 = load_prompt(DRAFT_PROMPT, PROMPT_DIR)
+    user = r.user.replace(v1.sections["user"].split("<instructions>")[1],
+                          p.sections["user"].split("<instructions>")[1])
+    return T.Req(key=r.key.replace("draft|", "draft2|"), system=p.system, user=user,
+                 schema=DRAFT_SCHEMA_V2, max_output_tokens=DRAFT_MAX_OUT, rid=r.rid,
+                 source=r.source, private=True)
+
+
+def screen_sha_v2() -> str:
+    return hashlib.sha256(json.dumps({
+        "prompts": {n: load_prompt(n, PROMPT_DIR).sha256 for n in
+                    (SPLIT_PROMPT, DRAFT_PROMPT_V2, S.JUDGE_PROMPT)},
+        "schema": DRAFT_SCHEMA_V2, "map": DRAFT_MAP, "code_fails": CODE_FAILS_V2,
+        "pending": "applicability_v2+check_pending(file)",
+        "pending_min_chars": PENDING_MIN_CHARS}, sort_keys=True).encode()).hexdigest()
+
+
+def _excluded_v2(checks: dict) -> str | None:
+    for c in CODE_FAILS_V2:
+        if (checks.get(c) or {}).get("outcome") == "fail":
+            return c
+    a = checks.get("applicability") or {}
+    if a.get("outcome") == "fail" and a.get("code_fail"):
+        return "applicability:pending"
+    return None
+
+
+def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
+              ref_runner: S.Runner | None = None, file_runner: FileRunner | None = None,
+              rejected: Iterable[str] = (), sources: Iterable[str] = ARM_SOURCES,
+              task: str | None = None, bundle: bool = True, max_bundle: int = 1) -> dict:
+    """fork_v2/candidates.json. Candidates in `candidates_order_v2`; retention is free and is
+    recorded for all; the others run only until the first candidate that isn't excluded by a
+    code-verified fail (CODE_FAILS_V2, pending included) and isn't rejected: that one is
+    `carded`. With `bundle`, later candidates of the same source are screened too and up to
+    `max_bundle` that qualify become `bundle` (the per-boundary card cap counts them); every
+    other candidate is `not_reached`. Each candidate carries its ledger status (new /
+    inherited; inherited losses are eligible). The pending spot is checked in the cited file
+    (`file_runner`) and is part of check 2 (`applicability_v2`)."""
+    b = Path(bdir) / "boundary"
+    k = boundary_index(bdir)
+    rq = _read(b / "requirements.json")
+    detail = _read_or_none(v2_dir(bdir) / "grades_detail.json") or {}
+    ledger = (_read_or_none(v2_dir(bdir) / "ledger.json") or {}).get("sources") or {}
+    old = {c["cand_id"]: c for c in (_read_or_none(v2_dir(bdir) / "candidates.json") or {})
+           .get("candidates", [])}
+    rejected = set(rejected)
+    image = ((_read_or_none(Path(bdir) / "run.json") or {}).get("task") or {}).get("image")
+    pre = _read(b / "pre_messages.json")
+    views: dict[str, dict] = {}
+    out_c: list[dict] = []
+    carded, carded_src, bundled = None, None, []
+    for src, it in candidates_order_v2(rq, sources):
+        cid = cand_id(src, it["req_id"])
+        prev = old.get(cid) or {}
+        checks = dict(prev.get("checks") or {})
+        c = {"cand_id": cid, "source_policy": src, "req_id": it["req_id"],
+             "source_reply_id": it["source_reply_id"], "position": it["position"],
+             "repair_text": it["quote"], "text": it["text"], "checks": checks,
+             "loss": (ledger.get(src) or {}).get(it["req_id"]),
+             "inherited": ((ledger.get(src) or {}).get(it["req_id"]) or {}).get(
+                 "status") == "inherited",
+             "draft": prev.get("draft"), "act_spec": prev.get("act_spec"), "disposition": None}
+        checks["retention"] = check_retention(src, it, detail)
+        out_c.append(c)
+        if carded is not None and (not bundle or src != carded_src
+                                   or len(bundled) >= max_bundle):
+            c["disposition"] = "not_reached"
+            continue
+        if _excluded_v2(checks):
+            c["disposition"] = f"excluded:{_excluded_v2(checks)}"
+            continue
+        if "recoverability" not in checks:
+            checks["recoverability"] = check_recoverability(it, image, grep_runner)
+        if _excluded_v2(checks):
+            c["disposition"] = f"excluded:{_excluded_v2(checks)}"
+            continue
+        if src not in views:
+            views[src] = S.source_view(bdir, src)
+        if c["draft"] is None:
+            task = task if task is not None else task_text(bdir)
+            req = draft_request_v2(bdir, src, it, views[src], task)
+            r = backend.run([req], purpose=DRAFT_PURPOSE).get(req.key)
+            if r is None or r.error or not isinstance(r.data, dict):
+                c["draft"] = {"error": r.error if r else "no_response"}
+            else:
+                c["draft"] = dict(r.data, model=r.model)
+        d = c["draft"]
+        if "error" in d:
+            for name in ("applicability", "decision", "design", "reference"):
+                checks.setdefault(name, _check("unresolved", "draft_failed", error=d["error"]))
+        else:
+            c["act_spec"] = spec = spec_from_draft(d)
+            pend = (prev.get("checks") or {}).get("applicability", {}).get(
+                "evidence", {}).get("pending") or check_pending(d, image, file_runner)
+            checks["applicability"] = applicability_v2(d, pend)
+            dec = DRAFT_MAP["decision_observable"][d["decision_observable"]]
+            checks["decision"] = _check(dec, None, decision=d["decision"])
+            checks["design"] = check_design(it, d, spec, views[src], pre)
+            rec = checks["recoverability"]
+            if d["search_strings"] and not rec["evidence"].get("search_after_draft"):
+                rec = check_recoverability(it, image, grep_runner, d["search_strings"])
+                rec["evidence"]["search_after_draft"] = True
+                checks["recoverability"] = rec
+            if "reference" not in checks and not _excluded_v2(checks):
+                checks["reference"] = S.check_reference(spec, Path(bdir).parent, k,
+                                                        runner=ref_runner)
+        why = _excluded_v2(checks)
+        if why:
+            c["disposition"] = f"excluded:{why}"
+        elif cid in rejected:
+            c["disposition"] = "rejected"
+        elif carded is None:
+            c["disposition"] = "carded"
+            carded, carded_src = cid, src
+        else:
+            c["disposition"] = "bundle"
+            bundled.append(cid)
+    out = {"boundary_index": k, "created_utc": _utc(), "screen_sha256": screen_sha_v2(),
+           "draft_prompt_sha256": load_prompt(DRAFT_PROMPT_V2, PROMPT_DIR).sha256,
+           "draft_map": DRAFT_MAP, "code_fails": list(CODE_FAILS_V2), "sources": list(sources),
+           "rejected": sorted(rejected), "carded": carded, "bundle": bundled,
+           "candidates": out_c}
+    S.write_json(v2_dir(bdir) / "candidates.json", out)
     return out

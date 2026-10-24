@@ -361,7 +361,7 @@ class FakeSession:
             if end:
                 return cls.SessionResult(end, loop.n_calls, loop.cost_usd, ks, 0.0, None, calls)
             if keep is not None and loop.n_calls - n0 == cls.boundary_at:
-                k = len(ks) + 1
+                k = max([int(p.name[1:]) for p in Path(run_dir).glob("b[0-9]*")], default=0) + 1
                 bdir = Path(run_dir) / f"b{k}"
                 b = bdir / "boundary"
                 b.mkdir(parents=True)
@@ -543,7 +543,8 @@ def test_funnel_lists_check6_exclusions_with_the_scorer(tmp_path):
          "disposition": "carded", "checks": {}}]
     (b / "candidates.json").write_text(json.dumps({"candidates": cands}))
     out = IR.funnel(tmp_path)
-    assert out["counts"] == {"excluded:reference": 1, "excluded:recoverability": 1, "carded": 1}
+    assert out["counts"] == {"v1": {"excluded:reference": 1, "excluded:recoverability": 1,
+                                    "carded": 1}}
     ref = next(r for r in out["excluded"] if r["reason"] == "excluded:reference")
     assert ref["scorer"]["description"] == "edits kombu sources"
     assert ref["reference_matches"] == [{"path": "kombu/entity.py"}]
@@ -794,3 +795,346 @@ def test_no_rerun_makes_exactly_one_attempt(tmp_path):
 
     out = IR.run_bases(cfgs, run_one, rerun=False)
     assert len(out) == 2 and sorted(seen) == ["t0-deepseek-a1", "t1-deepseek-a1"]
+
+
+
+def _tree_hashes(d: Path) -> dict:
+    return {str(p.relative_to(d)): hashlib.sha256(p.read_bytes()).hexdigest()
+            for p in sorted(Path(d).rglob("*")) if p.is_file()}
+
+
+@pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+def test_resume_base_continues_from_the_kept_boundary(tmp_path, monkeypatch):
+    from compaction.deepswe import sandbox as SB
+    from compaction.deepswe.sandbox import Invocation
+
+    orig = SB.Sandbox.snapshot
+    if "labels" not in orig.__code__.co_varnames:
+        monkeypatch.setattr(SB.Sandbox, "snapshot", lambda self, tag, labels=None: orig(self, tag))
+    monkeypatch.setattr(C, "PLATFORM", "linux/amd64")
+    task = IR.InteractTask(
+        "fake", IR.task_info("koota-composite-trait-aspects"), PERSONA,
+        {"01_plan": "Plan with the maintainer; save /tmp/plan.md.",
+         "02_implement": "Read /tmp/plan.md first; implement; ask for review."}, "spec", "sha")
+    cfg = IR.BaseConfig(task=task, root=tmp_path, image=IMAGE, threshold=10**9)
+    FakeSession.all_tags = []
+    FakeSession.previous_seen = []
+    try:
+        with Invocation(purpose=IR.PURPOSE) as inv:
+            res = IR.run_base(cfg, agent_model=StubModel(PLAN_ACTIONS + IMPL_ACTIONS),
+                              sim_model=StubSim(), inv=inv, eligible=lambda b, f: True,
+                              session=FakeSession)
+            assert res["end"] == "eligible", res.get("error")
+            rd = cfg.run_dir
+            with pytest.raises(PermissionError, match="no final selection"):
+                IR.resume_base(rd, task, agent_model=None, sim_model=None, inv=inv,
+                               trigger=lambda b, f: True, session=FakeSession)
+            IR._transition(rd / "b1", "exhausted", "test")  # nothing carded at b1
+            b1_before = _tree_hashes(rd / "b1")
+            result_before = (rd / "result.json").read_bytes()
+            sim_b1 = json.loads((rd / "b1" / "boundary" / "sim_state.json").read_text())
+            seen = []
+
+            def trigger(bdir, fields):
+                seen.append((Path(bdir).name, fields.get("calls_in_step")))
+                return True
+
+            agent = StubModel([{"bash": "echo more >> frob.ts && git commit -qam more && echo ok"},
+                               {"ask": "Done with that change, committed. Review?"},
+                               {"bash": "git log --oneline -1"},
+                               {"bash": "ls"}])
+            r = IR.resume_base(rd, task, agent_model=agent, sim_model=StubSim(), inv=inv,
+                               trigger=trigger, session=FakeSession)
+            assert r["end"] == "eligible" and r["boundaries"] == [2], r.get("error")
+            assert r["fork_check"]["ok"]
+            assert _tree_hashes(rd / "b1") == b1_before  # the saved boundary is untouched
+            assert (rd / "result.json").read_bytes() == result_before
+            assert json.loads((rd / "result_r1.json").read_text())["from_boundary"] == 1
+            assert FakeSession.previous_seen[-1] == ("SUMMARY", 1)  # pi's update on b1's summary
+            assert seen == [("b2", 4 + 4)]  # calls_in_step continues from b1's
+            sim_b2 = json.loads((rd / "b2" / "boundary" / "sim_state.json").read_text())
+            assert sim_b2["state"]["ask_user_call_count"] == \
+                sim_b1["state"]["ask_user_call_count"] + 1  # the same simulator, one more reply
+            reps = json.loads((rd / "b2" / "boundary" / "sim_replies.json").read_text())
+            assert [x["reply_id"] for x in reps][-1] == f"r{sim_b2['state']['ask_user_call_count']}"
+            kept = json.loads((rd / "kept_snapshots.json").read_text())
+            assert [x["k"] for x in kept] == [1, 2]
+            assert r["left"]["calls"] == C.INTERACT_BASE_MAX_CALLS - res["n_calls"]
+    finally:
+        for t in FakeSession.all_tags:
+            subprocess.run(["docker", "rmi", "-f", t], capture_output=True, check=False)
+
+
+def _run_with_b1(tmp_path, state):
+    rd = tmp_path / "t-deepseek-a1"
+    (rd / "b1" / "boundary").mkdir(parents=True)
+    (rd / "b1" / "boundary" / "boundary.json").write_text(json.dumps({"tag": "x"}))
+    (rd / "run.json").write_text(json.dumps({"run_key": rd.name, "task": {}}))
+    (rd / "result.json").write_text(json.dumps({"cost_usd": 9.0, "sim_cost_usd": 0.0,
+                                                "n_calls": 10, "seconds": 5}))
+    if state:
+        IR._transition(rd / "b1", state, "test", **({"frozen": "live.b1-q2"}
+                                                    if state == "frozen" else {}))
+    return rd
+
+
+def test_resume_gates_on_the_selection_state_and_seals_after_a_freeze(tmp_path):
+    task = IR.InteractTask("t", None, PERSONA, {"02_implement": "x"}, "spec", "sha")  # type: ignore[arg-type]
+    kw = {"agent_model": None, "sim_model": None, "inv": None, "trigger": lambda b, f: True}
+    for state in (None, "screening", "screen_failed", "carded"):
+        rd = _run_with_b1(tmp_path / str(state), state)
+        with pytest.raises(PermissionError, match="no final selection"):
+            IR.resume_base(rd, task, **kw)
+    rd = _run_with_b1(tmp_path / "frozen", "frozen")
+    with pytest.raises(PermissionError, match="after-freeze"):
+        IR.resume_base(rd, task, **kw)
+    r = IR.resume_base(rd, task, after_freeze=True, **kw)  # stops at once: the $8 cap
+    assert r["end"] == "run_cap" and IR.active_seal(rd) == 1
+    with pytest.raises(PermissionError, match="after-freeze"):  # the seal persists
+        IR.resume_base(rd, task, **kw)
+    rd = _run_with_b1(tmp_path / "exhausted", "exhausted")
+    assert IR.resume_base(rd, task, **kw)["end"] == "run_cap"  # allowed, unsealed
+    assert IR.active_seal(rd) is None
+    assert IR._resume_index(rd) == 2
+
+
+def _two_boundaries(tmp_path):
+    rd = tmp_path / "t-deepseek-a1"
+    for k in (1, 2):
+        (rd / f"b{k}" / "boundary").mkdir(parents=True)
+        (rd / f"b{k}" / "boundary" / "boundary.json").write_text("{}")
+    return rd, IR.InteractTask("t", None, PERSONA, {}, "spec", "sha")  # type: ignore[arg-type]
+
+
+def test_advance_screens_saved_boundaries_in_order_then_resumes(tmp_path):
+    rd, task = _two_boundaries(tmp_path)
+    (rd / "result.json").write_text(json.dumps({"end": "eligible"}))
+    calls = []
+
+    def exhaust(b, f):
+        calls.append(Path(b).name)
+        IR._transition(b, "exhausted", "no_candidate")
+        return False
+
+    out = IR.advance(rd, task, trigger=exhaust, resume=lambda: {"end": "submitted"})
+    assert calls == ["b1", "b2"] and out["fork_at"] is None
+    assert out["resumed"] == {"end": "submitted"}
+    calls.clear()
+    IR.advance(rd, task, trigger=exhaust, resume=dict)
+    assert calls == []  # screened boundaries aren't screened again
+
+
+def test_advance_pauses_at_a_carded_boundary_and_seals_what_lies_past_it(tmp_path):
+    rd, task = _two_boundaries(tmp_path)
+
+    def card_b1(b, f):
+        IR._transition(b, "carded", "carded", add_cards=["live.b1-q2"])
+        return True
+
+    out = IR.advance(rd, task, trigger=card_b1, resume=lambda: pytest.fail("must not resume"))
+    assert out["fork_at"] == 1 and out["state"] == "carded"
+    assert IR.active_seal(rd) == 1  # b2 already exists: sealed until b1 is decided
+    IR._transition(rd / "b1", "exhausted", "card_cap")
+    assert IR.active_seal(rd) is None  # an exhausted boundary never forks: the seal lifts
+
+
+def test_screen_failure_completes_the_boundary_and_advance_retries(tmp_path):
+    rd = tmp_path / "t-deepseek-a1"
+    (rd / "b1" / "boundary").mkdir(parents=True)
+    fields = {}
+
+    def boom(b, f):
+        raise RuntimeError("Max down")
+
+    assert IR.safe_trigger(boom)(rd / "b1", fields) is True  # pause, don't strand
+    assert fields["screen_error"].startswith("RuntimeError")
+    assert IR.state_of(rd / "b1") == "screen_failed"
+    (rd / "b1" / "boundary" / "boundary.json").write_text("{}")  # the session wrote it
+    task = IR.InteractTask("t", None, PERSONA, {}, "spec", "sha")  # type: ignore[arg-type]
+    out = IR.advance(rd, task, trigger=boom, resume=lambda: pytest.fail("no resume"))
+    assert out["state"] == "screen_failed" and "Max down" in out["error"]
+
+    def ok(b, f):
+        IR._transition(b, "exhausted", "no_candidate")
+        return False
+
+    out = IR.advance(rd, task, trigger=ok, resume=lambda: {"end": "submitted"})
+    assert out["screened"] == [{"k": 1, "state": "exhausted"}] and out["resumed"]
+    log = [json.loads(x) for x in (tmp_path / IR.SELECTION_LOG).read_text().splitlines()]
+    assert [x["to"] for x in log] == ["screen_failed", "screen_failed", "exhausted"]
+
+
+def _screened(carded, bundle=()):
+    return {"carded": carded, "bundle": list(bundle)}
+
+
+def test_selection_caps_and_transitions(tmp_path):
+    root = tmp_path
+    b = root / "t-deepseek-a1" / "b1"
+    (b / "boundary").mkdir(parents=True)
+    sel = IR.place_cards(b, _screened("live.b1-q2", ["live.b1-q3", "live.b1-q5"]))
+    assert sel["state"] == "carded" and sel["cards"] == ["live.b1-q2", "live.b1-q3"]  # cap 2
+    sel = IR.record_decisions(b, [{"cand_id": "live.b1-q2", "status": "rejected",
+                                   "role": "primary"}])
+    assert sel["state"] == "carded" and sel["rejected"] == ["live.b1-q2"]
+    sel = IR.place_cards(b, _screened("live.b1-q3"))  # a shown member promoted: no new card
+    assert sel["state"] == "carded" and len(sel["cards"]) == 2
+    IR.record_decisions(b, [{"cand_id": "live.b1-q3", "status": "rejected", "role": "primary"}])
+    sel = IR.place_cards(b, _screened("cc_prompt.b1-q2"))  # the next source, but no room
+    assert sel["state"] == "exhausted" and sel["log"][-1]["event"] == "card_cap"
+    states = []
+    for n in range(2, 8):  # 12 cards in all: t2..t6 fill it, t7 finds no room
+        bn = root / f"t{n}-deepseek-a1" / "b1"
+        (bn / "boundary").mkdir(parents=True)
+        states.append(IR.place_cards(bn, _screened(f"live.b1-q{n}", [f"live.b1-x{n}"]))["state"])
+    assert IR.cards_total(root) == 12 and states == ["carded"] * 5 + ["exhausted"]
+    late = root / "t9-deepseek-a1" / "b1"
+    (late / "boundary").mkdir(parents=True)
+    assert IR.place_cards(late, _screened("live.b1-q9"))["state"] == "exhausted"
+    frozen = root / "t2-deepseek-a1" / "b1"
+    sel = IR.record_decisions(frozen, [{"cand_id": "live.b1-q2", "status": "frozen",
+                                        "role": "primary"}])
+    assert sel["state"] == "frozen" and sel["frozen"] == "live.b1-q2"
+    assert IR.carded_at(frozen.parent, 1) == "live.b1-q2"
+    log = (root / IR.SELECTION_LOG).read_text().splitlines()
+    assert len(log) >= 10  # every transition is logged
+
+
+def test_k_counts_skip_bundle_members(tmp_path, monkeypatch):
+    rd = tmp_path / "t-deepseek-a1"
+    fz = rd / "b1" / "boundary" / "freeze"
+    fz.mkdir(parents=True)
+    (rd / "run.json").write_text(json.dumps({"task": {"task_id": "t"}}))
+    (fz / "live.b1-q3.json").write_text(json.dumps({"role": "bundle_member"}))
+    (fz / "bundle.live.json").write_text(json.dumps({"bundle_items": ["a", "b"]}))
+    called = []
+    monkeypatch.setattr(IR, "valid_comparison",
+                        lambda *a, **k: called.append(a) or {"valid": True,
+                                                             "source_policy": "live"})
+    assert IR.k_counts(tmp_path)["K"] == 0 and called == []
+    with pytest.raises(ValueError, match="bundle member"):
+        IR.refuse_bundle_member({"role": "bundle_member", "cand_id": "live.b1-q3"})
+    IR.refuse_bundle_member({"role": "primary"})
+
+
+def test_kept_images_are_per_run_dir_and_never_overwritten(tmp_path, monkeypatch):
+    """24 Oct incident: a stub smoke reused the live kombu run's key, re-pointed its kept tags
+    and then removed its images by label."""
+    from compaction.deepswe import sandbox as SB
+    from compaction.s2 import session as SS
+    key = "kombu-single-active-consumer-priority-deepseek-a1"
+    live, smoke = SS.KeepStore(tmp_path / "live" / key, key), \
+        SS.KeepStore(tmp_path / "smoke" / key, key)
+    assert live.new_tag(1) != smoke.new_tag(1)
+    assert live.labels() != smoke.labels()
+    smoke.record(1, smoke.new_tag(1))
+    removed, listed = [], []
+    monkeypatch.setattr(SB, "remove_image", lambda t, *a, **k: removed.append(t) or True)
+    monkeypatch.setattr(SB, "remove_image_id", lambda i, *a, **k: removed.append(i) or True)
+    monkeypatch.setattr(SB, "_list", lambda args: listed.append(args) or [])
+    monkeypatch.setattr(SS, "_owned", lambda tag, label: True)
+    assert SS.KeepStore.remove(smoke.run_dir) == []
+    assert removed == [smoke.new_tag(1)] and live.new_tag(1) not in removed
+    assert all(f"emx.keep={smoke.label_id}" in " ".join(a) for a in listed)
+    # a commit never re-points an existing tag
+    monkeypatch.setattr(I, "tag_exists", lambda tag, host=None: True)
+
+    class Sb:
+        host = None
+
+        def stray_processes(self):
+            return []
+
+        def snapshot(self, tag, labels=None):
+            pytest.fail("must not commit over an existing tag")
+
+    env = I.InteractEnv(Sb(), None)  # type: ignore[arg-type]
+    with pytest.raises(RuntimeError, match="already exists"):
+        env.boundary(live, 1)
+    # smoke runs never take a live run's key
+    task = IR.InteractTask("kombu-single-active-consumer-priority", None, PERSONA, {},
+                           "spec", "sha")  # type: ignore[arg-type]
+    assert IR.BaseConfig(task=task, root=tmp_path, prefix="smoke-x-").run_key != key
+
+
+
+def test_retired_and_retried_executions_never_share_kept_images(tmp_path, monkeypatch):
+    """astra build r2 #1: a retry at the same path gets its own id; removing one execution's
+    images never touches another's, and a re-pointed tag is left alone."""
+    from compaction.deepswe import sandbox as SB
+    from compaction.s2 import session as SS
+    ad = tmp_path / "run" / "arms" / "live-repair-1"
+    first = SS.KeepStore(ad, "run-live-repair-1")
+    t1 = first.new_tag(0)
+    first.record(0, t1)
+    retired = IR.retire(ad)
+    second = SS.KeepStore(ad, "run-live-repair-1")
+    assert second.label_id != first.label_id and second.new_tag(0) != t1
+    assert SS.KeepStore(retired, "run-live-repair-1").label_id == first.label_id  # kept
+    removed, listed = [], []
+    monkeypatch.setattr(SB, "remove_image", lambda t, *a, **k: removed.append(t) or True)
+    monkeypatch.setattr(SB, "remove_image_id", lambda i, *a, **k: removed.append(i) or True)
+    monkeypatch.setattr(SB, "_list", lambda args: listed.append(args) or [])
+    monkeypatch.setattr(SS, "_owned", lambda tag, label: False)  # re-pointed by someone else
+    SS.KeepStore.remove(retired)
+    assert removed == []  # nothing that isn't this execution's
+    row = json.loads((retired / "kept_snapshots.json").read_text())[0]
+    assert "another execution" in row["not_removed"]
+    monkeypatch.setattr(SS, "_owned", lambda tag, label: True)
+    listed.clear()
+    SS.KeepStore.remove(retired)  # already handled: no wider label sweep
+    assert listed == []
+
+
+def test_card_cap_holds_under_concurrent_placement(tmp_path):
+    """astra build r2 #3: two workers at 10 cards can't take 4."""
+    for n in range(5):
+        b = tmp_path / f"t{n}-deepseek-a1" / "b1"
+        (b / "boundary").mkdir(parents=True)
+        IR.place_cards(b, _screened(f"live.b1-q{n}", [f"live.b1-x{n}"]))
+    assert IR.cards_total(tmp_path) == 10
+    bs = []
+    for n in (5, 6, 7, 8):
+        b = tmp_path / f"t{n}-deepseek-a1" / "b1"
+        (b / "boundary").mkdir(parents=True)
+        bs.append(b)
+    with __import__("concurrent.futures").futures.ThreadPoolExecutor(4) as ex:
+        list(ex.map(lambda b: IR.place_cards(b, _screened(f"live.{b.parent.name}",
+                                                          [f"x.{b.parent.name}"])), bs))
+    assert IR.cards_total(tmp_path) == 12
+
+
+def test_status_hides_a_sealed_run(tmp_path, monkeypatch, capsys):
+    import importlib
+    import sys
+    sys.path.insert(0, str(C.REPO_ROOT / "scripts"))
+    try:
+        cli = importlib.import_module("s2_interact")
+    finally:
+        sys.path.pop(0)
+    rd = _run_with_b1(tmp_path, "frozen")
+    (rd / "b2" / "boundary").mkdir(parents=True)
+    IR._seal(rd, 1, "test")
+    monkeypatch.setattr(IR, "interact_root", lambda: tmp_path)
+    monkeypatch.setattr(IR, "tag_totals", lambda tag, **k: (0.0, 0.0))
+    monkeypatch.setattr(IR, "funnel", lambda root: {"counts": {}, "excluded": []})
+    monkeypatch.setattr(IR, "k_counts", lambda root: {"K": 0})
+    cli.cmd_status(None)
+    out = capsys.readouterr().out
+    assert '"sealed_after": 1' in out and "cost_usd" not in out
+
+
+def test_advance_reports_a_screen_that_failed_inside_the_resume(tmp_path):
+    rd, task = _two_boundaries(tmp_path)
+    for k in (1, 2):
+        IR._transition(rd / f"b{k}", "exhausted", "x")
+    (rd / "result.json").write_text(json.dumps({"end": "eligible"}))
+
+    def resume():
+        (rd / "b3" / "boundary").mkdir(parents=True)
+        (rd / "b3" / "boundary" / "boundary.json").write_text("{}")
+        IR._transition(rd / "b3", "screen_failed", "screen_error", error="Max down")
+        return {"end": "eligible"}
+
+    out = IR.advance(rd, task, trigger=lambda b, f: False, resume=resume)
+    assert out["state"] == "screen_failed" and out["fork_at"] == 3 and out["error"] == "Max down"
