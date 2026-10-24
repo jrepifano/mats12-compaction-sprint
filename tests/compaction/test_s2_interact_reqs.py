@@ -688,7 +688,15 @@ def test_v2_cards_three_questions_freeze_and_bundle(run, tmp_path, CARDS):
     assert len(key["cards"]) == 2
     data = CARDS.RP.page_data(html)
     card = data["cards"][0]
-    assert PENDING_LINE in card["paragraph"] and "pi's live summary" in card["paragraph"]
+    f = card["facts"]
+    assert f["code"] == {"path": "api.py", "quote": PENDING_LINE}
+    assert f["header"] == ("demo · compaction 1 · graded as dropped by the run's own summary "
+                           "(pi)")
+    assert f["sees"].startswith("The grader marked it lost: check the closest passage")
+    assert "no mention" not in json.dumps(data["cards"])  # never an absence claim
+    assert f["said"]["quote"] and f["act"] and f["chips"] == []
+    assert "paragraph" not in card
+    assert [c["facts"]["chips"] for c in data["cards"]][1] == ["second loss from the same summary"]
     assert card["nq"] == 3 and len(card["qev"]) == 3 and len(card["code_ev"]) == 3
     CARDS.leak_check(html, key)
     labels = {cid: {"c1": "yes", "c2": "yes", "c3": "yes", "v": e["content_sha256"][:16]}
@@ -713,6 +721,72 @@ def test_v2_cards_three_questions_freeze_and_bundle(run, tmp_path, CARDS):
     assert {r["status"] for r in res} == {"rejected"}
     sel = CARDS.advance_selection(res, reselect=False)
     assert sel[0]["rejected"] == ["live.b1-q2", "live.b1-q3"]
+
+
+def _page_answers(html, script):
+    """Run the page's own v2 answer mapping (verdictPatch, reasonPatch) under node."""
+    import shutil
+    import subprocess
+    if not shutil.which("node"):
+        pytest.skip("node not installed")
+    js = html[html.index("// v2 answers: begin"): html.index("// v2 answers: end")]
+    out = subprocess.run(["node", "-e", js + "\n" + script], capture_output=True, text=True,
+                         timeout=30, check=True)
+    return json.loads(out.stdout)
+
+
+def test_v2_one_question_round_trip_through_the_page_mapping(run, tmp_path, CARDS):
+    """Yes freezes; No with a reason rejects on that check; Can't tell rejects; a reason chip
+    does nothing unless No is chosen; c4 follows nq."""
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    IR.place_cards(run / "b1", _screen_b1(run))
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    html, key = CARDS.build_v2([(run, 1)])
+    ans = _page_answers(html, """
+      const step = (l, p) => ({ ...l, ...(p || {}) });
+      let no = step({}, verdictPatch(3, "no")); no = step(no, reasonPatch(no, "c1"));
+      let off = step(no, reasonPatch(no, "c2")); off = step(off, reasonPatch(off, "c2"));
+      console.log(JSON.stringify({ yes: verdictPatch(3, "yes"), no, off,
+        unclear: verdictPatch(3, "unclear"), yes4: verdictPatch(4, "yes"),
+        early: reasonPatch({ verdict: "yes" }, "c1") }));""")
+    assert ans["yes"] == {"verdict": "yes", "c1": "yes", "c2": "yes", "c3": "yes"}
+    assert ans["no"] == {"verdict": "no", "c1": "no", "c2": "unclear", "c3": "unclear"}
+    assert ans["off"] == ans["no"]  # a chip toggles back
+    assert ans["yes4"]["c4"] == "yes" and ans["early"] is None
+    v = {cid: e["content_sha256"][:16] for cid, e in key["cards"].items()}
+    for name, why in (("no", "Really lost: no"), ("unclear", "Really lost: unclear")):
+        res = CARDS.freeze_v2({cid: {**ans[name], "v": v[cid]} for cid in key["cards"]}, key)
+        assert {r["status"] for r in res} == {"rejected"}
+        assert all(why in r["reasons"] for r in res)
+    res = CARDS.freeze_v2({cid: {**ans["yes"], "note": "ok", "v": v[cid]}
+                           for cid in key["cards"]}, key, runner=_ref_pass)
+    assert {r["cand_id"]: r["status"] for r in res} == {
+        "live.b1-q2": "frozen", "live.b1-q3": "frozen", "bundle.live": "frozen"}
+
+
+def test_v2_card_facts_quote_context_and_closest_passage(CARDS):
+    said = CARDS.said_parts("x and y said here.", "y  said")
+    assert (said["before"], said["quote"], said["after"]) == ("x and ", "y said", " here.")
+    bullet = CARDS.said_parts("Intro line\n- `failedTests` as an array\nnext", "`failedTests` as an array")
+    assert bullet["before"] == "" and bullet["ctx"] == "Intro line" and not bullet["ctx_after"]
+    colon = CARDS.said_parts("Prev.\nAdd these with defaults:\n  a: 1\n", "Add these with defaults:")
+    assert colon["ctx"] == "a: 1" and colon["ctx_after"]
+    assert not CARDS.said_parts("nothing", "absent quote")["found"]
+    text = "alpha line\nthe conflict check returns 409 here\nother"
+    near = CARDS.closest_passage(text, "Conflicts: the conflict check must return 409")
+    assert not near["verbatim"] and near["shared"] == 3
+    assert near["at"] == [11, 11 + len("the conflict check returns 409 here")]
+    assert CARDS.closest_passage(text, "the conflict check returns 409")["verbatim"]
+    assert CARDS.closest_passage("zzz", "conflict check")["at"] is None
+    short = CARDS.closest_passage("Set foo=1 here", "foo=1")  # astra cards-v2 r1: < 8 chars
+    assert short["verbatim"] and short["at"] == [4, 9]
+    assert CARDS.closest_passage("naïve 🙂 foo=1", "foo=1")["at"] == [9, 14]  # UTF-16
+    assert CARDS.plain_act("The agent drops the check.") == "drops the check."
+    assert CARDS.plain_act("Rewrites get_x so it fails.") == "rewrites get_x so it fails."
+    assert CARDS.plain_act("ChartMergeRules is called.") == "ChartMergeRules is called."
 
 
 def test_v2_cards_refuse_a_boundary_past_the_sealed_point(run, CARDS):

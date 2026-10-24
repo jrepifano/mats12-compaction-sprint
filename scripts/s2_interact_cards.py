@@ -48,6 +48,18 @@ Every note Jacob wrote is printed. Decisions are merged into cards/decisions.jso
         [--key data/raw/sprint/s2/interact/cards/key.private.json]
 
 RUN_DIR is a run directory, or a run key under data/raw/sprint/s2/interact/.
+
+**v2 (accumulated loss: `build2`/`freeze2`).** One card per open card of each boundary's
+selection (`interact_run.selection`). Simplified for Jacob on 24 Oct: a header line (task,
+compaction, the summary that dropped it, flags as chips), four facts (the maintainer's words in
+their line, the pending code line, what the resumed input shows with a Check link to the closest
+passage, and the act we'd test), and one question, "Use this as a test case?". Yes stores
+c1..c<nq> = yes; No stores them unclear and each reason chip sets its own to no (c1 not lost, c2
+settled, c3 wouldn't act soon or unfair, c4 findable elsewhere or a reference conflict, only when
+nq = 4); Can't tell stores them all unclear. So freeze2 (`answers_v2`) is unchanged: anything but
+all yes rejects. Checks code couldn't settle get one plain line by the question. Everything else
+(the full reply, the task text, both history boxes, built when first opened, the code checks and
+the editable design) sits in one collapsed Evidence block.
 """
 
 from __future__ import annotations
@@ -55,6 +67,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -86,7 +99,8 @@ COLLECTIONS = {"labels": "labels"}
 CARD_FIELDS = {"id", "v", "kind", "hist_ref", "hist_at", "located", "ctx_quote", "box_label",
                "find_ph", "post_ref", "context", "source_note", "requirement", "reply",
                "task_text", "checks", "design", "patch",
-               "paragraph", "qev", "code_ev", "loss", "nq"}  # the last five: v2 cards
+               "qev", "code_ev", "loss", "nq", "facts", "open_lines", "post_at",
+               "post_label"}  # from "qev": v2 cards
 KEY_MARKERS = ('"cand_id"', '"run_dir"', '"content_sha256"', '"req_id"')
 MAX_HITS = 20  # paths shown per search string and place (the counts are shown too)
 MAX_PAGE_BYTES = 15_000_000
@@ -517,6 +531,31 @@ BODY = """
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 0 12px; }
 select.note { width: 100%; }
 details > summary { cursor: pointer; }
+.hdr { font: 600 1rem var(--f-ui); margin: 0; }
+.chip { display: inline-block; font: 500 0.75rem var(--f-ui); padding: 1px 8px; margin-left: 8px; border-radius: 999px; background: var(--maybe-soft); color: var(--ink); border: 1px solid var(--maybe); vertical-align: 1px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; margin: 0; }
+.facts dt { font: 600 0.9rem var(--f-ui); color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.facts mark { background: var(--mark); color: inherit; padding: 0 2px; border-radius: 2px; }
+.facts code { font: 0.85rem var(--f-mono); }
+.facts .ctx, .ctx { color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 640px) { .facts { grid-template-columns: 1fr; gap: 2px; } .facts dd { margin-bottom: 8px; } }
+fieldset.one { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+fieldset.one legend { font: 600 1.05rem var(--f-ui); margin-bottom: 8px; }
+.verdicts { display: flex; flex-wrap: wrap; gap: 10px; }
+button.big { font: 600 1rem var(--f-ui); padding: 10px 20px; border-radius: 6px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+button.big[aria-pressed="true"][data-tone="ok"] { background: var(--ok-soft); border-color: var(--ok); }
+button.big[aria-pressed="true"][data-tone="bad"] { background: var(--bad-soft); border-color: var(--bad); }
+button.big[aria-pressed="true"][data-tone="none"] { background: var(--none-soft); border-color: var(--none); }
+.reasons { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.reasons[hidden] { display: none; }
+.reasons .lede { flex-basis: 100%; margin: 0; }
+button.chipbtn { font: 500 0.85rem var(--f-ui); padding: 5px 12px; border-radius: 999px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+button.chipbtn[aria-pressed="true"] { background: var(--bad-soft); border-color: var(--bad); }
+button:disabled { opacity: .5; cursor: default; }
+.openline { margin: 0; font-size: 0.9rem; color: var(--ink); border-left: 3px solid var(--maybe); padding-left: 8px; }
+details.evd > summary { font: 600 0.95rem var(--f-ui); }
+details.evd > * + * { margin-top: 10px; }
 </style>
 <script>
 const DATA = __DATA_JSON__;
@@ -525,14 +564,32 @@ const COLL = DATA.collections;
 const BYID = {};
 for (const x of DATA.cards) {
   BYID[x.id] = { tab: "labels", x };
-  BYID[x.id + "-post"] = { tab: "boxes", x: { id: x.id + "-post", kind: "boundary", hist_ref: x.post_ref, box_label: "Resumed input built from this card's summary: everything the agent would see after the boundary", find_ph: "Find in the resumed input" } };
+  BYID[x.id + "-post"] = { tab: "boxes", x: { id: x.id + "-post", kind: "boundary", hist_ref: x.post_ref, box_label: "Resumed input built from this card's summary: everything the agent would see after the boundary", find_ph: "Find in the resumed input",
+    ...("post_at" in x ? { kind: "item", hist_at: x.post_at, located: !!x.post_at, ctx_quote: x.ctx_quote, box_label: x.post_label } : {}) } };
 }
 const state = {};
 let db = null;
 function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 __HISTORY_JS__
 const ANS = (yes, no) => [["yes", yes, "ok"], ["no", no, "bad"], ["unclear", "Can\\u2019t tell", "none"]];
-function done(id) { const l = state[id] || {}, n = (BYID[id] && BYID[id].x.nq) || CHECK_TEXT.length; return CHECK_TEXT.slice(0, n).every((_, k) => l[`c${k + 1}`]); }
+function done(id) {
+  const l = state[id] || {};
+  if (DATA.v2) return !!l.verdict;
+  return CHECK_TEXT.every((_, k) => l[`c${k + 1}`]);
+}
+// v2 answers: begin. One question per card; the stored answers stay freeze2's c1..c<nq>
+// (yes/no/unclear). Yes: all yes. No: all unclear, then each reason chip toggles its c to no.
+// Can't tell: all unclear. `verdict` only restores the buttons.
+const VERDICTS = [["yes", "Yes, use it", "ok"], ["no", "No", "bad"], ["unclear", "Can\u2019t tell", "none"]];
+const REASONS = [["c1", "Not really lost"], ["c2", "Already settled / nothing left to decide"],
+  ["c3", "Agent wouldn\u2019t act on it soon / unfair test"], ["c4", "Findable elsewhere / reference conflict"]];
+function verdictPatch(nq, verdict) {
+  const p = { verdict };
+  for (let k = 1; k <= nq; k++) p[`c${k}`] = verdict === "yes" ? "yes" : "unclear";
+  return p;
+}
+function reasonPatch(l, f) { return l.verdict === "no" ? { [f]: l[f] === "no" ? "unclear" : "no" } : null; }
+// v2 answers: end
 const KINDS = ["diff_added", "diff_removed", "file_touched", "command", "judge"];
 const DKINDS = ["none", "diff_added", "diff_removed", "file_touched", "command"];
 // The frozen design, edited here; the freeze uses these, the screen's value where unedited.
@@ -587,38 +644,93 @@ function card(u, i, n) {
     <input class="note" type="text" data-id="${u.id}" data-f="note" placeholder="Note on the card (optional)" aria-label="Note on the card">
   </article>`;
 }
-// v2 (accumulated-loss) cards: a plain paragraph, 3 questions with their evidence, the design
-// fields under question 3, and the code-only checks collapsed below.
+// v2 (accumulated-loss) cards: a header line with flags, four facts, one question, a note;
+// everything else in one collapsed Evidence block (its history boxes built when first opened).
+function evAll(u) {
+  const seen = new Set();
+  return [...(u.qev || []).flat(), ...(u.code_ev || [])].filter(e => !seen.has(e.by) && seen.add(e.by));
+}
+function saidHtml(s) {
+  const ctx = s.ctx ? `<span class="ctx">${esc(s.ctx)}</span>` : "";
+  const line = `${esc(s.before)}<mark>${esc(s.quote)}</mark>${esc(s.after)}`;
+  return `${s.ctx && !s.ctx_after ? ctx + "<br>" : ""}${line}${s.ctx_after ? "<br>" + ctx : ""}`
+    + (s.found ? "" : ` <span class="ctx">(not found verbatim in the reply; see Evidence)</span>`);
+}
 function card2(u, i, n) {
-  const qs = CHECK_TEXT.slice(0, u.nq || 3).map(([name, q, hint, yes, no], k) => {
-    const radios = ANS(yes, no).map(([v, t, tone]) => `<label><input type="radio" name="c${k + 1}-${u.id}" value="${v}" data-id="${u.id}" data-f="c${k + 1}" data-tone="${tone}"><span>${t}</span></label>`).join("");
-    return `<div class="calls"><fieldset><legend>${k + 1}. ${esc(name)}: ${esc(q)}</legend><p class="lede">${esc(hint)}</p>${radios}</fieldset>${(u.qev[k] || []).map(evidenceOf).join("")}${k === 2 ? designHtml(u) : ""}
-      <input class="note" type="text" data-id="${u.id}" data-f="n${k + 1}" placeholder="Note on question ${k + 1} (optional)" aria-label="Note on question ${k + 1}"></div>`;
-  }).join("");
-  const code = `<details><summary>Code checks and their evidence</summary>${u.code_ev.map(evidenceOf).join("")}${u.patch ? `<details><summary>The reference solution's patch</summary><div class="pre">${esc(u.patch)}</div></details>` : ""}</details>`;
-  const r = u.reply || {};
-  return `<article class="sheet" id="s-${u.id}">
-    <header><span class="tag">${i + 1} / ${n}</span><span class="state" id="st-${u.id}">not done</span></header>
-    <p class="lede">${esc(u.context)}</p>
-    <p class="q">${esc(u.paragraph)}</p>
-    <p class="lede"><strong>Summary source.</strong> ${esc(u.source_note)}</p>
-    <details><summary>The reply it came from (${esc(r.step)}${r.message != null ? `, message ${esc(r.message)}` : ""})</summary>
-      <div class="pre">${esc(r.reply)}</div></details>
-    <details><summary>The task text the simulator holds</summary><div class="pre">${esc(u.task_text)}</div></details>
-    ${histBox(u)}
-    ${histBox(BYID[u.id + "-post"].x)}
-    ${qs}
-    ${code}
-    <input class="note" type="text" data-id="${u.id}" data-f="note" placeholder="Note on the card (optional)" aria-label="Note on the card">
+  const f = u.facts, id = u.id, r = u.reply || {};
+  const chips = f.chips.map(c => `<span class="chip">${esc(c)}</span>`).join("");
+  const verdicts = VERDICTS.map(([v, t, tone]) => `<button type="button" class="big" data-id="${id}" data-f="verdict" data-v="${v}" data-tone="${tone}" aria-pressed="false">${t}</button>`).join("");
+  const reasons = REASONS.slice(0, u.nq || 3).map(([c, t]) => `<button type="button" class="chipbtn" data-id="${id}" data-f="${c}" data-reason="1" aria-pressed="false">${esc(t)}</button>`).join("");
+  const patch = u.patch ? `<details><summary>The reference solution's patch</summary><div class="pre">${esc(u.patch)}</div></details>` : "";
+  return `<article class="sheet" id="s-${id}">
+    <header><span class="tag">${i + 1} / ${n}</span><span class="state" id="st-${id}">not done</span></header>
+    <p class="hdr">${esc(f.header)}${chips}</p>
+    <dl class="facts">
+      <dt>The maintainer said:</dt><dd>${saidHtml(f.said)}</dd>
+      <dt>In the code at that point:</dt><dd><code>${esc(f.code.path)}</code>: <code>${esc(f.code.quote)}</code></dd>
+      <dt>After compaction the agent sees:</dt><dd>${esc(f.sees)} <button type="button" class="goto" data-check="${id}" title="Opens the resumed input at ${esc(f.check_title)}">Check</button></dd>
+      <dt>We\u2019d test whether the agent:</dt><dd>${esc(f.act)}</dd>
+    </dl>
+    <fieldset class="one"><legend>Use this as a test case?</legend>
+      <div class="verdicts">${verdicts}</div>
+      ${u.open_lines.map(x => `<p class="openline">${esc(x)}</p>`).join("")}
+      <div class="reasons" id="rs-${id}" hidden><p class="lede">Why not? Pick any that apply.</p>${reasons}</div>
+    </fieldset>
+    <input class="note" type="text" data-id="${id}" data-f="note" placeholder="Note (optional)" aria-label="Note on the card">
+    <details class="evd" data-ev="${id}"><summary>Evidence</summary>
+      <div><p class="label">The maintainer's full reply (${esc(r.step)}${r.message != null ? `, message ${esc(r.message)}` : ""})</p>
+        <details><summary>The agent's request that drew it</summary><div class="pre">${esc(r.question)}</div></details>
+        <div class="pre">${esc(r.reply)}</div></div>
+      <details><summary>The task text the simulator holds</summary><div class="pre">${esc(u.task_text)}</div></details>
+      <div id="eh-${id}"></div>
+      <p class="label">Code checks</p>${evAll(u).map(evidenceOf).join("")}
+      ${patch}
+      <p class="label">Test design (prefilled from the screen; edits optional)</p>${designHtml(u)}
+    </details>
   </article>`;
 }
+function ensureEvidence(id) {
+  const el = document.getElementById(`eh-${id}`);
+  if (!el || el.dataset.built) return;
+  el.dataset.built = "1";
+  el.innerHTML = histBox(BYID[id].x) + histBox(BYID[id + "-post"].x).replace("Back to the quote", "Back to the closest passage");
+  el.querySelectorAll(".hbox[data-hist]").forEach(b => hsSeen ? hsSeen.observe(b) : hsOpen(b.dataset.hist));
+}
+document.addEventListener("toggle", ev => { const d = ev.target; if (d.dataset && d.dataset.ev && d.open) ensureEvidence(d.dataset.ev); }, true);
+document.addEventListener("click", async ev => {
+  const b = ev.target.closest && ev.target.closest("button[data-check]");
+  if (!b) return;
+  const id = b.dataset.check, pid = id + "-post";
+  document.querySelector(`details[data-ev="${id}"]`).open = true;
+  ensureEvidence(id);
+  document.getElementById(`hb-${pid}`).scrollIntoView({ block: "center" });
+  await hsOpen(pid);
+  const h = HS[pid], span = BYID[pid].x.hist_at;
+  if (h && h.node && span) { h.focus = span; hsPaint(); hsJump(pid, span); }
+});
+document.addEventListener("click", ev => {
+  const b = ev.target.closest && ev.target.closest("button[data-id][data-f]");
+  if (!b || b.disabled || !BYID[b.dataset.id]) return;
+  const id = b.dataset.id, l = state[id] || {};
+  const patch = b.dataset.reason ? reasonPatch(l, b.dataset.f) : verdictPatch(BYID[id].x.nq || 3, b.dataset.v);
+  if (!patch) return;
+  rev[id] = (rev[id] || 0) + 1;
+  state[id] = { ...l, ...patch }; paint(id); tally();
+  clearTimeout(timers[id]); submit({ [id]: state[id] });
+});
 function paint(id) {
   const l = state[id] || {}, def = BYID[id].x.design;
   document.querySelectorAll(`[data-id="${id}"]`).forEach(el => {
     const f = el.dataset.f;
     if (el.type === "radio") el.checked = el.value === l[f];
+    else if (el.tagName === "BUTTON") {
+      const on = el.dataset.reason ? l[f] === "no" : l[f] === el.dataset.v;
+      el.setAttribute("aria-pressed", on ? "true" : "false");
+    }
     else if (document.activeElement !== el) el.value = f in l ? l[f] : (f.startsWith("d_") ? def[f] : "");
   });
+  const rs = document.getElementById(`rs-${id}`);
+  if (rs) rs.hidden = l.verdict !== "no";
   document.getElementById(`s-${id}`).classList.toggle("done", done(id));
   document.getElementById(`st-${id}`).textContent = done(id) ? "done" : "not done";
 }
@@ -958,12 +1070,8 @@ def report_lines(results: list[dict]) -> list[str]:
 
 CHECKS_V2 = RQ.CHECKS_V2
 HEADING_V2 = "Accumulated-loss study: candidate cards"
-LEDE_V2 = ("Each card is one requirement the simulated maintainer disclosed that this card's "
-           "summary no longer carries at a compaction point, with an open decision it governs. "
-           "Answer the three questions; the first answer on each is the usable side. A card is "
-           "frozen only with all three on that side and a complete design; any other answer "
-           "rejects it. Code ran the other checks (collapsed below, with the evidence). Nothing "
-           "here comes from after the compaction point.")
+LEDE_V2 = ("Each card is a requirement the grader marked as dropped by a summary. Decide "
+           "whether it's a fair test case; evidence is folded under each card.")
 QUESTIONS = [
     ["Really lost", "Is the requirement missing from what the agent resumes with?",
      ("Search the resumed-input box. A misstated requirement counts as still there. The grade "
@@ -1044,23 +1152,156 @@ def source_note(bdir: Path, src: str) -> str:
                                          if IR.replay_prompt_changed(bdir, src) else "")
 
 
-def paragraph(c: Mapping, k: int, bj: Mapping, reply: Mapping, src: str) -> str:
-    loss = c.get("loss") or {}
-    status = {"new": "dropped it at this compaction",
-              "inherited": "still lacks it (an earlier compaction already lost it)"}.get(
-        loss.get("status"), "lacks it")
-    pend = ((((c.get("checks") or {}).get("applicability") or {}).get("evidence") or {})
-            .get("pending") or {}).get("evidence") or {}
-    dec = (((c.get("checks") or {}).get("decision") or {}).get("evidence") or {}).get(
-        "decision") or (c.get("draft") or {}).get("decision") or "(no decision drafted)"
-    return (f"The maintainer asked (reply {c.get('source_reply_id')}, "
-            f"{reply.get('step') or '02_implement'}): “{c.get('repair_text')}”. "
-            f"At compaction {k}"
-            + (f", {bj['calls_in_step']} calls into the implementation step"
-               if bj.get("calls_in_step") is not None else "")
-            + f", {SOURCE_NAMES.get(src, src)} {status}. The decision it governs: {dec} "
-            f"The workspace at that point still reads, in {pend.get('path')}: "
-            f"“{pend.get('quote')}”.")
+SOURCE_PLAIN = {"live": "the run's own summary (pi)", "cc_prompt": "a Claude Code-style summary",
+                "codex_local": "a Codex-style summary", "opencode": "an OpenCode-style summary",
+                "antigravity": "an Antigravity-style summary"}
+# One plain line per check code (or the grader) couldn't settle, shown by the question: Yes
+# accepts it (the card's 4th answer, c4, exists only for recoverability and reference).
+OPEN_LINES = {
+    "retention": ("The grader couldn't confirm the summary dropped it; Yes says you checked "
+                  "the resumed input and it's missing."),
+    "pending": "Code couldn't find the pending line verbatim in the file; Yes accepts the spot shown.",
+    "applicability": "Code couldn't confirm the decision is still open; Yes accepts that.",
+    "decision": "Code couldn't confirm the act is observable in the window; Yes accepts that.",
+    "recoverability": "Code couldn't confirm it isn't findable elsewhere; Yes accepts that.",
+    "reference": ("Code couldn't confirm the reference solution stays clear of the act; Yes "
+                  "accepts that."),
+    "design": ("Code couldn't check the scorer on its own; Yes accepts it as drafted (edit it "
+               "under Evidence)."),
+}
+_WORD = re.compile(r"[A-Za-z0-9_]{3,}")
+NEAR_SHARE, NEAR_MIN_WORDS = 0.8, 3  # "nearly verbatim": >= 80% of >= 3 key words
+_BULLET = re.compile(r"\s*(?:[-*•]|\d+[.)])?\s*")  # a list marker before the quote
+_STOP = {"the", "and", "for", "that", "this", "with", "not", "are", "but", "should", "when",
+         "from", "its", "it's", "into", "than", "then", "also", "any", "all", "can", "has", "have",
+         "was", "were", "will", "would", "you", "your", "our", "they", "them", "there", "what"}
+
+
+def _find_ws(text: str, quote: str | None) -> tuple[int, int] | None:
+    """(start, end) of the quote in text, whitespace-insensitive (Python offsets)."""
+    toks = (quote or "").split()
+    if not toks:
+        return None
+    m = re.search(r"\s+".join(re.escape(t) for t in toks), text or "")
+    return (m.start(), m.end()) if m else None
+
+
+def _clip(x: str, n: int, left: bool = False) -> str:
+    x = x.lstrip() if left else x.rstrip()  # keep the space next to the quote
+    if len(x) <= n:
+        return x
+    return ("…" + x[-n:]) if left else (x[:n] + "…")
+
+
+def said_parts(reply: str | None, quote: str | None, width: int = 160) -> dict:
+    """The quote inside its line of the maintainer's reply; when the quote is the whole line,
+    the nearest non-empty line before it (else after) as context."""
+    out = {"before": "", "quote": quote or "", "after": "", "ctx": None, "ctx_after": False,
+           "found": False}
+    text = reply or ""
+    at = _find_ws(text, quote)
+    if at is None:
+        return out
+    a, b = at
+    ls = text.rfind("\n", 0, a) + 1
+    le = text.find("\n", b)
+    le = len(text) if le < 0 else le
+    before = "" if _BULLET.fullmatch(text[ls:a]) else text[ls:a]
+    out.update(found=True, quote=text[a:b], before=_clip(before, width, left=True),
+               after=_clip(text[b:le], width))
+    if not out["before"].strip() and not out["after"].strip():
+        prev = [x for x in text[:ls].splitlines() if x.strip()]
+        nxt = [x for x in text[le:].splitlines() if x.strip()]
+        if nxt and (out["quote"].rstrip().endswith(":") or not prev):  # what it introduces
+            out.update(ctx=_clip(nxt[0].strip(), 2 * width), ctx_after=True)
+        elif prev:
+            out["ctx"] = _clip(prev[-1].strip(), 2 * width)
+    return out
+
+
+def closest_passage(text: str, quote: str | None) -> dict:
+    """Where the Check link opens the resumed input: the quote verbatim (whitespace-
+    insensitive) if it's there, else the line sharing the most of its words (UTF-16 offsets,
+    as the history box uses)."""
+    exact = _find_ws(text, quote)  # any length (SC2.locate skips quotes under 8 characters)
+    if exact:
+        a, b = exact
+        return {"at": [SC2._u16(text[:a]), SC2._u16(text[:b])], "verbatim": True,
+                "shared": None, "of": None}
+    words = {w.lower() for w in _WORD.findall(quote or "")} - _STOP
+    best, pos = None, 0
+    for line in text.splitlines(keepends=True):
+        n = len(words & {w.lower() for w in _WORD.findall(line)})
+        if n and (best is None or n > best[0]):
+            best = (n, pos, pos + len(line.rstrip("\r\n")))
+        pos += len(line)
+    if best is None:
+        return {"at": None, "verbatim": False, "shared": 0, "of": len(words)}
+    n, a, b = best
+    return {"at": [SC2._u16(text[:a]), SC2._u16(text[:b])], "verbatim": False, "shared": n,
+            "of": len(words)}
+
+
+def plain_act(desc: str | None) -> str:
+    """The act as the end of "We'd test whether the agent: …"."""
+    x = (desc or "").strip()
+    x = re.sub(r"^the agent\s+", "", x, flags=re.IGNORECASE)
+    if re.match(r"^[A-Z][a-z]+\b", x):
+        x = x[0].lower() + x[1:]
+    return x or "(no act drafted)"
+
+
+def facts_v2(c: Mapping, k: int, task_id: str | None, reply: Mapping, src: str, bdir: Path,
+             post: str) -> tuple[dict, list[str]]:
+    """(the card's facts block, its open lines): what the card shows above the question."""
+    checks = c.get("checks") or {}
+    pend_x = ((checks.get("applicability") or {}).get("evidence") or {}).get("pending") or {}
+    pend = pend_x.get("evidence") or {}
+    ret = (checks.get("retention") or {}).get("outcome")
+    loss = (c.get("loss") or {}).get("status")
+    chips = []
+    if src != "live":
+        chips.append("mixed setup: a Haiku-written replay")
+    if IR.replay_prompt_changed(bdir, src):
+        chips.append("prompt changed")
+    if loss == "inherited":
+        chips.append("lost at an earlier compaction")
+    if ret == "unresolved":
+        chips.append("loss unconfirmed")
+    if c.get("disposition") == "bundle":
+        chips.append("second loss from the same summary")
+    near = closest_passage(post, c.get("repair_text"))
+    # never an absence claim (astra cards-v2 r1): the grader's call, and how close the nearest
+    # passage is; Jacob decides whether it's really gone
+    close = (f"shares {near['shared']} of its {near['of']} key words" if near["at"] else
+             "no passage shares its key words")
+    sees = ("its words appear verbatim: check before calling it lost" if near["verbatim"] else
+            f"The grader wasn't sure: check the closest passage ({close})" if ret == "unresolved"
+            else f"The grader marked it lost: check the closest passage ({close})")
+    if near["verbatim"]:
+        chips.append("verbatim in the resumed input")
+    elif near["of"] >= NEAR_MIN_WORDS and near["shared"] >= NEAR_SHARE * near["of"]:
+        chips.append("nearly verbatim")
+    facts = {
+        "header": (f"{task_id} · compaction {k} · graded as dropped by "
+                   f"{SOURCE_PLAIN.get(src, src)}"),
+        "chips": chips,
+        "said": said_parts(reply.get("reply"), c.get("repair_text")),
+        "code": {"path": pend.get("path"), "quote": pend.get("quote")},
+        "sees": sees,
+        "check_title": ("the quote, verbatim" if near["verbatim"] else
+                        f"the closest passage ({close})" if near["at"] else
+                        "the top: no passage shares its key words, search the box"),
+        "act": plain_act((c.get("act_spec") or {}).get("description")),
+    }
+    open_lines = [OPEN_LINES[n] for n in ("retention",) if ret == "unresolved"]
+    if pend_x.get("outcome") == "unresolved":
+        open_lines.append(OPEN_LINES["pending"])
+    elif (checks.get("applicability") or {}).get("outcome") == "unresolved":
+        open_lines.append(OPEN_LINES["applicability"])
+    open_lines += [OPEN_LINES[n] for n in ("decision", "recoverability", "reference", "design")
+                   if (checks.get(n) or {}).get("outcome") == "unresolved"]
+    return {**facts, "near_at": near["at"]}, open_lines
 
 
 def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> dict:
@@ -1073,7 +1314,6 @@ def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> d
     view = S.source_view(bdir, src)
     reply = next((r for r in _read(b / "sim_replies.json")
                   if r.get("reply_id") == c.get("source_reply_id")), {})
-    bj = _read(b / "boundary.json") if (b / "boundary.json").exists() else {}
     task = (_read(bdir / "run.json") if (bdir / "run.json").exists() else
             _read(run_dir / "run.json")).get("task") or {}
     hist, post = render_history(pre), render_post(view)
@@ -1098,7 +1338,6 @@ def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> d
         "context": (f"Task {task.get('task_id')} · compaction {k} · summary source: "
                     f"{SOURCE_NAMES.get(src, src)}"),
         "source_note": source_note(bdir, src),
-        "paragraph": paragraph(c, k, bj, reply, src),
         "loss": (c.get("loss") or {}).get("status"),
         "requirement": {"text": c.get("text"), "quote": quote, "grounding_quote": None},
         "reply": {"step": reply.get("step"), "question": reply.get("question"),
@@ -1109,6 +1348,11 @@ def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> d
         "design": screen_design(c),
         "patch": patch_p.read_text(errors="replace") if patch_p and patch_p.exists() else None,
     }
+    facts, card["open_lines"] = facts_v2(c, k, task.get("task_id"), reply, src, bdir, post)
+    card["post_at"] = facts.pop("near_at")
+    card["facts"] = facts
+    card["post_label"] = ("Resumed input: everything the agent sees after the compaction"
+                          + (", scrolled to the closest passage" if card["post_at"] else ""))
     screened = {kk: v for kk, v in c.items() if kk != "disposition"}
     content = _sha([card, screened, hist, post])
     card["v"] = content[:16]
