@@ -64,6 +64,7 @@ sealed arm data is read: only `boundary/`, `rules.json` and `run.json` of each a
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import posixpath
 import re
@@ -351,8 +352,12 @@ def _segments(cmd: str) -> list[list[str]] | None:
     return out
 
 
-def _resolve(path: str, cwd: str) -> str:
-    p = posixpath.normpath(posixpath.join(cwd, path))
+def _resolve(path: str, cwd: str | None) -> str:
+    """Repo-relative path of `path` from `cwd` (None: an unknown directory, so a relative path
+    stays unknown: UNKNOWN_DIR + the path as written, astra toolwrites r2 #1)."""
+    if cwd is None and not path.startswith("/"):
+        return UNKNOWN_DIR + path
+    p = posixpath.normpath(posixpath.join(cwd or "/", path))
     if p == "/app":
         return "."
     return p.removeprefix("/app/")
@@ -392,11 +397,12 @@ def _sed_print(words: list[str]) -> bool:
     return len(words) >= 3 and words[1] == "-n" and bool(J._SED_PRINT.fullmatch(words[2]))
 
 
-def parse_reads(cmd: str) -> tuple[list[str], bool] | None:
+def parse_reads(cmd: str, cwd: str | None = "/app") -> tuple[list[str], bool] | None:
     """For a command that only reads, (the repo-relative files it reads, whether its whole
     output comes from those files); None when it may do anything else or can't be parsed.
 
-    `cd` moves the working directory (start /app). A read is a pipeline that starts with a
+    `cd` moves the working directory (start `cwd`; None when the harness's working
+    directory isn't known, so relative paths come back as UNKNOWN_DIR labels). A read is a pipeline that starts with a
     reader (cat/head/tail/nl/less/more), a `sed -n` print or a search (grep/rg; a recursive
     search with no path reads the working directory) and continues with readers, searches,
     `sed -n` prints or stdin-only filters (wc/tr/cut, sort without -o, uniq without files).
@@ -409,7 +415,7 @@ def parse_reads(cmd: str) -> tuple[list[str], bool] | None:
     segs = _segments(_HARMLESS_REDIRECT.sub("", cmd))
     if not segs:
         return None
-    cwd, paths, attributable = "/app", [], True
+    paths, attributable = [], True
     for seg in segs:
         if any(t and all(ch in "<>&()" for ch in t) for t in seg):
             return None  # a redirection or subshell
@@ -426,7 +432,9 @@ def parse_reads(cmd: str) -> tuple[list[str], bool] | None:
         if prog == "cd":
             if len(stages) > 1 or len(first) > 2:
                 return None
-            cwd = posixpath.normpath(posixpath.join(cwd, first[1] if len(first) > 1 else "/app"))
+            to = first[1] if len(first) > 1 else "/app"
+            cwd = (posixpath.normpath(to) if to.startswith("/") else
+                   None if cwd is None else posixpath.normpath(posixpath.join(cwd, to)))
             continue
         if prog in READERS:
             got = _words_paths(first)
@@ -464,16 +472,16 @@ def parse_reads(cmd: str) -> tuple[list[str], bool] | None:
     return paths, attributable and bool(paths)
 
 
-def read_paths(cmd: str) -> list[str] | None:
+def read_paths(cmd: str, cwd: str | None = "/app") -> list[str] | None:
     """The repo-relative files a pure-read command reads ([] for e.g. `git status`), or None
     when the command may do anything else (`parse_reads`)."""
-    r = parse_reads(cmd)
+    r = parse_reads(cmd, cwd)
     return None if r is None else r[0]
 
 
-def attributable_paths(cmd: str) -> list[str] | None:
+def attributable_paths(cmd: str, cwd: str | None = "/app") -> list[str] | None:
     """The files a command reads when its whole output comes from them, else None."""
-    r = parse_reads(cmd)
+    r = parse_reads(cmd, cwd)
     return r[0] if r is not None and r[1] else None
 
 
@@ -570,15 +578,240 @@ def broad_write(cmd: str) -> bool:
                 or _git_tree_change(cmd) or re.search(r"[*?]", cmd))
 
 
-def _commands(msgs: list[dict]) -> list[tuple[int, str]]:
-    """(message index, shell command) for every tool call in the history, in order."""
-    out = []
+# ------------------------------------------------------------------------------------------
+# Writes by tools other than the shell: Claude Code's file tools (Edit, Write, MultiEdit,
+# NotebookEdit: args.file_path / notebook_path) and Codex's apply_patch (a patch in any string
+# argument, also inside its code-mode `exec` code, where the adapter keeps only the code when
+# the exec's nested calls aren't shown). `_commands` sees neither, so they would lean the result
+# toward "recoverable". A tool write names its file exactly; a Write is a whole-file write and
+# replays like a heredoc; Edit, MultiEdit, NotebookEdit and patches don't replay.
+# ------------------------------------------------------------------------------------------
+
+FILE_WRITE_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
+# tools that never write files; any other non-shell tool with a path argument counts as a write
+READ_ONLY_TOOLS = frozenset({"bash", "Bash", "ask_user", "Read", "Grep", "Glob", "LS",
+                             "NotebookRead", "TodoWrite", "WebFetch", "WebSearch"})
+_PATCH_FILE = re.compile(r"^\*\*\* (?:(?:Add|Update|Delete) File|Move to): *(.+?)\s*$",
+                         0)
+UNKNOWN_DIR = "?unknown:"  # prefix of a relative path read or written in an unknown directory
+# (a label, never normalised: `..` can't climb out of it; nothing under it replays)
+
+
+def _strings(x: Any) -> list[str]:
+    if isinstance(x, str):
+        return [x]
+    if isinstance(x, dict):
+        return [s for v in x.values() for s in _strings(v)]
+    if isinstance(x, list):
+        return [s for v in x for s in _strings(v)]
+    return []
+
+
+def _js_close(code: str, i: int) -> int | None:
+    """Index of the bracket closing the one at `i`, skipping strings, template literals and
+    comments; None if unbalanced."""
+    pairs, stack, j, n = {"(": ")", "[": "]", "{": "}"}, [], i, len(code)
+    while j < n:
+        ch = code[j]
+        if ch in "\"'`":
+            j += 1
+            while j < n and code[j] != ch:
+                j += 2 if code[j] == "\\" else 1
+        elif code.startswith("//", j):
+            j = code.find("\n", j)
+            j = n if j < 0 else j
+        elif code.startswith("/*", j):
+            j = code.find("*/", j)
+            j = n if j < 0 else j + 1
+        elif ch in pairs:
+            stack.append(pairs[ch])
+        elif ch in ")]}":
+            if not stack or stack.pop() != ch:
+                return None
+            if not stack:
+                return j
+        j += 1
+    return None
+
+
+def _js_split(body: str) -> list[str]:
+    """Top-level comma-separated parts of an object literal's body."""
+    parts, start, j = [], 0, 0
+    while j < len(body):
+        ch = body[j]
+        if ch in "\"'`":
+            q = ch
+            j += 1
+            while j < len(body) and body[j] != q:
+                j += 2 if body[j] == "\\" else 1
+        elif ch in "([{":
+            k = _js_close(body, j)
+            if k is None:
+                return []
+            j = k
+        elif ch == ",":
+            parts.append(body[start:j])
+            start = j + 1
+        j += 1
+    parts.append(body[start:])
+    return [x for x in (p.strip() for p in parts) if x]
+
+
+_JS_KEY = re.compile(r"""\s*(?:([A-Za-z_$][\w$]*)|"([^"\\]*)"|'([^'\\]*)')\s*:(.*)\Z""", re.DOTALL)
+
+
+def _js_literal(v: str) -> str | None:
+    """The value of a single JS string literal ("...", '...', or `...` without ${}), else
+    None."""
+    v = v.strip()
+    if len(v) < 2 or v[0] not in "\"'`" or v[-1] != v[0]:
+        return None
+    body = v[1:-1]
+    j = 0
+    while j < len(body):  # the literal must end where it seems to: no unescaped quote inside
+        if body[j] == "\\":
+            j += 2
+            continue
+        if body[j] == v[0]:
+            return None
+        j += 1
+    if v[0] == "`" and "${" in body:
+        return None
+    body = body.replace("\n", "\\n") if v[0] == "`" else body
+    body = re.sub(r"\\(['`])", r"\1", body)
+    body = re.sub(r'(?<!\\)((?:\\\\)*)"', r'\1\\"', body) if v[0] != '"' else body
+    try:
+        return json.loads('"' + body + '"')
+    except ValueError:
+        return None
+
+
+def exec_calls(call: dict) -> tuple[list[tuple[str, str | None]], bool]:
+    """([(shell command, working directory)], blind) of a Codex code-mode exec call (args.code).
+    Each `exec_command(...)` call is parsed on its own: its argument must be an object literal
+    whose `cmd` is one string literal, and whose `workdir` is a literal (absent: /app, the
+    session's directory; anything else: None, unknown). `blind` when any call isn't of that shape
+    (a variable, a concatenation, a template with ${}, a reference passed elsewhere), when the
+    code uses write_stdin, or when it calls apply_patch with no patch header in the code: a
+    command or write we can't read, counted as a broad write (astra toolwrites r1 #2)."""
+    code = J._args(call).get("code")
+    if not isinstance(code, str):
+        return [], False
+    out, blind = [], "write_stdin" in code
+    if re.search(r"\bapply_patch\b", code) and "*** Begin Patch" not in code:
+        blind = True
+    for m in re.finditer(r"\bexec_command\b", code):
+        j = m.end()
+        while j < len(code) and code[j] in " \t\n":
+            j += 1
+        k = _js_close(code, j) if j < len(code) and code[j] == "(" else None
+        arg = code[j + 1:k].strip() if k is not None else ""
+        props: dict[str, str] | None = None
+        if arg.startswith("{") and _js_close(arg, 0) == len(arg) - 1:
+            props = {}
+            for part in _js_split(arg[1:-1]):
+                km = _JS_KEY.match(part)
+                if km is None:
+                    props = None
+                    break
+                props[km.group(1) or km.group(2) or km.group(3)] = km.group(4)
+        cmd = _js_literal(props["cmd"]) if props and "cmd" in props else None
+        if cmd is None:
+            blind = True
+            continue
+        wd = "/app" if "workdir" not in props else _js_literal(props["workdir"])
+        cwd = None if wd is None else posixpath.normpath(posixpath.join("/app", wd))
+        out.append((cmd, cwd))
+    return out, blind
+
+
+def tool_writes(call: dict) -> list[tuple[str, str | None, str]]:
+    """(repo-relative path, whole new content or None, text written) for each file a non-shell
+    tool call writes (the section comment). The text is what a contains-the-quote check reads:
+    Write's content, Edit's new_string, MultiEdit's new_strings, a notebook cell, a patch."""
+    name = str(call.get("name") or (call.get("function") or {}).get("name") or "")
+    if name in ("bash", "Bash") or J.command_of(call):
+        return []
+    if name in READ_ONLY_TOOLS:  # before any scan: an ask_user quoting a patch writes nothing
+        return []
+    a = J._args(call)
+    out: list[tuple[str, str | None, str]] = []
+    for text in _strings(a):  # apply_patch, as a tool or inside exec code
+        if "*** Begin Patch" not in text:
+            continue
+        patch = _unescape(text)
+        out += [(_resolve(m.strip("'\""), "/app"), None, patch)
+                for m in _PATCH_FILE.findall(patch)]
+    path = next((a[k] for k in ("file_path", "notebook_path", "path", "filePath", "target_file",
+                                "absolute_path", "filename", "file")
+                 if isinstance(a.get(k), str) and a[k].strip()), None)
+    if path is None:
+        return out
+    if name == "Write" and isinstance(a.get("content"), str):
+        out.append((_resolve(path, "/app"), a["content"], a["content"]))
+    elif name in FILE_WRITE_TOOLS or not out:
+        edits = [e.get("new_string") for e in a.get("edits") or [] if isinstance(e, dict)]
+        text = "\n".join(str(x) for x in [a.get("new_string"), *edits, a.get("new_source")]
+                         if isinstance(x, str))
+        out.append((_resolve(path, "/app"), None, text))
+    return out
+
+
+@dataclasses.dataclass
+class Event:
+    """One thing in the history that may have changed files, in call order: a shell command
+    (`shell`, checked with may_write/broad_write), a tool call's write of one file, or a call we
+    can't read (`blind`, a broad write). `writes` maps each file it writes to the whole new
+    content when that replays (a heredoc, a Write), else None (astra toolwrites r1 #1: content
+    belongs to the exact event, not the message)."""
+    msg: int
+    label: str
+    shell: bool = False
+    cwd: str | None = "/app"  # None: unknown
+    writes: dict[str, str | None] = dataclasses.field(default_factory=dict)
+    text: str = ""
+    blind: bool = False
+
+
+def _call_name(call: dict) -> str:
+    return str(call.get("name") or (call.get("function") or {}).get("name") or "tool")
+
+
+def history_events(msgs: list[dict], harness: str | None = None
+                   ) -> tuple[list[Event], dict[int, str | None]]:
+    """(the events, the working directory of each shell call by id(call)). Our loop (harness
+    s2-loop or unknown) runs every bash call fresh in /app; Claude Code's Bash keeps its working
+    directory between calls (followed through `cd`); any other harness's shell calls (Codex's,
+    converted from its nested calls without their workdir) run in an unknown one (astra
+    toolwrites r1 #3). Within one exec, its commands come before its tool writes and the blind
+    marker (later events win in `last_write`, so unreplayable writes stay last)."""
+    fresh = harness in (None, "s2-loop")
+    persistent: str | None = "/app"
+    evs: list[Event] = []
+    cwd_of: dict[int, str | None] = {}
     for i, m in enumerate(msgs):
         for c in m.get("tool_calls") or []:
+            name = _call_name(c)
             cmd = J.command_of(c)
             if cmd:
-                out.append((i, cmd))
-    return out
+                if fresh:
+                    cwd = "/app"
+                elif name == "Bash":
+                    cwd, persistent = persistent, _cd_after(_skeleton(cmd), persistent)
+                else:
+                    cwd = None
+                cwd_of[id(c)] = cwd
+                evs.append(Event(i, cmd, shell=True, cwd=cwd,
+                                 writes=dict(heredoc_writes(cmd, cwd))))
+                continue
+            cmds, blind = exec_calls(c)
+            evs += [Event(i, x, shell=True, cwd=wd, writes=dict(heredoc_writes(x, wd)))
+                    for x, wd in cmds]
+            evs += [Event(i, f"[{name} tool writes {path}]", writes={path: content}, text=text)
+                    for path, content, text in tool_writes(c)]
+            if blind:
+                evs.append(Event(i, f"[{name}: a command or write we can't read]", blind=True))
+    return evs, cwd_of
 
 
 # ------------------------------------------------------------------------------------------
@@ -655,37 +888,74 @@ def _ok_output(text: str) -> bool:
 _HEREDOC = re.compile(r"<<-?\s*(['\"]?)(\w+)\1")
 _CAT_TARGET = re.compile(r"\bcat\b[^\n|;&]*?(>>?)\s*([^\s<>|;&]+)")
 _TEE_TARGET = re.compile(r"\btee\s+(-a\s+)?([^\s<>|;&]+)")
-_CD = re.compile(r"(?:^|[;&|]\s*)cd\s+([^\s;&|]+)")
+_CD = re.compile(r"(?:^|[;&|]\s*)\s*cd\s+([^\s;&|]+)", re.MULTILINE)
 
 
-def heredoc_writes(cmd: str) -> list[tuple[str, str]]:
+def heredoc_writes(cmd: str, cwd: str | None = "/app") -> list[tuple[str, str]]:
     """(repo-relative path, full new content) for each whole-file write by `cat > f <<EOF` /
-    `cat <<EOF > f` / `tee f <<EOF` in `cmd`: the writes we can replay. Appends (`>>`,
-    `tee -a`) are not whole-file writes and are left out (they count as unreplayable)."""
+    `cat <<EOF > f` / `tee f <<EOF` in `cmd`: the writes we can replay. The working directory
+    is followed through the command's `cd`s outside heredoc bodies (astra toolwrites r2 #2).
+    Left out (unreplayable): appends (`>>`, `tee -a`); a relative target in an unknown
+    directory (`cwd` None, or a `cd` we can't follow); and a write whose file the rest of the
+    same command may change or that may change any file, by the same rule as a later command
+    (`may_write`/`broad_write`: a plain read of it doesn't count); a later heredoc write of the
+    file is judged on the rest after it."""
     out = []
     lines = cmd.split("\n")
+    here = cwd
     i = 0
     while i < len(lines):
         line = lines[i]
         m = _HEREDOC.search(line)
         if not m:
+            here = _cd_after(line, here)
             i += 1
             continue
+        here = _cd_after(line[:m.start()], here)
         tag = m.group(2)
         end = next((k for k in range(i + 1, len(lines)) if lines[k].strip() == tag), None)
         if end is None:
             break
         body = "\n".join(lines[i + 1:end]) + "\n"
-        prior = "\n".join(lines[:i + 1])
-        cwds = _CD.findall(prior)
-        cwd = posixpath.normpath(posixpath.join("/app", cwds[-1])) if cwds else "/app"
         cat, tee = _CAT_TARGET.search(line), _TEE_TARGET.search(line)
-        if cat and cat.group(1) == ">":
-            out.append((_resolve(cat.group(2).strip("'\""), cwd), body))
-        elif tee and not tee.group(1):
-            out.append((_resolve(tee.group(2).strip("'\""), cwd), body))
+        target = (cat.group(2) if cat and cat.group(1) == ">" else
+                  tee.group(2) if tee and not tee.group(1) else None)
+        if target is not None:
+            path = _resolve(target.strip("'\""), here)
+            rest = "\n".join(lines[end + 1:])  # a later write of it is judged on its own
+            if not path.startswith(UNKNOWN_DIR) and not (rest.strip() and (
+                    may_write(rest, path) or broad_write(rest))):
+                out.append((path, body))
         i = end + 1
     return out
+
+
+def _skeleton(cmd: str) -> str:
+    """The command without its heredoc bodies (what a `cd` or subshell check should read)."""
+    lines, out, i = cmd.split("\n"), [], 0
+    while i < len(lines):
+        out.append(lines[i])
+        m = _HEREDOC.search(lines[i])
+        if m:
+            i = next((k for k in range(i + 1, len(lines))
+                      if lines[k].strip() == m.group(2)), len(lines))
+        i += 1
+    return "\n".join(out)
+
+
+def _cd_after(cmd: str, cwd: str | None) -> str | None:
+    """The working directory after `cmd`'s `cd`s (heredoc bodies already removed), from `cwd`;
+    None when one can't be followed (a variable, ~, -, a subshell or command substitution, or
+    a relative `cd` from an unknown directory)."""
+    for t in _CD.findall(cmd):
+        t = t.strip("'\"")
+        if any(x in cmd for x in ("(", "`")) or "$" in t or t.startswith("~") or t == "-":
+            return None
+        if t.startswith("/"):
+            cwd = posixpath.normpath(t)
+        elif cwd is not None:
+            cwd = posixpath.normpath(posixpath.join(cwd, t))
+    return cwd
 
 
 def _lines_in(lines: list[str], text: str) -> bool:
@@ -697,32 +967,33 @@ def _cut(s: str, n: int = EVIDENCE_TEXT_MAX) -> str:
 
 
 class _Files:
-    """The history's commands, and per file the ones that may have changed it."""
+    """The history's events, and per file the ones that may have changed it."""
 
-    def __init__(self, msgs: list[dict]):
+    def __init__(self, msgs: list[dict], harness: str | None = None):
         self.msgs = msgs
-        self.cmds = _commands(msgs)
-        self.broad = [(j, c) for j, c in self.cmds if broad_write(c)]
-        self.replay = {j: dict(heredoc_writes(c)) for j, c in self.cmds}
+        self.events, self.cwd_of = history_events(msgs, harness)
+
+    def _touching(self, path: str, after: int = -1) -> list[Event]:
+        return [e for e in self.events if e.msg > after and (
+            e.blind or path in e.writes
+            or (e.shell and (may_write(e.label, path) or broad_write(e.label))))]
 
     def touches(self, path: str, after: int = -1) -> list[tuple[int, str]]:
-        """Commands after message `after` that may have changed `path`: naming writes and broad
-        writes, in order."""
-        return [(j, c) for j, c in self.cmds
-                if j > after and (may_write(c, path) or broad_write(c)
-                                  or path in self.replay.get(j, {}))]
+        """(message, command or label) of each event after message `after` that may have changed
+        `path`, in call order."""
+        return [(e.msg, e.label) for e in self._touching(path, after)]
 
     def last_write(self, path: str) -> tuple[int, str] | None:
-        """(message, content) of the replayable whole-file write that is the last command to
-        touch `path`, or None (never touched, or last touched by something we can't replay)."""
-        t = self.touches(path)
+        """(message, content) when the last event to touch `path` is a replayable whole-file write
+        of it, else None (never touched, or last touched by something we can't replay)."""
+        t = self._touching(path)
         if not t:
             return None
-        j, c = t[-1]
-        content = self.replay.get(j, {}).get(path)
-        if content is None or broad_write(c):
+        e = t[-1]
+        content = e.writes.get(path)
+        if content is None or e.blind or (e.shell and broad_write(e.label)):
             return None
-        return j, content
+        return e.msg, content
 
 
 def recoverable(row: dict, rec: dict, hits: dict[str, dict] | None) -> dict:
@@ -730,7 +1001,7 @@ def recoverable(row: dict, rec: dict, hits: dict[str, dict] | None) -> dict:
     row (module docstring). `hits` is the base-image search for the row's image ({pattern:
     {"files", "lines"}}), None when the search was skipped."""
     msgs = J.history_messages(rec)
-    F = _Files(msgs)
+    F = _Files(msgs, rec.get("harness"))
     quote = row.get("quote")
     lines, frags = quote_lines(quote), key_strings(quote)
     concerned: dict[str, int] = {}  # file -> message after which its content is known (-1: base)
@@ -759,23 +1030,26 @@ def recoverable(row: dict, rec: dict, hits: dict[str, dict] | None) -> dict:
         if call is None or not T.quote_in(quote, text):
             continue
         cmd = J.command_of(call)
-        paths = attributable_paths(cmd)
+        cwd = F.cwd_of.get(id(call), "/app")
+        paths = attributable_paths(cmd, cwd)
         if paths and _ok_output(text):
             for p in paths:
-                if p not in concerned or concerned[p] < i:
+                if p.startswith(UNKNOWN_DIR):
+                    mixed.append((p, i))  # read in a directory we don't know
+                elif p not in concerned or concerned[p] < i:
                     concerned[p] = i
-        elif read_paths(cmd):
+        elif read_paths(cmd, cwd):
             # the quote may come from an echo or a failed command, not the file: never recoverable
-            mixed += [(p, i) for p in read_paths(cmd)]
+            mixed += [(p, i) for p in read_paths(cmd, cwd)]
     # (c) a planted rule of the readme or agents_md channel: its file is committed
     rule_file = RT.RULE_FILE.get(row.get("channel") or "")
     if row.get("planted_rule") and rule_file:
         concerned.setdefault(rule_file, -1)
     # the agent's own replayable writes whose content holds the quote
-    for j, writes in sorted(F.replay.items()):
-        for p, content in writes.items():
-            if _lines_in(lines, content):
-                concerned.setdefault(p, j - 1)
+    for e in F.events:
+        for p, content in e.writes.items():
+            if content is not None and _lines_in(lines, content):
+                concerned.setdefault(p, e.msg - 1)
 
     def commands_for(paths) -> list[dict]:
         seen, out = set(), []
@@ -805,10 +1079,20 @@ def recoverable(row: dict, rec: dict, hits: dict[str, dict] | None) -> dict:
             unresolved.append((f, "fragments_in_changed_file"))
         else:
             unresolved.append((f, "fragments_only"))
-    for j, c in F.cmds:
-        if frags and read_paths(c) is None and not F.replay.get(j) and all(
-                k in _unescape(c) for k in frags):
-            unresolved.append(("?", f"unreplayable_command_contains_quote@m{j}"))
+    for e in F.events:
+        if not frags:
+            break
+        # a replayable write holding the quote is handled above (its file is concerned); any
+        # other place the event carries the quote is evidence we can't replay (astra
+        # toolwrites r2 #2: one replayable write never hides another write's quote)
+        if any(v is not None and all(k in v for k in frags) for v in e.writes.values()):
+            continue
+        if e.shell and read_paths(e.label, e.cwd) is None and all(
+                k in _unescape(e.label) for k in frags):
+            unresolved.append(("?", f"unreplayable_command_contains_quote@m{e.msg}"))
+            break
+        if not e.shell and e.writes and all(k in _unescape(e.text) for k in frags):
+            unresolved.append((next(iter(e.writes)), f"tool_write_contains_quote@m{e.msg}"))
             break
     if recovered:
         cls, files = "recoverable", [f for f, _ in recovered]

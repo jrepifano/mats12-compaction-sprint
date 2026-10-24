@@ -331,6 +331,210 @@ def test_file_changed_after_it_was_read_is_not_recoverable(raw):
     assert (r["recoverable"], r["recoverable_how"]) == ("recoverable", "README.md:read@m3")
 
 
+def _tool(name, args, i=0):
+    return {"role": "assistant", "text": "", "tool_calls": [{"name": name, "id": f"t{i}",
+                                                             "args": args}]}
+
+
+def test_claude_code_file_tools_count_as_writes():
+    """Main session, 24 Oct: Claude Code's Edit/Write/MultiEdit/NotebookEdit write files the
+    shell parser never saw, so a changed base file read as untouched (recoverable)."""
+    k1, k2 = LA.quote_lines(QUOTE)
+    hits = _hits({k1: ["src/frob.go"], k2: ["src/frob.go"]}, LINES)
+    for name, args in (
+            ("Edit", {"file_path": "/app/src/frob.go", "old_string": "42", "new_string": "43"}),
+            ("MultiEdit", {"file_path": "src/frob.go", "edits": [{"old_string": "a",
+                                                                 "new_string": "b"}]}),
+            ("NotebookEdit", {"notebook_path": "/app/src/frob.go", "new_source": "x"})):
+        r = LA.recoverable({"quote": QUOTE}, _rec([_tool(name, args)]), hits)
+        assert r["recoverable"] == "unresolved", name
+        assert r["recoverable_how"] == "src/frob.go:changed@m0"
+        assert r["recoverable_commands"] == [
+            {"msg": 0, "command": f"[{name} tool writes src/frob.go]"}]
+    # a tool write of another file, and a read-only tool naming this one, change nothing
+    for name, args in (("Edit", {"file_path": "/app/src/other.go", "new_string": "x"}),
+                       ("Read", {"file_path": "/app/src/frob.go"})):
+        r = LA.recoverable({"quote": QUOTE}, _rec([_tool(name, args)]), hits)
+        assert r["recoverable"] == "recoverable", name
+    # Write is a whole-file write: replayed like a heredoc
+    rw = [_tool("Write", {"file_path": "/app/src/frob.go", "content": "package frob\n"})]
+    assert LA.recoverable({"quote": QUOTE}, _rec(rw), hits)["recoverable"] == "not_recoverable"
+    w = [_tool("Write", {"file_path": "/app/notes.md",
+                         "content": "Plan: migrate the cache layer first\n"}, 2)]
+    r = LA.recoverable({"quote": "Plan: migrate the cache layer first"}, _rec(w), {})
+    assert (r["recoverable"], r["recoverable_how"]) == ("recoverable",
+                                                         "notes.md:agent_last_write@m0")
+    # an Edit that inserts the quote into a file the base repo lacks: not "not recoverable"
+    q = "const   FrobLimit = 42 // the limit we agreed with the user"
+    ed = [_tool("Edit", {"file_path": "/app/src/new.go", "old_string": "x", "new_string": q})]
+    r = LA.recoverable({"quote": q}, _rec(ed), {})
+    assert r["recoverable"] == "unresolved" and "tool_write_contains_quote@m0" in r[
+        "recoverable_how"]
+
+
+def test_codex_patches_and_exec_commands_count_as_writes():
+    """Native Codex writes with apply_patch inside its code-mode exec (args.code), which the
+    adapter keeps when the exec's nested calls aren't shown."""
+    k1, k2 = LA.quote_lines(QUOTE)
+    hits = _hits({k1: ["src/frob.go"], k2: ["src/frob.go"]}, LINES)
+    code = ('const patch = "*** Begin Patch\\n*** Update File: /app/src/frob.go\\n@@\\n'
+            '-const FrobLimit = 42\\n+const FrobLimit = 43\\n*** End Patch";\n'
+            'await tools.apply_patch(patch);')
+    r = LA.recoverable({"quote": QUOTE}, _rec([_tool("exec", {"code": code})]), hits)
+    assert r["recoverable"] == "unresolved" and r["recoverable_how"] == "src/frob.go:changed@m0"
+    raw_patch = {"input": "*** Begin Patch\n*** Delete File: src/frob.go\n*** End Patch"}
+    r = LA.recoverable({"quote": QUOTE}, _rec([_tool("apply_patch", raw_patch)]), hits)
+    assert r["recoverable"] == "unresolved"
+    # literal exec_command strings are parsed as shell commands; a read stays harmless
+    rd = 'await tools.exec_command({cmd:"cat src/frob.go | head -5", workdir:"/app"});'
+    assert LA.recoverable({"quote": QUOTE}, _rec([_tool("exec", {"code": rd})]), hits)[
+        "recoverable"] == "recoverable"
+    sed = "await tools.exec_command({cmd:'sed -i s/42/43/ src/frob.go'});"
+    assert LA.recoverable({"quote": QUOTE}, _rec([_tool("exec", {"code": sed})]), hits)[
+        "recoverable"] == "unresolved"
+    # a command we can't read (a variable): counted as a broad write
+    blind = "const c = `sed -i x ${f}`; await tools.exec_command({cmd: c});"
+    r = LA.recoverable({"quote": QUOTE}, _rec([_tool("exec", {"code": blind})]), hits)
+    assert r["recoverable"] == "unresolved" and "can't read" in r["recoverable_commands"][0][
+        "command"]
+
+
+def _calls(*calls, i=0):
+    """One assistant message holding several tool calls."""
+    return {"role": "assistant", "text": "", "tool_calls": [
+        {"name": n, "id": f"m{i}c{j}", "args": a} for j, (n, a) in enumerate(calls)]}
+
+
+def test_writes_are_ordered_by_call_not_message():
+    """astra toolwrites r1 #1: two Writes, a Write then rm, and a heredoc then rm, within one
+    message (and a heredoc then rm within one command) take the later event."""
+    q = "Plan: migrate the cache layer first"
+    two = _calls(("Write", {"file_path": "/app/notes.md", "content": q + "\n"}),
+                 ("Write", {"file_path": "/app/notes.md", "content": "nothing here\n"}))
+    assert LA.recoverable({"quote": q}, _rec([two]), {})["recoverable"] == "not_recoverable"
+    back = _calls(("Write", {"file_path": "/app/notes.md", "content": "nothing here\n"}),
+                  ("Write", {"file_path": "/app/notes.md", "content": q + "\n"}))
+    assert LA.recoverable({"quote": q}, _rec([back]), {})["recoverable"] == "recoverable"
+    rm = _calls(("Write", {"file_path": "/app/notes.md", "content": q + "\n"}),
+                ("bash", {"command": "rm notes.md"}))
+    assert LA.recoverable({"quote": q}, _rec([rm]), {})["recoverable"] != "recoverable"
+    hd = _calls(("bash", {"command": f"cat > notes.md <<'EOF'\n{q}\nEOF"}),
+                ("bash", {"command": "rm notes.md"}))
+    assert LA.recoverable({"quote": q}, _rec([hd]), {})["recoverable"] != "recoverable"
+    one = [_bash(f"cat > notes.md <<'EOF'\n{q}\nEOF\nrm notes.md", 0)]
+    assert LA.heredoc_writes(one[0]["tool_calls"][0]["args"]["command"]) == []
+    assert LA.recoverable({"quote": q}, _rec(one), {})["recoverable"] != "recoverable"
+    # a later heredoc of the same file in the same command: the later content replays
+    again = f"cat > n.md <<'EOF'\nold\nEOF\ncat > n.md <<'EOF'\n{q}\nEOF"
+    assert LA.heredoc_writes(again) == [("n.md", q + "\n")]
+    # a plain read of it afterwards in the same command doesn't stop the replay
+    assert LA.heredoc_writes(f"cat > n.md <<'EOF'\n{q}\nEOF\ncat n.md") == [("n.md", q + "\n")]
+
+
+def test_exec_commands_are_parsed_one_call_at_a_time():
+    """astra toolwrites r1 #2: a cmd that isn't one string literal makes the exec blind."""
+    def blind(code):
+        return LA.exec_calls({"name": "exec", "args": {"code": code}})[1]
+    assert not blind('await tools.exec_command({cmd: "cat a", workdir: "/app"});')
+    assert blind('await tools.exec_command({cmd: "cat " + userCommand});')
+    assert blind('const x = {cmd: "cat a"}; await tools.exec_command({cmd: c});')
+    assert blind('const x = {cmd: "cat a"}; await tools.exec_command(x);')
+    assert blind("await tools.exec_command({cmd: `sed -i ${f}`});")
+    assert blind('const f = tools.exec_command; await f({cmd: "rm a"});')
+    assert blind('await tools.exec_command({cmd: "cat a", ...rest});')
+    cmds, b = LA.exec_calls({"name": "exec", "args": {"code": (
+        "await tools.exec_command({cmd:'cat a.go', yield_time_ms:1000});\n"
+        "await tools.exec_command({ \"cmd\": \"echo hi\", workdir: \"sub\" });")}})
+    assert not b and cmds == [("cat a.go", "/app"), ("echo hi", "/app/sub")]
+
+
+def test_working_directories_carry_into_replay_and_reads():
+    """astra toolwrites r1 #3: exec workdir, Claude Code's persistent Bash cwd, and unknown
+    directories (a variable workdir, Codex's converted bash) never replay with confidence."""
+    q = "Plan: migrate the cache layer first"
+    hd = f"cat > notes.md <<'EOF'\n{q}\nEOF"
+    code = "await tools.exec_command({cmd: %s, workdir: %s});"
+    ex = _tool("exec", {"code": code % (json.dumps(hd), '"/app/sub"')})
+    r = LA.recoverable({"quote": q}, _rec([ex]), {})
+    assert (r["recoverable"], r["recoverable_how"]) == ("recoverable",
+                                                         "sub/notes.md:agent_last_write@m0")
+    unknown = _tool("exec", {"code": code % (json.dumps(hd), "dir")})
+    assert LA.recoverable({"quote": q}, _rec([unknown]), {})["recoverable"] != "recoverable"
+    cc = {"source_messages": [_tool("Bash", {"command": "cd sub"}, 0),
+                              _tool("Bash", {"command": hd}, 1)], "meta": None,
+          "harness": "claude_code"}
+    r = LA.recoverable({"quote": q}, cc, {})
+    assert r["recoverable_how"] == "sub/notes.md:agent_last_write@m1"
+    codex = {"source_messages": [_bash(hd, 0)], "meta": None, "harness": "codex"}
+    assert LA.recoverable({"quote": q}, codex, {})["recoverable"] != "recoverable"
+    # our own loop: every bash call starts fresh in /app, whatever an earlier call cd'd into
+    pi = [_bash("cd sub", 0), _bash(hd, 1)]
+    assert LA.recoverable({"quote": q}, _rec(pi), {})["recoverable_how"] == (
+        "notes.md:agent_last_write@m1")
+
+
+def test_unknown_directories_stay_unknown_through_dotdot():
+    """astra toolwrites r2 #1: `..` from an unknown directory stays unknown (no replay, no
+    known read)."""
+    q = "Plan: migrate the cache layer first"
+    up = f"cat > ../notes.md <<'EOF'\n{q}\nEOF"
+    assert LA.heredoc_writes(up, None) == []
+    codex = {"source_messages": [_bash(up, 0)], "meta": None, "harness": "codex"}
+    assert LA.recoverable({"quote": q}, codex, {})["recoverable"] != "recoverable"
+    assert LA._resolve("../notes.md", None).startswith(LA.UNKNOWN_DIR)
+    assert LA._resolve("/app/notes.md", None) == "notes.md"
+    rd = {"source_messages": [_bash("cat ../notes.md", 0), _out(0, q)], "meta": None,
+          "harness": "codex"}
+    r = LA.recoverable({"quote": q}, rd, {})
+    assert r["recoverable"] == "unresolved" and "mixed_output_read" in r["recoverable_how"]
+
+
+def test_heredoc_bodies_never_move_the_directory_or_hide_other_quotes():
+    """astra toolwrites r2 #2: parentheses in an earlier heredoc's body don't make a later
+    write's directory unknown, and a replayable write never hides another write's quote."""
+    q = "Plan: migrate the cache layer first"
+    cmd = (f"cd src && cat > a.go <<'EOF'\nfunc F() {{}}\nEOF\n"
+           f"cat > notes.md <<'EOF'\n{q}\nEOF")
+    assert LA.heredoc_writes(cmd) == [("src/a.go", "func F() {}\n"), ("src/notes.md", q + "\n")]
+    r = LA.recoverable({"quote": q}, _rec([_bash(cmd, 0)]), {})
+    assert (r["recoverable"], r["recoverable_how"]) == ("recoverable",
+                                                         "src/notes.md:agent_last_write@m0")
+    # the second write unreplayable (appended): the first replayable write doesn't hide it
+    app = (f"cat > a.go <<'EOF'\nfunc F() {{}}\nEOF\ncat >> notes.md <<'EOF'\n{q}\nEOF")
+    r = LA.recoverable({"quote": q}, _rec([_bash(app, 0)]), {})
+    assert r["recoverable"] == "unresolved" and "unreplayable_command_contains_quote" in r[
+        "recoverable_how"]
+    # Claude Code's persistent directory ignores a `cd` inside a heredoc body
+    cc = {"source_messages": [
+        _tool("Bash", {"command": "cd sub && cat > x.sh <<'EOF'\n(cd /tmp)\nEOF"}, 0),
+        _tool("Bash", {"command": f"cat > notes.md <<'EOF'\n{q}\nEOF"}, 1)],
+        "meta": None, "harness": "claude_code"}
+    assert LA.recoverable({"quote": q}, cc, {})["recoverable_how"] == (
+        "sub/notes.md:agent_last_write@m1")
+
+
+def test_a_cd_on_its_own_line_moves_claude_codes_directory():
+    """astra toolwrites r3: a `cd` after a newline (here after a heredoc) still moves the
+    persistent directory, so a later overwrite of sub/notes.md isn't missed."""
+    q = "Plan: migrate the cache layer first"
+    cc = {"source_messages": [
+        _tool("Bash", {"command": "cat > x.sh <<'EOF'\necho hi\nEOF\ncd sub"}, 0),
+        _tool("Bash", {"command": f"cat > notes.md <<'EOF'\n{q}\nEOF"}, 1),
+        _tool("Write", {"file_path": "/app/sub/notes.md", "content": "gone"}, 2)],
+        "meta": None, "harness": "claude_code"}
+    assert LA.recoverable({"quote": q}, cc, {})["recoverable"] != "recoverable"
+
+
+def test_read_only_tools_never_count_as_writes():
+    """astra toolwrites r1 #4: an ask_user question quoting a patch writes nothing."""
+    k1, k2 = LA.quote_lines(QUOTE)
+    hits = _hits({k1: ["src/frob.go"], k2: ["src/frob.go"]}, LINES)
+    ask = _tool("ask_user", {"question": "OK to apply?\n*** Begin Patch\n*** Update File: "
+                                         "src/frob.go\n-const FrobLimit = 42\n*** End Patch"})
+    assert LA.tool_writes(ask["tool_calls"][0]) == []
+    assert LA.recoverable({"quote": QUOTE}, _rec([ask]), hits)["recoverable"] == "recoverable"
+
+
 def test_not_recoverable_when_nothing_holds_it():
     msgs = [{"role": "user", "text": "Keep the public API names unchanged."}]
     r = LA.recoverable({"quote": "Keep the public API names unchanged."}, _rec(msgs), {})
