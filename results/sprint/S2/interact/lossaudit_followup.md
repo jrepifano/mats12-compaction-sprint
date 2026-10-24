@@ -2,6 +2,8 @@
 
 Live pi chain; lossaudit's lost items; recoverability = the item's lines found in the kept image at the boundary where it was lost; followed = Opus 5.5 (Max) on the agent's later commands, commit log and diff. One judge, no hand labels.
 
+**Counts (from lossaudit_followup.json, 20 lost items):** followed after the loss: 12 yes, 4 no, 3 no opportunity, 1 sealed (testem past b1). Where the item is found at the boundary where it was lost: 16 only in /tmp/plan.md, 3 only in the repo's AGENTS.md, 1 in code (boa b3: a doc comment in core/engine/src/cancellation.rs). Corrected 25 Oct: an earlier message gave 11/4/4/1 and 17/3/0.
+
 | run | lost at k | item | recoverable at k (files) | followed after loss | evidence |
 |---|---|---|---|---|---|
 | boa-hierarchical-evaluat | b1 | Existing `Context::eval`, `enqueue_job`, and `run_jobs` remain unchanged in behavior and d | yes (/tmp/plan.md) | no | The final diff changes `pub fn enqueue_job` so it now does `let job = match self.active_evaluation_handle() { Some(handl |
