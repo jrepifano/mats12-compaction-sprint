@@ -614,7 +614,7 @@ HEADER_DIR = "/run/emx-x"  # tmpfs: the hook's header file (never in a commit)
 PLAN_DIR = "plan_boundaries"  # boundaries of steps other than 02_implement (own chain)
 GRADED_STEP = "02_implement"
 TRANSCRIPT_WAIT_S = 300
-TRANSCRIPT_POLL_S = 5
+TRANSCRIPT_POLL_S = 30  # one docker exec per poll: at most every 30 s (main session, 24 Oct)
 POST_REQUEST_WAIT_S = 120
 
 
@@ -622,6 +622,10 @@ def _step_ok(r: N.StreamResult, state: dict) -> str | None:
     """Why a finished step counts as failed (None: it didn't). A step the runner stopped
     (r.killed == "stop") is judged by its stop reason, not here."""
     init = state.get("init")
+    if r.killed == "container_gone":
+        return "infra_killed: the container disappeared"
+    if r.killed == "output_lost":
+        return "infra_killed: the step's output could not be recovered"
     if init is None:
         return "no init event"
     if init.get("apiKeySource") != "none":
@@ -739,11 +743,18 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 ns.server.step = step
                 state: dict = {}
                 sd = rd / "steps" / step
-                r = N.stream_exec(ns.sb, cli_command(cfg.cc, session_id=sid),
-                                  timeout_s=cfg.step_timeout_s.get(step, 5400),
-                                  log_path=sd / "stream.jsonl", env=env,
-                                  stdin=task.steps[step].encode(), stop=stop,
-                                  on_line=_stream_watch(state, stop))
+                # detached in the container: a dropped ssh transport costs a reconnect
+                r = N.detached_exec(ns.sb, cli_command(cfg.cc, session_id=sid),
+                                    name=f"{step}-{sid[:8]}",
+                                    timeout_s=cfg.step_timeout_s.get(step, 5400),
+                                    log_path=sd / "stream.jsonl", env=env,
+                                    stdin=task.steps[step].encode(), stop=stop,
+                                    on_line=_stream_watch(state, stop))
+                res.setdefault("reconnects", {})[step] = getattr(r, "reconnects", 0)
+                if r.killed in ("container_gone", "output_lost"):  # infrastructure first
+                    end_reason.setdefault("end", "infra_killed")
+                    res["error"] = f"{step}: {r.killed}"
+                    break
                 if r.killed:
                     stop_cli(ns.sb)
                 alive = drain()  # boundary files are written before the step's transcript
@@ -790,7 +801,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                     break
             captured = len(res["boundaries"]) + len(res["plan_boundaries"])
             if observed > captured and end_reason.get("end") not in (
-                    "boundary_error", "cli_error", "auth_error", "transcript_error"):
+                    "boundary_error", "cli_error", "auth_error", "transcript_error",
+                    "infra_killed", "infra_error"):
                 end_reason["end"] = "boundary_missing"
                 res["error"] = f"{observed} compactions, {captured} boundaries captured"
             res["end"] = end_reason.get("end") or "submitted"
@@ -799,7 +811,9 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
     except AuthError as e:
         res["end"], res["error"] = "auth_error", str(e)
     except Exception as e:  # noqa: BLE001 - recorded; the session tore itself down
-        res["end"] = "infra_error" if isinstance(e, SB.SandboxError) else "error"
+        # a container that vanished mid-run is a kill, not a task result (rerun once, heavy)
+        res["end"] = ("infra_killed" if N.GONE in str(e) else
+                      "infra_error" if isinstance(e, SB.SandboxError) else "error")
         res["error"] = traceback.format_exc()[-6000:]
     finally:
         alive = [t.name for t in pending if t.is_alive()]
@@ -814,6 +828,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
             res["sim_cost_usd"] = round(sum(x.get("cost_usd") or 0.0
                                             for x in getattr(sim, "rounds", [])), 6)
         res["cleanup_unconfirmed"] = ns.cleanup_unconfirmed
+        # docker clients that outlived their command (tolerant_exec): exposure to a late exec
+        res["client_timeouts"] = dict(getattr(ns, "exec_stats", {}) or {})
         res["seconds"] = round(time.monotonic() - t0, 1)
         mark("ended", end=res["end"])
         IR._dump(rd / "result.json", res)
@@ -862,7 +878,7 @@ def capture(ns: N.NativeSession, payload: dict, *, rd: Path, rj: dict, keep: SS.
                 raise RuntimeError(f"a secret is in container files {scan['hits'][:10]}; "
                                    "refusing to keep this image")
             t = time.monotonic()
-            fp = I.fingerprint(I.sandbox_runner(sb))
+            fp = I.fingerprint(I.guarded_runner(sb))
             times["fingerprint_s"] = round(time.monotonic() - t, 1)
             snap = N.snapshot(sb, keep, k)
             times["snapshot_s"] = round(snap["snapshot_s"], 1)
@@ -879,7 +895,9 @@ def capture(ns: N.NativeSession, payload: dict, *, rd: Path, rj: dict, keep: SS.
     except Exception as e:  # noqa: BLE001 - the run ends here; the CLI must not go on
         res.setdefault("boundary_errors", []).append(
             {"k": k, "phase": 1, "error": traceback.format_exc()[-3000:]})
-        end_reason.setdefault("end", "boundary_error")
+        # a docker/ssh failure is infrastructure (rerun once), anything else a capture defect
+        end_reason.setdefault("end", "infra_error" if isinstance(e, SB.SandboxError)
+                              else "boundary_error")
         mark("boundary_error", k=k, phase=1, error=f"{type(e).__name__}: {e}"[:300])
         stop.set()
         stop_cli(sb)
@@ -1006,6 +1024,7 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
                                 sim_probe_sha256=frozen["sim_probe"],
                                 calls_in_step=api_calls(rows), extra=extra, eligible=gate)
         res["boundaries" if graded else "plan_boundaries"].append(k)
+        res.setdefault("compactions", []).append(N.compaction_meta(bdir, step))
         mark("boundary_saved", k=k, step=step, pre_tokens=conv.nb.pre_tokens)
         fields = json.loads((bdir / "boundary" / "boundary.json").read_text())
         if fields.get("eligible"):
@@ -1015,9 +1034,10 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
     except Exception as e:  # noqa: BLE001 - the run ends; the kept image stays listed
         res.setdefault("boundary_errors", []).append(
             {"k": k, "phase": 2, "error": traceback.format_exc()[-3000:]})
-        end_reason.setdefault("end", "boundary_error")
+        end_reason.setdefault("end", "infra_error" if isinstance(e, SB.SandboxError)
+                              else "boundary_error")
         mark("boundary_error", k=k, phase=2, error=f"{type(e).__name__}: {e}"[:300])
-    if end_reason.get("end") in ("eligible", "stop_after", "boundary_error"):
+    if end_reason.get("end") in ("eligible", "stop_after", "boundary_error", "infra_error"):
         stop.set()
         stop_cli(sb)
 
@@ -1067,7 +1087,7 @@ def fork_check(ns: N.NativeSession, b: dict) -> dict:
     """The restored workspace and simulator equal the boundary's: the fingerprint (the
     boundary's version) and the simulator's first request for SIM_PROBE, hashed."""
     from compaction.s2 import interact_run as IR
-    fp = I.sha256(I.fingerprint(I.sandbox_runner(ns.sb), int(b.get("fingerprint_version") or 1)))
+    fp = I.sha256(I.fingerprint(I.guarded_runner(ns.sb), int(b.get("fingerprint_version") or 1)))
     probe = IR.sim_probe(ns.server.sim)
     out = {"fingerprint_ok": fp == b.get("fingerprint_sha256"),
            "sim_probe_ok": probe == b.get("sim_probe_sha256")}
@@ -1144,9 +1164,11 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             ns.sb.put_file(body.encode(), f"{PROJECT}/{new_sid}.jsonl")
             state: dict = {}
             env = cli_env(cfg, ns.egress, ns.server, token)
-            r = N.stream_exec(ns.sb, cli_command(cfg, resume=new_sid, fork=True, prompt=prompt),
-                              timeout_s=timeout_s, log_path=out_dir / "stream.jsonl", env=env,
-                              stop=stop, on_line=_stream_watch(state, stop))
+            r = N.detached_exec(ns.sb, cli_command(cfg, resume=new_sid, fork=True,
+                                                   prompt=prompt),
+                                name=f"fork-{new_sid[:8]}", timeout_s=timeout_s,
+                                log_path=out_dir / "stream.jsonl", env=env, stop=stop,
+                                on_line=_stream_watch(state, stop))
             if r.killed:
                 stop_cli(ns.sb)
             sid = (state.get("init") or {}).get("session_id")

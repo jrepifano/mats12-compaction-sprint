@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+from pathlib import Path
 
 from compaction import s1_judge as J
 from compaction.s2 import interact_run as IR
@@ -234,3 +235,133 @@ def test_hook_reports_a_failed_marker_write(tmp_path):
 
 def test_token_patterns_read_both_stores():
     assert A.AUTH_DIR in A.TOKEN_PATTERNS and A.STATE_DIR in A.TOKEN_PATTERNS
+
+
+def test_infra_and_quota_classification():
+    gone = N.StreamResult(-1, 5.0, False, "container_gone")
+    assert A._turn_ok(gone, {}, "", 600).startswith("infra_killed")
+    q = A._turn_ok(N.StreamResult(3, 5.0, False), {"status": "ERROR", "error": "x"},
+                   "AGY_ERROR: {\"code\": \"RESOURCE_EXHAUSTED\", \"quota\": 1}", 600)
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2n", "scripts/s2_native.py")
+    S = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(S)
+    res = {"steps": {"02_implement": {"turns": [{"n": "3-compact", "failed": q}]}}}
+    assert S._rate_limited(res)  # a quota stop during /compact re-queues the task
+
+
+def test_screen_needs_its_own_verdict_line():
+    cmd = A.screen_script(["/x"])
+    assert "SCREEN_CLEAN" in cmd and "SCREEN_HIT" in cmd
+
+    class SB1:
+        name, host, log = "c", None, []
+
+    import compaction.s2.native.common as C2
+    from compaction.deepswe.sandbox import ExecResult
+    orig = C2.exec_env
+    try:
+        C2.exec_env = lambda sb, c, e, timeout_s=300, workdir="/": ExecResult(
+            1, "", "Error response from daemon: No such container: c", 0.1)
+        import pytest
+        with pytest.raises(A.SB.SandboxError, match="No such container"):
+            A.screen(SB1(), ["/x"], "tok")  # rc 1 from docker is not "clean"
+        C2.exec_env = lambda sb, c, e, timeout_s=300, workdir="/": ExecResult(
+            1, "SCREEN_CLEAN\n", "", 0.1)
+        A.screen(SB1(), ["/x"], "tok")
+    finally:
+        C2.exec_env = orig
+
+
+def test_a_killed_agy_run_after_spend_reruns_once_heavy(tmp_path, monkeypatch):
+    import importlib.util
+    import sys as _sys
+    spec = importlib.util.spec_from_file_location("s2n", "scripts/s2_native.py")
+    S = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(S)
+    from compaction.s2.native import audit as AU
+    calls = []
+
+    def fake_run(cfg, sim_model):
+        calls.append((cfg.run_key, cfg.memory_mb))
+        cfg.run_dir.mkdir(parents=True)
+        killed = len(calls) == 1
+        return {"run_key": cfg.run_key, "end": "infra_killed" if killed else "submitted",
+                "boundaries": [] if killed else [1], "sim_cost_usd": 1.2, "steps": {}}
+
+    monkeypatch.setattr(A, "run_base", fake_run)
+    monkeypatch.setattr(S, "_sim_model", lambda r, n, c: None)
+    monkeypatch.setattr(S, "_live_sessions", lambda h, arm="x": 0)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    monkeypatch.setattr(S, "RATE_BACKOFF_S", 0)
+    monkeypatch.setattr(N, "code_version", lambda: {"dirty": False})
+    monkeypatch.setattr(AU, "requirements", lambda rd, bf: [])
+    monkeypatch.setattr(AU, "stage_lossaudit", lambda rds, st: [])
+    monkeypatch.setattr(AU, "run_lossaudit", lambda st, out, docker_host=None: 0)
+    monkeypatch.setattr(AU, "lossaudit_counts", lambda out, rk: {})
+    import compaction.s1_second_look as SL
+    monkeypatch.setattr(SL, "check_frozen", lambda: None)
+    _sys.argv = ["x"]
+    S.main(["agy-batch", "--go-from-jacob", "--root", str(tmp_path),
+            "--tasks", "kombu-single-active-consumer-priority"])
+    assert [c[1] for c in calls] == [N.AGENT_MEMORY_MB, N.HEAVY_MEMORY_MB]
+    assert calls[1][0].endswith("-a2")
+
+
+def test_output_lost_is_infra_and_skips_the_screen(monkeypatch):
+    called = []
+    monkeypatch.setattr(A, "screen", lambda *a, **k: called.append(1))
+    monkeypatch.setattr(N, "detached_exec", lambda *a, **k: N.StreamResult(
+        0, 5.0, False, "output_lost"))
+    r, out, err = A.run_turn(None, A.AgyConfig(), "go", None, 600,
+                             Path("/tmp/x.json"), {}, None, "tok")
+    assert r.killed == "output_lost" and out == {} and not called
+    assert A._turn_ok(r, out, err, 600).startswith("infra_killed")
+
+
+class BgSB:
+    """A container where agy (pid 10) idles on a background test (20, child 21) while its
+    hook (30, child 31 `cat`) runs; `immortal` processes ignore signals."""
+
+    def __init__(self, immortal=()):
+        self.ps = {1: (0, "Ss", "timeout -k 5 1 sleep infinity"),
+                   10: (1, "Sl", A.CLI + " -p go"), 20: (10, "S", "bash -c pytest"),
+                   21: (20, "S", "python -m pytest"), 30: (10, "S", "/bin/sh " + A.HOOK),
+                   31: (30, "S", "cat")}
+        self.immortal, self.sigs, self.name = set(immortal), [], "c"
+
+    def exec(self, cmd, timeout_s=600, workdir="/"):
+        from compaction.deepswe.sandbox import ExecResult
+        if cmd.startswith("ls "):
+            return ExecResult(0, "root agent idle; waiting up to 1h59m for 1 background task(s)",
+                              "", 0.1)
+        if "ps -eo" in cmd:
+            tok = cmd.split(";")[0].split(": ")[1]
+            lines = [f"{p} {pp} {st} {a}" for p, (pp, st, a) in self.ps.items()]
+            return ExecResult(0, "\n".join(lines + [f"99 0 S bash -lc : {tok}; ps"]), "", 0.1)
+        if cmd.startswith("bad=0"):
+            sig = cmd.split("kill -")[1].split()[0]
+            pids = [int(x) for x in cmd.split("for p in ")[1].split(";")[0].split()]
+            self.sigs.append((sig, pids))
+            for p in pids:
+                if p not in self.immortal:
+                    self.ps.pop(p, None)
+            return ExecResult(0, "", "", 0.1)
+        return ExecResult(0, "", "", 0.1)
+
+
+def test_background_kill_spares_the_hook_tree_and_is_verified(monkeypatch):
+    monkeypatch.setattr(A, "BG_GRACE_S", 0)
+    monkeypatch.setattr(A.time, "sleep", lambda s: None)
+    sb, rec = BgSB(), []
+    assert A.background_rule(sb, None, rec)() is False
+    assert sb.sigs[0] == ("TERM", [20, 21])  # never the hook (30) or its child (31)
+    assert rec[0]["outcome"] == "confirmed" and rec[0]["survivors"] == []
+
+
+def test_a_background_kill_with_survivors_is_unconfirmed(monkeypatch):
+    monkeypatch.setattr(A, "BG_GRACE_S", 0)
+    monkeypatch.setattr(A.time, "sleep", lambda s: None)
+    sb, rec = BgSB(immortal={21}), []
+    assert A.background_rule(sb, None, rec)() is True  # tells detached_exec to stop waiting
+    assert rec[0]["outcome"] == "unconfirmed" and rec[0]["survivors"] == [21]

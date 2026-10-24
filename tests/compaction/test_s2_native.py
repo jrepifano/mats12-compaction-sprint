@@ -621,6 +621,8 @@ def _harness(tmp_path, monkeypatch, scenario: str = "ok", eligible=None):
     def snapshot(sb, keep, k):
         if scenario == "phase1_fail" and "Implement" in sb.files.get("step", ""):
             raise RuntimeError("commit failed")
+        if scenario == "docker_fail" and "Implement" in sb.files.get("step", ""):
+            raise N.SB.SandboxError("docker commit failed: kex_exchange_identification")
         tag = keep.new_tag(k)
         keep.record(k, tag, snapshot_s=0.1)
         snaps.append((k, sb.files.get("marker"), str(keep.run_dir.name)))
@@ -630,7 +632,8 @@ def _harness(tmp_path, monkeypatch, scenario: str = "ok", eligible=None):
     monkeypatch.setattr(IR, "sim_probe", lambda sim: "probe")
     sessions = {}
 
-    def fake_stream(sb, cmd, *, timeout_s, log_path, env, stdin=None, stop=None, on_line=None):
+    def fake_stream(sb, cmd, *, timeout_s, log_path, env, stdin=None, stop=None, on_line=None,
+                    name=None):
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         sid = cmd.split("--session-id ")[1].split()[0]
         path = f"{CC.PROJECT}/{sid}.jsonl"
@@ -652,6 +655,9 @@ def _harness(tmp_path, monkeypatch, scenario: str = "ok", eligible=None):
                                                "session_id": sid, "transcript_path": path,
                                                "compact_summary": "<summary>S</summary>"})
             if not out.get("ok"):
+                if scenario == "docker_fail":  # the CLI had compacted: observed > captured
+                    t.compact([t.rows[-1]["uuid"]], "S", 50_000, 5_000)
+                    sb.files[path] = "\n".join(json.dumps(r) for r in t.rows)
                 return N.StreamResult(-9, 1.0, False, "stop")
         sb.files["marker"] = "after"
         t.compact([t.rows[-1]["uuid"]], "This session is being continued... S", 50_000, 5_000)
@@ -672,6 +678,7 @@ def _harness(tmp_path, monkeypatch, scenario: str = "ok", eligible=None):
         return N.StreamResult(-9, 2.0, False, "stop" if stop.is_set() else None)
 
     monkeypatch.setattr(N, "stream_exec", fake_stream)
+    monkeypatch.setattr(N, "detached_exec", fake_stream)
 
     class Sess(FakeSession):
         def __init__(self, *a, **kw):
@@ -709,6 +716,12 @@ def test_run_base_with_a_stub_harness(tmp_path, monkeypatch):
     assert (rd / "steps" / "02_implement" / "transcript.jsonl").exists()
     assert json.loads((rd / "result.json").read_text())["end"] == "stop_after"
     assert "tok" not in (rd / "b1" / "native" / "transcript.jsonl").read_text()
+
+
+def test_a_docker_failure_in_capture_is_infra_and_not_overwritten(tmp_path, monkeypatch):
+    _, res, _ = _harness(tmp_path, monkeypatch, "docker_fail")
+    # 2 compactions observed, 1 captured: the reconcile keeps infra_error (the rerun cause)
+    assert res["end"] == "infra_error", res.get("error")
 
 
 def test_phase1_failure_stops_the_cli(tmp_path, monkeypatch):
@@ -851,7 +864,7 @@ def test_a_boundary_with_background_work_is_never_a_fork_source(tmp_path, monkey
 
 def test_an_unreadable_transcript_is_not_a_complete_run(tmp_path, monkeypatch):
     _, res, _ = _harness(tmp_path, monkeypatch, "unreadable")
-    assert res["end"] in ("transcript_error", "boundary_error")
+    assert res["end"] in ("transcript_error", "boundary_error", "infra_error")
     assert res["end"] != "submitted"
 
 
@@ -994,7 +1007,8 @@ def _fork(tmp_path, monkeypatch, bdir, cap: bool):
             super().__init__(*a, **kw)
             caps["on_cap"] = kw["on_cap"]
 
-    def fake_stream(sb, cmd, *, timeout_s, log_path, env, stdin=None, stop=None, on_line=None):
+    def fake_stream(sb, cmd, *, timeout_s, log_path, env, stdin=None, stop=None, on_line=None,
+                    name=None):
         Path(log_path).parent.mkdir(parents=True, exist_ok=True)
         on_line(json.dumps({"type": "system", "subtype": "init", "apiKeySource": "none",
                             "session_id": "f1"}))
@@ -1005,6 +1019,7 @@ def _fork(tmp_path, monkeypatch, bdir, cap: bool):
         return N.StreamResult(0, 1.0, False)
 
     monkeypatch.setattr(N, "stream_exec", fake_stream)
+    monkeypatch.setattr(N, "detached_exec", fake_stream)
     return CC.fork(bdir, tmp_path / "fork", new_summary="S2", prompt="Continue.", sim_model=None,
                    token="tok", persona="persona", host=None, session_cls=Sess)
 
@@ -1022,19 +1037,18 @@ def test_forks_refuse_boundaries_that_are_not_fork_sources(tmp_path, monkeypatch
         _fork(tmp_path, monkeypatch, bdir, cap=False)
 
 
-def test_a_client_timeout_never_removes_the_container(monkeypatch):
-    import subprocess as sp
+def test_tolerant_exec_is_the_shared_one(monkeypatch):
+    seen = {}
 
-    closed = []
+    def shared(sb, cmd, *, timeout_s, workdir="/app", stats=None, env=None, log=True):
+        seen.update(cmd=cmd, timeout_s=timeout_s, stats=stats, env=env)
+        return N.SB.ExecResult(124, "", "command timed out", 1.0)
+
+    monkeypatch.setattr(N.I, "tolerant_exec", shared)
     sb = N.SB.Sandbox(name="c1", image="i", purpose="p")
-    monkeypatch.setattr(N.SB.Sandbox, "close", lambda self: closed.append(1) or True)
-
-    def hang(*a, **kw):
-        raise sp.TimeoutExpired(a[0], kw.get("timeout"))
-
-    monkeypatch.setattr(N.subprocess, "run", hang)
-    r = N.tolerant_exec(sb)("git status", timeout_s=5)
-    assert r.rc == 124 and not closed and sb.client_timeouts == 1
+    sb.exec_stats = {}
+    r = N.tolerant_exec(sb)("git status", timeout_s=5, env={"A": "1"})
+    assert r.rc == 124 and seen["stats"] is sb.exec_stats and seen["env"] == {"A": "1"}
 
 
 def test_window_hold_expires_with_the_window():
@@ -1052,3 +1066,23 @@ def test_window_hold_expires_with_the_window():
     rej = {"unifiedWindows": {"five_hour": {"status": "rejected", "resetsAt": 1100}}}
     assert S.window_hold(rej, 1000)[0].startswith("five_hour")
     assert S.window_hold({"unifiedWindows": {"seven_day": {"utilization": 0.5}}}, 1)[0] is None
+
+
+def test_a_vanished_container_is_infra():
+    r = N.StreamResult(-1, 9.0, False, "container_gone")
+    assert CC._step_ok(r, {}).startswith("infra_killed")
+    assert N.code_version() is N.code_version()  # frozen once per process
+
+
+def test_output_lost_ends_a_claude_code_run_as_infra(tmp_path, monkeypatch):
+    def lost(*a, **k):
+        Path(k["log_path"]).parent.mkdir(parents=True, exist_ok=True)
+        k["on_line"](json.dumps({"type": "system", "subtype": "init", "apiKeySource": "none"}))
+        return N.StreamResult(0, 3.0, False, "output_lost")
+
+    monkeypatch.setattr(CC, "ensure_cli_volume", lambda h, i: CC.CLI_VOLUME)
+    monkeypatch.setattr(N, "egress_check", lambda sb, e, u: {"ok": True, "checks": []})
+    monkeypatch.setattr(N, "detached_exec", lost)
+    cfg = CC.BaseConfig(task=Task(), root=tmp_path, host=None)
+    res = CC.run_base(cfg, sim_model=None, token="tok", session_cls=FakeSession)
+    assert res["end"] == "infra_killed" and "output_lost" in res["error"]

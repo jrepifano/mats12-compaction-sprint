@@ -89,6 +89,7 @@ HEAVY_CPUS, HEAVY_MEMORY_MB, HEAVY_MIN_FREE_GB = 4.0, 8192, 10.0
 
 EGRESS_BASE = "alpine:3.20"
 EGRESS_SCRIPT = Path(__file__).with_name("egress_proxy.py")
+EGRESS_BYTES = EGRESS_SCRIPT.read_bytes()  # as loaded: later edits never reach a sidecar
 NATIVE_LABEL = "emx.native"  # on the egress image and the networks: "egress" / the session id
 
 
@@ -136,7 +137,7 @@ def _sha12(b: bytes) -> str:
 
 def egress_image() -> str:
     """The sidecar image tag: changes whenever egress_proxy.py does."""
-    return f"emx-native/egress:{_sha12(EGRESS_SCRIPT.read_bytes())}"
+    return f"emx-native/egress:{_sha12(EGRESS_BYTES)}"
 
 
 def ensure_egress_image(host: str | None) -> str:
@@ -151,7 +152,7 @@ def ensure_egress_image(host: str | None) -> str:
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w") as tf:
             for name, data in (("Dockerfile", df.encode()),
-                               ("egress_proxy.py", EGRESS_SCRIPT.read_bytes())):
+                               ("egress_proxy.py", EGRESS_BYTES)):
                 ti = tarfile.TarInfo(name)
                 ti.size = len(data)
                 tf.addfile(ti, io.BytesIO(data))
@@ -458,25 +459,16 @@ def mark_session_start(sb: SB.Sandbox) -> None:
 
 
 def tolerant_exec(sb: SB.Sandbox) -> Callable[..., SB.ExecResult]:
-    """`Sandbox.exec` without its kill switch. Sandbox._guarded removes the whole container
-    when a docker client outlives its command's timeout + grace; under a saturated sshd on the
-    docker host (24 Oct) that killed live sessions mid-ask_user (native-codex: rc 137, no OOM).
-    Here a client timeout only kills the client and returns rc 124; the in-container
-    `timeout -k 5` still ends the command itself. Counts are kept in sb.client_timeouts."""
-    def exec_(cmd: str, timeout_s: int = 600, workdir: str = "/app") -> SB.ExecResult:
-        t0 = time.monotonic()
-        argv = SB.docker_argv(SB.exec_args(sb.name, cmd, timeout_s, workdir), sb.host)
-        try:
-            p = subprocess.run(argv, capture_output=True, timeout=timeout_s + SB.CLIENT_GRACE_S,
-                               check=False)
-        except subprocess.TimeoutExpired:
-            sb.client_timeouts = getattr(sb, "client_timeouts", 0) + 1
-            return SB.ExecResult(124, "", f"docker client timeout after {timeout_s}s",
-                                 time.monotonic() - t0)
-        r = SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
-                          p.stderr.decode(errors="replace"), time.monotonic() - t0)
-        sb.log.append({"op": "exec", "cmd": cmd[:200], "rc": r.rc, "seconds": r.seconds})
-        return r
+    """The shared tolerant exec (`interact.tolerant_exec`: a docker-client timeout settles the
+    exec and reports rc 124, the container kept; anything unconfirmed fails closed) as an
+    `exec`-shaped callable, counting into `sb.exec_stats` ("client_timeouts", "settles").
+    The rule for every arm (main session, 24 Oct): the agent's steps and the simulator's
+    commands are tolerant; harness operations (freeze, scans, fingerprint, snapshot,
+    transcript reads, setup) use the guarded `Sandbox.exec` and fail closed."""
+    def exec_(cmd: str, timeout_s: int = 600, workdir: str = "/app",
+              env: dict[str, str] | None = None) -> SB.ExecResult:
+        return I.tolerant_exec(sb, cmd, timeout_s=timeout_s, workdir=workdir,
+                               stats=getattr(sb, "exec_stats", None), env=env)
     return exec_
 
 
@@ -595,6 +587,177 @@ def freeze(sb: SB.Sandbox, cli: str, hook: str,
         with contextlib.suppress(Exception):
             signal_pids(sb, sorted(stopped), "CONT")
         raise
+
+
+STEP_DIR = "/opt/emx/steps"
+FOLLOW_CHUNK_S = 300  # each follow session's in-container limit; the follower reconnects
+# the docker host's sshd is shared by every agent (24 Oct: overloaded, refusing key exchanges):
+# a step's status check runs at most every CHECK_S, backing off to CHECK_MAX_S while checks
+# fail; a refused check only delays the next one, it never ends the run
+CHECK_S, CHECK_MAX_S, WATCH_EVERY = 30, 300, 2
+GONE = "No such container"
+
+
+def detached_exec(sb: SB.Sandbox, cmd: str, *, name: str, timeout_s: int, log_path: Path,
+                  env: dict[str, str] | None = None, stdin: bytes | None = None,
+                  stop: threading.Event | None = None,
+                  on_line: Callable[[str], None] | None = None,
+                  watch: Callable[[], None] | None = None) -> StreamResult:
+    """`stream_exec` that survives a dropped `docker -H ssh://` transport (native-codex,
+    24 Oct: `ssh ... dial-stdio` exit 255 ended runs whose CLI was still working; lifted from
+    codex.detached_step). `cmd` runs detached in the container (setsid, under
+    `timeout -k 5 timeout_s`), stdout to <STEP_DIR>/<name>/out, stderr to .../err, its exit
+    code to .../rc; the laptop follows `out` with `tail -F` sessions that resume from the
+    last complete line's byte offset and drains the rest once rc exists. `env` values reach
+    the container as `docker exec -e NAME` (only the launching exec needs them). A container
+    that disappears ends the wait at once (killed "container_gone"; rc -1). Returns
+    StreamResult; `reconnects` counts the follow sessions after the first. `watch()`, if
+    given, runs at every 15 s check while the step is running (e.g. agy's background-task
+    rule)."""
+    env = dict(env or {})
+    te = tolerant_exec(sb)  # the step's own plumbing: a stalled client never costs the run
+    d = f"{STEP_DIR}/{name}"
+    r = te(f"rm -rf {d} && mkdir -p {d}", timeout_s=60, workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"step dir {d}: rc={r.rc} {r.stderr[-200:]}")
+    if stdin is not None:
+        sb.put_file(stdin, f"{d}/stdin")
+    src = f"{d}/stdin" if stdin is not None else "/dev/null"
+    inner = (f"timeout -k 5 {int(timeout_s)} bash -lc {shlex.quote(cmd)} < {src} > {d}/out "
+             f"2> {d}/err; echo $? > {d}/rc.tmp && mv {d}/rc.tmp {d}/rc")
+    launch = f"setsid nohup bash -c {shlex.quote(inner)} > /dev/null 2>&1 < /dev/null &"
+    r = te(launch, timeout_s=60, workdir="/app", env=env)
+    if r.rc != 0:
+        raise SB.SandboxError(f"step launch failed rc={r.rc}: {r.stderr[-300:]}")
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.monotonic()
+    deadline = t0 + timeout_s + SB.CLIENT_GRACE_S + 60
+    offset, sessions, killed, rc, incomplete = 0, 0, None, -1, False
+
+    pace = {"every": CHECK_S, "n": 0, "retry": 5, "next": time.monotonic() + CHECK_S}
+
+    def rc_file() -> tuple[str | None, bool]:
+        """(the exit code if written, whether the container is gone). A failed check (the
+        transport) doubles the interval up to CHECK_MAX_S; a good one resets it."""
+        pace["next"] = time.monotonic() + pace["every"]  # one deadline for every call site
+        try:
+            x = te(f"[ -f {d}/rc ] && cat {d}/rc || echo PENDING", timeout_s=30, workdir="/")
+        except SB.SandboxError:
+            x = SB.ExecResult(1, "", "check failed", 0.0)
+        if GONE in x.stderr or "is not running" in x.stderr:
+            return None, True
+        if x.rc != 0:
+            pace["every"] = min(pace["every"] * 2, CHECK_MAX_S)
+            pace["next"] = time.monotonic() + pace["every"]
+            return None, False
+        pace["every"] = CHECK_S
+        pace["next"] = time.monotonic() + CHECK_S
+        v = x.stdout.strip()
+        return (None if v in ("", "PENDING") else v), False
+
+    with open(log_path, "ab") as out:
+        while True:
+            sessions += 1
+            argv = SB.docker_argv(
+                ["exec", sb.name, "timeout", "-k", "5", str(FOLLOW_CHUNK_S), "tail", "-c",
+                 f"+{offset + 1}", "-F", f"{d}/out"], sb.host)
+            p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                 stdin=subprocess.DEVNULL)
+            got = {"n": 0}
+
+            def pump(p=p, got=got) -> None:
+                assert p.stdout is not None
+                for raw in iter(p.stdout.readline, b""):
+                    if not raw.endswith(b"\n"):
+                        break  # a partial line: re-read it from `offset` next session
+                    out.write(raw)
+                    out.flush()
+                    got["n"] += len(raw)
+                    if on_line is not None:
+                        with contextlib.suppress(Exception):
+                            on_line(raw.decode(errors="replace"))
+
+            th = threading.Thread(target=pump, daemon=True)
+            th.start()
+            code, gone = None, False
+            while p.poll() is None:
+                if stop is not None and stop.is_set():
+                    killed = "stop"
+                    break
+                if time.monotonic() > deadline:
+                    killed = "client_timeout"
+                    break
+                if time.monotonic() >= pace["next"]:
+                    pace["n"] += 1
+                    if watch is not None and pace["n"] % WATCH_EVERY == 0:
+                        abort = False
+                        with contextlib.suppress(Exception):
+                            abort = watch() is True
+                        if abort:  # the watcher's own intervention failed: stop waiting
+                            killed = "watch_abort"
+                            break
+                    code, gone = rc_file()
+                    if code or gone:
+                        time.sleep(2)  # let tail deliver the last lines
+                        break
+                time.sleep(0.5)
+            if p.poll() is None:
+                p.kill()
+            p.wait(timeout=30)
+            th.join(timeout=30)
+            offset += got["n"]
+            if killed:
+                break
+            if not (code or gone) and time.monotonic() >= pace["next"]:
+                code, gone = rc_file()  # never more often than the shared deadline
+            if gone:
+                killed = "container_gone"
+                break
+            if code:
+                for attempt in range(4):  # the final drain survives a transport drop too
+                    rest = te(f"tail -c +{offset + 1} {d}/out", timeout_s=120, workdir="/")
+                    if rest.rc == 0:
+                        break
+                    time.sleep(5 * (attempt + 1))
+                else:
+                    incomplete = True
+                if rest.rc == 0 and rest.stdout:
+                    out.write(rest.stdout.encode())
+                    out.flush()
+                    if on_line is not None:
+                        for ln in rest.stdout.splitlines():
+                            with contextlib.suppress(Exception):
+                                on_line(ln + "\n")
+                rc = int(code) if code.lstrip("-").isdigit() else -1
+                break
+            if time.monotonic() > deadline:
+                killed = "client_timeout"
+                break
+            # the transport dropped or the chunk ended: follow again, backing off while the
+            # follow sessions die at once (a refusing sshd)
+            if got["n"] == 0:
+                pace["retry"] = min(pace["retry"] * 2, 120)
+            else:
+                pace["retry"] = 5
+            time.sleep(pace["retry"])
+    if not killed or killed == "stop":
+        for attempt in range(4):
+            err = te(f"cat {d}/err 2>/dev/null", timeout_s=60, workdir="/")
+            if err.rc == 0:
+                break
+            time.sleep(5 * (attempt + 1))
+        else:
+            incomplete = True
+        with contextlib.suppress(OSError):
+            Path(str(log_path) + ".err").write_text(err.stdout if err.rc == 0 else "")
+    secs = round(time.monotonic() - t0, 1)
+    res = StreamResult(rc, secs, rc in (124, 137), killed,
+                       rc in (124, 137) and secs >= timeout_s - 30)
+    res.reconnects = sessions - 1  # type: ignore[attr-defined]
+    if incomplete:  # rc is real but the output isn't whole: callers must not trust it
+        res.killed = "output_lost"
+    return res
 
 
 def processes(sb: SB.Sandbox) -> list[str]:
@@ -819,6 +982,18 @@ class NativeBoundary:
     native_files: dict[str, str | bytes] = field(default_factory=dict)
 
 
+def compaction_meta(bdir: Path, step: str | None = None) -> dict:
+    """One compaction's pressure, as every harness records it (main session, 24 Oct: compare
+    harnesses on real pressure): the measured pre_tokens, post_tokens, the summary's size
+    and the verbatim messages kept, from b<k>/boundary/boundary.json."""
+    f = json.loads((Path(bdir) / "boundary" / "boundary.json").read_text())
+    return {"k": f.get("boundary_index"), "step": step or f.get("stage"),
+            "pre_tokens": f.get("pre_tokens"), "post_tokens": f.get("post_tokens"),
+            "summary_chars": f.get("summary_chars"),
+            "n_kept": len(f.get("kept_indices") or []), "post_source": f.get("post_source"),
+            "quiescent": f.get("quiescent")}
+
+
 def next_k(run_dir: Path) -> int:
     return max(SS._existing_k(Path(run_dir)), default=0) + 1
 
@@ -891,12 +1066,46 @@ def write_boundary(run_dir: Path, k: int, nb: NativeBoundary, *, run_json: dict,
     return bdir
 
 
+_CODE_VERSION: dict | None = None
+
+
+def code_version() -> dict:
+    """Which code made a run (main session, 24 Oct: record it per run): git HEAD, whether the
+    checkout was clean, and the sha256 of each native module and of scripts/s2_native.py,
+    taken ONCE, the first time a process asks (i.e. at launch), so a long-lived launcher
+    reports the code it started with even if the files change later (astra delta2 r1 #4)."""
+    global _CODE_VERSION
+    if _CODE_VERSION is not None:
+        return _CODE_VERSION
+    import hashlib
+
+    from compaction.s2 import config as C
+    here = Path(__file__).parent
+    # the audit scripts too: they are loaded when used (astra delta r3 #2)
+    paths = [*sorted(here.glob("*.py")),
+             *(C.REPO_ROOT / "scripts" / f for f in ("s2_native.py", "s2_interact_audit.py",
+                                                     "s2_lossaudit.py"))]
+    files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest()[:16] for p in paths
+             if p.exists()}
+    head = dirty = None
+    with contextlib.suppress(OSError, subprocess.SubprocessError):
+        head = subprocess.run(["git", "-C", str(here), "rev-parse", "--short", "HEAD"],
+                              capture_output=True, text=True, timeout=10,
+                              check=False).stdout.strip() or None
+        dirty = bool(subprocess.run(
+            ["git", "-C", str(C.REPO_ROOT), "status", "--porcelain", "--",
+             "src/compaction/s2/native", "scripts/s2_native.py"],
+            capture_output=True, text=True, timeout=10, check=False).stdout.strip())
+    _CODE_VERSION = {"git_head": head, "dirty": dirty, "files": files, "utc": utc()}
+    return _CODE_VERSION
+
+
 def native_run_json(*, run_key: str, task_dict: dict, persona_sha256: str, arm: str,
                     model: str, policy: str, threshold: dict, cli_version: str,
                     extra: dict | None = None) -> dict:
     """run.json for a native base run: `interact_run.run_json`'s shape, plus `harness`."""
     from compaction.s2 import config as C
-    return {"run_key": run_key, "created_utc": utc(), "task": task_dict,
+    return {"run_key": run_key, "created_utc": utc(), "task": task_dict, "code": code_version(),
             "plan": {"model": model, "policy": policy, "threshold": threshold,
                      "task": task_dict["task_id"], "stage": C.INTERACT_STAGE,
                      "tag": C.INTERACT_TAG, "harness": arm},
@@ -918,7 +1127,7 @@ def available_gb(host: str | None) -> float | None:
                                check=False)
             return int(p.stdout.strip()) / 1024 / 1024
         except (subprocess.TimeoutExpired, ValueError, OSError):
-            time.sleep(10 * (attempt + 1))
+            time.sleep(30 * 2 ** attempt)  # 30, 60, 120 s: never hammer a busy sshd
     return None  # unknown: the caller goes ahead (Docker's own --memory limit still holds)
 
 
@@ -974,6 +1183,7 @@ class NativeSession:
     egress: Egress | None = None
     uname: dict = field(default_factory=dict)
     entrypoint_rc: int | None = None
+    exec_stats: dict = field(default_factory=dict)  # client_timeouts, settles
     services: frozenset[int] = frozenset()  # the entrypoint's processes (never frozen)
     cleanup_unconfirmed: list[str] = field(default_factory=list)
 
@@ -998,8 +1208,8 @@ class NativeSession:
                                            extra_args=self.extra_args,
                                            lifetime_s=self.lifetime_s, cpus=self.cpus,
                                            memory_mb=self.memory_mb)
-            self.sb.exec = tolerant_exec(self.sb)  # every exec of the session, sim included
-            holder["run"] = I.sandbox_runner(self.sb)
+            self.sb.exec_stats = self.exec_stats  # tolerant execs count here
+            holder["run"] = I.sandbox_runner(self.sb, stats=self.exec_stats)  # tolerant
             if image_entrypoint(self.image, self.host):  # services first (refactoring tasks)
                 self.entrypoint_rc = wait_entrypoint(self.sb)
                 procs, tok = ps_table(self.sb)

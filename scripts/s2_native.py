@@ -221,12 +221,12 @@ def _latest_rate(root: Path) -> dict | None:
 HEAVY_TASKS = ("testem-bail-on-test-failure", "vitest-duration-sharding")  # node suites
 
 
-def _live_sessions(host: str | None) -> int:
-    """Claude Code task containers running on the host (all launchers' together; the egress
+def _live_sessions(host: str | None, arm: str = CC.ARM) -> int:
+    """The arm's task containers running on the host (all launchers' together; the egress
     sidecars aren't counted). -1 when the query fails."""
     from compaction.deepswe import sandbox as SB
     with SB.using_host(host):
-        names = SB._list(["ps", "--filter", f"label={SB.LABEL_KEY}={N.purpose(CC.ARM)}",
+        names = SB._list(["ps", "--filter", f"label={SB.LABEL_KEY}={N.purpose(arm)}",
                           "--format", "{{.Names}}"])
     if names is None:
         return -1
@@ -234,7 +234,12 @@ def _live_sessions(host: str | None) -> int:
 
 
 def _rate_limited(res: dict) -> bool:
+    """Max's rate limit (Claude Code) or agy's quota (Gemini) stopped the run."""
     for st in (res.get("steps") or {}).values():
+        for tn in st.get("turns") or []:  # agy
+            text = f"{tn.get('failed') or ''} {tn.get('problem') or ''}".lower()
+            if any(k in text for k in ("quota", "resource_exhausted", "rate limit", " 429")):
+                return True
         info = (st.get("rate_limit") or {}).get("rate_limit_info") or {}
         if info.get("status") == "rejected":
             return True
@@ -283,6 +288,16 @@ def _slot(root: Path, name: str | None = None, release: bool = False):
 
 
 def cmd_cc_batch(a) -> int:
+    a.arm = "claude_code"
+    return _batch(a)
+
+
+def cmd_agy_batch(a) -> int:
+    a.arm = "agy"
+    return _batch(a)
+
+
+def _batch(a) -> int:
     """Claude Code base runs, at most `concurrency` sessions on the host (all launchers), to
     completion (no fork trigger), each followed by both Q1 audits (native.audit), per run.
     Launches hold, never drop: past the simulator projection (finished runs' actual cost +
@@ -301,10 +316,18 @@ def cmd_cc_batch(a) -> int:
     from compaction.s2.native import audit as AU
     if not a.go_from_jacob:
         sys.exit("paid batch: pass --go-from-jacob")
+    from compaction.s2.native import agy as A
     _env()
-    token = _token()
+    code = N.code_version()  # frozen now: every run of this launcher records the same code
+    if code.get("dirty") and not a.allow_dirty:
+        sys.exit("refusing to launch a batch from uncommitted native code (commit first, or "
+                 "--allow-dirty for a test)")
+    is_cc = a.arm == "claude_code"
+    token = _token() if is_cc else None
     SL.check_frozen()
-    root = Path(a.root) if a.root else CC.root()
+    mod = CC if is_cc else A
+    root = Path(a.root) if a.root else mod.root()
+    max_root = CC.root()  # Max's window (Claude Code streams): every audit uses Max
     bid = _stamp()
     bdir = root / "_batch"
     bdir.mkdir(parents=True, exist_ok=True)
@@ -312,12 +335,12 @@ def cmd_cc_batch(a) -> int:
     lock_path = bdir / "slots.lock"
     la_lock = threading.Lock()
     tasks = deque(a.tasks.split(",") if a.tasks else BATCH_TASKS)
-    timeouts = {"01_plan": CC.STEP_TIMEOUT_S["01_plan"], "02_implement": a.implement_timeout}
+    timeouts = {"01_plan": mod.STEP_TIMEOUT_S["01_plan"], "02_implement": a.implement_timeout}
 
     def line(**kw) -> None:
         kw.setdefault("utc", datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
-        week = (((_latest_rate(root) or {}).get("unifiedWindows") or {}).get("seven_day")
-                or {})
+        week = (((_latest_rate(max_root) or {}).get("unifiedWindows") or {})
+                .get("seven_day") or {})
         kw.setdefault("max_7d_pct", round(100 * week["utilization"], 1)
                       if week.get("utilization") is not None else None)
         with open(status, "a") as f:
@@ -348,29 +371,37 @@ def cmd_cc_batch(a) -> int:
         try:
             with la_lock:
                 AU.stage_lossaudit([rd], ad / "staging")
-                out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit")
+                out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit",
+                                                       docker_host=a.host)
             out["lossaudit"] = AU.lossaudit_counts(ad / "lossaudit", rk)
         except Exception as e:  # noqa: BLE001
             out["lossaudit_error"] = f"{type(e).__name__}: {e}"[:500]
         return out
 
     def one(task_id: str, attempt: int, slot: str) -> dict:
-        rk = CC.run_key(task_id, attempt)
+        rk = mod.run_key(task_id, attempt)
         try:
             task = IR.load_task(task_id)
             heavy = task_id in heavy_tasks or task_id in heavy_now
-            cfg = CC.BaseConfig(task=task, root=root, attempt=attempt,
-                                cc=CC.CCConfig(model=a.model, effort=a.effort or None,
-                                               auto_compact_window=a.window),
-                                host=a.host, sim_cap_usd=a.sim_cap,
-                                step_timeout_s=dict(timeouts),
-                                cpus=N.HEAVY_CPUS if heavy else N.AGENT_CPUS,
-                                memory_mb=N.HEAVY_MEMORY_MB if heavy else N.AGENT_MEMORY_MB,
-                                min_free_gb=N.HEAVY_MIN_FREE_GB if heavy
-                                else N.AGENT_MIN_FREE_GB)
+            sizes = {"cpus": N.HEAVY_CPUS if heavy else N.AGENT_CPUS,
+                     "memory_mb": N.HEAVY_MEMORY_MB if heavy else N.AGENT_MEMORY_MB,
+                     "min_free_gb": N.HEAVY_MIN_FREE_GB if heavy else N.AGENT_MIN_FREE_GB}
+            if is_cc:
+                cfg = CC.BaseConfig(task=task, root=root, attempt=attempt,
+                                    cc=CC.CCConfig(model=a.model, effort=a.effort or None,
+                                                   auto_compact_window=a.window),
+                                    host=a.host, sim_cap_usd=a.sim_cap,
+                                    step_timeout_s=dict(timeouts), **sizes)
+            else:
+                cfg = A.BaseConfig(task=task, root=root, attempt=attempt,
+                                   agy=A.AgyConfig(model=a.model, compact_at=a.compact_at,
+                                                   effort=a.effort or None),
+                                   host=a.host, sim_cap_usd=a.sim_cap,
+                                   step_timeout_s=dict(timeouts), **sizes)
             sim = _sim_model(root, f"{cfg.run_key}-base", a.sim_cap)
             try:
-                res = CC.run_base(cfg, sim_model=sim, token=token)
+                res = (CC.run_base(cfg, sim_model=sim, token=token) if is_cc
+                       else A.run_base(cfg, sim_model=sim))
             except Exception:  # noqa: BLE001 - outside run_base's own guard (e.g. the install)
                 res = {"run_key": rk, "end": "infra_error", "boundaries": [],
                        "sim_cost_usd": 0.0, "error": traceback.format_exc()[-1500:]}
@@ -385,8 +416,9 @@ def cmd_cc_batch(a) -> int:
     hold_until, hold_why = 0.0, None
     with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
         while tasks or running:
+            held = False  # re-decided every pass: finished runs may make room (delta2 r1 #3)
             now = time.time()
-            why, w = window_hold(_latest_rate(root), now)
+            why, w = window_hold(_latest_rate(max_root), now)
             if why and why != hold_why:
                 line(event="hold", reason="max_window", detail=why, wait_s=round(w),
                      queued=list(tasks))
@@ -403,14 +435,14 @@ def cmd_cc_batch(a) -> int:
                     break
                 with open(lock_path, "a") as lk:  # slot check + claim, atomic across launchers
                     fcntl.flock(lk, fcntl.LOCK_EX)
-                    live = _live_sessions(a.host)
+                    live = _live_sessions(a.host, a.arm)
                     n_slots, fresh = _slot(root)
                     # a slot claimed in the last 5 min may not show a container yet
                     if live < 0 or max(live, n_slots - fresh) + fresh >= a.concurrency:
                         break
                     t = tasks[0]
-                    att = CC.next_attempt(root, t)
-                    sname = CC.run_key(t, att)
+                    att = mod.next_attempt(root, t)
+                    sname = mod.run_key(t, att)
                     _slot(root, sname)
                 tasks.popleft()
                 fut = ex.submit(one, t, att, sname)
@@ -434,7 +466,8 @@ def cmd_cc_batch(a) -> int:
                 early = res.get("end") in ("infra_error", "error") and not res.get("boundaries") \
                     and float(res.get("sim_cost_usd") or 0.0) == 0.0
                 # infrastructure, never a task result: rerun once (heavy after a kill)
-                if (res.get("end") == "infra_killed" or early) and reruns.get(t, 0) < 1:
+                if (res.get("end") in ("infra_killed", "infra_error") or early) and \
+                        reruns.get(t, 0) < 1:
                     reruns[t] = reruns.get(t, 0) + 1
                     if res.get("end") == "infra_killed":
                         heavy_now.add(t)
@@ -453,6 +486,8 @@ def cmd_cc_batch(a) -> int:
                 reqs = au.get("requirements") or []
                 line(event="done", task=t, run_key=res["run_key"], end=res["end"],
                      compactions=len(res.get("boundaries") or []),
+                     pressure=res.get("compactions"),
+                     window=a.window if is_cc else a.compact_at,
                      pre_tokens=[r.get("pre_tokens") for r in reqs] or None,
                      items=sum(r["items"] for r in reqs), lost=sum(r["lost"] for r in reqs),
                      lost_new=sum(r.get("lost_new", 0) for r in reqs),
@@ -463,8 +498,10 @@ def cmd_cc_batch(a) -> int:
                      audit_errors={k: v for k, v in au.items() if k.endswith("_error")} or None,
                      sim_usd=res.get("sim_cost_usd"), finished_usd=round(finished_usd, 4),
                      seconds=res.get("seconds"), cleanup=res.get("cleanup_unconfirmed"),
+                     client_timeouts=res.get("client_timeouts"),
                      error=(res.get("error") or "")[:300] or None)
-    line(event="batch_end", held=list(tasks), finished_usd=round(finished_usd, 4))
+    line(event="batch_end", held=list(tasks), finished_usd=round(finished_usd, 4),
+         code=code)
     return 0
 
 
@@ -495,9 +532,25 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--out")
     f.add_argument("--timeout", type=int, default=1800)
     f.add_argument("--sim-cap", type=float, default=C.INTERACT_SECONDARY_CAP_USD)
+    ab = sub.add_parser("agy-batch")
+    ab.add_argument("--tasks", help="comma-separated; default the 6 pilot tasks")
+    ab.add_argument("--compact-at", type=int, default=150_000)
+    ab.add_argument("--model", default="gemini-3.8-flash-low")
+    ab.add_argument("--effort")
+    ab.add_argument("--sim-cap", type=float, default=6.5)
+    ab.add_argument("--projection-usd", type=float, default=40.0)
+    ab.add_argument("--implement-timeout", type=int, default=7200)
+    ab.add_argument("--concurrency", type=int, default=3,
+                    help="agy sessions on the host, across every launcher")
+    ab.add_argument("--heavy-tasks", default=",".join(HEAVY_TASKS))
+    ab.add_argument("--root")
+    ab.add_argument("--go-from-jacob", action="store_true")
+    ab.add_argument("--allow-dirty", action="store_true")
     cb = sub.add_parser("cc-batch")
     cb.add_argument("--tasks", help="comma-separated; default the 6 pilot tasks")
-    cb.add_argument("--window", type=int, default=163_000)
+    # Jacob's 150k trigger: Claude Code's buffer below the window measured 20.2k at 163k
+    # (first boundary at 142,838), so 170k (main session, 24 Oct)
+    cb.add_argument("--window", type=int, default=170_000)
     cb.add_argument("--model", default=CC.MODEL)
     cb.add_argument("--effort", default=CC.EFFORT)
     cb.add_argument("--sim-cap", type=float, default=6.5)
@@ -509,6 +562,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="tasks run as heavy containers (8 GB, 4 CPUs, >= 10 GB free)")
     cb.add_argument("--root")
     cb.add_argument("--go-from-jacob", action="store_true")
+    cb.add_argument("--allow-dirty", action="store_true")
     g2 = sub.add_parser("agy-base")
     g2.add_argument("--task", default=SMOKE_TASK)
     g2.add_argument("--compact-at", type=int, default=150_000,
@@ -526,7 +580,7 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     return {"egress-check": cmd_egress_check, "cc-base": cmd_cc_base,
             "cc-fork": cmd_cc_fork, "agy-base": cmd_agy_base,
-            "cc-batch": cmd_cc_batch}[a.cmd](a)
+            "cc-batch": cmd_cc_batch, "agy-batch": cmd_agy_batch}[a.cmd](a)
 
 
 if __name__ == "__main__":

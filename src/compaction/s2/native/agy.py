@@ -20,7 +20,9 @@ import contextlib
 import json
 import re
 import shlex
+import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -228,8 +230,9 @@ def transcript_file(cid: str) -> str:
 
 def read_steps(sb: SB.Sandbox, cid: str) -> list[dict]:
     r = sb.exec(f"cat {shlex.quote(transcript_file(cid))}", timeout_s=120, workdir="/")
-    if r.rc != 0:
-        raise SB.SandboxError(f"cannot read the agy transcript of {cid}: rc={r.rc}")
+    if r.rc != 0:  # docker's own message kept: "No such container" means infra_killed
+        raise SB.SandboxError(f"cannot read the agy transcript of {cid}: rc={r.rc} "
+                              f"{r.stderr.strip()[-200:]}")
     out = []
     for line in r.stdout.splitlines():
         if line.strip():
@@ -446,26 +449,97 @@ def screen_script(paths: list[str]) -> str:
             "; } > \"$P\" || { rm -f \"$P\"; exit 5; }; printf '%s\\n' \"$EMX_SIM_TOKEN\" "
             f">> \"$P\"; F=''; for f in {plist}; do [ -e \"$f\" ] && F=\"$F $f\"; done; "
             "if [ -z \"$F\" ]; then rc=1; else grep -lF -f \"$P\" -- $F; rc=$?; fi; "
-            "rm -f \"$P\"; exit $rc")
+            "rm -f \"$P\"; [ $rc -eq 1 ] && echo SCREEN_CLEAN; [ $rc -eq 0 ] && echo SCREEN_HIT; "
+            "exit $rc")
 
 
 def screen(sb: SB.Sandbox, paths: list[str], sim_token: str) -> None:
     """Refuse to let `paths` leave the container if any holds the agy token's strings or the
     SimServer token (astra agy r1 #4). Fails closed: a scan error raises too."""
     r = N.exec_env(sb, screen_script(paths), {"EMX_SIM_TOKEN": sim_token}, timeout_s=300)
-    if r.rc == 0:
-        raise SecretFound(f"a secret is in {r.stdout.split()[:5]}; not exported")
-    if r.rc != 1:
-        raise SB.SandboxError(f"secret screen failed rc={r.rc}")
+    lines = r.stdout.split()
+    if r.rc == 0 and "SCREEN_HIT" in lines:
+        raise SecretFound(f"a secret is in {[x for x in lines if x != 'SCREEN_HIT'][:5]}; "
+                          "not exported")
+    if r.rc != 1 or "SCREEN_CLEAN" not in lines:  # a docker failure is never "clean"
+        raise SB.SandboxError(f"secret screen failed rc={r.rc} {r.stderr.strip()[-200:]}")
+
+
+BG_GRACE_S = 600
+IDLE_WAIT = "waiting up to"  # agy's stderr: "root agent idle; waiting up to 1h59m for N
+# background task(s)"
+
+
+def background_rule(sb: SB.Sandbox, cid: str | None, record: list) -> Callable[[], None]:
+    """agy keeps a terminated turn open until the agent's background tasks finish (seen
+    24 Oct: a hung test held smoke 2 past its threshold), up to the print timeout. Once the
+    hook's marker exists and agy has idled on its background tasks for BG_GRACE_S, they are
+    killed: the agy CLI's descendants outside the hook's and this check's own trees, TERM then
+    KILL, then verified gone (as the pi arm's quiesce kills strays at every boundary). Every
+    attempt is recorded with its targets, the signal results and the survivors; an attempt
+    that leaves survivors or can't be checked is "unconfirmed", which the runner treats as an
+    infrastructure failure (astra l3 r1 #1)."""
+    seen: dict = {}
+
+    def targets() -> tuple[dict, list[int]]:
+        procs, tok = N.ps_table(sb)
+        agy = {p for p, v in procs.items() if v[2].startswith(CLI)}
+        keep = agy | N._tree(procs, {p for p, v in procs.items() if HOOK in v[2]}) | \
+            N._tree(procs, {p for p, v in procs.items() if tok in v[2]})
+        return procs, sorted(p for p in N._tree(procs, agy) - keep
+                             if not procs[p][1].startswith("Z"))
+
+    def watch() -> bool | None:
+        # any marker: on a conversation's first turn its id isn't known yet, and only one
+        # conversation runs at a time
+        r = sb.exec(f"ls {XDIR}/compact-* >/dev/null 2>&1 && tail -c 300 {TURN_ERR}",
+                    timeout_s=30, workdir="/")
+        if r.rc != 0 or IDLE_WAIT not in r.stdout:
+            seen.pop("since", None)
+            return
+        seen.setdefault("since", time.monotonic())
+        if time.monotonic() - seen["since"] < BG_GRACE_S:
+            return
+        rec = {"utc": N.utc(), "idle_s": round(time.monotonic() - seen["since"]),
+               "grace_s": BG_GRACE_S, "outcome": "unconfirmed"}
+        record.append(rec)  # first, so a failure below still leaves a trace
+        try:
+            procs, kids = targets()
+            rec["targets"] = [f"{p} {procs[p][2][:200]}" for p in kids]
+            if kids:
+                for sig in ("TERM", "KILL"):
+                    try:
+                        N.signal_pids(sb, kids, sig)
+                        rec[sig.lower()] = "sent"
+                    except SB.SandboxError as e:
+                        rec[sig.lower()] = f"failed: {e}"[:200]
+                    time.sleep(5)
+                # by pid, not by tree: a survivor whose parent died is reparented out of it
+                after, _ = N.ps_table(sb)
+                rec["survivors"] = [p for p in kids if p in after
+                                    and not after[p][1].startswith("Z")]
+            rec["outcome"] = "confirmed" if not rec.get("survivors") else "unconfirmed"
+        except Exception as e:  # noqa: BLE001 - recorded; the runner fails the run
+            rec["error"] = f"{type(e).__name__}: {e}"[:300]
+        seen["since"] = time.monotonic()  # one attempt per grace period
+        # an unconfirmed intervention ends the wait now (detached_exec: "watch_abort"); the
+        # runner then ends the run infra_error (astra l3 r2 #3)
+        return rec["outcome"] != "confirmed"
+    return watch
 
 
 def run_turn(sb: SB.Sandbox, cfg: AgyConfig, prompt: str, cid: str | None, timeout_s: int,
-             log: Path, env: dict, stop, sim_token: str) -> tuple[N.StreamResult, dict, str]:
+             log: Path, env: dict, stop, sim_token: str,
+             bg_record: list | None = None) -> tuple[N.StreamResult, dict, str]:
     """One agy turn: run, screen its output in the container, then copy it to `log` (and
-    `log`.err). Returns (the exec result, the result JSON, stderr)."""
-    r = N.stream_exec(sb, agy_command(cfg, prompt, cid, max(30, timeout_s - 15)),
-                      timeout_s=timeout_s, log_path=Path(str(log) + ".exec"), env=env,
-                      stop=stop)
+    `log`.err). Returns (the exec result, the result JSON, stderr). With `bg_record`, the
+    background-task rule (`background_rule`) applies and its kills are appended there."""
+    watch = background_rule(sb, cid, bg_record) if bg_record is not None else None
+    r = N.detached_exec(sb, agy_command(cfg, prompt, cid, max(30, timeout_s - 15)),
+                        name=Path(log).stem, timeout_s=timeout_s,
+                        log_path=Path(str(log) + ".exec"), env=env, stop=stop, watch=watch)
+    if r.killed in ("container_gone", "output_lost"):  # infra: nothing trustworthy to read
+        return r, {}, ""
     screen(sb, [TURN_OUT, TURN_ERR], sim_token)
     out_text = sb.exec(f"cat {TURN_OUT} 2>/dev/null; true", timeout_s=60, workdir="/").stdout
     err_text = sb.exec(f"cat {TURN_ERR} 2>/dev/null; true", timeout_s=60, workdir="/").stdout
@@ -480,6 +554,12 @@ def _turn_ok(r: N.StreamResult, out: dict, err: str = "",
     and status SUCCESS when --print-timeout expires (src/compaction/agy.py): a turn that ran
     to the timeout, or warned of one, is "cli_timeout" (astra agy r1 #1)."""
     from compaction import agy as AG
+    if r.killed == "container_gone":
+        return "infra_killed: the container disappeared"
+    if r.killed == "output_lost":
+        return "infra_killed: the step's output could not be recovered"
+    if r.killed == "watch_abort":
+        return "infra_error: a background-task kill was not confirmed"
     if r.killed == "stop":
         return None
     if print_timeout_s and r.seconds >= print_timeout_s - 5:
@@ -488,10 +568,11 @@ def _turn_ok(r: N.StreamResult, out: dict, err: str = "",
         return "cli_timeout: agy warned of its print timeout"
     if r.rc == 137 and not r.timed_out_by_cli:
         return "infra_killed: exit 137"
+    tail = " ".join((err or "").split())[-300:]  # quota and API errors land in stderr too
     if r.rc != 0:
-        return f"agy exit {r.rc}: {str(out.get('error'))[:200]}"
+        return f"agy exit {r.rc}: {str(out.get('error'))[:200]} | {tail}"
     if out.get("status") != "SUCCESS":
-        return f"agy status {out.get('status')!r}: {str(out.get('error'))[:200]}"
+        return f"agy status {out.get('status')!r}: {str(out.get('error'))[:200]} | {tail}"
     return None
 
 
@@ -586,11 +667,25 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                         end.setdefault("end", "time_cap")
                         break
                     n = len(turns) + 1
+                    bg: list = []
+                    res.setdefault("background_kills", []).append(
+                        {"step": step, "turn": n, "conversation_id": cid, "kills": bg})
                     r, out, err = run_turn(sb, cfg.agy, prompt, cid, left, sd / f"turn{n:03d}.json",
-                                           env, stop, tok)
+                                           env, stop, tok, bg_record=bg)
+                    if any(k.get("outcome") != "confirmed" for k in bg):
+                        end.setdefault("end", "infra_error")
+                        res["error"] = f"{step} turn {n}: a background-task kill was not " \
+                                       "confirmed"
+                        break
                     cid = cid or out.get("conversation_id") or None
                     bad = _turn_ok(r, out, err, max(30, left - 15))
                     marker, prob = None, None
+                    if bad and bad.startswith("infra_killed"):  # before any evidence check
+                        turns.append({"n": n, "prompt": prompt[:200], "rc": r.rc,
+                                      "seconds": r.seconds, "killed": r.killed, "failed": bad})
+                        end.setdefault("end", "infra_killed")
+                        res["error"] = f"{step} turn {n}: {bad}"
+                        break
                     if cid is None:
                         prob = "agy returned no conversation id"
                     else:
@@ -622,10 +717,21 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                     if left <= 120:
                         end.setdefault("end", "time_cap")
                         break
-                    rc_, _, _ = run_turn(sb, cfg.agy, "/compact", cid, min(660, left - 60),
+                    ct = min(660, left - 60)
+                    rc_, outc, errc = run_turn(sb, cfg.agy, "/compact", cid, ct,
                                                sd / f"turn{n:03d}-compact.json", env, stop, tok)
+                    bad_c = _turn_ok(rc_, outc, errc, max(30, ct - 15))
+                    if bad_c:  # recorded as a turn, so the batch sees quota and infra causes
+                        turns.append({"n": f"{n}-compact", "prompt": "/compact", "rc": rc_.rc,
+                                      "status": outc.get("status"), "seconds": rc_.seconds,
+                                      "killed": rc_.killed, "failed": bad_c})
+                        end.setdefault("end", "time_cap" if bad_c.startswith("cli_timeout")
+                                       else "infra_killed" if bad_c.startswith("infra_killed")
+                                       else "cli_error")
+                        res["error"] = f"{step} turn {n} /compact: {bad_c}"
+                        break
                     steps_ = read_steps(sb, cid)
-                    if rc_.rc != 0 or not new_checkpoint_ok(steps_, seen_cp):
+                    if not new_checkpoint_ok(steps_, seen_cp):
                         end.setdefault("end", "boundary_error")
                         res["error"] = f"{step} turn {n}: /compact did not add exactly one " \
                                        "checkpoint after our input"
@@ -635,13 +741,17 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                     try:
                         k = capture(ns, cid=cid, j=seen_cp, ctx=marker, steps=steps_,
                                     rd=broot, rj=rj, keep=keep, cfg=cfg, step=step,
-                                    eligible=eligible if step == GRADED_STEP else None)
-                    except Exception:  # noqa: BLE001 - the run ends; nothing past it
+                                    eligible=eligible if step == GRADED_STEP else None,
+                                    interventions=bg)
+                    except Exception as e:  # noqa: BLE001 - the run ends; nothing past it
                         res.setdefault("boundary_errors", []).append(
                             {"step": step, "error": traceback.format_exc()[-3000:]})
-                        end.setdefault("end", "boundary_error")
+                        end.setdefault("end", "infra_error" if isinstance(e, SB.SandboxError)
+                                       else "boundary_error")
                         break
                     res["boundaries" if step == GRADED_STEP else "plan_boundaries"].append(k)
+                    res.setdefault("compactions", []).append(
+                        N.compaction_meta(broot / f"b{k}", step))
                     mark("boundary_saved", step=step, k=k, ctx=marker)
                     f = json.loads((broot / f"b{k}" / "boundary" / "boundary.json").read_text())
                     if f.get("eligible"):
@@ -653,6 +763,12 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                         break
                     prompt = CONTINUE_PROMPT
                 steps_final = []
+                if end.get("end") == "infra_killed":
+                    # the container is gone (or killed): nothing more to export; keep the
+                    # turn records and the classification (astra delta r2 #1)
+                    res["steps"][step] = {"conversation_id": cid, "turns": turns,
+                                          "checkpoints": seen_cp, "export": "skipped"}
+                    break
                 if cid:
                     screen(sb, [transcript_file(cid)], tok)
                     steps_final = read_steps(sb, cid)
@@ -676,7 +792,9 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
             res["checkpoints_observed"] = observed
             res["egress_events"] = ns.egress.events()
     except Exception as e:  # noqa: BLE001 - recorded; the session tore itself down
-        res["end"] = "infra_error" if isinstance(e, SB.SandboxError) else "error"
+        # a container that vanished mid-run is a kill, not a task result (rerun once, heavy)
+        res["end"] = ("infra_killed" if N.GONE in str(e) else
+                      "infra_error" if isinstance(e, SB.SandboxError) else "error")
         res["error"] = traceback.format_exc()[-6000:]
     finally:
         if ns.server is not None:
@@ -687,6 +805,8 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
             res["sim_cost_usd"] = round(sum(x.get("cost_usd") or 0.0
                                             for x in getattr(sim, "rounds", [])), 6)
         res["cleanup_unconfirmed"] = ns.cleanup_unconfirmed
+        # docker clients that outlived their command (tolerant_exec): exposure to a late exec
+        res["client_timeouts"] = dict(getattr(ns, "exec_stats", {}) or {})
         res["seconds"] = round(time.monotonic() - t0, 1)
         mark("ended", end=res["end"])
         IR._dump(rd / "result.json", res)
@@ -694,7 +814,8 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
 
 
 def capture(ns: N.NativeSession, *, cid: str, j: int, ctx: int, steps: list[dict], rd: Path,
-            rj: dict, keep, cfg: BaseConfig, step: str, eligible) -> int:
+            rj: dict, keep, cfg: BaseConfig, step: str, eligible,
+            interventions: list | None = None) -> int:
     """Boundary j of conversation `cid`, right after its forced /compact (no agy process runs:
     the turn is over). The agent's background processes are stopped for the scan, the
     fingerprint and the kept commit; a refreshed token store is moved back to the volume;
@@ -720,7 +841,7 @@ def capture(ns: N.NativeSession, *, cid: str, j: int, ctx: int, steps: list[dict
             raise RuntimeError(f"a secret is in container files {scan['hits'][:10]}; "
                                "refusing to keep this image")
         t = time.monotonic()
-        fp = I.fingerprint(I.sandbox_runner(sb))
+        fp = I.fingerprint(I.guarded_runner(sb))
         times["fingerprint_s"] = round(time.monotonic() - t, 1)
         snap = N.snapshot(sb, keep, k)
         times["snapshot_s"] = round(snap["snapshot_s"], 1)
@@ -738,12 +859,18 @@ def capture(ns: N.NativeSession, *, cid: str, j: int, ctx: int, steps: list[dict
                                          for x in steps),
         f"{cid}.db": db})
     services = sorted(getattr(ns, "services", ()) or ())
-    why = "not_quiescent" if stopped else ("services_unvalidated" if services else None)
+    why = ("not_quiescent" if stopped else "services_unvalidated" if services else
+           "background_killed" if interventions else None)
     extra = {"harness": ARM, "cli_version": CLI_VERSION, "conversation_id": cid,
              "checkpoint_in_conversation": j, "compact_at": cfg.agy.compact_at,
              "model": cfg.agy.model, "secret_scan": {"scanned": scan["scanned"],
                                                      "seconds": scan["seconds"]},
              "token_link": link, "quiescent": not stopped, "services_running": services,
+             "post_source": "checkpoint",
+             # background tasks the runner killed in the turn before this boundary: then the
+             # boundary is quiescent only after an intervention (astra l3 r1 #3)
+             "background_kills": list(interventions or []),
+             "quiescent_after_intervention": bool(interventions) and not stopped,
              "capture_times": times, "pre_tokens_kind": "trigger_request_context",
              # the hook measures the request of the call that crossed the threshold: not its
              # output nor the tool results the summarizer also saw (astra agy r1 #5)
