@@ -91,6 +91,7 @@ PRIVATE_ROOT = ROOT / "data" / "raw"
 PAGE_NAME = "page.html"
 KEY_NAME = "key.private.json"
 DECISIONS_NAME = "decisions.json"
+OVERRIDES_NAME = "design_overrides.json"  # design fields filled in after labelling (not Jacob's)
 SEED = 20261025
 # The plan's order (brief): names as in candidates.json "checks" and interact_run.CHECK_NAMES.
 CHECKS = ("retention", "recoverability", "applicability", "decision", "design", "reference")
@@ -164,6 +165,10 @@ def arms_dirs(run_dir: Path, k: int) -> list[Path]:
 
 class ArmsExist(RuntimeError):
     pass
+
+
+class StaleScreen(RuntimeError):
+    """A v2 card's screen ran under rules other than the current `screen_sha_v2`."""
 
 
 def candidate(run_dir: Path, k: int, cand_id: str | None = None) -> dict:
@@ -1125,6 +1130,16 @@ def check_evidence_v2(c: Mapping) -> dict[str, dict]:
     return base
 
 
+def screen_stale(run_dir: Path, k: int) -> str | None:
+    """The boundary's v2 screen hash when it isn't the current one, else None (no screen
+    yet: nothing to judge)."""
+    f = Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json"
+    if not f.exists():
+        return None
+    sha = _read(f).get("screen_sha256")
+    return None if sha == RQ.screen_sha_v2() else (sha or "missing")
+
+
 def candidate_v2(run_dir: Path, k: int, cand_id: str) -> dict:
     cj = _read(Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json")
     c = next((c for c in cj.get("candidates") or [] if c.get("cand_id") == cand_id), None)
@@ -1370,6 +1385,9 @@ def build_v2(boundaries: list[tuple[Path, int]], *, seed: int = SEED, unsealed: 
         if arms := arms_dirs(run_dir, k):
             raise ArmsExist(f"{run_dir.name} b{k}: {[str(a) for a in arms]} exists; a card "
                             "must never sit beside continuation output")
+        if (old := screen_stale(run_dir, k)) and card_ids_v2(run_dir, k):
+            raise StaleScreen(f"{run_dir.name} b{k}: screened under {old[:12]}, the rules are "
+                              f"now {RQ.screen_sha_v2()[:12]}: rescreen it (reselect)")
         sa = IR.active_seal(run_dir)
         if sa is not None and k > sa and not unsealed:
             raise ArmsExist(f"{run_dir.name} b{k} is past the sealed point b{sa}: its "
@@ -1412,7 +1430,7 @@ def answers_v2(label: Mapping, nq: int = 3) -> list[str]:
 
 
 def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
-                   runner: S.Runner | None = None) -> dict:
+                   runner: S.Runner | None = None, override: Mapping | None = None) -> dict:
     run_dir = (ROOT / ent["run_dir"]) if not Path(ent["run_dir"]).is_absolute() else \
         Path(ent["run_dir"])
     k, cand_id = int(ent["k"]), ent["cand_id"]
@@ -1457,24 +1475,47 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
         held.append("the card's evidence changed since the page was built")
     design, edited = final_design(label, ent["screen_design"])
     rec["edited"] = edited
+    # design fields the main session filled in where the screen left them empty (never over
+    # Jacob's own edits); recorded on the decision and the freeze, checked like an edit
+    overridden = [f for f in (override or {}).get("fields") or {}
+                  if f in DESIGN_FIELDS and f not in edited]
+    for f in overridden:
+        design[f] = override["fields"][f]
+    if overridden:
+        rec["design_override"] = {"fields": overridden, "by": override.get("by"),
+                                  "utc": override.get("utc"),
+                                  "speaker": override.get("speaker"),
+                                  **{k: override[k] for k in ("fallback", "chosen")
+                                     if override.get(k)}}
+    changed = edited + overridden
     gaps = design_gaps(design)
     if gaps:
         held.append("design incomplete: " + "; ".join(gaps))
     c = parts["cand"]
-    spec = spec_of(design) if set(edited) & set(SPEC_FIELDS) else c["act_spec"]
+    spec = spec_of(design) if set(changed) & set(SPEC_FIELDS) else c["act_spec"]
     checks = json.loads(json.dumps(c.get("checks") or {}))
     bdir = run_dir / f"b{k}"
-    if edited and not held:
+    stale = screen_stale(run_dir, k)
+    if (changed or stale) and not held:
         new = RQ.check_design({"quote": design["d_repair"]},
                               {"matched_quote": design["d_matched"],
                                "matched_rationale": design["d_rationale"]},
                               spec, S.source_view(bdir, c["source_policy"]),
-                              _read(bdir / "boundary" / "pre_messages.json"))
+                              _read(bdir / "boundary" / "pre_messages.json"),
+                              maintainer=RQ.maintainer_context(bdir))
         shown = set(((checks.get("design") or {}).get("evidence") or {}).get("problems") or [])
+        if overridden or stale:
+            # an override, or a screen under older rules, passes every current check; the one
+            # exception is a recorded non-maintainer fallback (astra matched-override r1 #2-3)
+            shown = set(FALLBACK_OK) if (override or {}).get("fallback") and \
+                "d_matched" in overridden else set()
         added = [p for p in new["evidence"]["problems"] if p not in shown]
         if added:
-            held.append(f"edited design adds code problems: {added}")
-        checks["design"] = new | {"screened": checks.get("design")}
+            held.append(f"{'design' if overridden or stale else 'edited design'} fails the "
+                        f"current checks: {added}")
+        checks["design"] = new | {"screened": checks.get("design"),
+                                  **({"rechecked_under": RQ.screen_sha_v2(),
+                                      "screened_under": stale} if stale else {})}
         if spec != c.get("act_spec"):
             ref = S.check_reference(spec, run_dir, k, runner=runner)
             if ref["outcome"] != "pass":
@@ -1486,13 +1527,16 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     for n in CHECKS_V2:
         checks[n] = dict(checks.get(n) or {}, jacob="pass", jacob_note=qnote.get(n),
                          jacob_via="3-question card")
+    if {"d_matched", "d_rationale"} & set(overridden):
+        checks["design"]["jacob_via"] = "card; matched block filled by override after labelling"
     frz = {"cand_id": cand_id, "source_policy": c["source_policy"], "req_id": c["req_id"],
            "repair_text": design["d_repair"], "matched_text": design["d_matched"],
            "matched_rationale": design["d_rationale"], "act_spec": spec, "checks": checks,
            "screen": RQ.SCREEN_V2, "loss": c.get("loss"),
            "role": role,
            "card": {"id": cid, "v": label.get("v"), "edited": edited,
-                    "note": notes.get("card"), "labelled_utc": label.get("utc")}}
+                    "note": notes.get("card"), "labelled_utc": label.get("utc")},
+           **({"design_override": rec["design_override"]} if overridden else {})}
     path = S.write_freeze(bdir, frz)
     return rec | {"status": "frozen", "reasons": [], "freeze": _rel(path),
                   "publish": (f"uv run python scripts/s2_interact.py publish-freeze "
@@ -1510,14 +1554,16 @@ def _primaries(run_dir: Path) -> list[tuple[int, str]]:
 
 
 def freeze_v2(labels: Mapping[str, dict], key: Mapping, *,
-              runner: S.Runner | None = None) -> list[dict]:
+              runner: S.Runner | None = None,
+              overrides: Mapping[str, dict] | None = None) -> list[dict]:
     """Decisions for a v2 page's cards, then the bundle record of each boundary where two or
     more candidates of the carded source are frozen."""
     unknown = sorted(set(labels) - set(key["cards"]) - set(key.get("retired") or {}))
     if unknown:
         raise ValueError(f"labels for cards on no page this key knows: {unknown[:5]}")
     out = [freeze_card_v2(cid, key["cards"][cid], labels.get(cid) or {}, seed=key["seed"],
-                          runner=runner) for cid in key["order"]]
+                          runner=runner, override=(overrides or {}).get(cid))
+           for cid in key["order"]]
     by_b: dict[tuple[str, int, str], list[str]] = {}
     for cid in key["order"]:
         e = key["cards"][cid]
@@ -1541,6 +1587,175 @@ def freeze_v2(labels: Mapping[str, dict], key: Mapping, *,
                     "publish": (f"uv run python scripts/s2_interact.py publish-freeze "
                                 f"{rdir} {k} {bid}")})
     return out
+
+
+MATCHED_PROMPT = """You choose the matched control block for a compaction experiment.
+
+The experiment: an agent's context was compacted, and the summary dropped a requirement the \
+maintainer gave. One arm puts the requirement's words back after the summary (the repair \
+block); the other arm puts a matched control block in the same place with the same lead line. \
+The control must be the same kind of text as the repair: an exact quote from one of the \
+maintainer's replies in <maintainer_replies> (all of them are in the agent's history before \
+compaction) that the resumed input also lacks, about the same length as the repair quote \
+(within 20%), and with no bearing on the remaining work or on the act below: neutral material \
+(a pleasantry, an incidental remark, a comment on finished or unrelated work), never a \
+requirement, rule, preference or instruction that could change what the agent does next.
+
+Return up to 5 such maintainer candidates, best first ("source": "maintainer"). Only if fewer \
+than 2 neutral maintainer spans exist, add up to 3 fallbacks from elsewhere in <history> \
+("source": "history"). Copy each character for character (one contiguous span, no ellipses, no \
+added quotes), with a one-sentence rationale saying why it has no bearing on the act."""
+
+MATCHED_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["candidates"],
+    "properties": {"candidates": {"type": "array", "maxItems": 8, "items": {
+        "type": "object", "additionalProperties": False,
+        "properties": {"quote": {"type": "string"}, "rationale": {"type": "string"},
+                       "source": {"type": "string", "enum": ["maintainer", "history"]}},
+        "required": ["quote", "rationale", "source"]}}}}
+OPUS_MODEL = "claude-opus-5-5"
+
+
+def matched_request(run_dir: Path, k: int, cand_id: str) -> tuple[Any, dict]:
+    """(the Opus request, context) for a candidate whose screen drafted no matched block."""
+    from compaction import s1_types as T
+    bdir = Path(run_dir) / f"b{k}"
+    c = candidate_v2(run_dir, k, cand_id)
+    pre = _read(bdir / "boundary" / "pre_messages.json")
+    view = S.source_view(bdir, c["source_policy"])
+    q = c["repair_text"]
+    tol = RQ.MATCHED_TOLERANCE
+    lo, hi = round(len(q) * (1 - tol)), round(len(q) * (1 + tol))
+    spec = c.get("act_spec") or {}
+    mc = RQ.maintainer_context(bdir)
+    replies = "\n".join(f"<reply>{r}</reply>" for r in mc["replies"])
+    user = (f"<repair_quote length=\"{len(q)}\">{q}</repair_quote>\n"
+            f"<allowed_length>{lo}-{hi} characters</allowed_length>\n"
+            f"<act>{spec.get('description')}</act>\n"
+            f"<avoid_words>{', '.join(spec.get('reask_keywords') or [])}</avoid_words>\n"
+            f"<maintainer_replies>\n{replies}\n</maintainer_replies>\n"
+            f"<resumed_input>\n{render_post(view)}\n</resumed_input>\n"
+            f"<history>\n{render_history(pre)}\n</history>")
+    rid = f"interact:{Path(run_dir).name}:b{k}"
+    req = T.Req(key=f"matched|{rid}|{cand_id}", system=MATCHED_PROMPT, user=user,
+                schema=MATCHED_SCHEMA, max_output_tokens=4000, rid=rid, source="deepswe",
+                private=True)
+    return req, {"cand": c, "pre": pre, "view": view, "maintainer": mc}
+
+
+FALLBACK_OK = {"matched_not_maintainer"}  # the one problem a recorded fallback may carry
+
+
+def pick_matched(cands: list[dict], ctx: Mapping) -> tuple[dict | None, list[dict]]:
+    """(the chosen candidate, every candidate with its problems). The first passing every check
+    (a maintainer quote, `RQ.check_design` with the maintainer context, no act keyword); only
+    when none does, the first whose one problem is not being a maintainer quote, returned with
+    `fallback` set to the reason."""
+    c = ctx["cand"]
+    spec = c.get("act_spec") or {}
+    avoid = [w.lower() for w in spec.get("reask_keywords") or [] if w.strip()]
+    tried = []
+    for x in cands:
+        d = RQ.check_design({"quote": c["repair_text"]},
+                            {"matched_quote": x.get("quote"),
+                             "matched_rationale": x.get("rationale")},
+                            spec, ctx["view"], ctx["pre"], maintainer=ctx.get("maintainer"))
+        probs = list(d["evidence"]["problems"])
+        probs += [f"names_act_keyword:{w}" for w in avoid if w in (x.get("quote") or "").lower()]
+        tried.append({**x, "problems": probs})
+    best = next((x for x in tried if not x["problems"]), None)
+    if best is None:
+        fb = next((x for x in tried if x["problems"] and set(x["problems"]) <= FALLBACK_OK), None)
+        if fb is not None:
+            best = dict(fb, fallback=("no maintainer quote passed the checks: " + "; ".join(
+                f"{(x.get('quote') or '')[:40]!r}: {','.join(x['problems'])}"
+                for x in tried if x.get("source") == "maintainer") or "none proposed"))
+    return best, tried
+
+
+def _choose_matched(a, key: Mapping, ent: Mapping) -> int:
+    """No new call. `--choose I --why`: take the card's I-th drafted candidate (0-based) instead
+    of the first passing one. `--quote Q --rationale R --why`: a non-maintainer fallback, taken
+    only when every drafted maintainer candidate fails the current checks. Either must pass
+    every current check (a fallback may fail only `matched_not_maintainer`); the choice, the
+    re-checked candidates and the reason are recorded on the override."""
+    if not (a.why or "").strip():
+        raise SystemExit("--choose/--quote need --why")
+    p = Path(a.key).parent / OVERRIDES_NAME
+    old = _read(p)
+    o = old["cards"][a.card]
+    run_dir = (ROOT / ent["run_dir"]) if not Path(ent["run_dir"]).is_absolute() else \
+        Path(ent["run_dir"])
+    _, ctx = matched_request(run_dir, int(ent["k"]), ent["cand_id"])
+    drafted = [{k: x[k] for k in ("quote", "rationale", "source") if k in x}
+               for x in o.get("tried") or []]
+    _, rechecked = pick_matched(drafted, ctx)
+    if a.quote is not None:
+        if not (a.rationale or "").strip():
+            raise SystemExit("--quote needs --rationale")
+        ok = [x["quote"] for x in rechecked
+              if x.get("source") == "maintainer" and not x["problems"]]
+        if ok:
+            raise SystemExit(f"a drafted maintainer quote passes the checks: {ok[0]!r}")
+        x = {"quote": a.quote, "rationale": a.rationale.strip(), "source": "history"}
+        _, t = pick_matched([x], ctx)
+        if set(t[0]["problems"]) - FALLBACK_OK:
+            raise SystemExit(f"the fallback fails the checks: {t[0]['problems']}")
+        o.update(fallback=a.why.strip(), speaker="history")
+        chosen = {"quote": a.quote, "why": a.why.strip(), "utc": _utc()}
+    else:
+        x = drafted[a.choose]
+        if rechecked[a.choose]["problems"]:
+            raise SystemExit(f"candidate {a.choose} fails the current checks: "
+                             f"{rechecked[a.choose]['problems']}")
+        o.pop("fallback", None)
+        o["speaker"] = x.get("source") or "maintainer"
+        chosen = {"index": a.choose, "why": a.why.strip(), "utc": _utc()}
+    o.update(fields={"d_matched": x["quote"], "d_rationale": x["rationale"]}, chosen=chosen,
+             rechecked=[{"quote": r["quote"], "source": r.get("source"),
+                         "problems": r["problems"]} for r in rechecked])
+    S1P._atomic(p, (json.dumps(old, indent=1, sort_keys=True, ensure_ascii=False)
+                    + "\n").encode())
+    print(json.dumps({"override": str(p), "fields": o["fields"], "chosen": chosen,
+                      "speaker": o["speaker"], "rechecked": o["rechecked"]},
+                     ensure_ascii=False, indent=1))
+    return 0
+
+
+def cmd_draft_matched(a) -> int:
+    """Opus 5.5 on Max drafts a matched block for a card the screen left without one; the
+    first candidate passing the code checks goes to design_overrides.json (by: main session)."""
+    from compaction.claude_headless import MaxBackend
+    key = _read(a.key)
+    ent = key["cards"][a.card]
+    if a.choose is not None or a.quote is not None:
+        return _choose_matched(a, key, ent)
+    run_dir = (ROOT / ent["run_dir"]) if not Path(ent["run_dir"]).is_absolute() else \
+        Path(ent["run_dir"])
+    req, ctx = matched_request(run_dir, int(ent["k"]), ent["cand_id"])
+    be = MaxBackend(model=OPUS_MODEL, name="opus-max", effort="medium", concurrency=1,
+                    recorder=IR.PilotSpend().recorder())
+    resp = be.run([req], purpose="s2-interact-matched")[req.key]
+    if resp.error or not resp.data:
+        raise SystemExit(f"Opus draft failed: {resp.error}")
+    best, tried = pick_matched(resp.data["candidates"], ctx)
+    print(json.dumps({"tried": tried}, indent=1, ensure_ascii=False))
+    if best is None:
+        print(json.dumps({"override": None, "why": "no candidate passed the checks"}))
+        return 3
+    p = Path(a.key).parent / OVERRIDES_NAME
+    old = _read(p) if p.exists() else {"cards": {}}
+    old["cards"][a.card] = {
+        "fields": {"d_matched": best["quote"], "d_rationale": best["rationale"]},
+        "by": "main session (Jacob approved 24 Oct): Opus 5.5 draft on Max, code-checked",
+        "model": OPUS_MODEL, "utc": _utc(), "cand_id": ent["cand_id"], "tried": tried,
+        "speaker": "maintainer" if not best.get("fallback") else "history",
+        **({"fallback": best["fallback"]} if best.get("fallback") else {})}
+    S1P._atomic(p, (json.dumps(old, indent=1, sort_keys=True, ensure_ascii=False)
+                    + "\n").encode())
+    print(json.dumps({"override": str(p), "fields": old["cards"][a.card]["fields"]},
+                     ensure_ascii=False))
+    return 0
 
 
 def cmd_build2(a) -> int:
@@ -1578,7 +1793,9 @@ def advance_selection(results: list[dict], *, reselect: bool = True) -> list[dic
 
 def cmd_freeze2(a) -> int:
     key = _read(a.key)
-    results = freeze_v2(read_labels(Path(a.labels)), key)
+    ov = Path(a.key).parent / OVERRIDES_NAME
+    results = freeze_v2(read_labels(Path(a.labels)), key,
+                        overrides=(_read(ov).get("cards") or {}) if ov.exists() else None)
     print("\n".join(report_lines(results)))
     if not a.no_reselect:
         from dotenv import load_dotenv
@@ -1632,6 +1849,13 @@ def main(argv: list[str] | None = None) -> int:
     b2.add_argument("--seed", type=int, default=SEED)
     b2.add_argument("--unsealed", action="store_true",
                     help="allow boundaries past a run's sealed point (after the global gate)")
+    dm = sub.add_parser("draft-matched", help="v2: Opus drafts a missing matched block")
+    dm.add_argument("--card", required=True)
+    dm.add_argument("--key", default=str(CARDS_DIR / "v2" / KEY_NAME))
+    dm.add_argument("--choose", type=int, help="take this drafted candidate (0-based), no call")
+    dm.add_argument("--quote", help="a non-maintainer fallback quote (no call)")
+    dm.add_argument("--rationale", help="why the --quote has no bearing on the act")
+    dm.add_argument("--why", help="the reason for --choose/--quote (recorded)")
     f2 = sub.add_parser("freeze2", help="v2: freeze from the 3-question labels")
     f2.add_argument("--labels", required=True)
     f2.add_argument("--key", default=str(CARDS_DIR / "v2" / KEY_NAME))
@@ -1639,7 +1863,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="record decisions only; don't rescreen rejected boundaries")
     a = ap.parse_args(argv)
     return {"build": cmd_build, "freeze": cmd_freeze, "build2": cmd_build2,
-            "freeze2": cmd_freeze2}[a.cmd](a)
+            "freeze2": cmd_freeze2, "draft-matched": cmd_draft_matched}[a.cmd](a)
 
 
 if __name__ == "__main__":

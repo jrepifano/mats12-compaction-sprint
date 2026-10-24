@@ -602,7 +602,74 @@ def spec_from_draft(d: dict) -> dict:
             "reask_keywords": list(d["reask_keywords"])}
 
 
-def check_design(it: dict, d: dict, spec: dict, view: dict, pre: list[dict]) -> dict:
+def maintainer_context(bdir: Path) -> dict:
+    """What a v2 matched block is checked against (24 Oct, the main session): the maintainer's
+    replies the agent's history holds (sim replies with a `pre_index`) and every requirement
+    quote split at this boundary."""
+    b = Path(bdir) / "boundary"
+    replies = [r.get("reply") or "" for r in _read_or_none(b / "sim_replies.json") or []
+               if r.get("pre_index") is not None]
+    rq = _read_or_none(b / "requirements.json") or {}
+    return {"replies": replies,
+            "req_quotes": [it.get("quote") or "" for it in rq.get("items") or []]}
+
+
+def _spans(quote: str, reply: str) -> list[tuple[int, int]]:
+    """Every (start, end) of the quote in the reply, whitespace-insensitive."""
+    toks = (quote or "").split()
+    if not toks:
+        return []
+    return [(m.start(), m.end()) for m in
+            re.finditer(r"\s+".join(re.escape(t) for t in toks), reply or "")]
+
+
+def _leads_in(quote: str, reply: str) -> bool:
+    """At any of its places in this reply, the quote ends with a colon or is followed (across
+    whitespace and line breaks) by one: the lead-in of what comes next ("X is still off: make it
+    Y"), which carries that requirement."""
+    if quote.rstrip().endswith(":"):
+        return bool(_spans(quote, reply))
+    return any(reply[b:].lstrip().startswith(":") for _, b in _spans(quote, reply))
+
+
+_SENTENCE_END = re.compile(r"(?:[.!?](?=\s|$)|\n)\s*")  # a gap of blank lines is one end
+
+
+def _sentence(reply: str, a: int, b: int, around: int = 1) -> str:
+    """The sentence (or line) of the reply around [a, b), with `around` sentences on each side
+    (a reason or complaint often sits next to the rule it motivates)."""
+    ends = [m.end() for m in _SENTENCE_END.finditer(reply)]
+    before = [e for e in ends if e <= a]
+    after = [e for e in ends if e > b - 1]
+    lo = before[-1 - around] if len(before) > around else 0
+    hi = after[around] if len(after) > around else len(reply)
+    return reply[lo:hi]
+
+
+def _explains_requirement(quote: str, reply: str, req_quotes: list[str]) -> bool:
+    """At any of its places in this reply, the quote's sentence or a neighbouring one states,
+    explains or justifies a requirement: it contains, or shares a six-word run with, a
+    requirement quote."""
+    for a, b in _spans(quote, reply):
+        sent = _sentence(reply, a, b)
+        sh = _shingles(sent)
+        if any(T.quote_in(q, sent) or T.quote_in(sent, q) or (sh & _shingles(q))
+               for q in req_quotes if q):
+            return True
+    return False
+
+
+def _shingles(text: str, n: int = 6) -> set[tuple[str, ...]]:
+    w = re.findall(r"[a-z0-9_]+", (text or "").lower())
+    return {tuple(w[i:i + n]) for i in range(max(0, len(w) - n + 1))}
+
+
+def check_design(it: dict, d: dict, spec: dict, view: dict, pre: list[dict],
+                 maintainer: dict | None = None) -> dict:
+    """The design check. With `maintainer` (v2 screens and later): the matched block must be the
+    repair's kind of text, a quote from a maintainer reply in the history (`maintainer_context`),
+    share no six-word run with any requirement quote, and sit in no sentence that states,
+    explains or justifies one, nor lead into one: it must carry no requirement."""
     errs = S.validate_spec(spec)
     mq = d.get("matched_quote")
     ev: dict = {"spec_errors": errs, "matched_quote": mq,
@@ -620,6 +687,19 @@ def check_design(it: dict, d: dict, spec: dict, view: dict, pre: list[dict]) -> 
             probs.append("matched_not_in_history")
         if S.in_resumed_input(mq, view):
             probs.append("matched_in_resumed_input")
+        if maintainer is not None:
+            if not any(T.quote_in(mq, r) for r in maintainer["replies"]):
+                probs.append("matched_not_maintainer")
+            else:
+                if any(_leads_in(mq, r) for r in maintainer["replies"]):
+                    probs.append("matched_leads_into_requirement")
+                if any(_explains_requirement(mq, r, maintainer["req_quotes"])
+                       for r in maintainer["replies"]):
+                    probs.append("matched_explains_requirement")
+            sh = _shingles(mq)
+            if any(T.quote_in(mq, q) or T.quote_in(q, mq) or (sh & _shingles(q))
+                   for q in maintainer["req_quotes"] if q):
+                probs.append("matched_overlaps_requirement")
     ev["problems"] = probs
     return _check("unresolved", ";".join(probs), **ev) if probs else _check("pass", None, **ev)
 
@@ -926,7 +1006,8 @@ def screen_sha_v2() -> str:
                     (SPLIT_PROMPT, DRAFT_PROMPT_V2, S.JUDGE_PROMPT)},
         "schema": DRAFT_SCHEMA_V2, "map": DRAFT_MAP, "code_fails": CODE_FAILS_V2,
         "pending": "applicability_v2+check_pending(file)",
-        "pending_min_chars": PENDING_MIN_CHARS}, sort_keys=True).encode()).hexdigest()
+        "pending_min_chars": PENDING_MIN_CHARS,
+        "matched": "maintainer_reply+no_requirement_overlap+no_lead_in+no_explaining_sentence"}, sort_keys=True).encode()).hexdigest()
 
 
 def _excluded_v2(checks: dict) -> str | None:
@@ -956,8 +1037,11 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
     rq = _read(b / "requirements.json")
     detail = _read_or_none(v2_dir(bdir) / "grades_detail.json") or {}
     ledger = (_read_or_none(v2_dir(bdir) / "ledger.json") or {}).get("sources") or {}
-    old = {c["cand_id"]: c for c in (_read_or_none(v2_dir(bdir) / "candidates.json") or {})
-           .get("candidates", [])}
+    prev_file = _read_or_none(v2_dir(bdir) / "candidates.json") or {}
+    # drafts and checks are reused only from a screen under the same rules (astra
+    # matched-override r1 #3): a screen with another screen_sha256 starts fresh
+    old = ({c["cand_id"]: c for c in prev_file.get("candidates", [])}
+           if prev_file.get("screen_sha256") == screen_sha_v2() else {})
     rejected = set(rejected)
     image = ((_read_or_none(Path(bdir) / "run.json") or {}).get("task") or {}).get("image")
     pre = _read(b / "pre_messages.json")
@@ -1010,7 +1094,8 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
             checks["applicability"] = applicability_v2(d, pend)
             dec = DRAFT_MAP["decision_observable"][d["decision_observable"]]
             checks["decision"] = _check(dec, None, decision=d["decision"])
-            checks["design"] = check_design(it, d, spec, views[src], pre)
+            checks["design"] = check_design(it, d, spec, views[src], pre,
+                                            maintainer=maintainer_context(bdir))
             rec = checks["recoverability"]
             if d["search_strings"] and not rec["evidence"].get("search_after_draft"):
                 rec = check_recoverability(it, image, grep_runner, d["search_strings"])

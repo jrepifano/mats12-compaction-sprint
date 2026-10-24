@@ -767,6 +767,192 @@ def test_v2_one_question_round_trip_through_the_page_mapping(run, tmp_path, CARD
         "live.b1-q2": "frozen", "live.b1-q3": "frozen", "bundle.live": "frozen"}
 
 
+def test_v2_design_override_fills_a_missing_matched_block(run, tmp_path, CARDS):
+    """24 Oct (A): a card held for a missing matched block freezes once the main session's
+    override fills it; the override is code-checked like an edit, recorded on the freeze, and
+    never replaces Jacob's own edit."""
+    from compaction.s2 import interact_run as IR
+    from compaction.s2 import interact_score as SC
+    _v2_two_boundaries(run)
+    IR.place_cards(run / "b1", _screen_b1(run, draft=dict(DRAFT_V2, matched_quote=None,
+                                                           matched_rationale=None)))
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    good, other = _neutral_turns(run / "b1")
+    _html, key = CARDS.build_v2([(run, 1)])
+    cid = key["order"][0]
+    lab = {cid: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key["cards"][cid]["content_sha256"][:16]}}
+    held = CARDS.freeze_v2(lab, key)[0]
+    assert held["status"] == "held" and "d_matched" in held["reasons"][0]
+    # a maintainer quote that carries a requirement, and a non-maintainer quote: held
+    for mq, why in (("Conflicts should give a 409 back please.", "matched_overlaps_requirement"),
+                    (other, "matched_not_maintainer")):
+        o = {cid: {"fields": {"d_matched": mq, "d_rationale": "x"}, "by": "m", "utc": "t"}}
+        r = CARDS.freeze_v2(lab, key, overrides=o, runner=_ref_pass)[0]
+        assert r["status"] == "held" and why in r["reasons"][0], (mq, r["reasons"])
+    bad = {cid: {"fields": {"d_matched": "words that are nowhere in the history at all",
+                            "d_rationale": "x"}, "by": "main session", "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, overrides=bad, runner=_ref_pass)[0]
+    assert r["status"] == "held" and "matched_not_in_history" in r["reasons"][0]
+    ov = {cid: {"fields": {"d_matched": good, "d_rationale": "unrelated"},
+                "by": "main session", "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, overrides=ov, runner=_ref_pass)[0]
+    assert r["status"] == "frozen" and r["design_override"]["fields"] == ["d_matched",
+                                                                         "d_rationale"]
+    f = SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"])
+    assert f["matched_text"] == good and f["design_override"]["by"] == "main session"
+    assert f["checks"]["design"]["outcome"] == "pass"
+    assert f["checks"]["design"]["jacob_via"] == ("card; matched block filled by override "
+                                                  "after labelling")
+    assert f["checks"]["retention"]["jacob_via"] == "3-question card"
+    # Jacob's own edit wins over an override
+    (run / "b1" / "boundary" / "freeze").rename(tmp_path / "freeze-old")
+    mine = {cid: dict(lab[cid], d_rationale="Jacob's reason")}
+    r = CARDS.freeze_v2(mine, key, overrides=ov, runner=_ref_pass)[0]
+    assert r["design_override"]["fields"] == ["d_matched"]
+    assert SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"])[
+        "matched_rationale"] == "Jacob's reason"
+    # a recorded fallback (no maintainer quote passed) may carry only matched_not_maintainer
+    (run / "b1" / "boundary" / "freeze").rename(tmp_path / "freeze-old2")
+    fb = {cid: {"fields": {"d_matched": other, "d_rationale": "neutral"}, "by": "m",
+                "utc": "t", "speaker": "history", "fallback": "no maintainer quote passed"}}
+    r = CARDS.freeze_v2(lab, key, overrides=fb, runner=_ref_pass)[0]
+    assert r["status"] == "frozen" and r["design_override"]["fallback"]
+    assert SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"])["design_override"][
+        "speaker"] == "history"
+
+
+def _neutral_turns(bdir):
+    """Add a neutral maintainer reply and a neutral agent remark to a boundary's history (the
+    fixture's replies all carry requirements). Returns (maintainer quote, other quote)."""
+    b = bdir / "boundary"
+    pre = json.loads((b / "pre_messages.json").read_text())
+    mq, other = "Thanks, the CI box was slow today, sorry.", "Running the linters on the api.py file now."
+    pre += [{"role": "tool", "tool_call_id": "cx", "content": mq},
+            {"role": "assistant", "content": other}]
+    _w(b / "pre_messages.json", pre)
+    replies = json.loads((b / "sim_replies.json").read_text())
+    _w(b / "sim_replies.json", replies + [{"reply_id": "r9", "call_index": 9,
+                                           "step": "02_implement", "pre_index": len(pre) - 2,
+                                           "question": "ok?", "reply": mq}])
+    return mq, other
+
+
+def test_matched_lead_in_of_a_requirement_is_refused():
+    reply = "The server abort is still off: make it broadcastAbort. Thanks, nice work so far."
+    assert R._leads_in("The server abort is still off", reply)
+    assert not R._leads_in("Thanks, nice work so far.", reply)
+    # astra matched-override r1 #4: the colon inside the quote, a line break before it, and a
+    # second occurrence are all caught
+    assert R._leads_in("The server abort is still off:", reply)
+    assert R._leads_in("abort is off", "abort is off\n  : do X")
+    assert R._leads_in("abort is off", "abort is off, sure. Then: abort is off \n: fix it")
+    # a sentence that explains or motivates a requirement, or sits next to one, is refused
+    req = ["make it broadcastAbort."]
+    two = "The reporter still counts after bail.\n\nPlease make it broadcastAbort. Cheers!"
+    assert R._explains_requirement("still counts after bail", two, req)
+    far = "Lovely weather today. I had coffee. Bye. Please make it broadcastAbort."
+    assert not R._explains_requirement("Lovely weather today.", far, req)
+    mc = {"replies": [reply], "req_quotes": ["make it broadcastAbort."]}
+    d = {"matched_quote": "The server abort is still off", "matched_rationale": "x"}
+    probs = R.check_design({"quote": "keep the abort idempotent pls"}, d,
+                           R.spec_from_draft(DRAFT), {"post": [], "summary_index": 0},
+                           [{"role": "tool", "content": reply}], maintainer=mc)
+    assert "matched_leads_into_requirement" in probs["evidence"]["problems"]
+
+
+def test_v2_override_must_pass_every_current_check(run, tmp_path, CARDS):
+    """astra matched-override r1 #2: an override no longer inherits the card's own design
+    problems; and #3: a screen under older rules is refused at build and re-checked strictly at
+    freeze."""
+    from compaction.s2 import interact_run as IR
+    from compaction.s2 import interact_score as SC
+    _v2_two_boundaries(run)
+    long_q = "Conflicts should give a 409 back please, and quickly, and loudly, ok?"
+    IR.place_cards(run / "b1", _screen_b1(run, draft=dict(DRAFT_V2, matched_quote=long_q)))
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    good, _ = _neutral_turns(run / "b1")
+    _html, key = CARDS.build_v2([(run, 1)])
+    cid = key["order"][0]
+    shown = key["cards"][cid]["screen_design"]
+    assert shown["d_matched"] == long_q
+    lab = {cid: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key["cards"][cid]["content_sha256"][:16]}}
+    # the card itself showed matched_length_out_of_range; an override with the same problem
+    # is still held
+    o = {cid: {"fields": {"d_matched": "Thanks, the CI box was slow today, sorry. Really slow, "
+                                       "very slow indeed.", "d_rationale": "x"},
+               "by": "m", "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, overrides=o, runner=_ref_pass)[0]
+    assert r["status"] == "held" and "fails the current checks" in r["reasons"][0]
+    # a stale screen: the build refuses, the freeze re-checks the design under the current rules
+    cj = run / "b1" / "boundary" / "fork_v2" / "candidates.json"
+    data = json.loads(cj.read_text())
+    _w(cj, dict(data, screen_sha256="old"))
+    with pytest.raises(CARDS.StaleScreen):
+        CARDS.build_v2([(run, 1)])
+    ok = {cid: {"fields": {"d_matched": good, "d_rationale": "neutral"}, "by": "m",
+                "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, overrides=ok, runner=_ref_pass)[0]
+    assert r["status"] == "frozen", r["reasons"]
+    d = SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"])["checks"]["design"]
+    assert d["screened_under"] == "old" and d["rechecked_under"] == R.screen_sha_v2()
+
+
+def test_v2_rescreen_drops_drafts_from_older_rules(run):
+    _v2_two_boundaries(run)
+    calls = []
+
+    def answer(req):
+        calls.append(req.key)
+        return dict(DRAFT_V2)
+
+    def again():
+        return R.screen_v2(run / "b1", backend=StubBackend(answer), grep_runner=_grep_v2,
+                           ref_runner=_ref_pass, file_runner=_files, task=TASK,
+                           sources=["live"])
+    again()
+    n = len(calls)
+    again()
+    assert len(calls) == n  # same rules: drafts reused
+    cj = run / "b1" / "boundary" / "fork_v2" / "candidates.json"
+    _w(cj, dict(json.loads(cj.read_text()), screen_sha256="old"))
+    again()
+    assert len(calls) == 2 * n  # older rules: drafted again
+
+
+def test_pick_matched_takes_the_first_candidate_passing_the_checks(run, CARDS):
+    from compaction.s2 import interact_score as S2
+    _v2_two_boundaries(run)
+    bdir = run / "b1"
+    pre = json.loads((bdir / "boundary" / "pre_messages.json").read_text())
+    c = {"repair_text": "Conflicts should give a 409 back pretty please.",
+         "act_spec": dict(R.spec_from_draft(DRAFT), reask_keywords=["409"])}
+    ctx = {"cand": c, "pre": pre, "view": S2.source_view(bdir, "live")}
+    best, tried = CARDS.pick_matched([
+        {"quote": "not in the history, about the same length", "rationale": "x"},
+        {"quote": "Conflicts should give a 409 back please.", "rationale": "x"}], ctx)
+    assert best is None  # the second names the act's keyword
+    assert "matched_not_in_history" in tried[0]["problems"]
+    assert "names_act_keyword:409" in tried[1]["problems"]
+    # the maintainer rule: a maintainer quote first; a non-maintainer one only as a fallback
+    mq, other = _neutral_turns(bdir)
+    ctx = dict(ctx, pre=json.loads((bdir / "boundary" / "pre_messages.json").read_text()),
+               maintainer=__import__("compaction.s2.interact_reqs", fromlist=["x"])
+               .maintainer_context(bdir))
+    best, tried = CARDS.pick_matched([{"quote": other, "rationale": "x", "source": "history"},
+                                      {"quote": mq, "rationale": "y", "source": "maintainer"}],
+                                     ctx)
+    assert best and best["quote"] == mq and not best.get("fallback"), tried
+    assert tried[0]["problems"] == ["matched_not_maintainer"]
+    best, _ = CARDS.pick_matched([{"quote": other, "rationale": "x", "source": "history"}], ctx)
+    assert best["quote"] == other and best["fallback"].startswith("no maintainer quote passed")
+
+
 def test_v2_card_facts_quote_context_and_closest_passage(CARDS):
     said = CARDS.said_parts("x and y said here.", "y  said")
     assert (said["before"], said["quote"], said["after"]) == ("x and ", "y said", " here.")

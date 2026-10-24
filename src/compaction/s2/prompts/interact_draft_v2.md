@@ -58,7 +58,7 @@ Answer these, for the agent's remaining work after the compaction:
 
 5. Re-asking ("reask_keywords"): 1 to 4 short words or names that a question to the maintainer about this requirement would contain.
 
-6. The matched addition ("matched_quote", "matched_rationale"): an exact quote from <history> that the summary also leaves out, that has no relevance to the remaining work or to the act, and whose length is within 20% of the requirement's quote. Explain in "matched_rationale" why it is irrelevant. Null for both if there is none.
+6. The matched addition ("matched_quote", "matched_rationale"): an exact quote from one of the maintainer's replies that appear in <history> (the same kind of text as the requirement), that the summary also leaves out, that does not state, explain or justify any requirement (not even part of a sentence that does, and not the lead-in before a colon) and has no relevance to the remaining work or to the act (a pleasantry, a remark about unrelated matters), and whose length is within 20% of the requirement's quote. Explain in "matched_rationale" why it is irrelevant. Null for both if there is none.
 
 7. Search strings ("search_strings"): up to 5 exact strings (names, values, short phrases) that would be in the repository, the plan file or a commit message if the requirement were written down there.
 
