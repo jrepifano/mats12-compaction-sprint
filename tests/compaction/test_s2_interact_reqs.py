@@ -98,6 +98,12 @@ def _b2_pre() -> list[dict]:
             _ask(6, REPLIES["r6"][1]), _tool(6, REPLIES["r6"][2])]
 
 
+@pytest.fixture(autouse=True)
+def _own_opus_lock(tmp_path, monkeypatch):
+    """Never the real Max lock file: a live Opus run elsewhere would block these tests."""
+    monkeypatch.setattr(R, "OPUS_LOCK_FILE", tmp_path / "opus.lock")
+
+
 @pytest.fixture()
 def run(tmp_path):
     run = tmp_path / "demo-deepseek-a1"
@@ -593,10 +599,15 @@ def _v2_two_boundaries(run):
     return req_sha
 
 
+def _opus_ok():
+    return StubBackend(lambda req: dict(OPUS_LOST))
+
+
 def _screen_b1(run, draft=None, **kw):
     return R.screen_v2(run / "b1", backend=StubBackend(lambda req: dict(draft or DRAFT_V2)),
                        grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
-                       task=TASK, **{"sources": ["live", "cc_prompt"], **kw})
+                       task=TASK, **{"sources": ["live", "cc_prompt"],
+                                     "opus_backend": _opus_ok(), **kw})
 
 
 def test_v2_grades_every_requirement_so_far_and_marks_new_or_inherited(run):
@@ -633,7 +644,7 @@ def test_v2_screen_cards_the_first_with_a_pending_spot_and_bundles_its_source(ru
 
     out = R.screen_v2(run / "b1", backend=StubBackend(answer), grep_runner=_grep_v2,
                       ref_runner=_ref_pass, file_runner=_files, task=TASK,
-                      sources=["live", "cc_prompt"])
+                      sources=["live", "cc_prompt"], opus_backend=_opus_ok())
     disp = {c["cand_id"]: c["disposition"] for c in out["candidates"]}
     assert out["carded"] == "live.b1-q2" and out["bundle"] == ["live.b1-q3"]
     assert disp["live.b1-q5"] == "not_reached"  # the bundle is full (max_bundle=1)
@@ -643,13 +654,236 @@ def test_v2_screen_cards_the_first_with_a_pending_spot_and_bundles_its_source(ru
     c = {c["cand_id"]: c for c in out["candidates"]}["live.b1-q2"]
     app = c["checks"]["applicability"]
     assert app["outcome"] == "pass" and app["evidence"]["pending"]["outcome"] == "pass"
-    assert set(c["checks"]) == set(R.CHECKS)  # the pilot's six
+    assert set(c["checks"]) == {*R.CHECKS, "near_verbatim", "opus"}  # the pilot's six + B/C
     assert c["loss"]["status"] == "new" and c["inherited"] is False
     assert all(k.startswith("draft2|") for k in seen)
     assert out["screen_sha256"] == R.screen_sha_v2()
     # rejected: the next candidate, same source first (bundle capped at 1 by default)
     out2 = _screen_b1(run, rejected=["live.b1-q2"])
     assert out2["carded"] == "live.b1-q3" and out2["bundle"] == []
+
+
+OPUS_LOST = {"retention": "lost", "retention_reason": "nothing", "applicable": "yes",
+             "applicable_reason": "open", "item_type": "unbuilt_decision", "type_reason": "x",
+             "in_workspace": "no", "workspace_reason": "y"}
+
+
+def _screen_opus(run, verdicts, **kw):
+    """The v2 screen with a stub Opus: `verdicts` maps cand_id -> verdict (default lost)."""
+    opus = StubBackend(lambda req: dict(OPUS_LOST, **verdicts.get(req.key.split("|")[-1], {})))
+    out = R.screen_v2(run / "b1", backend=StubBackend(lambda req: dict(DRAFT_V2)),
+                      grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
+                      task=TASK, opus_backend=opus, **{"sources": ["live", "cc_prompt"], **kw})
+    return out, opus
+
+
+def test_v2_opus_screen_gates_cards_and_logs_every_verdict(run):
+    """B and C (24 Oct): Opus runs last, on Max; only a lost, applicable process rule or
+    unbuilt decision not already in the workspace is carded; every verdict is logged."""
+    _v2_two_boundaries(run)
+    out, opus = _screen_opus(run, {"live.b1-q2": {"retention": "paraphrased"},
+                                   "live.b1-q3": {"item_type": "built_detail"},
+                                   "cc_prompt.b1-q2": {"in_workspace": "yes"}})
+    disp = {c["cand_id"]: c["disposition"] for c in out["candidates"]}
+    assert disp["live.b1-q2"] == "excluded:opus:retention_paraphrased"
+    assert disp["live.b1-q3"] == "excluded:type:built_detail"
+    assert disp["cc_prompt.b1-q2"] == "excluded:type:already_in_workspace"
+    assert out["carded"] == "cc_prompt.b1-q3"
+    seen = [r.key.split("|")[-1] for r in opus.seen]
+    assert seen[:4] == ["live.b1-q2", "live.b1-q3", "cc_prompt.b1-q2", "cc_prompt.b1-q3"]
+    req = opus.seen[0]
+    assert "<resumed_input>" in req.user and PENDING_LINE in req.user  # the code excerpt
+    log = [json.loads(x) for x in (run / "b1" / "boundary" / "fork_v2" / R.OPUS_LOG)
+           .read_text().splitlines()]
+    assert [x["gate"] for x in log[:3]] == ["opus:retention_paraphrased", "type:built_detail",
+                                             "type:already_in_workspace"]
+    assert log[0]["haiku_grade"] == "dropped" and log[0]["near"]["of"] >= 1
+    # the verdict is part of the screen: a rescreen under the same rules reuses it
+    again, opus2 = _screen_opus(run, {})
+    assert opus2.seen == [] and again["carded"] == out["carded"]
+    # a process rule goes forward too; an Opus failure fails the screen (retried, never carded)
+    assert R.opus_gate(dict(OPUS_LOST, item_type="process_rule", in_workspace="yes")) is None
+    assert R.opus_gate(dict(OPUS_LOST, in_workspace="unclear")) == "type:workspace_unclear"
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    with pytest.raises(RuntimeError, match="opus screen failed"):
+        R.screen_v2(run / "b1", backend=StubBackend(lambda req: dict(DRAFT_V2)),
+                    grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files, task=TASK,
+                    sources=["live"], opus_backend=StubBackend(lambda req: None))
+
+
+def test_v2_cards_need_a_passing_opus_verdict(run, tmp_path, CARDS):
+    """astra opus-screen r1 #1: placement, the card build and the freeze refuse a candidate
+    without a passing Opus verdict under the current rules."""
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    out = _screen_b1(run)
+    bad = dict(out, candidates=[dict(c, checks={k: v for k, v in c["checks"].items()
+                                                if k != "opus"}) for c in out["candidates"]])
+    with pytest.raises(ValueError, match="no passing Opus verdict"):
+        IR.place_cards(run / "b1", bad)
+    with pytest.raises(ValueError, match="isn't the current rules"):
+        IR.place_cards(run / "b1", dict(out, screen_sha256="old"))
+    IR.place_cards(run / "b1", out)
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    _html, key = CARDS.build_v2([(run, 1)])
+    cj = run / "b1" / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(cj.read_text())
+    for c in doc["candidates"]:
+        c["checks"].pop("opus", None)
+    _w(cj, doc)
+    with pytest.raises(CARDS.StaleScreen, match="no passing Opus verdict"):
+        CARDS.build_v2([(run, 1)])
+    cid = key["order"][0]
+    lab = {cid: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key["cards"][cid]["content_sha256"][:16]}}
+    r = CARDS.freeze_v2(lab, key, runner=_ref_pass)[0]
+    assert r["status"] == "held" and any("Opus" in x for x in r["reasons"])
+
+
+def test_pre_bc_exemption_is_testem_only_and_committed(run, tmp_path, CARDS, monkeypatch):
+    """r2 #1: only the hard-coded testem freeze, with a committed annotation carrying its
+    record hash, may skip the Opus gate; any other card claiming pre-B/C is refused."""
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    out = _screen_b1(run)
+    IR.place_cards(run / "b1", out)
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    _html, key = CARDS.build_v2([(run, 1)])
+    cid = key["order"][0]
+    cand = key["cards"][cid]["cand_id"]
+    monkeypatch.setattr(IR, "FREEZE_COMMITTED", tmp_path / "committed")  # never the repo's
+    fz = IR.committed_freeze_path(run / "b1", cand)
+    fz.parent.mkdir(parents=True, exist_ok=True)
+    _w(fz, {"record_sha256": "abc"})
+    _w(fz.with_name(fz.stem + ".annotations.json"),
+       {"screen_era": "pre-B/C", "freeze_record_sha256": "abc"})
+    lab = {cid: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key["cards"][cid]["content_sha256"][:16]}}
+    r = CARDS.freeze_v2(lab, key, runner=_ref_pass)[0]
+    assert r["status"] == "held" and any("never to a new one" in x for x in r["reasons"])
+    # even as the named card, an uncommitted annotation doesn't exempt it
+    monkeypatch.setattr(CARDS, "PRE_BC_EXEMPT", (run.name, 1, cand))
+    monkeypatch.setattr(CARDS, "ROOT", run.parent)
+    assert not CARDS.pre_bc_exempt(run, 1, cand)
+    # r3: even when the exemption holds, no new freeze is made under it: with no local freeze
+    # and the card's content edited (no Opus verdict), it is held, not frozen
+    monkeypatch.setattr(CARDS, "pre_bc_exempt", lambda *a: True)
+    cj = run / "b1" / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(cj.read_text())
+    for c in doc["candidates"]:
+        c["checks"].pop("opus", None)
+        c["repair_text"] = c["repair_text"] + " (edited)"
+    _w(cj, doc)
+    r = CARDS.freeze_v2(lab, key, runner=_ref_pass)[0]
+    assert r["status"] == "held" and not (run / "b1" / "boundary" / "freeze").exists()
+    assert any("never to a new one" in x for x in r["reasons"])
+    assert any("no passing Opus verdict" in x for x in r["reasons"])
+
+
+def test_opus_calls_never_overlap():
+    """astra opus-screen r1: one Opus call at a time across workers."""
+    active, peak = [0], [0]
+
+    def slow(req):
+        active[0] += 1
+        peak[0] = max(peak[0], active[0])
+        time.sleep(0.05)
+        active[0] -= 1
+        return dict(OPUS_LOST)
+    be = StubBackend(slow)
+
+    def call(_):
+        with R._opus_lock():
+            be.run([T.Req(key="opus|x", system="", user="", schema=None, max_output_tokens=1,
+                          rid="x", source="deepswe", private=True)], purpose="t")
+    with __import__("concurrent.futures").futures.ThreadPoolExecutor(4) as ex:
+        list(ex.map(call, range(4)))
+    assert peak[0] == 1
+
+
+def test_v2_funnel_reports_types_and_haikus_precision_against_opus(run):
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    _screen_opus(run, {"live.b1-q2": {"retention": "kept"},
+                       "live.b1-q3": {"item_type": "built_detail", "type_reason": "in code"}})
+    _screen_opus(run, {"live.b1-q2": {"retention": "kept"},  # a repeat: counted once
+                       "live.b1-q3": {"item_type": "built_detail", "type_reason": "in code"}})
+    f = IR.funnel(run.parent)
+    (o,) = f["opus"]["by_screen_version"].values()
+    hp = o["haiku_precision_among_opus_reviewed_survivors"]
+    assert hp["dropped"] == o["n"] and hp["opus_lost"] == o["n"] - 1
+    assert o["by_gate"]["opus:retention_kept"] == 1 and o["by_type"]["built_detail"] == 1
+    ex = {r["cand_id"]: r for r in f["excluded"]}
+    assert ex["live.b1-q3"]["item_type"] == "built_detail"
+    assert ex["live.b1-q3"]["type_reason"] == "in code"
+    assert f["passed_opus"][0]["item_type"] == "unbuilt_decision"
+    md = (run.parent / "funnel.md").read_text()
+    assert "Haiku precision among Opus-reviewed survivors" in md
+    assert "Type (Opus): built_detail" in md
+
+
+def test_v2_later_compactions_fork_only_from_the_runs_own_summary(run):
+    """Jacob, 24 Oct: no mixed-method chains. At k>1 a replay source is excluded
+    (source:mixed_chain); only the live summary can be carded. k=1 keeps every source."""
+    _v2_two_boundaries(run)
+    R.grade_sources_v2(run / "b2", ["live", "cc_prompt"], grader=_grader(
+        {"live": {"b1-q2": "dropped", "b1-q5": "dropped", "b2-q1": "dropped"},
+         "cc_prompt": {"b1-q2": "dropped", "b2-q1": "dropped"}}))
+    R.loss_ledger(run / "b2")
+    out = R.screen_v2(run / "b2", backend=StubBackend(lambda req: dict(DRAFT_V2)),
+                      grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
+                      task=TASK, sources=["live", "cc_prompt"], opus_backend=_opus_ok())
+    disp = {c["cand_id"]: c["disposition"] for c in out["candidates"]}
+    assert {d for cid, d in disp.items() if cid.startswith("cc_prompt.")} == {
+        "excluded:source:mixed_chain"}
+    assert out["carded"] is None or out["carded"].startswith("live.")
+    from compaction.s2 import interact_run as IR
+    f = IR.funnel(run.parent)
+    assert f["counts"]["v2"]["excluded:source:mixed_chain"] == sum(
+        d == "excluded:source:mixed_chain" for d in disp.values())
+
+
+def test_v2_near_verbatim_rule_and_unclear_grades(run):
+    """The cheap rule before Opus: a quote (nearly) verbatim in the resumed input is excluded;
+    an unclear Haiku grade goes to Opus rather than straight to a card."""
+    assert R.near_verbatim("x\nplease return a 409 on all conflicting writes\n",
+                           "Return a 409 on conflicting writes!")["nearly"]  # 4 of 4
+    assert not R.near_verbatim("x\nreturn a 409 on any conflicting write\n",
+                               "Return a 409 on conflicting writes!")["nearly"]  # 3 of 4
+    assert not R.near_verbatim("x\nsomething else entirely\n",
+                               "Return a 409 on conflicting writes!")["nearly"]
+    assert not R.near_verbatim("409", "a 409")["nearly"]  # under 3 key words: never nearly
+    # astra opus-screen r1 #3: polarity, word boundaries, short quotes
+    assert not R.near_verbatim("x\nmodify existing tests\n",
+                               "do not modify existing tests")["nearly"]
+    assert not R.near_verbatim("x\ndo not modify existing tests\n",
+                               "modify existing tests")["nearly"]
+    # r2 #3: a negation on either side sends it to Opus, whatever its scope
+    assert not R.near_verbatim("x\nplease do not modify existing tests\n",
+                               "Do not modify existing tests")["nearly"]
+    assert not R.near_verbatim("x\nModify existing tests, but do not change production code\n",
+                               "Do not modify existing tests")["nearly"]
+    assert not R.near_verbatim("x\nModify existing tests, but do not change production code\n",
+                               "modify existing tests")["nearly"]
+    assert not R.near_verbatim("call foobar_baz_qux now", "foo")["verbatim"]
+    assert R.near_verbatim("call foo now", "foo")["verbatim"]
+    assert not R.near_verbatim("call foo now", "foo")["nearly"]  # short: always to Opus
+    _v2_two_boundaries(run)
+    view = R.S.source_view(run / "b1", "live")
+    it = {"quote": next(ln for ln in R.resumed_text(view).splitlines()
+                        if len(R.key_words(ln)) >= R.NEAR_MIN_WORDS)}
+    assert R.check_near(view, it)["outcome"] == "fail"
+    detail = json.loads((run / "b1" / "boundary" / "fork_v2" / "grades_detail.json").read_text())
+    detail["live"]["b1-q2"]["grade"] = "unclear"
+    _w(run / "b1" / "boundary" / "fork_v2" / "grades_detail.json", detail)
+    out, _opus = _screen_opus(run, {})
+    c = {c["cand_id"]: c for c in out["candidates"]}["live.b1-q2"]
+    assert c["checks"]["retention"]["outcome"] == "unresolved"
+    assert c["disposition"] == "carded" and c["checks"]["opus"]["outcome"] == "pass"
 
 
 def test_v2_screen_excludes_a_candidate_without_a_pending_spot(run):
@@ -889,18 +1123,20 @@ def test_v2_override_must_pass_every_current_check(run, tmp_path, CARDS):
                "by": "m", "utc": "t"}}
     r = CARDS.freeze_v2(lab, key, overrides=o, runner=_ref_pass)[0]
     assert r["status"] == "held" and "fails the current checks" in r["reasons"][0]
-    # a stale screen: the build refuses, the freeze re-checks the design under the current rules
+    ok = {cid: {"fields": {"d_matched": good, "d_rationale": "neutral"}, "by": "m",
+                "utc": "t"}}
+    # a stale screen: the build refuses, and the freeze holds it for a rescreen (r2 #2)
     cj = run / "b1" / "boundary" / "fork_v2" / "candidates.json"
     data = json.loads(cj.read_text())
     _w(cj, dict(data, screen_sha256="old"))
     with pytest.raises(CARDS.StaleScreen):
         CARDS.build_v2([(run, 1)])
-    ok = {cid: {"fields": {"d_matched": good, "d_rationale": "neutral"}, "by": "m",
-                "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, overrides=ok, runner=_ref_pass)[0]
+    assert r["status"] == "held" and any("rescreen required" in x for x in r["reasons"])
+    _w(cj, data)
     r = CARDS.freeze_v2(lab, key, overrides=ok, runner=_ref_pass)[0]
     assert r["status"] == "frozen", r["reasons"]
-    d = SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"])["checks"]["design"]
-    assert d["screened_under"] == "old" and d["rechecked_under"] == R.screen_sha_v2()
+    assert not SC.read_freeze(run / "b1", key["cards"][cid]["cand_id"]).get("screen_era")
 
 
 def test_v2_rescreen_drops_drafts_from_older_rules(run):
@@ -914,7 +1150,7 @@ def test_v2_rescreen_drops_drafts_from_older_rules(run):
     def again():
         return R.screen_v2(run / "b1", backend=StubBackend(answer), grep_runner=_grep_v2,
                            ref_runner=_ref_pass, file_runner=_files, task=TASK,
-                           sources=["live"])
+                           sources=["live"], opus_backend=_opus_ok())
     again()
     n = len(calls)
     again()

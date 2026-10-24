@@ -1140,6 +1140,40 @@ def screen_stale(run_dir: Path, k: int) -> str | None:
     return None if sha == RQ.screen_sha_v2() else (sha or "missing")
 
 
+# The one card frozen, and its arms run, before B and C (main session, 24 Oct): it stays in
+# the record, reported apart from the narrowed headline (astra opus-screen r2 #1).
+PRE_BC_EXEMPT = ("testem-bail-on-test-failure-deepseek-a1", 1, "codex_local.b1-q10")
+
+
+def screen_era(run_dir: Path, k: int, cand_id: str) -> str | None:
+    """The `screen_era` annotation beside the committed freeze (e.g. "pre-B/C"), if any."""
+    p = IR.committed_freeze_path(Path(run_dir) / f"b{k}", cand_id)
+    a = p.with_name(p.stem + ".annotations.json")
+    return _read(a).get("screen_era") if a.exists() else None
+
+
+def pre_bc_exempt(run_dir: Path, k: int, cand_id: str) -> bool:
+    """True only for PRE_BC_EXEMPT, when its annotation says pre-B/C, carries the committed
+    freeze copy's record hash, and is tracked and unmodified in git."""
+    if (Path(run_dir).name, int(k), cand_id) != PRE_BC_EXEMPT:
+        return False
+    fz = IR.committed_freeze_path(Path(run_dir) / f"b{k}", cand_id)
+    a = fz.with_name(fz.stem + ".annotations.json")
+    if not (fz.exists() and a.exists()):
+        return False
+    ann = _read(a)
+    if ann.get("screen_era") != "pre-B/C" or \
+            ann.get("freeze_record_sha256") != _read(fz).get("record_sha256"):
+        return False
+    rel = str(a.relative_to(ROOT))
+    import subprocess
+    tracked = subprocess.run(["git", "-C", str(ROOT), "ls-files", "--error-unmatch", rel],
+                             capture_output=True, timeout=60, check=False).returncode == 0
+    clean = subprocess.run(["git", "-C", str(ROOT), "diff", "--quiet", "HEAD", "--", rel],
+                           capture_output=True, timeout=60, check=False).returncode == 0
+    return tracked and clean
+
+
 def candidate_v2(run_dir: Path, k: int, cand_id: str) -> dict:
     cj = _read(Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json")
     c = next((c for c in cj.get("candidates") or [] if c.get("cand_id") == cand_id), None)
@@ -1398,6 +1432,8 @@ def build_v2(boundaries: list[tuple[Path, int]], *, seed: int = SEED, unsealed: 
             n += 1
             parts = card_parts_v2(run_dir, k, cid_, seed=seed)
             c = parts["cand"]
+            if not RQ.opus_passed(c):  # astra opus-screen r1 #1
+                raise StaleScreen(f"{run_dir.name} b{k}: {cid_} has no passing Opus verdict")
             cid = card_id(seed, run_dir.name, k, c["cand_id"])
             hists[f"h{n}"] = RP._gz64(parts["history"])
             hists[f"p{n}"] = RP._gz64(parts["post"])
@@ -1458,8 +1494,10 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     if arms := arms_dirs(run_dir, k):
         held.append(f"arms/ exists: {[str(a) for a in arms]}")
     frozen = _frozen_in(run_dir, k)
-    if cand_id in frozen:
-        return rec | {"status": "already_frozen", "reasons": []}
+    if cand_id in frozen:  # the exemption only ever labels this existing freeze (r3)
+        return rec | {"status": "already_frozen", "reasons": [],
+                      **({"screen_era": "pre-B/C"} if pre_bc_exempt(run_dir, k, cand_id)
+                         else {})}
     other = [f for f in frozen if not f.startswith(ent["source_policy"] + ".")
              and not f.startswith("bundle.")]
     if other:
@@ -1492,11 +1530,22 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     if gaps:
         held.append("design incomplete: " + "; ".join(gaps))
     c = parts["cand"]
+    # a new freeze is never exempt (astra opus-screen r3): pre-B/C only labels the existing
+    # committed testem freeze, reported as already_frozen above
+    era = screen_era(run_dir, k, cand_id)
+    if era:
+        held.append(f"refused: screen_era {era!r} applies only to the existing committed "
+                    f"freeze of {PRE_BC_EXEMPT}, never to a new one")
+    if not RQ.opus_passed(c):
+        held.append("no passing Opus verdict (B and C)")
+    stale = screen_stale(run_dir, k)
+    if stale:
+        held.append(f"rescreen required: screened under {stale[:12]}, the rules are now "
+                    f"{RQ.screen_sha_v2()[:12]}")
     spec = spec_of(design) if set(changed) & set(SPEC_FIELDS) else c["act_spec"]
     checks = json.loads(json.dumps(c.get("checks") or {}))
     bdir = run_dir / f"b{k}"
-    stale = screen_stale(run_dir, k)
-    if (changed or stale) and not held:
+    if changed and not held:
         new = RQ.check_design({"quote": design["d_repair"]},
                               {"matched_quote": design["d_matched"],
                                "matched_rationale": design["d_rationale"]},
@@ -1504,18 +1553,16 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
                               _read(bdir / "boundary" / "pre_messages.json"),
                               maintainer=RQ.maintainer_context(bdir))
         shown = set(((checks.get("design") or {}).get("evidence") or {}).get("problems") or [])
-        if overridden or stale:
-            # an override, or a screen under older rules, passes every current check; the one
-            # exception is a recorded non-maintainer fallback (astra matched-override r1 #2-3)
+        if overridden:
+            # an override passes every current check; the one exception is a recorded
+            # non-maintainer fallback (astra matched-override r1 #2)
             shown = set(FALLBACK_OK) if (override or {}).get("fallback") and \
                 "d_matched" in overridden else set()
         added = [p for p in new["evidence"]["problems"] if p not in shown]
         if added:
-            held.append(f"{'design' if overridden or stale else 'edited design'} fails the "
+            held.append(f"{'design' if overridden else 'edited design'} fails the "
                         f"current checks: {added}")
-        checks["design"] = new | {"screened": checks.get("design"),
-                                  **({"rechecked_under": RQ.screen_sha_v2(),
-                                      "screened_under": stale} if stale else {})}
+        checks["design"] = new | {"screened": checks.get("design")}
         if spec != c.get("act_spec"):
             ref = S.check_reference(spec, run_dir, k, runner=runner)
             if ref["outcome"] != "pass":
@@ -1785,7 +1832,8 @@ def advance_selection(results: list[dict], *, reselect: bool = True) -> list[dic
             from compaction.s2 import session as SS
             sel = IR.reselect(bdir, backend_factory=lambda: IR.claude_backend(IR.PilotSpend()),
                               grep_runner=SS.grep_runner(), ref_runner=S.docker_runner(),
-                              file_runner=RQ.docker_file_runner())
+                              file_runner=RQ.docker_file_runner(),
+                              opus_factory=IR.opus_backend)
         out.append({"run_dir": rdir, "k": k, "state": sel.get("state"),
                     "cards": sel.get("cards"), "rejected": sel.get("rejected")})
     return out

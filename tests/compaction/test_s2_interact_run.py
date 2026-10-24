@@ -965,7 +965,12 @@ def test_screen_failure_completes_the_boundary_and_advance_retries(tmp_path):
 
 
 def _screened(carded, bundle=()):
-    return {"carded": carded, "bundle": list(bundle)}
+    """A screen output whose cards all hold a passing Opus verdict under the current rules."""
+    from compaction.s2 import interact_reqs as RQ
+    ids = [x for x in (carded, *bundle) if x]
+    return {"carded": carded, "bundle": list(bundle), "screen_sha256": RQ.screen_sha_v2(),
+            "candidates": [{"cand_id": i, "checks": {"opus": {"outcome": "pass"}}}
+                           for i in ids]}
 
 
 def test_selection_caps_and_transitions(tmp_path):

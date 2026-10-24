@@ -240,12 +240,13 @@ def _resume_one(rd: Path, after_freeze: bool, watch) -> dict:
 
 def _trigger():
     """The v2 fork rule with the live backends: Max (OpenRouter fallback) for the split,
-    replays, grading and drafts; the kept image for the repo search, the cited file and
-    check 6."""
+    replays, grading and drafts; Opus 5.5 on Max for the screen's last check (B and C); the
+    kept image for the repo search, the cited file and check 6."""
     from compaction.s2 import interact_reqs as RQ
     from compaction.s2 import session as SS
     return IR.fork_trigger(lambda: IR.claude_backend(IR.PilotSpend()),
-                           grep_runner=SS.grep_runner(), file_runner=RQ.docker_file_runner())
+                           grep_runner=SS.grep_runner(), file_runner=RQ.docker_file_runner(),
+                           opus_factory=IR.opus_backend)
 
 
 def _sealed_receipt(r: dict) -> dict:

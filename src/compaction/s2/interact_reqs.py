@@ -62,9 +62,12 @@ first card in `rejected`) makes no repeat calls.
 from __future__ import annotations
 
 import base64
+import contextlib
+import fcntl
 import hashlib
 import json
 import re
+import threading
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1007,7 +1010,12 @@ def screen_sha_v2() -> str:
         "schema": DRAFT_SCHEMA_V2, "map": DRAFT_MAP, "code_fails": CODE_FAILS_V2,
         "pending": "applicability_v2+check_pending(file)",
         "pending_min_chars": PENDING_MIN_CHARS,
-        "matched": "maintainer_reply+no_requirement_overlap+no_lead_in+no_explaining_sentence"}, sort_keys=True).encode()).hexdigest()
+        "matched": "maintainer_reply+no_requirement_overlap+no_lead_in+no_explaining_sentence",
+        "near_rule": "bounded+no_negation_either_side+min_words_always_opus",
+        "chain": {"k>1": list(CHAIN_SOURCES)},
+        "opus": {"prompt": load_prompt(OPUS_PROMPT, PROMPT_DIR).sha256, "model": OPUS_MODEL,
+                 "schema": OPUS_SCHEMA, "types_in": ITEM_TYPES_IN, "near": [NEAR_SHARE,
+                                                                            NEAR_MIN_WORDS]}}, sort_keys=True).encode()).hexdigest()
 
 
 def _excluded_v2(checks: dict) -> str | None:
@@ -1020,10 +1028,213 @@ def _excluded_v2(checks: dict) -> str | None:
     return None
 
 
+# ------------------------------------------------------------------------------------------
+# B and C (Jacob and the main session, 24 Oct): a cheap near-verbatim rule, then an Opus 5.5
+# screen on the Max plan before any card. Haiku's grade must be "dropped" or unclear (unclear
+# goes to Opus, never straight to a card); the resumed input's closest line must share fewer
+# than NEAR_SHARE of the quote's key words (with at least NEAR_MIN_WORDS); Opus must say the
+# requirement is lost and still applies; and the item must be a process rule (how to work,
+# git and commit rules, files and tests not to touch, ask-before, scope, permissions) or a
+# decision about work not yet built, not already in the workspace. Every Opus verdict is
+# logged (fork_v2/opus_screen.jsonl), rejections included, for Haiku's precision against it.
+# ------------------------------------------------------------------------------------------
+
+OPUS_PROMPT = "interact_opus_screen"
+OPUS_MODEL = "claude-opus-5-5"
+OPUS_PURPOSE = "s2_interact_opus_screen"
+OPUS_MAX_OUT = 3000
+OPUS_LOG = "opus_screen.jsonl"
+NEAR_SHARE, NEAR_MIN_WORDS = 0.8, 3
+ITEM_TYPES_IN = ("process_rule", "unbuilt_decision")
+# Sequential compactions can't mix methods (Jacob, 24 Oct): a replay at k>1 is another
+# harness's prompt on top of pi's earlier summaries, a different thing from that method
+# compacting repeatedly. Fork sources at k=1: every source; at k>1: the run's own summary only
+# (live; a native arm's own summary when native runs are forked).
+CHAIN_SOURCES = ("live",)
+CODE_EXCERPT_LINES, CODE_EXCERPT_CHARS = 60, 12_000
+OPUS_SCHEMA = T._obj({
+    "retention": _S(("kept", "paraphrased", "lost")), "retention_reason": _S(),
+    "applicable": _S(("yes", "no")), "applicable_reason": _S(),
+    "item_type": _S(("process_rule", "unbuilt_decision", "built_detail", "other")),
+    "type_reason": _S(),
+    "in_workspace": _S(("yes", "no", "unclear")), "workspace_reason": _S()})
+_WORD = re.compile(r"[A-Za-z0-9_]{3,}")
+_STOP = {"the", "and", "for", "that", "this", "with", "not", "are", "but", "should", "when",
+         "from", "its", "into", "than", "then", "also", "any", "all", "can", "has", "have",
+         "was", "were", "will", "would", "you", "your", "our", "they", "them", "there", "what"}
+
+
+def key_words(text: str | None) -> set[str]:
+    return {w.lower() for w in _WORD.findall(text or "")} - _STOP
+
+
+def resumed_text(view: dict) -> str:
+    """Everything the agent resumes with, as one text (the summary and every kept message)."""
+    return "\n\n".join(f"[message {i}: {m.get('role')}]\n{S.message_text(m)}"
+                        for i, m in enumerate(view.get("post") or []))
+
+
+_NEG = re.compile(r"\b(?:not|never|no|without|avoid|don't|dont|doesn't|isn't|can't|cannot|"
+                  r"won't|shouldn't|mustn't|nor)\b|n't\b", re.IGNORECASE)
+
+
+def _negated(text: str) -> bool:
+    return bool(_NEG.search((text or "").replace("’", "'")))
+
+
+def _bounded_spans(quote: str, text: str) -> list[tuple[int, int]]:
+    """`_spans` at word boundaries: a quote ending in a word character can't match inside a
+    longer identifier (`foo` is not in `foobar`)."""
+    toks = (quote or "").split()
+    if not toks:
+        return []
+    rx = (r"(?<![\w])" if re.match(r"\w", toks[0]) else "") + r"\s+".join(
+        re.escape(t) for t in toks) + (r"(?![\w])" if re.search(r"\w$", toks[-1]) else "")
+    return [(m.start(), m.end()) for m in re.finditer(rx, text or "")]
+
+
+def near_verbatim(text: str, quote: str | None) -> dict:
+    """{verbatim, shared, of, negated, nearly}. `verbatim`: the quote at word boundaries in a
+    line with no negation; `shared`: the most of its key words one such line holds. `nearly`
+    (excluded before Opus) only for a quote with no negation and at least NEAR_MIN_WORDS key
+    words, verbatim or sharing >= NEAR_SHARE of them; anything else goes to Opus (astra
+    opus-screen r1 #3, r2 #3)."""
+    q = quote or ""
+    words, neg = key_words(q), _negated(q)
+    # a negation on either side makes the match ambiguous (its scope may differ), so only
+    # negation-free lines count, and a negated quote is never near-verbatim: it goes to Opus
+    # (astra opus-screen r2 #3)
+    plain = [ln for ln in (text or "").splitlines() if not _negated(ln)]
+    verbatim = not neg and any(_bounded_spans(q, ln) for ln in plain)
+    shared = 0 if neg else max((len(words & key_words(ln)) for ln in plain), default=0)
+    nearly = (not neg and len(words) >= NEAR_MIN_WORDS
+              and (verbatim or shared >= NEAR_SHARE * len(words)))
+    return {"verbatim": verbatim, "shared": shared, "of": len(words), "negated": neg,
+            "nearly": nearly}
+
+
+def check_near(view: dict, it: dict) -> dict:
+    ev = near_verbatim(resumed_text(view), it["quote"])
+    return (_check("fail", "retention:nearly_verbatim", **ev) if ev["nearly"]
+            else _check("pass", None, **ev))
+
+
+def _code_excerpt(pend: dict | None, image: str | None, file_runner) -> str:
+    ev = (pend or {}).get("evidence") or {}
+    path = ev.get("path")
+    if not path or not image or file_runner is None:
+        return "(no file could be read)"
+    try:
+        r = file_runner(image, path)
+    except Exception as e:  # noqa: BLE001 - shown to Opus as missing
+        return f"(could not read {path}: {type(e).__name__})"
+    if r.get("status") != "ok":
+        return f"(could not read {path}: {r.get('status')})"
+    lines = (r.get("text") or "").splitlines()
+    at = ((ev.get("found") or [{}])[0].get("line") or 1) - 1
+    lo, hi = max(0, at - CODE_EXCERPT_LINES), min(len(lines), at + CODE_EXCERPT_LINES)
+    body = "\n".join(f"{n + 1:6}\t{lines[n]}" for n in range(lo, hi))
+    return f"{path} (lines {lo + 1}-{hi} of {len(lines)}):\n{body}"[:CODE_EXCERPT_CHARS]
+
+
+def opus_request(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str,
+                 code: str) -> T.Req:
+    p = load_prompt(OPUS_PROMPT, PROMPT_DIR)
+    reply = next((r for r in _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []
+                  if r.get("reply_id") == it.get("source_reply_id")), {})
+    ch = c.get("checks") or {}
+    pend = ((ch.get("applicability") or {}).get("evidence") or {}).get("pending") or {}
+    pe = pend.get("evidence") or {}
+    rev = (ch.get("recoverability") or {}).get("evidence") or {}
+    # raw evidence only: no upstream verdict (the grade, the drafter's conclusions) is shown,
+    # so Opus's call is its own (astra opus-screen r1 #4)
+    summary = {
+        "workspace_search": {"searched": rev.get("searched"),
+                             "files_holding_whole_lines": rev.get("line_hits"),
+                             "files_holding_fragments": rev.get("fragment_hits"),
+                             "files_holding_search_strings": rev.get("search_hits")},
+        "cited_code_line": {"path": pe.get("path"), "line": pe.get("quote"),
+                            "lines_found_in_file": pe.get("found")}}
+    user = _fill(p.sections["user"], task=task,
+                 requirement=json.dumps({"text": it["text"], "quote": it["quote"]},
+                                        ensure_ascii=False),
+                 reply=reply.get("reply") or "", resumed=resumed_text(view),
+                 checks=json.dumps(summary, ensure_ascii=False, indent=1), code=code)
+    rid = f"interact:{Path(bdir).parent.name}:b{boundary_index(bdir)}"
+    return T.Req(key=f"opus|{rid}|{cand_id(src, it['req_id'])}", system=p.system, user=user,
+                 schema=OPUS_SCHEMA, max_output_tokens=OPUS_MAX_OUT, rid=rid,
+                 source="deepswe", private=True)
+
+
+def opus_passed(c: dict) -> bool:
+    """The candidate holds a passing Opus verdict."""
+    return ((c.get("checks") or {}).get("opus") or {}).get("outcome") == "pass"
+
+
+def opus_gate(v: dict) -> str | None:
+    """None when the candidate goes forward, else why not."""
+    if v["retention"] != "lost":
+        return f"opus:retention_{v['retention']}"
+    if v["applicable"] != "yes":
+        return "opus:not_applicable"
+    if v["item_type"] not in ITEM_TYPES_IN:
+        return f"type:{v['item_type']}"
+    if v["item_type"] == "unbuilt_decision" and v["in_workspace"] != "no":
+        return ("type:already_in_workspace" if v["in_workspace"] == "yes"
+                else "type:workspace_unclear")
+    return None
+
+
+_OPUS_THREAD_LOCK = threading.Lock()
+OPUS_LOCK_FILE = C.REPO_ROOT / "logs" / "s2" / ".opus_max.lock"
+
+
+@contextlib.contextmanager
+def _opus_lock():
+    """One Opus call at a time across every thread and process of this checkout: Max takes no
+    overlapping calls (astra opus-screen r1)."""
+    OPUS_LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with _OPUS_THREAD_LOCK, open(OPUS_LOCK_FILE, "a") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+
+
+def opus_screen(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str, *,
+                backend, image: str | None, file_runner) -> dict:
+    """The Opus check for one candidate (the section comment), logged whatever it says. A
+    failed call raises: the screen fails and is retried, never cards without the verdict."""
+    pend = ((c.get("checks") or {}).get("applicability") or {}).get("evidence", {}).get(
+        "pending")
+    req = opus_request(bdir, src, it, view, c, task, _code_excerpt(pend, image, file_runner))
+    with _opus_lock():
+        r = backend.run([req], purpose=OPUS_PURPOSE).get(req.key)
+    if r is None or r.error or not isinstance(r.data, dict):
+        raise RuntimeError(f"opus screen failed for {c['cand_id']}: "
+                           f"{r.error if r else 'no_response'}")
+    gate = opus_gate(r.data)
+    out = (_check("pass", None, verdict=r.data, model=r.model) if gate is None else
+           _check("fail", gate, verdict=r.data, model=r.model))
+    row = {"utc": _utc(), "cand_id": c["cand_id"], "source_policy": src,
+           "req_id": it["req_id"], "requirement": it["text"],
+           "haiku_grade": ((c.get("checks") or {}).get("retention") or {}).get(
+               "evidence", {}).get("grade"),
+           "near": ((c.get("checks") or {}).get("near_verbatim") or {}).get("evidence"),
+           "boundary": Path(bdir).name, "run": Path(bdir).parent.name,
+           "verdict": r.data, "gate": gate, "model": r.model, "screen_sha256": screen_sha_v2()}
+    v2_dir(bdir).mkdir(parents=True, exist_ok=True)
+    with open(v2_dir(bdir) / OPUS_LOG, "a") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return out
+
+
 def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
               ref_runner: S.Runner | None = None, file_runner: FileRunner | None = None,
               rejected: Iterable[str] = (), sources: Iterable[str] = ARM_SOURCES,
-              task: str | None = None, bundle: bool = True, max_bundle: int = 1) -> dict:
+              task: str | None = None, bundle: bool = True, max_bundle: int = 1,
+              opus_backend) -> dict:
     """fork_v2/candidates.json. Candidates in `candidates_order_v2`; retention is free and is
     recorded for all; the others run only until the first candidate that isn't excluded by a
     code-verified fail (CODE_FAILS_V2, pending included) and isn't rejected: that one is
@@ -1031,7 +1242,9 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
     `max_bundle` that qualify become `bundle` (the per-boundary card cap counts them); every
     other candidate is `not_reached`. Each candidate carries its ledger status (new /
     inherited; inherited losses are eligible). The pending spot is checked in the cited file
-    (`file_runner`) and is part of check 2 (`applicability_v2`)."""
+    (`file_runner`) and is part of check 2 (`applicability_v2`). B and C (the section comment
+    above): the near-verbatim rule right after retention, and the Opus screen (`opus_backend`,
+    required) last, before a candidate is carded or bundled."""
     b = Path(bdir) / "boundary"
     k = boundary_index(bdir)
     rq = _read(b / "requirements.json")
@@ -1061,12 +1274,21 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
              "draft": prev.get("draft"), "act_spec": prev.get("act_spec"), "disposition": None}
         checks["retention"] = check_retention(src, it, detail)
         out_c.append(c)
+        if k > 1 and src not in CHAIN_SOURCES:
+            c["disposition"] = "excluded:source:mixed_chain"
+            continue
         if carded is not None and (not bundle or src != carded_src
                                    or len(bundled) >= max_bundle):
             c["disposition"] = "not_reached"
             continue
         if _excluded_v2(checks):
             c["disposition"] = f"excluded:{_excluded_v2(checks)}"
+            continue
+        if src not in views:
+            views[src] = S.source_view(bdir, src)
+        checks["near_verbatim"] = check_near(views[src], it)
+        if checks["near_verbatim"]["outcome"] == "fail":
+            c["disposition"] = "excluded:retention:nearly_verbatim"
             continue
         if "recoverability" not in checks:
             checks["recoverability"] = check_recoverability(it, image, grep_runner)
@@ -1105,6 +1327,14 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
                 checks["reference"] = S.check_reference(spec, Path(bdir).parent, k,
                                                         runner=ref_runner)
         why = _excluded_v2(checks)
+        # Opus runs even when the draft failed: no candidate is carded without its verdict
+        if not why and cid not in rejected:
+            if "opus" not in checks:
+                task = task if task is not None else task_text(bdir)
+                checks["opus"] = opus_screen(bdir, src, it, views[src], c, task,
+                                             backend=opus_backend, image=image,
+                                             file_runner=file_runner)
+            why = checks["opus"].get("reason")
         if why:
             c["disposition"] = f"excluded:{why}"
         elif cid in rejected:

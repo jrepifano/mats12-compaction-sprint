@@ -98,6 +98,13 @@ Here:
 
 About $70–110 (astra r1) inside Experiment 3's stage (SPRINT-S3-Q2, $270; the pilot tag has spent $3.57). Jacob: about 5 minutes per fork card, about 1 hour in all. The final presentation is due Fri 30 Oct, 10 pm.
 
+## Deviations
+
+- **24 Oct, Jacob: sequential compactions can't mix methods.** A replay at compaction k>1 is Haiku writing one summary in another harness's format on top of pi's earlier summaries. That tests something different from that method compacting repeatedly, so it isn't a valid point on any method's chain. It applies everywhere, before any further card or continuation output is read:
+  - **Fork sources:** at k=1, unchanged: live pi, then the Claude Code prompt, Codex, OpenCode, Antigravity-style. At k>1, only the run's own summary: live pi now, and a native arm's own summary when native runs are forked. Other sources' candidates are recorded as `excluded:source:mixed_chain`, and the funnel counts them. The screen's hash changes, so every boundary is rescreened.
+  - **Rejected boundaries at k>1** (boa b2, vitest b2, helm a2 b3, kombu a2 b2) are rescreened from live only. testem b1 (Codex-style, k=1) is unaffected; it is kept as a pre-B/C case, reported apart.
+  - **Constraint decay (D):** the decay table uses same-method chains only: live pi now, native Claude Code, Codex and Antigravity later. The replay sources appear at k=1 only, as a comparison of summarizers on identical history. Replay rows at k>1 are neither graded nor shown.
+
 ## Review history
 
 - **astra r1** (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Its verdict: for Q2, probably the strongest next step after fixes; for Q1, Experiment 1 stays stronger. BLOCKING findings and how v0.2 handles them:

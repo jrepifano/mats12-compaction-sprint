@@ -435,6 +435,16 @@ def max_backend(spend: PilotSpend, concurrency: int = 2):
     return MaxBackend(recorder=spend.recorder(), concurrency=concurrency)
 
 
+def opus_backend(spend: PilotSpend | None = None):
+    """Opus 5.5 on the Max plan for the screen's last check (B and C, `interact_reqs.opus_screen`);
+    Max only (it is free there; no paid fallback): a failure fails the screen, which is
+    retried."""
+    from compaction.claude_headless import MaxBackend
+    from compaction.s2 import interact_reqs as RQ
+    return MaxBackend(model=RQ.OPUS_MODEL, name="opus-max", effort="medium", concurrency=1,
+                      recorder=(spend or PilotSpend()).recorder())
+
+
 def claude_backend(spend: PilotSpend, *, primary=None, fallback=None,
                    use_fallback: bool = True) -> FallbackBackend:
     """A fresh per-stage backend: Max (`claude -p`, Haiku 5.5; a new MaxBackend per call, so
@@ -784,8 +794,23 @@ def place_cards(bdir: Path, screened: dict) -> dict:
         return _place_cards(bdir, screened)
 
 
+def require_opus(screened: dict, ids: list[str]) -> None:
+    """Every card (primary or bundle member, new or promoted) holds a passing Opus verdict
+    from a screen under the current rules (astra opus-screen r1 #1); refused otherwise."""
+    from compaction.s2 import interact_reqs as RQ
+    if screened.get("screen_sha256") != RQ.screen_sha_v2():
+        raise ValueError(f"refused: screen {str(screened.get('screen_sha256'))[:12]} isn't "
+                         f"the current rules {RQ.screen_sha_v2()[:12]}")
+    by = {c["cand_id"]: c for c in screened.get("candidates") or []}
+    bad = [i for i in ids if not RQ.opus_passed(by.get(i) or {})]
+    if bad:
+        raise ValueError(f"refused: no passing Opus verdict for {bad}")
+
+
 def _place_cards(bdir: Path, screened: dict) -> dict:
     bdir = Path(bdir)
+    if screened.get("carded"):
+        require_opus(screened, [screened["carded"], *(screened.get("bundle") or [])])
     sel = selection(bdir) or {"cards": []}
     shown = list(sel.get("cards") or [])
     primaries = primaries_of(sel)
@@ -816,8 +841,8 @@ def _place_cards(bdir: Path, screened: dict) -> dict:
 
 
 def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_runner=None,
-                 file_runner=None, replay: Callable[..., Any] | None = None
-                 ) -> Callable[[Path, dict], bool]:
+                 file_runner=None, replay: Callable[..., Any] | None = None,
+                 opus_factory: Callable[[], Any]) -> Callable[[Path, dict], bool]:
     """The v2 fork rule at one boundary: the split (if not done) and eligibility (recorded, no
     longer gating), the replays (pi as anchor), every source graded on every requirement so
     far, the new/inherited ledger, the v2 screen (the boundary's rejections excluded), then the
@@ -839,7 +864,8 @@ def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_ru
         RQ.loss_ledger(bdir)
         out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
                            ref_runner=ref_runner, file_runner=file_runner,
-                           rejected=(selection(bdir) or {}).get("rejected") or [])
+                           rejected=(selection(bdir) or {}).get("rejected") or [],
+                           opus_backend=opus_factory())
         return place_cards(bdir, out)["state"] == "carded"
     return check
 
@@ -876,14 +902,15 @@ def record_decisions(bdir: Path, results: list[dict]) -> dict:
 
 
 def reselect(bdir: Path, *, backend_factory: Callable[[], Any], grep_runner=None,
-             ref_runner=None, file_runner=None) -> dict:
+             ref_runner=None, file_runner=None, opus_factory: Callable[[], Any]) -> dict:
     """After rejections: the screen again without the rejected candidates (its checks are
     reused), then the next card within the caps, or exhausted."""
     from compaction.s2 import interact_reqs as RQ
     sel = selection(bdir) or {}
     out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
                        ref_runner=ref_runner, file_runner=file_runner,
-                       rejected=sel.get("rejected") or [])
+                       rejected=sel.get("rejected") or [],
+                       opus_backend=opus_factory())
     return place_cards(bdir, out)
 
 
@@ -1813,13 +1840,66 @@ def replay_prompt_report(root: Path) -> list[dict]:
     return rows
 
 
+def opus_summary(root: Path) -> dict:
+    """Every Opus verdict logged under the root (fork_v2/opus_screen.jsonl, rejections
+    included), one per boundary, candidate and screen version (the last logged), split by screen
+    version: counts by retention, type, gate and Haiku grade, and Haiku's precision among the
+    Opus-reviewed survivors (of the candidates that reached Opus with a Haiku grade of
+    "dropped", the share Opus calls lost; earlier filters removed others, so this is not
+    Haiku's precision over all its drops)."""
+    from compaction.s2 import interact_reqs as RQ
+    last: dict[tuple, dict] = {}
+    for f in sorted(Path(root).glob(f"*/b*/boundary/{RQ.SCREEN_V2}/{RQ.OPUS_LOG}")):
+        for x in f.read_text().splitlines():
+            if x.strip():
+                r = json.loads(x)
+                key = (f.parents[3].name, f.parents[2].name, r["cand_id"], r.get("screen_sha256"))
+                last[key] = r
+
+    def count(rows, key):
+        out: dict[str, int] = {}
+        for r in rows:
+            k = str(key(r))
+            out[k] = out.get(k, 0) + 1
+        return out
+    by_version: dict[str, dict] = {}
+    for sha in sorted({k[3] or "none" for k in last}):
+        rows = [r for k, r in last.items() if (k[3] or "none") == sha]
+        dropped = [r for r in rows if r.get("haiku_grade") == "dropped"]
+        lost = sum(r["verdict"].get("retention") == "lost" for r in dropped)
+        by_version[sha[:12]] = {
+            "n": len(rows), "by_retention": count(rows, lambda r: r["verdict"].get("retention")),
+            "by_type": count(rows, lambda r: r["verdict"].get("item_type")),
+            "by_gate": count(rows, lambda r: r.get("gate") or "pass"),
+            "by_haiku_grade": count(rows, lambda r: r.get("haiku_grade")),
+            "haiku_precision_among_opus_reviewed_survivors": {
+                "dropped": len(dropped), "opus_lost": lost,
+                "share": round(lost / len(dropped), 3) if dropped else None}}
+    return {"by_screen_version": by_version}
+
+
+def opus_lines(o: dict) -> list[str]:
+    out = []
+    for sha, v in o["by_screen_version"].items():
+        hp = v["haiku_precision_among_opus_reviewed_survivors"]
+        out += [f"Screen version {sha}:",
+                f"- Verdicts: {v['n']} (Haiku grade: {v['by_haiku_grade']})",
+                f"- Opus retention: {v['by_retention']}",
+                f"- Item type: {v['by_type']}",
+                f"- Gate: {v['by_gate']}",
+                (f"- Haiku precision among Opus-reviewed survivors: of {hp['dropped']} graded "
+                 f"dropped that reached Opus, Opus calls {hp['opus_lost']} lost ({hp['share']})"),
+                ""]
+    return out
+
+
 def funnel(root: Path) -> dict:
     """The candidate funnel over every boundary's candidates.json (plan "Q1, descriptive"):
     per disposition, and every candidate the screen excluded, with its reason and evidence.
     Check-6 exclusions (excluded:reference) carry the Haiku-written act scorer and the
     reference solution's lines it matched, so a bad scorer is visible (main session, 24 Oct).
     Writes <root>/funnel.json and <root>/funnel.md; reads no continuation output."""
-    rows, counts = [], {}
+    rows, counts, typed = [], {}, []
     files = [(cj, cj.parent.parent, "v1") for cj in
              sorted(Path(root).glob("*/b*/boundary/candidates.json"))]
     files += [(cj, cj.parent.parent.parent, "v2") for cj in
@@ -1830,26 +1910,50 @@ def funnel(root: Path) -> dict:
             d = c.get("disposition") or "none"
             counts.setdefault(screen, {})
             counts[screen][d] = counts[screen].get(d, 0) + 1
+            v = (((c.get("checks") or {}).get("opus") or {}).get("evidence") or {}).get("verdict")
+            if v and not d.startswith("excluded:"):
+                typed.append({"run": bdir.parent.name, "boundary": bdir.name,
+                              "cand_id": c["cand_id"], "disposition": d,
+                              "requirement": c.get("text"), "item_type": v.get("item_type"),
+                              "type_reason": v.get("type_reason")})
             if not d.startswith("excluded:"):
                 continue
             why = d.split(":", 1)[1]
-            chk = (c.get("checks") or {}).get(why) or {}
+            key = ("opus" if why.split(":")[0] in ("opus", "type") else
+                   "near_verbatim" if why == "retention:nearly_verbatim" else why)
+            if why == "source:mixed_chain":  # Jacob, 24 Oct: k>1 forks from the run's own
+                rows.append({"screen": screen, "run": bdir.parent.name, "boundary": bdir.name,
+                             "cand_id": c["cand_id"], "source_policy": c.get("source_policy"),
+                             "requirement": c.get("text"), "reason": d,
+                             "check_reason": "a replay at k>1 mixes methods in the chain",
+                             "evidence": None})
+                continue
+            chk = (c.get("checks") or {}).get(key) or {}
             row = {"screen": screen, "run": bdir.parent.name, "boundary": bdir.name,
                    "cand_id": c["cand_id"],
                    "source_policy": c.get("source_policy"), "requirement": c.get("text"),
                    "reason": d, "check_reason": chk.get("reason"),
                    "evidence": chk.get("evidence")}
+            if v:
+                row |= {"item_type": v.get("item_type"), "type_reason": v.get("type_reason")}
             if why == "reference":
                 spec = c.get("act_spec") or {}
                 row["scorer"] = {"description": spec.get("description"), "act": spec.get("act"),
                                  "decision": spec.get("decision")}
                 row["reference_matches"] = (chk.get("evidence") or {}).get("matches")
             rows.append(row)
-    out = {"created_utc": utc(), "counts": counts, "excluded": rows}
+    opus = opus_summary(root)
+    out = {"created_utc": utc(), "counts": counts, "excluded": rows, "opus": opus,
+           "passed_opus": typed}
     _dump(Path(root) / "funnel.json", out)
     lines = ["# Candidate funnel", "", "| screen | disposition | n |", "|---|---|---|",
              *[f"| {sc} | {k} | {v} |" for sc, per in sorted(counts.items())
                for k, v in sorted(per.items())], "",
+             "## Opus screen (B and C)", "",
+             *opus_lines(opus), "",
+             "## Candidates that passed Opus: type and reason", "",
+             *[f"- {t['run']} {t['boundary']} {t['cand_id']} ({t['disposition']}): "
+               f"{t['item_type']}: {t['type_reason']}" for t in typed], "",
              "## Excluded candidates", ""]
     for r in rows:
         lines += [f"### {r['screen']} {r['run']} {r['boundary']} {r['cand_id']} ({r['reason']})",
@@ -1867,6 +1971,8 @@ def funnel(root: Path) -> dict:
                       f"- Searched for: `{ev.get('searched')}`; why open: {ev.get('why')}"]
         else:
             lines.append(f"- Evidence: `{json.dumps(r['evidence'])[:1500]}`")
+        if r.get("item_type"):
+            lines.append(f"- Type (Opus): {r['item_type']}: {r['type_reason']}")
         lines.append("")
     (Path(root) / "funnel.md").write_text("\n".join(lines))
     return out
