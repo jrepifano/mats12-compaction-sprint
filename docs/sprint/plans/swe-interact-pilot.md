@@ -273,3 +273,13 @@ Also added after the review, from the feasibility agent: check 6, consistency wi
 ## Run log
 
 `logs/SPRINT-S2-report.md`, a "SWE-Interact pilot" section (UTC, commands, seeds, spend). Before any follow-up run: what it tests, why, a one-line prediction and its cost; follow-ups are reported as exploratory.
+
+## Build deviations (logged 24 Oct, from the build; shared notes ~19:45 UTC)
+
+- **OpenCode-sourced arms:** the repair or matched block goes in a separate user message after the summary (above).
+- **Recompaction in an arm:** pi's update prompt receives the source summary plus the block as the previous summary.
+- **The $2.50 simulator gate:** applied per run, since all 6 base runs start together (Jacob, with Docker at 24 GB).
+- **Negated acts:** scored per workspace state. A negated spec with a command matcher is unscorable and goes to Jacob's card.
+- **The stub smoke:** used a 60k threshold.
+- **The OpenRouter fallback for replays:** reports Haiku's pinned model id. The Max to OpenRouter fallback hasn't been exercised against a real Max outage.
+- **Code review:** astra r1–r3 (the cap). The r3 fixes were tested but not re-reviewed (`logs/reviews/20261024-s2-interact-build-r{1,2,3}.md`).
