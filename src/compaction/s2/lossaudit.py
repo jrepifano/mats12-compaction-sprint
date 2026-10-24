@@ -592,7 +592,7 @@ FILE_WRITE_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
 READ_ONLY_TOOLS = frozenset({"bash", "Bash", "ask_user", "Read", "Grep", "Glob", "LS",
                              "NotebookRead", "TodoWrite", "WebFetch", "WebSearch"})
 _PATCH_FILE = re.compile(r"^\*\*\* (?:(?:Add|Update|Delete) File|Move to): *(.+?)\s*$",
-                         0)
+                         re.MULTILINE)
 UNKNOWN_DIR = "?unknown:"  # prefix of a relative path read or written in an unknown directory
 # (a label, never normalised: `..` can't climb out of it; nothing under it replays)
 
