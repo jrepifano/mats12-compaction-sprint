@@ -434,6 +434,7 @@ def test_base_arm_secondary_in_docker(tmp_path, monkeypatch):
     FakeSession.all_tags = []
     try:
         with Invocation(purpose=IR.PURPOSE) as inv:
+            run_id = inv.run_id
             res = IR.run_base(cfg, agent_model=StubModel(PLAN_ACTIONS + IMPL_ACTIONS),
                               sim_model=StubSim(), inv=inv, eligible=eligible,
                               session=FakeSession)
@@ -497,9 +498,11 @@ def test_base_arm_secondary_in_docker(tmp_path, monkeypatch):
     finally:
         for t in FakeSession.all_tags:
             subprocess.run(["docker", "rmi", "-f", t], capture_output=True, check=False)
-    left = subprocess.run(["docker", "ps", "-aq", "--filter", f"label=emx.sandbox={IR.PURPOSE}"],
-                          capture_output=True, text=True, check=False).stdout.split()
-    assert left == []
+    # only this test's own containers: a live pilot shares the emx.sandbox label
+    q = subprocess.run(["docker", "ps", "-aq", "--filter", f"label=emx.run={run_id}"],
+                       capture_output=True, text=True, check=False)
+    assert q.returncode == 0, q.stderr  # a failed query must not pass as "nothing left"
+    assert q.stdout.split() == []
 
 
 OC_POST = [{"role": "system", "content": "sys"},
@@ -741,3 +744,53 @@ def test_negated_act_with_a_command_matcher_is_unscorable(tmp_path):
     out = SC.score(tmp_path, spec)
     assert out["score"] is None
     assert out["evidence"]["invalid"] == "negated_act_with_command_matcher"
+
+
+
+class FakeForkEnv:
+    """fork_check's view of an env: fingerprint(version) and a simulator."""
+
+    class Sim:
+        def first_request(self, q):
+            return [{"role": "user", "content": q}]
+
+    def __init__(self, fps):
+        self.fps, self.sim, self.asked = fps, self.Sim(), []
+
+    def fingerprint(self, version=I.FINGERPRINT_VERSION):
+        self.asked.append(version)
+        return self.fps[version]
+
+
+@pytest.mark.parametrize("recorded,used", [(None, 1), (1, 1), (2, 2), (3, 3)])
+def test_fork_check_uses_the_boundary_s_fingerprint_version(recorded, used):
+    env = FakeForkEnv({1: "fp-v1", 2: "fp-v2", 3: "v3 abc"})
+    b = {"fingerprint_sha256": I.sha256(env.fps[used]),
+         "sim_probe_sha256": IR.sim_probe(env.sim)}
+    if recorded is not None:
+        b["fingerprint_version"] = recorded
+    out = IR.fork_check(env, b)
+    assert env.asked == [used] and out["ok"] and out["fingerprint_version"] == used
+
+
+def test_fork_check_rejects_a_changed_workspace_or_simulator():
+    env = FakeForkEnv({3: "v3 abc"})
+    b = {"fingerprint_version": 3, "fingerprint_sha256": I.sha256("v3 other"),
+         "sim_probe_sha256": IR.sim_probe(env.sim)}
+    assert not IR.fork_check(env, b)["ok"]
+    b2 = dict(b, fingerprint_sha256=I.sha256("v3 abc"), sim_probe_sha256="different")
+    assert not IR.fork_check(env, b2)["ok"]
+
+
+def test_no_rerun_makes_exactly_one_attempt(tmp_path):
+    cfgs = [IR.BaseConfig(task=IR.InteractTask(f"t{n}", None, PERSONA, {}, "spec", "sha"),  # type: ignore[arg-type]
+                          root=tmp_path, attempt=1) for n in range(2)]
+    seen = []
+
+    def run_one(cfg):
+        cfg.run_dir.mkdir(parents=True)
+        seen.append(cfg.run_key)
+        return {"end": "infra_error"}
+
+    out = IR.run_bases(cfgs, run_one, rerun=False)
+    assert len(out) == 2 and sorted(seen) == ["t0-deepseek-a1", "t1-deepseek-a1"]

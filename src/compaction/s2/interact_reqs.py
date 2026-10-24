@@ -426,9 +426,19 @@ class S1Grader:
             firsts += [x for x in t.items if not x["still_present"]]
         overlay: list[dict] = []
         if self.backend.family == "anthropic" and firsts:
-            overlay = SL.second_look(
-                self.backend, firsts, [], load_rec=lambda rid: recs[rid],
-                summary_of=lambda row, rec: views[row["arm"]]["summary"], purpose=self.purpose)
+            # One second-look batch per source: S1 keys an item's request "sl|item|<item id>",
+            # and the same requirement is graded against several sources, so one batch held
+            # duplicate keys (testem b1, 24 Oct: "duplicate Req.key in batch"). The batches run
+            # one after another: a bare MaxBackend refuses overlapping run() calls (astra fixes
+            # r1). The overlay rows still match by (kind, rid, id), rid naming the source.
+            by_src: dict[str, list[dict]] = {}
+            for x in firsts:
+                by_src.setdefault(x["arm"], []).append(x)
+            for rows in by_src.values():
+                overlay += SL.second_look(
+                    self.backend, rows, [], load_rec=lambda rid: recs[rid],
+                    summary_of=lambda row, rec: views[row["arm"]]["summary"],
+                    purpose=self.purpose)
         by_key = SL.index_overlay(overlay)
         out: dict[str, dict[str, dict]] = {}
         for src, rows in rows_by.items():

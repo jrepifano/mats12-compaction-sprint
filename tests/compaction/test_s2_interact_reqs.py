@@ -6,6 +6,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -499,3 +501,51 @@ def test_screen_draft_failure_goes_to_card(run):
 def test_arm_sources_match_unit_a():
     assert S.ARM_SOURCES == replays.ARM_SOURCES
     assert set(S.REPLAY_POLICIES) == set(replays.RP.REPLAY_ARMS)
+
+
+class StrictBackend(StubBackend):
+    """Like claude_headless.MaxBackend: refuses duplicate keys within one batch, and a run()
+    while another is still running."""
+
+    def __init__(self, answer):
+        super().__init__(answer)
+        self.batches: list[list[str]] = []
+        self._busy = threading.Lock()
+
+    def run(self, reqs, *, purpose):
+        if not self._busy.acquire(blocking=False):
+            raise RuntimeError("MaxBackend.run is already running")
+        try:
+            keys = [r.key for r in reqs]
+            if len(keys) != len(set(keys)):
+                raise ValueError("duplicate Req.key in batch")
+            self.batches.append(keys)
+            time.sleep(0.01)  # long enough for an overlapping caller to collide
+            return super().run(reqs, purpose=purpose)
+        finally:
+            self._busy.release()
+
+
+def _per_source_second_look(req):
+    """pass 1b as `_s1_answer`; the second look keeps an item for cc_prompt (quoting its
+    summary) and drops it for every other source, so a swapped overlay would show."""
+    if req.key.startswith("sl|item|"):
+        summary = dict(req.files).get("summary.txt", "")
+        if summary == "cc summary":
+            return {"verdict": "kept", "summary_quote": "cc summary", "searched": [], "note": "x"}
+    return _s1_answer(req)
+
+
+def test_second_look_one_batch_per_source(run):
+    """testem b1, 24 Oct: the same requirement dropped by two sources made one second-look
+    batch with duplicate "sl|item|<req>" keys. Batches go one per source, never overlapping, and
+    each source keeps its own verdicts."""
+    _split_both(run)
+    bdir = run / "b1"
+    _replays(bdir, {"cc_prompt": "cc summary"})  # keeps nothing: drops what live drops
+    be = StrictBackend(_per_source_second_look)
+    g = R.grade_sources(bdir, ["live", "cc_prompt"], backend=be)
+    sl = [b for b in be.batches if b and b[0].startswith("sl|")]
+    assert len(sl) == 2 and all("sl|item|b1-q2" in b for b in sl)  # one batch per source
+    assert g["live"]["b1-q2"] == "dropped"  # live's second look agreed: dropped
+    assert g["cc_prompt"]["b1-q2"] == "kept"  # cc_prompt's second look overturned it

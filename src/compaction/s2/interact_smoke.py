@@ -120,8 +120,10 @@ def run(task_id: str = "kombu-single-active-consumer-priority", *,
         return k == 2
 
     kept_dirs: list[Path] = []
+    run_id = None
     try:
         with Invocation(purpose=IR.PURPOSE) as inv:
+            run_id = inv.run_id
             res = IR.run_base(cfg, agent_model=StubModel(actions()), sim_model=StubSim(),
                               inv=inv, eligible=eligible)
             rep["base"] = {k: res.get(k) for k in ("end", "boundaries", "n_calls", "error")}
@@ -235,10 +237,11 @@ def run(task_id: str = "kombu-single-active-consumer-priority", *,
         for d in kept_dirs:
             bad += SS.KeepStore.remove(d)
         chk["kept_removed"] = not bad
-        left = subprocess.run(["docker", "ps", "-aq", "--filter",
-                               f"label=emx.sandbox={IR.PURPOSE}"], capture_output=True,
-                              text=True, timeout=60, check=False).stdout.split()
-        chk["no_containers_left"] = left == []
+        # this smoke's own containers only: a live pilot shares the emx.sandbox label
+        q = subprocess.run(["docker", "ps", "-aq", "--filter", f"label=emx.run={run_id}"],
+                           capture_output=True, text=True, timeout=60, check=False)
+        # a failed query must not pass as "nothing left" (astra fingerprint r1)
+        chk["no_containers_left"] = bool(run_id) and q.returncode == 0 and not q.stdout.split()
     rep["ok"] = bool(chk) and all(chk.values())
     rep["seconds"] = round(time.monotonic() - t0, 1)
     (root / "smoke_report.json").write_text(json.dumps(rep, indent=1, default=str))

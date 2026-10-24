@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -204,14 +205,15 @@ def test_fork_in_docker(tmp_path):
         sb0.close()  # arms must not depend on the base container
 
         for name, (sb, sim, am) in arms.items():
-            fp = I.fingerprint(I.sandbox_runner(sb))
+            fp = I.fingerprint(I.sandbox_runner(sb))  # v3: one hash line
+            listing = I.fingerprint(I.sandbox_runner(sb), 2)  # v2 lists paths, for the checks
             report[name] = {
                 "fingerprint_equal": fp == pre_fp,
                 "fingerprint_sha_equal": I.sha256(fp) == b.fingerprint_sha256,
                 "agent_request_equal": I.agent_request(am, TOOLS) == pre_agent,
                 "sim_request_equal": I.canon(sim.first_request(NEXT_Q)) == pre_sim,
-                "plan_md": "missing /tmp/plan.md" not in fp,
-                "untracked_kept": "scratch_notes.txt" in fp,
+                "plan_md": "missing /tmp/plan.md" not in listing,
+                "untracked_kept": "scratch_notes.txt" in listing,
                 "persona_not_in_container": sb.exec(
                     "grep -rIl --exclude-dir=proc --exclude-dir=sys 'frobnicate(x)' /app /tmp"
                     " /root 2>/dev/null | head -1", timeout_s=120).stdout.strip() == ""}
@@ -363,3 +365,77 @@ def test_requests_match_released_server(repo, tmp_path):
         assert I.SimState.from_ask_log(rows) == sim.state  # restore from the real log too
     finally:
         srv.shutdown()
+
+
+@pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+def test_fingerprint_v2_handles_symlinks_and_matches_v1_without_them():
+    """Pilot a1 on helm (24 Oct): v1 ran sha256sum through broken testdata symlinks (rc 123).
+    v2 records links as links, never followed, and equals v1 on a repo without any."""
+    from compaction.deepswe.sandbox import Invocation
+
+    with Invocation(purpose="s2-interact") as inv:
+        sb = inv.start(IMAGE, cpus=2, memory_mb=4096, network="none", lifetime_s=900)
+        run = I.sandbox_runner(sb)
+        links = sb.exec("cd /app && git ls-files -z -co --exclude-standard"
+                        " | xargs -0 -r bash -c 'for f; do [ -L \"$f\" ] && echo \"$f\"; done; true' _",
+                        timeout_s=120).stdout.split()
+        if not links:
+            assert I.fingerprint(run, 2) == I.fingerprint(run, 1)  # unchanged for old boundaries
+        r = sb.exec(SETUP + " && cd /app && ln -s does/not/exist broken-link"
+                    " && ln -s README.md readme-link 2>/dev/null; f=$(git ls-files | head -1);"
+                    " rm -f \"$f\"; echo \"$f\"", timeout_s=120)
+        assert r.rc == 0, r.stderr
+        gone = r.stdout.strip().splitlines()[-1]
+        with pytest.raises(RuntimeError, match="v1 failed"):
+            I.fingerprint(run, 1)
+        fp = I.fingerprint(run, 2)
+        assert "link broken-link -> does/not/exist" in fp
+        assert f"missing {gone}" in fp
+        assert I.fingerprint(run, 2) == fp  # deterministic
+        sb.exec("cd /app && ln -sfn elsewhere broken-link", timeout_s=60)
+        assert I.fingerprint(run, 2) != fp  # a retargeted link changes it
+
+
+
+def test_fingerprint_v1_v2_commands_are_frozen():
+    """Boundaries recorded v1 or v2 (helm a2's live process loaded v2), and their fork checks
+    re-run those exact commands: they must never change."""
+    import hashlib
+    pinned = {1: "2b4882f5f35d3d0a1c6fe2d38e2f88c8ac1230624ef1d54ac23761a50b445c11",
+              2: "024fb134de06e294f2630e8da9de656ac075e293ef7e0cdbf102612e06bff5c0"}
+    for v, h in pinned.items():
+        assert hashlib.sha256(I.FINGERPRINT_CMDS[v].encode()).hexdigest() == h, v
+    assert I.FINGERPRINT_VERSION == 3 and I.FINGERPRINT_CMD == I.FINGERPRINT_CMDS[1]
+
+
+@pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+def test_fingerprint_v3_is_lossless():
+    """astra fingerprint r1: v2 can't tell a link target "t" from "t\\n" (command
+    substitution strips trailing newlines), nor separate ambiguous newline records; v3 can."""
+    from compaction.deepswe.sandbox import Invocation
+
+    with Invocation(purpose="s2-interact") as inv:
+        sb = inv.start(IMAGE, cpus=2, memory_mb=4096, network="none", lifetime_s=900)
+        run = I.sandbox_runner(sb)
+        assert sb.exec(SETUP + " && cd /app && ln -s does/not/exist broken-link",
+                       timeout_s=120).rc == 0
+        v3 = I.fingerprint(run, 3)
+        assert re.fullmatch(r"v3 [0-9a-f]{64}\n", v3)
+        assert I.fingerprint(run, 3) == v3  # deterministic
+        # a trailing newline in a link target
+        assert sb.exec("cd /app && ln -s target lnk", timeout_s=60).rc == 0
+        a2, a3 = I.fingerprint(run, 2), I.fingerprint(run, 3)
+        assert sb.exec("cd /app && ln -sfn $'target\\n' lnk", timeout_s=60).rc == 0
+        assert I.fingerprint(run, 2) == a2  # the v2 collision
+        assert I.fingerprint(run, 3) != a3  # v3 tells them apart
+        # a newline inside a file name that mimics another record
+        assert sb.exec("cd /app && rm lnk && touch $'x\\nlink lnk -> target'",
+                       timeout_s=60).rc == 0
+        b3 = I.fingerprint(run, 3)
+        assert sb.exec("cd /app && rm $'x\\nlink lnk -> target' && touch x && ln -s target lnk",
+                       timeout_s=60).rc == 0
+        assert I.fingerprint(run, 3) != b3
+        # an ordinary edit changes it
+        c3 = I.fingerprint(run, 3)
+        assert sb.exec("cd /app && echo more >> x", timeout_s=60).rc == 0
+        assert I.fingerprint(run, 3) != c3

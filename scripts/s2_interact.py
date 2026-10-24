@@ -98,7 +98,7 @@ def cmd_base(a) -> int:
                                watch=watch)
 
     try:
-        out = IR.run_bases(configs, run_one, concurrency=a.concurrency)
+        out = IR.run_bases(configs, run_one, concurrency=a.concurrency, rerun=not a.no_rerun)
     finally:
         watch.stop()
     for r in out:
@@ -261,6 +261,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--go-from-jacob", action="store_true")
     b.add_argument("--tasks")
     b.add_argument("--concurrency", type=int, default=C.INTERACT_CONCURRENCY)
+    b.add_argument("--no-rerun", action="store_true",
+                   help="don't rerun infrastructure failures (this launch is the rerun)")
     for name in ("replays", "screen"):
         p = sub.add_parser(name)
         p.add_argument("run_dir")

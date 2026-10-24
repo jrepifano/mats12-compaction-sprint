@@ -349,17 +349,62 @@ class UserSim:
 
 # A fingerprint of everything in the workspace the next request can depend on: HEAD, status,
 # every tracked or untracked (non-ignored) file's hash, and the step files outside the repo.
-FINGERPRINT_CMD = (
-    "cd /app && echo HEAD=$(git rev-parse HEAD) && git status --porcelain --untracked-files=all"
-    " && git ls-files -z -co --exclude-standard | xargs -0 -r sha256sum"
+# v1 ran sha256sum on every listed path, following symlinks, so a broken symlink failed it
+# (helm's testdata, pilot a1, 24 Oct). v2 lists symlinks as links (their readlink target,
+# never followed) and paths missing from the worktree as such, then hashes the regular files
+# in one batch; on a repo with no symlinks or missing paths its output equals v1's byte for
+# byte. Boundaries record the version they used; a boundary without one is v1.
+_FP_HEAD = ("cd /app && echo HEAD=$(git rev-parse HEAD)"
+            " && git status --porcelain --untracked-files=all")
+_FP_TAIL = (" && for f in /tmp/plan.md /tmp/base_commit.txt; do"
+            " [ -f $f ] && sha256sum $f || echo missing $f; done")
+FINGERPRINT_CMDS = {
+    1: _FP_HEAD + " && git ls-files -z -co --exclude-standard | xargs -0 -r sha256sum" + _FP_TAIL,
+    2: _FP_HEAD + (
+        " && L=$(mktemp) && git ls-files -z -co --exclude-standard > \"$L\""
+        # symlinks, as links (builtins only, readlink per link)
+        " && xargs -0 -r bash -c 'for f; do if [ -L \"$f\" ]; then"
+        " printf \"link %s -> %s\\n\" \"$f\" \"$(readlink -- \"$f\")\";"
+        " elif [ ! -e \"$f\" ]; then printf \"missing %s\\n\" \"$f\"; fi; done' _ < \"$L\""
+        # regular files, hashed in batches
+        " && xargs -0 -r bash -c 'for f; do [ -L \"$f\" ] || [ ! -f \"$f\" ]"
+        " || printf \"%s\\0\" \"$f\"; done' _ < \"$L\" | xargs -0 -r sha256sum --"
+        " && rm -f \"$L\"") + _FP_TAIL,
+}
+# v3 (astra fingerprint r1): lossless. v2's `$(readlink …)` drops trailing newlines from a
+# link target and its newline-separated records are ambiguous, so two different workspaces
+# could share a v2 fingerprint. v3 writes NUL-terminated records only: `git status -z`; each
+# symlink as "L <sha256 of the exact `readlink -n` target bytes> <raw path>"; each missing
+# path as "M <raw path>"; each regular file as `sha256sum -z` ("<hash>  <raw path>", no
+# escaping); the step files likewise; with a tag per section. The stream is hashed inside the
+# container, so text decoding can't merge distinct paths either: the output is one line,
+# "v3 <sha256 of the record stream>". v1 and v2 are kept byte for byte for boundaries that
+# recorded them.
+FINGERPRINT_CMDS[3] = (
+    "set -o pipefail; cd /app && L=$(mktemp) && git ls-files -z -co --exclude-standard > \"$L\""
+    " && H=$( {"
+    " printf 'HEAD %s\\0' \"$(git rev-parse HEAD)\""
+    " && printf 'SECTION status\\0' && git status --porcelain=v1 -z --untracked-files=all"
+    " && printf 'SECTION links\\0'"
+    " && xargs -0 -r bash -c 'for f; do if [ -L \"$f\" ]; then"
+    " printf \"L %s %s\\0\" \"$(readlink -n -- \"$f\" | sha256sum | cut -c1-64)\" \"$f\";"
+    " elif [ ! -e \"$f\" ]; then printf \"M %s\\0\" \"$f\"; fi; done; true' _ < \"$L\""
+    " && printf 'SECTION files\\0'"
+    " && { xargs -0 -r bash -c 'for f; do [ -L \"$f\" ] || [ ! -f \"$f\" ]"
+    " || printf \"%s\\0\" \"$f\"; done; true' _ < \"$L\" | xargs -0 -r sha256sum -z --; }"
+    " && printf 'SECTION tmp\\0'"
     " && for f in /tmp/plan.md /tmp/base_commit.txt; do"
-    " [ -f $f ] && sha256sum $f || echo missing $f; done")
+    " if [ -f \"$f\" ]; then sha256sum -z -- \"$f\"; else printf 'M %s\\0' \"$f\"; fi; done;"
+    " } | sha256sum | cut -c1-64 ); rc=$?; rm -f \"$L\"; [ $rc -eq 0 ] && [ ${#H} -eq 64 ]"
+    " && echo \"v3 $H\"")
+FINGERPRINT_VERSION = 3  # what new boundaries record (helm a2's process loaded 2)
+FINGERPRINT_CMD = FINGERPRINT_CMDS[1]  # kept for older callers
 
 
-def fingerprint(runner: Runner) -> str:
-    rc, out, err = runner(FINGERPRINT_CMD, 300)
+def fingerprint(runner: Runner, version: int = FINGERPRINT_VERSION) -> str:
+    rc, out, err = runner(FINGERPRINT_CMDS[version], 300)
     if rc != 0:
-        raise RuntimeError(f"fingerprint failed rc={rc}: {err[-500:]}")
+        raise RuntimeError(f"fingerprint v{version} failed rc={rc}: {err[-500:]}")
     return out
 
 
@@ -521,8 +566,8 @@ class InteractEnv:
         keep.record(k, tag, snapshot_s=secs)
         return {"tag": tag, "stopped_processes": stopped, "snapshot_s": secs}
 
-    def fingerprint(self) -> str:
-        return fingerprint(sandbox_runner(self.sb))
+    def fingerprint(self, version: int = FINGERPRINT_VERSION) -> str:
+        return fingerprint(sandbox_runner(self.sb), version)
 
     def read_text(self, path: str) -> str | None:
         r = self.sb.exec(NOSHIM + f"cat {shlex.quote(path)}", timeout_s=60, workdir="/")

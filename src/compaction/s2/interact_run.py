@@ -635,6 +635,7 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
             (b / "step_instruction.txt").write_text(cfg.task.steps["02_implement"])
             ctx.fields.update(stage="02_implement", calls_in_step=ctx.loop.n_calls,
                               fingerprint_sha256=I.sha256(env.fingerprint()),
+                              fingerprint_version=I.FINGERPRINT_VERSION,
                               sim_probe_sha256=sim_probe(env.sim),
                               sim_calls=env.sim.state.ask_user_call_count)
             mark("boundary_saved", k=ctx.k)
@@ -780,9 +781,11 @@ def sim_probe(sim: I.UserSim) -> str:
 def fork_check(env: I.InteractEnv, boundary: dict) -> dict:
     """A restored arm against its boundary: the same workspace fingerprint and the same
     simulator request for SIM_PROBE (both free)."""
-    fp, probe = I.sha256(env.fingerprint()), sim_probe(env.sim)
-    return {"fingerprint_sha256": fp, "sim_probe_sha256": probe,
-            "ok": fp == boundary.get("fingerprint_sha256")
+    # the version the boundary was fingerprinted with (none recorded: v1, before 24 Oct's fix)
+    version = int(boundary.get("fingerprint_version") or 1)
+    fp, probe = I.sha256(env.fingerprint(version)), sim_probe(env.sim)
+    return {"fingerprint_sha256": fp, "fingerprint_version": version,
+            "sim_probe_sha256": probe, "ok": fp == boundary.get("fingerprint_sha256")
             and probe == boundary.get("sim_probe_sha256")}
 
 
@@ -1232,7 +1235,7 @@ class DockerWatch:
 
 
 def run_bases(configs: list[BaseConfig], run_one: Callable[[BaseConfig], dict], *,
-              concurrency: int = C.INTERACT_CONCURRENCY) -> list[dict]:
+              concurrency: int = C.INTERACT_CONCURRENCY, rerun: bool = True) -> list[dict]:
     """All base runs at once (Jacob, 24 Oct), then each infrastructure failure rerun once as a
     new attempt; if two or more ended infra_oom, the reruns go INTERACT_RERUN_CONCURRENCY at a
     time (plan "Wall-clock")."""
@@ -1241,6 +1244,8 @@ def run_bases(configs: list[BaseConfig], run_one: Callable[[BaseConfig], dict], 
             return list(ex.map(run_one, cfgs))
 
     first = pool(configs, concurrency)
+    if not rerun:  # this launch is itself the one rerun of an earlier infrastructure failure
+        return first
     redo = [replace(c, attempt=next_attempt(c.root, c.task.task_id))
             for c, r in zip(configs, first, strict=True) if r.get("end") in INFRA_ENDS]
     n_oom = sum(r.get("end") == "infra_oom" for r in first)
