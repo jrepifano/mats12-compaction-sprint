@@ -773,6 +773,16 @@ def test_classify_keeps_the_cli_and_hook_and_flags_background_work():
     assert {1, 7, 120, 121, 124, 130, 131, 170, 171} <= set(c["infra"])
 
 
+def test_an_empty_pattern_file_fails_the_scan(tmp_path):
+    import subprocess
+    (tmp_path / "m").write_text("")
+    script = N.scan_script([], root=str(tmp_path), marker=str(tmp_path / "m"),
+                           tmp=str(tmp_path), pattern_cmd="true")  # adds no pattern at all
+    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True,
+                       env={"PATH": "/usr/bin:/bin"}, check=False)
+    assert r.returncode == 7 and not N.parse_scan(r.stdout)[0]
+
+
 def test_scan_script_never_names_a_secret_and_fails_closed(tmp_path):
     import subprocess
     script = N.scan_script(["S1"], root=str(tmp_path / "root"), marker=str(tmp_path / "m"),
@@ -786,8 +796,16 @@ def test_scan_script_never_names_a_secret_and_fails_closed(tmp_path):
     env = {"S1": "hunter2", "PATH": "/usr/bin:/bin"}
     r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env,
                        check=False)
-    assert r.returncode == 0 and r.stdout.splitlines()[-1] == "SCAN_OK 2"
-    assert r.stdout.splitlines()[0].endswith("/d/f")
+    ok, n, hits = N.parse_scan(r.stdout)
+    assert r.returncode == 0 and ok and n == 2 and hits[0].endswith("/d/f")
+    # a matching file whose name holds a newline and marker text is still one hit
+    weird = tmp_path / "root" / "d" / "x\n#N 900\nSCAN_OK"
+    weird.write_text("hunter2")
+    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env,
+                       check=False)
+    ok, n, hits = N.parse_scan(r.stdout)
+    assert ok and n == 3 and sorted(h.split("/")[-1] for h in hits) == ["f", "x\n#N 900\nSCAN_OK"]
+    weird.unlink()
     (tmp_path / "root" / "g").chmod(0)
     try:
         r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, env=env,

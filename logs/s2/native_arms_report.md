@@ -7,7 +7,7 @@ Brief: `logs/s2/briefs/native-arms.md`. Built 24 Oct 2026 by sub-agent native-ar
 | Arm | Q1 (native base runs) | Q2 (native forks) | Reviews |
 |---|---|---|---|
 | **Claude Code** 2.1.310, Haiku 5.5 on Max | **Works.** Smoke 2 (kombu, window 80k): auto-compaction at 67,224 tokens captured live; boundary loads in `lossaudit`; both Q1 audits run on it. Batch on the 6 tasks running. | **Works.** A fork from the kept image with an edited summary resumed and quoted the edit (`--resume <new id> --fork-session`). Refuses boundaries that aren't quiescent or have entrypoint services. | astra r1–r3 (cap); every BLOCKING fixed; r3's fixes tested, not re-reviewed |
-| **Antigravity** `agy` 1.4.7, Gemini 3.8 Flash on Jacob's free quota | **Works with a forced compaction.** The auto threshold isn't settable (`AGY_CLI_AUTO_COMPACT_OVERRIDE` is no token threshold), so a PostInvocation hook ends the turn at 150k and the runner runs `/compact`, captures, and resumes with "Continue.". $0 dry run passed; smoke 2 (heavy) running. | **Not attempted.** The conversation DB only takes same-length edits (feasibility). | astra agy r1 (4 BLOCKING, fixed); delta r1 / agy r2 running |
+| **Antigravity** `agy` 1.4.7, Gemini 3.8 Flash on Jacob's free quota | **Works with a forced compaction.** The auto threshold isn't settable (`AGY_CLI_AUTO_COMPACT_OVERRIDE` is no token threshold), so a PostInvocation hook ends the turn at 150k and the runner runs `/compact`, captures, and resumes with "Continue.". Smoke 2 (kombu, heavy): forced compaction at 150,107 after 240 model calls; b1 loads in `lossaudit`; sim $0.048. A hung background test had to be killed (by hand; now the coded background-task rule). | **Not attempted.** The conversation DB only takes same-length edits (feasibility). | astra agy r1, delta r1–r3, launcher-3 r1–r2; every BLOCKING fixed (the last r2 fixes not re-reviewed) |
 
 ## Topology and safety (both arms)
 
@@ -26,7 +26,7 @@ Brief: `logs/s2/briefs/native-arms.md`. Built 24 Oct 2026 by sub-agent native-ar
 
 ## Thresholds (Jacob, 24 Oct: a common 150k trigger)
 
-- Claude Code's native default for Haiku 5.5 is its 1M context: it would never compact on DeepSWE. Measured trigger ≈ window − 12.8k (68,082 and 67,224 at an 80k window) → `CLAUDE_CODE_AUTO_COMPACT_WINDOW=163000`. Check each run's first `pre_tokens` (flag outside 145–155k).
+- Claude Code's native default for Haiku 5.5 is its 1M context: it would never compact on DeepSWE. The trigger sits below `CLAUDE_CODE_AUTO_COMPACT_WINDOW` by a buffer that isn't constant: 12.8k at an 80k window (68,082; 67,224), 20–33k at 163k (130,037; 130,979; 134,562; 134,250; 142,838). The first batch ran at 163,000; remaining runs and reruns use 170,000 (main session, calibrating to Jacob's 150k). Every boundary's actual `pre_tokens` is recorded (result.json `compactions`, status lines).
 - Antigravity: native threshold not settable; forced at the first turn boundary where the last call's input + cache-read tokens ≥ 150,000 (`pre_tokens_kind: trigger_request_context`: the request of the call that crossed it, not its output or tool results).
 
 ## Design decisions (logged)
@@ -56,7 +56,7 @@ uv run --with fastmcp==4.1.3 python scripts/s2_native.py agy-base --task T --com
 
 ## Spend
 
-Simulator only (agents on Max / the free quota), from the per-run spend files (`_spend/*.jsonl`, settled): Claude Code smoke 1 $0.065 (capture failed: summary-row lookup), smoke 2 $0.063; agy smoke 1 $0.153 (killed at 02_implement turn 1). Batch and agy smoke 2: see below.
+Simulator only (agents on Max / the free quota), from the per-run spend files (`_spend/*.jsonl`, settled): Claude Code smoke 1 $0.065 (capture failed: summary-row lookup), smoke 2 $0.063; agy smoke 1 $0.153 (killed at 02_implement turn 1: a docker client timeout removed the container), smoke 2 $0.048. Batch: see below.
 
 ## Results
 

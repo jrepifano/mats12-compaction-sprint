@@ -399,25 +399,36 @@ def scan_script(names: list[str], root: str = "/", marker: str = START_MARKER,
                 tmp: str = "/dev/shm", pattern_cmd: str | None = None) -> str:
     """The in-container scan (pure; tested): the secrets go from env vars to a pattern file on
     /dev/shm (a tmpfs, never committed) through the printf builtin, so no process's argv holds
-    one; then every regular file on the root filesystem (`find -xdev`: no volumes, tmpfs,
-    /proc, /sys or bind mounts, which `docker commit` leaves out anyway) changed since the
-    session started (mtime or ctime newer than START_MARKER; the image itself was clean) is
-    grepped with `-F -f`. Fails closed: a find error or any grep rc > 1 exits non-zero.
-    Prints matching paths, then "SCAN_OK <n files scanned>"."""
-    fill = "".join(f"printf '%s\\n' \"${n}\" >> \"$P\"; " for n in names)
+    one; every write is checked and the file must end up non-empty. Every regular file on the
+    root filesystem (`find -xdev`: no volumes, tmpfs, /proc, /sys or bind mounts, which
+    `docker commit` leaves out anyway) changed since the session started (mtime or ctime newer
+    than START_MARKER; the image itself was clean) streams from find into `grep -lF -f`
+    batches (`--null`: GNU and BSD grep alike) with no list file anywhere (a size-limited tmpfs can't overflow). Output is
+    NUL-separated typed records: "#N <files>" per batch, each hit's absolute path, and a final
+    "SCAN_OK" only when the whole pipeline returns 0. Fails closed: a find, xargs or grep error
+    (rc > 1) or a failed pattern write exits non-zero."""
+    fill = "".join(f"printf '%s\\n' \"${n}\" >> \"$P\" || {{ rm -f \"$P\"; exit 6; }}; "
+                   for n in names)
     if pattern_cmd:  # more patterns, made inside the container (e.g. from a mounted store)
         fill += f"{{ {pattern_cmd}; }} >> \"$P\" || {{ rm -f \"$P\"; exit 5; }}; "
     m, t, r = shlex.quote(marker), shlex.quote(tmp), shlex.quote(root)
     return (
         f"set -o pipefail; umask 077; P=$(mktemp {t}/scan.XXXXXX) || exit 3; " + fill +
+        "[ -s \"$P\" ] || { rm -f \"$P\"; exit 7; }; "
         f"[ -f {m} ] || {{ rm -f \"$P\"; exit 4; }}; "
-        f"L=$(mktemp {t}/list.XXXXXX); "
-        f"find {r} -xdev -type f \\( -newer {m} -o -cnewer {m} \\) "
-        "-print0 > \"$L\"; frc=$?; "
-        "xargs -0 sh -c '[ $# -eq 0 ] && exit 0; grep -lF -f \"$0\" -- \"$@\"; r=$?; "
-        "[ $r -le 1 ] || exit 255' \"$P\" < \"$L\"; grc=$?; "
-        "n=$(tr -cd '\\000' < \"$L\" | wc -c | tr -d ' '); rm -f \"$P\" \"$L\"; "
-        "[ $frc -eq 0 ] && [ $grc -eq 0 ] && echo \"SCAN_OK $n\"")
+        f"find {r} -xdev -type f \\( -newer {m} -o -cnewer {m} \\) -print0 | "
+        "xargs -0 sh -c '[ $# -eq 0 ] && exit 0; printf \"#N %s\\0\" \"$#\"; "
+        "grep -lF --null -f \"$0\" -- \"$@\"; r=$?; [ $r -le 1 ] || exit 255' \"$P\"; rc=$?; "
+        "rm -f \"$P\"; [ $rc -eq 0 ] && printf 'SCAN_OK\\0'")
+
+
+def parse_scan(out: str) -> tuple[bool, int, list[str]]:
+    """(ok, files scanned, hit paths) from `scan_script`'s NUL-separated records. Hits are
+    absolute paths, so they can't collide with the "#N " and "SCAN_OK" markers, and a path
+    with a newline in it stays one record."""
+    recs = [x for x in out.split("\0") if x]
+    n = sum(int(x[3:]) for x in recs if x.startswith("#N ") and x[3:].isdigit())
+    return "SCAN_OK" in recs, n, [x for x in recs if x.startswith("/")]
 
 
 ENTRYPOINT_RC = "/tmp/emx_entrypoint_rc"  # families.rf: images whose entrypoint starts services
@@ -480,12 +491,10 @@ def secret_scan(sb: SB.Sandbox, secrets: dict[str, str], pattern_cmd: str | None
         raise ValueError("secret_scan needs non-empty secrets")
     r = exec_env(sb, scan_script(list(secrets), pattern_cmd=pattern_cmd), dict(secrets),
                  timeout_s=900)
-    lines = r.stdout.splitlines()
-    ok = [x for x in lines if x.startswith("SCAN_OK ")]
+    ok, n, hits = parse_scan(r.stdout)
     if r.rc != 0 or not ok:
         raise SB.SandboxError(f"secret scan failed rc={r.rc}: {r.stderr[-300:]}")
-    return {"hits": [x for x in lines if x.strip() and not x.startswith("SCAN_OK ")],
-            "scanned": int(ok[-1].split()[1]), "seconds": round(r.seconds, 1)}
+    return {"hits": hits, "scanned": n, "seconds": round(r.seconds, 1)}
 
 
 PS_FIELDS = "pid=,ppid=,stat=,args="
