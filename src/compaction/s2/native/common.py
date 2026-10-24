@@ -1,0 +1,1012 @@
+"""What every native-harness arm shares (brief logs/s2/briefs/native-arms.md): the simulator as
+an MCP server, restricted egress, the task container, streaming execs, kept snapshots and the
+boundary writer. A harness module (`claude_code`, `agy`, the Codex arm's) drives the CLI and
+turns its native transcript into a `NativeBoundary`; everything else is here.
+
+Topology, per session (`NativeSession`):
+
+    laptop:   SimServer (FastMCP, the released `ask_user` tool; UserSim, our port) on
+              <tailscale ip>:<free port>, with POST /emx/boundary for the harness's hook
+    desktop:  internal network emx-native-<id> (docker network create --internal: no route out)
+              ├─ task container (the DeepSWE image or a kept boundary image), on it only
+              └─ egress sidecar (`egress_proxy.py`), on it and on the default bridge, aliases
+                 `user-server` (port 8000 forwards to the SimServer, so the step instructions'
+                 "http://user-server:8000/mcp" is literally right) and `egress` (port 3128, an
+                 HTTPS CONNECT proxy that tunnels only to the arm's allowlist, ALLOW[arm])
+
+The agent reaches its vendor API through HTTPS_PROXY=http://egress:3128 and nothing else: a
+direct connection has no route, and the proxy refuses any other host (`egress_check` proves both
+inside the container). The simulator's own repo commands run harness-side through `docker exec`
+(`interact.sandbox_runner`), as in the pi arm, so the persona never enters the container.
+
+Containers follow the sandbox contract (`compaction.deepswe.sandbox`): --rm, a name, the label
+emx.sandbox=native-<arm> plus the invocation's emx.run label, `timeout -k 5 <lifetime>` as the
+main process, every exec under an in-container timeout. The sidecar and the network carry the
+same labels and are removed (and confirmed) by `Egress.down`. Kept boundary images follow the
+KeepStore rules (`session.KeepStore`: per-execution unique tags, emx.keep label, never re-point
+an existing tag).
+
+The FastMCP dependency is not in the project: run native arms under
+`uv run --with fastmcp==4.1.3` (the version the released server resolves to today, and the one
+the feasibility check used). Everything else here imports without it.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import copy
+import io
+import json
+import os
+import re
+import secrets
+import shlex
+import socket
+import subprocess
+import tarfile
+import threading
+import time
+import uuid
+from collections.abc import Callable
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Self
+
+from compaction.deepswe import sandbox as SB
+from compaction.s2 import compact as K
+from compaction.s2 import interact as I
+from compaction.s2 import session as SS
+
+FASTMCP_VERSION = "4.1.3"
+SIM_SERVER_NAME = "simulated-user"  # FastMCP("simulated-user"), upstream server.py
+ASK_USER_DOC = "Ask the user a question and get their response."
+MCP_URL = "http://user-server:8000/mcp"  # what the task's instruction.md and task.toml name
+BOUNDARY_PATH = "/emx/boundary"
+BOUNDARY_URL = "http://user-server:8000" + BOUNDARY_PATH
+TOKEN_HEADER = "X-Emx-Token"
+TOKEN_QUERY = "emx_token"
+PROXY_URL = "http://egress:3128"
+FORWARD_PORT = 8000
+
+# Hosts each arm's CLI may reach (host:port, CONNECT only). Codex: the Codex arm's own list.
+ALLOW: dict[str, tuple[str, ...]] = {
+    "claude_code": ("api.anthropic.com:443",),
+    "codex": ("chatgpt.com:443", "api.openai.com:443", "auth.openai.com:443"),
+    # seen live 24 Oct (discovery mode): the model API, flags, user info; plus token refresh.
+    # Left out: lh3.googleusercontent.com (profile picture), play.googleapis.com (telemetry).
+    "agy": ("daily-cloudcode-pa.googleapis.com:443", "cloudcode-pa.googleapis.com:443",
+            "aicode.googleapis.com:443", "antigravity-unleash.goog:443",
+            "www.googleapis.com:443", "oauth2.googleapis.com:443"),
+}
+# by name (DNS on an internal network resolves nothing outside) and by address (no route)
+EGRESS_CHECK_DENIED = ("https://github.com", "https://pypi.org/simple/", "https://1.1.1.1")
+
+# Desktop limits for agent-session containers (main session, 24 Oct): small when idle
+# (85-185 MB), so 3 GB and 2 CPUs, at most 8 at a time per sub-agent, started only while the
+# host has >= 6 GB available. Test-heavy containers: 8 GB, 4 CPUs, >= 10 GB available.
+AGENT_CPUS, AGENT_MEMORY_MB, AGENT_MIN_FREE_GB = 2.0, 3072, 6.0
+HEAVY_CPUS, HEAVY_MEMORY_MB, HEAVY_MIN_FREE_GB = 4.0, 8192, 10.0
+
+EGRESS_BASE = "alpine:3.20"
+EGRESS_SCRIPT = Path(__file__).with_name("egress_proxy.py")
+NATIVE_LABEL = "emx.native"  # on the egress image and the networks: "egress" / the session id
+
+
+def purpose(arm: str) -> str:
+    return f"native-{arm.replace('_', '-')}"
+
+
+def utc() -> str:
+    return SS.utc_now()
+
+
+def _dump(path: Path, obj) -> None:
+    SS._dump(Path(path), obj)
+
+
+def tailscale_ip() -> str:
+    """The laptop's Tailscale IPv4 (EMX_NATIVE_SIM_BIND overrides): where SimServer listens, so
+    the desktop's containers reach it and nothing outside the tailnet does."""
+    if os.environ.get("EMX_NATIVE_SIM_BIND"):
+        return os.environ["EMX_NATIVE_SIM_BIND"]
+    for exe in ("tailscale", "/Applications/Tailscale.app/Contents/MacOS/Tailscale"):
+        with contextlib.suppress(OSError, subprocess.SubprocessError):
+            p = subprocess.run([exe, "ip", "-4"], capture_output=True, text=True, timeout=10,
+                               check=False)
+            if p.returncode == 0 and p.stdout.strip():
+                return p.stdout.split()[0]
+    raise RuntimeError("no Tailscale IPv4 found; set EMX_NATIVE_SIM_BIND")
+
+
+def free_port(bind: str) -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((bind, 0))
+        return s.getsockname()[1]
+
+
+# ------------------------------------------------------------------------------------------
+# Egress: the internal network and the allowlisting sidecar
+# ------------------------------------------------------------------------------------------
+
+
+def _sha12(b: bytes) -> str:
+    import hashlib
+    return hashlib.sha256(b).hexdigest()[:12]
+
+
+def egress_image() -> str:
+    """The sidecar image tag: changes whenever egress_proxy.py does."""
+    return f"emx-native/egress:{_sha12(EGRESS_SCRIPT.read_bytes())}"
+
+
+def ensure_egress_image(host: str | None) -> str:
+    """Build the sidecar image on `host` if it isn't there (alpine + python3 + the script)."""
+    tag = egress_image()
+    with SB.using_host(host):
+        if SB._docker(["image", "inspect", tag], timeout=60, check=False).returncode == 0:
+            return tag
+        df = (f"FROM {EGRESS_BASE}\nRUN apk add --no-cache python3\n"
+              "COPY egress_proxy.py /egress_proxy.py\n"
+              f"LABEL {NATIVE_LABEL}=egress\n")
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tf:
+            for name, data in (("Dockerfile", df.encode()),
+                               ("egress_proxy.py", EGRESS_SCRIPT.read_bytes())):
+                ti = tarfile.TarInfo(name)
+                ti.size = len(data)
+                tf.addfile(ti, io.BytesIO(data))
+        SB._docker(["build", "-q", "-t", tag, "-"], timeout=900, input_bytes=buf.getvalue())
+    return tag
+
+
+@dataclass
+class Egress:
+    """One session's internal network and sidecar (module docstring)."""
+    arm: str
+    sim_host: str  # where the SimServer listens (the laptop's Tailscale IP)
+    sim_port: int
+    host: str | None = None  # docker -H
+    run_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    allow: tuple[str, ...] | None = None  # default ALLOW[arm]
+    lifetime_s: int = 8 * 3600
+    network: str = ""
+    proxy: str = ""
+
+    def __post_init__(self) -> None:
+        if self.allow is None:
+            self.allow = ALLOW[self.arm]
+        sid = uuid.uuid4().hex[:8]
+        self.network = self.network or f"emx-native-{self.run_id}-{sid}"
+        self.proxy = self.proxy or f"{purpose(self.arm)}-egress-{self.run_id}-{sid}"
+
+    def labels(self) -> list[str]:
+        return ["--label", f"{SB.LABEL_KEY}={purpose(self.arm)}",
+                "--label", f"{SB.RUN_LABEL_KEY}={self.run_id}",
+                "--label", f"{NATIVE_LABEL}={self.network}"]
+
+    def proxy_run_args(self, image: str) -> list[str]:
+        """The sidecar's `docker run` argv (pure)."""
+        return ["run", "-d", "--rm", "--name", self.proxy, *self.labels(),
+                "--network", "bridge", "--memory", "128m", "--cpus", "0.5",
+                "-e", f"ALLOW={','.join(self.allow or ())}",
+                "-e", f"FORWARD={FORWARD_PORT}={self.sim_host}:{self.sim_port}",
+                image, "timeout", "-k", "5", str(int(self.lifetime_s)),
+                "python3", "-u", "/egress_proxy.py"]
+
+    def up(self) -> str:
+        """Create the network and start the sidecar; returns the network name."""
+        image = ensure_egress_image(self.host)
+        with SB.using_host(self.host):
+            try:
+                SB._docker(["network", "create", "--internal", *self.labels(), self.network],
+                           timeout=60)
+                SB._docker(self.proxy_run_args(image), timeout=120)
+                SB._docker(["network", "connect", "--alias", "user-server", "--alias",
+                            "egress", self.network, self.proxy], timeout=60)
+                self._wait_ready()
+            except BaseException:
+                self.down()
+                raise
+        return self.network
+
+    def _wait_ready(self, timeout_s: float = 30) -> None:
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < timeout_s:
+            if any(e.get("ev") == "ready" for e in self.events()):
+                return
+            time.sleep(0.5)
+        raise SB.SandboxError(f"egress sidecar {self.proxy} not ready in {timeout_s}s")
+
+    def events(self) -> list[dict]:
+        """The sidecar's JSON log lines so far (every tunnel, refusal and forward)."""
+        with SB.using_host(self.host):
+            p = SB._docker(["logs", self.proxy], timeout=60, check=False)
+        out = []
+        for line in p.stdout.decode(errors="replace").splitlines():
+            with contextlib.suppress(ValueError):
+                out.append(json.loads(line))
+        return out
+
+    def proxy_env(self) -> dict[str, str]:
+        """For the agent's process: tunnel through the sidecar; MCP and the hook go direct."""
+        no = "user-server,egress,localhost,127.0.0.1"
+        return {"HTTPS_PROXY": PROXY_URL, "https_proxy": PROXY_URL, "NO_PROXY": no,
+                "no_proxy": no}
+
+    def down(self) -> list[str]:
+        """Remove the sidecar and the network; returns what was NOT confirmed gone."""
+        bad = []
+        with SB.using_host(self.host):
+            if not SB.remove_container(self.proxy):
+                bad.append(self.proxy)
+            SB._docker(["network", "rm", self.network], timeout=60, check=False)
+            p = SB._docker(["network", "ls", "--format", "{{.Name}}"], timeout=30, check=False)
+            if p.returncode != 0 or self.network in p.stdout.decode().split():
+                bad.append(f"network {self.network}")
+        return bad
+
+
+def egress_check(sb: SB.Sandbox, egress: Egress, allowed_url: str) -> dict:
+    """Inside the task container: a direct connection fails (no route), the proxy refuses
+    github.com and pypi.org, and `allowed_url` (the vendor API) answers through the proxy.
+    {"ok": bool, "checks": [...]}. Needs curl in the image (every DeepSWE image has it)."""
+    checks = []
+
+    def curl(url: str, via_proxy: bool) -> dict:
+        px = f"-x {PROXY_URL} " if via_proxy else "--noproxy '*' "
+        r = sb.exec(f"curl -sS -o /dev/null -w '%{{http_code}}' -m 15 {px}{shlex.quote(url)}",
+                    timeout_s=40, workdir="/")
+        return {"url": url, "via_proxy": via_proxy, "rc": r.rc, "http": r.stdout.strip(),
+                "err": r.stderr.strip()[-200:]}
+
+    for url in EGRESS_CHECK_DENIED:
+        c = curl(url, via_proxy=False)
+        c["want"], c["pass"] = "no route", c["rc"] != 0
+        checks.append(c)
+        c = curl(url, via_proxy=True)
+        # curl reports a refused CONNECT as rc 56 ("CONNECT tunnel failed, response 403")
+        c["want"], c["pass"] = "proxy 403", c["rc"] != 0 and "403" in (c["err"] + c["http"])
+        checks.append(c)
+    c = curl(allowed_url, via_proxy=True)
+    c["want"] = "any HTTP status"
+    c["pass"] = c["rc"] == 0 and c["http"].isdigit() and c["http"] != "000"
+    checks.append(c)
+    c = curl(allowed_url, via_proxy=False)
+    c["want"], c["pass"] = "no route", c["rc"] != 0
+    checks.append(c)
+    denied = [e for e in egress.events() if e.get("ev") == "deny"]
+    return {"ok": all(x["pass"] for x in checks), "checks": checks, "proxy_denies": denied,
+            "utc": utc()}
+
+
+# ------------------------------------------------------------------------------------------
+# The task container
+# ------------------------------------------------------------------------------------------
+
+
+def start_task_container(inv: SB.Invocation, image: str, *, network: str,
+                         extra_args: list[str] | tuple[str, ...] = (),
+                         lifetime_s: int = I.CONTAINER_LIFETIME_S, cpus: float = 2,
+                         memory_mb: int = 8192, platform: str | None = "linux/amd64",
+                         name: str | None = None) -> SB.Sandbox:
+    """`Invocation.start` with extra `docker run` flags (mounts, tmpfs) before the image; the
+    container is tracked by `inv`, so its cleanup removes it."""
+    name = name or f"{inv.purpose}-{inv.run_id}-{uuid.uuid4().hex[:8]}"
+    args = SB.run_args(image, name, inv.purpose, lifetime_s, cpus, memory_mb, platform,
+                       network, inv.run_id)
+    at = args.index(image)
+    args[at:at] = list(extra_args)
+    t0 = time.monotonic()
+    with SB.using_host(inv.host):
+        try:
+            SB._docker(args, timeout=300)
+        except BaseException:
+            SB.remove_container(name)
+            raise
+    sb = SB.Sandbox(name=name, image=image, purpose=inv.purpose, run_id=inv.run_id,
+                    host=inv.host)
+    sb.log.append({"op": "start", "seconds": time.monotonic() - t0})
+    inv.sandboxes.append(sb)
+    return sb
+
+
+@dataclass
+class StreamResult:
+    rc: int
+    seconds: float
+    timed_out: bool
+    killed: str | None = None  # why the runner stopped it, if it did
+
+
+def stream_exec(sb: SB.Sandbox, cmd: str, *, timeout_s: int, log_path: Path,
+                env: dict[str, str] | None = None, workdir: str = "/app",
+                stdin: bytes | None = None, stop: threading.Event | None = None,
+                on_line: Callable[[str], None] | None = None) -> StreamResult:
+    """A long `docker exec` whose stdout goes line by line to `log_path` (and `on_line`).
+    `env` values reach the container as `docker exec -e NAME` with the value only in the docker
+    client's environment, never in an argv or a log. Under an in-container `timeout -k 5`;
+    `stop` set (e.g. by a boundary hook) ends the wait early: the caller kills the CLI inside
+    the container."""
+    env = dict(env or {})
+    argv = ["exec", *(["-i"] if stdin is not None else []),
+            *[a for k in env for a in ("-e", k)], "-w", workdir, sb.name,
+            "timeout", "-k", "5", str(int(timeout_s)), "bash", "-lc", cmd]
+    full = SB.docker_argv(argv, sb.host)
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.monotonic()
+    penv = {**os.environ, **env}
+    with open(log_path, "ab") as out, open(str(log_path) + ".err", "ab") as err:
+        p = subprocess.Popen(full, stdin=subprocess.PIPE if stdin is not None else
+                             subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=err, env=penv)
+        if stdin is not None:
+            assert p.stdin is not None
+            p.stdin.write(stdin)
+            p.stdin.close()
+        assert p.stdout is not None
+
+        def pump() -> None:
+            for raw in iter(p.stdout.readline, b""):
+                out.write(raw)
+                out.flush()
+                if on_line is not None:
+                    with contextlib.suppress(Exception):
+                        on_line(raw.decode(errors="replace"))
+
+        th = threading.Thread(target=pump, daemon=True)
+        th.start()
+        killed = None
+        deadline = t0 + timeout_s + SB.CLIENT_GRACE_S
+        while p.poll() is None:
+            if stop is not None and stop.is_set():
+                killed = "stop"
+                break
+            if time.monotonic() > deadline:
+                killed = "client_timeout"
+                break
+            time.sleep(0.5)
+        if killed and p.poll() is None:
+            # the client goes now; the CLI inside the container is the caller's to stop
+            p.kill()
+            p.wait(timeout=30)
+        th.join(timeout=30)
+    rc = p.returncode if p.returncode is not None else -1
+    return StreamResult(rc, round(time.monotonic() - t0, 1), rc in (124, 137), killed)
+
+
+def exec_env(sb: SB.Sandbox, cmd: str, env: dict[str, str], *, timeout_s: int = 300,
+             workdir: str = "/") -> SB.ExecResult:
+    """`Sandbox.exec` with `env` passed as `docker exec -e NAME` (values only in the client's
+    environment). Not logged in `sb.log` (the command may expand a secret)."""
+    argv = SB.docker_argv(["exec", *[a for k in env for a in ("-e", k)], "-w", workdir,
+                           sb.name, "timeout", "-k", "5", str(int(timeout_s)), "bash", "-lc",
+                           cmd], sb.host)
+    t0 = time.monotonic()
+    p = subprocess.run(argv, capture_output=True, timeout=timeout_s + SB.CLIENT_GRACE_S,
+                       env={**os.environ, **env}, check=False)
+    return SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
+                         p.stderr.decode(errors="replace"), time.monotonic() - t0)
+
+
+START_MARKER = "/opt/emx/.session-start"  # touched when a session's container starts
+
+
+def scan_script(names: list[str], root: str = "/", marker: str = START_MARKER,
+                tmp: str = "/dev/shm", pattern_cmd: str | None = None) -> str:
+    """The in-container scan (pure; tested): the secrets go from env vars to a pattern file on
+    /dev/shm (a tmpfs, never committed) through the printf builtin, so no process's argv holds
+    one; then every regular file on the root filesystem (`find -xdev`: no volumes, tmpfs,
+    /proc, /sys or bind mounts, which `docker commit` leaves out anyway) changed since the
+    session started (mtime or ctime newer than START_MARKER; the image itself was clean) is
+    grepped with `-F -f`. Fails closed: a find error or any grep rc > 1 exits non-zero.
+    Prints matching paths, then "SCAN_OK <n files scanned>"."""
+    fill = "".join(f"printf '%s\\n' \"${n}\" >> \"$P\"; " for n in names)
+    if pattern_cmd:  # more patterns, made inside the container (e.g. from a mounted store)
+        fill += f"{{ {pattern_cmd}; }} >> \"$P\" || {{ rm -f \"$P\"; exit 5; }}; "
+    m, t, r = shlex.quote(marker), shlex.quote(tmp), shlex.quote(root)
+    return (
+        f"set -o pipefail; umask 077; P=$(mktemp {t}/scan.XXXXXX) || exit 3; " + fill +
+        f"[ -f {m} ] || {{ rm -f \"$P\"; exit 4; }}; "
+        f"L=$(mktemp {t}/list.XXXXXX); "
+        f"find {r} -xdev -type f \\( -newer {m} -o -cnewer {m} \\) "
+        "-print0 > \"$L\"; frc=$?; "
+        "xargs -0 sh -c '[ $# -eq 0 ] && exit 0; grep -lF -f \"$0\" -- \"$@\"; r=$?; "
+        "[ $r -le 1 ] || exit 255' \"$P\" < \"$L\"; grc=$?; "
+        "n=$(tr -cd '\\000' < \"$L\" | wc -c | tr -d ' '); rm -f \"$P\" \"$L\"; "
+        "[ $frc -eq 0 ] && [ $grc -eq 0 ] && echo \"SCAN_OK $n\"")
+
+
+ENTRYPOINT_RC = "/tmp/emx_entrypoint_rc"  # families.rf: images whose entrypoint starts services
+ENTRYPOINT_WAIT_S = 900
+
+
+def image_entrypoint(image: str, host: str | None) -> list[str]:
+    with SB.using_host(host):
+        p = SB._docker(["image", "inspect", "--format", "{{json .Config.Entrypoint}}", image],
+                       timeout=60)
+    return json.loads(p.stdout.decode().strip() or "null") or []
+
+
+def wait_entrypoint(sb: SB.Sandbox, wait_s: float = ENTRYPOINT_WAIT_S, poll_s: float = 10) -> int:
+    """Wait for an image entrypoint's record (`families.rf.ENTRYPOINT_RC`, written once its
+    services are up) from this container's own start (a kept image may carry an older one);
+    a nonzero rc, or none in `wait_s`, is an infrastructure failure (SandboxError)."""
+    cmd = (f"s=$(stat -c %Z /proc/1); if [ -f {ENTRYPOINT_RC} ] && "
+           f"[ $(stat -c %Y {ENTRYPOINT_RC}) -ge $((s - 1)) ]; then cat {ENTRYPOINT_RC}; "
+           "else echo WAIT; fi")
+    t0 = time.monotonic()
+    while True:
+        out = sb.exec(cmd, timeout_s=30, workdir="/").stdout.strip()
+        if out and out != "WAIT":
+            rc = int(out.split()[0]) if out.split()[0].lstrip("-").isdigit() else -1
+            if rc != 0:
+                raise SB.SandboxError(f"{sb.name}: image entrypoint failed rc={rc}")
+            return rc
+        if time.monotonic() - t0 > wait_s:
+            raise SB.SandboxError(f"{sb.name}: no entrypoint record in {wait_s:.0f}s")
+        time.sleep(poll_s)
+
+
+def mark_session_start(sb: SB.Sandbox) -> None:
+    r = sb.exec(f"mkdir -p {Path(START_MARKER).parent} && touch {START_MARKER}", timeout_s=30,
+                workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"session marker: {r.stderr[-300:]}")
+
+
+def secret_scan(sb: SB.Sandbox, secrets: dict[str, str], pattern_cmd: str | None = None) -> dict:
+    """{"hits": [paths], "scanned": n, "seconds"} for the secrets {env name: value} in what a
+    commit of `sb` would add (`scan_script`). Raises when the scan itself fails, so a caller
+    never mistakes a partial scan for a clean one. Run before every kept commit."""
+    if not secrets or not all(secrets.values()):
+        raise ValueError("secret_scan needs non-empty secrets")
+    r = exec_env(sb, scan_script(list(secrets), pattern_cmd=pattern_cmd), dict(secrets),
+                 timeout_s=900)
+    lines = r.stdout.splitlines()
+    ok = [x for x in lines if x.startswith("SCAN_OK ")]
+    if r.rc != 0 or not ok:
+        raise SB.SandboxError(f"secret scan failed rc={r.rc}: {r.stderr[-300:]}")
+    return {"hits": [x for x in lines if x.strip() and not x.startswith("SCAN_OK ")],
+            "scanned": int(ok[-1].split()[1]), "seconds": round(r.seconds, 1)}
+
+
+PS_FIELDS = "pid=,ppid=,stat=,args="
+
+
+def ps_table(sb: SB.Sandbox) -> tuple[dict[int, tuple[int, str, str]], str]:
+    """{pid: (ppid, stat, args)} of the container, and the token marking this check's own
+    process (whose tree is excluded)."""
+    token = f"{SB.QUIESCE_TOKEN}-{uuid.uuid4().hex[:8]}"
+    r = sb.exec(f": {token}; ps -eo {PS_FIELDS}", timeout_s=30, workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"ps failed in {sb.name} rc={r.rc}: {r.stderr[-300:]}")
+    return parse_ps(r.stdout), token
+
+
+def parse_ps(out: str) -> dict[int, tuple[int, str, str]]:
+    procs = {}
+    for line in out.splitlines():
+        parts = line.split(None, 3)
+        if len(parts) >= 3 and parts[0].isdigit():
+            procs[int(parts[0])] = (int(parts[1]), parts[2], parts[3] if len(parts) > 3 else "")
+    return procs
+
+
+def _tree(procs: dict[int, tuple[int, str, str]], roots: set[int]) -> set[int]:
+    out = set(roots)
+    changed = True
+    while changed:
+        changed = False
+        for pid, (ppid, _, _) in procs.items():
+            if ppid in out and pid not in out:
+                out.add(pid)
+                changed = True
+    return out
+
+
+def classify(procs: dict[int, tuple[int, str, str]], token: str, cli: str,
+             hook: str, services: set[int] | frozenset[int] = frozenset()) -> dict[str, list[int]]:
+    """Split a container's processes at a hook-blocked boundary: `infra` = PID 1 and its sleep,
+    the CLI process (args starting with `cli`) and its ancestors, the hook's process tree (args
+    naming `hook`), this check's own tree and the image entrypoint's `services` (running when
+    its record appeared: Postgres, Redis; a fork's entrypoint starts them again) with their
+    trees; `strays` = everything else alive (e.g. the agent's background shells, children of
+    the CLI). Zombies are ignored."""
+    def anc(pid: int) -> set[int]:
+        out = set()
+        while pid in procs and pid not in out and pid > 0:
+            out.add(pid)
+            pid = procs[pid][0]
+        return out
+
+    clis = {p for p, (_, _, a) in procs.items() if a.startswith(cli)}
+    hooks = {p for p, (_, _, a) in procs.items() if hook in a}
+    mine = {p for p, (_, _, a) in procs.items() if token in a}
+    infra = {1} | {p for p, (pp, _, a) in procs.items() if pp == 1 and a == "sleep infinity"}
+    for c in clis:
+        infra |= anc(c)
+    infra |= _tree(procs, hooks) | _tree(procs, mine)
+    infra |= _tree(procs, {p for p in services if p in procs})
+    strays = [p for p, (_, st, _) in sorted(procs.items())
+              if p not in infra and not st.startswith("Z")]
+    return {"infra": sorted(infra), "strays": strays}
+
+
+def signal_pids(sb: SB.Sandbox, pids: list[int], sig: str) -> None:
+    """kill -<sig> each pid; a pid that is already gone is fine, any other failure raises."""
+    if not pids:
+        return
+    r = sb.exec("bad=0; for p in " + " ".join(map(str, pids)) + f"; do kill -{sig} $p 2>/dev/null"
+                " || { [ -d /proc/$p ] && bad=1; }; done; exit $bad", timeout_s=30, workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"kill -{sig} failed for a live process in {sb.name}")
+
+
+FREEZE_ROUNDS = 5
+
+
+def freeze(sb: SB.Sandbox, cli: str, hook: str,
+           services: set[int] | frozenset[int] = frozenset()) -> dict[int, str]:
+    """SIGSTOP every process outside the CLI and hook trees (`classify`) and verify it: rediscover
+    until every stray is stopped ("T") or gone, so a child spawned in between is caught too.
+    Returns {pid: "ppid stat args"} of the stopped processes; raises if it can't stabilise.
+    The caller must `signal_pids(..., "CONT")` them in a finally."""
+    stopped: dict[int, str] = {}
+    try:
+        for _ in range(FREEZE_ROUNDS):
+            procs, tok = ps_table(sb)
+            strays = classify(procs, tok, cli, hook, services)["strays"]
+            for p in strays:
+                stopped.setdefault(p, f"{procs[p][0]} {procs[p][1]} {procs[p][2]}")
+            live = [p for p in strays if not procs[p][1].startswith("T")]
+            if not live:
+                return stopped
+            signal_pids(sb, live, "STOP")
+        raise SB.SandboxError(f"background processes in {sb.name} did not stay stopped after "
+                              f"{FREEZE_ROUNDS} rounds")
+    except BaseException:
+        # the caller never gets the list: resume what was stopped here (astra r3 #4)
+        with contextlib.suppress(Exception):
+            signal_pids(sb, sorted(stopped), "CONT")
+        raise
+
+
+def processes(sb: SB.Sandbox) -> list[str]:
+    """`ps` lines other than the sandbox's own main process (no judgement: the harness decides
+    what its own CLI's process tree is)."""
+    token = f"{SB.QUIESCE_TOKEN}-{uuid.uuid4().hex[:8]}"
+    r = sb.exec(f": {token}; ps -eo pid=,ppid=,stat=,args=", timeout_s=30, workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"ps failed in {sb.name} rc={r.rc}: {r.stderr[-300:]}")
+    # the hook's curl names the SimServer token; keep it out of boundary records
+    return [re.sub(rf"({TOKEN_HEADER}: )\S+", r"\1<redacted>", line)
+            for line in SB.stray_processes(r.stdout, token)]
+
+
+def snapshot(sb: SB.Sandbox, keep: SS.KeepStore, k: int) -> dict:
+    """A kept `docker commit --pause` of boundary k (KeepStore rules: listed before the commit
+    starts, never re-pointing an existing tag). Unlike `Sandbox.snapshot` it does not require a
+    quiescent container: the CLI is blocked in its own hook at this point; the caller records
+    what else was running (`processes`). Returns {"tag", "snapshot_s"}."""
+    # a restored container must wait for its own entrypoint, never see this one's record
+    r = sb.exec(f"rm -f {ENTRYPOINT_RC}", timeout_s=30, workdir="/")
+    if r.rc != 0:
+        raise SB.SandboxError(f"rm {ENTRYPOINT_RC}: {r.stderr[-200:]}")
+    tag = keep.new_tag(k)
+    if I.tag_exists(tag, sb.host):
+        raise RuntimeError(f"kept tag {tag} already exists; refusing to overwrite it")
+    with SB.using_host(sb.host):
+        secs = sb._commit(tag, keep.labels())
+    keep.record(k, tag, snapshot_s=secs)
+    return {"tag": tag, "snapshot_s": secs}
+
+
+# ------------------------------------------------------------------------------------------
+# The simulator as an MCP server
+# ------------------------------------------------------------------------------------------
+
+
+class SimServer:
+    """The released `ask_user` MCP tool (FastMCP "simulated-user", streamable HTTP at /mcp; the
+    same name, docstring and `question: str` signature as upstream server.py), answered by this
+    session's `UserSim`, plus POST /emx/boundary for the harness's compaction hook.
+
+    Every request must carry `X-Emx-Token: <token>` (403 otherwise): the server listens on the
+    laptop's Tailscale IP. Asks are serialised (one simulator conversation). `rows` are the
+    pilot's reply rows (`interact_run.EnvAsks`: reply_id, call_index, step, question, reply)
+    plus `utc`; set `step` before each workflow step. `on_boundary(payload) -> dict` runs in a
+    worker thread and its result is the response body; while it runs the CLI is blocked in its
+    hook. A `RunCapReached` from the simulator calls `on_cap(error)` and answers the tool call
+    with an error. `on_ask(row)` runs after each reply (e.g. for a harness that must count
+    turns)."""
+
+    def __init__(self, sim: I.UserSim, *, bind: str | None = None, port: int = 0,
+                 token: str | None = None,
+                 on_boundary: Callable[[dict], dict] | None = None,
+                 on_cap: Callable[[BaseException], None] | None = None,
+                 on_ask: Callable[[dict], None] | None = None):
+        self.sim = sim
+        self.bind = bind or tailscale_ip()
+        self.port = port or free_port(self.bind)
+        self.token = token or secrets.token_urlsafe(24)
+        self.on_boundary, self.on_cap, self.on_ask = on_boundary, on_cap, on_ask
+        self.step = "01_plan"
+        self.rows: list[dict] = []
+        self.boundary_calls: list[dict] = []
+        self.cap_error: str | None = None
+        self._lock = threading.Lock()
+        self._server = None
+        self._thread: threading.Thread | None = None
+
+    # --- the tool, without MCP (tests call it directly) ------------------------------------
+    def ask(self, question: str) -> str:
+        from compaction.s2.model import RunCapReached
+        with self._lock:
+            if self.cap_error:
+                raise RuntimeError(f"simulator stopped: {self.cap_error}")
+            try:
+                reply = self.sim.ask(question)
+            except RunCapReached as e:
+                self.cap_error = f"{type(e).__name__}: {e}"
+                if self.on_cap is not None:
+                    self.on_cap(e)
+                raise
+            st = self.sim.state
+            row = {"reply_id": f"r{st.ask_user_call_count}",
+                   "call_index": st.ask_user_call_count, "step": self.step,
+                   "question": question, "reply": reply, "utc": utc()}
+            self.rows.append(row)
+        if self.on_ask is not None:
+            self.on_ask(row)
+        return reply
+
+    def boundary(self, payload: dict) -> dict:
+        t0 = time.monotonic()
+        rec = {"utc": utc(), "payload_keys": sorted(payload)}
+        try:
+            out = self.on_boundary(payload) if self.on_boundary else {"ok": True}
+            rec.update(ok=True, result=out)
+            return out
+        except Exception as e:  # noqa: BLE001 - reported to the hook and kept in boundary_calls
+            rec.update(ok=False, error=f"{type(e).__name__}: {e}"[:2000])
+            return {"ok": False, "error": rec["error"]}
+        finally:
+            rec["seconds"] = round(time.monotonic() - t0, 1)
+            self.boundary_calls.append(rec)
+
+    def export(self) -> dict:
+        with self._lock:
+            return copy.deepcopy(self.sim.export())
+
+    def mcp_config(self) -> dict:
+        """The MCP client entry the CLIs get (Claude Code's .claude.json shape)."""
+        return {"mcpServers": {"user-server": {"type": "http", "url": MCP_URL,
+                                               "headers": {TOKEN_HEADER: self.token}}}}
+
+    # --- serving ---------------------------------------------------------------------------
+    def app(self):
+        import anyio
+        from fastmcp import FastMCP
+        from starlette.requests import Request
+        from starlette.responses import JSONResponse
+
+        mcp = FastMCP(SIM_SERVER_NAME)
+        server = self
+
+        async def ask_user(question: str) -> str:
+            return await anyio.to_thread.run_sync(server.ask, question)
+
+        ask_user.__doc__ = ASK_USER_DOC  # FastMCP takes the description from the docstring
+        mcp.tool()(ask_user)
+
+        @mcp.custom_route(BOUNDARY_PATH, methods=["POST"])
+        async def boundary(request: Request):
+            try:
+                payload = await request.json()
+            except ValueError:
+                payload = {"raw": (await request.body()).decode(errors="replace")[:20000]}
+            out = await anyio.to_thread.run_sync(server.boundary, payload)
+            return JSONResponse(out, status_code=200 if out.get("ok") else 500)
+
+        app = mcp.http_app(path="/mcp", middleware=[_token_middleware(self.token)])
+        return app
+
+    def start(self, timeout_s: float = 30) -> SimServer:
+        import uvicorn
+        cfg = uvicorn.Config(self.app(), host=self.bind, port=self.port, log_level="warning",
+                             timeout_keep_alive=3600, lifespan="on")
+        self._server = uvicorn.Server(cfg)
+        self._thread = threading.Thread(target=self._server.run, daemon=True,
+                                        name=f"simserver-{self.port}")
+        self._thread.start()
+        t0 = time.monotonic()
+        while not getattr(self._server, "started", False):
+            if time.monotonic() - t0 > timeout_s or not self._thread.is_alive():
+                raise RuntimeError(f"SimServer did not start on {self.bind}:{self.port}")
+            time.sleep(0.1)
+        return self
+
+    def stop(self) -> list[str]:
+        """Stop serving; returns what did not stop (empty when the server thread is gone)."""
+        if self._server is not None:
+            self._server.should_exit = True
+        if self._thread is not None:
+            self._thread.join(timeout=30)
+            if self._thread.is_alive():
+                return [f"SimServer {self.bind}:{self.port} still running"]
+        return []
+
+
+def _token_middleware(token: str):
+    from starlette.middleware import Middleware
+
+    class TokenCheck:
+        def __init__(self, app):
+            self.app = app
+
+        async def __call__(self, scope, receive, send):
+            if scope["type"] == "http":
+                got = dict(scope.get("headers") or []).get(TOKEN_HEADER.lower().encode(), b"")
+                if not got:  # clients that can't send headers (agy) put it in the query
+                    from urllib.parse import parse_qs
+                    q = parse_qs((scope.get("query_string") or b"").decode())
+                    got = (q.get(TOKEN_QUERY) or [""])[0].encode()
+                if not secrets.compare_digest(got, token.encode()):
+                    await send({"type": "http.response.start", "status": 403,
+                                "headers": [(b"content-length", b"0")]})
+                    await send({"type": "http.response.body", "body": b""})
+                    return
+            await self.app(scope, receive, send)
+
+    return Middleware(TokenCheck)
+
+
+# ------------------------------------------------------------------------------------------
+# Boundaries in the pi arm's layout
+# ------------------------------------------------------------------------------------------
+
+
+@dataclass
+class NativeBoundary:
+    """One native compaction, already converted to the pi arm's OpenAI-format messages.
+
+    pre_messages: the context the model had before the compaction (a system message first,
+      the step instruction as the first user message; ask_user calls named "ask_user" and their
+      results as plain reply text, so `interact_run.reply_index` matches them).
+    post_messages: what the CLI resumed with: the system message, the summary message at
+      `summary_index`, then any verbatim tail the harness keeps (`kept_indices` index
+      pre_messages; empty when nothing is kept).
+    summary: the summary text as the model reads it (the whole summary message).
+    native_files: name -> text or bytes, written under b<k>/native/ (the native transcript at
+      the boundary, the hook payload, ...)."""
+    pre_messages: list[dict]
+    post_messages: list[dict]
+    summary: str
+    summary_index: int
+    kept_indices: list[int]
+    pre_tokens: int | None
+    post_tokens: int | None
+    trigger: str  # "auto" | "manual" | "forced"
+    policy: str  # e.g. "claude-code-native"
+    model: str
+    info: dict = field(default_factory=dict)
+    native_files: dict[str, str | bytes] = field(default_factory=dict)
+
+
+def next_k(run_dir: Path) -> int:
+    return max(SS._existing_k(Path(run_dir)), default=0) + 1
+
+
+def write_boundary(run_dir: Path, k: int, nb: NativeBoundary, *, run_json: dict,
+                   snap: dict, sim_export: dict, sim_rows: list[dict], step: str,
+                   step_instruction: str, fingerprint: str, sim_probe_sha256: str | None,
+                   calls_in_step: int | None, extra: dict | None = None,
+                   eligible: Callable[[Path, dict], bool] | None = None) -> Path:
+    """Write b<k> in the layout `session._boundary` and `interact_run.run_base` produce, so
+    `lossaudit.load`, `interact_reqs` and the fork trigger read it unchanged: boundary/
+    {pre_messages, compaction, post_messages, record, sim_state, sim_replies}.json,
+    step_instruction.txt, b<k>/run.json, b<k>/native/*, and boundary/boundary.json last (a
+    boundary is complete only when it exists). `snap` = `snapshot()`'s {"tag", "snapshot_s"}
+    plus "stopped_processes"/"processes"; `fingerprint` = `interact.fingerprint()` output.
+    `eligible(bdir, fields)` (the fork trigger, as `session`'s stop_at_boundary) runs before
+    boundary.json is written and sets fields["eligible"]; the caller reads it from the file."""
+    from compaction.s2 import interact_run as IR
+    run_dir = Path(run_dir)
+    bdir = run_dir / f"b{k}"
+    b = bdir / "boundary"
+    if (b / "boundary.json").exists():
+        raise FileExistsError(f"{b / 'boundary.json'} exists")
+    rid = f"{SS._record_base(run_dir, run_json)}-b{k}"
+    comp = K.Compaction(policy=nb.policy, requests=[], responses={}, summary=nb.summary,
+                        kept_indices=list(nb.kept_indices), post_messages=nb.post_messages,
+                        summary_index=nb.summary_index, usage=[],
+                        info={"native": True, "trigger": nb.trigger, **nb.info})
+    record = K.boundary_record(rid, nb.pre_messages, model=nb.model,
+                               pre_tokens=int(nb.pre_tokens or 0), summary=nb.summary)
+    record["harness"] = nb.policy
+    record["trigger"] = nb.trigger
+    _dump(b / "pre_messages.json", nb.pre_messages)
+    _dump(b / "compaction.json", comp.to_dict())
+    _dump(b / "post_messages.json", nb.post_messages)
+    _dump(b / "record.json", record)
+    _dump(bdir / "run.json", SS._boundary_run_json(run_json, k, snap.get("tag")))
+    _dump(b / "sim_state.json", sim_export)
+    _dump(b / "sim_replies.json", IR.reply_index(sim_rows, nb.pre_messages))
+    (b / "step_instruction.txt").write_text(step_instruction)
+    for name, data in nb.native_files.items():
+        p = bdir / "native" / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(data, bytes):
+            p.write_bytes(data)
+        else:
+            p.write_text(data)
+    prev_k = [j for j in SS._existing_k(run_dir) if j < k and SS._complete(run_dir / f"b{j}")]
+    fields = {
+        "tag": snap.get("tag"), "stopped_processes": snap.get("stopped_processes", []),
+        "processes": snap.get("processes"), "snapshot_s": snap.get("snapshot_s"),
+        "boundary_index": k, "stage": step, "calls_in_step": calls_in_step,
+        "pre_tokens": nb.pre_tokens, "post_tokens": nb.post_tokens,
+        "post_tokens_est": nb.post_tokens, "n_pre_messages": len(nb.pre_messages),
+        "summary_chars": len(nb.summary), "summary_index": nb.summary_index,
+        "kept_indices": list(nb.kept_indices),
+        "tail_start_index": min(nb.kept_indices) if nb.kept_indices else len(nb.pre_messages),
+        "policy": nb.policy, "update": k > 1 and bool(prev_k), "trigger": nb.trigger,
+        "previous_boundary": prev_k[-1] if prev_k else None, "compaction_cost_usd": 0.0,
+        "prompt_sha256": None, "update_prompt_sha256": None,
+        "fingerprint_sha256": I.sha256(fingerprint),
+        "fingerprint_version": I.FINGERPRINT_VERSION, "sim_probe_sha256": sim_probe_sha256,
+        "sim_calls": sim_export["state"]["ask_user_call_count"], "eligible": None,
+        "native": True, **(extra or {}),
+    }
+    if eligible is not None:
+        fields["eligible"] = bool(eligible(bdir, fields))
+    fields["written_utc"] = utc()
+    _dump(b / "boundary.json", fields)
+    return bdir
+
+
+def native_run_json(*, run_key: str, task_dict: dict, persona_sha256: str, arm: str,
+                    model: str, policy: str, threshold: dict, cli_version: str,
+                    extra: dict | None = None) -> dict:
+    """run.json for a native base run: `interact_run.run_json`'s shape, plus `harness`."""
+    from compaction.s2 import config as C
+    return {"run_key": run_key, "created_utc": utc(), "task": task_dict,
+            "plan": {"model": model, "policy": policy, "threshold": threshold,
+                     "task": task_dict["task_id"], "stage": C.INTERACT_STAGE,
+                     "tag": C.INTERACT_TAG, "harness": arm},
+            "harness": {"arm": arm, "cli_version": cli_version, **(extra or {})},
+            "sim": {"model": I.SimConfig().model, "route": C.SIM_ROUTE.name,
+                    "reasoning": C.SIM_ROUTE.reasoning, "persona_sha256": persona_sha256,
+                    "upstream": I.UPSTREAM, "server": f"fastmcp=={FASTMCP_VERSION}"}}
+
+
+def available_gb(host: str | None) -> float | None:
+    """MemAvailable on the docker host in GB (ssh://<target> hosts only; None otherwise)."""
+    if not host or not host.startswith("ssh://"):
+        return None
+    cmd = "awk '/MemAvailable/ {print $2}' /proc/meminfo"
+    p = subprocess.run(["ssh", host.removeprefix("ssh://"), cmd], capture_output=True,
+                       text=True, timeout=30, check=False)
+    try:
+        return int(p.stdout.strip()) / 1024 / 1024
+    except ValueError:
+        return None
+
+
+def wait_for_memory(host: str | None, need_gb: float, wait_s: float = 1800,
+                    poll_s: float = 30) -> float | None:
+    """Block until the host has `need_gb` available (desktop rule, 24 Oct: agent containers
+    start at >= 6 GB free, heavy ones at >= 10 GB). Raises after `wait_s`."""
+    t0 = time.monotonic()
+    while True:
+        gb = available_gb(host)
+        if gb is None or gb >= need_gb:
+            return gb
+        if time.monotonic() - t0 > wait_s:
+            raise SB.SandboxError(f"{host}: {gb:.1f} GB available < {need_gb} GB for "
+                                  f"{wait_s:.0f}s")
+        time.sleep(poll_s)
+
+
+# ------------------------------------------------------------------------------------------
+# One session's plumbing
+# ------------------------------------------------------------------------------------------
+
+
+@dataclass
+class NativeSession:
+    """Invocation + SimServer + Egress + task container, torn down together (in reverse).
+
+        with NativeSession(arm, image, sim, host=...) as ns:
+            ns.sb (the task container), ns.server (SimServer), ns.egress, ns.inv
+
+    `extra_args` go to `docker run` (e.g. a read-only CLI volume, a tmpfs). The simulator is
+    built by `sim_factory(runner)` against the container, as `InteractEnv.start` does."""
+    arm: str
+    image: str
+    sim_factory: Callable[[I.Runner], I.UserSim]
+    host: str | None = None
+    extra_args: tuple[str, ...] = ()
+    cpus: float = AGENT_CPUS
+    memory_mb: int = AGENT_MEMORY_MB
+    min_free_gb: float | None = AGENT_MIN_FREE_GB
+    lifetime_s: int = I.CONTAINER_LIFETIME_S
+    setup_git: bool = True
+    allow: tuple[str, ...] | None = None
+    on_boundary: Callable[[dict], dict] | None = None
+    on_cap: Callable[[BaseException], None] | None = None
+    before_close: Callable[[], list[str]] | None = None  # e.g. drain capture workers first
+    inv: SB.Invocation | None = None
+    sb: SB.Sandbox | None = None
+    server: SimServer | None = None
+    egress: Egress | None = None
+    uname: dict = field(default_factory=dict)
+    entrypoint_rc: int | None = None
+    services: frozenset[int] = frozenset()  # the entrypoint's processes (never frozen)
+    cleanup_unconfirmed: list[str] = field(default_factory=list)
+
+    def __enter__(self) -> Self:
+        if self.min_free_gb:
+            wait_for_memory(self.host, self.min_free_gb)
+        self.inv = SB.Invocation(purpose=purpose(self.arm), host=self.host)
+        try:
+            holder: dict = {}
+
+            def runner(cmd: str, t: int):
+                return holder["run"](cmd, t)
+
+            sim = self.sim_factory(runner)
+            self.server = SimServer(sim, on_boundary=self._boundary, on_cap=self.on_cap)
+            self.server.start()
+            self.egress = Egress(self.arm, self.server.bind, self.server.port, host=self.host,
+                                 run_id=self.inv.run_id, allow=self.allow,
+                                 lifetime_s=self.lifetime_s + 600)
+            net = self.egress.up()
+            self.sb = start_task_container(self.inv, self.image, network=net,
+                                           extra_args=self.extra_args,
+                                           lifetime_s=self.lifetime_s, cpus=self.cpus,
+                                           memory_mb=self.memory_mb)
+            holder["run"] = I.sandbox_runner(self.sb)
+            if image_entrypoint(self.image, self.host):  # services first (refactoring tasks)
+                self.entrypoint_rc = wait_entrypoint(self.sb)
+                procs, tok = ps_table(self.sb)
+                mine = _tree(procs, {p for p, v in procs.items() if tok in v[2]})
+                self.services = frozenset(
+                    p for p in procs if p != 1 and p not in mine
+                    and not (procs[p][0] == 1 and procs[p][2] == "sleep infinity"))
+            mark_session_start(self.sb)
+            if self.setup_git:
+                r = self.sb.exec(I.NOSHIM + I.SETUP_CMD, timeout_s=120)
+                if r.rc != 0:
+                    raise RuntimeError(f"git setup failed rc={r.rc}: {r.stderr[-500:]}")
+            u = self.sb.exec("uname -s; uname -r; uname -v; uname -m", timeout_s=60)
+            self.uname = dict(zip(("system", "release", "version", "machine"),
+                                  u.stdout.splitlines(), strict=False))
+        except BaseException:
+            self.__exit__(None, None, None)
+            raise
+        return self
+
+    def _boundary(self, payload: dict) -> dict:
+        if self.on_boundary is None:
+            return {"ok": True, "ignored": True}
+        return self.on_boundary(payload)
+
+    def __exit__(self, *exc) -> None:
+        bad: list[str] = []
+        steps = [("before_close", lambda: self.before_close() if self.before_close else []),
+                 ("containers", lambda: self.inv.cleanup() if self.inv else []),
+                 ("egress", lambda: self.egress.down() if self.egress else []),
+                 ("server", lambda: self.server.stop() if self.server else [])]
+        for name, fn in steps:  # each one runs whatever the others did
+            try:
+                bad += list(fn() or [])
+            except Exception as e:  # noqa: BLE001 - reported, the rest still runs
+                bad.append(f"{name}: {type(e).__name__}: {e}"[:300])
+        self.cleanup_unconfirmed = bad
+        if bad:
+            print(f"[native] cleanup NOT confirmed for: {bad}")
+
+
+def as_dict(obj) -> dict:
+    return asdict(obj)
