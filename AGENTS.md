@@ -141,14 +141,16 @@ The brief is the same for both tools: the plan path, that the go-ahead was given
 
 **Recipe** (tested 2026-10-24, Orca 1.4.233, with a Claude Code worker and a Codex gpt-6-astra worker, both $0):
 1. Read `orca skills get orchestration` (the task-spec contract and completion accounting). The coordinator must itself run in an Orca terminal, since `run-create` records its handle.
-2. `ORCA orchestration run-create --objective "<objective>" --json`, once per batch of related work.
+2. `ORCA orchestration run-create --objective "<objective>" --json` **once per coordinating session**, and put every worker of that session in it (`worker-start --run <that id>`). A coordinator is bound to one Run at a time: a second `run-create` rebinds it, and consuming `check --run <earlier run>` then fails with `consumer_fenced` (found 2026-10-24). `run-current` shows the binding, and `run-use <id>` switches back if it ever has to.
 3. Create each worker's terminal **with our own flags**, under the main checkout with a `cd` (as for probes). `worker-start` alone can't pass `--permission-mode auto` or the Codex sandbox flags.
 4. Wait for `tui-idle`, then hand the terminal to the Run: `ORCA orchestration worker-start --spec "<spec>" --task-title "<title>" --terminal <handle> --worktree "path:$M" --run <run_id> --json`. It exits 0 only when the turn started.
    - **The spec must be self-contained:** target, change, constraints, ownership (the files it may edit; no commits, no paid calls unless approved) and observable acceptance.
    - Put long briefs in a file and point the spec at it.
 5. Block on events, don't scrape screens: `ORCA orchestration check --wait --types "worker_done,escalation,question" --timeout-ms 900000 --run <run_id> --json`. Run it in the background so the session wakes on the event.
    - Answer questions with `orchestration reply --id <msg> --body "<answer>"`.
-   - Acknowledge each delivery with `check --ack <delivery_id>` after processing it.
+   - Acknowledge each delivery with `check --ack <delivery_id>` after processing it. Heartbeats arrive as deliveries of their own: acknowledge them too.
+   - `worker-show --dispatch <id> --json` reads a worker's stage and liveness without consuming its messages.
+   - `check --json` can print more than one JSON object, so parse the first one only (e.g. `json.JSONDecoder().raw_decode`).
 6. On each accepted `worker_done`, do exactly one: reuse the terminal for the next dispatch, `worker-retain`, or `worker-release`.
    - Release leaves a terminal we created ourselves in place ("retained, external_terminal"), so then close it with `terminal close`.
    - Finish when `worker-list --run <run_id> --terminal-state reclaimable` returns none.
