@@ -701,7 +701,9 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
 #   the fork) | exhausted (no candidate left, or the card caps) ; screen_failed (retried).
 # A rejection (an unresolved card counts as one) rescreens the boundary with the rejected
 # candidates excluded: the next in source-then-reply order (same source first, then the next
-# source). At most CARDS_PER_BOUNDARY cards per boundary and CARDS_TOTAL in all. Every
+# source). At most CARDS_PER_BOUNDARY primary cards per boundary, MEMBERS_PER_BOUNDARY bundle
+# members beside them, and CARDS_TOTAL cards of either kind in all (decided 24 Oct before any
+# continuation output was read; the cap was every card per boundary before). Every
 # transition is logged (also to <root>/selection_log.jsonl). A run is sealed from its earliest
 # frozen boundary, and from a carded boundary that already has later boundaries until that
 # boundary is exhausted: no one reads output past it before the freeze.
@@ -709,8 +711,9 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
 SEALED_NAME = "sealed.json"
 SELECTION_NAME = "selection.json"
 SELECTION_LOG = "selection_log.jsonl"
-CARDS_PER_BOUNDARY = 2
-CARDS_TOTAL = 12
+CARDS_PER_BOUNDARY = 2  # primary cards
+MEMBERS_PER_BOUNDARY = 2  # bundle members shown beside them
+CARDS_TOTAL = 12  # every card: it budgets Jacob's time
 PENDING_STATES = (None, "screening", "screen_failed", "carded")
 
 
@@ -732,7 +735,8 @@ def _transition(bdir: Path, state: str, event: str, **kw) -> dict:
     bdir = Path(bdir)
     sel = selection(bdir) or {"k": int(bdir.name[1:]), "state": None, "cards": [],
                               "rejected": [], "frozen": None, "log": []}
-    for f in ("cards", "rejected"):
+    sel["primaries"] = primaries_of(sel)
+    for f in ("cards", "rejected", "primaries"):
         for x in kw.pop(f"add_{f}", []):
             if x not in sel[f]:
                 sel[f].append(x)
@@ -748,6 +752,19 @@ def _transition(bdir: Path, state: str, event: str, **kw) -> dict:
     return sel
 
 
+def primaries_of(sel: dict) -> list[str]:
+    """The cards shown as primaries (a promoted bundle member counts from its promotion). A
+    selection written before the field existed derives them from its log."""
+    if "primaries" in sel:
+        return list(sel["primaries"])
+    out: list[str] = []
+    for row in sel.get("log") or []:
+        p = row.get("primary")
+        if row.get("event") in ("carded", "carded_again") and p and p not in out:
+            out.append(p)
+    return out
+
+
 def cards_total(root: Path) -> int:
     from compaction.s2 import interact_reqs as RQ
     return sum(len(_read(p).get("cards") or []) for p in
@@ -755,8 +772,10 @@ def cards_total(root: Path) -> int:
 
 
 def place_cards(bdir: Path, screened: dict) -> dict:
-    """After a screen: the carded candidate (and bundle members) become cards within the caps;
-    nothing carded, or no room, exhausts the boundary. The count, the allocation and the
+    """After a screen: the carded candidate becomes a primary card and its bundle members
+    cards beside it, within the caps (primaries and members per boundary, every card in all);
+    a member that doesn't fit is left off. Nothing carded, or no room for the primary, exhausts
+    the boundary. The count, the allocation and the
     write run under one process lock and one file lock at the root, so concurrent `advance`
     workers or processes can't both take the last cards (astra build r2 #3)."""
     root = Path(bdir).parent.parent
@@ -768,18 +787,27 @@ def _place_cards(bdir: Path, screened: dict) -> dict:
     bdir = Path(bdir)
     sel = selection(bdir) or {"cards": []}
     shown = list(sel.get("cards") or [])
-    room = min(CARDS_PER_BOUNDARY - len(shown), CARDS_TOTAL - cards_total(bdir.parent.parent))
+    primaries = primaries_of(sel)
+    members = [c for c in shown if c not in primaries]
+    total = cards_total(bdir.parent.parent)
     if not screened.get("carded"):
         return _transition(bdir, "exhausted", "no_candidate")
-    want = [screened["carded"], *(screened.get("bundle") or [])]
-    new = [c for c in want if c not in shown]
-    if screened["carded"] in shown:  # already shown (a bundle member promoted): no new card
-        return _transition(bdir, "carded", "carded_again", primary=screened["carded"])
-    if room <= 0:
-        return _transition(bdir, "exhausted", "card_cap", per_boundary=len(shown),
-                           total=cards_total(bdir.parent.parent))
-    return _transition(bdir, "carded", "carded", primary=screened["carded"],
-                       add_cards=new[:room])
+    primary = screened["carded"]
+    if primary in primaries:  # still the open primary: nothing new to show
+        return _transition(bdir, "carded", "carded_again", primary=primary)
+    if len(primaries) >= CARDS_PER_BOUNDARY:
+        return _transition(bdir, "exhausted", "card_cap", primaries=len(primaries),
+                           total=total)
+    if primary in shown:  # a shown bundle member promoted: no new card
+        return _transition(bdir, "carded", "carded_again", primary=primary,
+                           add_primaries=[primary])
+    if total >= CARDS_TOTAL:
+        return _transition(bdir, "exhausted", "card_cap", primaries=len(primaries),
+                           total=total)
+    room = min(MEMBERS_PER_BOUNDARY - len(members), CARDS_TOTAL - total - 1)
+    new = [c for c in screened.get("bundle") or [] if c not in shown][:max(room, 0)]
+    return _transition(bdir, "carded", "carded", primary=primary,
+                       add_cards=[primary, *new], add_primaries=[primary])
 
 
 def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_runner=None,

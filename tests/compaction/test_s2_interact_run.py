@@ -973,21 +973,24 @@ def test_selection_caps_and_transitions(tmp_path):
     b = root / "t-deepseek-a1" / "b1"
     (b / "boundary").mkdir(parents=True)
     sel = IR.place_cards(b, _screened("live.b1-q2", ["live.b1-q3", "live.b1-q5"]))
-    assert sel["state"] == "carded" and sel["cards"] == ["live.b1-q2", "live.b1-q3"]  # cap 2
+    assert sel["state"] == "carded" and sel["primaries"] == ["live.b1-q2"]
+    assert sel["cards"] == ["live.b1-q2", "live.b1-q3", "live.b1-q5"]  # members beside it
     sel = IR.record_decisions(b, [{"cand_id": "live.b1-q2", "status": "rejected",
                                    "role": "primary"}])
     assert sel["state"] == "carded" and sel["rejected"] == ["live.b1-q2"]
     sel = IR.place_cards(b, _screened("live.b1-q3"))  # a shown member promoted: no new card
-    assert sel["state"] == "carded" and len(sel["cards"]) == 2
+    assert sel["state"] == "carded" and len(sel["cards"]) == 3
+    assert sel["primaries"] == ["live.b1-q2", "live.b1-q3"]
     IR.record_decisions(b, [{"cand_id": "live.b1-q3", "status": "rejected", "role": "primary"}])
-    sel = IR.place_cards(b, _screened("cc_prompt.b1-q2"))  # the next source, but no room
+    sel = IR.place_cards(b, _screened("cc_prompt.b1-q2"))  # a third primary: no room
     assert sel["state"] == "exhausted" and sel["log"][-1]["event"] == "card_cap"
     states = []
-    for n in range(2, 8):  # 12 cards in all: t2..t6 fill it, t7 finds no room
+    for n in range(2, 8):  # 12 cards in all (3 + 2 each): t6 gets its primary only, t7 none
         bn = root / f"t{n}-deepseek-a1" / "b1"
         (bn / "boundary").mkdir(parents=True)
         states.append(IR.place_cards(bn, _screened(f"live.b1-q{n}", [f"live.b1-x{n}"]))["state"])
     assert IR.cards_total(root) == 12 and states == ["carded"] * 5 + ["exhausted"]
+    assert IR.selection(root / "t6-deepseek-a1" / "b1")["cards"] == ["live.b1-q6"]
     late = root / "t9-deepseek-a1" / "b1"
     (late / "boundary").mkdir(parents=True)
     assert IR.place_cards(late, _screened("live.b1-q9"))["state"] == "exhausted"
@@ -1084,6 +1087,30 @@ def test_retired_and_retried_executions_never_share_kept_images(tmp_path, monkey
     listed.clear()
     SS.KeepStore.remove(retired)  # already handled: no wider label sweep
     assert listed == []
+
+
+def test_card_cap_counts_primaries_only(tmp_path):
+    """Decided 24 Oct (pre-outcome): 2 primaries and 2 members per boundary, 12 cards in all.
+    A boundary carded under the old rule (primary + 1 member, no primaries field) can still
+    show a second primary after both are rejected."""
+    b = tmp_path / "kombu-deepseek-a2" / "b2"
+    (b / "boundary").mkdir(parents=True)
+    old = {"k": 2, "state": "carded", "cards": ["live.b2-q1", "live.b2-q4"], "rejected": [],
+           "frozen": None, "log": [{"event": "carded", "primary": "live.b2-q1", "to": "carded"}]}
+    IR._dump(IR._v2dir(b) / IR.SELECTION_NAME, old)
+    assert IR.primaries_of(IR.selection(b)) == ["live.b2-q1"]
+    IR.record_decisions(b, [{"cand_id": "live.b2-q1", "status": "rejected", "role": "primary"},
+                            {"cand_id": "live.b2-q4", "status": "rejected",
+                             "role": "bundle_member"}])
+    sel = IR.place_cards(b, _screened("cc_prompt.b2-q2", ["cc_prompt.b2-q3", "x.b2-q9"]))
+    assert sel["state"] == "carded" and sel["primaries"] == ["live.b2-q1", "cc_prompt.b2-q2"]
+    # one member already shown at this boundary: room for one more beside the new primary
+    assert sel["cards"] == ["live.b2-q1", "live.b2-q4", "cc_prompt.b2-q2", "cc_prompt.b2-q3"]
+    IR.record_decisions(b, [{"cand_id": "cc_prompt.b2-q2", "status": "rejected",
+                             "role": "primary"}])
+    sel = IR.place_cards(b, _screened("cc_prompt.b2-q3"))  # promotion needs primary room
+    assert sel["state"] == "exhausted" and sel["log"][-1]["event"] == "card_cap"
+    assert len(sel["cards"]) == 4 and IR.cards_total(tmp_path) == 4
 
 
 def test_card_cap_holds_under_concurrent_placement(tmp_path):
