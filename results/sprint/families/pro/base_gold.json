@@ -1,0 +1,1607 @@
+{
+ "tasks": {
+  "pro-ansible-4c5ce5a1": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:ansible-4c5ce5a1-v1",
+   "image_id": "sha256:94d866a28aed2dbae4cdf14a5640f40f34da0c6ed6d1bb06db5ccaf069be256c",
+   "graded_by": "image_id",
+   "verifier_sha256": "8dd04cc66ef223f8b290ca01905bc9fa6ab29cce40da9d624321064c6fb80fcb",
+   "base": {
+    "reward": 0,
+    "f2p_total": 9,
+    "f2p_passed": 0,
+    "p2p_total": 8,
+    "p2p_passed": 8,
+    "run_script_rc": 0,
+    "n_reported": 18,
+    "failing": [
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_from_import_six",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_import_six",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_import_six_from_many_submodules",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_no_module_utils",
+     "test/units/module_utils/basic/test_selinux.py::TestSELinuxMU::test_selinux_context",
+     "test/units/module_utils/basic/test_selinux.py::TestSELinuxMU::test_selinux_default_context",
+     "test/units/module_utils/basic/test_selinux.py::TestSELinuxMU::test_selinux_enabled",
+     "test/units/module_utils/basic/test_selinux.py::TestSELinuxMU::test_selinux_mls_enabled",
+     "test/units/module_utils/basic/test_selinux.py::TestSELinuxMU::test_set_context_if_different"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 109.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 9,
+    "f2p_passed": 9,
+    "p2p_total": 8,
+    "p2p_passed": 8,
+    "run_script_rc": 0,
+    "n_reported": 18,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 132.6
+   },
+   "checked_utc": "2026-10-24T21:38:51Z"
+  },
+  "pro-ansible-c616e54a": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:ansible-c616e54a-v1",
+   "image_id": "sha256:96cd9bf51fa8d151fc32b485850abbd51727abb11d1a633a552bc8280190ea68",
+   "graded_by": "image_id",
+   "verifier_sha256": "83a98896433550021cd076e9400f2a921a99b1f350a883356e7e623d402c5f39",
+   "base": {
+    "reward": 0,
+    "f2p_total": 6,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 6,
+    "failing": [
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_from_import_six",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_import_six",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_import_six_from_many_submodules",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_module_utils_with_identation_error",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_module_utils_with_syntax_error",
+     "test/units/executor/module_common/test_recursive_finder.py::TestRecursiveFinder::test_no_module_utils"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 171.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 6,
+    "f2p_passed": 6,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 6,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 31.1
+   },
+   "checked_utc": "2026-10-24T21:38:59Z"
+  },
+  "pro-ansible-e40889e7": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:ansible-e40889e7-v1",
+   "image_id": "sha256:4160af82e55b713a3fd6ef03d2df7ee49523e7aee92d076473b093a85593e9e0",
+   "graded_by": "image_id",
+   "verifier_sha256": "01fe45f8dfddc86f52ecda75c7acc43fa9019d80c51639cf5ca7353cb29f1096",
+   "base": {
+    "reward": 0,
+    "f2p_total": 18,
+    "f2p_passed": 0,
+    "p2p_total": 191,
+    "p2p_passed": 191,
+    "run_script_rc": 0,
+    "n_reported": 209,
+    "failing": [
+     "test/units/cli/test_galaxy.py::test_collection_install_in_collection_dir",
+     "test/units/cli/test_galaxy.py::test_collection_install_path_with_ansible_collections",
+     "test/units/cli/test_galaxy.py::test_collection_install_with_names",
+     "test/units/cli/test_galaxy.py::test_collection_install_with_requirements_file",
+     "test/units/cli/test_galaxy.py::test_collection_install_with_url",
+     "test/units/cli/test_galaxy.py::test_install_collection_with_roles[\\ncollections:\\n-",
+     "test/units/cli/test_galaxy.py::test_install_implicit_role_with_collections[\\ncollections:\\n-",
+     "test/units/cli/test_galaxy.py::test_parse_requirements[\\ncollections:\\n-",
+     "test/units/cli/test_galaxy.py::test_parse_requirements_with_collection_source[\\ncollections:\\n-",
+     "test/units/cli/test_galaxy.py::test_parse_requirements_with_extra_info[\\ncollections:\\n-",
+     "test/units/cli/test_galaxy.py::test_parse_requirements_with_roles_and_collections[\\nroles:\\n-",
+     "test/units/galaxy/test_collection.py::test_execute_verify",
+     "test/units/galaxy/test_collection.py::test_execute_verify_with_defaults",
+     "test/units/galaxy/test_collection.py::test_require_one_of_collections_requirements_with_collections",
+     "test/units/galaxy/test_collection_install.py::test_install_collection_with_circular_dependency[collection_artifact0]",
+     "test/units/galaxy/test_collection_install.py::test_install_collections_existing_without_force",
+     "test/units/galaxy/test_collection_install.py::test_install_collections_from_tar",
+     "test/units/galaxy/test_collection_install.py::test_install_missing_metadata_warning"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 197.0
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 18,
+    "f2p_passed": 18,
+    "p2p_total": 191,
+    "p2p_passed": 191,
+    "run_script_rc": 0,
+    "n_reported": 209,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 475.8
+   },
+   "checked_utc": "2026-10-24T21:47:19Z"
+  },
+  "pro-element-web-d06cf09b": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:element-web-d06cf09b-v1",
+   "image_id": "sha256:a400c7d38ac8cf26fbef9ce2f2120c4ea4f4fe64071560319c3b9af55f3f523b",
+   "graded_by": "image_id",
+   "verifier_sha256": "2f34cbc9f20b6f96a7a255f8e30baf14c4e91116ac70b504cc2adb881fac845c",
+   "base": {
+    "reward": 0,
+    "f2p_total": 8,
+    "f2p_passed": 0,
+    "p2p_total": 181,
+    "p2p_passed": 175,
+    "run_script_rc": 1,
+    "n_reported": 185,
+    "failing": [
+     "test/unit-tests/components/views/toasts/VerificationRequestToast-test.tsx | VerificationRequestToast | dismisses itself once the request can no longer be accepted",
+     "test/unit-tests/components/views/toasts/VerificationRequestToast-test.tsx | VerificationRequestToast | should render a cross-user verification",
+     "test/unit-tests/components/views/toasts/VerificationRequestToast-test.tsx | VerificationRequestToast | should render a self-verification",
+     "test/unit-tests/hooks/useUserDirectory-test.tsx | useUserDirectory | search for users in the identity server",
+     "test/unit-tests/hooks/useUserDirectory-test.tsx | useUserDirectory | should recover from a server exception",
+     "test/unit-tests/hooks/useUserDirectory-test.tsx | useUserDirectory | should work with empty queries",
+     "test/unit-tests/utils/pillify-test.tsx | pillify | should do nothing for empty element",
+     "test/unit-tests/utils/pillify-test.tsx | pillify | should not double up pillification on repeated calls",
+     "test/unit-tests/utils/pillify-test.tsx | pillify | should pillify @room",
+     "test/unit-tests/utils/pillify-test.tsx | pillify | should pillify @room in an intentional mentions world",
+     "test/unit-tests/utils/tooltipify-test.tsx | tooltipify | does not re-wrap if called multiple times",
+     "test/unit-tests/utils/tooltipify-test.tsx | tooltipify | does nothing for empty element",
+     "test/unit-tests/utils/tooltipify-test.tsx | tooltipify | ignores node",
+     "test/unit-tests/utils/tooltipify-test.tsx | tooltipify | wraps single anchor"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 542.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 8,
+    "f2p_passed": 8,
+    "p2p_total": 181,
+    "p2p_passed": 181,
+    "run_script_rc": 0,
+    "n_reported": 195,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 489.0
+   },
+   "checked_utc": "2026-10-24T21:55:46Z"
+  },
+  "pro-element-web-fe14847b": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:element-web-fe14847b-v1",
+   "image_id": "sha256:28809aafde24d88b8feebb957e33e58ff8a29e99e979ee01fc4f18f92abe2b9e",
+   "graded_by": "image_id",
+   "verifier_sha256": "524e899c4dc78f950d5eb56156e9d9235a44d68cd77db97e38b6caed025c9918",
+   "base": {
+    "reward": 0,
+    "f2p_total": 15,
+    "f2p_passed": 0,
+    "p2p_total": 93,
+    "p2p_passed": 75,
+    "run_script_rc": 1,
+    "n_reported": 75,
+    "failing": [
+     "test/components/views/settings/devices/SelectableDeviceTile-test.tsx | <SelectableDeviceTile /> | calls onClick on checkbox click",
+     "test/components/views/settings/devices/SelectableDeviceTile-test.tsx | <SelectableDeviceTile /> | calls onClick on device tile info click",
+     "test/components/views/settings/devices/SelectableDeviceTile-test.tsx | <SelectableDeviceTile /> | does not call onClick when clicking device tiles actions",
+     "test/components/views/settings/devices/SelectableDeviceTile-test.tsx | <SelectableDeviceTile /> | renders selected tile",
+     "test/components/views/settings/devices/SelectableDeviceTile-test.tsx | <SelectableDeviceTile /> | renders unselected device tile with checkbox",
+     "test/modules/ModuleComponents-test.tsx | Module Components | should override the factory for a ModuleSpinner",
+     "test/modules/ModuleComponents-test.tsx | Module Components | should override the factory for a TextInputField",
+     "test/notifications/ContentRules-test.ts | parseContentRules | should handle there being no keyword rules",
+     "test/notifications/ContentRules-test.ts | parseContentRules | should parse loud keyword notifications",
+     "test/notifications/ContentRules-test.ts | parseContentRules | should parse mixed keyword notifications",
+     "test/notifications/ContentRules-test.ts | parseContentRules | should parse regular keyword notifications",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns false when value is NaN",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns false when value is a not a number",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns false when value is undefined",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns true when value is a float in range",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns true when value is an int in range",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns true when value is equal to max",
+     "test/utils/validate/numberInRange-test.ts | validateNumberInRange | returns true when value is equal to min",
+     "test/voice-broadcast/components/VoiceBroadcastBody-test.tsx | and it is clicked | should call stop on the recording",
+     "test/voice-broadcast/components/VoiceBroadcastBody-test.tsx | and it is clicked | should render a non-live voice broadcast",
+     "test/voice-broadcast/components/VoiceBroadcastBody-test.tsx | when there is a Started Voice Broadcast info event | should render a live voice broadcast",
+     "test/voice-broadcast/models/VoiceBroadcastRecording-test.ts | and calling stop() | should be in state stopped",
+     "test/voice-broadcast/models/VoiceBroadcastRecording-test.ts | and calling stop() | should emit a stopped state changed event",
+     "test/voice-broadcast/models/VoiceBroadcastRecording-test.ts | and calling stop() | should send a stopped Voice Broadcast Info event",
+     "test/voice-broadcast/models/VoiceBroadcastRecording-test.ts | when created for a Voice Broadcast Info with a Stopped relation | should be in Stopped state",
+     "test/voice-broadcast/models/VoiceBroadcastRecording-test.ts | when created for a Voice Broadcast Info without relations | should be in Started state",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | and setting the same again | should not emit a CurrentChanged event",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | when retrieving a known recording | should return the recording",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | when retrieving an unknown recording | should return the recording",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | when setting a current Voice Broadcast recording | should emit a CurrentChanged event",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | when setting a current Voice Broadcast recording | should return it as current",
+     "test/voice-broadcast/stores/VoiceBroadcastRecordingsStore-test.ts | when setting a current Voice Broadcast recording | should return it by id",
+     "test/voice-broadcast/utils/startNewVoiceBroadcastRecording-test.ts | startNewVoiceBroadcastRecording | should create a new Voice Broadcast"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 570.4
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 15,
+    "f2p_passed": 15,
+    "p2p_total": 93,
+    "p2p_passed": 93,
+    "run_script_rc": 0,
+    "n_reported": 108,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 476.2
+   },
+   "checked_utc": "2026-10-24T21:55:54Z"
+  },
+  "pro-flipt-96820c3a": {
+   "pass": false,
+   "reason": "base reward 0 (ok), gold reward 0 (ok)",
+   "image": "emx-tasks/swe-interact-pro:flipt-96820c3a-v1",
+   "image_id": "sha256:800d92bee17082f0d6f6632c91468c6447391595e58d07ca6acf8e3eebee4ef6",
+   "graded_by": "image_id",
+   "verifier_sha256": "eb91b926dff4044a4eac074ff316feb5925bcfe50e587e2a482eb00ce1da270a",
+   "base": {
+    "reward": 0,
+    "f2p_total": 8,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestAuthenicationTypeIsValid",
+     "TestCredential",
+     "TestDefaultClientFunc",
+     "TestECRCredential",
+     "TestFile",
+     "TestPrivateClient",
+     "TestPublicClient",
+     "TestStore_FetchWithECR"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 308.3
+   },
+   "gold": {
+    "reward": 0,
+    "f2p_total": 8,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestAuthenicationTypeIsValid",
+     "TestCredential",
+     "TestDefaultClientFunc",
+     "TestECRCredential",
+     "TestFile",
+     "TestPrivateClient",
+     "TestPublicClient",
+     "TestStore_FetchWithECR"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 235.4
+   },
+   "checked_utc": "2026-10-24T22:02:16Z"
+  },
+  "pro-flipt-c1728053": {
+   "pass": false,
+   "reason": "base reward 0 (ok), gold reward 0 (ok)",
+   "image": "emx-tasks/swe-interact-pro:flipt-c1728053-v1",
+   "image_id": "sha256:08d7e8fde44402e6af887079b480c25df73856aa700a45aca6a23ca44c0df753",
+   "graded_by": "image_id",
+   "verifier_sha256": "f1ef7d0938b4914ddfec3b43742fc78919a8e5208d449ed9de343502d5a36e00",
+   "base": {
+    "reward": 0,
+    "f2p_total": 2,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestValidate_Failure",
+     "TestValidate_Success"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 160.1
+   },
+   "gold": {
+    "reward": 0,
+    "f2p_total": 2,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestValidate_Failure",
+     "TestValidate_Success"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 59.5
+   },
+   "checked_utc": "2026-10-24T21:56:46Z"
+  },
+  "pro-flipt-e5fe37c3": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:flipt-e5fe37c3-v1",
+   "image_id": "sha256:2a9615506ee2f9cff00f1742ba0bfd45f08ea229f17c417357c65a1aed852b8e",
+   "graded_by": "image_id",
+   "verifier_sha256": "7d85e4d95b1eef144a983a0e2a0a55b74ea146e0af6402e45caf249ca8a10eae",
+   "base": {
+    "reward": 0,
+    "f2p_total": 6,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestFSWithIndex",
+     "TestFSWithoutIndex",
+     "Test_SourceGet",
+     "Test_SourceString",
+     "Test_SourceSubscribe",
+     "Test_Store"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 184.5
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 6,
+    "f2p_passed": 6,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 28,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 273.3
+   },
+   "checked_utc": "2026-10-24T22:02:16Z"
+  },
+  "pro-navidrome-39726165": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:navidrome-39726165-v1",
+   "image_id": "sha256:42e58748b1dea964d3f3e861a594f42957241ed40689f70ddfaf899a86044d2e",
+   "graded_by": "image_id",
+   "verifier_sha256": "0be75966aa59ed610af70e407278c8ebd8d9b02cf2385ef279c041b7393c251c",
+   "base": {
+    "reward": 0,
+    "f2p_total": 1,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 0,
+    "failing": [
+     "TestCriteria"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 78.7
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 1,
+    "f2p_passed": 1,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 1,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 203.4
+   },
+   "checked_utc": "2026-10-24T22:28:31Z"
+  },
+  "pro-nodebb-8168c6c4": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:nodebb-8168c6c4-v1",
+   "image_id": "sha256:c58086bef2fae256402c15087b82dbca18b22066e010b657c5562a12630e3b27",
+   "graded_by": "image_id",
+   "verifier_sha256": "3ce2a5acf722fccfa962d92ddd94fd9d09caca424145dc3c32e3f9d66c074d1e",
+   "base": {
+    "reward": 0,
+    "f2p_total": 4,
+    "f2p_passed": 0,
+    "p2p_total": 307,
+    "p2p_passed": 307,
+    "run_script_rc": 4,
+    "n_reported": 311,
+    "failing": [
+     "test/groups.js | Groups groups cover should remove cover",
+     "test/user.js | User profile methods should remove cover image",
+     "test/user.js | User profile methods user.uploadCroppedPicture should remove uploaded picture",
+     "test/user.js | User socket methods should clean profile images after account deletion"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 244.0
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 4,
+    "f2p_passed": 4,
+    "p2p_total": 307,
+    "p2p_passed": 307,
+    "run_script_rc": 0,
+    "n_reported": 311,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 84.2
+   },
+   "checked_utc": "2026-10-24T22:23:41Z"
+  },
+  "pro-nodebb-f083cd55": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:nodebb-f083cd55-v1",
+   "image_id": "sha256:e85ff8be551b65c8e8979643f6727896e58f5d0701b34320a584e728a14ec8b7",
+   "graded_by": "image_id",
+   "verifier_sha256": "3678c0b9f0717f97aecf64803c93ac6c8ad883454985a4bb7a3bd329d96305ee",
+   "base": {
+    "reward": 0,
+    "f2p_total": 2,
+    "f2p_passed": 0,
+    "p2p_total": 271,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 1,
+    "failing": [
+     "test/database.js | Test database checkCompatibility should not throw",
+     "test/database.js | Test database checkCompatibility should return error with a too low version",
+     "test/database.js | Test database info should not error and return info if client is falsy",
+     "test/database.js | Test database info should return info about database",
+     "test/database.js | Test database should work",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::decrObjectField() should decrement an object fields by 1 and return it",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::decrObjectField() should decrement multiple objects field by 1 and return an array of new values",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::decrObjectField() should set an objects field to -1 if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should delete an objects field",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should delete multiple fields of multiple objects",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should delete multiple fields of the object",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if field is null",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if field is undefined",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if fields is empty array",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if key is null",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if key is undefined",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::deleteObjectField() should not error if one of the fields is undefined",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObject() should retrieve an object",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObject() should return falsy if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObject() should return fields if given",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObject() should return null if key is falsy",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectField() should get an objects field",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectField() should return falsy if field does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectField() should return falsy if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectField() should return null and not error",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectField() should return null if key is falsy",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectFields() should return an object with correct fields",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectFields() should return an object with falsy values",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectFields() should return null if key is falsy",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectKeys() should return an array of keys for the object's fields",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectKeys() should return an empty array for a object that does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectValues() should return an array of values for the object's fields",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectValues() should return an empty array for a object that does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjects() should return 3 objects with correct data",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjects() should return fields if given",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectsFields() should return all fields if fields is empty array",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectsFields() should return an array of objects with correct values",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectsFields() should return objects if fields is not an array",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::getObjectsFields() should return undefined for all fields if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectField() should increment an object fields by 1 and return it",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectField() should set an objects field to 1 if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectFieldBy() should increment an object fields by passed in value and return it",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectFieldBy() should return null if value is NaN",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectFieldBy() should set an objects field to 5 if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::incrObjectFieldByBulk should increment multiple object fields",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::isObjectField() should not error if field is falsy",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::isObjectField() should return false if field does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::isObjectField() should return false if object does not exist",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::isObjectField() should return true if field exists",
+     "test/database.js | Test database test/database/hash.js::Hash methods test/database/hash.js::isObjectFields() should not error if one field is falsy"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 408.5
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 2,
+    "f2p_passed": 2,
+    "p2p_total": 271,
+    "p2p_passed": 271,
+    "run_script_rc": 0,
+    "n_reported": 282,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 426.8
+   },
+   "checked_utc": "2026-10-24T22:28:33Z"
+  },
+  "pro-openlibrary-0a90f9f0": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:openlibrary-0a90f9f0-v1",
+   "image_id": "sha256:e925d6538736d8347f6d019559fabc47d9fc255f69cdaf0ecbcea1745337ef8e",
+   "graded_by": "image_id",
+   "verifier_sha256": "bb6ee9ee742722f73de01b27736cadf33e1f2ea88e29d3dec423a756dfc6748d",
+   "base": {
+    "reward": 0,
+    "f2p_total": 16,
+    "f2p_passed": 0,
+    "p2p_total": 17,
+    "p2p_passed": 17,
+    "run_script_rc": 1,
+    "n_reported": 19,
+    "failing": [
+     "openlibrary/plugins/upstream/tests/test_utils.py::test_get_colon_only_loc_pub",
+     "openlibrary/plugins/upstream/tests/test_utils.py::test_get_location_and_publisher",
+     "openlibrary/utils/tests/test_isbn.py::test_get_isbn_10_and_13",
+     "openlibrary/utils/tests/test_isbn.py::test_isbn_10_to_isbn_13",
+     "openlibrary/utils/tests/test_isbn.py::test_isbn_13_to_isbn_10",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[123-456-789-X",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[184-115-1866-1841151866]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[1841151866-1841151866]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[184115186X-184115186X]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[184115186x-184115186X]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[56-None]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[978-1841151861-9781841151861]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[9781841151861-9781841151861]",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn[ISBN:",
+     "openlibrary/utils/tests/test_isbn.py::test_normalize_isbn_returns_None",
+     "openlibrary/utils/tests/test_isbn.py::test_opposite_isbn"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 142.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 16,
+    "f2p_passed": 16,
+    "p2p_total": 17,
+    "p2p_passed": 17,
+    "run_script_rc": 0,
+    "n_reported": 33,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 85.3
+   },
+   "checked_utc": "2026-10-24T21:21:55Z"
+  },
+  "pro-openlibrary-4b7ea297": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:openlibrary-4b7ea297-v1",
+   "image_id": "sha256:bffb09e71fade0948ef9a844dfcc2861af97ef79d06e7a21a11cdb28a418b8ea",
+   "graded_by": "image_id",
+   "verifier_sha256": "8e1d34124900f6d52382002fc4585ba043e6696dff0bd12483e645a5e237bf2c",
+   "base": {
+    "reward": 0,
+    "f2p_total": 23,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 1,
+    "n_reported": 0,
+    "failing": [
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_importer_drops_honorifics[Mr.-Mr.]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_match_is_case_insensitive_for_names",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_wildcard_match_with_no_matches_creates_author_with_wildcard",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_birth_and_death_date_match_is_on_year_strings",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_conflicting_ids_cause_error",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_first_match_ol_key",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_last_match_on_surname_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_last_match_on_surname_and_dates_and_dates_are_required",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_match_priority_alternate_names_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_non_matching_birth_death_creates_new_author",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_second_match_remote_identifier",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_third_match_priority_name_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_build_query",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author0]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author1]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author2]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author3]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author0]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author1]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author2]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author3]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author4]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author5]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 154.8
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 23,
+    "f2p_passed": 23,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 23,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 112.9
+   },
+   "checked_utc": "2026-10-24T22:22:07Z"
+  },
+  "pro-openlibrary-5de7de19": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:openlibrary-5de7de19-v1",
+   "image_id": "sha256:60f3bb65827aa4406577768741845abc551d1b38efe9e371b7115d09c017d11c",
+   "graded_by": "image_id",
+   "verifier_sha256": "a8f75dcb0f2af28549e523901daceaef400c4eb77d1b9a0614d4a91905d88294",
+   "base": {
+    "reward": 0,
+    "f2p_total": 16,
+    "f2p_passed": 0,
+    "p2p_total": 9,
+    "p2p_passed": 9,
+    "run_script_rc": 1,
+    "n_reported": 25,
+    "failing": [
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_identifier_forms[--expected4]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_identifier_forms[-B06XYHVXVJ-expected2]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_identifier_forms[1111111111--expected0]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_identifier_forms[9780747532699--expected1]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_identifier_forms[9780747532699-B06XYHVXVJ-expected3]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_isbn_or_asin[-expected4]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_isbn_or_asin[1111111111-expected0]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_isbn_or_asin[9780747532699-expected1]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_isbn_or_asin[B06XYHVXVJ-expected2]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_get_isbn_or_asin[b06xyhvxvj-expected3]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[--False]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[-0-False]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[-B06XYHVXVJ-True]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[0--False]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[1111111111--True]",
+     "openlibrary/tests/core/test_models.py::TestEdition::test_is_valid_identifier[9780747532699--True]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 42.9
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 16,
+    "f2p_passed": 16,
+    "p2p_total": 9,
+    "p2p_passed": 9,
+    "run_script_rc": 0,
+    "n_reported": 25,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 163.9
+   },
+   "checked_utc": "2026-10-24T22:20:01Z"
+  },
+  "pro-openlibrary-b67138b3": {
+   "pass": false,
+   "reason": "build/check error: emx squash: base + test_patch differs from the solution at openlibrary/catalog/marc/tests/test_data/bin_input/880_table_of_contents.mrc",
+   "traceback": ":\n#3 transferring context: 2B done\n#3 DONE 1.1s\n\n#4 [internal] load build context\n#4 DONE 0.0s\n\n#5 [1/9] FROM docker.io/jefzda/sweap-images:internetarchive.openlibrary-internetarchive__openlibrary-b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f-ve8c8d62a2b60610a3c4631f5f23ed@sha256:694431bb3e58f54009ffeccfc122f17cca083cd67fd48b58c8f71d082203ddcd\n#5 resolve docker.io/jefzda/sweap-images:internetarchive.openlibrary-internetarchive__openlibrary-b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f-ve8c8d62a2b60610a3c4631f5f23ed@sha256:694431bb3e58f54009ffeccfc122f17cca083cd67fd48b58c8f71d082203ddcd\n#5 resolve docker.io/jefzda/sweap-images:internetarchive.openlibrary-internetarchive__openlibrary-b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f-ve8c8d62a2b60610a3c4631f5f23ed@sha256:694431bb3e58f54009ffeccfc122f17cca083cd67fd48b58c8f71d082203ddcd 0.1s done\n#5 DONE 0.9s\n\n#4 [internal] load build context\n#4 transferring context: 101B done\n#4 DONE 0.1s\n\n#6 [2/9] WORKDIR /app\n#6 CACHED\n\n#7 [3/9] RUN set -e && git reset --hard d8518f64d954113c9363335eb25201befa2de6f2 && git clean -fd && git checkout d8518f64d954113c9363335eb25201befa2de6f2\n#7 CACHED\n\n#8 [4/9] RUN curl -LsSf https://astral.sh/uv/0.7.13/install.sh | sh || true\n#8 CACHED\n\n#9 [5/9] RUN mkdir -p /logs\n#9 CACHED\n\n#10 [6/9] COPY repo_exec_server.py /usr/local/bin/repo_exec_server.py\n#10 CACHED\n\n#11 [7/9] COPY squash.sh /tmp/emx_squash.sh\n#11 CACHED\n\n#12 [8/9] COPY test.patch /tmp/emx_test.patch\n#12 CACHED\n\n#13 [9/9] RUN timeout -k 5 1800 bash /tmp/emx_squash.sh d8518f64d954113c9363335eb25201befa2de6f2 b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f && rm -f /tmp/emx_squash.sh /tmp/emx_test.patch\n#13 21.95 emx squash: base + test_patch differs from the solution at openlibrary/catalog/marc/tests/test_data/bin_input/880_table_of_contents.mrc\n#13 ERROR: process \"/bin/sh -c timeout -k 5 1800 bash /tmp/emx_squash.sh d8518f64d954113c9363335eb25201befa2de6f2 b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f && rm -f /tmp/emx_squash.sh /tmp/emx_test.patch\" did not complete successfully: exit code: 1\n------\n > [9/9] RUN timeout -k 5 1800 bash /tmp/emx_squash.sh d8518f64d954113c9363335eb25201befa2de6f2 b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f && rm -f /tmp/emx_squash.sh /tmp/emx_test.patch:\n21.95 emx squash: base + test_patch differs from the solution at openlibrary/catalog/marc/tests/test_data/bin_input/880_table_of_contents.mrc\n------\nDockerfile:38\n--------------------\n  36 |     COPY squash.sh /tmp/emx_squash.sh\n  37 |     COPY test.patch /tmp/emx_test.patch\n  38 | >>> RUN timeout -k 5 1800 bash /tmp/emx_squash.sh d8518f64d954113c9363335eb25201befa2de6f2 b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f && rm -f /tmp/emx_squash.sh /tmp/emx_test.patch\n  39 |     \n--------------------\nERROR: failed to build: failed to solve: process \"/bin/sh -c timeout -k 5 1800 bash /tmp/emx_squash.sh d8518f64d954113c9363335eb25201befa2de6f2 b67138b316b1e9c11df8a4a8391fe5cc8e75ff9f && rm -f /tmp/emx_squash.sh /tmp/emx_test.patch\" did not complete successfully: exit code: 1\n\n",
+   "checked_utc": "2026-10-24T22:14:37Z"
+  },
+  "pro-openlibrary-d40ec887": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:openlibrary-d40ec887-v1",
+   "image_id": "sha256:86a8e1ebbf1cea311653bd58b356dc858b2a96ba33edf1e36d8292f34b619d58",
+   "graded_by": "image_id",
+   "verifier_sha256": "9bb74ee9f0478c575a3b1aa5e37cc23d8027c7b06a256a992093e46574cfec52",
+   "base": {
+    "reward": 0,
+    "f2p_total": 28,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 1,
+    "n_reported": 0,
+    "failing": [
+     "openlibrary/catalog/add_book/tests/test_add_book.py::test_check_cover_url_host[None-False]",
+     "openlibrary/catalog/add_book/tests/test_add_book.py::test_check_cover_url_host[http://m.media-amazon.com/image/123.jpg-True]",
+     "openlibrary/catalog/add_book/tests/test_add_book.py::test_check_cover_url_host[https://m.MEDIA-amazon.com/image/123.jpg-True]",
+     "openlibrary/catalog/add_book/tests/test_add_book.py::test_check_cover_url_host[https://m.media-amazon.com/image/123.jpg-True]",
+     "openlibrary/catalog/add_book/tests/test_add_book.py::test_check_cover_url_host[https://not-supported.org/image/123.jpg-False]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_importer_drops_honorifics[Mr.-Mr.]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_match_is_case_insensitive_for_names",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_author_wildcard_match_with_no_matches_creates_author_with_wildcard",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_birth_and_death_date_match_is_on_year_strings",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_conflicting_ids_cause_error",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_first_match_ol_key",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_last_match_on_surname_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_last_match_on_surname_and_dates_and_dates_are_required",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_match_priority_alternate_names_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_non_matching_birth_death_creates_new_author",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_second_match_remote_identifier",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::TestImportAuthor::test_third_match_priority_name_and_dates",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_build_query",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author0]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author1]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author2]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_natural_order[author3]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author0]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author1]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author2]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author3]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author4]",
+     "openlibrary/catalog/add_book/tests/test_load_book.py::test_import_author_name_unchanged[author5]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 113.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 28,
+    "f2p_passed": 28,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 85,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 118.9
+   },
+   "checked_utc": "2026-10-24T21:20:57Z"
+  },
+  "pro-qutebrowser-70248f25": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:qutebrowser-70248f25-v1",
+   "image_id": "sha256:beab07f92b70f8af205208c017f84dc003e73b06fae6a112e9c7af65b1e3f1bd",
+   "graded_by": "image_id",
+   "verifier_sha256": "8ec5c0a7cb64281b9af490e05dab9f2456462bfae3998baad7fc4a9be253f3c1",
+   "base": {
+    "reward": 0,
+    "f2p_total": 28,
+    "f2p_passed": 0,
+    "p2p_total": 145,
+    "p2p_passed": 145,
+    "run_script_rc": 1,
+    "n_reported": 173,
+    "failing": [
+     "tests/unit/utils/test_utils.py::test_parse_duration[0-0]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[0.5h-1800000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[0.5s-500]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[0s-0]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1.5m-90000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[10h1m10s-36070000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h-3600000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m-3660000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m10s-3670000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m1s-3661000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1s-3601000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1m-60000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1m1s-61000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[59s-59000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[60-60]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[60.4s-60400]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_hypothesis",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[-1]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[-1s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[.1s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[.s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[1.1.1s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[1.s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[10e5s]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[34ss]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[5s10m]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[]",
+     "tests/unit/utils/test_utils.py::test_parse_duration_invalid[h]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 93.2
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 28,
+    "f2p_passed": 28,
+    "p2p_total": 145,
+    "p2p_passed": 145,
+    "run_script_rc": 1,
+    "n_reported": 173,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 117.8
+   },
+   "checked_utc": "2026-10-24T22:23:32Z"
+  },
+  "pro-qutebrowser-96b99780": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:qutebrowser-96b99780-v1",
+   "image_id": "sha256:f84cf8fdd654bcb354959c101694958cea1f15782076e11739a912517b079285",
+   "graded_by": "image_id",
+   "verifier_sha256": "047ec2b38f1387005a41456f9ba5b76781f12bbfecd567b9ad6ccf5d7d4b6d7a",
+   "base": {
+    "reward": 0,
+    "f2p_total": 17,
+    "f2p_passed": 0,
+    "p2p_total": 161,
+    "p2p_passed": 161,
+    "run_script_rc": 1,
+    "n_reported": 178,
+    "failing": [
+     "tests/unit/utils/test_utils.py::test_parse_duration[-1--1]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[-1s--1]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[0-0]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[0s-0]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[10h1m10s-36070000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h-3600000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m-3660000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m10s-3670000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1m1s-3661000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1h1s-3601000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1m-60000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1m1s-61000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[1s1h-3601000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[34ss--1]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[59s-59000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[60-60000]",
+     "tests/unit/utils/test_utils.py::test_parse_duration[60.4s--1]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 37.2
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 17,
+    "f2p_passed": 17,
+    "p2p_total": 161,
+    "p2p_passed": 161,
+    "run_script_rc": 1,
+    "n_reported": 178,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 42.3
+   },
+   "checked_utc": "2026-10-24T22:29:48Z"
+  },
+  "pro-qutebrowser-bedc9f7f": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:qutebrowser-bedc9f7f-v1",
+   "image_id": "sha256:425855cc26e89808a7b3725b009ba3dbc6593fa190d0996c168f0eb2c50f84f9",
+   "graded_by": "image_id",
+   "verifier_sha256": "89c860a252cdb5b442807911f4e211163ce4b866d51e89345f02c44da4a2e516",
+   "base": {
+    "reward": 0,
+    "f2p_total": 17,
+    "f2p_passed": 0,
+    "p2p_total": 260,
+    "p2p_passed": 260,
+    "run_script_rc": 1,
+    "n_reported": 277,
+    "failing": [
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_0_100[1]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_0_100[2]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_0_100[4]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_alpha[1]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_alpha[2]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_alpha[4]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_hsl",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_hsv",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_none[0-expected0]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_none[100-expected2]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_none[99-expected1]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_interpolation_rgb",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_invalid_colorspace",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_invalid_end",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_invalid_percentage[-1]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_invalid_percentage[101]",
+     "tests/unit/utils/test_qtutils.py::TestInterpolateColor::test_invalid_start"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 32.0
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 17,
+    "f2p_passed": 17,
+    "p2p_total": 260,
+    "p2p_passed": 260,
+    "run_script_rc": 1,
+    "n_reported": 277,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 48.4
+   },
+   "checked_utc": "2026-10-24T22:29:55Z"
+  },
+  "pro-qutebrowser-deeb15d6": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:qutebrowser-deeb15d6-v1",
+   "image_id": "sha256:d84a408a3b2122aeb09e5ccdc36e55e49f5773ba838b98b073c73ce822ce395b",
+   "graded_by": "image_id",
+   "verifier_sha256": "8ed92ba698da23bafa1cd620ee7899aac660001aefa1526995424facd7e754cb",
+   "base": {
+    "reward": 0,
+    "f2p_total": 10,
+    "f2p_passed": 0,
+    "p2p_total": 442,
+    "p2p_passed": 442,
+    "run_script_rc": 1,
+    "n_reported": 453,
+    "failing": [
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-42foo{}-decrement]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-42foo{}-increment]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-foo{}-decrement]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-foo{}-increment]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-foo{}bar-decrement]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-foo{}bar-increment]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-{}foo-decrement]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_incdec_number[http://localhost/%3A{}-{}foo-increment]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_no_number[http://localhost/url_encoded_in_query/?v=%3A]",
+     "tests/unit/utils/test_urlutils.py::TestIncDecNumber::test_number_below_0[http://example.com/page_1.html-2]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 16.8
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 10,
+    "f2p_passed": 10,
+    "p2p_total": 442,
+    "p2p_passed": 442,
+    "run_script_rc": 0,
+    "n_reported": 453,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 18.4
+   },
+   "checked_utc": "2026-10-24T22:33:44Z"
+  },
+  "pro-qutebrowser-fea33d60": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:qutebrowser-fea33d60-v1",
+   "image_id": "sha256:8dc99e79f3ba52f9a434c2a4f4b96e9a3de6bd9b20cf3851b95591a3968794ce",
+   "graded_by": "image_id",
+   "verifier_sha256": "2d156dbc18d895eeaf28b93c4660c9e00f0a62a3d7be24f7212e092a5c352558",
+   "base": {
+    "reward": 0,
+    "f2p_total": 14,
+    "f2p_passed": 0,
+    "p2p_total": 6,
+    "p2p_passed": 6,
+    "run_script_rc": 1,
+    "n_reported": 20,
+    "failing": [
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before0-extra0]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before1-extra1]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before2-extra2]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before3-extra3]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before4-extra4]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before5-extra5]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_choosefiles_args[before6-extra6]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before0-extra0]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before1-extra1]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before2-extra2]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before3-extra3]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before4-extra4]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before5-extra5]",
+     "tests/unit/browser/webengine/test_webview.py::test_suffixes_workaround_extras_returned[before6-extra6]"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 22.1
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 14,
+    "f2p_passed": 14,
+    "p2p_total": 6,
+    "p2p_passed": 6,
+    "run_script_rc": 0,
+    "n_reported": 20,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 13.2
+   },
+   "checked_utc": "2026-10-24T22:33:44Z"
+  },
+  "pro-teleport-d6ffe82a": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:teleport-d6ffe82a-v1",
+   "image_id": "sha256:6119fa7519104e1ea153970334d456b4f5c4e237e09b725aaaf54fccdc546dd3",
+   "graded_by": "image_id",
+   "verifier_sha256": "8cbb0f023bdf74c1ac42eed289d835ed388307334029e02376c4efed607b87dd",
+   "base": {
+    "reward": 0,
+    "f2p_total": 71,
+    "f2p_passed": 0,
+    "p2p_total": 43,
+    "p2p_passed": 43,
+    "run_script_rc": 1,
+    "n_reported": 46,
+    "failing": [
+     "FuzzNewExpression",
+     "FuzzNewMatcher",
+     "TestApplyTraits",
+     "TestApplyTraits/logins_substitute_in_allow_rule_can_have_constant_expressions",
+     "TestApplyTraits/logins_substitute_in_allow_rule_with_multiple_functions_and_regexps",
+     "TestInterpolate",
+     "TestInterpolate/error_in_mapping_traits",
+     "TestInterpolate/literal_expression",
+     "TestInterpolate/mapped_traits",
+     "TestInterpolate/mapped_traits_with_email.local",
+     "TestInterpolate/missed_traits",
+     "TestInterpolate/regexp_replacement_with_multiple_matches",
+     "TestInterpolate/regexp_replacement_with_named_match",
+     "TestInterpolate/regexp_replacement_with_no_match",
+     "TestInterpolate/regexp_replacement_with_numeric_match",
+     "TestInterpolate/traits_with_prefix_and_suffix",
+     "TestMatch",
+     "TestMatch/bad_regexp",
+     "TestMatch/no_curly_bracket_prefix",
+     "TestMatch/no_curly_bracket_suffix",
+     "TestMatch/not_a_boolean_expression",
+     "TestMatch/not_a_boolean_variable",
+     "TestMatch/raw_regexp",
+     "TestMatch/regexp.match_call",
+     "TestMatch/regexp.match_simple_call",
+     "TestMatch/regexp.not_match_call",
+     "TestMatch/string_literal",
+     "TestMatch/unknown_function",
+     "TestMatch/unknown_namespace",
+     "TestMatch/wildcard",
+     "TestMatchers",
+     "TestMatchers/not_matcher",
+     "TestMatchers/prefix/suffix_matcher_negative",
+     "TestMatchers/prefix/suffix_matcher_positive",
+     "TestMatchers/regexp_matcher_negative",
+     "TestMatchers/regexp_matcher_positive",
+     "TestVarValidation",
+     "TestVarValidation/no_validation",
+     "TestVarValidation/validate_namespace_error",
+     "TestVarValidation/validate_namespace_ok",
+     "TestVarValidation/variable_found",
+     "TestVarValidation/variable_not_found",
+     "TestVariable",
+     "TestVariable/empty_variable",
+     "TestVariable/external_with_no_brackets",
+     "TestVariable/extra_args",
+     "TestVariable/incomplete_variables_are_not_allowed",
+     "TestVariable/internal_with_no_brackets",
+     "TestVariable/internal_with_spaces_removed",
+     "TestVariable/invalid_arg_type"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 344.8
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 71,
+    "f2p_passed": 71,
+    "p2p_total": 43,
+    "p2p_passed": 43,
+    "run_script_rc": 1,
+    "n_reported": 114,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 289.3
+   },
+   "checked_utc": "2026-10-24T21:28:41Z"
+  },
+  "pro-teleport-f432a71a": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:teleport-f432a71a-v1",
+   "image_id": "sha256:d0086a51b654281704b32132b868ee12774e37818f567659607a7bda4a83edcc",
+   "graded_by": "image_id",
+   "verifier_sha256": "7fa8d676cb17994cd2bd702ba681b1e5264c76ba5178766fbf7959fb46a09691",
+   "base": {
+    "reward": 0,
+    "f2p_total": 2,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 1,
+    "n_reported": 1,
+    "failing": [
+     "TestKeyStore",
+     "TestKeyStore/raw_keystore"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 169.4
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 2,
+    "f2p_passed": 2,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 2,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 170.3
+   },
+   "checked_utc": "2026-10-24T21:23:47Z"
+  },
+  "pro-vuls-7eb77f5b": {
+   "pass": false,
+   "reason": "base reward 0 (ok), gold reward 0 (ok)",
+   "image": "emx-tasks/swe-interact-pro:vuls-7eb77f5b-v1",
+   "image_id": "sha256:1cc5eab4de16004ba27bc22fcdb6c441b545c94d0f4cbb7fd571c0818f2cbf1e",
+   "graded_by": "image_id",
+   "verifier_sha256": "71c6c8cd767533346903350b0899e3e880a6ff484c26f5b9cd910b8cf9f1722a",
+   "base": {
+    "reward": 0,
+    "f2p_total": 8,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 1,
+    "n_reported": 0,
+    "failing": [
+     "TestPortScanConf_IsZero",
+     "TestPortScanConf_IsZero/not_zero",
+     "TestPortScanConf_IsZero/zero",
+     "TestPortScanConf_getScanTechniques",
+     "TestPortScanConf_getScanTechniques/multiple",
+     "TestPortScanConf_getScanTechniques/nil",
+     "TestPortScanConf_getScanTechniques/single",
+     "TestPortScanConf_getScanTechniques/unknown"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 125.8
+   },
+   "gold": {
+    "reward": 0,
+    "f2p_total": 8,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 1,
+    "n_reported": 0,
+    "failing": [
+     "TestPortScanConf_IsZero",
+     "TestPortScanConf_IsZero/not_zero",
+     "TestPortScanConf_IsZero/zero",
+     "TestPortScanConf_getScanTechniques",
+     "TestPortScanConf_getScanTechniques/multiple",
+     "TestPortScanConf_getScanTechniques/nil",
+     "TestPortScanConf_getScanTechniques/single",
+     "TestPortScanConf_getScanTechniques/unknown"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 68.9
+   },
+   "checked_utc": "2026-10-24T22:15:51Z"
+  },
+  "pro-webclients-e65cc5f3": {
+   "pass": true,
+   "reason": null,
+   "image": "emx-tasks/swe-interact-pro:webclients-e65cc5f3-v1",
+   "image_id": "sha256:e5134e08347b1d2fe95882643a7f3cccdac82aa6337ceaa69720b569c1a5b0a2",
+   "graded_by": "image_id",
+   "verifier_sha256": "3aedd78907a7830d085bed918d667b28eb11cb6dc9e1e8e72aed0667e769ef9c",
+   "base": {
+    "reward": 0,
+    "f2p_total": 3,
+    "f2p_passed": 0,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 3,
+    "failing": [
+     "src/app/containers/mailbox/tests/Mailbox.retries.test.tsx | should retry when API call fails",
+     "src/app/containers/mailbox/tests/Mailbox.retries.test.tsx | should retry when API respond with stale flag",
+     "src/app/containers/mailbox/tests/Mailbox.retries.test.tsx | should wait for all API actions to be finished before loading elements"
+    ],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 239.6
+   },
+   "gold": {
+    "reward": 1,
+    "f2p_total": 3,
+    "f2p_passed": 3,
+    "p2p_total": 0,
+    "p2p_passed": 0,
+    "run_script_rc": 0,
+    "n_reported": 3,
+    "failing": [],
+    "error": null,
+    "attempts": [
+     {
+      "memory_mb": 8192,
+      "oom_kills": 0
+     }
+    ],
+    "cpus": 4,
+    "seconds": 312.7
+   },
+   "checked_utc": "2026-10-24T22:29:48Z"
+  }
+ },
+ "updated_utc": "2026-10-24T22:33:44Z",
+ "generated_by": "scripts/build_pro.py",
+ "n_tasks": 25,
+ "n_pass": 21,
+ "passed": [
+  "pro-ansible-4c5ce5a1",
+  "pro-ansible-c616e54a",
+  "pro-ansible-e40889e7",
+  "pro-element-web-d06cf09b",
+  "pro-element-web-fe14847b",
+  "pro-flipt-e5fe37c3",
+  "pro-teleport-d6ffe82a",
+  "pro-teleport-f432a71a",
+  "pro-openlibrary-0a90f9f0",
+  "pro-openlibrary-4b7ea297",
+  "pro-openlibrary-5de7de19",
+  "pro-openlibrary-d40ec887",
+  "pro-navidrome-39726165",
+  "pro-nodebb-8168c6c4",
+  "pro-nodebb-f083cd55",
+  "pro-webclients-e65cc5f3",
+  "pro-qutebrowser-70248f25",
+  "pro-qutebrowser-96b99780",
+  "pro-qutebrowser-bedc9f7f",
+  "pro-qutebrowser-deeb15d6",
+  "pro-qutebrowser-fea33d60"
+ ],
+ "excluded": {
+  "pro-flipt-96820c3a": "base reward 0 (ok), gold reward 0 (ok); the gold log shows network failures: the reference patch adds dependencies the image lacks {'go.mod': ['github.com/aws/aws-sdk-go-v2/service/ecrpublic v1.23.4', 'github.com/google/go-containerregistry v0.19.1']} (agent and grader run --network none; gold-only dependencies are not pre-fetched)",
+  "pro-flipt-c1728053": "base reward 0 (ok), gold reward 0 (ok); the gold log shows network failures: the reference patch adds dependencies the image lacks {'go.mod': ['cuelang.org/go v0.5.0', 'github.com/cockroachdb/apd/v2 v2.0.2 // indirect', 'github.com/mpvl/unique v0.0.0-20150818121801-cbe035fff7de // indirect']} (agent and grader run --network none; gold-only dependencies are not pre-fetched)",
+  "pro-vuls-7eb77f5b": "base reward 0 (ok), gold reward 0 (ok); the gold log shows network failures: the reference patch adds dependencies the image lacks {'go.mod': ['github.com/Ullaakut/nmap/v2 v2.1.2-0.20210406060955-59a52fe80a4f']} (agent and grader run --network none; gold-only dependencies are not pre-fetched)",
+  "pro-openlibrary-b67138b3": "build/check error: emx squash: base + test_patch differs from the solution at openlibrary/catalog/marc/tests/test_data/bin_input/880_table_of_contents.mrc"
+ },
+ "rule": "pass = base reward 0 and gold (reference patch) reward 1, both graded by tests/test.sh in a fresh --network none container of the image",
+ "deviations": [
+  "image: the task's Dockerfile, then the repo squashed to one 'init' commit at base (tree hash asserted equal) and the image flattened FROM scratch; ENV/WORKDIR re-declared; ENTRYPOINT []; a profile.d line keeps the image PATH under bash -lc",
+  "grading: test files reset to HEAD and config test_patch applied instead of upstream's `git checkout <solution> -- <test files>` (base+test_patch == solution blobs checked at build); reward.json with f2p/p2p counts instead of reward.txt",
+  "step texts: /app/plan.md -> /tmp/plan.md; a root plan.md is dropped from model.patch",
+  "network: graded with --network none, as the agent runs (Harbor's Pro tasks allow network)"
+ ],
+ "summarized_utc": "2026-10-24T22:34:26Z"
+}
