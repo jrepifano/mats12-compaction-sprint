@@ -671,8 +671,8 @@ function card2(u, i, n) {
     <header><span class="tag">${i + 1} / ${n}</span><span class="state" id="st-${id}">not done</span></header>
     <p class="hdr">${esc(f.header)}${chips}</p>
     <dl class="facts">
-      <dt>The maintainer said:</dt><dd>${saidHtml(f.said)}</dd>
-      <dt>In the code at that point:</dt><dd><code>${esc(f.code.path)}</code>: <code>${esc(f.code.quote)}</code></dd>
+      <dt>${esc(f.said_label || "The maintainer said:")}</dt><dd>${saidHtml(f.said)}</dd>
+      <dt>In the code at that point:</dt><dd><code>${esc(f.code.path)}</code>: <code>${esc(f.code.quote)}</code>${(f.file_notes || []).map(x => `<br><span class="ctx">${esc(x)}</span>`).join("")}</dd>
       <dt>After compaction the agent sees:</dt><dd>${esc(f.sees)} <button type="button" class="goto" data-check="${id}" title="Opens the resumed input at ${esc(f.check_title)}">Check</button></dd>
       <dt>We\u2019d test whether the agent:</dt><dd>${esc(f.act)}</dd>
     </dl>
@@ -688,6 +688,7 @@ function card2(u, i, n) {
         <div class="pre">${esc(r.reply)}</div></div>
       <details><summary>The task text the simulator holds</summary><div class="pre">${esc(u.task_text)}</div></details>
       <div id="eh-${id}"></div>
+      ${f.opus ? `<p class="label">Opus (boundary evidence only)</p><ul class="ev">${Object.entries(f.opus).filter(([, v]) => v).map(([k, v]) => `<li>${esc(k)}: ${esc(v)}</li>`).join("")}</ul>` : ""}
       <p class="label">Code checks</p>${evAll(u).map(evidenceOf).join("")}
       ${patch}
       <p class="label">Test design (prefilled from the screen; edits optional)</p>${designHtml(u)}
@@ -1177,13 +1178,23 @@ def pre_bc_exempt(run_dir: Path, k: int, cand_id: str) -> bool:
 def candidate_v2(run_dir: Path, k: int, cand_id: str) -> dict:
     cj = _read(Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json")
     c = next((c for c in cj.get("candidates") or [] if c.get("cand_id") == cand_id), None)
-    if c is None or c.get("disposition") not in ("carded", "bundle"):
-        raise ValueError(f"{Path(run_dir).name} b{k}: {cand_id} is not carded or bundled")
+    if c is None or c.get("disposition") not in ("carded", "bundle", "passed"):
+        raise ValueError(f"{Path(run_dir).name} b{k}: {cand_id} is not carded, bundled or "
+                         "passed")
     return c
 
 
+def is_cohort(run_dir: Path, k: int) -> bool:
+    """The boundary was screened for the repair cohort (a full screen)."""
+    p = Path(run_dir) / f"b{k}" / "boundary" / RQ.SCREEN_V2 / "candidates.json"
+    return p.exists() and _read(p).get("mode") == "full"
+
+
 def card_ids_v2(run_dir: Path, k: int) -> list[str]:
-    """The boundary's open cards: carded in its selection state, minus rejected ones."""
+    """The boundary's open cards: for the repair cohort, the assignment's (the seeded policy,
+    rejections replaced in order); else carded in its selection state, minus rejected ones."""
+    if is_cohort(run_dir, k):
+        return IR.open_assigned(Path(run_dir) / f"b{k}")
     sel = IR.selection(Path(run_dir) / f"b{k}") or {}
     if sel.get("state") != "carded":
         return []
@@ -1331,7 +1342,31 @@ def facts_v2(c: Mapping, k: int, task_id: str | None, reply: Mapping, src: str, 
         chips.append("verbatim in the resumed input")
     elif near["of"] >= NEAR_MIN_WORDS and near["shared"] >= NEAR_SHARE * near["of"]:
         chips.append("nearly verbatim")
+    ptr = ((checks.get("pointer") or {}).get("evidence") or {}).get("files") or []
+    rec_files = {x["file"]: x.get("last_read_msg") for x in
+                 ((checks.get("recoverability") or {}).get("evidence") or {}).get(
+                     "files_not_reattached") or []}
+    for x in ptr:
+        chips.append(f"from {x['file']}")
+        if x.get("reread_instructed"):
+            chips.append(f"re-read of {x['file']} still instructed")
+        elif x.get("named"):
+            chips.append(f"{x['file']} still named")
+    # what the history shows, never a claim about what the agent remembers
+    notes = [f"Only in {x['file']}: the agent last read it at message "
+             f"{rec_files.get(x['file'], c.get('source_index'))}; "
+             + ("the resumed input tells it to read the file again." if x.get("reread_instructed")
+                else "the resumed input names the file but doesn't ask for a re-read."
+                if x.get("named") else "the resumed input doesn't mention the file.")
+             for x in ptr]
+    v = ((checks.get("opus") or {}).get("evidence") or {}).get("verdict") or {}
     facts = {
+        "said_label": ("The maintainer said:" if c.get("origin") != "lossaudit" else
+                       f"{(c.get('source_desc') or 'The source').rstrip(':')} said:"),
+        "file_notes": notes,
+        "opus": {k2: v.get(k2) for k2 in ("retention", "item_type", "authority",
+                                           "authority_quote", "conflict", "conflict_quote",
+                                           "conflict_reason")} if v else None,
         "header": (f"{task_id} · compaction {k} · graded as dropped by "
                    f"{SOURCE_PLAIN.get(src, src)}"),
         "chips": chips,
@@ -1363,6 +1398,10 @@ def card_parts_v2(run_dir: Path, k: int, cand_id: str, *, seed: int = SEED) -> d
     view = S.source_view(bdir, src)
     reply = next((r for r in _read(b / "sim_replies.json")
                   if r.get("reply_id") == c.get("source_reply_id")), {})
+    if c.get("origin") == "lossaudit":
+        src_ = RQ.item_source(pre, c.get("repair_text") or "") or {}
+        reply = {"step": src_.get("desc"), "reply": src_.get("text"), "question": None,
+                 "pre_index": src_.get("index")}
     task = (_read(bdir / "run.json") if (bdir / "run.json").exists() else
             _read(run_dir / "run.json")).get("task") or {}
     hist, post = render_history(pre), render_post(view)
@@ -1465,6 +1504,43 @@ def answers_v2(label: Mapping, nq: int = 3) -> list[str]:
     return row
 
 
+# Jacob's prior exposure (consult r2): recorded on every freeze from 25 Oct, since he had seen
+# the base runs' follow-up of the lost items (lossaudit_followup) before labelling these cards
+EXPOSURE = ("Jacob saw the base runs' follow-up of lossaudit's lost items for these runs "
+            "(results/sprint/S2/interact/lossaudit_followup.md, 24-25 Oct) before labelling.")
+
+
+def repair_fields(c: Mapping) -> dict:
+    """The candidate's origin and, for a contextual omission retrievable from a file, its
+    backing files, the reread arm's file and the pointer flags (consult r2)."""
+    checks = c.get("checks") or {}
+    files = [x["file"] for x in ((checks.get("pointer") or {}).get("evidence") or {}).get(
+        "files") or []]
+    v = ((checks.get("opus") or {}).get("evidence") or {}).get("verdict") or {}
+    return {"origin": c.get("origin") or "maintainer", "source_desc": c.get("source_desc"),
+            "backing_files": files, "reread_file": files[0] if files else None,
+            "stratum": "contextual_omission_retrievable_from_file" if files else None,
+            "pointer": ((checks.get("pointer") or {}).get("evidence") or {}).get("files"),
+            "authority": {k: v.get(k) for k in ("authority", "authority_quote", "conflict",
+                                                  "conflict_quote")}}
+
+
+RESCREEN_FIELDS = ("d_repair", *SPEC_FIELDS)
+
+
+def record_edit(bdir: Path, cand_id: str, design: Mapping, spec: Mapping | None, *,
+                card: str, utc: str | None) -> Path:
+    """Write a card's edit of a candidate's repair text (and act) for the next screen."""
+    p = Path(bdir) / "boundary" / RQ.SCREEN_V2 / RQ.EDITS_NAME
+    doc = _read(p) if p.exists() else {"cands": {}, "log": []}
+    edit = {"repair_text": design["d_repair"], **({"act_spec": spec} if spec else {}),
+            "card": card, "labelled_utc": utc}
+    doc["cands"][cand_id] = edit
+    doc["log"].append({"utc": _utc(), "cand_id": cand_id, **edit})
+    p.write_text(json.dumps(doc, indent=1, ensure_ascii=False))
+    return p
+
+
 def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
                    runner: S.Runner | None = None, override: Mapping | None = None) -> dict:
     run_dir = (ROOT / ent["run_dir"]) if not Path(ent["run_dir"]).is_absolute() else \
@@ -1472,7 +1548,9 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     k, cand_id = int(ent["k"]), ent["cand_id"]
     nq = int(ent.get("nq") or 3)
     names = [q[0] for q in QUESTIONS[:nq]]
-    role = "primary" if ent.get("disposition") == "carded" else "bundle_member"
+    cohort = is_cohort(run_dir, k)
+    role = "cohort" if cohort else "primary" if ent.get("disposition") == "carded" else \
+        "bundle_member"
     notes = {names[i - 1]: str(label[f"n{i}"]).strip() for i in range(1, len(names) + 1)
              if str(label.get(f"n{i}") or "").strip()}
     if str(label.get("note") or "").strip():
@@ -1498,16 +1576,24 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
         return rec | {"status": "already_frozen", "reasons": [],
                       **({"screen_era": "pre-B/C"} if pre_bc_exempt(run_dir, k, cand_id)
                          else {})}
-    other = [f for f in frozen if not f.startswith(ent["source_policy"] + ".")
-             and not f.startswith("bundle.")]
-    if other:
-        held.append(f"boundary already has a freeze from another source: {other}")
-    primaries = _primaries(run_dir)
-    if role == "primary" and [p for p in primaries if p != (k, cand_id)]:
-        held.append(f"the run already has its primary: {primaries} (one per task)")
-    if role == "bundle_member" and (k, cand_id) not in primaries and \
-            not [p for p in primaries if p[0] == k]:
-        held.append("bundle member: its boundary's primary isn't frozen")
+    if IR.pending_edit(run_dir / f"b{k}", cand_id):  # astra repair-design r3 #2
+        held.append(f"an edit is waiting in {RQ.EDITS_NAME}: rescreen the boundary first")
+    elif cohort:
+        # a cohort card is a standalone comparison: several per run and per boundary, each
+        # still assigned by the seeded policy when it is frozen
+        if cand_id not in IR.open_assigned(run_dir / f"b{k}"):
+            held.append("not an open assigned candidate of this boundary")
+    else:
+        other = [f for f in frozen if not f.startswith(ent["source_policy"] + ".")
+                 and not f.startswith("bundle.")]
+        if other:
+            held.append(f"boundary already has a freeze from another source: {other}")
+        primaries = _primaries(run_dir)
+        if role == "primary" and [p for p in primaries if p != (k, cand_id)]:
+            held.append(f"the run already has its primary: {primaries} (one per task)")
+        if role == "bundle_member" and (k, cand_id) not in primaries and \
+                not [p for p in primaries if p[0] == k]:
+            held.append("bundle member: its boundary's primary isn't frozen")
     parts = card_parts_v2(run_dir, k, cand_id, seed=seed)
     if parts["content_sha256"] != ent["content_sha256"]:
         held.append("the card's evidence changed since the page was built")
@@ -1515,8 +1601,8 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     rec["edited"] = edited
     # design fields the main session filled in where the screen left them empty (never over
     # Jacob's own edits); recorded on the decision and the freeze, checked like an edit
-    overridden = [f for f in (override or {}).get("fields") or {}
-                  if f in DESIGN_FIELDS and f not in edited]
+    overridden = [f for f, v in ((override or {}).get("fields") or {}).items()
+                  if f in DESIGN_FIELDS and f not in edited and v != design.get(f)]
     for f in overridden:
         design[f] = override["fields"][f]
     if overridden:
@@ -1545,6 +1631,16 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
     spec = spec_of(design) if set(changed) & set(SPEC_FIELDS) else c["act_spec"]
     checks = json.loads(json.dumps(c.get("checks") or {}))
     bdir = run_dir / f"b{k}"
+    # an edit or an override of the repair or act alike (astra repair-design r2 #1)
+    rescreen = [f for f in changed if f in RESCREEN_FIELDS]
+    if rescreen and not held:
+        # an edited repair or act is a new candidate: every gate reruns on it (retention,
+        # authority and Opus included; astra repair-design r1 #2), then the card is relabelled
+        record_edit(bdir, cand_id, design, spec if set(rescreen) & set(SPEC_FIELDS) else None,
+                    card=cid, utc=label.get("utc"))
+        return rec | {"status": "held", "reasons": [
+            (f"edited {rescreen}: recorded in {RQ.SCREEN_V2}/{RQ.EDITS_NAME}; rescreen the "
+             "boundary, rebuild the card and relabel it")], "edit_recorded": True}
     if changed and not held:
         new = RQ.check_design({"quote": design["d_repair"]},
                               {"matched_quote": design["d_matched"],
@@ -1583,7 +1679,10 @@ def freeze_card_v2(cid: str, ent: Mapping, label: Mapping, *, seed: int,
            "role": role,
            "card": {"id": cid, "v": label.get("v"), "edited": edited,
                     "note": notes.get("card"), "labelled_utc": label.get("utc")},
-           **({"design_override": rec["design_override"]} if overridden else {})}
+           **({"design_override": rec["design_override"]} if overridden else {}),
+           **repair_fields(c), "exposure": EXPOSURE,
+           # the screened candidate as frozen (the universe binds membership to it)
+           "candidate_sha256": S.canon_sha(candidate_v2(run_dir, k, cand_id))}
     path = S.write_freeze(bdir, frz)
     return rec | {"status": "frozen", "reasons": [], "freeze": _rel(path),
                   "publish": (f"uv run python scripts/s2_interact.py publish-freeze "
@@ -1616,6 +1715,8 @@ def freeze_v2(labels: Mapping[str, dict], key: Mapping, *,
         e = key["cards"][cid]
         run_dir = (ROOT / e["run_dir"]) if not Path(e["run_dir"]).is_absolute() else \
             Path(e["run_dir"])
+        if is_cohort(run_dir, int(e["k"])):
+            continue  # cohort candidates are standalone comparisons: no bundle pair
         if e["cand_id"] in _frozen_in(run_dir, int(e["k"])):
             by_b.setdefault((e["run_dir"], int(e["k"]), e["source_policy"]), []).append(
                 e["cand_id"])
@@ -1826,6 +1927,15 @@ def advance_selection(results: list[dict], *, reselect: bool = True) -> list[dic
     for (rdir, k), rows in by.items():
         run_dir = (ROOT / rdir) if not Path(rdir).is_absolute() else Path(rdir)
         bdir = run_dir / f"b{k}"
+        if is_cohort(run_dir, k):
+            # the repair cohort: a rejection is recorded and its slot stays empty (never
+            # refilled: astra repair-design r2 #2)
+            IR.record_cohort_rejections(bdir, [r["cand_id"] for r in rows
+                                               if r["status"] == "rejected"])
+            asg = IR.assignment(bdir)
+            out.append({"run_dir": rdir, "k": k, "state": "cohort", "cards": asg["assigned"],
+                        "rejected": asg["rejected_by_labeller"]})
+            continue
         sel = IR.record_decisions(bdir, rows)
         if reselect and sel.get("state") == "carded" and any(
                 r["status"] == "rejected" for r in rows):
@@ -1833,7 +1943,8 @@ def advance_selection(results: list[dict], *, reselect: bool = True) -> list[dic
             sel = IR.reselect(bdir, backend_factory=lambda: IR.claude_backend(IR.PilotSpend()),
                               grep_runner=SS.grep_runner(), ref_runner=S.docker_runner(),
                               file_runner=RQ.docker_file_runner(),
-                              opus_factory=IR.opus_backend)
+                              opus_factory=IR.opus_backend,
+                              authority_runner=RQ.docker_authority_runner())
         out.append({"run_dir": rdir, "k": k, "state": sel.get("state"),
                     "cards": sel.get("cards"), "rejected": sel.get("rejected")})
     return out

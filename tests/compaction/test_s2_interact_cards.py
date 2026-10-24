@@ -371,3 +371,114 @@ def test_label_controls_wait_for_saved_labels(SC, run):
     html, _ = SC.build([(run, 1)])
     assert "lock(true);" in html and html.index("lock(true);") < html.index('use("db")')
     assert html.count("lock(false)") == 3  # no storage, first snapshot, failed first load
+
+
+def _la_cand(*, reread=False, named=True):
+    rule = "Run `cargo clippy --all-targets` before every commit."
+    return {"cand_id": "live.b1-la3", "origin": "lossaudit", "source_desc": "/tmp/plan.md",
+            "source_index": 2, "disposition": "carded", "repair_text": rule,
+            "checks": {"retention": {"outcome": "pass"},
+                       "recoverability": {"outcome": "pass", "evidence": {
+                           "class": "file_not_reattached",
+                           "files_not_reattached": [{"file": "/tmp/plan.md",
+                                                     "last_read_msg": 7}]}},
+                       "pointer": {"outcome": "pass", "evidence": {
+                           "stratum": "contextual_omission_retrievable_from_file",
+                           "files": [{"file": "/tmp/plan.md", "named": named,
+                                      "reread_instructed": reread}]}},
+                       "opus": {"outcome": "pass", "evidence": {"verdict": {
+                           "retention": "lost", "authority": "agent_plan_restating",
+                           "authority_quote": "keep clippy clean", "conflict": "none",
+                           "conflict_quote": ""}}}}}
+
+
+def test_lossaudit_card_names_its_source_and_states_only_history_facts(SC, tmp_path):
+    c = _la_cand()
+    facts, _ = SC.facts_v2(c, 1, "boa", {"reply": f"# Plan\n- {c['repair_text']}\n"}, "live",
+                           tmp_path, "Summary: keep going.")
+    assert facts["said_label"] == "/tmp/plan.md said:"
+    assert facts["file_notes"] == [
+        ("Only in /tmp/plan.md: the agent last read it at message 7; the resumed input names "
+         "the file but doesn't ask for a re-read.")]
+    assert "from /tmp/plan.md" in facts["chips"] and "/tmp/plan.md still named" in facts["chips"]
+    assert facts["opus"]["authority"] == "agent_plan_restating"
+    facts, _ = SC.facts_v2(_la_cand(reread=True), 1, "boa", {"reply": ""}, "live", tmp_path, "")
+    assert "re-read of /tmp/plan.md still instructed" in facts["chips"]
+    assert facts["file_notes"][0].endswith("tells it to read the file again.")
+    plain = dict(c, origin=None)
+    plain["checks"] = {k: v for k, v in c["checks"].items() if k != "pointer"}
+    facts, _ = SC.facts_v2(plain, 1, "boa", {"reply": ""}, "live", tmp_path, "")
+    assert facts["said_label"] == "The maintainer said:" and facts["file_notes"] == []
+
+
+def test_freeze_fields_for_a_file_backed_candidate(SC):
+    r = SC.repair_fields(_la_cand())
+    assert r["origin"] == "lossaudit" and r["reread_file"] == "/tmp/plan.md"
+    assert r["backing_files"] == ["/tmp/plan.md"]
+    assert r["stratum"] == "contextual_omission_retrievable_from_file"
+    assert r["authority"]["conflict"] == "none"
+    assert IR.arm_kinds(r) == ("repair", "matched", "reread")
+    m = SC.repair_fields({"cand_id": "live.b1-q2", "checks": {}})
+    assert m["origin"] == "maintainer" and m["reread_file"] is None and m["stratum"] is None
+    assert IR.arm_kinds(m) == ("repair", "matched")
+
+
+def _cli():
+    sys.path.insert(0, str(SCRIPTS))
+    try:
+        return importlib.import_module("s2_interact")
+    finally:
+        sys.path.pop(0)
+
+
+def test_max_window_is_checked_before_every_request_and_read_at_most_every_5_min():
+    cli = _cli()
+    t = [0.0]
+    reads = []
+    level = {"u": 0.85}
+
+    def reader(override):
+        reads.append(t[0])
+        return level["u"], ("seven_day" if level["u"] >= cli.MAX_7D_HOLD else None)
+
+    win = cli.MaxWindow(None, reader=reader, clock=lambda: t[0])
+    calls = []
+
+    class B:
+        model = "m"
+
+        def run(self, reqs, purpose=None):
+            calls.append(reqs)
+            return {}
+    g = cli.WindowGated(B(), win)
+    g.run(["a"])
+    t[0] = 200
+    level["u"] = 0.95  # crossed, but not read again yet
+    g.run(["b"])
+    assert reads == [0.0] and g.model == "m"
+    t[0] = 301
+    with pytest.raises(cli.MaxWindowHold, match="0.95"):
+        g.run(["c"])
+    assert calls == [["a"], ["b"]] and reads == [0.0, 301]
+    assert cli.max_window(91.0)[1] and cli.max_window(80.0) == (0.8, None)
+
+
+def test_max_readings_must_be_fresh():
+    cli = _cli()
+    pings = []
+    stale = {"stream": lambda now: None, "ping": lambda: pings.append(1) or 0.5}
+    assert cli.max_window(None, **stale) == (0.5, None) and pings == [1]  # stream stale: ping
+    assert cli.max_window(None, stream=lambda now: 0.93, ping=lambda: 0.1)[1].startswith(
+        "seven_day at 0.93")
+    why = cli.max_window(None, stream=lambda now: None, ping=lambda: None)[1]
+    assert why.startswith("no fresh 7-day reading")
+    # the operator's figure lasts 15 minutes, then the window is measured again
+    t, seen = [0.0], []
+    win = cli.MaxWindow(50.0, reader=lambda o: seen.append(o) or (0.5, None),
+                        clock=lambda: t[0])
+    win.check()
+    t[0] = 600
+    win.check()
+    t[0] = cli.FRESH_S + 1
+    win.check()
+    assert seen == [50.0, 50.0, None]

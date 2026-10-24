@@ -107,6 +107,49 @@ About $70–110 (astra r1) inside Experiment 3's stage (SPRINT-S3-Q2, $270; the 
 
 - **24 Oct, main session: the simulator gate raised from $2.50 to $5.00 per pi base run** (`INTERACT_SIM_GATE_USD`), so runs reach later compactions; fastapi had stopped at the old gate with both compactions exhausted. The pilot tag stays capped at $120, and the main session is told before its total passes $100.
 
+- **24–25 Oct, Jacob and the main session (consult r2): file-backed repair candidates.** Decided after the live chain's item-level audit and its exploratory follow-up had been read. Everything below is **exploratory**.
+  - **What counts as lost** (Jacob: "recover-able, not recovered"): a requirement absent from the effective resumed context is lost for candidate eligibility, even when it can still be found in a file the agent isn't prompted to re-read. Such files are its own `/tmp/plan.md`, or a repository AGENTS.md, CLAUDE.md, README or CONTRIBUTING it read once. A file the harness re-attaches after compaction counts as kept.
+  - **The stratum is named "contextual omission, retrievable from a file",** not unrecoverable loss.
+  - **Recoverability is three-way:**
+    - `code`: in the repository's code or content, a branch or a commit message; excluded, as before;
+    - `file_not_reattached`: only in such files; eligible, with each file and the last message that read it;
+    - `none`: eligible.
+  - **Pointer flags, per candidate:** whether the resumed input still names the file, and whether it instructs a re-read (e.g. a kept "Read /tmp/plan.md first"). In the arms, whether the agent actually re-reads it.
+  - **Candidate sources:** the maintainer-requirement ledger, plus the live chain audit's lost rule, decision and commitment items at their boundary. Both go through the same gates: the chain rule, near-verbatim, the code checks, Opus, and the authority and consistency gate below.
+  - **Authority and consistency gate, decided by Opus on boundary evidence only:**
+    - the item must come from the task text, the maintainer or the repository's instructions; an agent-written plan item counts only if it restates such a source or a decision the maintainer agreed;
+    - it must not conflict with a rule the agent still has, or with another requirement. Examples: kombu's "add tests in test_base.py" against a kept "don't modify test files"; boa's contradictory `enqueue_job` plan items.
+    - **Code checks the authority** (astra repair-design r1, 25 Oct). The span is Opus's authority quote for a restated plan item, and the item's own words otherwise. It must be found verbatim in a source that authority allows, and the source span is recorded. The allowed sources:
+      - the task and harness messages: user-role messages of the run's histories, never a compaction summary;
+      - the maintainer's replies;
+      - authoritative repository files (AGENTS.md, CLAUDE.md, README, CONTRIBUTING) as of the task's base commit. They count only as regular files that the agent read before the boundary, by a command whose path resolves to that file after `cd` and relative paths. A symlink, or a path that can't be resolved, is excluded.
+    - Nothing the agent wrote or echoed counts: not its messages, not its plan file, not any other command output. So a plan can't vouch for itself.
+    - **The span must be substantive:** at least 6 words sharing at least half of the obligation's key words, or every key word of the obligation.
+    - A conflict verdict excludes the item whatever its quote; the conflict quote is checked against the boundary evidence and recorded.
+  - **One candidate per task obligation:** a repeated obligation counts at its first boundary only, and once within a boundary, e.g. the same rule from the maintainer ledger and the audit, or from two summaries.
+  - **Every candidate is screened to the end,** at every boundary, in ascending order per run.
+  - **Assignment, fixed before any card is labelled and blind to outcomes** (astra repair-design r2, 25 Oct):
+    - per boundary, the passing candidates in the order of a seeded hash of their ids (seed 20261025);
+    - the first 2 are assigned (a cap for cost and card time), and the rest are recorded as dropped by the cap;
+    - it is stored once and never recomputed.
+    - **No refill:** a card Jacob rejects keeps its slot, empty. It is recorded as `rejected_by_labeller` and counted in a separate tally, never in the outcome rates. An assigned candidate that an edit's rescreen excludes is tallied the same way (`excluded_on_rescreen`).
+    - **Limitation:** the labeller had seen the base runs' outcomes, so he can remove cases but never choose them. The arms within a kept candidate stay randomised, so its within-candidate contrasts stay valid. The whole cohort is exploratory.
+    - An edit or an override of a card's repair text or act makes it a new candidate: it is screened again through every gate, then relabelled.
+    - **Max's 7-day window** is checked before every Max request of the screen, from a reading at most 5 minutes old; at 90% new requests stop.
+  - **No selection on outcome:** the base continuations' follow-up has been read (12 followed, 4 not, 3 with no opportunity, 1 sealed). So the candidates are every item that passes the gates, whatever the base run did later. The 4 misses are never picked because they failed.
+  - **Arms for a file-backed candidate:** neutral matched text, the exact content restored, and an explicit "Re-read <file> before continuing."; 2 repeats each, so one extra continuation per candidate. Every arm records whether it re-reads the file.
+    - **The reread arm is an unmatched practical-strategy arm.** Its text is fixed and isn't length-matched to the repair. It compares a recovery strategy (pointing at the file) with restoring the content and with neutral text; it isn't a length-controlled contrast. Only repair against matched is the length-matched pair.
+  - **Freeze before any continuation:** the universe is written and committed before any arm. It holds, timestamped:
+    - per screened candidate, its requirement, evidence quotes, every gate result and the hash of its screened record;
+    - each boundary's assignment;
+    - the roster: candidate × arm kind × repeat, for every assigned candidate with a freeze, bound to the freeze's record hash;
+    - the screen hash, the window, the scoring, the deduplication and the selection rule.
+  - **The universe is refused while any assigned candidate is unresolved:** each must be frozen or rejected by the labeller first, so none can drop out of the denominator unseen.
+  - **Every continuation needs the universe:** an arm or secondary runs only for a roster entry whose candidate and freeze hashes still match. That covers bundles and older freezes too. The one exception is testem's historical freeze, listed by name and record hash.
+  - Eligibility comes from boundary evidence only, and Opus is outcome-blind. Jacob's prior exposure to the follow-up is recorded on every freeze. Ambiguous cases are adjudicated independently.
+  - **Scoring:** compliant, violated and not reached as shares of every roster entry, never conditioned on reaching the act. The readout joins each arm's outcome onto the roster, so a missing or failed arm stays in the denominator.
+  - **What a result can claim:** a positive result says restoring the content, or prompting a re-read, changes the governed act in these continuation states. It does not say the omission caused the base run's behaviour, or that an uncompacted agent would have complied. Claims are scoped to the measured model, the harness and its attachment policy, and the scripted planning workflow. Confirmation needs untouched sessions.
+
 ## Review history
 
 - **astra r1** (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Its verdict: for Q2, probably the strongest next step after fixes; for Q1, Experiment 1 stays stronger. BLOCKING findings and how v0.2 handles them:

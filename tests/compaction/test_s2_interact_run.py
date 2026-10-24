@@ -432,6 +432,7 @@ def test_base_arm_secondary_in_docker(tmp_path, monkeypatch):
     frz = {"source_policy": "live", "record_sha256": "F", "repair_text": "keep frob in frob.ts",
            "matched_text": "the CI badge is green"}
     monkeypatch.setattr(IR, "verified_freeze", lambda bdir, cid, require_committed=True: frz)
+    monkeypatch.setattr(IR, "universe_refusal", lambda *a, **kw: None)  # arm mechanics only
     FakeSession.all_tags = []
     try:
         with Invocation(purpose=IR.PURPOSE) as inv:
@@ -1331,3 +1332,270 @@ def test_replays_on_another_agy_prompt_are_flagged(tmp_path):
     assert "didn't use Experiment 1's frozen agy 1.4.3 prompt set" in note
     assert "1.4.7" not in note
     assert "frozen" not in cards.source_note(rd / "b1", "cc_prompt")
+
+
+# --- 24-25 Oct: the reread arm, the frozen universe and the all-assigned headline (consult r2)
+
+def test_reread_arm_only_for_file_backed_freezes():
+    f = {"cand_id": "live.b1-la3", "source_policy": "live", "repair_text": "R",
+         "matched_text": "M", "reread_file": "/tmp/plan.md"}
+    assert IR.arm_kinds(f) == ("repair", "matched", "reread")
+    assert IR.spec_from_freeze(f, "reread", 0).block == "Re-read /tmp/plan.md before continuing."
+    assert IR.spec_from_freeze(f, "matched", 1).block == "M"
+    plain = dict(f, reread_file=None)
+    assert IR.arm_kinds(plain) == ("repair", "matched")
+    with pytest.raises(ValueError):
+        IR.spec_from_freeze(plain, "reread", 0)
+
+
+def test_rereads_finds_the_first_read_of_each_file():
+    cmds = [{"call": 3, "cmd": "ls /tmp"}, {"call": 4, "cmd": "echo plan.md > x"},
+            {"call": 5, "cmd": "cat /tmp/plan.md"}, {"call": 6, "cmd": "sed -n 1,40p AGENTS.md"},
+            {"call": 7, "cmd": "cat docs/AGENTS.md.bak"}]
+    assert IR.rereads(cmds, ["/tmp/plan.md", "AGENTS.md", "CONTRIBUTING.md"]) == {
+        "/tmp/plan.md": 5, "AGENTS.md": 6, "CONTRIBUTING.md": None}
+
+
+def test_assigned_rates_keep_every_assigned_arm_in_the_denominator():
+    from compaction.s2 import interact_score as SC
+    r = SC.assigned_rates(["complied", "contradicted", "not_reached", None])
+    assert r["assigned"] == 4 and r["complied_share"] == 0.25 and r["unscored"] == 1
+    assert r["not_reached_share"] == 0.25 and r["unscored_share"] == 0.25
+    assert SC.assigned_rates([])["complied_share"] is None
+
+
+
+def test_write_universe_never_overwrites_a_version(tmp_path, monkeypatch):
+    monkeypatch.setattr(IR, "UNIVERSE_DIR", tmp_path / "u")
+    monkeypatch.setattr(IR, "utc", lambda: "2026-10-25T01:02:03Z")
+    p = IR.write_universe(tmp_path / "none")
+    assert p.name == "2026-10-25T010203Z.json" and (tmp_path / "u" / "latest.json").exists()
+    with pytest.raises(FileExistsError):
+        IR.write_universe(tmp_path / "none")
+
+
+# --- astra repair-design r1 (25 Oct): assignment, the content-bound universe, the roster
+
+
+def _cohort_boundary(root, run="t-deepseek-a1", k=1, ids=("live.b1-la3", "live.b1-q2",
+                                                         "live.b1-q4", "live.b1-q7")):
+    from compaction.s2 import interact_reqs as RQ
+    bdir = root / run / f"b{k}"
+    d = bdir / "boundary" / RQ.SCREEN_V2
+    d.mkdir(parents=True, exist_ok=True)
+    cands = [{"cand_id": i, "disposition": "passed", "repair_text": f"rule {i}",
+              "checks": {"opus": {"outcome": "pass"}}} for i in ids]
+    cands.append({"cand_id": f"live.b{k}-q9", "disposition": "excluded:opus:not_applicable",
+                  "repair_text": "x", "checks": {"opus": {"outcome": "fail"}}})
+    (d / "candidates.json").write_text(json.dumps(
+        {"mode": "full", "screen_sha256": RQ.screen_sha_v2(), "passing": list(ids),
+         "candidates": cands}))
+    return bdir
+
+
+def _cohort_freeze(bdir, cid, *, reread=None):
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import interact_score as SC
+    doc = json.loads((bdir / "boundary" / RQ.SCREEN_V2 / "candidates.json").read_text())
+    c = next(x for x in doc["candidates"] if x["cand_id"] == cid)
+    rec = {"cand_id": cid, "source_policy": "live", "role": "cohort", "repair_text": "R",
+           "matched_text": "M", "reread_file": reread, "act_spec": {"kind": "x"},
+           "candidate_sha256": SC.canon_sha(c)}
+    rec["record_sha256"] = SC.canon_sha(rec)
+    p = SC.freeze_path(bdir, cid)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(rec))
+    return rec
+
+
+def test_assignment_is_seeded_capped_fixed_and_never_refilled(tmp_path):
+    bdir = _cohort_boundary(tmp_path)
+    a = IR.assignment(bdir)
+    order = [x["cand_id"] for x in a["order"]]
+    assert sorted(order) == sorted(["live.b1-la3", "live.b1-q2", "live.b1-q4", "live.b1-q7"])
+    assert order == sorted(order, key=lambda c: IR.assign_key("t-deepseek-a1", 1, c))
+    assert a["assigned"] == order[:IR.ASSIGN_PER_BOUNDARY]
+    assert a["dropped"] == [{"cand_id": c, "why": "per_boundary_cap"}
+                            for c in order[IR.ASSIGN_PER_BOUNDARY:]]
+    # a rejected card's slot stays empty; nothing from the dropped list moves up (r2 #2)
+    IR.record_cohort_rejections(bdir, [order[0]])
+    b = IR.assignment(bdir)
+    assert b["assigned"] == a["assigned"] and b["rejected_by_labeller"] == [order[0]]
+    assert IR.open_assigned(bdir) == [order[1]]
+    # stored once: a later screen whose passing set differs doesn't move the assignment
+    p = bdir / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(p.read_text())
+    p.write_text(json.dumps(dict(doc, passing=[c for c in doc["passing"] if c != order[1]])))
+    assert IR.assignment(bdir)["assigned"] == a["assigned"]
+    with pytest.raises(ValueError, match="stays fixed"):
+        IR.assignment(bdir, fresh=True)  # a card is already resolved
+    p.write_text(json.dumps(dict(doc, mode="first")))
+    with pytest.raises(ValueError, match="no full screen"):
+        IR.assignment(bdir)
+
+
+def test_universe_binds_the_roster_to_candidate_and_freeze_hashes(tmp_path, monkeypatch):
+    bdir = _cohort_boundary(tmp_path)
+    a = IR.assignment(bdir)
+    f1 = _cohort_freeze(bdir, a["assigned"][0], reread="/tmp/plan.md")
+    _cohort_freeze(bdir, a["dropped"][0]["cand_id"])  # frozen but not assigned: no roster
+    u = IR.build_universe(tmp_path)
+    b = u["runs"]["t-deepseek-a1"][0]
+    rows = {c["cand_id"]: c for c in b["candidates"]}
+    assert rows[a["assigned"][0]]["freeze_sha256"] == f1["record_sha256"]
+    assert rows[a["assigned"][1]]["freeze_sha256"] is None  # assigned, not frozen yet
+    assert rows["live.b1-q9"]["gates"]["opus"]["outcome"] == "fail"
+    assert all(len(c["candidate_sha256"]) == 64 for c in b["candidates"])
+    assert [(e["kind"], e["rep"]) for e in u["roster"]] == [
+        ("repair", 1), ("repair", 2), ("matched", 1), ("matched", 2), ("reread", 1),
+        ("reread", 2)]
+    assert u["roster"][0]["arm_dir"] == f"arms/b1--{a['assigned'][0]}--live-repair-1"
+    assert "unmatched practical-strategy" in u["arms"]["kinds"]
+
+    committed = {"u": u}
+    monkeypatch.setattr(IR, "committed_universe", lambda: committed["u"])
+    cid = a["assigned"][0]
+    rd = tmp_path / "t-deepseek-a1"
+    assert IR.universe_refusal(rd, 1, cid, f1, "reread", 2) is None
+    assert "not on the committed universe's roster" in IR.universe_refusal(
+        rd, 1, a["assigned"][1], {"record_sha256": "x"}, "repair", 1)
+    assert "freeze differs" in IR.universe_refusal(rd, 1, cid, dict(f1, record_sha256="y"),
+                                                   "repair", 1)
+    # the screened candidate edited in place after the commit: refused
+    p = bdir / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(p.read_text())
+    doc["candidates"][[c["cand_id"] for c in doc["candidates"]].index(cid)]["repair_text"] = "Z"
+    p.write_text(json.dumps(doc))
+    assert "screened candidate changed" in IR.universe_refusal(rd, 1, cid, f1, "repair", 1)
+    committed["u"] = None
+    assert "no committed universe" in IR.universe_refusal(rd, 1, cid, f1, "repair", 1)
+    committed["u"] = dict(u, screen_sha256="old")
+    assert "other screen rules" in IR.universe_refusal(rd, 1, cid, f1, "repair", 1)
+
+
+def test_historical_freeze_is_allowed_by_name_and_hash_only(tmp_path, monkeypatch):
+    monkeypatch.setattr(IR, "committed_universe", lambda: None)
+    (run, k, cid), h = next(iter(IR.HISTORICAL.items()))
+    rd = tmp_path / run
+    assert IR.universe_refusal(rd, k, cid, {"record_sha256": h}, "repair", 1) is None
+    assert "record hash changed" in IR.universe_refusal(rd, k, cid, {"record_sha256": "x"},
+                                                       "repair", 1)
+    assert "no committed universe" in IR.universe_refusal(tmp_path / "other", k, cid,
+                                                          {"record_sha256": h}, "repair", 1)
+
+
+def test_every_continuation_needs_the_universe_bundles_and_old_freezes_included(tmp_path,
+                                                                             monkeypatch):
+    seen = []
+    monkeypatch.setattr(IR, "universe_refusal",
+                        lambda rd, k, cid, frz, kind, rep: seen.append((cid, kind)) or "nope")
+    kw = {"agent_model": None, "sim_model": None, "inv": None}
+    for frz in ({"cand_id": "bundle.live", "source_policy": "live", "repair_text": "R",
+                 "matched_text": "M"},
+                {"cand_id": "live.b1-q2", "screen": "fork_v2", "source_policy": "live",
+                 "repair_text": "R", "matched_text": "M"}):  # no exposure note
+        monkeypatch.setattr(IR, "verified_freeze",
+                            lambda bdir, cid, require_committed=True, f=frz: f)
+        for fn in (IR.run_arm, IR.run_secondary):
+            with pytest.raises(ValueError, match="refused: nope"):
+                fn(tmp_path / "t-deepseek-a1", 1, frz["cand_id"], "repair", 1, None, **kw)
+    assert len(seen) == 4
+
+
+def test_roster_readout_keeps_missing_and_failed_arms_in_the_denominator(tmp_path,
+                                                                          monkeypatch):
+    from compaction.s2 import interact_score as SC
+    bdir = _cohort_boundary(tmp_path)
+    cid = IR.assignment(bdir)["assigned"][0]
+    f = _cohort_freeze(bdir, cid)
+    u = IR.build_universe(tmp_path)
+    rd = tmp_path / "t-deepseek-a1"
+    ends = {"repair-1": {"end": "ask_user"}, "repair-2": {"end": "error", "error": "boom"},
+            "matched-1": {"end": "ask_user"}}  # matched-2 never ran
+    for e in u["roster"]:
+        r = ends.get(f"{e['kind']}-{e['rep']}")
+        if r:
+            (rd / e["arm_dir"]).mkdir(parents=True)
+            (rd / e["arm_dir"] / "readout.json").write_text(json.dumps(r))
+    outcomes = {"live-repair-1": {"outcome": "complied"},
+                "live-matched-1": {"outcome": "contradicted"}}
+    monkeypatch.setattr(SC, "score", lambda ad, spec, judge=None: outcomes[
+        Path(ad).name.split("--")[-1]])
+    out = SC.roster_readout(u, tmp_path)
+    assert out["status"] == {"scored": 2, "unscored": 0, "missing": 1, "error": 1,
+                             "freeze_changed": 0}
+    assert out["by_kind"]["repair"]["assigned"] == 2
+    assert out["by_kind"]["repair"]["complied_share"] == 0.5  # the failed arm counts
+    assert out["by_kind"]["matched"]["contradicted_share"] == 0.5  # so does the missing one
+    assert out["by_candidate"][0]["cand_id"] == cid
+    assert f["record_sha256"] == u["roster"][0]["freeze_sha256"]
+
+
+def test_cohort_arms_get_their_own_dirs():
+    spec = IR.ArmSpec("live", "reread", 2, "x")
+    assert IR.arm_dir(Path("/r"), 3, {"role": "cohort", "cand_id": "live.b3-la1"}, spec) == \
+        Path("/r/arms/b3--live.b3-la1--live-reread-2")
+    assert IR.arm_dir(Path("/r"), 1, {"role": "primary"}, spec) == Path("/r/arms/live-reread-2")
+
+
+def test_universe_refuses_unresolved_assignments_and_tallies_removals(tmp_path, monkeypatch):
+    from compaction.s2 import interact_score as SC
+    monkeypatch.setattr(IR, "UNIVERSE_DIR", tmp_path / "u")
+    bdir = _cohort_boundary(tmp_path)
+    a, b = IR.assignment(bdir)["assigned"]
+    with pytest.raises(ValueError, match="2 assigned candidates are unresolved"):
+        IR.write_universe(tmp_path)
+    _cohort_freeze(bdir, a)
+    with pytest.raises(ValueError, match="1 assigned candidates are unresolved"):
+        IR.write_universe(tmp_path)
+    IR.record_cohort_rejections(bdir, [b])
+    u = json.loads(IR.write_universe(tmp_path).read_text())
+    res = u["runs"]["t-deepseek-a1"][0]["resolution"]
+    assert res == {a: "frozen", b: "rejected_by_labeller"}
+    assert u["resolved"]["rejected_by_labeller"] == 1 and u["resolved"]["unresolved"] == 0
+    assert {e["cand_id"] for e in u["roster"]} == {a}
+    out = SC.roster_readout(u, tmp_path)
+    assert out["removed"] == {"rejected_by_labeller": 1, "excluded_on_rescreen": 0}
+    assert out["by_kind"]["repair"]["assigned"] == 2  # only the kept candidate's arms
+
+
+def test_an_assigned_candidate_an_edit_excludes_is_tallied_not_replaced(tmp_path):
+    bdir = _cohort_boundary(tmp_path)
+    a, b = IR.assignment(bdir)["assigned"]
+    p = bdir / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(p.read_text())
+    for c in doc["candidates"]:
+        if c["cand_id"] == b:
+            c["disposition"] = "excluded:authority:unverified:span_not_substantive"
+    p.write_text(json.dumps(dict(doc, passing=[x for x in doc["passing"] if x != b])))
+    _cohort_freeze(bdir, a)
+    u = IR.build_universe(tmp_path)
+    assert u["runs"]["t-deepseek-a1"][0]["resolution"] == {a: "frozen",
+                                                           b: "excluded_on_rescreen"}
+    assert IR.assignment(bdir)["assigned"] == [a, b]
+    assert IR.open_assigned(bdir) == [a]  # off the cards, its assignment and tally kept (r3 #1)
+
+
+def test_a_pending_edit_leaves_the_candidate_unresolved(tmp_path, monkeypatch):
+    from compaction.s2 import interact_score as SC
+    monkeypatch.setattr(IR, "UNIVERSE_DIR", tmp_path / "u")
+    bdir = _cohort_boundary(tmp_path)
+    a, b = IR.assignment(bdir)["assigned"]
+    _cohort_freeze(bdir, a)
+    IR.record_cohort_rejections(bdir, [b])
+    edit = {"repair_text": "new words", "card": "c"}
+    (bdir / "boundary" / "fork_v2" / "edits.json").write_text(json.dumps({"cands": {a: edit}}))
+    assert IR.pending_edit(bdir, a) and IR.open_assigned(bdir) == []
+    u = IR.build_universe(tmp_path)
+    assert u["runs"]["t-deepseek-a1"][0]["resolution"][a] == "unresolved"
+    assert u["roster"] == []
+    with pytest.raises(ValueError, match="unresolved"):
+        IR.write_universe(tmp_path)
+    # once the screen carries that edit, it is no longer pending
+    p = bdir / "boundary" / "fork_v2" / "candidates.json"
+    doc = json.loads(p.read_text())
+    for c in doc["candidates"]:
+        if c["cand_id"] == a:
+            c["edit_sha256"] = SC.canon_sha(edit)
+    p.write_text(json.dumps(doc))
+    assert not IR.pending_edit(bdir, a)

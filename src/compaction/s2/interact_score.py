@@ -337,6 +337,63 @@ def act_rates(outcomes: list[str | None]) -> dict:
             "reached_rate": len(reached) / len(scored) if scored else None}
 
 
+def assigned_rates(outcomes: list[str | None]) -> dict:
+    """The headline over every assigned continuation (consult r2, the main session, 25 Oct):
+    compliant, violated and not reached, each as a share of all assigned arms, never
+    conditioned on reaching the act. An unscored arm (None) stays in the denominator, as
+    "unscored"."""
+    n = len(outcomes)
+    counts = {o: sum(x == o for x in outcomes) for o in ACT_OUTCOMES}
+    counts["unscored"] = sum(x is None for x in outcomes)
+    return {"assigned": n, **counts,
+            **{f"{o}_share": (counts[o] / n if n else None) for o in counts}}
+
+
+def roster_readout(universe: dict, root: Path, *,
+                   judge: Callable[[Path, dict], dict] | None = None) -> dict:
+    """The repair cohort's readout (astra repair-design r1 #5): every roster entry of the
+    universe (candidate x kind x repeat) joined to its arm's outcome. A missing arm, a failed
+    one, a changed freeze or an unscorable act is an outcome of None, kept in every
+    denominator (`assigned_rates`), per kind and per candidate."""
+    rows = []
+    for e in universe.get("roster") or []:
+        ad = Path(root) / e["run"] / e["arm_dir"]
+        bdir = Path(root) / e["run"] / f"b{e['k']}"
+        row = {k: e[k] for k in ("run", "k", "cand_id", "kind", "rep")}
+        try:
+            frz = read_freeze(bdir, e["cand_id"])
+        except (OSError, ValueError):
+            frz = None
+        if frz is None or frz.get("record_sha256") != e["freeze_sha256"]:
+            row.update(status="freeze_changed", outcome=None)
+        elif not (ad / "readout.json").exists():
+            row.update(status="missing", outcome=None)
+        elif _read(ad / "readout.json").get("error"):
+            row.update(status="error", outcome=None)
+        else:
+            sc = score(ad, frz["act_spec"], judge=judge)
+            row.update(status="scored" if sc["outcome"] else "unscored", outcome=sc["outcome"],
+                       reasked=sc.get("reasked"))
+        rows.append(row)
+    kinds = sorted({r["kind"] for r in rows})
+    cands = sorted({(r["run"], r["k"], r["cand_id"]) for r in rows})
+    return {"by_kind": {k: assigned_rates([r["outcome"] for r in rows if r["kind"] == k])
+                        for k in kinds},
+            "by_candidate": [{"run": run, "k": k, "cand_id": cid, **{
+                kind: assigned_rates([r["outcome"] for r in rows if (r["run"], r["k"],
+                                      r["cand_id"], r["kind"]) == (run, k, cid, kind)])
+                for kind in kinds if any(r["kind"] == kind and r["cand_id"] == cid
+                                         and r["run"] == run and r["k"] == k for r in rows)}}
+                for run, k, cid in cands],
+            "status": {s: sum(r["status"] == s for r in rows)
+                       for s in ("scored", "unscored", "missing", "error", "freeze_changed")},
+            # removed by the labeller or by an edit's rescreen: never in the outcome rates
+            "removed": {k: v for k, v in (universe.get("resolved") or {}).items()
+                        if k in ("rejected_by_labeller", "excluded_on_rescreen")},
+            "rows": rows, "universe_created_utc": universe.get("created_utc"),
+            "screen_sha256": universe.get("screen_sha256"), "exploratory": True}
+
+
 def continuation_text(arm_dir: Path) -> str:
     p = Path(arm_dir) / "continuation.json"
     msgs = _read(p) if p.exists() else []

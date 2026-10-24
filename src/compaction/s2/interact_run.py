@@ -690,6 +690,7 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
         if env is not None:
             _dump(rd / "sim" / "ask_log.json", env.sim.ask_log)
             _dump(rd / "sim" / "rounds.json", env.sim.rounds)
+            _dump(rd / "sim" / "io.json", env.sim.io)  # snapshots and tool outputs
             res["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
             res["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)  # tolerant_exec
             if asks is not None:
@@ -843,7 +844,8 @@ def _place_cards(bdir: Path, screened: dict) -> dict:
 
 def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_runner=None,
                  file_runner=None, replay: Callable[..., Any] | None = None,
-                 opus_factory: Callable[[], Any]) -> Callable[[Path, dict], bool]:
+                 opus_factory: Callable[[], Any],
+                 authority_runner=None) -> Callable[[Path, dict], bool]:
     """The v2 fork rule at one boundary: the split (if not done) and eligibility (recorded, no
     longer gating), the replays (pi as anchor), every source graded on every requirement so
     far, the new/inherited ledger, the v2 screen (the boundary's rejections excluded), then the
@@ -866,7 +868,7 @@ def fork_trigger(backend_factory: Callable[[], Any], *, grep_runner=None, ref_ru
         out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
                            ref_runner=ref_runner, file_runner=file_runner,
                            rejected=(selection(bdir) or {}).get("rejected") or [],
-                           opus_backend=opus_factory())
+                           opus_backend=opus_factory(), authority_runner=authority_runner)
         return place_cards(bdir, out)["state"] == "carded"
     return check
 
@@ -903,7 +905,8 @@ def record_decisions(bdir: Path, results: list[dict]) -> dict:
 
 
 def reselect(bdir: Path, *, backend_factory: Callable[[], Any], grep_runner=None,
-             ref_runner=None, file_runner=None, opus_factory: Callable[[], Any]) -> dict:
+             ref_runner=None, file_runner=None, opus_factory: Callable[[], Any],
+             authority_runner=None) -> dict:
     """After rejections: the screen again without the rejected candidates (its checks are
     reused), then the next card within the caps, or exhausted."""
     from compaction.s2 import interact_reqs as RQ
@@ -911,7 +914,7 @@ def reselect(bdir: Path, *, backend_factory: Callable[[], Any], grep_runner=None
     out = RQ.screen_v2(bdir, backend=backend_factory(), grep_runner=grep_runner,
                        ref_runner=ref_runner, file_runner=file_runner,
                        rejected=sel.get("rejected") or [],
-                       opus_backend=opus_factory())
+                       opus_backend=opus_factory(), authority_runner=authority_runner)
     return place_cards(bdir, out)
 
 
@@ -1110,6 +1113,7 @@ def resume_base(run_dir: Path, task: InteractTask, *, agent_model: ChatModel,
         if env is not None:
             _dump(rd / "sim" / f"ask_log_r{n}.json", env.sim.ask_log)
             _dump(rd / "sim" / f"rounds_r{n}.json", env.sim.rounds)
+            _dump(rd / "sim" / f"io_r{n}.json", env.sim.io)
             res["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
             res["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)  # tolerant_exec
             if asks is not None:
@@ -1180,7 +1184,7 @@ def advance(run_dir: Path, task: InteractTask, *, trigger: Callable[[Path, dict]
 @dataclass(frozen=True)
 class ArmSpec:
     source: str  # C.INTERACT_SOURCES
-    kind: str  # "repair" | "matched"
+    kind: str  # "repair" | "matched" | "reread" (file-backed candidates, consult r2)
     rep: int
     block: str  # the requirement (repair) or the matched item, as frozen
     readout: str = "primary"
@@ -1189,7 +1193,7 @@ class ArmSpec:
     def __post_init__(self) -> None:
         if self.source not in C.INTERACT_SOURCES:
             raise ValueError(f"unknown source {self.source!r}")
-        if self.kind not in ("repair", "matched"):
+        if self.kind not in ARM_KINDS:
             raise ValueError(f"unknown kind {self.kind!r}")
 
     @property
@@ -1271,6 +1275,20 @@ def fork_check(env: I.InteractEnv, boundary: dict) -> dict:
             and probe == boundary.get("sim_probe_sha256")}
 
 
+def rereads(cmds: list[dict], files: list[str]) -> dict[str, int | None]:
+    """Per backing file, the first arm call that reads it (consult r2: record whether the
+    agent actually re-reads the file), else None."""
+    from compaction.s2 import interact_reqs as RQ
+    out: dict[str, int | None] = {}
+    for f in files:
+        name = f.rsplit("/", 1)[-1]
+        pat = re.compile(r"(?:" + re.escape(f) + r"|(?<![\w./-])" + re.escape(name)
+                         + r"(?![\w.-]))")
+        out[f] = next((c["call"] for c in cmds if c.get("cmd") and pat.search(c["cmd"])
+                       and RQ._READ_VERB.search(c["cmd"])), None)
+    return out
+
+
 def _commands(loop: Loop, env: I.InteractEnv) -> list[dict]:
     """The bash commands the arm actually ran: in the call that captured an ask_user, the
     tool calls after it were deferred, not run, so they are left out."""
@@ -1343,6 +1361,296 @@ def verified_freeze(bdir: Path, cand_id: str, *, require_committed: bool = True)
     return f
 
 
+# The repair cohort and its universe (consult r2; astra repair-design r1, 25 Oct). Everything
+# here is exploratory.
+#   1. Every candidate is screened to the end (interact_reqs.screen_v2 full=True).
+#   2. The assignment policy, blind to outcomes and fixed before any card is labelled: per
+#      boundary, every passing candidate in the order of a seeded hash of its id, the first
+#      ASSIGN_PER_BOUNDARY of them assigned and the rest recorded as dropped by the cap. It is
+#      written once (fork_v2/assignment.json) and never recomputed. A card Jacob rejects keeps
+#      its slot, empty: `rejected_by_labeller` (fork_v2/cohort.json), tallied apart from the
+#      outcome rates and never replaced (astra repair-design r2 #2: the labeller saw base
+#      outcomes, so he may remove cases but never choose them). An assigned candidate an edit's
+#      rescreen excludes is tallied the same way (`excluded_on_rescreen`).
+#   3. The universe: per screened candidate, its requirement, evidence quotes, every gate
+#      result and the hash of the candidate record; the assignment with each assigned
+#      candidate's resolution; and the roster (candidate x arm kind x repeat) of every frozen
+#      assigned candidate, bound to the freeze's record hash. It is written once per version
+#      and committed, and refused while any assigned candidate is unresolved (r2 #3).
+#   4. An arm or secondary runs only for a roster entry of the committed universe whose
+#      candidate and freeze hashes match what is on disk now. The one exception is the
+#      historical testem freeze (HISTORICAL, by name and record hash), frozen before the
+#      universe existed.
+#   5. The readout joins every arm's outcome onto the roster, so a missing or failed arm
+#      stays in the denominator (interact_score.roster_readout).
+UNIVERSE_DIR = FREEZE_COMMITTED.parent / "universe"
+COHORT_NAME = "cohort.json"
+ASSIGNMENT_NAME = "assignment.json"
+ASSIGN_SEED = 20261025
+ASSIGN_PER_BOUNDARY = 2  # cost and Jacob's card time: each candidate is 4-6 primaries
+REPEATS = (1, 2)
+HISTORICAL = {("testem-bail-on-test-failure-deepseek-a1", 1, "codex_local.b1-q10"):
+              "5d0ec0562e58edc1a3b4d09ab36833bf602539a025451f34a852b6e95ee3f955"}
+
+
+def assign_key(run: str, k: int, cand_id: str) -> str:
+    return hashlib.sha256(f"{ASSIGN_SEED}|{run}|b{k}|{cand_id}".encode()).hexdigest()
+
+
+def cohort_rejected(bdir: Path) -> list[str]:
+    p = _v2dir(bdir) / COHORT_NAME
+    return list((_read(p) if p.exists() else {}).get("rejected") or [])
+
+
+def record_cohort_rejections(bdir: Path, ids: list[str], why: str = "card") -> list[str]:
+    """Add cards Jacob rejected to the boundary's cohort record (never removed)."""
+    p = _v2dir(bdir) / COHORT_NAME
+    doc = _read(p) if p.exists() else {"rejected": [], "log": []}
+    new = [i for i in ids if i not in doc["rejected"]]
+    doc["rejected"] += new
+    if new:
+        doc["log"].append({"utc": utc(), "rejected": new, "why": why})
+    _dump(p, doc)
+    return doc["rejected"]
+
+
+def full_screen(bdir: Path) -> dict:
+    """The boundary's full screen under the current rules, else ValueError."""
+    from compaction.s2 import interact_reqs as RQ
+    p = _v2dir(bdir) / "candidates.json"
+    doc = _read(p) if p.exists() else {}
+    if doc.get("mode") != "full":
+        raise ValueError(f"{bdir}: no full screen (screen_v2 full=True)")
+    if doc.get("screen_sha256") != RQ.screen_sha_v2():
+        raise ValueError(f"{bdir}: screened under {str(doc.get('screen_sha256'))[:12]}, the "
+                         f"rules are now {RQ.screen_sha_v2()[:12]}")
+    return doc
+
+
+def assignment(bdir: Path, *, fresh: bool = False) -> dict:
+    """The assignment at one boundary (the section comment, step 2): made from the full screen
+    the first time and stored; afterwards read back, with the labeller's rejections marked on
+    it. `fresh` remakes it after the screen rules changed, only before any card is resolved."""
+    bdir = Path(bdir)
+    doc = full_screen(bdir)
+    run, k = bdir.parent.name, int(bdir.name[1:])
+    path = _v2dir(bdir) / ASSIGNMENT_NAME
+    rejected = cohort_rejected(bdir)
+    if path.exists() and not fresh:
+        out = _read(path)
+        if out.get("screen_sha256") != doc["screen_sha256"]:
+            raise ValueError(f"{bdir}: assigned under screen {out['screen_sha256'][:12]}; the "
+                             "rules changed: assignment(fresh=True) before any card is resolved")
+    else:
+        from compaction.s2 import interact_score as SC
+        if rejected or (path.exists() and any(SC.freeze_path(bdir, c).exists()
+                                              for c in _read(path).get("assigned") or [])):
+            raise ValueError(f"{bdir}: cards already resolved; the assignment stays fixed")
+        order = sorted(doc.get("passing") or [], key=lambda c: assign_key(run, k, c))
+        out = {"policy": {"seed": ASSIGN_SEED, "per_boundary": ASSIGN_PER_BOUNDARY,
+                          "order": "sha256(seed|run|b<k>|cand_id), ascending",
+                          "rejected": "a rejected card's slot stays empty (never refilled)"},
+               "screen_sha256": doc["screen_sha256"], "created_utc": utc(),
+               "passing": len(order),
+               "order": [{"cand_id": c, "key": assign_key(run, k, c)} for c in order],
+               "assigned": order[:ASSIGN_PER_BOUNDARY],
+               "dropped": [{"cand_id": c, "why": "per_boundary_cap"}
+                           for c in order[ASSIGN_PER_BOUNDARY:]]}
+        _dump(path, out)
+    return out | {"rejected_by_labeller": [c for c in out["assigned"] if c in rejected]}
+
+
+def pending_edit(bdir: Path, cand_id: str, screened: dict | None = None) -> bool:
+    """A card edit of the candidate that the current screen hasn't applied (astra
+    repair-design r3 #2): its screen is stale until the boundary is rescreened."""
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import interact_score as SC
+    p = _v2dir(bdir) / RQ.EDITS_NAME
+    edit = ((_read(p) if p.exists() else {}).get("cands") or {}).get(cand_id)
+    if edit is None:
+        return False
+    if screened is None:
+        doc = _read(_v2dir(bdir) / "candidates.json")
+        screened = next((c for c in doc.get("candidates") or [] if c["cand_id"] == cand_id), {})
+    return screened.get("edit_sha256") != SC.canon_sha(edit)
+
+
+def open_assigned(bdir: Path) -> list[str]:
+    """The assigned candidates to show as cards: not rejected by the labeller, still passing
+    in the current screen (an edit's rescreen may have excluded one: it keeps its assignment
+    and tally, r3 #1), and with no edit waiting for the rescreen."""
+    a = assignment(bdir)
+    doc = full_screen(bdir)
+    by = {c["cand_id"]: c for c in doc.get("candidates") or []}
+    return [c for c in a["assigned"] if c not in a["rejected_by_labeller"]
+            and (by.get(c) or {}).get("disposition") == "passed"
+            and not pending_edit(bdir, c, by.get(c) or {})]
+
+
+def arm_dir(run_dir: Path, k: int, frz: dict, spec: ArmSpec) -> Path:
+    """An arm's directory: per boundary and candidate for a cohort freeze (a run holds several
+    of them), else the run's single fork (arms/<slug>)."""
+    if frz.get("role") == "cohort":
+        return Path(run_dir) / "arms" / f"b{k}--{frz['cand_id']}--{spec.slug}"
+    return Path(run_dir) / "arms" / spec.slug
+
+
+def _gates(c: dict) -> dict:
+    return {n: {"outcome": x.get("outcome"), "reason": x.get("reason")}
+            for n, x in (c.get("checks") or {}).items()}
+
+
+def _evidence(c: dict) -> dict:
+    checks = c.get("checks") or {}
+    ev = (checks.get("opus") or {}).get("evidence") or {}
+    v = ev.get("verdict") or {}
+    return {"authority": v.get("authority"), "authority_check": ev.get("authority_check"),
+            "conflict": v.get("conflict"), "conflict_quote": v.get("conflict_quote"),
+            "retention": v.get("retention"), "item_type": v.get("item_type"),
+            "recoverability": (checks.get("recoverability") or {}).get("evidence"),
+            "pointer": (checks.get("pointer") or {}).get("evidence"),
+            "duplicate": (checks.get("duplicate") or {}).get("evidence")}
+
+
+def build_universe(root: Path) -> dict:
+    """The universe of the runs under `root` (full screens under the current rules only)."""
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import interact_score as SC
+    sha = RQ.screen_sha_v2()
+    runs: dict[str, list] = {}
+    roster: list[dict] = []
+    for cj in sorted(Path(root).glob(f"*/b*/boundary/{RQ.SCREEN_V2}/candidates.json")):
+        doc = _read(cj)
+        if doc.get("screen_sha256") != sha or doc.get("mode") != "full":
+            continue
+        bdir = cj.parents[2]
+        run, k = bdir.parent.name, int(bdir.name[1:])
+        asg = assignment(bdir)
+        resolution: dict[str, str] = {c: "rejected_by_labeller"
+                                      for c in asg["rejected_by_labeller"]}
+        cands = []
+        for c in doc.get("candidates") or []:
+            row = {"cand_id": c["cand_id"], "origin": c.get("origin") or "maintainer",
+                   "disposition": c.get("disposition"), "requirement": c.get("repair_text"),
+                   "text": c.get("text"), "evidence": _evidence(c), "gates": _gates(c),
+                   "candidate_sha256": SC.canon_sha(c),
+                   "assigned": c["cand_id"] in asg["assigned"], "freeze_sha256": None}
+            fz = SC.freeze_path(bdir, c["cand_id"])
+            if row["assigned"] and c["cand_id"] not in resolution and \
+                    c.get("disposition") != "passed":
+                resolution[c["cand_id"]] = "excluded_on_rescreen"
+            elif row["assigned"] and pending_edit(bdir, c["cand_id"], c):
+                row["pending_edit"] = True  # stays unresolved until the rescreen (r3 #2)
+            elif row["assigned"] and c["cand_id"] not in resolution and fz.exists():
+                frz = SC.read_freeze(bdir, c["cand_id"])
+                if frz.get("role") == "cohort" and frz.get("candidate_sha256") == \
+                        row["candidate_sha256"]:
+                    row["freeze_sha256"] = frz["record_sha256"]
+                    resolution[c["cand_id"]] = "frozen"
+                    for kind in arm_kinds(frz):
+                        for rep in REPEATS:
+                            spec = spec_from_freeze(frz, kind, rep)
+                            roster.append({"run": run, "k": k, "cand_id": c["cand_id"],
+                                           "kind": kind, "rep": rep,
+                                           "freeze_sha256": frz["record_sha256"],
+                                           "candidate_sha256": row["candidate_sha256"],
+                                           "arm_dir": str(arm_dir(Path(run), k, frz, spec)
+                                                          .relative_to(run))})
+                else:
+                    row["freeze_problem"] = "freeze is not a cohort freeze of this candidate"
+            cands.append(row)
+        for cid in asg["assigned"]:
+            resolution.setdefault(cid, "unresolved")
+        runs.setdefault(run, []).append({"k": k, "assignment": asg, "resolution": resolution,
+                                         "candidates": cands})
+    return {
+        "created_utc": utc(), "screen_sha256": sha, "exploratory": True,
+        "arms": {"kinds": "repair and matched (length-matched pair); reread for a contextual "
+                          "omission retrievable from a file: an unmatched practical-strategy "
+                          "arm with fixed text", "repeats": list(REPEATS), "lead": LEAD,
+                 "reread_text": REREAD_TEXT},
+        "window": ("from the boundary to the agent's first ask_user, a submission or "
+                   f"{C.INTERACT_PRIMARY_CALLS} calls"),
+        "scoring": ("compliant / violated / not reached over every roster entry "
+                    "(interact_score.roster_readout); a missing or failed arm stays in the "
+                    "denominator; never conditioned on reaching the act"),
+        "outcome_values": list(SC.ACT_OUTCOMES),
+        "dedupe": "one candidate per task obligation (interact_reqs.same_obligation): against "
+                  "earlier boundaries and this boundary's accepted candidates",
+        "selection": "every candidate passing the gates; assignment by the seeded policy, "
+                     "never by the base run's outcome",
+        "exposure": ("Jacob saw the base runs' follow-up of lossaudit's lost items "
+                     "(lossaudit_followup.md, 24-25 Oct) before labelling; eligibility is "
+                     "decided from boundary evidence only (Opus is outcome-blind)"),
+        "historical": [{"run": r, "k": k, "cand_id": c, "record_sha256": h}
+                       for (r, k, c), h in HISTORICAL.items()],
+        "labeller": ("Jacob, exposed to base outcomes, may remove assigned cases (a rejected "
+                     "slot stays empty, tallied apart) but never choose them; arms within a "
+                     "kept candidate stay randomised"),
+        "resolved": {s: sum(v == s for b in runs.values() for x in b
+                            for v in x["resolution"].values())
+                     for s in ("frozen", "rejected_by_labeller", "excluded_on_rescreen",
+                               "unresolved")},
+        "runs": runs, "roster": roster}
+
+
+def write_universe(root: Path) -> Path:
+    """Write the universe once per version (results/.../universe/<utc>.json and latest.json)
+    for the operator to commit before any continuation."""
+    u = build_universe(root)
+    open_ = [f"{run} b{b['k']} {c}" for run, bs in u["runs"].items() for b in bs
+             for c, v in b["resolution"].items() if v == "unresolved"]
+    if open_:
+        raise ValueError(f"refused: {len(open_)} assigned candidates are unresolved (each must "
+                         f"be frozen or rejected by the labeller first): {open_[:6]}")
+    UNIVERSE_DIR.mkdir(parents=True, exist_ok=True)
+    p = UNIVERSE_DIR / f"{u['created_utc'].replace(':', '')}.json"
+    text = json.dumps(u, indent=1, sort_keys=True) + "\n"
+    with p.open("x") as f:
+        f.write(text)
+    (UNIVERSE_DIR / "latest.json").write_text(text)
+    return p
+
+
+def committed_universe() -> dict | None:
+    """git HEAD's latest.json, or None."""
+    rel = (UNIVERSE_DIR / "latest.json").relative_to(C.REPO_ROOT)
+    p = subprocess.run(["git", "-C", str(C.REPO_ROOT), "show", f"HEAD:{rel}"],
+                       capture_output=True, timeout=60, check=False)
+    return json.loads(p.stdout) if p.returncode == 0 else None
+
+
+def universe_refusal(run_dir: Path, k: int, cand_id: str, frz: dict, kind: str,
+                     rep: int) -> str | None:
+    """Why a continuation may not run (None: it may). It must be a roster entry of the
+    committed universe under the current rules, with the candidate record and the freeze
+    unchanged since; or the historical freeze, matched by name and record hash."""
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import interact_score as SC
+    run = Path(run_dir).name
+    hist = HISTORICAL.get((run, k, cand_id))
+    if hist is not None:
+        return None if frz.get("record_sha256") == hist else \
+            f"{cand_id}: the historical freeze's record hash changed"
+    u = committed_universe()
+    if u is None:
+        return "no committed universe (write_universe, commit it before any continuation)"
+    if u.get("screen_sha256") != RQ.screen_sha_v2():
+        return "the committed universe is under other screen rules"
+    entry = next((e for e in u.get("roster") or [] if (e["run"], e["k"], e["cand_id"],
+                                                        e["kind"], e["rep"]) ==
+                  (run, k, cand_id, kind, rep)), None)
+    if entry is None:
+        return f"{cand_id} {kind}-{rep}: not on the committed universe's roster"
+    if entry["freeze_sha256"] != frz.get("record_sha256"):
+        return f"{cand_id}: the freeze differs from the one in the committed universe"
+    doc = _read(_v2dir(Path(run_dir) / f"b{k}") / "candidates.json")
+    c = next((x for x in doc.get("candidates") or [] if x["cand_id"] == cand_id), None)
+    if c is None or SC.canon_sha(c) != entry["candidate_sha256"]:
+        return f"{cand_id}: the screened candidate changed since the universe was committed"
+    return None
+
+
 def frozen_source(bdir: Path, frz: dict, *, load_source=None) -> dict:
     """The freeze's summary source as stored now, refused unless it is exactly what was frozen
     (summary, summary index, kept indices, fingerprint and the resumed context's hash; astra
@@ -1374,8 +1682,22 @@ def refuse_bundle_member(f: dict) -> None:
                          f"({f.get('source_policy')}'s bundle freeze) or the primary instead")
 
 
+ARM_KINDS = ("repair", "matched", "reread")
+REREAD_TEXT = "Re-read {file} before continuing."
+
+
+def arm_kinds(f: dict) -> tuple[str, ...]:
+    """A freeze's primary arm kinds: repair and matched; plus reread when the candidate is a
+    contextual omission retrievable from a file (consult r2: neutral text, the exact content,
+    and an explicit instruction to re-read the file; two repeats each)."""
+    return ("repair", "matched", "reread") if f.get("reread_file") else ("repair", "matched")
+
+
 def spec_from_freeze(f: dict, kind: str, rep: int, readout: str = "primary") -> ArmSpec:
-    block = f["repair_text"] if kind == "repair" else f["matched_text"]
+    if kind not in arm_kinds(f):
+        raise ValueError(f"{f.get('cand_id')}: no {kind} arm (arms: {arm_kinds(f)})")
+    block = (f["repair_text"] if kind == "repair" else f["matched_text"] if kind == "matched"
+             else REREAD_TEXT.format(file=f["reread_file"]))
     return ArmSpec(f["source_policy"], kind, rep, block, readout,
                    bundle=bool(f.get("bundle_items")))
 
@@ -1429,11 +1751,13 @@ def run_arm(run_dir: Path, k: int, cand_id: str, kind: str, rep: int, task: Inte
     t0 = time.monotonic()
     bdir = Path(run_dir) / f"b{k}"
     frz = verified_freeze(bdir, cand_id, require_committed=require_committed)
+    if require_committed and (why := universe_refusal(run_dir, k, cand_id, frz, kind, rep)):
+        raise ValueError(f"refused: {why}")
     refuse_bundle_member(frz)
     spec = spec_from_freeze(frz, kind, rep)
     bj = _read(bdir / "boundary" / "boundary.json")
     src = frozen_source(bdir, frz, load_source=load_source)  # refuses a changed source
-    ad = _fresh_dir(Path(run_dir) / "arms" / spec.slug)
+    ad = _fresh_dir(arm_dir(run_dir, k, frz, spec))
     ctx, _ = arm_context(bdir, spec, load_source=lambda b, s: src)
     rj = {**_read(bdir / "run.json"), "arm": asdict(spec), "boundary_index": k}
     _dump(ad / "context.json", ctx)
@@ -1496,8 +1820,10 @@ def run_arm(run_dir: Path, k: int, cand_id: str, kind: str, rep: int, task: Inte
             out["n_calls"], out["cost_usd"] = loop.n_calls, round(loop.cost_usd, 6)
             _dump(ad / "calls.json", loop.calls)
             _dump(ad / "messages_end.json", loop.messages)
-            _dump(ad / "commands.json", _commands(loop, env))
+            cmds = _commands(loop, env)
+            _dump(ad / "commands.json", cmds)
             _dump(ad / "continuation.json", continuation(ad, ctx, loop))
+            out["reread"] = rereads(cmds, frz.get("backing_files") or [])
         if env is not None:
             out["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)
             env.close()
@@ -1547,9 +1873,11 @@ def run_secondary(run_dir: Path, k: int, cand_id: str, kind: str, rep: int,
     t0 = time.monotonic()
     bdir = Path(run_dir) / f"b{k}"
     frz = verified_freeze(bdir, cand_id, require_committed=require_committed)
+    if require_committed and (why := universe_refusal(run_dir, k, cand_id, frz, kind, rep)):
+        raise ValueError(f"refused: {why}")
     refuse_bundle_member(frz)
     spec = spec_from_freeze(frz, kind, rep, "secondary")
-    ad = Path(run_dir) / "arms" / spec.slug
+    ad = arm_dir(run_dir, k, frz, spec)
     prim = _read(ad / "readout.json")
     sd = _fresh_dir(ad / "secondary")
     out = {"readout": "secondary", "source_policy": spec.source, "cand_id": cand_id,
@@ -1621,6 +1949,8 @@ def run_secondary(run_dir: Path, k: int, cand_id: str, kind: str, rep: int,
             _dump(sd / "commands.json", _commands(loop, env))
         if env is not None:
             _dump(sd / "ask_log.json", env.sim.ask_log)
+            _dump(sd / "rounds.json", env.sim.rounds)
+            _dump(sd / "io.json", env.sim.io)  # snapshots and tool outputs
             env.close()
         out["seconds"] = round(time.monotonic() - t0, 1)
         _dump(sd / "readout.json", out)
@@ -1762,15 +2092,15 @@ def valid_comparison(bdir: Path, cand_id: str, *, require_committed: bool = True
         return {"valid": False, "why": [f"freeze: {e}"]}
     run_dir, k = Path(bdir).parent, int(Path(bdir).name[1:])
     try:
-        expect = {kind: expected_context(bdir, frz, kind) for kind in ("repair", "matched")}
+        expect = {kind: expected_context(bdir, frz, kind) for kind in arm_kinds(frz)}
     except (OSError, ValueError) as e:
         return {"valid": False, "why": [f"source: {e}"]}
     ctxs: dict = {}
     hashes: dict = {}
-    for kind in ("repair", "matched"):
+    for kind in arm_kinds(frz):
         for rep in (1, 2):
             spec = spec_from_freeze(frz, kind, rep)
-            ad = run_dir / "arms" / spec.slug
+            ad = arm_dir(run_dir, k, frz, spec)
             try:
                 a, r = _read(ad / "arm.json"), _read(ad / "readout.json")
                 ctxs[(kind, rep)] = _read(ad / "context.json")

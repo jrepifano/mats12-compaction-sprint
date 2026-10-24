@@ -16,6 +16,20 @@ data/raw/sprint/s2/interact/<task>-deepseek-a<n>/.
     uv run python scripts/s2_interact.py screen RUN_DIR K
         Grade the live summary and the replays on the requirement list, then the candidate
         screen at boundary K (unit B), writing grades.json and candidates.json. $0 on Max.
+    uv run python scripts/s2_interact.py cohort-screen --go-from-jacob RUN_DIR K [K ...]
+            [--max-7d-pct P]
+        The repair cohort's full screen at each boundary K, in ascending order (every candidate
+        to the end; Haiku drafts and Opus on Max), then its assignment (the seeded policy).
+        Before every Max request, Max's 7-day window must read below 90%: --max-7d-pct for its
+        first 15 min, else the newest Claude Code stream if under 15 min old, else a tiny Haiku
+        ping; re-read at most every 5 min. No fresh reading stops.
+    uv run python scripts/s2_interact.py universe
+        Write the universe (screens, assignment, roster of every frozen assigned candidate);
+        commit it before any continuation.
+    uv run python scripts/s2_interact.py readout [--final]
+        The roster readout: every arm's outcome joined onto the committed universe's roster
+        (a missing or failed arm stays in the denominator). Refused while roster arms are still
+        to run, unless --final.
     uv run python scripts/s2_interact.py publish-freeze RUN_DIR K CAND_ID
         Copy a freeze record to results/sprint/S3-Q2/interact/freeze/ for committing; arms
         refuse a freeze whose tracked copy isn't in git HEAD byte for byte.
@@ -162,12 +176,12 @@ def cmd_screen(a) -> int:
     return 0
 
 
-def _receipt(run_dir: Path, slug: str, sub: str = "") -> dict:
+def _receipt(ad: Path, sub: str = "") -> dict:
     """What an arm command prints: that it finished, and a hash of its readout, nothing of the
     outcome (astra build r1 #6). Readouts stay sealed until every card is labelled and every
     freeze committed; the analysis reads them from disk after that gate."""
-    p = Path(run_dir) / "arms" / slug / sub / "readout.json"
-    return {"arm": slug + (f"/{sub}" if sub else ""), "done": p.exists(),
+    p = Path(ad) / sub / "readout.json"
+    return {"arm": Path(ad).name + (f"/{sub}" if sub else ""), "done": p.exists(),
             "readout_sha256": IR.sha256_bytes(p.read_bytes()) if p.exists() else None}
 
 
@@ -177,13 +191,13 @@ def _secondary_gate(root: Path, case: str) -> None:
     4; its later continuations run under that admission (astra build r2 #6)."""
     missing = []
     for fz in root.glob("*/b*/boundary/freeze/*.json"):
-        rd, cid = fz.parents[3], fz.stem
+        rd, cid, k = fz.parents[3], fz.stem, int(fz.parents[2].name[1:])
         f = json.loads(fz.read_text())
-        for kind in ("repair", "matched"):
-            for rep in (1, 2):
-                slug = IR.ArmSpec(f["source_policy"], kind, rep, "x").slug
-                if not (rd / "arms" / slug / "readout.json").exists():
-                    missing.append(f"{rd.name}/{slug} ({cid})")
+        for kind in IR.arm_kinds(f):
+            for rep in IR.REPEATS:
+                ad = IR.arm_dir(rd, k, f, IR.ArmSpec(f["source_policy"], kind, rep, "x"))
+                if not (ad / "readout.json").exists():
+                    missing.append(f"{rd.name}/{ad.name} ({cid})")
     if missing:
         sys.exit(f"secondary refused: primaries not finished: {missing[:6]}")
     mark = root / "_secondary_cases" / f"{case}.json"
@@ -205,14 +219,172 @@ def cmd_arm(a, secondary: bool = False) -> int:
         _secondary_gate(rd.parent, f"{rd.name}-b{a.k}-{a.cand_id}")
     task = IR.load_task(json.loads((rd / "run.json").read_text())["task"]["task_id"])
     frz = IR.verified_freeze(rd / f"b{a.k}", a.cand_id)
-    slug = IR.spec_from_freeze(frz, a.kind, a.rep).slug
+    ad = IR.arm_dir(rd, a.k, frz, IR.spec_from_freeze(frz, a.kind, a.rep))
+    slug = ad.name
     cap = C.INTERACT_SECONDARY_CAP_USD if secondary else C.INTERACT_BASE_CAP_USD
     agent, sim = _models(IR.spend_path(rd.parent, f"{rd.name}-{slug}-"
                                        f"{'secondary' if secondary else 'primary'}"), cap)
     with Invocation(purpose=IR.PURPOSE) as inv:
         fn = IR.run_secondary if secondary else IR.run_arm
         fn(rd, a.k, a.cand_id, a.kind, a.rep, task, agent_model=agent, sim_model=sim, inv=inv)
-    print(json.dumps(_receipt(rd, slug, "secondary" if secondary else "")))
+    print(json.dumps(_receipt(ad, "secondary" if secondary else "")))
+    return 0
+
+
+MAX_7D_HOLD = 0.90  # new Max work stops here (Jacob, 25 Oct)
+FRESH_S = 900  # a stream reading, or the operator's --max-7d-pct, is good for 15 minutes
+
+
+def _seven_day(events: list[dict]) -> float | None:
+    for e in reversed(events):
+        info = e.get("rate_limit_info") if e.get("type") == "rate_limit_event" else None
+        u = ((info or {}).get("unifiedWindows") or {}).get("seven_day", {}).get("utilization")
+        if u is not None:
+            return float(u)
+    return None
+
+
+def _stream_reading(now: float) -> float | None:
+    """The 7-day utilisation in the newest Claude Code arm stream, if under FRESH_S old."""
+    from compaction.s2.native import claude_code as CC
+    streams = sorted(Path(CC.root()).glob("*/steps/*/stream.jsonl"),
+                     key=lambda p: p.stat().st_mtime)
+    if not streams or now - streams[-1].stat().st_mtime >= FRESH_S:
+        return None
+    evs = []
+    for ln in streams[-1].read_text(errors="replace").splitlines():
+        try:
+            evs.append(json.loads(ln))
+        except ValueError:
+            continue
+    return _seven_day(evs)
+
+
+def _ping_reading() -> float | None:
+    """A tiny Haiku `claude -p` call on Max ("Reply with OK."), as imgval does; its
+    rate_limit_info carries the window. None when it shows none or the route isn't Max."""
+    import shutil
+    import tempfile
+
+    from compaction import claude_headless as CH
+    cwd = tempfile.mkdtemp(prefix="s2-ping-")
+    try:
+        evs = CH.run_session(cwd, ["-p", "--model", "claude-haiku-5-5", "--tools", "",
+                                   "--strict-mcp-config", "--setting-sources", "",
+                                   "--no-session-persistence", "--output-format", "stream-json",
+                                   "--verbose", "--max-turns", "1",
+                                   "--system-prompt", "Reply with OK."],
+                             stdin="OK", timeout_s=120, env=CH.clean_env())
+    except Exception:  # noqa: BLE001 - no reading: the caller stops
+        return None
+    finally:
+        shutil.rmtree(cwd, ignore_errors=True)
+    if CH.verify_route(CH.route_evidence(evs)) == "bad":
+        return None
+    return _seven_day(evs)
+
+
+def max_window(override_pct: float | None, *, stream=_stream_reading, ping=_ping_reading,
+               now: float | None = None) -> tuple[float | None, str | None]:
+    """(Max's 7-day utilisation, why new Max work stops or None), freshly measured (astra
+    repair-design r3 #3): the operator's --max-7d-pct (the caller expires it after FRESH_S),
+    else the newest Claude Code stream if under 15 minutes old, else a Haiku ping. No fresh
+    reading stops."""
+    import time
+    if override_pct is not None:
+        u = override_pct / 100
+        return u, (f"7-day window at {override_pct}%" if u >= MAX_7D_HOLD else None)
+    u = stream(time.time() if now is None else now)
+    if u is None:
+        u = ping()
+    if u is None:
+        return None, "no fresh 7-day reading (stream over 15 min old, ping showed none)"
+    return u, (f"seven_day at {u}" if u >= MAX_7D_HOLD else None)
+
+
+class MaxWindowHold(RuntimeError):
+    pass
+
+
+class MaxWindow:
+    """Max's 7-day window, checked before every Max request (astra repair-design r2 #4) and
+    read again at most every REFRESH_S; a reading at or over MAX_7D_HOLD stops new requests."""
+    REFRESH_S = 300
+
+    def __init__(self, override_pct: float | None, *, reader=None, clock=None):
+        import time
+        self.override, self.read = override_pct, reader or max_window
+        self.clock, self.at, self.last = clock or time.monotonic, None, (None, None)
+        self.t0 = None
+
+    def check(self) -> float | None:
+        if self.at is None or self.clock() - self.at >= self.REFRESH_S:
+            if self.override is not None and self.t0 is None:
+                self.t0 = self.clock()
+            live = self.override if self.override is not None and \
+                self.clock() - self.t0 < FRESH_S else None  # the operator's figure expires
+            self.last, self.at = self.read(live), self.clock()
+        util, why = self.last
+        if why:
+            raise MaxWindowHold(f"max_7d={util}: {why}")
+        return util
+
+
+class WindowGated:
+    """A backend whose every run() first checks the Max window."""
+
+    def __init__(self, backend, window: MaxWindow):
+        self._b, self._w = backend, window
+
+    def run(self, reqs, *args, **kw):
+        self._w.check()
+        return self._b.run(reqs, *args, **kw)
+
+    def __getattr__(self, name):
+        return getattr(self._b, name)
+
+
+def cmd_cohort_screen(a) -> int:
+    _need_go(a)
+    _env()
+    from compaction.s2 import interact_reqs as RQ
+    from compaction.s2 import session as SS
+    rd = Path(a.run_dir)
+    win = MaxWindow(a.max_7d_pct)
+    for k in sorted(a.k):
+        bdir = rd / f"b{k}"
+        try:
+            util = win.check()
+            out = RQ.screen_v2(bdir, backend=WindowGated(IR.claude_backend(IR.PilotSpend()), win),
+                               grep_runner=SS.grep_runner(), ref_runner=RQ.S.docker_runner(),
+                               file_runner=RQ.docker_file_runner(),
+                               opus_backend=WindowGated(IR.opus_backend(), win), full=True,
+                               authority_runner=RQ.docker_authority_runner())
+        except MaxWindowHold as e:
+            # the boundary's screen is incomplete and unwritten; rerun it after the reset
+            print(json.dumps({"event": "hold", "k": k, "why": str(e)}))
+            return 3
+        asg = IR.assignment(bdir)
+        print(json.dumps({"k": k, "max_7d": util, "passing": len(out["passing"]),
+                          "assigned": asg["assigned"], "dropped": len(asg["dropped"])}))
+    return 0
+
+
+def cmd_readout(a) -> int:
+    from compaction.s2 import interact_score as SC
+    u = IR.committed_universe()
+    if u is None:
+        sys.exit("no committed universe")
+    root = IR.interact_root()
+    pending = [e for e in u["roster"]
+               if not (root / e["run"] / e["arm_dir"] / "readout.json").exists()]
+    if pending and not a.final:
+        sys.exit(f"readout refused: {len(pending)} roster arms still to run (--final counts "
+                 "them as missing)")
+    out = SC.roster_readout(u, root)
+    p = IR.UNIVERSE_DIR.parent / "readout.json"
+    p.write_text(json.dumps(out, indent=1, sort_keys=True) + "\n")
+    print(json.dumps({"readout": str(p), "by_kind": out["by_kind"]}, default=str))
     return 0
 
 
@@ -246,7 +418,8 @@ def _trigger():
     from compaction.s2 import session as SS
     return IR.fork_trigger(lambda: IR.claude_backend(IR.PilotSpend()),
                            grep_runner=SS.grep_runner(), file_runner=RQ.docker_file_runner(),
-                           opus_factory=IR.opus_backend)
+                           opus_factory=IR.opus_backend,
+                           authority_runner=RQ.docker_authority_runner())
 
 
 def _sealed_receipt(r: dict) -> dict:
@@ -392,8 +565,16 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("k", type=int)
         p.add_argument("cand_id", help="a committed freeze record's id; source and block come "
                                        "from it")
-        p.add_argument("--kind", required=True, choices=("repair", "matched"))
+        p.add_argument("--kind", required=True, choices=IR.ARM_KINDS)
         p.add_argument("--rep", required=True, type=int, choices=(1, 2))
+    sub.add_parser("universe", help="freeze the candidate universe (commit before arms)")
+    cs = sub.add_parser("cohort-screen", help="the repair cohort's full screen + assignment")
+    cs.add_argument("--go-from-jacob", action="store_true")
+    cs.add_argument("run_dir")
+    cs.add_argument("k", type=int, nargs="+")
+    cs.add_argument("--max-7d-pct", type=float, default=None)
+    ro = sub.add_parser("readout", help="the roster readout of the committed universe")
+    ro.add_argument("--final", action="store_true")
     r2 = sub.add_parser("resume")
     r2.add_argument("--go-from-jacob", action="store_true")
     r2.add_argument("run_dir")
@@ -418,11 +599,16 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--root")
     a = ap.parse_args(argv)
     signal.signal(signal.SIGTERM, _sigterm)
+    if a.cmd == "universe":
+        print(json.dumps({"universe": str(IR.write_universe(IR.interact_root())),
+                          "next": "commit it (and latest.json) before any continuation"}))
+        return 0
     return {"base": cmd_base, "replays": cmd_replays, "screen": cmd_screen, "arm": cmd_arm,
             "secondary": lambda x: cmd_arm(x, secondary=True), "status": cmd_status,
             "sweep-kept": cmd_sweep_kept, "smoke": cmd_smoke,
             "publish-freeze": cmd_publish_freeze, "retire": cmd_retire,
-            "resume": cmd_resume, "advance": cmd_advance}[a.cmd](a)
+            "resume": cmd_resume, "advance": cmd_advance,
+            "cohort-screen": cmd_cohort_screen, "readout": cmd_readout}[a.cmd](a)
 
 
 if __name__ == "__main__":

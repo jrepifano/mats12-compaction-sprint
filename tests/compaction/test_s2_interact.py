@@ -97,6 +97,28 @@ def test_ask_auto_snapshot_tool_round_and_state(repo):
     assert [r["round"] for r in sim.rounds] == [1, 2, 1, 2]
 
 
+def test_simulator_io_records_what_it_saw_without_changing_requests(repo):
+    """main session, 25 Oct: the auto-snapshot as sent and every repo tool call's arguments and
+    output are kept per ask (replays and audits); the requests are byte-identical."""
+    root, _ = repo
+    a, b = StubSim(), StubSim()
+    sim = I.UserSim(PERSONA, a, local_runner(root))
+    sim.ask("hi, what do you need?")
+    sim.ask("Done, I committed it. Ready for review?")
+    snaps = [x for x in sim.io if x["kind"] == "snapshot"]
+    assert [x["call_index"] for x in snaps] == [1, 2] and snaps[0]["content"] is None
+    assert snaps[1]["content"] == a.calls[2][0][-1]["content"]  # exactly what was sent
+    tools = [x for x in sim.io if x["kind"] == "tool"]
+    assert tools and all(x["output"] for x in tools)
+    sent = [m for call in a.calls for m in call[0] if m.get("role") == "tool"]
+    assert [x["output"] for x in tools] == [m["content"] for m in sent]
+    # the recording takes nothing from the requests: a second simulator sends the same ones
+    ref = I.UserSim(PERSONA, b, local_runner(root))
+    ref.ask("hi, what do you need?")
+    ref.ask("Done, I committed it. Ready for review?")
+    assert [I.canon(c[0]) for c in a.calls] == [I.canon(c[0]) for c in b.calls]
+
+
 def test_export_restore_and_ask_log_rebuild(repo):
     root, _ = repo
     sim = I.UserSim(PERSONA, StubSim(), local_runner(root))

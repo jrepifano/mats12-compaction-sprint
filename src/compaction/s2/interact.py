@@ -412,6 +412,9 @@ class UserSim:
     config: SimConfig = field(default_factory=SimConfig)
     rounds: list[dict] = field(default_factory=list)  # per model call: usage, cost, tools
     ask_log: list[dict] = field(default_factory=list)  # upstream's ask-user.jsonl rows
+    # what the simulator saw (main session, 25 Oct; replays and audits need it, requests are
+    # unchanged): per ask its auto-snapshot as sent, per repo tool call its arguments and output
+    io: list[dict] = field(default_factory=list)
     purpose: str = "sim"
 
     @property
@@ -484,8 +487,13 @@ class UserSim:
                             "tool_calls": calls})
             for tc in calls:
                 fn = tc.get("function") or {}
+                out = self._execute(fn)
+                self.io.append({"call_index": self.state.ask_user_call_count, "round": k,
+                                "kind": "tool", "tool_call_id": tc.get("id") or "",
+                                "name": fn.get("name") or "",
+                                "arguments": fn.get("arguments") or "", "output": out})
                 working.append({"role": "tool", "tool_call_id": tc.get("id") or "",
-                                "name": fn.get("name") or "", "content": self._execute(fn)})
+                                "name": fn.get("name") or "", "content": out})
         return self._plain(working)
 
     def _execute(self, fn: dict) -> str:
@@ -501,6 +509,9 @@ class UserSim:
         self.state.ask_user_call_count += 1
         i = self.state.ask_user_call_count
         messages = self.first_request(question)  # before the question joins the conversation
+        snap = messages[-1] if messages[-1].get("role") == "system" and len(messages) > 2 else None
+        self.io.append({"call_index": i, "kind": "snapshot",
+                        "content": snap["content"] if snap else None})
         self.state.conversation.append({"role": "user", "content": question})
         text = self._with_tools(messages)
         self.state.conversation.append({"role": "assistant", "content": text})

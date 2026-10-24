@@ -549,10 +549,69 @@ def _hits(res: dict, patterns: list[str]) -> dict[str, list[str]]:
             if (res.get(p) or {}).get("files")}
 
 
+# "Recoverable, not recovered" (Jacob, 24 Oct): a requirement found only in a file the agent
+# isn't prompted to re-read (its own /tmp/plan.md, or a repo AGENTS.md/README it read once) is
+# lost for candidate eligibility, unless the harness re-attaches that file after compaction
+# (then it is kept). Recoverability is three-way: "code" (in the repo's code or content, a
+# branch or a commit message: excluded, as before), "file_not_reattached" (only in such files:
+# eligible, flagged with the file and the last message that read it) or "none" (eligible).
+NOT_REATTACHED_FILES = ("/tmp/plan.md",)
+NOT_REATTACHED_NAMES = ("AGENTS.md", "CLAUDE.md", "README.md", "README", "README.rst",
+                        "README.txt", "CONTRIBUTING.md", "CONTRIBUTING")
+# what each harness re-attaches after compaction (kept, not a file); provisional for the
+# native arms: Claude Code re-reads CLAUDE.md/AGENTS.md, Codex its AGENTS.md
+REATTACHED_BY_HARNESS = {"s2-loop": (), "claude_code": ("CLAUDE.md", "AGENTS.md"),
+                         "codex": ("AGENTS.md",)}
+_READ_VERB = re.compile(r"\b(?:cat|head|tail|less|more|nl|sed|grep|rg|awk|bat)\b")
+
+
+def _hit_path(h: str) -> str:
+    """A grep_runner hit's path: "<branch>:<path>" loses its branch."""
+    if h.startswith(("/", "commit:")) or ":" not in h:
+        return h
+    return h.split(":", 1)[1]
+
+
+def file_class(hit: str, harness: str | None = None) -> str:
+    """"code", "reattached" or "file_not_reattached" for one grep hit."""
+    if hit.startswith("commit:"):
+        return "code"
+    path = _hit_path(hit)
+    base = path.rsplit("/", 1)[-1]
+    if base in REATTACHED_BY_HARNESS.get(harness or "s2-loop", ()):
+        return "reattached"
+    if path in NOT_REATTACHED_FILES or base in NOT_REATTACHED_NAMES:
+        return "file_not_reattached"
+    return "code"
+
+
+def last_read(pre: list[dict], path: str) -> int | None:
+    """The last pre-compaction message where the agent ran a command that reads `path` (the
+    message holding the call)."""
+    p = _hit_path(path)
+    name, last = p.rsplit("/", 1)[-1], None
+    for i, m in enumerate(pre):
+        for tc in m.get("tool_calls") or []:
+            try:
+                cmd = json.loads((tc.get("function") or {}).get("arguments") or "{}").get(
+                    "command") or ""
+            except (ValueError, AttributeError):
+                continue
+            if (p in cmd or re.search(r"(?<![\w./-])" + re.escape(name) + r"(?![\w.-])", cmd)) \
+                    and _READ_VERB.search(cmd):
+                last = i
+    return last
+
+
 def check_recoverability(it: dict, image: str | None, grep_runner: GrepRunner | None,
-                         search_strings: list[str] | None = None) -> dict:
-    """Three-way over the kept image (module docstring). Without the draft's search strings
-    (None) a clean result is provisional: the screen re-runs this after the draft."""
+                         search_strings: list[str] | None = None, *,
+                         pre: list[dict] | None = None, harness: str | None = None) -> dict:
+    """Three-way over the kept image (module docstring), with Jacob's file classes (the section
+    comment): only hits in code-class files (code, branches, commit messages, files the harness
+    re-attaches) can exclude ("fail") or leave the check unresolved; hits only in files the
+    agent isn't prompted to re-read pass, flagged `class: file_not_reattached` with each file
+    and the last message that read it. Without the draft's search strings (None) a clean result
+    is provisional: the screen re-runs this after the draft."""
     if grep_runner is None or not image:
         return _check("unresolved", "no_grep_runner" if grep_runner is None else "no_image")
     lines = LA.quote_lines(it["quote"])
@@ -560,14 +619,201 @@ def check_recoverability(it: dict, image: str | None, grep_runner: GrepRunner | 
     extra = [s for s in (search_strings or []) if s and s not in lines and s not in frags]
     pats = list(dict.fromkeys(lines + frags + extra))
     res = grep_runner(image, pats) if pats else {}
-    line_hits, frag_hits, extra_hits = _hits(res, lines), _hits(res, frags), _hits(res, extra)
+
+    def split(ps):
+        code, files = {}, {}
+        for q in ps:
+            for f in (res.get(q) or {}).get("files") or []:
+                cls = file_class(f, harness)
+                (files if cls == "file_not_reattached" else code).setdefault(q, []).append(f)
+        return code, files
+    line_hits, line_files = split(lines)
+    frag_hits, frag_files = split(frags)
+    extra_hits, extra_files = split(extra)
+    nr = sorted({_hit_path(f) for d in (line_files, frag_files, extra_files)
+                 for fs in d.values() for f in fs})
     ev = {"image": image, "line_hits": line_hits, "fragment_hits": frag_hits,
-          "search_hits": extra_hits, "searched": pats}
+          "search_hits": extra_hits, "searched": pats,
+          "class": "file_not_reattached" if nr else "none",
+          "files_not_reattached": [{"file": f, "last_read_msg": last_read(pre or [], f)}
+                                   for f in nr]}
     if lines and len(line_hits) == len(lines):
+        ev["class"] = "code"
         return _check("fail", "recoverable:quote_lines_found", **ev)
     if frag_hits or extra_hits or line_hits:
         return _check("unresolved", "partial_or_search_hits", **ev)
     return _check("pass", None, **ev)
+
+
+# Lossaudit's lost items as candidates (Jacob, 24 Oct): every lost rule, decision or commitment
+# of the live chain at its boundary (results/sprint/S2/interact/lossaudit, Experiment 1's
+# pipeline), beside the maintainer-requirement ledger, under the same gates. No selection on
+# outcome: an item is a candidate whatever the base run did after the loss.
+LOSSAUDIT_DIR = C.REPO_ROOT / "results" / "sprint" / "S2" / "interact" / "lossaudit"
+LOSSAUDIT_TYPES = ("rule", "decision", "commitment")
+LOSSAUDIT_REPLY_ID = "source"
+
+
+def _tool_cmd(pre: list[dict], i: int) -> str:
+    """The bash command whose result is tool message `i` ("" if none is found)."""
+    m = pre[i]
+    call = next((tc for j in range(i - 1, -1, -1) for tc in pre[j].get("tool_calls") or []
+                 if tc.get("id") == m.get("tool_call_id")), None)
+    with contextlib.suppress(ValueError, AttributeError, TypeError):
+        return json.loads(call["function"]["arguments"]).get("command") or ""
+    return ""
+
+
+def _file_read(cmd: str) -> str | None:
+    """The first not-re-attached file a command names (the file a tool result came from)."""
+    hits = [f for f in (*NOT_REATTACHED_FILES, *NOT_REATTACHED_NAMES)
+            if re.search(r"(?<![\w.-])" + re.escape(f) + r"(?![\w.-])", cmd)]
+    return hits[0] if hits else None
+
+
+def item_source(pre: list[dict], quote: str) -> dict | None:
+    """Where in the pre-compaction history a lossaudit item's quote first appears: {index, role,
+    text (a tool result's output decoded), file (the path its command read, if any), desc}."""
+    for i, m in enumerate(pre):
+        text = S.message_text(m)
+        if m.get("role") == "tool":
+            with contextlib.suppress(ValueError, TypeError, AttributeError):
+                text = json.loads(K_text(m.get("content"))).get("output") or text
+        if not T.quote_in(quote, text):
+            continue
+        file = _file_read(_tool_cmd(pre, i)) if m.get("role") == "tool" else None
+        desc = (file if file else "the task message" if m.get("role") == "user"
+                else "the agent's own message" if m.get("role") == "assistant"
+                else "a command output")
+        return {"index": i, "role": m.get("role"), "text": text, "file": file, "desc": desc}
+    return None
+
+
+def K_text(content: Any) -> str:
+    from compaction.s2 import compact as K
+    return K._text(content)
+
+
+def lossaudit_candidates(bdir: Path, out_dir: Path | None = None) -> list[dict]:
+    """The boundary's lossaudit-lost rule, decision and commitment items, as candidate items
+    (`req_id` b<k>-la<n>), in history order; [] when the boundary has no lossaudit."""
+    out_dir = Path(out_dir or LOSSAUDIT_DIR)
+    if not (out_dir / "losses.jsonl").exists():
+        return []
+    bdir = Path(bdir)
+    here = bdir.resolve()
+    types = {}
+    if (out_dir / "items.jsonl").exists():
+        for x in (out_dir / "items.jsonl").read_text().splitlines():
+            r = json.loads(x)
+            types[r["item_id"]] = (r.get("type"), r.get("text"))
+    pre = _read(bdir / "boundary" / "pre_messages.json")
+    k = boundary_index(bdir)
+    items = []
+    for x in (out_dir / "losses.jsonl").read_text().splitlines():
+        r = json.loads(x)
+        if not r.get("lost") or not r.get("boundary_dir"):
+            continue
+        bd = Path(r["boundary_dir"])
+        if (bd if bd.is_absolute() else C.REPO_ROOT / bd).resolve() != here:
+            continue
+        typ, text = types.get(r["item_id"], (None, None))
+        if typ not in LOSSAUDIT_TYPES:
+            continue
+        src = item_source(pre, r.get("quote") or "")
+        n = r["item_id"].rsplit("#", 1)[-1].lstrip("i")
+        items.append({"req_id": f"b{k}-la{n}", "text": text or r.get("quote"),
+                      "quote": r.get("quote"), "source_reply_id": LOSSAUDIT_REPLY_ID,
+                      "position": int(n) if n.isdigit() else 0,
+                      "call_index": 10**6 + (src["index"] if src else 0),
+                      "origin": "lossaudit", "la_item_id": r["item_id"], "la_type": typ,
+                      "la_grade": r.get("grade"), "la_origin": r.get("origin"),
+                      "source": src})
+    return sorted(items, key=lambda it: (it["call_index"], it["position"]))
+
+
+def backing_files(it: dict, checks: dict) -> list[str]:
+    """The files a candidate is retrievable from but not re-attached: the recoverability check's
+    `files_not_reattached`, plus a lossaudit item's own source file."""
+    ev = (checks.get("recoverability") or {}).get("evidence") or {}
+    files = [x["file"] for x in ev.get("files_not_reattached") or []]
+    src = (it.get("source") or {}).get("file")
+    return list(dict.fromkeys(files + ([src] if src else [])))
+
+
+def check_pointer(view: dict, files: list[str]) -> dict:
+    """The stratum "contextual omission, retrievable from a file" (consult r2): per file, does
+    the resumed input still name it, and does it tell the agent to (re-)read it (e.g. a kept
+    "Read /tmp/plan.md first")? Recorded, never gating; the arms record actual re-reads."""
+    text = resumed_text(view)
+    rows = []
+    for f in files:
+        name = f.rsplit("/", 1)[-1]
+        pat = r"(?:" + re.escape(f) + r"|(?<![\w.-])" + re.escape(name) + r"(?![\w.-]))"
+        named = re.search(pat, text)
+        reread = re.search(r"\b(?:read|re-read|reread|consult|see|check|open|review|follow)\b"
+                           r"[^\n.]{0,60}" + pat + "|" + pat + r"[^\n.]{0,30}\bfirst\b",
+                           text, re.IGNORECASE)
+        rows.append({"file": f, "named": bool(named), "reread_instructed": bool(reread),
+                     "evidence": text[max(0, (reread or named).start() - 80):
+                                      (reread or named).end() + 80] if (reread or named)
+                     else None})
+    return _check("pass", None, stratum="contextual_omission_retrievable_from_file"
+                  if files else None, files=rows)
+
+
+def same_obligation(a: str, b: str) -> bool:
+    """Two quotes state the same obligation: one inside the other, or 70% of the shorter's key
+    words shared."""
+    if not a or not b:
+        return False
+    if T.quote_in(a, b) or T.quote_in(b, a):
+        return True
+    ka, kb = key_words(a), key_words(b)
+    small = min(len(ka), len(kb))
+    return small >= NEAR_MIN_WORDS and len(ka & kb) >= 0.7 * small
+
+
+def prior_obligations(bdir: Path) -> list[dict]:
+    """Candidates of the run's earlier boundaries already in the universe (carded, bundled,
+    rejected by Jacob, or past the Opus gate), under the current rules: an obligation counts
+    once per task (consult r2), at its first boundary."""
+    k = boundary_index(bdir)
+    out = []
+    for j in range(1, k):
+        cj = _read_or_none(Path(bdir).parent / f"b{j}" / "boundary" / SCREEN_V2 /
+                           "candidates.json") or {}
+        if cj.get("screen_sha256") != screen_sha_v2():
+            continue
+        for c in cj.get("candidates") or []:
+            if c.get("disposition") in ("carded", "bundle", "rejected") or \
+                    ((c.get("checks") or {}).get("opus") or {}).get("outcome") == "pass":
+                out.append({"k": j, "cand_id": c["cand_id"], "quote": c.get("repair_text")})
+    return out
+
+
+def check_retention_la(it: dict) -> dict:
+    """Retention of a lossaudit item: its graded loss (dropped passes; misstated counts as kept,
+    as for maintainer requirements)."""
+    g = it.get("la_grade")
+    ev = {"grade": g, "source": "lossaudit", "item_id": it.get("la_item_id")}
+    if g == "dropped":
+        return _check("pass", None, **ev)
+    return _check("fail", f"retention:{g}", **ev)
+
+
+def source_context(bdir: Path, it: dict) -> dict:
+    """The matched block's source rule for an item: a maintainer requirement's is the
+    maintainer's replies (`maintainer_context`); a lossaudit item's is its own source text (in
+    the history by construction), with every lossaudit item and requirement quote as the
+    requirements it must not carry."""
+    mc = maintainer_context(bdir)
+    if it.get("origin") != "lossaudit":
+        return mc
+    src = it.get("source") or {}
+    la = [x.get("quote") or "" for x in lossaudit_candidates(bdir)]
+    return {"replies": [src.get("text") or ""], "req_quotes": mc["req_quotes"] + la,
+            "texts_in_history": True}
 
 
 def _render_history(pre: list[dict], limit: int = DRAFT_HISTORY_CHARS) -> str:
@@ -580,11 +826,16 @@ def draft_request(bdir: Path, src: str, it: dict, view: dict, task: str) -> T.Re
     b = Path(bdir) / "boundary"
     p = load_prompt(DRAFT_PROMPT, PROMPT_DIR)
     replies = _read(b / "sim_replies.json")
-    rl = "\n".join(json.dumps({"reply_id": r["reply_id"], "step": r.get("step"),
-                               "reply": r.get("reply") or ""}, ensure_ascii=False)
-                   for r in replies)
-    req_json = json.dumps({"text": it["text"], "quote": it["quote"],
-                           "reply_id": it["source_reply_id"]}, ensure_ascii=False)
+    rows = [{"reply_id": r["reply_id"], "step": r.get("step"), "reply": r.get("reply") or ""}
+            for r in replies]
+    req = {"text": it["text"], "quote": it["quote"], "reply_id": it["source_reply_id"]}
+    if it.get("origin") == "lossaudit":  # its source text (a file it read, the task message...)
+        src = it.get("source") or {}
+        rows.append({"reply_id": LOSSAUDIT_REPLY_ID, "step": src.get("desc"),
+                     "reply": src.get("text") or ""})
+        req["origin"] = src.get("desc")
+    rl = "\n".join(json.dumps(r, ensure_ascii=False) for r in rows)
+    req_json = json.dumps(req, ensure_ascii=False)
     user = _fill(p.sections["user"], task=task, requirement=req_json, replies=rl,
                  summary=view["summary"],
                  history=_render_history(_read(b / "pre_messages.json")))
@@ -686,7 +937,9 @@ def check_design(it: dict, d: dict, spec: dict, view: dict, pre: list[dict],
         ev["length_ratio"] = round(len(mq) / max(1, len(it["quote"])), 3)
         if not lo <= len(mq) <= hi:
             probs.append("matched_length_out_of_range")
-        if not any(T.quote_in(mq, S.message_text(m)) for m in pre):
+        if not any(T.quote_in(mq, S.message_text(m)) for m in pre) and not (
+                maintainer and maintainer.get("texts_in_history")
+                and any(T.quote_in(mq, r) for r in maintainer["replies"])):
             probs.append("matched_not_in_history")
         if S.in_resumed_input(mq, view):
             probs.append("matched_in_resumed_input")
@@ -808,6 +1061,7 @@ def screen(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
 # source become a bundle (disposition "bundle").
 
 SCREEN_V2 = "fork_v2"
+EDITS_NAME = "edits.json"  # card edits to rescreen: {"cands": {cand_id: {repair_text, act_spec?}}}
 DRAFT_PROMPT_V2 = "interact_draft_v2"
 CHECKS_V2 = CHECKS  # the pilot's six (Jacob, 24 Oct: the pending decision is applicability's)
 CODE_FAILS_V2 = CODE_FAILS  # plus an applicability fail marked code_fail (no pending spot)
@@ -1012,6 +1266,17 @@ def screen_sha_v2() -> str:
         "pending_min_chars": PENDING_MIN_CHARS,
         "matched": "maintainer_reply+no_requirement_overlap+no_lead_in+no_explaining_sentence",
         "near_rule": "bounded+no_negation_either_side+min_words_always_opus",
+        "recoverability": {"classes": ["code", "file_not_reattached", "none"],
+                           "files": list(NOT_REATTACHED_FILES) + list(NOT_REATTACHED_NAMES),
+                           "reattached": {k: list(v) for k, v in REATTACHED_BY_HARNESS.items()}},
+        "lossaudit_items": list(LOSSAUDIT_TYPES),
+        "authority": list(AUTHORITATIVE),
+        "authority_check": {"sources": {k: list(v) for k, v in AUTHORITY_SOURCES.items()},
+                            "files": list(AUTHORITY_NAMES), "min_words": AUTHORITY_MIN_WORDS,
+                            "rule": "verbatim+substantive; task msgs minus summaries; files at "
+                                    "base commit, regular, read by the agent"},
+        "dedupe": "same_obligation_once_per_task",
+        "pointer": "named+reread_instructed (recorded)",
         "chain": {"k>1": list(CHAIN_SOURCES)},
         "opus": {"prompt": load_prompt(OPUS_PROMPT, PROMPT_DIR).sha256, "model": OPUS_MODEL,
                  "schema": OPUS_SCHEMA, "types_in": ITEM_TYPES_IN, "near": [NEAR_SHARE,
@@ -1057,7 +1322,16 @@ OPUS_SCHEMA = T._obj({
     "applicable": _S(("yes", "no")), "applicable_reason": _S(),
     "item_type": _S(("process_rule", "unbuilt_decision", "built_detail", "other")),
     "type_reason": _S(),
-    "in_workspace": _S(("yes", "no", "unclear")), "workspace_reason": _S()})
+    "in_workspace": _S(("yes", "no", "unclear")), "workspace_reason": _S(),
+    "authority": _S(("task", "maintainer", "repo_instructions", "agent_plan_restating",
+                     "agent_plan_own", "other")), "authority_reason": _S(),
+    "authority_quote": _S(nullable=True),
+    "conflict": _S(("none", "conflicts")), "conflict_quote": _S(nullable=True),
+    "conflict_reason": _S()})
+# the authority and consistency gate (consult r2, the main session, 25 Oct): an agent-written
+# plan item counts only if it restates an authoritative source or an agreed decision, and no
+# candidate may conflict with a retained rule or another requirement
+AUTHORITATIVE = ("task", "maintainer", "repo_instructions", "agent_plan_restating")
 _WORD = re.compile(r"[A-Za-z0-9_]{3,}")
 _STOP = {"the", "and", "for", "that", "this", "with", "not", "are", "but", "should", "when",
          "from", "its", "into", "than", "then", "also", "any", "all", "can", "has", "have",
@@ -1142,6 +1416,8 @@ def opus_request(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str,
     p = load_prompt(OPUS_PROMPT, PROMPT_DIR)
     reply = next((r for r in _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []
                   if r.get("reply_id") == it.get("source_reply_id")), {})
+    if it.get("origin") == "lossaudit":
+        reply = {"reply": (it.get("source") or {}).get("text") or ""}
     ch = c.get("checks") or {}
     pend = ((ch.get("applicability") or {}).get("evidence") or {}).get("pending") or {}
     pe = pend.get("evidence") or {}
@@ -1155,10 +1431,14 @@ def opus_request(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str,
                              "files_holding_search_strings": rev.get("search_hits")},
         "cited_code_line": {"path": pe.get("path"), "line": pe.get("quote"),
                             "lines_found_in_file": pe.get("found")}}
+    mreplies = "\n".join(
+        f"<reply id=\"{r.get('reply_id')}\">{r.get('reply') or ''}</reply>"
+        for r in _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []
+        if r.get("pre_index") is not None)
     user = _fill(p.sections["user"], task=task,
                  requirement=json.dumps({"text": it["text"], "quote": it["quote"]},
                                         ensure_ascii=False),
-                 reply=reply.get("reply") or "", resumed=resumed_text(view),
+                 reply=reply.get("reply") or "", replies=mreplies, resumed=resumed_text(view),
                  checks=json.dumps(summary, ensure_ascii=False, indent=1), code=code)
     rid = f"interact:{Path(bdir).parent.name}:b{boundary_index(bdir)}"
     return T.Req(key=f"opus|{rid}|{cand_id(src, it['req_id'])}", system=p.system, user=user,
@@ -1171,12 +1451,239 @@ def opus_passed(c: dict) -> bool:
     return ((c.get("checks") or {}).get("opus") or {}).get("outcome") == "pass"
 
 
+def boundary_texts(bdir: Path, view: dict, task: str) -> str:
+    """Everything at the boundary a quote may come from (outcome-blind): the task text, the
+    resumed input, the pre-compaction history (tool outputs decoded) and the sim replies."""
+    pre = _read(Path(bdir) / "boundary" / "pre_messages.json")
+    parts = [task, resumed_text(view)]
+    for m in pre:
+        text = S.message_text(m)
+        if m.get("role") == "tool":
+            with contextlib.suppress(ValueError, TypeError, AttributeError):
+                text = json.loads(K_text(m.get("content"))).get("output") or text
+        parts.append(text)
+    parts += [r.get("reply") or "" for r in
+              _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []]
+    return "\n".join(parts)
+
+
+# The authority pool (astra repair-design r1 #3): what an obligation may cite as its authority.
+# The task and harness messages (user-role messages of the run's histories up to the
+# boundary, never a compaction summary), the maintainer's replies, and the authoritative
+# repository files (AUTHORITY_NAMES) as of the task's base commit, regular files only (a
+# symlink, or a path git quotes, is excluded), and only those the agent read before the
+# boundary. Never the agent's own messages, its plan file, or any other command output:
+# nothing the agent wrote or echoed can vouch for an obligation. A span supports the
+# obligation when code finds it verbatim in an allowed source and it is substantive
+# (`supports`); the source span is recorded.
+AUTHORITY_NAMES = ("AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "CONTRIBUTING", "README.md",
+                   "README", "README.rst", "README.txt")
+AUTHORITY_MIN_WORDS = 6
+AUTHORITY_FILES_NAME = "authority_files.json"
+# which pool sources each authority value may be verified in
+AUTHORITY_SOURCES = {"task": ("task",), "maintainer": ("maintainer",),
+                     "repo_instructions": ("file",),
+                     "agent_plan_restating": ("task", "maintainer", "file")}
+AuthorityRunner = Callable[[str], dict]  # image -> {"status": ok|no_base|error, "files": {...}}
+_AUTH_MARK = "@@EMX_AUTH_FILE@@"
+
+
+def authority_script() -> str:
+    """The base commit's authoritative files of /app, each path and content base64'd on one
+    marked line; regular files (mode 100644/100755) only."""
+    g = "git -c safe.directory='*'"
+    names = "|".join(AUTHORITY_NAMES)
+    return "\n".join([
+        "cd /app || exit 3",
+        "test -s /tmp/base_commit.txt || { echo @@NOBASE@@; exit 0; }",
+        "B=$(tr -d '[:space:]' < /tmp/base_commit.txt)",
+        f'{g} cat-file -e "$B^{{commit}}" 2>/dev/null || {{ echo @@NOBASE@@; exit 0; }}',
+        'echo "@@BASE@@ $B"',
+        f'{g} ls-tree -r "$B" | while IFS="$(printf \'\\t\')" read -r meta p; do',
+        '  case "$meta" in 100644*|100755*) ;; *) continue;; esac',
+        '  case "$p" in \\"*) continue;; esac',
+        f'  case "${{p##*/}}" in {names}) ;; *) continue;; esac',
+        (f'  printf \'{_AUTH_MARK} %s %s\\n\' "$(printf %s "$p" | base64 | tr -d \'\\n\')" '
+         f'"$({g} cat-file -p "$B:$p" | base64 | tr -d \'\\n\')"'),
+        "done",
+        "echo @@END@@"])
+
+
+def parse_authority(out: str) -> dict:
+    if "@@NOBASE@@" in out:
+        return {"status": "no_base", "files": {}}
+    if "@@END@@" not in out or "@@BASE@@" not in out:
+        return {"status": "error", "error": out[-300:], "files": {}}
+    base = out.split("@@BASE@@ ", 1)[1].split("\n", 1)[0].strip()
+    files = {}
+    for line in out.splitlines():
+        if line.startswith(_AUTH_MARK + " "):
+            parts = line.split(" ")
+            path = base64.b64decode(parts[1]).decode("utf-8", "replace")
+            files[path] = base64.b64decode(parts[2] if len(parts) > 2 else "").decode(
+                "utf-8", "replace")
+    return {"status": "ok", "base": base, "files": files}
+
+
+def docker_authority_runner(host: str | None = None) -> AuthorityRunner:
+    """Reads the base commit's authoritative files in a kept boundary image
+    (interact_score.docker_runner: a fresh container, removed after)."""
+    run = S.docker_runner(host)
+
+    def read(image: str) -> dict:
+        rc, out, err = run(image, authority_script())
+        if rc != 0:
+            return {"status": "error", "error": (err or out)[-300:], "files": {}}
+        return parse_authority(out)
+    return read
+
+
+def authority_files(bdir: Path, image: str | None, runner: AuthorityRunner | None) -> dict:
+    """The boundary's authoritative files at the base commit, cached in fork_v2/ per image."""
+    p = v2_dir(bdir) / AUTHORITY_FILES_NAME
+    old = _read_or_none(p)
+    if old and old.get("image") == image and old.get("status") == "ok":
+        return old
+    if runner is None or not image:
+        return {"status": "not_checked", "files": {}}
+    out = {"image": image, **runner(image)}
+    if out["status"] == "ok":
+        S.write_json(p, out)
+    return out
+
+
+def _summary_texts(run_dir: Path, k: int) -> list[str]:
+    """Every compaction summary of the run up to boundary k (normalised)."""
+    out = []
+    for j in range(1, k + 1):
+        cj = _read_or_none(Path(run_dir) / f"b{j}" / "boundary" / "compaction.json") or {}
+        if cj.get("summary"):
+            out.append(T.norm(cj["summary"]))
+        post = cj.get("post_messages") or []
+        i = cj.get("summary_index")
+        if isinstance(i, int) and 0 <= i < len(post):
+            out.append(T.norm(S.message_text(post[i])))
+    return [x for x in out if x]
+
+
+AUTHORITY_WORKDIR = "/app"
+
+
+def reads_path(cmd: str, path: str, workdir: str = AUTHORITY_WORKDIR) -> bool:
+    """Does a bash command read the repository file `path` (relative to the workdir)? Each
+    command starts in the workdir; `cd` segments move it; every argument of a reading
+    command is resolved against it. A command shlex can't split, or a `cd` to a computed
+    place, reads nothing (unclear means excluded)."""
+    import posixpath
+    import shlex
+    want = posixpath.normpath(posixpath.join(workdir, path))
+    try:
+        toks = shlex.split(cmd, posix=True)
+    except ValueError:
+        return False
+    cwd, seg = workdir, []
+    for t in [*toks, "&&"]:
+        if t not in ("&&", ";", "||", "|"):
+            seg.append(t)
+            continue
+        if seg and seg[0] == "cd":
+            dest = seg[1] if len(seg) > 1 else "~"
+            if any(ch in dest for ch in "$`~*?"):
+                return False
+            cwd = posixpath.normpath(posixpath.join(cwd, dest))
+        elif seg and _READ_VERB.fullmatch(seg[0]):
+            for arg in seg[1:]:
+                if not arg.startswith("-") and \
+                        posixpath.normpath(posixpath.join(cwd, arg)) == want:
+                    return True
+        seg = []
+    return False
+
+
+def _bash_cmds(pre: list[dict]) -> list[str]:
+    out = []
+    for m in pre:
+        for tc in m.get("tool_calls") or []:
+            with contextlib.suppress(ValueError, AttributeError, TypeError):
+                out.append(json.loads((tc.get("function") or {}).get("arguments") or "{}")
+                           .get("command") or "")
+    return out
+
+
+def authority_pool(bdir: Path, files: dict | None = None) -> list[dict]:
+    """[{source, kind, text}] (the section comment). Task messages come from every boundary's
+    pre-compaction history up to this one (the task message itself is gone after the first
+    compaction); a user-role message holding a compaction summary is left out."""
+    run_dir, k = Path(bdir).parent, boundary_index(bdir)
+    summaries = _summary_texts(run_dir, k)
+    pool, seen = [], set()
+    for j in range(1, k + 1):
+        pre = _read_or_none(run_dir / f"b{j}" / "boundary" / "pre_messages.json") or []
+        for i, m in enumerate(pre):
+            if m.get("role") != "user":
+                continue
+            text = S.message_text(m)
+            nt = T.norm(text)
+            if not nt or nt in seen or any(sm and sm in nt for sm in summaries):
+                continue
+            seen.add(nt)
+            pool.append({"source": f"task:b{j}:msg{i}", "kind": "task", "text": text})
+    for r in _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []:
+        if r.get("reply"):
+            pool.append({"source": f"maintainer:{r.get('reply_id')}", "kind": "maintainer",
+                         "text": r["reply"]})
+    pres = [_read_or_none(run_dir / f"b{j}" / "boundary" / "pre_messages.json") or []
+            for j in range(1, k + 1)]
+    cmds = [c for pre in pres for c in _bash_cmds(pre)]
+    for path, text in sorted(((files or {}).get("files") or {}).items()):
+        if any(reads_path(c, path) for c in cmds):
+            pool.append({"source": f"file:{path}", "kind": "file", "text": text})
+    return pool
+
+
+def supports(span: str, obligation: str) -> dict:
+    """Is a verbatim span substantive support for the obligation: at least
+    AUTHORITY_MIN_WORDS words sharing at least half of the obligation's key words (2 or
+    more), or every key word of the obligation (2 or more)."""
+    words = len(_WORD.findall(span or ""))
+    ko, ks = key_words(obligation), key_words(span)
+    shared = len(ko & ks)
+    ok = (words >= AUTHORITY_MIN_WORDS and shared >= max(2, (len(ko) + 1) // 2)) or \
+        (len(ko) >= 2 and ko <= ks)
+    return {"ok": ok, "words": words, "shared_key_words": shared, "obligation_key_words": len(ko)}
+
+
+def verify_authority(v: dict, obligation: str, pool: list[dict]) -> dict:
+    """Code's check of Opus's authority: the span (authority_quote for a restated plan item,
+    else the obligation's own words) must be in a source that authority allows, and support
+    the obligation."""
+    auth = v.get("authority")
+    kinds = AUTHORITY_SOURCES.get(auth)
+    if not kinds:
+        return {"ok": False, "why": f"authority:{auth}"}
+    span = v.get("authority_quote") if auth == "agent_plan_restating" else \
+        (v.get("authority_quote") or obligation)
+    if not span:
+        return {"ok": False, "why": "no_span"}
+    src = next((x for x in pool if x["kind"] in kinds and T.quote_in(span, x["text"])), None)
+    if src is None:
+        return {"ok": False, "why": "span_not_in_allowed_sources", "span": span,
+                "allowed": list(kinds)}
+    sup = supports(span, obligation)
+    return {"ok": sup["ok"], "why": None if sup["ok"] else "span_not_substantive",
+            "span": span, "source": src["source"], **sup}
+
+
 def opus_gate(v: dict) -> str | None:
     """None when the candidate goes forward, else why not."""
     if v["retention"] != "lost":
         return f"opus:retention_{v['retention']}"
     if v["applicable"] != "yes":
         return "opus:not_applicable"
+    if v.get("authority") not in AUTHORITATIVE:
+        return f"authority:{v.get('authority')}"
+    if v.get("conflict") != "none":
+        return "authority:conflict"
     if v["item_type"] not in ITEM_TYPES_IN:
         return f"type:{v['item_type']}"
     if v["item_type"] == "unbuilt_decision" and v["in_workspace"] != "no":
@@ -1203,7 +1710,7 @@ def _opus_lock():
 
 
 def opus_screen(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str, *,
-                backend, image: str | None, file_runner) -> dict:
+                backend, image: str | None, file_runner, pool: list[dict] | None = None) -> dict:
     """The Opus check for one candidate (the section comment), logged whatever it says. A
     failed call raises: the screen fails and is retried, never cards without the verdict."""
     pend = ((c.get("checks") or {}).get("applicability") or {}).get("evidence", {}).get(
@@ -1215,8 +1722,18 @@ def opus_screen(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str, 
         raise RuntimeError(f"opus screen failed for {c['cand_id']}: "
                            f"{r.error if r else 'no_response'}")
     gate = opus_gate(r.data)
-    out = (_check("pass", None, verdict=r.data, model=r.model) if gate is None else
-           _check("fail", gate, verdict=r.data, model=r.model))
+    cq = r.data.get("conflict_quote")
+    auth = verify_authority(r.data, c.get("repair_text") or it.get("quote") or "",
+                            pool if pool is not None else authority_pool(bdir))
+    quotes = {"conflict_quote_found": (T.quote_in(cq, boundary_texts(bdir, view, task))
+                                       if cq else None),
+              "authority_check": auth}
+    # an obligation goes forward only when code finds its authority (consult r2; astra
+    # repair-design r1 #3); a conflict verdict excludes whatever its quote
+    if gate is None and not auth["ok"]:
+        gate = f"authority:unverified:{auth['why']}"
+    out = (_check("pass", None, verdict=r.data, model=r.model, **quotes) if gate is None else
+           _check("fail", gate, verdict=r.data, model=r.model, **quotes))
     row = {"utc": _utc(), "cand_id": c["cand_id"], "source_policy": src,
            "req_id": it["req_id"], "requirement": it["text"],
            "haiku_grade": ((c.get("checks") or {}).get("retention") or {}).get(
@@ -1234,7 +1751,8 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
               ref_runner: S.Runner | None = None, file_runner: FileRunner | None = None,
               rejected: Iterable[str] = (), sources: Iterable[str] = ARM_SOURCES,
               task: str | None = None, bundle: bool = True, max_bundle: int = 1,
-              opus_backend) -> dict:
+              opus_backend, full: bool = False,
+              authority_runner: AuthorityRunner | None = None) -> dict:
     """fork_v2/candidates.json. Candidates in `candidates_order_v2`; retention is free and is
     recorded for all; the others run only until the first candidate that isn't excluded by a
     code-verified fail (CODE_FAILS_V2, pending included) and isn't rejected: that one is
@@ -1244,7 +1762,18 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
     inherited; inherited losses are eligible). The pending spot is checked in the cited file
     (`file_runner`) and is part of check 2 (`applicability_v2`). B and C (the section comment
     above): the near-verbatim rule right after retention, and the Opus screen (`opus_backend`,
-    required) last, before a candidate is carded or bundled."""
+    required) last, before a candidate is carded or bundled.
+
+    With `full` (the repair cohort, astra repair-design r1 #4) every candidate is screened to
+    the end, nothing is `not_reached`, and each that passes every gate is `passed`; which of
+    them get continuations is the frozen assignment policy's call (interact_run.assignment),
+    never the screen order's. A full screen needs `authority_runner` (the base commit's
+    repository instructions). In both modes an obligation counts once: against the run's
+    earlier boundaries and against this boundary's accepted candidates (r1 #7). An edit made
+    on a card (fork_v2/edits.json) replaces the candidate's repair text or act and reruns
+    every gate on it (r1 #2)."""
+    if full and authority_runner is None:
+        raise ValueError("a full screen needs authority_runner")
     b = Path(bdir) / "boundary"
     k = boundary_index(bdir)
     rq = _read(b / "requirements.json")
@@ -1261,9 +1790,25 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
     views: dict[str, dict] = {}
     out_c: list[dict] = []
     carded, carded_src, bundled = None, None, []
-    for src, it in candidates_order_v2(rq, sources):
+    la_items = lossaudit_candidates(bdir)
+    prior = prior_obligations(bdir)
+    edits = (_read_or_none(v2_dir(bdir) / EDITS_NAME) or {}).get("cands") or {}
+    files = authority_files(bdir, image, authority_runner)
+    pool = authority_pool(bdir, files)
+    here: list[dict] = []  # this boundary's accepted obligations, in screen order
+    order = [(src, it) for src in sources for it in
+             [x for s2, x in candidates_order_v2(rq, [src])]
+             + (la_items if src in CHAIN_SOURCES else [])]
+    harness = ((_read_or_none(Path(bdir) / "boundary" / "record.json") or {}).get("harness")
+               or "s2-loop")
+    for src, it in order:
         cid = cand_id(src, it["req_id"])
         prev = old.get(cid) or {}
+        edit = edits.get(cid)
+        if edit:
+            it = dict(it, quote=edit["repair_text"])
+            if prev.get("edit_sha256") != S.canon_sha(edit):
+                prev = {}  # an edited candidate is screened afresh
         checks = dict(prev.get("checks") or {})
         c = {"cand_id": cid, "source_policy": src, "req_id": it["req_id"],
              "source_reply_id": it["source_reply_id"], "position": it["position"],
@@ -1271,14 +1816,20 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
              "loss": (ledger.get(src) or {}).get(it["req_id"]),
              "inherited": ((ledger.get(src) or {}).get(it["req_id"]) or {}).get(
                  "status") == "inherited",
-             "draft": prev.get("draft"), "act_spec": prev.get("act_spec"), "disposition": None}
-        checks["retention"] = check_retention(src, it, detail)
+             "draft": prev.get("draft"), "act_spec": prev.get("act_spec"), "disposition": None,
+             **({"edit": edit, "edit_sha256": S.canon_sha(edit)} if edit else {})}
+        checks["retention"] = (check_retention_la(it) if it.get("origin") == "lossaudit"
+                               else check_retention(src, it, detail))
+        if it.get("origin") == "lossaudit":
+            c.update(origin="lossaudit", la_item_id=it["la_item_id"], la_type=it["la_type"],
+                     source_desc=(it.get("source") or {}).get("desc"),
+                     source_index=(it.get("source") or {}).get("index"))
         out_c.append(c)
         if k > 1 and src not in CHAIN_SOURCES:
             c["disposition"] = "excluded:source:mixed_chain"
             continue
-        if carded is not None and (not bundle or src != carded_src
-                                   or len(bundled) >= max_bundle):
+        if not full and carded is not None and (not bundle or src != carded_src
+                                                or len(bundled) >= max_bundle):
             c["disposition"] = "not_reached"
             continue
         if _excluded_v2(checks):
@@ -1291,7 +1842,8 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
             c["disposition"] = "excluded:retention:nearly_verbatim"
             continue
         if "recoverability" not in checks:
-            checks["recoverability"] = check_recoverability(it, image, grep_runner)
+            checks["recoverability"] = check_recoverability(it, image, grep_runner, pre=pre,
+                                                            harness=harness)
         if _excluded_v2(checks):
             c["disposition"] = f"excluded:{_excluded_v2(checks)}"
             continue
@@ -1310,42 +1862,58 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
             for name in ("applicability", "decision", "design", "reference"):
                 checks.setdefault(name, _check("unresolved", "draft_failed", error=d["error"]))
         else:
-            c["act_spec"] = spec = spec_from_draft(d)
+            c["act_spec"] = spec = (edit or {}).get("act_spec") or spec_from_draft(d)
             pend = (prev.get("checks") or {}).get("applicability", {}).get(
                 "evidence", {}).get("pending") or check_pending(d, image, file_runner)
             checks["applicability"] = applicability_v2(d, pend)
             dec = DRAFT_MAP["decision_observable"][d["decision_observable"]]
             checks["decision"] = _check(dec, None, decision=d["decision"])
             checks["design"] = check_design(it, d, spec, views[src], pre,
-                                            maintainer=maintainer_context(bdir))
+                                            maintainer=source_context(bdir, it))
             rec = checks["recoverability"]
             if d["search_strings"] and not rec["evidence"].get("search_after_draft"):
-                rec = check_recoverability(it, image, grep_runner, d["search_strings"])
+                rec = check_recoverability(it, image, grep_runner, d["search_strings"],
+                                           pre=pre, harness=harness)
                 rec["evidence"]["search_after_draft"] = True
                 checks["recoverability"] = rec
             if "reference" not in checks and not _excluded_v2(checks):
                 checks["reference"] = S.check_reference(spec, Path(bdir).parent, k,
                                                         runner=ref_runner)
         why = _excluded_v2(checks)
+        if not why and cid not in rejected:
+            checks["pointer"] = check_pointer(views[src], backing_files(it, checks))
+            dup = next((o for o in [*prior, *here]
+                        if same_obligation(o["quote"], it["quote"])), None)
+            if dup:
+                checks["duplicate"] = _check("fail", "duplicate_obligation", first=dup)
+                why = "duplicate_obligation"
         # Opus runs even when the draft failed: no candidate is carded without its verdict
         if not why and cid not in rejected:
             if "opus" not in checks:
                 task = task if task is not None else task_text(bdir)
                 checks["opus"] = opus_screen(bdir, src, it, views[src], c, task,
                                              backend=opus_backend, image=image,
-                                             file_runner=file_runner)
+                                             file_runner=file_runner, pool=pool)
             why = checks["opus"].get("reason")
         if why:
             c["disposition"] = f"excluded:{why}"
         elif cid in rejected:
             c["disposition"] = "rejected"
+        elif full:
+            c["disposition"] = "passed"
         elif carded is None:
             c["disposition"] = "carded"
             carded, carded_src = cid, src
         else:
             c["disposition"] = "bundle"
             bundled.append(cid)
+        if c["disposition"] in ("carded", "bundle", "passed", "rejected"):
+            here.append({"k": k, "cand_id": cid, "quote": it["quote"]})
     out = {"boundary_index": k, "created_utc": _utc(), "screen_sha256": screen_sha_v2(),
+           "mode": "full" if full else "first", "authority_files": {
+               "status": files.get("status"), "base": files.get("base"),
+               "files": sorted(files.get("files") or {})},
+           "passing": [c["cand_id"] for c in out_c if c["disposition"] == "passed"],
            "draft_prompt_sha256": load_prompt(DRAFT_PROMPT_V2, PROMPT_DIR).sha256,
            "draft_map": DRAFT_MAP, "code_fails": list(CODE_FAILS_V2), "sources": list(sources),
            "rejected": sorted(rejected), "carded": carded, "bundle": bundled,

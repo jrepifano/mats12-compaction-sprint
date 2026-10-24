@@ -654,7 +654,7 @@ def test_v2_screen_cards_the_first_with_a_pending_spot_and_bundles_its_source(ru
     c = {c["cand_id"]: c for c in out["candidates"]}["live.b1-q2"]
     app = c["checks"]["applicability"]
     assert app["outcome"] == "pass" and app["evidence"]["pending"]["outcome"] == "pass"
-    assert set(c["checks"]) == {*R.CHECKS, "near_verbatim", "opus"}  # the pilot's six + B/C
+    assert set(c["checks"]) == {*R.CHECKS, "near_verbatim", "pointer", "opus"}  # six + B/C
     assert c["loss"]["status"] == "new" and c["inherited"] is False
     assert all(k.startswith("draft2|") for k in seen)
     assert out["screen_sha256"] == R.screen_sha_v2()
@@ -665,7 +665,9 @@ def test_v2_screen_cards_the_first_with_a_pending_spot_and_bundles_its_source(ru
 
 OPUS_LOST = {"retention": "lost", "retention_reason": "nothing", "applicable": "yes",
              "applicable_reason": "open", "item_type": "unbuilt_decision", "type_reason": "x",
-             "in_workspace": "no", "workspace_reason": "y"}
+             "in_workspace": "no", "workspace_reason": "y", "authority": "maintainer",
+             "authority_reason": "r", "authority_quote": None, "conflict": "none",
+             "conflict_quote": None, "conflict_reason": "c"}
 
 
 def _screen_opus(run, verdicts, **kw):
@@ -1266,3 +1268,318 @@ def test_file_script_reads_one_file_safely():
     sc = R.file_script("src/a b.py")
     assert "base64 -d" in sc and "a b.py" not in sc  # the path never reaches the shell raw
     assert "*..*" in sc  # no escaping /app
+
+
+# --- 24-25 Oct: file-backed repair candidates (Jacob's "recoverable, not recovered", consult r2)
+
+def _bash(i: int, cmd: str) -> dict:
+    return {"role": "assistant", "content": "",
+            "tool_calls": [{"id": f"x{i}", "type": "function", "function": {
+                "name": "bash", "arguments": json.dumps({"command": cmd})}}]}
+
+
+PLAN = "# Plan\n- Run `cargo clippy --all-targets` before every commit.\n- Thanks, all good.\n"
+
+
+def _with_plan_read(run):
+    """b1's history gains a read of /tmp/plan.md (as the agent's first step does)."""
+    b = run / "b1" / "boundary"
+    pre = json.loads((b / "pre_messages.json").read_text())
+    pre[1:1] = [_bash(90, "cat /tmp/plan.md"),
+                {"role": "tool", "tool_call_id": "x90",
+                 "content": json.dumps({"returncode": 0, "output": PLAN})}]
+    _w(b / "pre_messages.json", pre)
+    return pre
+
+
+def test_recoverability_is_three_way_by_file_class():
+    quote = "Run `cargo clippy --all-targets` before every commit."
+    pre = [_bash(0, "cat /tmp/plan.md"), {"role": "tool", "content": "x"},
+           _bash(1, "cd /app && cat AGENTS.md | head")]
+
+    def grep(where):
+        return lambda image, pats: {p: {"files": list(where), "lines": []} for p in pats}
+    r = R.check_recoverability({"quote": quote}, "img", grep(["/tmp/plan.md"]), pre=pre)
+    assert r["outcome"] == "pass" and r["evidence"]["class"] == "file_not_reattached"
+    assert r["evidence"]["files_not_reattached"] == [{"file": "/tmp/plan.md", "last_read_msg": 0}]
+    r = R.check_recoverability({"quote": quote}, "img", grep(["main:AGENTS.md"]), pre=pre)
+    assert r["outcome"] == "pass" and r["evidence"]["files_not_reattached"][0] == {
+        "file": "AGENTS.md", "last_read_msg": 2}
+    r = R.check_recoverability({"quote": quote}, "img", grep(["src/lib.rs", "/tmp/plan.md"]))
+    assert r["outcome"] == "fail" and r["evidence"]["class"] == "code"
+    r = R.check_recoverability({"quote": quote}, "img", grep(["commit:abc"]))
+    assert r["outcome"] == "fail"  # a commit message is repository content
+    # a file the harness re-attaches after compaction is kept, never a file-backed omission
+    r = R.check_recoverability({"quote": quote}, "img", grep(["AGENTS.md"]), pre=pre,
+                               harness="claude_code")
+    assert r["outcome"] == "fail" and not r["evidence"]["files_not_reattached"]
+
+
+def test_lossaudit_items_are_candidates_with_their_source(run, tmp_path, monkeypatch):
+    _v2_two_boundaries(run)
+    _with_plan_read(run)
+    out = tmp_path / "la"
+    rid = "deepswe:demo-b1:0"
+    _w(out / "items.jsonl", [])
+    (out / "items.jsonl").write_text("\n".join(json.dumps(x) for x in [
+        {"item_id": f"{rid}#haiku-max#i3", "type": "rule", "text": "clippy all targets"},
+        {"item_id": f"{rid}#haiku-max#i4", "type": "task_state", "text": "state"}]))
+    (out / "losses.jsonl").write_text("\n".join(json.dumps(x) for x in [
+        {"item_id": f"{rid}#haiku-max#i3", "lost": True, "grade": "dropped",
+         "boundary_dir": str(run / "b1"), "origin": "file",
+         "quote": "Run `cargo clippy --all-targets` before every commit."},
+        {"item_id": f"{rid}#haiku-max#i4", "lost": True, "grade": "dropped",
+         "boundary_dir": str(run / "b1"), "origin": "file", "quote": "Thanks, all good."}]))
+    items = R.lossaudit_candidates(run / "b1", out)
+    assert [x["req_id"] for x in items] == ["b1-la3"]  # task_state isn't a candidate type
+    it = items[0]
+    assert it["source"]["file"] == "/tmp/plan.md" and it["source"]["text"] == PLAN
+    assert it["source_reply_id"] == R.LOSSAUDIT_REPLY_ID
+    assert R.check_retention_la(it)["outcome"] == "pass"
+    assert R.check_retention_la(dict(it, la_grade="misstated"))["outcome"] == "fail"
+    # the matched block's rule: the same source text, not carrying any requirement
+    monkeypatch.setattr(R, "LOSSAUDIT_DIR", out)
+    ctx = R.source_context(run / "b1", it)
+    assert ctx["replies"] == [PLAN] and ctx["texts_in_history"]
+    # the screen takes it after the maintainer ledger, live only, with its origin recorded
+    res = _screen_b1(run, sources=["live"])
+    c = {x["cand_id"]: x for x in res["candidates"]}["live.b1-la3"]
+    assert c["origin"] == "lossaudit" and c["source_desc"] == "/tmp/plan.md"
+    assert [x["cand_id"] for x in res["candidates"]][-1] == "live.b1-la3"
+
+
+def test_authority_and_consistency_gate():
+    ok = dict(OPUS_LOST)
+    assert R.opus_gate(ok) is None
+    assert R.opus_gate(dict(ok, authority="agent_plan_restating")) is None
+    assert R.opus_gate(dict(ok, authority="agent_plan_own")) == "authority:agent_plan_own"
+    assert R.opus_gate(dict(ok, authority="other")) == "authority:other"
+    assert R.opus_gate(dict(ok, conflict="conflicts")) == "authority:conflict"
+    assert R.opus_gate(dict(ok, retention="kept", conflict="conflicts")) == (
+        "opus:retention_kept")  # the order: retention first
+
+
+def test_pointer_flags_and_one_candidate_per_obligation():
+    view = {"post": [{"role": "user", "content": "Summary. **Read `/tmp/plan.md` first** and "
+                                                "keep going."}]}
+    p = R.check_pointer(view, ["/tmp/plan.md", "AGENTS.md"])["evidence"]
+    assert p["stratum"] == "contextual_omission_retrievable_from_file"
+    assert p["files"][0]["named"] and p["files"][0]["reread_instructed"]
+    assert not p["files"][1]["named"] and not p["files"][1]["reread_instructed"]
+    assert R.check_pointer(view, [])["evidence"]["stratum"] is None
+    a = "Do not add a required method to the public `chart.Accessor` interface"
+    assert R.same_obligation(a, a + "; retrieve annotations without breaking it")
+    assert R.same_obligation("Don't add a required method to the public chart.Accessor iface",
+                             a)
+    assert not R.same_obligation("Use table-driven tests with testify", a)
+
+
+def test_obligations_already_in_the_universe_are_not_screened_again(run):
+    _v2_two_boundaries(run)
+    R.grade_sources_v2(run / "b2", ["live", "cc_prompt"], grader=_grader(
+        {"live": {"b1-q2": "dropped", "b1-q5": "dropped", "b2-q1": "dropped"},
+         "cc_prompt": {}}))
+    R.loss_ledger(run / "b2")
+    first = _screen_b1(run, sources=["live"])
+    assert first["carded"] == "live.b1-q2"
+    out = R.screen_v2(run / "b2", backend=StubBackend(lambda req: dict(DRAFT_V2)),
+                      grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
+                      task=TASK, sources=["live"], opus_backend=_opus_ok())
+    c = {x["cand_id"]: x for x in out["candidates"]}
+    assert c["live.b1-q2"]["disposition"] == "excluded:duplicate_obligation"
+    assert c["live.b1-q2"]["checks"]["duplicate"]["evidence"]["first"]["k"] == 1
+
+
+# --- astra repair-design r1 (25 Oct): the authority pool, the full screen, card edits
+
+README = ("# Demo\n\nContributing: run `cargo clippy --all-targets` before every commit, and "
+          "keep the public API stable.\n")
+NO_FILES = {"status": "ok", "base": "B", "files": {}}
+
+
+def _files_runner(files):
+    return lambda image: {"status": "ok", "base": "B", "files": dict(files)}
+
+
+def test_authority_pool_never_holds_what_the_agent_wrote(run):
+    _v2_two_boundaries(run)
+    pre = _with_plan_read(run)
+    pre += [_bash(91, "cd /app && cat README.md"),
+            {"role": "tool", "tool_call_id": "x91",
+             "content": json.dumps({"returncode": 0, "output": README})},
+            {"role": "assistant", "content": "I'll follow the plan: keep the public API stable."}]
+    _w(run / "b1" / "boundary" / "pre_messages.json", pre)
+    files = {"files": {"README.md": README, "cli/README.md": "keep the public API stable"}}
+    pool = R.authority_pool(run / "b1", files)
+    srcs = [x["source"] for x in pool]
+    assert srcs[:1] == ["task:b1:msg3"] and "maintainer:r2" in srcs  # the AGENTS.md message
+    assert "file:README.md" in srcs and "file:cli/README.md" not in srcs  # never read
+    assert not any("cargo clippy" in x["text"] and x["kind"] != "file" for x in pool)
+    assert not any("I'll follow the plan" in x["text"] for x in pool)
+    # b2's history starts with b1's summary (a user-role message): never a task message
+    b2 = R.authority_pool(run / "b2", NO_FILES)
+    assert not any("SUMMARY" in x["text"] for x in b2)
+    assert any(x["source"] == "task:b1:msg3" for x in b2)  # the task message from b1
+
+
+def test_authority_spans_must_be_found_and_substantive(run):
+    _v2_two_boundaries(run)
+    _with_plan_read(run)
+    pool = R.authority_pool(run / "b1", NO_FILES) + [
+        {"source": "file:README.md", "kind": "file", "text": README}]
+    rule = "Run `cargo clippy --all-targets` before every commit."
+    ok = R.verify_authority({"authority": "agent_plan_restating",
+                             "authority_quote": "run `cargo clippy --all-targets` before every "
+                                                "commit"}, rule, pool)
+    assert ok["ok"] and ok["source"] == "file:README.md" and ok["span"].startswith("run")
+    short = R.verify_authority({"authority": "agent_plan_restating",
+                                "authority_quote": "cargo clippy"}, rule, pool)
+    assert not short["ok"] and short["why"] == "span_not_substantive"  # found, 2 words
+    assert R.supports("keep the public API stable", rule)["ok"] is False  # found, unrelated
+    off = R.verify_authority({"authority": "agent_plan_restating",
+                              "authority_quote": "keep the public API stable"}, rule, pool)
+    assert not off["ok"] and off["why"] == "span_not_substantive"
+    # a plan item Opus calls "task": its own words must be in a task message, and aren't
+    assert R.verify_authority({"authority": "task", "authority_quote": None}, rule,
+                              pool)["why"] == "span_not_in_allowed_sources"
+    assert R.verify_authority({"authority": "maintainer", "authority_quote": None},
+                              REPLIES["r2"][2], pool)["source"] == "maintainer:r2"
+    assert R.verify_authority({"authority": "agent_plan_own"}, rule, pool)["ok"] is False
+
+
+def test_unverified_authority_excludes_the_candidate(run):
+    _v2_two_boundaries(run)
+    out, _ = _screen_opus(run, {"live.b1-q2": {"authority": "task"}})
+    c = {x["cand_id"]: x for x in out["candidates"]}
+    assert c["live.b1-q2"]["disposition"] == (
+        "excluded:authority:unverified:span_not_in_allowed_sources")
+    assert c["live.b1-q2"]["checks"]["opus"]["evidence"]["authority_check"]["allowed"] == ["task"]
+    assert out["carded"] == "live.b1-q3"  # maintainer items verify in the replies
+
+
+def _full(run, k=1, verdicts=None, files=NO_FILES):
+    opus = StubBackend(lambda req: dict(OPUS_LOST, **(verdicts or {}).get(
+        req.key.split("|")[-1], {})))
+    out = R.screen_v2(run / f"b{k}", backend=StubBackend(lambda req: dict(DRAFT_V2)),
+                      grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files, task=TASK,
+                      opus_backend=opus, sources=["live", "cc_prompt"], full=True,
+                      authority_runner=_files_runner(files["files"]))
+    return out, opus
+
+
+def test_full_screen_screens_every_candidate_and_dedupes_within_the_boundary(run):
+    _v2_two_boundaries(run)
+    with pytest.raises(ValueError, match="authority_runner"):
+        R.screen_v2(run / "b1", backend=None, opus_backend=None, full=True)
+    out, _ = _full(run)
+    disp = {c["cand_id"]: c["disposition"] for c in out["candidates"]}
+    assert out["mode"] == "full" and out["carded"] is None and out["bundle"] == []
+    assert "not_reached" not in disp.values()
+    assert out["passing"] == [c for c, d in disp.items() if d == "passed"]
+    assert {"live.b1-q2", "live.b1-q3"} <= set(out["passing"])
+    # the same obligation from another summary at this boundary counts once (r1 #7)
+    dup = {c["cand_id"]: c for c in out["candidates"]}["cc_prompt.b1-q2"]
+    assert dup["disposition"] == "excluded:duplicate_obligation"
+    assert dup["checks"]["duplicate"]["evidence"]["first"] == {
+        "k": 1, "cand_id": "live.b1-q2", "quote": dup["repair_text"]}
+    assert out["authority_files"]["status"] == "ok"
+
+
+def test_a_card_edit_reruns_every_gate_on_the_edited_text(run):
+    _v2_two_boundaries(run)
+    _, opus1 = _full(run)
+    n1 = len(opus1.seen)
+    edited = "Conflicting writes must return HTTP 409, please."
+    (run / "b1" / "boundary" / "fork_v2" / R.EDITS_NAME).write_text(json.dumps(
+        {"cands": {"live.b1-q2": {"repair_text": edited, "card": "c1"}}}))
+    again, opus2 = _full(run)
+    c = {x["cand_id"]: x for x in again["candidates"]}["live.b1-q2"]
+    assert c["repair_text"] == edited and c["edit_sha256"]
+    seen = [r.key.split("|")[-1] for r in opus2.seen]
+    assert seen[0] == "live.b1-q2" and edited in opus2.seen[0].user and n1 > 1
+    assert "live.b1-q3" not in seen  # unedited candidates keep their verdicts
+    # cc_prompt.b1-q2 no longer duplicates the edited text, so it is screened in its own right
+    assert {x["cand_id"]: x for x in again["candidates"]}["cc_prompt.b1-q2"][
+        "disposition"] != "excluded:duplicate_obligation"
+    _, opus3 = _full(run)
+    assert opus3.seen == []  # the edited candidate's new verdict is reused under the same edit
+
+
+def test_cohort_cards_freeze_standalone_and_edits_go_back_to_the_screen(run, tmp_path, CARDS):
+    from compaction.s2 import interact_run as IR
+    from compaction.s2 import interact_score as SC
+    _v2_two_boundaries(run)
+    out, _ = _full(run)
+    _w(run / "b1" / "boundary" / "boundary.json", {"boundary_index": 1, "calls_in_step": 40,
+                                                   "tail_start_index": 8, "sim_calls": 4})
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    asg = IR.assignment(run / "b1")
+    assert len(asg["assigned"]) == min(IR.ASSIGN_PER_BOUNDARY, len(out["passing"]))
+    _html, key = CARDS.build_v2([(run, 1)])
+    assert [key["cards"][c]["cand_id"] for c in key["order"]] == asg["assigned"]
+    yes = {cid: {"c1": "yes", "c2": "yes", "c3": "yes", "v": e["content_sha256"][:16]}
+           for cid, e in key["cards"].items()}
+    first = key["order"][0]
+    edited = dict(yes, **{first: dict(yes[first], d_repair="Return HTTP 409 on conflicting "
+                                                           "writes, with the record id.")})
+    res = {r["cand_id"]: r for r in CARDS.freeze_v2(edited, key, runner=_ref_pass)}
+    c0 = key["cards"][first]["cand_id"]
+    assert res[c0]["status"] == "held" and res[c0]["edit_recorded"]
+    ed = json.loads((run / "b1" / "boundary" / "fork_v2" / R.EDITS_NAME).read_text())
+    assert ed["cands"][c0]["repair_text"].startswith("Return HTTP 409")
+    # the edit is pending: resubmitting the old labels can't freeze the stale screen (r3 #2)
+    again = {r["cand_id"]: r for r in CARDS.freeze_v2({first: yes[first]}, key,
+                                                      runner=_ref_pass)}
+    assert again[c0]["status"] == "held" and "rescreen the boundary first" in " ".join(
+        again[c0]["reasons"])
+    assert c0 not in IR.open_assigned(run / "b1")  # off the page until the rescreen
+    other = asg["assigned"][1]
+    assert res[other]["status"] == "frozen"  # two standalone freezes may share a boundary
+    f = IR.verified_freeze(run / "b1", other, require_committed=False)
+    assert f["role"] == "cohort" and "bundle.live" not in res
+    assert f["candidate_sha256"] == SC.canon_sha(CARDS.candidate_v2(run, 1, other))
+    u = IR.build_universe(run.parent)
+    assert {e["cand_id"] for e in u["roster"]} == {other}
+    # a rejection leaves its slot empty: never refilled (r2 #2)
+    sel = CARDS.advance_selection([{"run_dir": str(run), "k": 1, "cand_id": other,
+                                    "status": "rejected"}])
+    assert sel[0]["state"] == "cohort" and sel[0]["rejected"] == [other]
+    assert IR.assignment(run / "b1")["assigned"] == asg["assigned"]
+    assert other not in IR.open_assigned(run / "b1")
+
+
+def test_an_override_of_the_repair_goes_back_to_the_screen_too(run, tmp_path, CARDS):
+    from compaction.s2 import interact_run as IR
+    _v2_two_boundaries(run)
+    _full(run)
+    _w(run / "b1" / "boundary" / "boundary.json", {"boundary_index": 1, "calls_in_step": 40,
+                                                   "tail_start_index": 8, "sim_calls": 4})
+    spec = tmp_path / "instruction.md"
+    spec.write_text(TASK)
+    _w(run / "run.json", {"task": {"task_id": "demo", "spec_path": str(spec)}})
+    IR.assignment(run / "b1")
+    _html, key = CARDS.build_v2([(run, 1)])
+    cid = key["order"][0]
+    lab = {cid: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key["cards"][cid]["content_sha256"][:16]}}
+    # a shorter span of the same maintainer reply: still verifiable after the rescreen
+    shorter = " ".join(key["cards"][cid]["screen_design"]["d_repair"].split()[:-1])
+    ov = {cid: {"fields": {"d_repair": shorter}, "by": "main", "utc": "t"}}
+    r = CARDS.freeze_v2(lab, key, runner=_ref_pass, overrides=ov)[0]
+    assert r["status"] == "held" and r["edit_recorded"]
+    ed = json.loads((run / "b1" / "boundary" / "fork_v2" / R.EDITS_NAME).read_text())
+    assert ed["cands"][key["cards"][cid]["cand_id"]]["repair_text"] == shorter
+    # held until the rescreen; after it, the same override equals the screened design and
+    # changes nothing: the card freezes, no rescreen loop
+    assert CARDS.freeze_v2(lab, key, runner=_ref_pass, overrides=ov)[0]["status"] == "held"
+    _full(run)
+    _html, key2 = CARDS.build_v2([(run, 1)])
+    c2 = next(c for c in key2["order"]
+              if key2["cards"][c]["cand_id"] == key["cards"][cid]["cand_id"])
+    assert key2["cards"][c2]["screen_design"]["d_repair"] == ov[cid]["fields"]["d_repair"]
+    lab2 = {c2: {"c1": "yes", "c2": "yes", "c3": "yes",
+                 "v": key2["cards"][c2]["content_sha256"][:16]}}
+    r2 = CARDS.freeze_v2(lab2, key2, runner=_ref_pass, overrides={c2: ov[cid]})[0]
+    assert r2["status"] == "frozen", r2["reasons"]
