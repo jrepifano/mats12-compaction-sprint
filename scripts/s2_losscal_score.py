@@ -9,7 +9,8 @@ Inputs:
 
 Labels must carry the key's draw fingerprint (the page stamps every saved doc, and it covers
 the evidence the page shows); labels from another draw, or with none, are refused (exit 2).
-Cards labelled "can't tell" are left out of every estimate.
+Cards labelled "can't tell" are left out of every denominator and counted separately
+(`n_cant_tell`, and per class `cant_tell_by_class`).
 
 Estimates over the held-out cards (the primary population), and separately over the cards
 filled from the development half (`development`):
@@ -21,13 +22,17 @@ filled from the development half (`development`):
 - **dropped vs misstated**: among judge-lost cards Jacob calls lost, the share where his grade
   matches the judge's final grade, and the full judge-grade x Jacob-label table (counts).
 w = 1 / inclusion probability (Horvitz-Thompson ratio estimators, as in S1; cards are a simple
-random sample within each stratum). Each estimate gets a Wilson 95% interval on the Kish
-effective n, (sum w)^2 / sum w^2, as S1 does: an **approximate** interval, which ignores the
-dependence between items of one boundary (the number of sampled boundaries is reported).
+random sample within each stratum). The headline `p` is the weighted share, with a 95%
+**task-clustered bootstrap** interval (`ci95`): tasks are resampled with replacement and the
+weighted share recomputed, 2,000 replicates, seed `BOOT_SEED` (recorded in the output),
+percentile interval; replicates whose resample has no card in the denominator are skipped
+and counted (as pre-declared in the close-out plan after the plans' astra r3). The unweighted
+share `p_unweighted` gets a Wilson 95% interval (`wilson95_unweighted`).
 
 **Decision line (plan):** when the held-out weighted precision of judge-lost is below 0.5, the
-live loss rate is not reported and the pipeline's losses are used only as candidates. The
-decision is final only when it can't change: with held-out judge-lost cards unlabelled or "can't
+live loss rate is not reported and the pipeline's losses are used only as candidates. The line
+is not applied at all (`not_applied_too_few_clear`) when fewer than 15 held-out judge-lost cards
+have a clear label (anything but unlabelled or "can't tell"). Otherwise the decision is final only when it can't change: with held-out judge-lost cards unlabelled or "can't
 tell", the precision is bounded by counting them all as hits and all as misses, and the
 decision is final only when both bounds fall on the same side of 0.5; otherwise it is
 "PROVISIONAL" (review r1 #4). With no held-out judge-lost labels it is "NO DATA".
@@ -46,6 +51,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -60,7 +66,10 @@ OUT = ROOT / "results" / "sprint" / "S2" / "lossaudit" / "calibration.json"
 LABELS = ("kept", "dropped", "misstated", "not_an_item", "cant_tell")
 LOST_LABELS = ("dropped", "misstated")
 PRECISION_BAR = 0.5
+MIN_CLEAR = 15  # held-out judge-lost cards with a clear label before the 0.5 line is applied
 Z = 1.96
+BOOT_REPS = 2000
+BOOT_SEED = 20261024
 
 
 class DrawMismatch(ValueError):
@@ -92,21 +101,47 @@ def load_labels(obj, draw: str) -> dict[str, dict]:
     return out
 
 
+def _wshare(cards: list[dict], hit) -> float | None:
+    sw = sum(1 / c["inclusion_p"] for c in cards)
+    return sum(1 / c["inclusion_p"] for c in cards if hit(c)) / sw if sw else None
+
+
+def cluster_bootstrap(cards: list[dict], hit, *, reps: int = BOOT_REPS,
+                      seed: int = BOOT_SEED) -> dict:
+    """Percentile 95% interval of the weighted share, resampling tasks with replacement."""
+    by: dict[str, list[dict]] = defaultdict(list)
+    for c in cards:
+        by[str(c.get("task"))].append(c)
+    tasks = sorted(by)
+    rng = random.Random(seed)
+    vals = []
+    for _ in range(reps):
+        sample = [c for t in rng.choices(tasks, k=len(tasks)) for c in by[t]]
+        v = _wshare(sample, hit)
+        if v is not None:
+            vals.append(v)
+    vals.sort()
+    if not vals:
+        return {"ci95": None, "n_tasks": len(tasks), "reps_used": 0}
+    lo = vals[int(0.025 * (len(vals) - 1))]
+    hi = vals[round(0.975 * (len(vals) - 1))]
+    return {"ci95": [round(lo, 4), round(hi, 4)], "n_tasks": len(tasks),
+            "reps_used": len(vals)}
+
+
 def ratio(cards: list[dict], hit) -> dict:
-    """Weighted share of `cards` for which `hit(card)` is true, with a Wilson interval on the
-    Kish effective n and the unweighted count."""
+    """Weighted share of `cards` for which `hit(card)` is true, with its task-clustered
+    bootstrap interval, and the unweighted share with a Wilson interval."""
     n = len(cards)
     if not n:
-        return {"n": 0, "k": 0, "p": None, "p_unweighted": None, "ci95": None, "n_eff": 0.0}
-    w = [1 / c["inclusion_p"] for c in cards]
-    sw, sw2 = sum(w), sum(x * x for x in w)
-    hw = sum(x for x, c in zip(w, cards, strict=True) if hit(c))
-    p = hw / sw
-    n_eff = sw * sw / sw2
-    lo, hi = _wilson(p * n_eff, n_eff, Z)
+        return {"n": 0, "k": 0, "p": None, "ci95": None, "p_unweighted": None,
+                "wilson95_unweighted": None, "n_tasks": 0, "reps_used": 0}
+    p = _wshare(cards, hit)
     k = sum(bool(hit(c)) for c in cards)
-    return {"n": n, "k": k, "p": round(p, 4), "p_unweighted": round(k / n, 4),
-            "ci95": [round(float(lo), 4), round(float(hi), 4)], "n_eff": round(n_eff, 2)}
+    lo, hi = _wilson(k, n, Z)
+    return {"n": n, "k": k, "p": round(p, 4), **cluster_bootstrap(cards, hit),
+            "p_unweighted": round(k / n, 4),
+            "wilson95_unweighted": [round(float(lo), 4), round(float(hi), 4)]}
 
 
 def estimates(cards: list[dict]) -> dict:
@@ -138,10 +173,12 @@ def bounds(cards: list[dict]) -> dict:
             "n_unresolved": len(unres)}
 
 
-def decide(p: float | None, b: dict) -> tuple[str, bool]:
-    """(decision line, final)."""
+def decide(p: float | None, b: dict, n_clear: int) -> tuple[str, bool]:
+    """(decision line, final). `n_clear`: held-out judge-lost cards with a clear label."""
     if p is None:
         return "NO DATA: no held-out judge-lost card labelled", False
+    if n_clear < MIN_CLEAR:
+        return "not_applied_too_few_clear", False
     side = "not reported" if p < PRECISION_BAR else "reported"
     final = b["n_unresolved"] == 0 or (b["high"] < PRECISION_BAR) or (b["low"] >= PRECISION_BAR)
     if not final:
@@ -173,7 +210,8 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
     held = [c for c in labelled if c["half"] == "heldout"]
     prim = estimates(held)
     b = bounds(cards)
-    decision, final = decide(prim["precision_lost"]["p"], b)
+    n_clear = prim["precision_lost"]["n"]  # held-out judge-lost, can't tell left out
+    decision, final = decide(prim["precision_lost"]["p"], b, n_clear)
     n_lab = sum(bool(c["label"]) for c in cards)
     lost_conf = [c for c in labelled if c["judge_class"] == "lost" and c["label"] in LOST_LABELS]
     return {
@@ -183,11 +221,16 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
         "draw": key["draw"], "seed": key["seed"], "page_sha256": key.get("page_sha256"),
         "n_cards": len(cards), "n_labelled": n_lab,
         "n_cant_tell": sum(c["label"] == "cant_tell" for c in cards),
+        "cant_tell_by_class": {
+            f"{cl}/{h}": sum(c["label"] == "cant_tell" and c["judge_class"] == cl
+                             and c["half"] == h for c in cards)
+            for cl in ("lost", "kept") for h in ("heldout", "development")},
         "complete": n_lab == len(cards),
         "weights": "w = 1 / inclusion probability (stratum = judge class x subject, per half; "
                    "simple random sample within a stratum)",
-        "interval": "Wilson 95% on the Kish effective n: approximate, ignores clustering of "
-                    "items within a boundary",
+        "interval": {"ci95": "weighted share, task-clustered bootstrap percentile 95%",
+                     "wilson95_unweighted": "Wilson 95% on the unweighted share",
+                     "bootstrap_reps": BOOT_REPS, "bootstrap_seed": BOOT_SEED},
         "heldout": prim,
         "development": estimates([c for c in labelled if c["half"] == "development"]),
         "n_cards_by_half": {h: sum(c["half"] == h for c in cards)
@@ -203,6 +246,8 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
             for s in sorted({c["subject"] for c in held})},
         "decision": decision,
         "decision_final": final,
+        "n_clear_heldout_lost": n_clear,
+        "min_clear": MIN_CLEAR,
         "precision_lost_bounds": b,
         "precision_bar": PRECISION_BAR,
         "jacob_confirmed_losses": [

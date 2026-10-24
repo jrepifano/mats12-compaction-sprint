@@ -41,7 +41,7 @@ def _row(run_key, item_id, *, subject, half, grade, lost, msg=1, quote=None):
         "quote": q, "msg": msg, "valid": True, "grade": grade, "grade_valid": True,
         "summary_quote": f"SUMMARYQUOTE-{run_key}-{item_id}" if grade == "misstated" else None,
         "availability": "lost" if lost else None, "run_key": run_key,
-        "cohort_key": run_key.rsplit("-a", 1)[0], "task": "t", "channel": "chat",
+        "cohort_key": run_key.rsplit("-a", 1)[0], "task": run_key.split("-")[1], "channel": "chat",
         "subject": subject, "policy": "pi", "half": half, "planted_rule": None,
         "first_grade": grade, "lost": lost, "recoverable": None, "recoverable_how": None,
         "boundary_dir": f"/fake/{run_key}",
@@ -53,7 +53,7 @@ def _rows(n_per=6, halves=("heldout", "development")):
     for s in SUBJECTS:
         for h in halves:
             for b in range(2):
-                rk = f"pilot-0{b}-task-{s}-chat-{h}-a1"
+                rk = f"pilot-0{b}{SUBJECTS.index(s)}-task-{s}-chat-{h}-a1"
                 for j in range(n_per):
                     lost = j % 2 == 0
                     grade = ("dropped" if j % 4 == 0 else "misstated") if lost else "kept"
@@ -233,7 +233,10 @@ def test_scorer_round_trip(tmp_path):
     p = res["heldout"]["precision_lost"]
     assert p["n"] == 20 and p["k"] == 20 - len(disagree)
     assert p["p_unweighted"] == pytest.approx(15 / 20)
-    assert p["ci95"][0] < p["p"] < p["ci95"][1]
+    assert p["ci95"][0] <= p["p"] <= p["ci95"][1] and p["ci95"][0] < p["ci95"][1]
+    assert p["n_tasks"] == 8 and p["reps_used"] == scorer.BOOT_REPS
+    assert res["interval"]["bootstrap_seed"] == scorer.BOOT_SEED
+    assert p["wilson95_unweighted"][0] < p["p_unweighted"] < p["wilson95_unweighted"][1]
     assert res["heldout"]["kept_agreement"]["p"] == 1.0
     assert res["heldout"]["dropped_vs_misstated_agreement"]["p"] == 1.0
     assert res["complete"] and "reported" in res["decision"]
@@ -270,7 +273,7 @@ def test_scorer_weights_by_inclusion_probability():
     b = {"inclusion_p": 0.25, "label": "kept"}  # stands for 4 items
     r = scorer.ratio([a, b], lambda c: c["label"] == "dropped")
     assert r["p"] == pytest.approx(1 / 5) and r["p_unweighted"] == 0.5
-    assert r["n_eff"] == pytest.approx(25 / 17, abs=0.01)
+    assert r["wilson95_unweighted"][0] < 0.5 < r["wilson95_unweighted"][1]
     with pytest.raises(ValueError):
         scorer.load_labels({"x": {"label": "LOST"}}, "d")
 
@@ -347,14 +350,28 @@ def test_notes_stay_private_and_partial_results_are_provisional(tmp_path):
     assert (kd / scorer.PRIVATE_NAME).stat().st_mode & 0o077 == 0
     res = json.loads(pub)
     assert res["heldout"]["precision_lost"]["p"] == 1.0
-    assert res["decision"].startswith("PROVISIONAL") and res["decision_final"] is False
-    assert res["precision_lost_bounds"]["n_unresolved"] == len(held_lost) - 1
-    # every other held-out lost card "can't tell": still provisional
-    rows += [{"id": c, "collection": "labels", "data": {"label": "cant_tell",
-                                                         "draw": key["draw"]}}
-             for c in key["order"] if c != first]
+    # fewer than 15 clear held-out judge-lost labels: the 0.5 line is not applied
+    assert res["decision"] == "not_applied_too_few_clear" and res["decision_final"] is False
+    assert res["n_clear_heldout_lost"] == 1
+    # 15 clear (8 dropped, 7 not an item), 5 can't tell: bounds 0.40-0.65 span 0.5
+    assert len(held_lost) == 20
+    lab = dict.fromkeys(held_lost[:8], "dropped") | dict.fromkeys(held_lost[8:15], "not_an_item")
+    lab |= dict.fromkeys(held_lost[15:], "cant_tell")
+    rows = [{"id": c, "collection": "labels", "data": {"label": lab.get(c, "kept"),
+                                                        "draw": key["draw"]}}
+            for c in key["order"]]
     res = scorer.score(key, scorer.load_labels(rows, key["draw"]))
-    assert res["complete"] and not res["decision_final"]
+    assert res["complete"] and res["n_clear_heldout_lost"] == 15
+    assert res["heldout"]["precision_lost"]["n"] == 15  # can't tell out of the denominator
+    assert res["cant_tell_by_class"]["lost/heldout"] == 5
+    assert res["decision"].startswith("PROVISIONAL") and not res["decision_final"]
+    # the same 5 resolved as dropped: final, reported
+    lab |= dict.fromkeys(held_lost[15:], "dropped")
+    rows = [{"id": c, "collection": "labels", "data": {"label": lab.get(c, "kept"),
+                                                        "draw": key["draw"]}}
+            for c in key["order"]]
+    res = scorer.score(key, scorer.load_labels(rows, key["draw"]))
+    assert res["decision_final"] and "is reported" in res["decision"]
 
 
 def test_scorer_reports_development_cards_separately():
