@@ -202,7 +202,7 @@ HARNESS_NAME, HARNESS_EMAIL = "DSW Harness", "harness@example.com"
 
 INTERACT_STAGE = "SPRINT-S3-Q2"  # compaction.budget stage and emx.spend exp (main session, 24 Oct)
 INTERACT_TAG = "s3q2-interact-pilot"  # in every reservation and ledger note of the pilot
-INTERACT_CAP_USD = 120.0  # the pilot cap, enforced on the tag inside the stage
+INTERACT_CAP_USD = 150.0  # the pilot cap, enforced on the tag inside the stage (raised from $120 by Jacob, 24 Oct, for the agy and Codex-80k batches)
 INTERACT_FALLBACK_TAG = "s3q2-interact-fallback"  # OpenRouter Haiku when Max is down
 INTERACT_FALLBACK_CAP_USD = 12.0  # sub-cap on fallback spend (plan v0.4.1, astra r2)
 INTERACT_MAX_TIMEOUT_S = 600  # a Max stage with no answer in 10 min switches to the fallback

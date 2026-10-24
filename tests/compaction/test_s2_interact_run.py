@@ -55,7 +55,8 @@ def _rows(led: Path) -> list[dict]:
 
 def test_pilot_spend_tags_and_caps(books):
     led, cf = books
-    sp = IR.PilotSpend(ledger=led, caps_file=cf)
+    sp = IR.PilotSpend(ledger=led, caps_file=cf,
+                       caps={C.INTERACT_TAG: 120.0})  # the cap logic at a fixed $120
     r1 = sp.reserve(50.0, "s2 base:1")
     sp.settle(r1, 40.0, resource="deepseek:x", units=10, note="s2 base:1")
     r2 = sp.reserve(70.0, "s2 base:2")  # 40 settled + 70 open = 110 <= 120
@@ -557,7 +558,8 @@ def test_expired_reservation_keeps_counting_against_the_tag(books):
     lost); the registry still counts it, at the charged amount."""
     from compaction import budget
     led, cf = books
-    sp = IR.PilotSpend(ledger=led, caps_file=cf)
+    sp = IR.PilotSpend(ledger=led, caps_file=cf,
+                       caps={C.INTERACT_TAG: 120.0})  # the cap logic at a fixed $120
     rid = sp.reserve(30.0, "s2 base:1")
     assert IR.tag_totals(C.INTERACT_TAG, ledger=led, caps_file=cf) == (0.0, 30.0)
     state = budget._paths(led)[2]  # its process "dies": a pid that isn't running
