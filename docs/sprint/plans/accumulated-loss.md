@@ -105,6 +105,8 @@ About $70–110 (astra r1) inside Experiment 3's stage (SPRINT-S3-Q2, $270; the 
   - **Rejected boundaries at k>1** (boa b2, vitest b2, helm a2 b3, kombu a2 b2) are rescreened from live only. testem b1 (Codex-style, k=1) is unaffected; it is kept as a pre-B/C case, reported apart.
   - **Constraint decay (D):** the decay table uses same-method chains only: live pi now, native Claude Code, Codex and Antigravity later. The replay sources appear at k=1 only, as a comparison of summarizers on identical history. Replay rows at k>1 are neither graded nor shown.
 
+- **24 Oct, main session: the simulator gate raised from $2.50 to $5.00 per pi base run** (`INTERACT_SIM_GATE_USD`), so runs reach later compactions; fastapi had stopped at the old gate with both compactions exhausted. The pilot tag stays capped at $120, and the main session is told before its total passes $100.
+
 ## Review history
 
 - **astra r1** (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Its verdict: for Q2, probably the strongest next step after fixes; for Q1, Experiment 1 stays stronger. BLOCKING findings and how v0.2 handles them:

@@ -924,6 +924,21 @@ def test_advance_screens_saved_boundaries_in_order_then_resumes(tmp_path):
     assert calls == []  # screened boundaries aren't screened again
 
 
+def test_a_raised_sim_gate_lets_a_gated_run_go_on(tmp_path, monkeypatch):
+    """24 Oct (main session): sim_gate ends a run only while its simulator spend is at or over
+    the current gate."""
+    rd, task = _two_boundaries(tmp_path)
+    for k in (1, 2):
+        IR._transition(rd / f"b{k}", "exhausted", "no_candidate")
+    (rd / "result.json").write_text(json.dumps({"end": "sim_gate", "sim_cost_usd": 3.0}))
+    monkeypatch.setattr(IR.C, "INTERACT_SIM_GATE_USD", 2.5)
+    out = IR.advance(rd, task, trigger=lambda b, f: False, resume=lambda: {"end": "submitted"})
+    assert out["ended"] == "sim_gate" and out["resumed"] is None
+    monkeypatch.setattr(IR.C, "INTERACT_SIM_GATE_USD", 5.0)
+    out = IR.advance(rd, task, trigger=lambda b, f: False, resume=lambda: {"end": "submitted"})
+    assert out.get("ended") is None and out["resumed"] == {"end": "submitted"}
+
+
 def test_advance_pauses_at_a_carded_boundary_and_seals_what_lies_past_it(tmp_path):
     rd, task = _two_boundaries(tmp_path)
 

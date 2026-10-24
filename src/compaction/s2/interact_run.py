@@ -691,6 +691,7 @@ def run_base(cfg: BaseConfig, *, agent_model: ChatModel, sim_model: ChatModel, i
             _dump(rd / "sim" / "ask_log.json", env.sim.ask_log)
             _dump(rd / "sim" / "rounds.json", env.sim.rounds)
             res["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
+            res["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)  # tolerant_exec
             if asks is not None:
                 _dump(rd / "sim" / "replies.json", asks.rows)
             if watch is not None and watch.oom_killed(env.sb.name):
@@ -1110,6 +1111,7 @@ def resume_base(run_dir: Path, task: InteractTask, *, agent_model: ChatModel,
             _dump(rd / "sim" / f"ask_log_r{n}.json", env.sim.ask_log)
             _dump(rd / "sim" / f"rounds_r{n}.json", env.sim.rounds)
             res["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
+            res["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)  # tolerant_exec
             if asks is not None:
                 _dump(rd / "sim" / f"replies_r{n}.json", asks.rows[n_before:])
             if watch is not None and watch.oom_killed(env.sb.name):
@@ -1148,9 +1150,12 @@ def advance(run_dir: Path, task: InteractTask, *, trigger: Callable[[Path, dict]
             out.update(fork_at=k, state=st)
             return out
     last = [_read(p) for p in _result_files(rd)]
-    if last and last[-1].get("end") in ("submitted", "run_cap", "max_calls", "time_cap",
-                                         "sim_gate", "window"):
-        out["ended"] = last[-1]["end"]
+    end = last[-1].get("end") if last else None
+    # sim_gate ends a run only while its simulator spend is still at the current gate: a raised
+    # gate (24 Oct, $2.50 -> $5.00) lets it go on
+    gated = end == "sim_gate" and _prior_totals(rd)["sim_cost_usd"] >= C.INTERACT_SIM_GATE_USD
+    if end in ("submitted", "run_cap", "max_calls", "time_cap", "window") or gated:
+        out["ended"] = end
         return out
     out["resumed"] = resume()
     # the boundaries the resume made: a screen that failed or carded inline is this run's state
@@ -1494,6 +1499,7 @@ def run_arm(run_dir: Path, k: int, cand_id: str, kind: str, rep: int, task: Inte
             _dump(ad / "commands.json", _commands(loop, env))
             _dump(ad / "continuation.json", continuation(ad, ctx, loop))
         if env is not None:
+            out["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)
             env.close()
         out["seconds"] = round(time.monotonic() - t0, 1)
         _dump(ad / "readout.json", out)
@@ -1599,6 +1605,7 @@ def run_secondary(run_dir: Path, k: int, cand_id: str, kind: str, rep: int,
             out.update(end=sr.end, error=sr.error, recompactions=list(sr.boundary_calls))
         out["sim_calls"] = env.sim.state.ask_user_call_count - sim0
         out["sim_cost_usd"] = round(sum(r.get("cost_usd") or 0.0 for r in env.sim.rounds), 6)
+        out["client_timeouts"] = env.exec_stats.get("client_timeouts", 0)
         _dump(sd / "sim_state_end.json", env.sim.export())
         patch = env.task_patch().encode()
         (sd / "task.patch").write_bytes(patch)

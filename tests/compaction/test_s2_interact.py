@@ -439,3 +439,157 @@ def test_fingerprint_v3_is_lossless():
         c3 = I.fingerprint(run, 3)
         assert sb.exec("cd /app && echo more >> x", timeout_s=60).rc == 0
         assert I.fingerprint(run, 3) != c3
+
+
+def test_a_docker_client_timeout_never_removes_the_task_container(monkeypatch):
+    """main session, 24 Oct (native-codex): Sandbox.exec's guard removed whole task containers on
+    a client timeout under ssh stalls. The agent's and the simulator's commands now kill the
+    client's process group, settle the exec in the container (cancel marker, then kill every
+    process holding its id) and only then report rc 124 with the container kept; an unconfirmed
+    settle fails closed (astra tolerant-exec r1). Fingerprints keep the guarded runner."""
+    import subprocess
+    from types import SimpleNamespace
+
+    from compaction.deepswe import sandbox as SB
+    from compaction.s2 import interact as I2
+
+    closed, execs, killed, popens = [], [], [], []
+
+    def sb_exec(cmd, timeout_s=600, workdir="/app"):
+        execs.append(cmd)
+        return SB.ExecResult(0, "SETTLED\n", "", 0.1)
+    sb = SimpleNamespace(name="s2-interact-x", host=None, log=[], exec=sb_exec,
+                         close=lambda: closed.append(1))
+
+    class Stalled:
+        def __init__(self, argv, **kw):
+            popens.append((argv, kw))
+            self.pid, self.returncode, self.n = 4242, None, 0
+
+        def communicate(self, timeout=None):
+            self.n += 1
+            if self.n == 1:
+                raise subprocess.TimeoutExpired("docker", timeout)
+            return b"", b""
+    monkeypatch.setattr(I2.subprocess, "Popen", Stalled)
+    monkeypatch.setattr(I2.os if hasattr(I2, "os") else __import__("os"), "killpg",
+                        lambda pid, sig: killed.append(pid))
+    stats: dict = {}
+    r = I2.tolerant_exec(sb, "sleep 999", timeout_s=60, stats=stats)
+    assert (r.rc, r.timed_out, closed) == (124, True, [])
+    assert stats == {"client_timeouts": 1, "settles": 1} and sb.log[-1]["settled"]
+    argv, kw = popens[0]
+    exec_id = kw["env"][I2.EXEC_ID_VAR]
+    assert argv[:4] == ["docker", "exec", "-e", I2.EXEC_ID_VAR] and exec_id not in argv[:4]
+    assert kw["start_new_session"] and killed == [4242]  # the whole client group
+    assert f"{I2.CANCEL_DIR}/{exec_id}" in argv[-1]  # the command checks its cancel marker
+    assert "setsid bash -lc" in argv[-1] and f"{I2.EXEC_DIR}/{exec_id}.pid" in argv[-1]
+    assert argv[-3:-1] == ["bash", "-c"]  # one login init: the command's own (r3 #2)
+    assert f"{I2.EXEC_ID_VAR}={exec_id}" in execs[-1] and "SETTLED" in execs[-1]
+    assert 'kill -KILL -"$sid"' in execs[-1] and "kill -KILL --" not in execs[-1]  # dash: no --
+    run = I2.sandbox_runner(sb, stats)
+    assert run("git status", 30)[0] == 124 and stats["client_timeouts"] == 2 and closed == []
+
+    # an unconfirmed settle fails closed: survivors, a failed settle call, or a stalled one
+    for outcome in (SB.ExecResult(3, "", "left", 20.0), SB.SandboxError("client timeout")):
+        def bad(cmd, timeout_s=600, workdir="/app", outcome=outcome):
+            if isinstance(outcome, Exception):
+                raise outcome
+            return outcome
+        sb.exec = bad
+        with pytest.raises(SB.SandboxError, match="couldn't be settled"):
+            I2.tolerant_exec(sb, "sleep 999", timeout_s=60, stats=stats)
+    sb.exec = sb_exec
+
+    # the native arms' env passing: names on the argv, values only in the client's env
+    class Done:
+        def __init__(self, argv, **kw):
+            popens.append((argv, kw))
+            self.pid, self.returncode = 1, 0
+
+        def communicate(self, timeout=None):
+            return b"out", b""
+    monkeypatch.setattr(I2.subprocess, "Popen", Done)
+    n = len(sb.log)
+    I2.tolerant_exec(sb, "echo $TOK", timeout_s=5, env={"TOK": "s3cret"}, log=False)
+    argv, kw = popens[-1]
+    assert "TOK" in argv and "s3cret" not in " ".join(argv) and kw["env"]["TOK"] == "s3cret"
+    assert len(sb.log) == n
+    env = I2.InteractEnv(sb, sim=None)
+    obs = env.run_agent_command("echo hi")
+    assert obs.rc == 0 and "out" in obs.output and env.exec_stats == {}
+
+    # fingerprints go through Sandbox.exec (guarded), never the tolerant path (r1 #2)
+    monkeypatch.setattr(I2, "tolerant_exec", lambda *a, **k: pytest.fail("tolerant fingerprint"))
+    fp_calls = []
+
+    def fp_exec(cmd, timeout_s=600, workdir="/app"):
+        fp_calls.append(cmd)
+        return SB.ExecResult(0, "abc  -\n", "", 0.1)
+    sb.exec = fp_exec
+    I2.InteractEnv(sb, sim=None).fingerprint()
+    assert fp_calls and I2.FINGERPRINT_CMDS[I2.FINGERPRINT_VERSION] in fp_calls[0]
+
+
+def test_settle_fails_closed_on_an_unreadable_environ(tmp_path):
+    """astra tolerant-exec r2 #1: a process whose environment can't be read can't be ruled out,
+    so the settle step exits 6 (fail closed) rather than reporting SETTLED."""
+    import os
+    import subprocess
+
+    from compaction.s2 import interact as I2
+
+    if os.geteuid() == 0:
+        pytest.skip("root reads every file")
+    proc = tmp_path / "proc"
+    for pid, readable in (("101", True), ("202", False)):
+        d = proc / pid
+        d.mkdir(parents=True)
+        (d / "stat").write_text(f"{pid} (x) S 1 {pid} {pid} 0 -1 0\n")
+        (d / "environ").write_bytes(b"PATH=/bin\0")
+        if not readable:
+            (d / "environ").chmod(0)
+    script = I2.settle_script("t" + os.urandom(4).hex(), seconds=1, proc=str(proc))
+    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=30,
+                       check=False)
+    assert r.returncode == 6 and "unreadable environ: 202" in r.stderr  # grep exit 2 (r3 #1)
+    (proc / "202" / "environ").chmod(0o644)
+    r = subprocess.run(["bash", "-c", script], capture_output=True, text=True, timeout=30,
+                       check=False)
+    assert r.returncode == 0 and "SETTLED" in r.stdout
+
+
+@pytest.mark.skipif(not _image_present(), reason=f"needs docker and {IMAGE}")
+def test_a_client_timeout_settles_a_forking_child_and_keeps_timeouts_at_124():
+    """astra tolerant-exec r2 (live, in Docker): an in-container timeout kills the command's
+    children and still reports 124; on a docker-client timeout the settle step kills a child that
+    outlived its parent, and one that left the session (caught by its tag), before rc 124."""
+    from compaction.deepswe import sandbox as SB
+    from compaction.deepswe.sandbox import Invocation
+    from compaction.s2 import interact as I2
+
+    scan = ("for d in /proc/[0-9]*; do [ ${d##*/} = $$ ] && continue; "
+            "c=$(tr '\\0' ' ' < $d/cmdline 2>/dev/null); case \"$c\" in *for\\ d\\ in*) ;; "
+            "*sleep\\ 6[0-9]*|*sleep\\ 4[0-9]*) echo LEFT $c;; esac; done; "
+            "ls /tmp/late1 /tmp/late2 2>/dev/null; echo done")
+    with Invocation(purpose="s2-interact") as inv:
+        sb = inv.start(IMAGE, cpus=1, memory_mb=1024, lifetime_s=600)
+        r = I2.tolerant_exec(sb, "(sleep 41; echo leak > /tmp/late1) & sleep 42", timeout_s=3,
+                             workdir="/")
+        assert r.rc == 124
+        assert sb.exec(scan, timeout_s=30, workdir="/").stdout.strip() == "done"
+        orig, grace = sb.exec, SB.CLIENT_GRACE_S
+
+        def settle_with_grace(*a, **k):
+            SB.CLIENT_GRACE_S = grace
+            return orig(*a, **k)
+        for cmd in ("(sh -c 'sleep 61; echo late > /tmp/late2' &) ; sleep 33",
+                    "setsid sh -c 'sleep 62; echo late > /tmp/late2' & sleep 34"):
+            sb.exec, SB.CLIENT_GRACE_S = settle_with_grace, -25
+            stats: dict = {}
+            try:
+                r = I2.tolerant_exec(sb, cmd, timeout_s=30, workdir="/", stats=stats)
+            finally:
+                sb.exec, SB.CLIENT_GRACE_S = orig, grace
+            assert r.rc == 124 and stats == {"client_timeouts": 1, "settles": 1}
+            assert sb.exec(scan, timeout_s=30, workdir="/").stdout.strip() == "done"

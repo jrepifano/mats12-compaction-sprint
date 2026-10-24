@@ -225,8 +225,9 @@ INTERACT_PLAN_MAX_CALLS = 100  # 01_plan is a short conversation
 INTERACT_PRIMARY_CALLS = 60
 INTERACT_SECONDARY_CALLS = 300  # counted from the fork
 INTERACT_SECONDARY_CAP_USD = 6.0
-INTERACT_SIM_GATE_USD = 2.5  # a base run whose simulator spend passes this stops ("sim_gate") for
-# re-projection: the plan's first-run gate, applied to each of the 6 concurrent runs
+INTERACT_SIM_GATE_USD = 5.0  # a base run whose simulator spend passes this stops ("sim_gate") for
+# re-projection: the plan's first-run gate ($2.50), raised to $5.00 for every pi base run so runs
+# reach later compactions (main session, 24 Oct; plan "Deviations")
 INTERACT_SECONDARY_CASE_USD = 4 * INTERACT_SECONDARY_CAP_USD  # headroom one secondary case needs
 INTERACT_SOURCES = ("live", "cc_prompt", "codex_local", "opencode", "antigravity")  # order
 SIM_ROUTE = Route(

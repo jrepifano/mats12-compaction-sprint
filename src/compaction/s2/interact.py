@@ -25,6 +25,7 @@ import copy
 import hashlib
 import json
 import shlex
+import subprocess
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -116,8 +117,186 @@ def limit_text(text: str, max_chars: int) -> str:
 Runner = Callable[[str, int], tuple[int, str, str]]  # (shell command, timeout) -> rc, out, err
 
 
-def sandbox_runner(sb) -> Runner:
-    """Run harness-side in a `compaction.deepswe.sandbox.Sandbox` (trap shims off)."""
+CLIENT_TIMEOUT_RC = 124  # what an in-container `timeout` reports
+EXEC_ID_VAR = "EMX_EXEC_ID"
+CANCEL_DIR = "/tmp/.emx-cancel"
+EXEC_DIR = "/tmp/.emx-exec"  # <id>.pid: the session (= process group) id of a tolerant exec
+SETTLE_SECONDS = 20
+KILL_WAIT_S = 5  # bound on stopping and reaping the killed docker client's process group
+
+# The command's own session (astra tolerant-exec r2, the main session's design): the command
+# runs as `setsid bash -lc <cmd> &`; as a background child it isn't a group leader, so setsid
+# doesn't fork and its pid becomes the id of a new session and process group that every
+# descendant joins. That pid goes to the pid file. The outer `bash -lc` (the in-container
+# `timeout`'s child) waits; on the timeout's TERM its trap kills the whole group atomically and
+# exits 124, as before (setsid takes the command out of `timeout`'s own group, which `timeout`
+# would otherwise kill; dash's kill takes no "--", so the form is `kill -KILL -<pgid>`, checked
+# live 24 Oct). Limitation: a descendant that calls setsid/setpgid itself leaves the group; the
+# EMX_EXEC_ID tag scan is the backstop for those.
+
+
+def _cancel_marker(exec_id: str) -> str:
+    return f"{CANCEL_DIR}/{exec_id}"
+
+
+def _pid_file(exec_id: str) -> str:
+    return f"{EXEC_DIR}/{exec_id}.pid"
+
+
+def session_command(exec_id: str, cmd: str) -> str:
+    """What `bash -lc` runs for a tolerant exec (pure; tested): the cancel-marker check first,
+    then the command in its own session, its id in the pid file."""
+    pidf = shlex.quote(_pid_file(exec_id))
+    return (f"[ -e {shlex.quote(_cancel_marker(exec_id))} ] && exit {CLIENT_TIMEOUT_RC}\n"
+            f"mkdir -p {EXEC_DIR} || exit 125\n"
+            f"trap '[ -n \"$j\" ] && kill -KILL -\"$j\" 2>/dev/null; exit {CLIENT_TIMEOUT_RC}' "
+            "TERM INT HUP\n"
+            f"setsid bash -lc {shlex.quote(cmd)} &\n"
+            "j=$!\n"
+            f"echo \"$j\" > {pidf} || {{ kill -KILL -\"$j\" 2>/dev/null; kill -KILL \"$j\"; "
+            "exit 125; }\n"
+            "wait \"$j\"\n")
+
+
+def settle_script(exec_id: str, seconds: int = SETTLE_SECONDS, proc: str = "/proc") -> str:
+    """The in-container settle step for a timed-out tolerant exec (pure; tested). The cancel
+    marker first, so an exec the daemon starts late exits at its first line. Then, for up to
+    `seconds`: `kill -KILL -<sid>` on the exec's group (atomic in the kernel: a forking child
+    can't slip past), and KILL to every process whose environment holds the exec's tag; until
+    two scans 1 s apart find no process in that session (`stat` field 6, world-readable) and
+    none carrying the tag. Prints SETTLED and exits 0 then. Fails closed: exit 6 when grep can't
+    read the environ of a process still in /proc (one we can't rule out), 5 when the group kill
+    is refused, 3 when anything outlives the window. Residual risk (accepted, astra
+    tolerant-exec r3): a descendant that left the group and dropped the tag, or that forks and
+    exits between scans, can escape; the second scan narrows that, and quiesce stops strays at
+    every boundary. Zombies are skipped: they write nothing, and the container's PID 1 (`timeout ...
+    sleep infinity`) never reaps orphans. No pid file and no tagged process means the exec never
+    got past its marker check (or never started); the marker keeps it from starting later."""
+    mark, pidf = shlex.quote(_cancel_marker(exec_id)), shlex.quote(_pid_file(exec_id))
+    tag = shlex.quote(f"{EXEC_ID_VAR}={exec_id}")
+    return (
+        f"P={shlex.quote(proc)}; clean=\"\"\n"
+        f"mkdir -p {CANCEL_DIR} && : > {mark} || exit 4\n"
+        f"for _ in $(seq 1 {2 * int(seconds)}); do\n"
+        f"  sid=$(cat {pidf} 2>/dev/null)\n"
+        "  if [ -n \"$sid\" ]; then\n"
+        "    err=$(kill -KILL -\"$sid\" 2>&1)\n"
+        "    case \"$err\" in *ermitted*) echo \"group kill refused: $err\" >&2; exit 5;; esac\n"
+        "  fi\n"
+        "  left=\"\"\n"
+        "  for d in \"$P\"/[0-9]*; do\n"
+        "    [ -e \"$d/environ\" ] || continue\n"
+        "    pid=${d##*/}\n"
+        "    [ \"$pid\" = \"$$\" ] && continue\n"
+        "    st=$(cat \"$d/stat\" 2>/dev/null) || continue\n"
+        "    rest=${st##*) }; set -- $rest\n"
+        "    [ \"$1\" = Z ] && continue  # a zombie writes nothing (PID 1 here reaps no orphans)\n"
+        f"    grep -aqF -- {tag} \"$d/environ\" 2>/dev/null; g=$?\n"
+        "    if [ \"$g\" -gt 1 ]; then [ -e \"$d\" ] || continue; "
+        "echo \"unreadable environ: $pid\" >&2; exit 6; fi\n"
+        "    [ \"$g\" = 0 ] && { left=\"$left $pid\"; continue; }\n"
+        "    [ -n \"$sid\" ] && [ \"$4\" = \"$sid\" ] && left=\"$left $pid\"\n"
+        "  done\n"
+        "  if [ -z \"$left\" ]; then\n"
+        "    [ -n \"$clean\" ] && { echo SETTLED; exit 0; }\n"
+        "    clean=1; sleep 1; continue\n"
+        "  fi\n"
+        "  clean=\"\"\n"
+        "  kill -KILL $left 2>/dev/null\n"
+        "  sleep 0.5\n"
+        "done\n"
+        "echo \"survivors:$left\" >&2\n"
+        "exit 3\n")
+
+
+def tolerant_exec(sb, cmd: str, *, timeout_s: int, workdir: str = WORKSPACE,
+                  stats: dict | None = None, env: dict[str, str] | None = None,
+                  log: bool = True):
+    """`Sandbox.exec` without its remove-the-container guard, for commands a run can survive
+    losing: the agent's own bash and the simulator's repo commands. `Sandbox.exec` removes the
+    whole container on a docker-client timeout; under host load (rig's ssh stalls) that
+    destroyed three native Codex task containers mid-run (24 Oct, rc 137, no OOM).
+
+    Every call carries a unique id (EMX_EXEC_ID, by name on the argv, the value only in the
+    client's environment), checks its cancel marker first, and runs in its own session
+    (`session_command`). The in-container `timeout -k 5` stays the limit; the docker client runs
+    in its own process group. On a client timeout the whole client group is killed and reaped
+    (or the call fails closed), then the guarded settle step (`settle_script`, through
+    `Sandbox.exec`) kills the exec's session and every tagged process until none is left: only
+    then does the call report rc 124 ("command timed out"), as an in-container timeout would,
+    with the container kept. Anything unconfirmed fails closed: SandboxError, an infrastructure
+    failure that ends the run (astra tolerant-exec r1-r2). `stats` counts "client_timeouts"
+    and "settles". `env` passes more variables the same way (as `native.common.exec_env`);
+    `log=False` keeps a command that may expand a secret out of `sb.log`."""
+    import os
+    import signal
+    import uuid
+
+    from compaction.deepswe import sandbox as SB
+    exec_id = uuid.uuid4().hex
+    names = {EXEC_ID_VAR: exec_id, **(env or {})}
+    args = SB.exec_args(sb.name, session_command(exec_id, cmd), timeout_s, workdir)
+    # the wrapper runs in a plain `bash -c`; the command's own `setsid bash -lc` is the one
+    # login-shell init, as with `Sandbox.exec` (astra tolerant-exec r3 #2)
+    i = args.index("-lc")
+    args = [args[0], *[a for k in names for a in ("-e", k)], *args[1:i], "-c", *args[i + 1:]]
+    argv = SB.docker_argv(args, sb.host)
+    t0 = time.monotonic()
+    p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         start_new_session=True, env={**os.environ, **names})
+    try:
+        out, err = p.communicate(timeout=timeout_s + SB.CLIENT_GRACE_S)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass  # the group is already gone
+        except OSError as e:
+            raise SB.SandboxError(f"client timeout on {sb.name}: the docker client's group "
+                                  f"couldn't be killed ({e})") from e
+        try:
+            p.communicate(timeout=KILL_WAIT_S)
+        except subprocess.TimeoutExpired as e:
+            raise SB.SandboxError(f"client timeout on {sb.name}: the docker client wasn't "
+                                  f"reaped within {KILL_WAIT_S}s") from e
+        if stats is not None:
+            stats["client_timeouts"] = stats.get("client_timeouts", 0) + 1
+        try:
+            st = sb.exec(settle_script(exec_id), timeout_s=SETTLE_SECONDS + 10, workdir="/")
+        except Exception as e:  # fail closed, whatever went wrong
+            raise SB.SandboxError(f"client timeout on {sb.name}: the exec couldn't be settled "
+                                  f"({type(e).__name__}: {e})") from e
+        if st.rc != 0 or "SETTLED" not in st.stdout:
+            raise SB.SandboxError(f"client timeout on {sb.name}: the exec couldn't be settled "
+                                  f"(rc={st.rc}: {st.stderr[-300:]})")
+        if stats is not None:
+            stats["settles"] = stats.get("settles", 0) + 1
+        secs = time.monotonic() - t0
+        if log:
+            sb.log.append({"op": "exec", "cmd": cmd[:200], "rc": CLIENT_TIMEOUT_RC,
+                           "client_timeout": True, "settled": True, "seconds": secs})
+        return SB.ExecResult(CLIENT_TIMEOUT_RC, "", f"command timed out after {timeout_s}s "
+                             "(docker client)", secs)
+    r = SB.ExecResult(p.returncode, out.decode(errors="replace"), err.decode(errors="replace"),
+                      time.monotonic() - t0)
+    if log:
+        sb.log.append({"op": "exec", "cmd": cmd[:200], "rc": r.rc, "seconds": r.seconds})
+    return r
+
+
+def sandbox_runner(sb, stats: dict | None = None) -> Runner:
+    """The simulator's repo commands in a `compaction.deepswe.sandbox.Sandbox` (trap shims off);
+    a docker-client timeout reports rc 124 once the exec is settled (`tolerant_exec`)."""
+    def run(cmd: str, timeout_s: int) -> tuple[int, str, str]:
+        r = tolerant_exec(sb, NOSHIM + cmd, timeout_s=timeout_s, workdir=WORKSPACE,
+                          stats=stats)
+        return r.rc, r.stdout, r.stderr
+    return run
+
+
+def guarded_runner(sb) -> Runner:
+    """Harness-side commands that must fail closed (the workspace fingerprint): `Sandbox.exec`,
+    whose client timeout removes the container and raises (astra tolerant-exec r1 #2)."""
     def run(cmd: str, timeout_s: int) -> tuple[int, str, str]:
         r = sb.exec(NOSHIM + cmd, timeout_s=timeout_s, workdir=WORKSPACE)
         return r.rc, r.stdout, r.stderr
@@ -432,7 +611,7 @@ def capture(run_key: str, stage: str, sb, inv, agent_messages: list[dict], sim: 
             stem: str) -> Boundary:
     """Quiesce check + docker commit (Sandbox.snapshot refuses a non-quiescent container), and
     the agent and simulator state as JSON."""
-    fp = fingerprint(sandbox_runner(sb))
+    fp = fingerprint(guarded_runner(sb))
     tag = inv.new_tag(stem)
     secs = sb.snapshot(tag)
     return Boundary(run_key, stage, tag, copy.deepcopy(agent_messages), sim.export(),
@@ -484,6 +663,7 @@ class InteractEnv:
     trees: list[dict] = field(default_factory=list)  # [{"label", "tree"}], on change only
     log: list[dict] = field(default_factory=list)
     uname: dict = field(default_factory=dict)
+    exec_stats: dict = field(default_factory=dict)  # {"client_timeouts": n}, agent + simulator
 
     @classmethod
     def start(cls, inv, image: str, sim_factory: Callable[[Runner], UserSim], *, cpus: float = 2,
@@ -494,7 +674,8 @@ class InteractEnv:
         sb = inv.start(image, platform=platform, cpus=cpus, memory_mb=memory_mb,
                        network="none", lifetime_s=CONTAINER_LIFETIME_S)
         try:
-            env = cls(sb, sim_factory(sandbox_runner(sb)))
+            stats: dict = {}
+            env = cls(sb, sim_factory(sandbox_runner(sb, stats)), exec_stats=stats)
             if setup:
                 r = sb.exec(NOSHIM + SETUP_CMD, timeout_s=120)
                 if r.rc != 0:
@@ -513,7 +694,8 @@ class InteractEnv:
             self.deferred.append({"tool": "bash", "cmd": cmd})
             return Observation(0, PENDING_DEFERRED, 0.0, False, False)
         t0 = time.monotonic()
-        r = self.sb.exec("exec 2>&1\n" + cmd, timeout_s=self.cmd_timeout_s, workdir=WORKSPACE)
+        r = tolerant_exec(self.sb, "exec 2>&1\n" + cmd, timeout_s=self.cmd_timeout_s,
+                          workdir=WORKSPACE, stats=self.exec_stats)
         out = r.stdout + r.stderr
         return Observation(r.rc, out, time.monotonic() - t0, r.timed_out, False)
 
@@ -581,7 +763,7 @@ class InteractEnv:
         return {"tag": tag, "stopped_processes": stopped, "snapshot_s": secs}
 
     def fingerprint(self, version: int = FINGERPRINT_VERSION) -> str:
-        return fingerprint(sandbox_runner(self.sb), version)
+        return fingerprint(guarded_runner(self.sb), version)
 
     def read_text(self, path: str) -> str | None:
         r = self.sb.exec(NOSHIM + f"cat {shlex.quote(path)}", timeout_s=60, workdir="/")
