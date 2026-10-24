@@ -1,0 +1,484 @@
+{
+ "tiers": [
+  {
+   "run_key": "pilot-01-scriggo-method-declarations-deepseek-agents_md-a1",
+   "cohort_key": "pilot-01-scriggo-method-declarations-deepseek-agents_md",
+   "model": "deepseek",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-01-scriggo-method-declarations-glm-readme-a1",
+   "cohort_key": "pilot-01-scriggo-method-declarations-glm-readme",
+   "model": "glm",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": true,
+   "labels": {
+    "R1": "LOST",
+    "R3": "LOST",
+    "R6": "LOST",
+    "C": "LOST"
+   }
+  },
+  {
+   "run_key": "pilot-01-scriggo-method-declarations-luna-chat-a1",
+   "cohort_key": "pilot-01-scriggo-method-declarations-luna-chat",
+   "model": "luna",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-01-scriggo-method-declarations-haiku-agents_md-a2",
+   "cohort_key": "pilot-01-scriggo-method-declarations-haiku-agents_md",
+   "model": "haiku",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-02-wasmi-trap-coredumps-glm-agents_md-a1",
+   "cohort_key": "pilot-02-wasmi-trap-coredumps-glm-agents_md",
+   "model": "glm",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-02-wasmi-trap-coredumps-luna-readme-a1",
+   "cohort_key": "pilot-02-wasmi-trap-coredumps-luna-readme",
+   "model": "luna",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": true,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "LOST"
+   }
+  },
+  {
+   "run_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme-a2",
+   "cohort_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-deepseek-readme",
+   "model": "deepseek",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": true,
+   "labels": {
+    "R1": "LOST",
+    "R3": "LOST",
+    "R6": "LOST",
+    "C": "LOST"
+   }
+  },
+  {
+   "run_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme-a1",
+   "cohort_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-haiku-readme",
+   "model": "haiku",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-02-wasmi-trap-coredumps-deepseek-chat-a2",
+   "cohort_key": "pilot-02-wasmi-trap-coredumps-deepseek-chat",
+   "model": "deepseek",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-02-wasmi-trap-coredumps-haiku-chat-a2",
+   "cohort_key": "pilot-02-wasmi-trap-coredumps-haiku-chat",
+   "model": "haiku",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md-a1",
+   "cohort_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-luna-agents_md",
+   "model": "luna",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md-a1",
+   "cohort_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-deepseek-agents_md",
+   "model": "deepseek",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat-a1",
+   "cohort_key": "pilot-03-dynamodb-toolbox-lazy-recursive-schemas-glm-chat",
+   "model": "glm",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme-a1",
+   "cohort_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-glm-readme",
+   "model": "glm",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": true,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "LOST"
+   }
+  },
+  {
+   "run_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat-a1",
+   "cohort_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-luna-chat",
+   "model": "luna",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md-a1",
+   "cohort_key": "pilot-04-dynamodb-toolbox-conditional-attribute-requirements-haiku-agents_md",
+   "model": "haiku",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1",
+   "cohort_key": "pilot-05-koota-pair-relation-tracking-glm-agents_md",
+   "model": "glm",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-05-koota-pair-relation-tracking-deepseek-chat-a1",
+   "cohort_key": "pilot-05-koota-pair-relation-tracking-deepseek-chat",
+   "model": "deepseek",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-05-koota-pair-relation-tracking-haiku-chat-a1",
+   "cohort_key": "pilot-05-koota-pair-relation-tracking-haiku-chat",
+   "model": "haiku",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-06-effect-sse-httpapi-streaming-deepseek-readme-a1",
+   "cohort_key": "pilot-06-effect-sse-httpapi-streaming-deepseek-readme",
+   "model": "deepseek",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-05-koota-pair-relation-tracking-luna-readme-a1",
+   "cohort_key": "pilot-05-koota-pair-relation-tracking-luna-readme",
+   "model": "luna",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": true,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "LOST"
+   }
+  },
+  {
+   "run_key": "pilot-06-effect-sse-httpapi-streaming-haiku-readme-a1",
+   "cohort_key": "pilot-06-effect-sse-httpapi-streaming-haiku-readme",
+   "model": "haiku",
+   "channel": "readme",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-06-effect-sse-httpapi-streaming-glm-chat-a1",
+   "cohort_key": "pilot-06-effect-sse-httpapi-streaming-glm-chat",
+   "model": "glm",
+   "channel": "chat",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  },
+  {
+   "run_key": "pilot-06-effect-sse-httpapi-streaming-luna-agents_md-a1",
+   "cohort_key": "pilot-06-effect-sse-httpapi-streaming-luna-agents_md",
+   "model": "luna",
+   "channel": "agents_md",
+   "kind": "pilot",
+   "host": "laptop",
+   "tier": "assessable",
+   "assessable": true,
+   "has_loss": false,
+   "labels": {
+    "R1": "KEPT",
+    "R3": "KEPT",
+    "R6": "KEPT",
+    "C": "KEPT"
+   }
+  }
+ ],
+ "coverage": {
+  "deepseek": {
+   "assessable": 6,
+   "short_cells": [],
+   "cells": {
+    "agents_md": 2,
+    "chat": 2,
+    "readme": 2
+   },
+   "pending_assessment": 0,
+   "covered": true
+  },
+  "glm": {
+   "assessable": 6,
+   "short_cells": [],
+   "cells": {
+    "agents_md": 2,
+    "chat": 2,
+    "readme": 2
+   },
+   "pending_assessment": 0,
+   "covered": true
+  },
+  "luna": {
+   "assessable": 6,
+   "short_cells": [],
+   "cells": {
+    "agents_md": 2,
+    "chat": 2,
+    "readme": 2
+   },
+   "pending_assessment": 0,
+   "covered": true
+  },
+  "haiku": {
+   "assessable": 6,
+   "short_cells": [],
+   "cells": {
+    "agents_md": 2,
+    "chat": 2,
+    "readme": 2
+   },
+   "pending_assessment": 0,
+   "covered": true
+  }
+ },
+ "q2_yield": {
+  "chat": {
+   "n_assessable": 8,
+   "n_lost": 0,
+   "loss_rate_wilson95": [
+    0.0,
+    0.3244156195108769
+   ],
+   "n_unresolved": 0,
+   "verdict": "low_loss_yield"
+  },
+  "readme": {
+   "n_assessable": 8,
+   "n_lost": 5,
+   "loss_rate_wilson95": [
+    0.30573785458380187,
+    0.863158240538479
+   ],
+   "n_unresolved": 0,
+   "verdict": "full"
+  }
+ },
+ "agents_md_descriptive": {
+  "n_assessable": 8,
+  "n_lost": 0
+ }
+}

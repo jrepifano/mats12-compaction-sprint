@@ -1,0 +1,73 @@
+{
+ "draw": "dbd6a24277f4d8ff",
+ "n_cards": 24,
+ "pairs": {
+  "KEPT->KEPT": 19,
+  "LOST->LOST": 4,
+  "LOST->KEPT": 1
+ },
+ "by_judge_label": {
+  "KEPT": {
+   "n": 19,
+   "agree": 19
+  },
+  "LOST": {
+   "n": 5,
+   "agree": 4
+  }
+ },
+ "strata": {
+  "KEPT/R1": {
+   "N": 11,
+   "n": 5,
+   "agree": 5
+  },
+  "LOST/R3": {
+   "N": 2,
+   "n": 2,
+   "agree": 1
+  },
+  "KEPT/C": {
+   "N": 10,
+   "n": 5,
+   "agree": 5
+  },
+  "KEPT/R3": {
+   "N": 10,
+   "n": 4,
+   "agree": 4
+  },
+  "KEPT/R6": {
+   "N": 11,
+   "n": 5,
+   "agree": 5
+  },
+  "LOST/R1": {
+   "N": 1,
+   "n": 1,
+   "agree": 1
+  },
+  "LOST/C": {
+   "N": 2,
+   "n": 2,
+   "agree": 2
+  }
+ },
+ "disagreements": [
+  {
+   "card": "k5ba78deeb951",
+   "run_key": "pilot-05-koota-pair-relation-tracking-glm-agents_md-a1",
+   "rule": "R3",
+   "judge": "LOST",
+   "judge_grade": "CONTRADICTED",
+   "jacob": "KEPT"
+  }
+ ],
+ "agree": 23,
+ "inputs": {
+  "key_sha256": "ae00a60def88a897b1e810990b5317329e428daa9c6e5e0de9d78dff3a78686d",
+  "judge_sha256": "6ad863c7b9ed0446da69fb5b2424d1595d0c418f046b599174e60f15a1155328",
+  "labels_sha256": "b02e7a33090a7f897ec0e8c18414887318445fb9a2329ccdffa10d386fe3a800",
+  "gate_labels_sha256": "ed6ac25ddc293c1cbb8fa668aeba1eb8cb274813ea3790564b0b0171ebd022b2"
+ }
+}

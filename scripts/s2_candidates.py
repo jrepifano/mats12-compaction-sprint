@@ -697,24 +697,34 @@ def build(cands: list[dict], drafts: Mapping[str, dict], views: Views, *, seed: 
 
 HEADING = "S2 close-out: usable-loss candidates"
 LEDE = ("Each card is an item Experiment 1's judge called lost at a live compaction boundary. "
-        "Answer the five checks; a candidate is usable only with yes on all five, and unclear "
-        "on any one excludes it. Haiku's drafts are suggestions, checked by code for quotes "
+        "Answer the five checks. The first answer on each check is the usable side (it turns green); a "
+        "candidate is usable only with all five on that side, and \"Can't tell\" on any one "
+        "excludes it. Haiku's drafts are suggestions, checked by code for quotes "
         "and lengths only. Usable candidates are frozen before any Experiment 3 continuation.")
 
+# [name, question, hint, label for "yes" (passes: usable side), label for "no"]. Answers are
+# descriptive, never Yes/No, so no question reads as a double negative (Jacob, 2026-10-24).
+# The stored values stay yes/no/unclear, with yes = passes the check.
 CHECK_TEXT = [
-    ["Retention", ("Is the item absent from the post-compaction input, or materially misstated "
-                   "there (a scope, status or value differs from the source quote)?")],
-    ["Applicability", ("Does it still bear on remaining work at the boundary? Completed-work "
-                       "facts count when the agent could redo or contradict them.")],
-    ["Not recoverable", ("Does no file in the boundary's repo and no part of the task "
-                         "description state it? The repo check's matching lines and the "
-                         "agent's commands that touched those files are shown below.")],
-    ["Governed decision", ("Can a later decision it bears on be named from the task and the "
-                           "boundary's state, with an observable act that satisfies or "
-                           "contradicts it?")],
-    ["Frozen design", ("Are the repair text, the control, the act and the scorer fair and "
-                       "frozen as drafted (edit in the note if not), with a continuation that "
-                       "never reaches the decision counted as not performing the act?")],
+    ["Retention", "What happened to this item at compaction?",
+     ("Look in the post-compaction input box. Misstated means a scope, status or value differs "
+      "from the source quote."),
+     "Lost: missing or misstated after compaction", "Kept: still there and correct"],
+    ["Applicability", "At the boundary, does this item still matter for the work left to do?",
+     "Facts about finished work count if the agent could redo or contradict that work.",
+     "Still matters", "No longer matters"],
+    ["Not recoverable", "Could the agent find this again in the repo or the task description?",
+     ("Only a file or the task saying it counts; code that merely follows it doesn't. The repo "
+      "check's matching lines and the agent's commands on those files are below."),
+     "Can't find it: nothing states it", "Can find it: a file or the task states it"],
+    ["Governed decision", "Is there a later decision this item should steer?",
+     ("Name the decision (from the task and the boundary's state) and a visible act that would "
+      "show whether the agent followed the item."),
+     "Yes: a decision and an act can be named", "No such decision"],
+    ["Frozen design", "Is the test design below fair and ready to freeze?",
+     ("Repair text, control, act and scorer; edit the fields if needed. A continuation that "
+      "never reaches the decision counts as not performing the act."),
+     "Ready to freeze (with any edits)", "Not usable"],
 ]
 
 BODY = """
@@ -750,7 +760,7 @@ const state = {};
 let db = null;
 function esc(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 __HISTORY_JS__
-const ANS = [["yes", "Yes", "ok"], ["no", "No", "bad"], ["unclear", "Unclear", "none"]];
+const ANS = (yes, no) => [["yes", yes, "ok"], ["no", no, "bad"], ["unclear", "Can\u2019t tell", "none"]];
 function done(id) { const l = state[id] || {}; return CHECK_TEXT.every((_, k) => l[`c${k + 1}`]); }
 function warn(d, part) { return d && d[part] && !d[part].valid ? `<p class="warnline">This draft failed a code check (${esc((d.flags || []).join(", "))}).</p>` : ""; }
 function draftHtml(u, k) {
@@ -788,9 +798,9 @@ function evidence(u, k) {
   return draftHtml(u, k);
 }
 function card(u, i, n) {
-  const checks = CHECK_TEXT.map(([name, q], k) => {
-    const radios = ANS.map(([v, t, tone]) => `<label><input type="radio" name="c${k + 1}-${u.id}" value="${v}" data-id="${u.id}" data-f="c${k + 1}" data-tone="${tone}"><span>${t}</span></label>`).join("");
-    return `<div class="calls"><fieldset><legend>${k + 1}. ${esc(name)}: ${esc(q)}</legend>${radios}</fieldset>${evidence(u, k)}${k === 4 ? designHtml(u) : ""}
+  const checks = CHECK_TEXT.map(([name, q, hint, yes, no], k) => {
+    const radios = ANS(yes, no).map(([v, t, tone]) => `<label><input type="radio" name="c${k + 1}-${u.id}" value="${v}" data-id="${u.id}" data-f="c${k + 1}" data-tone="${tone}"><span>${t}</span></label>`).join("");
+    return `<div class="calls"><fieldset><legend>${k + 1}. ${esc(name)}: ${esc(q)}</legend><p class="lede">${esc(hint)}</p>${radios}</fieldset>${evidence(u, k)}${k === 4 ? designHtml(u) : ""}
       <input class="note" type="text" data-id="${u.id}" data-f="n${k + 1}" placeholder="Note on check ${k + 1} (optional)" aria-label="Note on check ${k + 1}"></div>`;
   }).join("");
   return `<article class="sheet" id="s-${u.id}">
