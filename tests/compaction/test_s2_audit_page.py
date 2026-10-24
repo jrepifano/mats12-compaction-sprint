@@ -35,7 +35,13 @@ def task_rules() -> R.TaskRules:
                     ["src/a.py"])
 
 
-def make_attempt(raw: Path, order: int, model: str, channel: str, *, arms=AP.ARM_SLUGS) -> Path:
+TOKENS = {"F": 5000, "S": 900, "SR": 950, "SI": 950}
+GRADING = "Grading: reward=1.0 f2p 3/3 GRADING_MARKER_77"
+RAW_ERROR = "Traceback (most recent call last): RAW_ERROR_MARKER_55 boom"
+
+
+def make_attempt(raw: Path, order: int, model: str, channel: str, *, arms=AP.ARM_SLUGS,
+                 tokens=TOKENS, error=None) -> Path:
     ckey = f"pilot-{order:02d}-{TASK}{order}-{model}-{channel}"
     a = raw / "pilot" / ckey / "a1"
     (a / "boundary").mkdir(parents=True)
@@ -61,17 +67,23 @@ def make_attempt(raw: Path, order: int, model: str, channel: str, *, arms=AP.ARM
         for rep in (1, 2):
             d = a / "arms" / f"{slug}-{rep}"
             d.mkdir(parents=True)
-            cont = []
+            cont = [{"role": "assistant", "content": "", "tool_calls": []},
+                    {"role": "user", "content": "Your previous response reached the output token "
+                                                "limit (finish_reason=length) before ..."},
+                    {"role": "user", "content": GRADING}]
             for k in range(7):
                 cont += [{"role": "assistant", "content": f"step {k}", "tool_calls": [
                     {"id": f"t{k}", "type": "function", "function": {
                         "name": "bash", "arguments": json.dumps({"command": f"cat f{k}"})}}]},
                          {"role": "tool", "tool_call_id": f"t{k}", "content": "x" * 2000}]
+                if k == 2 and rep == 2:  # an early closing turn: nothing after it is shown
+                    cont += [{"role": "user", "content": "Commit your work now."},
+                             {"role": "assistant", "content": "AFTER_CLOSING_MARKER_33"}]
             (d / "continuation.json").write_text(json.dumps(cont))
-            (d / "calls.json").write_text(json.dumps([{"call": 1, "prompt_tokens": 900,
+            (d / "calls.json").write_text(json.dumps([{"call": 1, "prompt_tokens": tokens[slug],
                                                        "cached_tokens": 800}]))
             (d / "result.json").write_text(json.dumps({
-                "end": "continuation_done", "error": None, "asks": 3, "patch_bytes": 77,
+                "end": "continuation_done", "error": error, "asks": 3, "patch_bytes": 77,
                 "leftover_committed": True}))
     return a
 
@@ -83,7 +95,7 @@ def world(tmp_path):
     for m in MODELS:
         for ch in CHANNELS:
             order += 1
-            make_attempt(raw, order, m, ch)
+            make_attempt(raw, order, m, ch, error=RAW_ERROR if order == 1 else None)
     sealed_root = tmp_path / "results"
     seal.write("S2", "outcome-x-SR-1.json",
                {"R1_events": [], "reward": 1.0, "n_asks": 2, "arm": "S+R", "run_key": "k"},
@@ -91,11 +103,11 @@ def world(tmp_path):
     return raw, sealed_root
 
 
-def built(world, seed=AP.SEED, n=20):
+def built(world, seed=AP.SEED, n=20, preview=False):
     raw, root = world
     manifest = seal.prepare_audit("S2", root=root)
     cards = AP.draw(AP.candidates(raw), n=n, seed=seed)
-    html, key = AP.build(cards, manifest, seed=seed, root=root)
+    html, key = AP.build(cards, manifest, seed=seed, root=root, preview=preview)
     return cards, html, key, manifest
 
 
@@ -128,11 +140,16 @@ def test_cards_show_the_arm_context_and_truncated_actions(world):
     for cid, c in by.items():
         arm = key["audit"][cid]["arm"]
         assert set(c) <= AP.CARD_FIELDS
+        rep = key["audit"][cid]["rep"]
         turns = [x for x in c["actions"] if x["role"] == "assistant"]
-        assert len(turns) == AP.N_ACTIONS
+        assert len(turns) == (4 if rep == 2 else AP.N_ACTIONS)  # rep 2 closes after 4 turns
         assert all(len(x["text"]) < AP.TRUNC + 100 for x in c["actions"])
-        assert c["tokens"]["first_call_prompt"] == 900
-        assert c["harness"] == {"end": "continuation_done", "error": None}
+        assert c["tokens"]["first_call_prompt"] == TOKENS[arm]
+        assert c["tokens"]["arms_check"] == "consistent"
+        assert c["harness"]["end"] == "continuation_done"
+        assert c["harness"]["error_category"] in AP.ERROR_CATEGORIES
+        harness = [x["text"] for x in c["actions"] if x["role"] == "harness"]
+        assert harness == [AP.NUDGES[0][1], AP.WITHHELD]
         if arm == "SR":
             assert c["block"].startswith(R.RESTORE_HEADER)
             assert all(line in c["block"] for line in task_rules().lines.values())
@@ -141,9 +158,28 @@ def test_cards_show_the_arm_context_and_truncated_actions(world):
             assert not any(line in c["block"] for line in task_rules().lines.values())
         else:
             assert c["block"] is None
-    # result.json outcome fields never reach the page
-    for f in ('"asks"', '"patch_bytes"', '"leftover_committed"'):
+    # result.json outcome fields, an injected grading message, a raw error string and anything
+    # after the closing turn never reach the page
+    for f in ('"asks"', '"patch_bytes"', '"leftover_committed"', "GRADING_MARKER_77",
+              "RAW_ERROR_MARKER_55", "AFTER_CLOSING_MARKER_33", "Traceback"):
         assert f not in html
+    assert AP.LIMITATION in html and key["limitation"] == AP.LIMITATION
+    assert "First actions may show the agent's own test runs; that's expected." in html
+
+
+def test_error_categories():
+    assert AP.error_category(None) == "none"
+    assert AP.error_category("ModelError: HTTP 503 upstream") == "api_error"
+    assert AP.error_category("ModelError: finish_reason=length twice") == "output_limit"
+    assert AP.error_category("docker exec timed out after 600 s") == "timeout"
+    assert AP.error_category(RAW_ERROR) == "other"
+
+
+def test_token_cross_check_flags_an_f_arm_that_got_the_summary(tmp_path):
+    raw = tmp_path / "raw"
+    a = make_attempt(raw, 1, "glm", "chat", tokens={"F": 900, "S": 900, "SR": 800, "SI": 950})
+    sib = AP.sibling_tokens(a)
+    assert sib["check"] == "inconsistent: F <= S, S+R < S"
 
 
 def test_leak_guard_refuses_an_outcome_field(world, tmp_path):
@@ -159,6 +195,68 @@ def test_leak_guard_refuses_an_outcome_field(world, tmp_path):
         AP.leak_check(AP.render(data), key)
     with pytest.raises(S1P.LeakError):
         AP.write(tmp_path / "out", bad, key, private_root=tmp_path, check_ignored=False)
+
+
+def test_same_length_context_edit_changes_the_draw_and_refuses_old_labels(world, tmp_path):
+    raw, root = world
+    out, key = _setup_release(world, tmp_path)
+    lp = tmp_path / "labels.json"
+    lp.write_text(json.dumps(labels_for(key)))
+    for pre in raw.glob("pilot/*/a1/boundary/pre_messages.json"):  # every F context, same length
+        t = pre.read_text()
+        assert "README.md src tests" in t
+        pre.write_text(t.replace("README.md src tests", "README.md src tasts"))
+    _, html2, key2, _ = built(world)
+    assert key2["draw"] != key["draw"]
+    AP.write(out, html2, key2, private_root=tmp_path, check_ignored=False)
+    with pytest.raises(SystemExit, match="another draw"):
+        AP.release_audit(out, lp, by="jacob", root=root)
+
+
+def test_release_refuses_a_page_edited_after_the_build(world, tmp_path):
+    _, root = world
+    out, key = _setup_release(world, tmp_path)
+    lp = tmp_path / "labels.json"
+    lp.write_text(json.dumps(labels_for(key)))
+    page = out / AP.PAGE_NAME
+    t = page.read_text()
+    page.write_text(t.replace("Harness OK", "Harness ok", 1))  # same length
+    with pytest.raises(SystemExit, match="isn't the page"):
+        AP.release_audit(out, lp, by="jacob", root=root)
+
+
+@pytest.mark.parametrize("n", [0, 12])
+def test_build_refuses_short_draws_unless_preview(world, n):
+    with pytest.raises(ValueError, match="not a releasable"):
+        built(world, n=n)
+
+
+def test_build_refuses_an_arm_deficient_draw(tmp_path):
+    raw = tmp_path / "raw"
+    for i, m in enumerate(MODELS * 3):  # 12 boundaries without any S+I arm
+        make_attempt(raw, i + 1, m, CHANNELS[i % 3], arms=("F", "S", "SR"))
+    root = tmp_path / "results"
+    seal.write("S2", "outcome-x.json", {"reward": 1.0}, root=root)
+    cards = AP.draw(AP.candidates(raw), n=20)
+    assert len(cards) == 20
+    with pytest.raises(ValueError, match="not 5 each"):
+        AP.build(cards, seal.prepare_audit("S2", root=root), root=root)
+
+
+def test_release_refuses_a_preview(world, tmp_path):
+    _, root = world
+    _, html, key, _ = built(world, n=8, preview=True)
+    assert key["preview"] and "Preview build" in html
+    out = tmp_path / "audit"
+    AP.write(out, html, key, private_root=tmp_path, check_ignored=False)
+    lp = tmp_path / "labels.json"
+    lp.write_text(json.dumps(labels_for(key)))
+    with pytest.raises(SystemExit, match="preview"):
+        AP.release_audit(out, lp, by="jacob", root=root)
+
+
+def test_cli_build_refuses_another_n_without_preview():
+    assert AP.main(["build", "--n", "8"]) == 2
 
 
 def test_draw_id_binds_the_manifest(world):

@@ -12,15 +12,21 @@ post-compaction context; S+R = S with the four planted rules appended to the sum
 S+I = S with four length-matched irrelevant facts appended there; built here with
 `loop.arm_context`, the function the runs used, and S+R and S+I always get all four rules, as
 `pilot.py` runs them), that starting context in full with a find box, the first call's measured
-prompt tokens against the context's estimate, and the arm's first `N_ACTIONS` agent turns
-(assistant text and tool calls, then each tool's output, truncated to `TRUNC` characters). Jacob
+prompt tokens against the context's estimate and against the boundary's other arms (F > S+R,
+S+I >= S), and the arm's first `N_ACTIONS` agent turns (assistant text and tool calls, then each
+tool's output, truncated to `TRUNC` characters), up to the closing turn. **Limitation:** the runs
+recorded token counts per call, not the request messages or a digest, so the starting context is
+rebuilt with the runs' code rather than read from the run (said on the page and in the key). Jacob
 marks each card "Harness OK" / "Problem" / "Can't tell", and answers once "Release the sealed S2
 outcomes?" (yes / not yet).
 
 **Not shown:** `scored.json`, `model.patch`, the sealed outcome files and every outcome field of
-`result.json` (asks, commits, patch size, early submission). Only its harness fields `end` and
-`error` are shown. Card fields are a fixed set (`CARD_FIELDS`), and `leak_check` refuses a page
-carrying any sealed outcome field name as a JSON key, or a sealed file name.
+`result.json` (asks, commits, patch size, early submission). Only its `end` is shown, and its
+`error` as a fixed category (`ERROR_CATEGORIES`), never the raw text. Nothing from the closing
+turn on is shown, and any harness user or system message other than the format nudges is
+withheld. The agent's own test runs can appear in its first actions (S1's audit is
+verdict-visible by design too). Card fields are a fixed set (`CARD_FIELDS`), and `leak_check`
+refuses a page carrying any sealed outcome field name as a JSON key, or a sealed file name.
 
 **Draw (seeded, `SEED`):** the latest valid attempt of each cohort run
 (`retention.boundary_dirs`), arms with a written `continuation.json` only. 20 cards, 5 per arm;
@@ -28,9 +34,12 @@ each slot takes the candidate whose model, channel, task and boundary have been 
 (seeded tiebreak), and the replicate (1 or 2) of each (boundary, arm) is picked by the seed.
 
 **Protocol (S1's, scripts/s1_audit.py):** `build` captures `seal.prepare_audit("S2")` and keeps it
-in the key; the draw id hashes the manifest digest and every card's content, so labels saved
-against another build are refused. `release` refuses unless every card is marked, no card is
-"Problem" and the release answer is "yes"; it snapshots the labels into one canonical file and
+in the key; the draw id hashes the manifest digest, the sha256 of every uncompressed starting
+context and of every card's displayed content, so labels saved against another build are
+refused. `build` refuses any draw but `N_CARDS` unique cards with `PER_ARM` per arm unless
+`--preview`. `release` refuses a preview or such a draw, a page file whose sha256 isn't the
+key's, and labels unless every card is marked, no card is "Problem" and the release answer is
+"yes"; it snapshots the labels into one canonical file and
 calls `seal.release("S2", [snapshot, key], manifest=...)`, which refuses if any sealed file changed
 since `build` (`seal.AuditStale`). A refusal means: fix, rerun what was affected, build a fresh
 audit (new seed). There is no override.
@@ -74,6 +83,7 @@ SNAPSHOT = "labels_snapshot.json"
 RELEASE_RECORD = "release_record.json"
 SEED = 20261024
 N_CARDS = 20
+PER_ARM = 5  # the release needs exactly N_CARDS unique cards, PER_ARM per arm (astra r1 #4)
 N_ACTIONS = 5
 TRUNC = 1500
 ARM_SLUGS = ("F", "S", "SR", "SI")
@@ -90,7 +100,22 @@ RELEASE_DOC = "release"
 COLLECTIONS = {"audit": "audit", "meta": "meta"}
 CARD_FIELDS = {"id", "kind", "context", "given", "block", "hist_ref", "hist_label", "tokens",
                "actions", "harness"}
-HARNESS_FIELDS = ("end", "error")  # the only result.json fields shown
+ERROR_CATEGORIES = ("none", "api_error", "output_limit", "timeout", "other")
+# What the runs recorded per call (loop.Loop.step): token counts, cost, timing, tool timings. No
+# request messages and no digest, so the starting context can only be rebuilt (astra r1 #2).
+LIMITATION = ("Starting context is rebuilt with the runs' code; the recorded first request has "
+              "only token counts.")
+TOKEN_NOTE = ("Cross-check: the first call's recorded prompt tokens of this boundary's arms "
+              "should order F > S+R, S+I >= S.")
+NUDGES = (  # the harness's own user turns (loop.format_error_message), shown as fixed text
+    ("Your previous response reached the output token limit",
+     ("Harness nudge: the reply hit the output token limit; it was asked to reply more "
+      "concisely with exactly one bash call.")),
+    ("Tool call error:",
+     ("Harness nudge: the reply had no valid tool call; the standard tool-call guidance was "
+      "sent.")),
+)
+WITHHELD = "[harness message withheld]"
 HEADING = "S2 pilot: release audit"
 LEDE = ("Before the sealed S2 outcomes are opened: for each card, did the harness give this arm "
         "the right starting context, and are its first actions a sane continuation with no "
@@ -178,12 +203,35 @@ def render_messages(msgs: list[dict], summary_index: int | None) -> str:
                        f"{RT.message_text(m)}" for i, m in enumerate(msgs))
 
 
+def error_category(err) -> str:
+    """A result's harness error as one of ERROR_CATEGORIES; the raw text is never shown."""
+    if not err:
+        return "none"
+    t = str(err).lower()
+    if "timeout" in t or "timed out" in t:
+        return "timeout"
+    if "finish_reason=length" in t or "output token limit" in t or "max_tokens" in t:
+        return "output_limit"
+    if t.startswith("modelerror") or "http" in t or "apierror" in t or "rate limit" in t:
+        return "api_error"
+    return "other"
+
+
+def harness_text(m: dict) -> str:
+    text = RT.K._text(m.get("content"))
+    return next((shown for lead, shown in NUDGES if text.startswith(lead)), WITHHELD)
+
+
 def actions(continuation: list[dict], n: int = N_ACTIONS) -> list[dict]:
-    """The first n assistant turns with the messages between them (tool outputs, nudges, the
-    closing turn), each text truncated."""
+    """The first n assistant turns of the continuation with the tool outputs between them,
+    each text truncated. Stops at the closing turn: nothing from the closing calls on is shown.
+    Any other user or system message is the harness's: a format nudge is shown as fixed text,
+    anything else is withheld (astra r1 #3)."""
     out, seen = [], 0
     for m in continuation:
         role = m.get("role")
+        if role == "user" and RT.K._text(m.get("content")).strip() == C.CLOSING_TURN:
+            break
         if role == "assistant":
             if seen == n:
                 break
@@ -193,9 +241,38 @@ def actions(continuation: list[dict], n: int = N_ACTIONS) -> list[dict]:
                      for tc in m.get("tool_calls") or []]
             out.append({"role": "assistant", "turn": seen,
                         "text": _trunc(RT.K._text(m.get("content"))), "calls": calls})
+        elif role == "tool":
+            out.append({"role": "tool", "text": _trunc(RT.K._text(m.get("content")))})
         else:
-            out.append({"role": role or "?", "text": _trunc(RT.K._text(m.get("content")))})
+            out.append({"role": "harness", "text": harness_text(m)})
     return out
+
+
+def first_prompt_tokens(arm_dir: Path):
+    p = Path(arm_dir) / "calls.json"
+    calls = _read(p) if p.exists() else []
+    return calls[0].get("prompt_tokens") if calls and isinstance(calls[0], dict) else None
+
+
+def sibling_tokens(attempt_dir: Path) -> dict:
+    """{arm: the first call's recorded prompt tokens} for each arm of the boundary (lowest
+    replicate with a calls.json), and whether they order as the contexts must."""
+    a = Path(attempt_dir)
+    tok = {}
+    for slug in ARM_SLUGS:
+        for d in sorted((a / "arms").glob(f"{slug}-*")):
+            if re.fullmatch(rf"{slug}-\d+", d.name) and first_prompt_tokens(d) is not None:
+                tok[ARM_OF_SLUG[slug]] = first_prompt_tokens(d)
+                break
+    s = tok.get("S")
+    bad = []
+    if s is not None:
+        if tok.get("F") is not None and tok["F"] <= s:
+            bad.append("F <= S")
+        bad += [f"{x} < S" for x in ("S+R", "S+I") if tok.get(x) is not None and tok[x] < s]
+    check = ("inconsistent: " + ", ".join(bad)) if bad else (
+        "consistent" if s is not None and len(tok) == 4 else "incomplete")
+    return {"by_arm": tok, "check": check}
 
 
 def card(c: dict, seed: int) -> tuple[dict, str, dict]:
@@ -208,6 +285,7 @@ def card(c: dict, seed: int) -> tuple[dict, str, dict]:
     plan = (_read(a / "run.json").get("plan") or {}) if (a / "run.json").exists() else {}
     bpt = ((plan.get("route") or {}).get("bytes_per_token")) or 2.0
     first = calls[0] if calls and isinstance(calls[0], dict) else {}
+    sib = sibling_tokens(a)
     res = _read(arm_dir / "result.json") if (arm_dir / "result.json").exists() else {}
     acts = actions(_read(arm_dir / "continuation.json"))
     cid = card_id(seed, c["run_key"], c["arm"], c["rep"])
@@ -221,10 +299,10 @@ def card(c: dict, seed: int) -> tuple[dict, str, dict]:
                        + (f", summary at message {si}" if si is not None else "")),
         "tokens": {"estimated_start": M.est_tokens(ctx, bpt),
                    "first_call_prompt": first.get("prompt_tokens"),
-                   "first_call_cached": first.get("cached_tokens")},
+                   "first_call_cached": first.get("cached_tokens"),
+                   "arms_first_call": sib["by_arm"], "arms_check": sib["check"]},
         "actions": acts,
-        "harness": {k: (_trunc(res.get(k), 600) if isinstance(res.get(k), str) else res.get(k))
-                    for k in HARNESS_FIELDS},
+        "harness": {"end": res.get("end"), "error_category": error_category(res.get("error"))},
     }
     key = {"run_key": c["run_key"], "dir": str(a.relative_to(ROOT)) if a.is_relative_to(ROOT)
            else str(a), "arm": c["arm"], "rep": c["rep"], "model": c["model"],
@@ -259,8 +337,32 @@ def outcome_markers(manifest: dict, root=None) -> list[str]:
     return sorted(f'"{k}":' for k in names - {"arm", "rep", "run_key", "host"})
 
 
-def build(cards: list[dict], manifest: dict, *, seed: int = SEED, root=None) -> tuple[str, dict]:
+def validate_draw(cards: list[dict]) -> None:
+    """Refuse anything but N_CARDS unique (boundary, arm, replicate) cards, PER_ARM per arm."""
+    keys = [(c.get("dir"), c.get("arm"), c.get("rep")) for c in cards]
+    per = Counter(c.get("arm") for c in cards)
+    problems = []
+    if len(cards) != N_CARDS:
+        problems.append(f"{len(cards)} cards, not {N_CARDS}")
+    if len(set(keys)) != len(keys):
+        problems.append("duplicate cards")
+    if any(per.get(s, 0) != PER_ARM for s in ARM_SLUGS) or set(per) - set(ARM_SLUGS):
+        problems.append(f"arms {dict(sorted(per.items()))}, not {PER_ARM} each")
+    if problems:
+        raise ValueError("not a releasable audit draw: " + "; ".join(problems)
+                         + " (use --preview for a smaller look; release refuses previews)")
+
+
+def _sha(s: str) -> str:
+    return hashlib.sha256(s.encode("utf-8")).hexdigest()
+
+
+def build(cards: list[dict], manifest: dict, *, seed: int = SEED, root=None,
+          preview: bool = False) -> tuple[str, dict]:
+    if not preview:
+        validate_draw(cards)
     hists: dict[str, str] = {}
+    hist_sha: dict[str, str] = {}
     refs: dict[str, str] = {}
     shown, key = [], {}
     for c in cards:
@@ -268,18 +370,25 @@ def build(cards: list[dict], manifest: dict, *, seed: int = SEED, root=None) -> 
         if text not in refs:
             refs[text] = f"h{len(refs) + 1}"
             hists[refs[text]] = RP._gz64(text)
+            hist_sha[refs[text]] = _sha(text)
         page["hist_ref"] = refs[text]
         assert set(page) <= CARD_FIELDS
         shown.append(page)
         key[page["id"]] = k
+    # the draw binds the manifest, every starting context's uncompressed text and every card's
+    # displayed content, so labels never carry over to a page showing anything else (astra r1 #1)
+    card_sha = {p["id"]: _sha(json.dumps(p, sort_keys=True, ensure_ascii=False)) for p in shown}
     draw_id = hashlib.sha256(json.dumps(
-        {"seed": seed, "manifest": manifest.get("digest"), "cards": shown, "key": key},
+        {"seed": seed, "manifest": manifest.get("digest"), "hist_sha256": hist_sha,
+         "card_sha256": card_sha, "key": key, "preview": preview},
         sort_keys=True, default=str).encode()).hexdigest()[:16]
     data = {"cards": shown, "histories": hists, "collections": COLLECTIONS, "draw": draw_id,
-            "seed": seed}
+            "seed": seed, "preview": preview}
     html = render(data)
-    k = {"draw": draw_id, "seed": seed, "audit": key, "order": [p["id"] for p in shown],
-         "manifest": manifest, "outcome_markers": outcome_markers(manifest, root),
+    k = {"draw": draw_id, "seed": seed, "preview": preview, "audit": key,
+         "order": [p["id"] for p in shown], "manifest": manifest,
+         "outcome_markers": outcome_markers(manifest, root), "hist_sha256": hist_sha,
+         "card_sha256": card_sha, "limitation": LIMITATION,
          "page_sha256": hashlib.sha256(html.encode()).hexdigest()}
     return html, k
 
@@ -314,6 +423,9 @@ BODY = """
     <h1>__HEADING__</h1>
     <p class="lede">__LEDE__</p>
   </header>
+  <p class="lede"><strong>Limitation:</strong> __LIMITATION__ __TOKEN_NOTE__</p>
+  <p class="lede">First actions may show the agent's own test runs; that's expected. Nothing after the closing turn ("Commit your work now.") is shown, and harness messages other than its format nudges are withheld.</p>
+  __PREVIEW__
   <details class="rubric">
     <summary>What each choice means</summary>
     <p><strong>Harness OK:</strong> the starting context is the one the arm should get (F: the full history with no summary; S: the summary context; S+R: the four rules appended to the summary; S+I: four unrelated facts there instead), the first call's prompt size is in line with that context, and the first actions continue the task sensibly with no harness error (broken tool output, a wrong repo, a crash, an empty reply loop).</p>
@@ -360,7 +472,7 @@ function actBlock(a) {
     const calls = (a.calls || []).map(c => `<p class="kv">tool call: ${esc(c.name)}</p><pre class="box">${esc(c.args)}</pre>`).join("");
     return `<div class="act-a"><p class="label">Agent turn ${a.turn}</p>${a.text ? `<pre class="box read">${esc(a.text)}</pre>` : ""}${calls || (a.text ? "" : `<p class="kv">(empty reply)</p>`)}</div>`;
   }
-  return `<div class="act-o"><p class="label">${esc(a.role === "tool" ? "Tool output" : a.role + " message")}</p><pre class="box">${esc(a.text)}</pre></div>`;
+  return `<div class="act-o"><p class="label">${esc(a.role === "tool" ? "Tool output" : "Harness message")}</p><pre class="box">${esc(a.text)}</pre></div>`;
 }
 function card(u, i, n) {
   const radios = CHOICES.map(([v, t, tone]) => `<label><input type="radio" name="c-${u.id}" value="${v}" data-id="${u.id}" data-f="label" data-tone="${tone}"><span>${t}</span></label>`).join("");
@@ -371,8 +483,8 @@ function card(u, i, n) {
     <p class="lede">${esc(u.context)}</p>
     <div><p class="label">What this arm was given at the fork</p><p class="q">${esc(u.given)}</p></div>
     ${u.block ? `<div><p class="label">Block appended to the summary message</p><pre class="q">${esc(u.block)}</pre></div>` : ""}
-    <p class="kv">starting context ≈ ${esc(t.estimated_start)} tokens (estimate) · first call prompt ${esc(t.first_call_prompt)} tokens, ${esc(t.first_call_cached)} cached · harness end ${esc(h.end)}${h.error ? " · error" : ""}</p>
-    ${h.error ? `<pre class="box">${esc(h.error)}</pre>` : ""}
+    <p class="kv">starting context ≈ ${esc(t.estimated_start)} tokens (bytes estimate, reads high) · first call prompt ${esc(t.first_call_prompt)} tokens, ${esc(t.first_call_cached)} cached · harness end ${esc(h.end)} · error: ${esc(h.error_category)}</p>
+    <p class="kv">this boundary's arms, first call prompt tokens: ${Object.entries(t.arms_first_call || {}).map(([a, v]) => `${esc(a)} ${esc(v)}`).join(" · ")} → ${t.arms_check === "consistent" ? "consistent" : `<strong>${esc(t.arms_check)}</strong>`}</p>
     <details><summary>Starting context in full, with find</summary>${histBox(u)}</details>
     <div><p class="label">First actions after the fork</p><div class="acts">${(u.actions || []).map(actBlock).join("") || `<p class="warnline">No actions recorded.</p>`}</div></div>
     <div class="calls">
@@ -456,8 +568,11 @@ requestAnimationFrame(() => hsObserve());
 def render(data: dict) -> str:
     head, hist_js = template_parts()
     head = head.replace("__TITLE__", "S2 release audit")
+    preview = ('<p class="warnline">Preview build: not a releasable audit. Don\'t label it.</p>'
+               if data.get("preview") else "")
     body = (BODY.replace("__HEADING__", HEADING).replace("__LEDE__", LEDE)
-            .replace("__HISTORY_JS__", hist_js))
+            .replace("__LIMITATION__", LIMITATION).replace("__TOKEN_NOTE__", TOKEN_NOTE)
+            .replace("__PREVIEW__", preview).replace("__HISTORY_JS__", hist_js))
     return head + body.replace("__DATA_JSON__", S1P._script_json(data))
 
 
@@ -529,10 +644,31 @@ def check_labels(key: dict, labels: dict[str, dict]) -> dict:
     return {"n": len(ids), **by}
 
 
+def check_key(out: Path, key: dict) -> None:
+    """Refuse a preview, a draw that isn't N_CARDS unique cards with PER_ARM per arm, or a page
+    file that isn't the one the key was built with."""
+    if key.get("preview"):
+        raise SystemExit("this audit was built with --preview: build the full audit to release")
+    cards = [{"dir": v.get("dir"), "arm": v.get("arm"), "rep": v.get("rep")}
+             for v in (key.get("audit") or {}).values()]
+    if len(set(key.get("order") or [])) != len(cards) or set(key.get("order") or []) != set(
+            key.get("audit") or {}):
+        raise SystemExit("the key's card order doesn't match its cards")
+    try:
+        validate_draw(cards)
+    except ValueError as e:
+        raise SystemExit(str(e)) from None
+    page = Path(out) / PAGE_NAME
+    if not page.is_file() or hashlib.sha256(page.read_bytes()).hexdigest() != key.get(
+            "page_sha256"):
+        raise SystemExit(f"{page} isn't the page this key was built with: rebuild and re-audit")
+
+
 def release_audit(out: Path, labels_path: Path, *, by: str, note: str = "", root=None) -> dict:
     out = Path(out)
     key_path = out / KEY_NAME
     key = _read(key_path)
+    check_key(out, key)
     labels = audit_labels(Path(labels_path))
     c = check_labels(key, labels)
     snap = {"draw": key["draw"],
@@ -565,12 +701,17 @@ def mix(cards: list[dict]) -> dict:
 
 def cmd_build(a) -> int:
     out = RP.require_private(Path(a.out))
+    if a.n != N_CARDS and not a.preview:
+        print(f"--n {a.n}: a releasable audit has {N_CARDS} cards; use --preview",
+              file=sys.stderr)
+        return 2
     manifest = seal.prepare_audit(STAGE)
     cards = draw(candidates(), n=a.n, seed=a.seed)
-    if len(cards) < a.n:
-        print(f"only {len(cards)} arm continuations to draw from", file=sys.stderr)
+    try:
+        html, key = build(cards, manifest, seed=a.seed, preview=a.preview)
+    except ValueError as e:
+        print(str(e), file=sys.stderr)
         return 1
-    html, key = build(cards, manifest, seed=a.seed)
     info = write(out, html, key)
     print(json.dumps({**info, "draw": key["draw"], "manifest_digest": manifest["digest"][:16],
                       "n_sealed": len(manifest["sealed"]), "mix": mix(cards)}, indent=1))
@@ -592,6 +733,8 @@ def main(argv: list[str] | None = None) -> int:
     b = sub.add_parser("build", parents=[common])
     b.add_argument("--n", type=int, default=N_CARDS)
     b.add_argument("--seed", type=int, default=SEED)
+    b.add_argument("--preview", action="store_true",
+                   help="allow another --n or a short draw; release refuses it")
     r = sub.add_parser("release", parents=[common])
     r.add_argument("--labels", required=True)
     r.add_argument("--by", default="jacob")
