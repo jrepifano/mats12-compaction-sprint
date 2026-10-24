@@ -999,19 +999,28 @@ def secret_scan(sb, secrets: list[str]) -> list[str]:
     an incomplete scan is never recorded as clean. Only the secrets tmpfs (SECRETS_C) is
     skipped: it is never committed."""
     from compaction.deepswe import sandbox as SB
-    from compaction.s2.native import common as N
     files = changed_files(sb)
     if not files:
         return []
-    sb.put_file("\0".join(files).encode() + b"\0", f"{SECRETS_C}/scan-list")
     env = {f"{SECRET_ENV}_{i}": v for i, v in enumerate(secrets)}
     pats = " ".join(f'-e "${k}"' for k in env)
     # per batch: keep regular files (not symlinks), grep them; grep's 1 = no match
     inner = ('for f do shift; if [ -f "$f" ] && [ ! -L "$f" ]; then set -- "$@" "$f"; fi; '
              f'done; [ $# -eq 0 ] && exit 0; grep -lF {pats} -- "$@"; r=$?; '
              'if [ $r -gt 1 ]; then echo "__GREP_ERR $r" >&2; fi; exit 0')
-    cmd = f"xargs -0 -r -n 200 sh -c {shlex.quote(inner)} _ < {SECRETS_C}/scan-list"
-    r = N.exec_env(sb, cmd, env, timeout_s=600)
+    # the file list goes in on stdin, never to a file: a big tree's list overflowed the 1 MB
+    # secrets tmpfs and lost helm's first boundary (24 Oct)
+    cmd = f"xargs -0 -r -n 200 sh -c {shlex.quote(inner)} _"
+    argv = SB.docker_argv(["exec", "-i", *[x for k in env for x in ("-e", k)], "-w", "/",
+                           sb.name, "timeout", "-k", "5", "600", "bash", "-lc", cmd], sb.host)
+    try:
+        p = subprocess.run(argv, input="\0".join(files).encode() + b"\0",
+                           capture_output=True, timeout=600 + SB.CLIENT_GRACE_S,
+                           env={**os.environ, **env}, check=False)
+    except subprocess.TimeoutExpired as e:
+        raise SB.SandboxError("secret scan timed out (incomplete)") from e
+    r = SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
+                      p.stderr.decode(errors="replace"), 0.0)
     if r.rc != 0 or "__GREP_ERR" in r.stderr:
         raise SB.SandboxError(f"secret scan incomplete (rc={r.rc}): {r.stderr[-300:]}")
     return sorted(x for x in r.stdout.splitlines() if x.strip())
@@ -1137,6 +1146,7 @@ class BaseConfig:
     cpus: float = 2
     memory_mb: int = 8192
     auth_path: Path = field(default_factory=lambda: Path.home() / ".codex" / "auth.json")
+    labels: dict = field(default_factory=dict)  # top-level run.json keys (e.g. an arm label)
 
     @property
     def run_key(self) -> str:
@@ -1179,9 +1189,10 @@ def majority(texts: list[str]) -> tuple[int, list[float]]:
     n = len(texts)
     if n <= 1:
         return 0, [1.0] * n
-    means = [round(sum(item_overlap(texts[i], texts[j]) for j in range(n) if j != i)
-                   / (n - 1), 3) for i in range(n)]
-    return max(range(n), key=lambda i: (means[i], -i)), means
+    means = [sum(item_overlap(texts[i], texts[j]) for j in range(n) if j != i) / (n - 1)
+             for i in range(n)]
+    best = max(range(n), key=lambda i: (means[i], -i))  # full precision; ties: the earliest
+    return best, [round(m, 3) for m in means]
 
 
 class Reciter:
@@ -1246,6 +1257,7 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
                                   "summary_source": "recitation (route b)",
                                   "recite_prompt": RECITE_PROMPT,
                                   "recite_repeats": cfg.recite_repeats})
+    rj.update(cfg.labels)
     IR._dump(rd / "run.json", rj)
     keep = SS.KeepStore(rd, cfg.run_key, host=cfg.host)
     res: dict = {"run_key": cfg.run_key, "end": "error", "boundaries": [], "error": None,
@@ -1283,6 +1295,8 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
             raise
 
     def sim_factory(runner):
+        # NativeSession's runner is interact.sandbox_runner on the shared tolerant exec (a
+        # client timeout settles the command and reports rc 124; the container stays)
         return I.UserSim(task.persona, sim_model, runner, purpose=f"sim:{cfg.run_key}")
 
     try:
@@ -1312,10 +1326,10 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
                 state: dict = {}
                 sd = rd / "steps" / step
                 before = set(container_rollouts(ns.sb))
-                r = N.stream_exec(ns.sb, cli_command(cfg.cx),
+                r = detached_step(ns.sb, cli_command(cfg.cx), name=step, env=env,
+                                  stdin=task.steps[step].encode(),
                                   timeout_s=cfg.step_timeout_s.get(step, 5400),
-                                  log_path=sd / "events.jsonl", env=env,
-                                  stdin=task.steps[step].encode(), stop=stop,
+                                  log_path=sd / "events.jsonl", stop=stop,
                                   on_line=_event_watch(state))
                 if r.killed:
                     stop_cli(ns.sb)
@@ -1323,6 +1337,9 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
                 lines = read_container_rollout(ns.sb, new[-1]) if new else []
                 write_rollout(sd / "rollout.jsonl", lines)
                 res["steps"][step] = {"thread_id": state.get("thread_id"), "rc": r.rc,
+                                      "reconnects": getattr(r, "reconnects", None),
+                                      "output_incomplete": getattr(r, "output_incomplete",
+                                                                   None),
                                       "seconds": r.seconds, "killed": r.killed,
                                       "timed_out": r.timed_out, "api_calls": api_calls(lines),
                                       "compactions": len(compaction_lines(lines)),
@@ -1333,6 +1350,14 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
                 if step == "01_plan":
                     res["plan_md"] = ns.sb.exec("cat /tmp/plan.md 2>/dev/null", timeout_s=60,
                                                 workdir="/").stdout or None
+                limit_s = cfg.step_timeout_s.get(step, 5400)
+                alive = ns.sb.exec("true", timeout_s=60, workdir="/").rc == 0
+                res["steps"][step]["container_alive"] = alive
+                if not alive or (r.rc == 137 and not r.killed and r.seconds < limit_s - 30):
+                    # SIGKILL well before the step's limit, or the container gone: an
+                    # infrastructure failure (e.g. OOM), never a time cap (rerun it)
+                    end_reason.setdefault("end", "infra_killed")
+                    break
                 if r.timed_out or r.killed == "client_timeout":
                     end_reason.setdefault("end", "time_cap")
                     break
@@ -1346,6 +1371,7 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
                 res["end"] = "boundary_missing"  # never report a run with a lost boundary
             after = N.exec_env(ns.sb, f"cat {SECRETS_C}/auth.json", {}, timeout_s=60).stdout
             res["auth_refreshed"] = bool(after) and after.encode() != auth_bytes
+            res["exec_stats"] = dict(getattr(ns, "exec_stats", None) or {})  # client timeouts
             res["egress_events"] = ns.egress.events()
             res["boundary_calls"] = ns.server.boundary_calls
             sim = ns.server.sim
@@ -1515,6 +1541,8 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                         "auto_compact_limit": cfg.auto_compact_limit},
                  "started_utc": N.utc()}
 
+    holder: dict = {}
+
     def sim_factory(runner):
         return I.UserSim.restore(exported, persona, sim_model, runner, purpose="sim:fork")
 
@@ -1527,6 +1555,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                      on_cap=lambda e: stop.set())
     try:
         with ns:
+            holder["ns"] = ns
             ns.server.step = b.get("stage") or "02_implement"
             install_config(ns.sb, ns.server, cfg, auth_bytes)
             day = datetime.now(UTC)
@@ -1602,7 +1631,9 @@ def loss_ledger(rows: list[dict]) -> dict:
     INHERITED when b<k-1> has an item with the same (normalised) quote graded dropped or
     misstated (the previous summary already lacked it), NEW when that item was graded kept or
     when k = 1, and UNMATCHED when b<k-1> has no item with that quote (disclosed since, or
-    extracted differently: reported apart, not guessed)."""
+    extracted differently: reported apart, not guessed). Only valid items with a valid grade
+    count as the previous boundary's evidence; duplicates of one quote that disagree make it
+    unmatched."""
     def norm(q: str | None) -> str:
         return re.sub(r"\s+", " ", (q or "").strip().lower())
 
@@ -1610,10 +1641,15 @@ def loss_ledger(rows: list[dict]) -> dict:
         m = re.search(r"/b(\d+)$", str(r.get("boundary_dir") or "").rstrip("/"))
         return int(m.group(1)) if m else 0
 
+    def true(v) -> bool:
+        return v is True or str(v) in ("True", "true", "1")
+
     by_k: dict[int, dict[str, str]] = {}
     for r in rows:
-        if str(r.get("valid")) in ("True", "true", "1") or r.get("valid") is True:
-            by_k.setdefault(k_of(r), {})[norm(r.get("quote"))] = str(r.get("grade"))
+        if true(r.get("valid")) and true(r.get("grade_valid", True)):
+            per = by_k.setdefault(k_of(r), {})
+            q, g = norm(r.get("quote")), str(r.get("grade"))
+            per[q] = g if per.get(q) in (None, g) else "conflict"  # disagreeing duplicates
     out = {"new": 0, "inherited": 0, "unmatched": 0, "by_boundary": {}}
     for r in rows:
         if not (r.get("lost") is True or str(r.get("lost")) == "True"):
@@ -1626,3 +1662,176 @@ def loss_ledger(rows: list[dict]) -> dict:
         out["by_boundary"].setdefault(f"b{k}", {"new": 0, "inherited": 0, "unmatched": 0})
         out["by_boundary"][f"b{k}"][status] += 1
     return out
+
+
+# ------------------------------------------------------------------------------------------
+# Steps that survive a dropped docker transport
+# ------------------------------------------------------------------------------------------
+
+STEP_DIR = "/opt/emx/steps"
+FOLLOW_CHUNK_S = 300  # each tail session's in-container limit; the follower reconnects
+RC_CHECK_S = 30  # at most one rc check per step per 30 s (the main session: rig sshd load)
+
+
+def raw_exec(sb, cmd: str, *, timeout_s: float, workdir: str = "/"):
+    """A read-only `docker exec` with no guard and no settling: a client timeout or a
+    transport error just returns rc 124 / the error, never touches the container. For the
+    follower's own reads (rc, drain, stderr, cleanup), which are safe to abandon."""
+    from compaction.deepswe import sandbox as SB
+    t = max(1, int(timeout_s))
+    argv = SB.docker_argv(SB.exec_args(sb.name, cmd, t, workdir), sb.host)
+    try:
+        p = subprocess.run(argv, capture_output=True, timeout=t, check=False)  # the budget
+    except subprocess.TimeoutExpired:
+        return SB.ExecResult(124, "", "client timeout", float(t))
+    except OSError as e:
+        return SB.ExecResult(125, "", f"{type(e).__name__}: {e}", 0.0)
+    return SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
+                         p.stderr.decode(errors="replace"), 0.0)
+
+
+def detached_step(sb, cmd: str, *, name: str, env: dict[str, str], stdin: bytes | None,
+                  timeout_s: int, log_path: Path, stop: threading.Event | None = None,
+                  on_line: Callable[[str], None] | None = None):
+    """Run `cmd` detached in the container (setsid, under `timeout -k 5 timeout_s`), stdout
+    to <STEP_DIR>/<name>/out, its exit code to .../rc, and follow `out` from the laptop with
+    `tail -F` sessions that resume from the last complete line's byte offset. A dropped
+    `docker -H ssh://` transport (24 Oct: `ssh ... dial-stdio` exit 255 ended two runs whose
+    CLI was still working) costs a reconnect, not the run.
+
+    Every follow-time docker call is `raw_exec` (read-only, no guard, no settling: a stalled
+    transport can't remove the container), bounded by the time left. Stop and the deadline are checked before every follow session
+    and during backoff; rc is read at most once per RC_CHECK_S across sessions; the final
+    drain is retried from the acknowledged offset, and if it never succeeds the result says
+    so (`output_incomplete`) instead of passing a short log as complete. Returns
+    common.StreamResult plus `reconnects` and `output_incomplete`."""
+    from compaction.deepswe import sandbox as SB
+    from compaction.s2.native import common as N
+    d = f"{STEP_DIR}/{name}"
+    r = sb.exec(f"rm -rf {d} && mkdir -p {d}", timeout_s=60, workdir="/")  # setup: fail closed
+    if r.rc != 0:
+        raise SB.SandboxError(f"step dir {d}: rc={r.rc} {r.stderr[-200:]}")
+    if stdin is not None:
+        sb.put_file(stdin, f"{d}/stdin")
+    src = f"{d}/stdin" if stdin is not None else "/dev/null"
+    inner = (f"timeout -k 5 {int(timeout_s)} bash -lc {shlex.quote(cmd)} < {src} > {d}/out "
+             f"2> {d}/err; echo $? > {d}/rc.tmp && mv {d}/rc.tmp {d}/rc")
+    launch = f"setsid nohup bash -c {shlex.quote(inner)} > /dev/null 2>&1 < /dev/null &"
+    r = N.exec_env(sb, launch, env, timeout_s=60, workdir="/app")
+    if r.rc != 0:
+        raise SB.SandboxError(f"step launch failed rc={r.rc}: {r.stderr[-300:]}")
+    log_path = Path(log_path)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    t0 = time.monotonic()
+    deadline = t0 + timeout_s + SB.CLIENT_GRACE_S + 60
+    stop = stop or threading.Event()
+    state = {"last_check": t0, "rc": None}
+    offset, sessions, killed, backoff, incomplete = 0, 0, None, 5, False
+
+    def left() -> float:
+        return deadline - time.monotonic()
+
+    def check_rc() -> int | None:
+        state["last_check"] = time.monotonic()
+        rr = raw_exec(sb, f"cat {d}/rc 2>/dev/null", timeout_s=min(30, max(1, left())))
+        v = rr.stdout.strip()
+        if rr.rc == 0 and v.lstrip("-").isdigit():
+            state["rc"] = int(v)
+        return state["rc"]
+
+    def due() -> bool:
+        return state["rc"] is None and time.monotonic() - state["last_check"] >= RC_CHECK_S
+
+    with open(log_path, "ab") as out:
+        def emit(raw: bytes) -> None:
+            out.write(raw)
+            out.flush()
+            if on_line is not None:
+                with contextlib.suppress(Exception):
+                    on_line(raw.decode(errors="replace"))
+
+        while True:
+            if stop.is_set():
+                killed = "stop"
+                break
+            if left() <= 0:
+                killed = "client_timeout"
+                break
+            sessions += 1
+            chunk = int(max(1, min(FOLLOW_CHUNK_S, left())))
+            argv = SB.docker_argv(
+                ["exec", sb.name, "timeout", "-k", "5", str(chunk), "tail", "-c",
+                 f"+{offset + 1}", "-F", f"{d}/out"], sb.host)
+            p = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                 stdin=subprocess.DEVNULL)
+            got = {"n": 0}
+
+            def pump(p=p, got=got) -> None:
+                assert p.stdout is not None
+                for raw in iter(p.stdout.readline, b""):
+                    if not raw.endswith(b"\n"):
+                        break  # a partial line: re-read it from `offset` next session
+                    emit(raw)
+                    got["n"] += len(raw)
+
+            th = threading.Thread(target=pump, daemon=True)
+            th.start()
+            while p.poll() is None:
+                if stop.is_set():
+                    killed = "stop"
+                    break
+                if left() <= 0:
+                    killed = "client_timeout"
+                    break
+                if due() and check_rc() is not None:
+                    time.sleep(2)  # let tail deliver the last lines
+                    break
+                time.sleep(0.5)
+            if p.poll() is None:
+                p.kill()
+            with contextlib.suppress(Exception):
+                p.wait(timeout=30)
+            th.join(timeout=30)
+            offset += got["n"]
+            if killed:
+                break
+            if due():
+                check_rc()
+            if state["rc"] is not None:
+                # drain from the acknowledged offset; retry, never accept a failed drain
+                for attempt in range(6):
+                    if left() <= 0 or stop.is_set():
+                        break
+                    try:
+                        rest = raw_exec(sb, f"tail -c +{offset + 1} {d}/out",
+                                        timeout_s=min(120, max(1, left())))
+                    except Exception:  # noqa: BLE001 - a transport error is a failed try
+                        rest = None
+                    if rest is not None and rest.rc == 0:
+                        data = rest.stdout.encode()
+                        for line in data.splitlines(keepends=True):
+                            emit(line if line.endswith(b"\n") else line + b"\n")
+                        offset += len(data)
+                        break
+                    stop.wait(max(0.0, min(30, 5 * 2 ** attempt, left())))
+                else:
+                    incomplete = True
+                if left() <= 0 or stop.is_set():
+                    incomplete = True
+                break
+            # the transport dropped or the chunk ended: follow again, backing off on refusals
+            backoff = 5 if got["n"] else min(120, backoff * 2)
+            stop.wait(max(0.0, min(backoff, left())))
+    rc = state["rc"] if state["rc"] is not None and not killed else -1
+    # a bounded cleanup allowance after the step (not counted against its deadline):
+    # retire any follower left on the container side, and keep stderr, both best-effort
+    with contextlib.suppress(Exception):
+        raw_exec(sb, f"pkill -f 'tail -c .* -F {d}/out' ; true", timeout_s=20)
+    with contextlib.suppress(Exception):
+        err = raw_exec(sb, f"cat {d}/err 2>/dev/null", timeout_s=30)
+        Path(str(log_path) + ".err").write_text(err.stdout if err.rc == 0 else "")
+    secs = round(time.monotonic() - t0, 1)
+    res = N.StreamResult(rc, secs, rc in (124, 137) and secs >= timeout_s - 30, killed)
+    res.reconnects = sessions - 1  # type: ignore[attr-defined]
+    res.output_incomplete = incomplete  # type: ignore[attr-defined]
+    return res

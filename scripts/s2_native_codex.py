@@ -33,7 +33,9 @@ Outputs go to data/raw/sprint/s2/native/codex/<command>/<utc>/ (gitignored).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
+import os
 import re
 import shutil
 import sys
@@ -180,9 +182,12 @@ def cmd_base(a) -> int:
                        host=a.host, recite_repeats=a.recite_repeats,
                        stop_after=a.stop_after if a.stop_after is not None
                        else (1 if a.smoke else None),
-                       cpus=2, memory_mb=3072)
+                       cpus=a.cpus, memory_mb=a.memory_mb,
+                       labels=dict(x.split("=", 1) for x in (a.label or [])))
     if a.implement_timeout:
         cfg.step_timeout_s["02_implement"] = int(a.implement_timeout)
+    if a.run_dir_file:  # the driver grades exactly this execution
+        Path(a.run_dir_file).write_text(str(cfg.run_dir))
     spend = RunSpend(IR.PilotSpend(), cap).attach(IR.spend_path(root, f"{cfg.run_key}-base"))
     res = X.run_base(cfg, sim_model=OpenAICompatModel(C.SIM_ROUTE, spend))
     print(json.dumps({k: res.get(k) for k in ("run_key", "end", "boundaries", "sim_cost_usd",
@@ -246,45 +251,160 @@ def cmd_stage(a) -> int:
 BATCH_LOG = C.REPO_ROOT / "logs" / "s2" / "native_codex_batch"
 
 
-class _Adopted:
-    """A `base` run another driver launched: done when its process is gone (pgrep)."""
+def _audit_backend():
+    """scripts/s2_interact_audit.py's Max backend (claude -p, $0), as native-arms' arm uses."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "s2_interact_audit", C.REPO_ROOT / "scripts" / "s2_interact_audit.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m.max_backend(4)
 
-    def __init__(self, task: str):
-        import subprocess
-        self.task, self.returncode = task, None
-        p = subprocess.run(["pgrep", "-fl", f"s2_native_codex.py base .*--task {task} "],
-                           capture_output=True, text=True, check=False)
-        m = re.search(r"--sim-cap ([0-9.]+)", p.stdout)
-        self.cap = float(m.group(1)) if m else 2.5
+
+def _base_proc_table() -> list[tuple[int, int, str]]:
+    """(pid, ppid, command) of the `base` runs' Python processes on this laptop (not the uv
+    wrappers, so a direct launch counts once too)."""
+    import subprocess
+    p = subprocess.run(["ps", "-axo", "pid=,ppid=,command="], capture_output=True, text=True,
+                       check=False)
+    out = []
+    for line in p.stdout.splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and "s2_native_codex.py base " in parts[2] \
+                and "/bin/python" in parts[2].split(" ", 1)[0]:
+            out.append((int(parts[0]), int(parts[1]), parts[2]))
+    return out
+
+
+def _base_procs() -> list[str]:
+    return [c for _, _, c in _base_proc_table()]
+
+
+def _matches(cmdline: str, task: str, root: str | None) -> bool:
+    if f"--task {task} " not in cmdline + " ":
+        return False
+    return f"--root {root} " in cmdline + " " if root else "--root " not in cmdline
+
+
+LAUNCH_LOCK = C.REPO_ROOT / "logs" / "s2" / "native_codex_launch.lock"
+LAUNCH_REGISTRY = C.REPO_ROOT / "logs" / "s2" / "native_codex_launches.json"
+
+
+def _all_base_runs() -> int:
+    """`base` runs going on this laptop, from any driver or arm: the live launches in the
+    shared registry (counted from registration, before their Python process exists) plus the
+    Python runs no registered launch started."""
+    alive: set[int] = set()
+    with contextlib.suppress(OSError, ValueError):
+        for pid in json.loads(LAUNCH_REGISTRY.read_text()):
+            with contextlib.suppress(OSError):
+                os.kill(int(pid), 0)
+                alive.add(int(pid))
+    # the union: every live registered launch, plus every Python run not started by one
+    # (runs launched before the registry existed)
+    others = [pid for pid, ppid, _ in _base_proc_table() if ppid not in alive and pid not in alive]
+    return len(alive) + len(others)
+
+
+@contextlib.contextmanager
+def _launch_lock():
+    """Serialises the global-concurrency check and the launch across drivers."""
+    import fcntl
+    LAUNCH_LOCK.parent.mkdir(parents=True, exist_ok=True)
+    with open(LAUNCH_LOCK, "a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def _register(pid: int) -> None:
+    pids = []
+    with contextlib.suppress(OSError, ValueError):
+        pids = json.loads(LAUNCH_REGISTRY.read_text())
+    live = []
+    for x in pids + [pid]:
+        with contextlib.suppress(OSError):
+            os.kill(int(x), 0)
+            live.append(int(x))
+    LAUNCH_REGISTRY.write_text(json.dumps(sorted(set(live))))
+
+
+class _Adopted:
+    """A `base` run another driver launched, identified by task AND run root (so the 150k and
+    80k arms never adopt each other's runs): done when its process is gone."""
+
+    def __init__(self, task: str, root: str | None = None):
+        self.task, self.root, self.returncode = task, root, None
+        lines = [x for x in _base_procs() if _matches(x, task, root)]
+        m = re.search(r"--sim-cap ([0-9.]+)", " ".join(lines))
+        self.cap = float(m.group(1)) if m else 6.5
 
     def poll(self):
-        import subprocess
-        p = subprocess.run(["pgrep", "-f", f"s2_native_codex.py base .*--task {self.task} "],
-                           capture_output=True, text=True, check=False)
-        if p.stdout.strip():
+        if any(_matches(x, self.task, self.root) for x in _base_procs()):
             return None
         self.returncode = "adopted"
         return 0
 
 
-def _run_summary(run_dir: Path, grade_dir: Path) -> dict:
+def _tail(p: Path, n: int = 20000) -> str:
+    try:
+        return p.read_text(errors="replace")[-n:]
+    except OSError:
+        return ""
+
+
+def _run_summary(run_dir: Path, grade_dir: Path | None) -> dict:
+    """One run's status. `grade_dir` None means lossaudit did not complete for this run: its
+    counts are then None, never zero."""
     res = json.loads((run_dir / "result.json").read_text())
     rows = []
-    lp = grade_dir / "losses.jsonl"
-    if lp.exists():
+    lp = grade_dir / "losses.jsonl" if grade_dir is not None else None
+    if lp is not None and lp.exists():
         rows = [json.loads(x) for x in lp.read_text().splitlines() if x.strip()]
     firsts = sorted((int(b.name[1:]), json.loads((b / "boundary" / "boundary.json").read_text()))
                     for b in run_dir.glob("b*") if (b / "boundary" / "boundary.json").exists())
     led = X.loss_ledger(rows)
+    lim = (res.get("timings") and json.loads((run_dir / "run.json").read_text())
+           .get("harness", {}).get("step_timeout_s")) or X.STEP_TIMEOUT_S
+    early = [st for st, v in (res.get("steps") or {}).items()
+             if v.get("rc") == 137 and not v.get("killed")
+             and (v.get("seconds") or 0) < lim.get(st, 5400) - 30]
+    end = res.get("end")
+    if end == "time_cap" and early:
+        end = "infra_killed"  # a run on the old classifier: SIGKILL well before the limit
+    transport = [st for st in (res.get("steps") or {})
+                 if "dial-stdio" in _tail(run_dir / "steps" / st / "events.jsonl.err")]
+    if end == "cli_error" and transport:
+        end = "infra_transport"  # the docker transport (ssh) dropped; the CLI was still going
     valid = [r for r in rows if r.get("valid") is True or str(r.get("valid")) == "True"]
-    return {"run": run_dir.name, "end": res.get("end"), "sim_usd": res.get("sim_cost_usd"),
+    peaks = {}
+    for st in (res.get("steps") or {}):
+        rp = run_dir / "steps" / st / "rollout.jsonl"
+        try:
+            lines = X.read_rollout(rp) if rp.exists() and rp.stat().st_size else []
+        except ValueError:
+            lines = []
+        toks = [x["payload"]["info"]["last_token_usage"]["input_tokens"] for x in lines
+                if x.get("type") == "event_msg" and x["payload"].get("type") == "token_count"
+                and (x["payload"].get("info") or {}).get("last_token_usage")]
+        if toks:
+            i = max(range(len(toks)), key=toks.__getitem__)
+            peaks[st] = {"peak_tokens": toks[i], "peak_call": i + 1, "calls": len(toks)}
+    return {"run": run_dir.name, "end": end, "end_recorded": res.get("end"), "peaks": peaks,
+            "transport_drop_steps": transport,
+            "early_kill_steps": early, "sim_usd": res.get("sim_cost_usd"),
             "compactions": res.get("compactions_in_rollouts"),
             "boundaries": len(res.get("boundaries") or []),
             "first_pre_tokens": firsts[0][1].get("pre_tokens") if firsts else None,
-            "items": len(valid), "lost": sum(1 for r in valid if r.get("lost") is True
-                                             or str(r.get("lost")) == "True"),
-            "new": led["new"], "inherited": led["inherited"], "unmatched": led["unmatched"],
-            "graded": lp.exists(), "error": (res.get("error") or "")[-300:] or None,
+            "items": len(valid) if lp is not None else None,
+            "lost": (sum(1 for r in valid if r.get("lost") is True
+                         or str(r.get("lost")) == "True") if lp is not None else None),
+            "new": led["new"] if lp is not None else None,
+            "inherited": led["inherited"] if lp is not None else None,
+            "unmatched": led["unmatched"] if lp is not None else None,
+            "graded": lp is not None, "error": (res.get("error") or "")[-300:] or None,
             "boundary_errors": len(res.get("boundary_errors") or [])}
 
 
@@ -298,11 +418,16 @@ def cmd_batch(a) -> int:
     stamp = X.utc().replace(":", "")
     logd = BATCH_LOG / stamp
     logd.mkdir(parents=True, exist_ok=True)
-    root = X.root()
-    pending, running = list(tasks), {t: _Adopted(t) for t in adopt}
+    root = Path(a.root) if a.root else X.root()
+    out_root = root if a.root else OUT
+    pending, running = list(tasks), {t: _Adopted(t, a.root) for t in adopt}
+    lock = __import__("threading").Lock()
     caps = {t: a.sim_cap for t in tasks}
     held = False
     relaunched: set[str] = set()
+    reran: set[str] = {x for x in (a.rerun or "").split(",") if x}
+    heavy: set[str] = {x for x in (a.heavy or "").split(",") if x} | reran
+    mem: dict[str, int] = {t: a.rerun_memory_mb for t in heavy}
     summaries: list[dict] = []
 
     def spent() -> float:
@@ -314,47 +439,125 @@ def cmd_batch(a) -> int:
         with open(logd / "status.log", "a") as f:
             f.write(line + "\n")
 
-    def grade(task: str) -> dict | None:
+    def run_dir_of(task: str, adopted: bool) -> tuple[Path | None, str]:
+        """The exact run dir of a launch (the file `base --run-dir-file` wrote). Only a run
+        adopted from an earlier driver falls back to the latest attempt under this arm's
+        root; a launch that never wrote its file has no run dir (a failed launch, recorded),
+        never an older attempt."""
+        f = logd / f"{task}.rundir"
+        if f.exists() and f.read_text().strip():
+            return Path(f.read_text().strip()), "exact"
+        if not adopted:
+            return None, "launch_without_run_dir"
         runs = sorted(root.glob(f"{task}-codex-luna-a*"), key=lambda p: p.stat().st_mtime)
-        if not runs or not (runs[-1] / "result.json").exists():
-            say(f"{task}: no result.json")
+        return (runs[-1] if runs else None), "latest_attempt"
+
+    def grade(task: str, adopted: bool = False) -> dict | None:
+        rd, ident = run_dir_of(task, adopted)
+        if rd is None or not (rd / "result.json").exists():
+            say(f"{task}: no result.json ({ident}: {rd})")
             return None
-        rd = runs[-1]
-        st = OUT / "stage" / rd.name
-        gd = OUT / "lossaudit" / rd.name
+        st = out_root / "stage" / rd.name
+        gd = out_root / "lossaudit" / rd.name
         links = X.stage([rd], st)
+        reqs: list[dict] | None = []
+        la_ok = True
         if links:
-            g = subprocess.run(["uv", "run", "python", "scripts/s2_lossaudit.py", "run", "--max",
-                                "--no-grep", "--raw", str(st), "--out", str(gd)],
-                               cwd=C.REPO_ROOT, capture_output=True, text=True, check=False)
-            (logd / f"{task}.lossaudit.log").write_text(g.stdout + g.stderr)
-        s = _run_summary(rd, gd)
-        summaries.append(s)
-        (logd / "summaries.json").write_text(json.dumps(summaries, indent=1))
+            from compaction.s2.native import audit as AU
+            t0 = time.time()
+            # (b) lossaudit on Max, with the recoverability grep on the kept images (rig)
+            rc = AU.run_lossaudit(st, gd, docker_host=a.host,
+                                  log=logd / f"{task}.lossaudit.log")
+            lp = gd / "losses.jsonl"
+            covered = set()
+            if lp.exists():
+                for line in lp.read_text().splitlines():
+                    with contextlib.suppress(ValueError):
+                        covered.add(Path(json.loads(line).get("boundary_dir") or "").name)
+            la_ok = (rc == 0 and lp.exists() and lp.stat().st_mtime >= t0
+                     and covered >= {x.resolve().name for x in links})
+            if not la_ok:
+                say(f"{task}: lossaudit INCOMPLETE (rc={rc}, covered {sorted(covered)} of "
+                    f"{len(links)} boundaries); its counts are reported as None")
+            # (a) the requirement ledger on the live (majority-recited) summary, on Max
+            try:
+                reqs = AU.requirements(rd, lambda: _audit_backend())
+            except Exception as e:  # noqa: BLE001 - recorded as None, never as zero
+                say(f"{task}: requirement ledger FAILED: {type(e).__name__}: {e}")
+                reqs = None
+            (gd / "requirements_ledger.json").write_text(json.dumps(reqs, indent=1))
+        s = _run_summary(rd, gd if la_ok else None)
+        s["identity"] = ident
+        s["req_rows"] = reqs
+        for key, field_ in (("req_lost", "lost"), ("req_new", "lost_new"),
+                            ("req_inherited", "lost_inherited"),
+                            ("req_unknown", "lost_unknown")):
+            s[key] = (sum(r.get(field_) or 0 for r in reqs) if reqs is not None else None)
+        with lock:
+            summaries.append(s)
+            (logd / "summaries.json").write_text(json.dumps(summaries, indent=1))
         say(f"{task}: end={s['end']} compactions={s['compactions']} items={s['items']} "
             f"lost={s['lost']} new={s['new']} inherited={s['inherited']} "
-            f"unmatched={s['unmatched']} first_pre_tokens={s['first_pre_tokens']} "
-            f"sim=${s['sim_usd']} boundary_errors={s['boundary_errors']}")
+            f"unmatched={s['unmatched']} | reqs: lost={s['req_lost']} new={s['req_new']} "
+            f"inherited={s['req_inherited']} unknown={s['req_unknown']} | "
+            f"first_pre_tokens={s['first_pre_tokens']} peak_02="
+            f"{(s['peaks'].get('02_implement') or {}).get('peak_tokens')}@"
+            f"{(s['peaks'].get('02_implement') or {}).get('peak_call')}"
+            f"/{(s['peaks'].get('02_implement') or {}).get('calls')} "
+            f"sim=${s['sim_usd']} boundary_errors={s['boundary_errors']} ({ident})")
         return s
 
-    while pending or running:
+    from concurrent.futures import ThreadPoolExecutor
+    grader = ThreadPoolExecutor(max_workers=1)  # grading never blocks scheduling
+    graded: list[tuple[str, object, object]] = []  # (task, future, the process object)
+
+    while pending or running or graded:
         for task, p in list(running.items()):
             if p.poll() is not None:
                 running.pop(task)
                 say(f"{task}: base exited rc={p.returncode}")
-                s = grade(task)
-                cap_was = p.cap if isinstance(p, _Adopted) else caps.get(task)
-                if (a.relaunch_cap and s and s["end"] == "run_cap"
-                        and (s["compactions"] or 0) < 3 and task not in relaunched
-                        and (cap_was or 0) < a.relaunch_cap):
-                    relaunched.add(task)
-                    caps[task] = a.relaunch_cap
-                    pending.insert(0, task)
-                    say(f"{task}: RELAUNCH at ${a.relaunch_cap} (ended run_cap after "
-                        f"{s['compactions']} compactions at ${cap_was})")
-        if pending and len(running) < a.concurrency:
+                graded.append((task, grader.submit(grade, task, isinstance(p, _Adopted)), p))
+        for item in [g for g in graded if g[1].done()]:
+            graded.remove(item)
+            task, fut, p = item
+            try:
+                s = fut.result()
+            except Exception as e:  # noqa: BLE001 - a grading crash is reported, not fatal
+                say(f"{task}: grading crashed: {type(e).__name__}: {e}")
+                s = None
+            if s is None:  # keep its spend in the projection: actual if known, else its cap
+                usd = p.cap if isinstance(p, _Adopted) else caps.get(task, a.sim_cap)
+                rd, _ = run_dir_of(task, isinstance(p, _Adopted))
+                with contextlib.suppress(Exception):
+                    usd = json.loads((rd / "result.json").read_text())["sim_cost_usd"]
+                with lock:
+                    summaries.append({"run": str(rd), "end": "ungraded", "sim_usd": usd})
+                    (logd / "summaries.json").write_text(json.dumps(summaries, indent=1))
+            cap_was = p.cap if isinstance(p, _Adopted) else caps.get(task)
+            if (s and s["end"] in ("infra_killed", "infra_error", "infra_transport")
+                    and task not in reran):
+                reran.add(task)
+                heavy.add(task)
+                mem[task] = a.rerun_memory_mb
+                caps[task] = max(caps.get(task) or 0, a.relaunch_cap or a.sim_cap)
+                pending.insert(0, task)
+                say(f"{task}: RERUN (infrastructure: {s['end']}) at {a.rerun_memory_mb} MB, "
+                    f"${caps[task]}")
+                continue
+            if (a.relaunch_cap and s and s["end"] == "run_cap"
+                    and (s["compactions"] or 0) < 3 and task not in relaunched
+                    and (cap_was or 0) < a.relaunch_cap):
+                relaunched.add(task)
+                caps[task] = a.relaunch_cap
+                pending.insert(0, task)
+                say(f"{task}: RELAUNCH at ${a.relaunch_cap} (ended run_cap after "
+                    f"{s['compactions']} compactions at ${cap_was})")
+        if pending and len(running) < a.concurrency and (
+                not a.global_concurrency or _all_base_runs() < a.global_concurrency):
             committed = (spent() + sum(p.cap if isinstance(p, _Adopted) else caps[t]
                                        for t, p in running.items())
+                         + sum(p.cap if isinstance(p, _Adopted) else caps.get(t, a.sim_cap)
+                               for t, _, p in graded)  # exited, not yet in summaries
                          + sum(caps[t] for t in pending))
             if committed > a.spend_stop:
                 # hold, don't drop: the projection falls as running runs finish under cap
@@ -362,7 +565,7 @@ def cmd_batch(a) -> int:
                     say(f"HOLD: projected simulator spend ${committed:.2f} > ${a.spend_stop}; "
                         f"waiting with {pending}")
                 held = True
-                if not running:
+                if not running and not graded:
                     say(f"STOP: nothing running and still over ${a.spend_stop}; not launching "
                         f"{pending}")
                     pending = []
@@ -374,7 +577,8 @@ def cmd_batch(a) -> int:
             except Exception as e:  # noqa: BLE001 - a failed check just waits
                 free = -1
                 say(f"free check failed: {e}")
-            if free >= MIN_FREE_GB:
+            gate = a.heavy_free_gb if pending[0] in heavy else MIN_FREE_GB
+            if free >= gate:
                 task = pending.pop(0)
                 cmd = ["uv", "run", "--with", "fastmcp==4.1.3", "python",
                        "scripts/s2_native_codex.py", "base", "--go-from-jacob", "--task", task,
@@ -382,9 +586,24 @@ def cmd_batch(a) -> int:
                        "--sim-cap", str(caps[task]), "--host", a.host]
                 if a.implement_timeout:
                     cmd += ["--implement-timeout", str(a.implement_timeout)]
-                with open(logd / f"{task}.log", "w") as fh:  # the child keeps its own fd
-                    running[task] = subprocess.Popen(cmd, cwd=C.REPO_ROOT, stdout=fh,
-                                                     stderr=subprocess.STDOUT)
+                rdf = logd / f"{task}.rundir"
+                rdf.unlink(missing_ok=True)
+                cmd += ["--run-dir-file", str(rdf)]
+                if a.root:
+                    cmd += ["--root", a.root]
+                for lab in a.label or []:
+                    cmd += ["--label", lab]
+                if task in mem:  # an infrastructure rerun: the heavy-container rule
+                    cmd += ["--memory-mb", str(mem[task]), "--cpus", str(a.heavy_cpus)]
+                with _launch_lock():  # check + launch + register, atomic across drivers
+                    if a.global_concurrency and _all_base_runs() >= a.global_concurrency:
+                        pending.insert(0, task)
+                        time.sleep(30)
+                        continue
+                    with open(logd / f"{task}.log", "w") as fh:  # the child keeps its own fd
+                        running[task] = subprocess.Popen(cmd, cwd=C.REPO_ROOT, stdout=fh,
+                                                         stderr=subprocess.STDOUT)
+                    _register(running[task].pid)
                 say(f"{task}: launched (desktop {free} GB available)")
                 time.sleep(60)  # let it start its container before the next gate check
                 continue
@@ -413,6 +632,11 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--model", default=X.MODEL)
     b.add_argument("--effort", default=X.EFFORT)
     b.add_argument("--stop-after", type=int)
+    b.add_argument("--memory-mb", type=int, default=3072)
+    b.add_argument("--run-dir-file", help="write this run's directory here (for the driver)")
+    b.add_argument("--label", action="append",
+                   help="KEY=VALUE written at the top level of run.json (repeatable)")
+    b.add_argument("--cpus", type=float, default=2)
     b.add_argument("--implement-timeout", type=int,
                    help="02_implement step timeout in seconds (default task.toml's 5400)")
     b.add_argument("--recite-repeats", type=int, default=3,
@@ -426,12 +650,27 @@ def main(argv: list[str] | None = None) -> int:
     bt.add_argument("--tasks", required=True)
     bt.add_argument("--host", default="ssh://rig")
     bt.add_argument("--concurrency", type=int, default=3)
+    bt.add_argument("--global-concurrency", type=int,
+                    help="launch only while fewer base runs than this go on the laptop, "
+                         "counting every driver and arm (the lower-priority arm sets it)")
     bt.add_argument("--limit", type=int, default=COMMON_LIMIT)
     bt.add_argument("--recite-repeats", type=int, default=3)
     bt.add_argument("--sim-cap", type=float, default=0.8)
     bt.add_argument("--spend-stop", type=float, default=5.0)
     bt.add_argument("--implement-timeout", type=int,
                     help="02_implement step timeout in seconds (default task.toml's 5400)")
+    bt.add_argument("--root", help="run root (default the main arm's); stage/ and lossaudit/ "
+                    "go under it too, so arms never mix")
+    bt.add_argument("--label", action="append", help="KEY=VALUE passed to every base run")
+    bt.add_argument("--heavy", help="tasks always launched as heavy containers "
+                    "(--rerun-memory-mb, --heavy-cpus, --heavy-free-gb gate)")
+    bt.add_argument("--rerun", help="tasks in --tasks that are already their one "
+                    "infrastructure rerun (launched with --rerun-memory-mb)")
+    bt.add_argument("--heavy-free-gb", type=float, default=10,
+                    help="desktop memory available before launching an infrastructure rerun")
+    bt.add_argument("--heavy-cpus", type=float, default=4)
+    bt.add_argument("--rerun-memory-mb", type=int, default=8192,
+                    help="memory for the one rerun of a run that ended infra_killed/infra_error")
     bt.add_argument("--relaunch-cap", type=float,
                     help="relaunch a run that ended run_cap before 3 compactions at this cap")
     bt.add_argument("--adopt", help="tasks whose base runs are already going (grade on exit)")

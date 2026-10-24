@@ -234,45 +234,44 @@ def test_auth_tokens_only_long_strings():
 
 
 class _SB:
-    def __init__(self):
-        self.files = {}
-
-    def put_file(self, data, path):
-        self.files[path] = data
+    name = "c"
+    host = None
 
 
-def _scan_env(monkeypatch, result):
-    from compaction.s2.native import common as N
+def _scan_env(monkeypatch, rc, out, err):
     seen = {}
 
-    def fake(sb, cmd, env, *, timeout_s=300, workdir="/"):
-        seen.update(cmd=cmd, env=env)
-        return result
+    class P:
+        returncode, stdout, stderr = rc, out.encode(), err.encode()
 
-    monkeypatch.setattr(N, "exec_env", fake)
+    def fake_run(argv, *, input=None, env=None, **k):
+        seen.update(argv=argv, input=input, env=env)
+        return P()
+
+    monkeypatch.setattr(X.subprocess, "run", fake_run)
     monkeypatch.setattr(X, "changed_files", lambda sb: ["/app/a.py", "/root/.x/leak"])
     return seen
 
 
-def test_secret_scan_one_grep_values_only_in_env(monkeypatch):
-    from compaction.deepswe import sandbox as SB
-    seen = _scan_env(monkeypatch, SB.ExecResult(0, "/root/.x/leak\n", "", 0.1))
-    sb = _SB()
-    assert X.secret_scan(sb, ["s" * 30, "t" * 30]) == ["/root/.x/leak"]
-    assert "s" * 30 not in seen["cmd"] and "t" * 30 not in seen["cmd"]
-    assert sorted(seen["env"].values()) == ["s" * 30, "t" * 30]
-    assert seen["cmd"].count('-e "$') == 2
-    assert sb.files[f"{X.SECRETS_C}/scan-list"] == b"/app/a.py\0/root/.x/leak\0"
+def test_secret_scan_one_grep_list_on_stdin_values_only_in_env(monkeypatch):
+    seen = _scan_env(monkeypatch, 0, "/root/.x/leak\n", "")
+    assert X.secret_scan(_SB(), ["s" * 30, "t" * 30]) == ["/root/.x/leak"]
+    cmd = " ".join(seen["argv"])
+    assert "s" * 30 not in cmd and "t" * 30 not in cmd and "-i" in seen["argv"]
+    assert {seen["env"][k] for k in seen["env"] if k.startswith(X.SECRET_ENV)} == {
+        "s" * 30, "t" * 30}
+    assert cmd.count('-e "$') == 2
+    assert seen["input"] == b"/app/a.py\0/root/.x/leak\0"  # no file, no size limit
 
 
 def test_secret_scan_fails_closed(monkeypatch):
     import pytest
 
     from compaction.deepswe import sandbox as SB
-    _scan_env(monkeypatch, SB.ExecResult(0, "", "__GREP_ERR 2\n", 0.1))
+    _scan_env(monkeypatch, 0, "", "__GREP_ERR 2\n")
     with pytest.raises(SB.SandboxError):
         X.secret_scan(_SB(), ["s" * 30])
-    _scan_env(monkeypatch, SB.ExecResult(123, "", "", 0.1))
+    _scan_env(monkeypatch, 123, "", "")
     with pytest.raises(SB.SandboxError):
         X.secret_scan(_SB(), ["s" * 30])
 
@@ -495,3 +494,177 @@ def test_loss_ledger_new_inherited_unmatched():
     led = X.loss_ledger(rows)
     assert (led["new"], led["inherited"], led["unmatched"]) == (2, 1, 1)
     assert led["by_boundary"]["b2"] == {"new": 1, "inherited": 1, "unmatched": 1}
+
+
+
+
+def test_loss_ledger_ignores_invalid_prior_grades_and_conflicts():
+    def row(k, q, grade, lost, gv=True):
+        return {"boundary_dir": f"r/b{k}", "quote": q, "grade": grade, "lost": lost,
+                "valid": True, "grade_valid": gv}
+    rows = [row(1, "a", "dropped", True, gv=False), row(1, "b", "kept", False),
+            row(1, "b", "dropped", True), row(2, "a", "dropped", True),
+            row(2, "b", "dropped", True)]
+    led = X.loss_ledger(rows)
+    assert led["by_boundary"]["b2"] == {"new": 0, "inherited": 0, "unmatched": 2}
+
+
+class _FakeProc:
+    stdout = None
+
+    def __init__(self, *a, **k):
+        import io
+        self.stdout = io.BytesIO(b"")
+
+    def poll(self):
+        return 0
+
+    def kill(self):
+        pass
+
+    def wait(self, timeout=None):
+        return 0
+
+
+def _detached_env(monkeypatch, rc_text="", stall=0.0):
+    import time
+
+    from compaction.deepswe import sandbox as SB
+    from compaction.s2.native import common as N
+    calls = []
+
+    def raw(sb, cmd, *, timeout_s, workdir="/"):
+        calls.append(cmd)
+        if stall:
+            time.sleep(min(stall, timeout_s))  # a stalled transport, bounded by the caller
+        if cmd.startswith("cat ") and cmd.endswith("/rc 2>/dev/null"):
+            return SB.ExecResult(0, rc_text, "", 0.0)
+        return SB.ExecResult(1, "", "transport down", 0.0)
+
+    monkeypatch.setattr(X, "raw_exec", raw)
+    monkeypatch.setattr(N, "exec_env", lambda *a, **k: SB.ExecResult(0, "", "", 0.0))
+    monkeypatch.setattr(X.subprocess, "Popen", _FakeProc)
+
+    class Sb:
+        name, host = "c", None
+
+        def exec(self, cmd, timeout_s=600, workdir="/app"):
+            return SB.ExecResult(0, "", "", 0.0)
+
+        def put_file(self, data, path):
+            pass
+
+    return Sb(), calls
+
+
+def test_detached_step_honours_stop_when_sessions_fail_immediately(monkeypatch, tmp_path):
+    import threading
+    import time
+    sb, _ = _detached_env(monkeypatch)
+    stop = threading.Event()
+    threading.Timer(0.3, stop.set).start()
+    t0 = time.monotonic()
+    r = X.detached_step(sb, "true", name="s", env={}, stdin=None, timeout_s=600,
+                        log_path=tmp_path / "e.jsonl", stop=stop)
+    assert r.killed == "stop" and r.rc == -1 and time.monotonic() - t0 < 10
+
+
+def test_detached_step_deadline_with_failing_sessions(monkeypatch, tmp_path):
+    import time
+    sb, _ = _detached_env(monkeypatch)
+    t0 = time.monotonic()
+    # deadline = timeout + CLIENT_GRACE_S + 60: a negative timeout puts it ~1 s out
+    r = X.detached_step(sb, "true", name="s", env={}, stdin=None, timeout_s=-89,
+                        log_path=tmp_path / "e.jsonl")
+    assert r.killed == "client_timeout" and r.rc == -1 and time.monotonic() - t0 < 10
+
+
+def test_detached_step_failed_drain_is_incomplete_not_success(monkeypatch, tmp_path):
+    sb, calls = _detached_env(monkeypatch, rc_text="0\n")
+    monkeypatch.setattr(X, "RC_CHECK_S", 0)
+    class FastStop(X.threading.Event):
+        def wait(self, timeout=None):  # no real backoff sleeps in the test
+            return False
+
+    r = X.detached_step(sb, "true", name="s", env={}, stdin=None, timeout_s=600,
+                        log_path=tmp_path / "e.jsonl", stop=FastStop())
+    assert r.rc == 0 and r.output_incomplete is True
+    assert sum(c.startswith("tail -c +") for c in calls) == 6  # retried, then flagged
+
+
+def _driver():
+    import importlib.util
+
+    from compaction.s2 import config as C
+    spec = importlib.util.spec_from_file_location(
+        "s2_native_codex_cli", C.REPO_ROOT / "scripts" / "s2_native_codex.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
+
+
+def test_driver_adoption_never_crosses_arms():
+    m = _driver()
+    main = "/x/bin/python scripts/s2_native_codex.py base --task helm --limit 150000"
+    t80 = "/x/bin/python scripts/s2_native_codex.py base --task helm --root /r/t80k --limit 80000"
+    assert m._matches(main, "helm", None) and not m._matches(t80, "helm", None)
+    assert m._matches(t80, "helm", "/r/t80k") and not m._matches(main, "helm", "/r/t80k")
+    assert not m._matches(main, "hel", None)
+
+
+def test_driver_failed_grading_is_none_not_zero(tmp_path):
+    m = _driver()
+    rd = tmp_path / "helm-codex-luna-a1"
+    (rd / "steps").mkdir(parents=True)
+    (rd / "result.json").write_text(json.dumps({"end": "submitted", "steps": {},
+                                                "boundaries": [], "sim_cost_usd": 1.0}))
+    (rd / "run.json").write_text("{}")
+    s = m._run_summary(rd, None)
+    assert s["items"] is None and s["lost"] is None and s["new"] is None and not s["graded"]
+    gd = tmp_path / "g"
+    gd.mkdir()
+    (gd / "losses.jsonl").write_text("")
+    s = m._run_summary(rd, gd)
+    assert s["items"] == 0 and s["graded"]
+
+
+def test_detached_step_deadline_bounds_stalled_calls(monkeypatch, tmp_path):
+    import time
+    sb, _ = _detached_env(monkeypatch, stall=5)
+    monkeypatch.setattr(X, "RC_CHECK_S", 0)
+    t0 = time.monotonic()
+    r = X.detached_step(sb, "true", name="s", env={}, stdin=None, timeout_s=-88,
+                        log_path=tmp_path / "e.jsonl")
+    # deadline ~2 s out: every stalled call is cut to the time left; cleanup allowance aside
+    assert r.killed == "client_timeout" and time.monotonic() - t0 < 60
+
+
+def test_driver_registry_counts_live_launches(monkeypatch, tmp_path):
+    import os
+    m = _driver()
+    monkeypatch.setattr(m, "LAUNCH_REGISTRY", tmp_path / "reg.json")
+    monkeypatch.setattr(m, "LAUNCH_LOCK", tmp_path / "reg.lock")
+    monkeypatch.setattr(m, "_base_proc_table", lambda: [(11, 1, "py a"), (12, 1, "py b")])
+    with m._launch_lock():
+        m._register(os.getpid())
+        m._register(99999999)  # not alive: dropped
+    # one registered launch (no Python child yet) + two older unregistered runs = 3
+    assert m._all_base_runs() == 3
+    assert json.loads((tmp_path / "reg.json").read_text()) == [os.getpid()]
+
+
+def test_raw_exec_client_timeout_is_the_budget(monkeypatch):
+    import subprocess
+    seen = {}
+
+    def run(argv, *, capture_output, timeout, check):
+        seen["timeout"] = timeout
+        raise subprocess.TimeoutExpired(argv, timeout)
+
+    monkeypatch.setattr(X.subprocess, "run", run)
+
+    class Sb:
+        name, host = "c", None
+
+    r = X.raw_exec(Sb(), "cat /x", timeout_s=2)
+    assert seen["timeout"] == 2 and r.rc == 124
