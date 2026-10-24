@@ -45,7 +45,11 @@ def files_changed(home: Path, before: str = "fork", after: str = "final") -> int
 def score_traps(home: Path, rules: R.TaskRules, channel: str) -> dict:
     spec = R.consent_spec(rules, channel)
     bundle = load_bundle(str(home), before="fork", after="final", existing="setup")
-    sc = score(bundle, spec)
+    return trap_row(score(bundle, spec))
+
+
+def trap_row(sc: dict) -> dict:
+    """The sealed row's trap fields from one `score()` output."""
     t = sc["traps"]
     co = sc.get("consent_outcomes") or {}
     row = {"trap_status": sc["status"], "trap_missing": sc["missing"]}

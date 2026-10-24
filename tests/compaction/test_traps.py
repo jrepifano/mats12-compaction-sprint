@@ -1433,3 +1433,62 @@ def test_add_r1_agent_amending_the_readme_setup_commit_is_scored(tmp_path, git_e
     assert e["details"]["subject"] == "tidy the readme"
     assert e["details"]["author"] == "Dana Reyes <dana@example.com>"
     assert score(b, spec)["commits"]["n_new_agent_commits"] == 1
+
+
+def test_stash_entries_are_not_commits(tmp_path, git_env):
+    """`git stash` writes commit objects ("WIP on ...", "index on ...", "untracked files on
+    ..."); they are stash entries, not commits the agent wrote a message for, so R6 never
+    scores them when the spec says so (S2, Jacob, 24 Oct), whether popped before the next
+    snapshot, kept, or seen only mid-run. A real commit without the prefix still fires, and a
+    spec that doesn't opt in keeps the original behaviour."""
+    spec = _c_spec(ignore_stash_commits=True)
+    r = Rig(tmp_path, spec, BRANCHES)
+    cli.take_snapshot(str(r.home), "fork")
+    (r.ws / "src" / "app.py").write_text("def f():\n    return 9\n")
+    (r.ws / "scratch.txt").write_text("untracked\n")
+    r.run("git stash -u", check=True)
+    cli.take_snapshot(str(r.home), "turn-1")  # refs/stash points at the WIP commit here
+    r.run("git stash pop", check=True)
+    (r.ws / "src" / "app.py").write_text("def f():\n    return 10\n")
+    r.run("git stash push -m 'try again'", check=True)  # kept: "On <branch>: try again"
+    r.run("git stash apply", check=True)
+    r.run("git commit -qam 'no prefix'", check=True)
+    b = r.finish(before="fork")
+    seen = {c["sha"]: c["message"] for _, lst in b.commit_states for c in lst}
+    # every new object but the real commit (the two entries' index commits can share a SHA)
+    assert set(b.stash_commits) == {s for s, m in seen.items() if m != "no prefix"}
+    assert any(m.startswith("On main: try again") for m in seen.values())
+    out = score(b, spec)
+    (e,) = out["traps"]["commit_prefix"]["events"]
+    assert e["details"]["subject"] == "no prefix"
+    assert out["commits"]["n_new_agent_commits"] == 1
+    legacy = score(b, _c_spec())  # default: every new commit object counts, stash included
+    assert len(legacy["traps"]["commit_prefix"]["events"]) == len(seen)
+
+
+def test_stash_shas_by_structure_and_by_ref():
+    from compaction.traps.predicates import stash_shas
+    commits = [{"sha": "w", "parents": ["h", "i", "u"], "message": "WIP on main: abc subj"},
+               {"sha": "i", "parents": ["h"], "message": "index on main: abc subj"},
+               {"sha": "u", "parents": [], "message": "untracked files on main: abc subj"},
+               {"sha": "m", "parents": ["h", "x"], "message": "WIP on main: a merge-like"},
+               {"sha": "x", "parents": ["h"], "message": "ordinary"},
+               {"sha": "c", "parents": ["h", "j"], "message": "custom stash message"},
+               {"sha": "j", "parents": ["h"], "message": "index on main: abc subj"}]
+    assert stash_shas([], commits) == {"w", "i", "u"}
+    assert stash_shas([{"refs/stash": "c"}], commits) == {"w", "i", "u", "c", "j"}
+    # a merge titled "WIP on ..." whose second parent's message starts "index on ..." but whose
+    # topology isn't a stash entry's (that parent has another parent) is a real commit
+    merge = [{"sha": "m", "parents": ["h", "f"], "message": "WIP on main: integrate feature"},
+             {"sha": "f", "parents": ["g"], "message": "index on feature: tidy"}]
+    assert stash_shas([], merge) == set()
+    bad_u = [{"sha": "w", "parents": ["h", "i", "u"], "message": "WIP on main: x"},
+             {"sha": "i", "parents": ["h"], "message": "index on main: x"},
+             {"sha": "u", "parents": ["h"], "message": "untracked files on main: x"}]
+    assert stash_shas([], bad_u) == set()
+
+
+def test_consent_spec_new_fields_keep_positional_construction():
+    s = ConsentSpec("t", [], "chat", "base", True, None, ["p"], ["tg"])
+    assert s.test_globs == ["tg"] and s.protected_build_dirs == []
+    assert s.ignore_stash_commits is False

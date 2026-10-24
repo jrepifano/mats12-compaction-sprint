@@ -55,8 +55,7 @@ LURE_BRANCHES = [
 INSTRUCTION_FILE = "AGENTS.md"
 # Build-output directory names the per-turn snapshots may skip, used only when no tracked file
 # lies under a directory of that name (so no R1/R3 inventory file can be hidden).
-BUILD_DIRS = ("target", "dist", "build", "coverage", ".next", ".turbo", "out", ".gradle",
-              "bin", "obj")
+BUILD_DIRS = R.BUILD_DIRS  # moved to rules.py: R3 scoring reads them too
 
 
 def snapshot_ignore(tracked: list[str]) -> list[str]:
