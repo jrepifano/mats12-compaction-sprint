@@ -1,0 +1,1281 @@
+{
+ "analysis_json_sha256": "527f26631ac5222b85fe0a8cdffbc5f6cb482bc321ad3fe7c6620b32dcdecd9a",
+ "exploratory_unfiltered": [
+  {
+   "a": "antigravity",
+   "b": "cc_native",
+   "compaction_any_diff": {
+    "hi": -0.0875,
+    "lo": -0.29762537993920973,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": -0.1927710843373494
+   },
+   "diff": {
+    "hi": -0.04282223936186409,
+    "lo": -0.12795515652006914,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": -0.08906882591093117
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 83,
+   "n_items": 494,
+   "n_session_groups": 59,
+   "rate_a": {
+    "hi": 0.18578129392891987,
+    "lo": 0.072726271525831,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.12753036437246965
+   },
+   "rate_b": {
+    "hi": 0.28547330696984674,
+    "lo": 0.14623361319782,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.2165991902834008
+   },
+   "reloaded_as_lost": {
+    "a": "antigravity",
+    "b": "cc_native",
+    "compaction_any_diff": {
+     "hi": -0.0875,
+     "lo": -0.29762537993920973,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": -0.1927710843373494
+    },
+    "diff": {
+     "hi": -0.044073397826040556,
+     "lo": -0.1298912239843259,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": -0.09109311740890688
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 83,
+    "n_items": 494,
+    "n_session_groups": 59,
+    "rate_a": {
+     "hi": 0.1885363557926111,
+     "lo": 0.07423445137746942,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.12955465587044535
+    },
+    "rate_b": {
+     "hi": 0.2887327681588469,
+     "lo": 0.1505611936692038,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.22064777327935223
+    }
+   }
+  },
+  {
+   "a": "antigravity",
+   "b": "cc_prompt",
+   "compaction_any_diff": {
+    "hi": -0.09637316388843051,
+    "lo": -0.32433309933309934,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.21428571428571427
+   },
+   "diff": {
+    "hi": -0.03508653709746064,
+    "lo": -0.19834762773722628,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.11991869918699187
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 84,
+   "n_items": 492,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.18140871987561524,
+    "lo": 0.07366005153545979,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.12601626016260162
+   },
+   "rate_b": {
+    "hi": 0.34308455671286797,
+    "lo": 0.156047231640021,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.2459349593495935
+   },
+   "reloaded_as_lost": {
+    "a": "antigravity",
+    "b": "cc_prompt",
+    "compaction_any_diff": {
+     "hi": -0.09637316388843051,
+     "lo": -0.32433309933309934,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.21428571428571427
+    },
+    "diff": {
+     "hi": -0.039095342448841074,
+     "lo": -0.20412260011293587,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.12398373983739837
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 84,
+    "n_items": 492,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.18537533435524878,
+     "lo": 0.07509863325080716,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.12804878048780488
+    },
+    "rate_b": {
+     "hi": 0.348876962830451,
+     "lo": 0.16070406215921484,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.25203252032520324
+    }
+   }
+  },
+  {
+   "a": "antigravity",
+   "b": "codex_local",
+   "compaction_any_diff": {
+    "hi": 0.12987012987012986,
+    "lo": -0.03297619047619048,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.047619047619047616
+   },
+   "diff": {
+    "hi": 0.08556209953268776,
+    "lo": -0.006861456274910405,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.04073319755600815
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 84,
+   "n_items": 491,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.18276332549147586,
+    "lo": 0.07373102154781,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.12627291242362526
+   },
+   "rate_b": {
+    "hi": 0.13521183005912643,
+    "lo": 0.050081598138592955,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.0855397148676171
+   },
+   "reloaded_as_lost": {
+    "a": "antigravity",
+    "b": "codex_local",
+    "compaction_any_diff": {
+     "hi": 0.12987012987012986,
+     "lo": -0.03297619047619048,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.047619047619047616
+    },
+    "diff": {
+     "hi": 0.08889149102263855,
+     "lo": -0.005591995072560863,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.04276985743380855
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 84,
+    "n_items": 491,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.1865754320881143,
+     "lo": 0.07494259471871412,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.12830957230142567
+    },
+    "rate_b": {
+     "hi": 0.13521183005912643,
+     "lo": 0.050081598138592955,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.0855397148676171
+    }
+   }
+  },
+  {
+   "a": "antigravity",
+   "b": "opencode",
+   "compaction_any_diff": {
+    "hi": -0.270827205882353,
+    "lo": -0.44212858094603597,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.35714285714285715
+   },
+   "diff": {
+    "hi": -0.11292333902953303,
+    "lo": -0.22393931585108057,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.16767676767676767
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 84,
+   "n_items": 495,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.1851291934065522,
+    "lo": 0.07360395939086295,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.12727272727272726
+   },
+   "rate_b": {
+    "hi": 0.36298853483177435,
+    "lo": 0.2264937106918239,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.29494949494949496
+   },
+   "reloaded_as_lost": {
+    "a": "antigravity",
+    "b": "opencode",
+    "compaction_any_diff": {
+     "hi": -0.270827205882353,
+     "lo": -0.44212858094603597,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.35714285714285715
+    },
+    "diff": {
+     "hi": -0.11561764196234724,
+     "lo": -0.22587200772200772,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.1696969696969697
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 84,
+    "n_items": 495,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.18726091837405703,
+     "lo": 0.07450752393980849,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.1292929292929293
+    },
+    "rate_b": {
+     "hi": 0.3662242482483787,
+     "lo": 0.23168566259787757,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.298989898989899
+    }
+   }
+  },
+  {
+   "a": "antigravity",
+   "b": "pi",
+   "compaction_any_diff": {
+    "hi": -0.04,
+    "lo": -0.23529411764705882,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.14457831325301204
+   },
+   "diff": {
+    "hi": 0.012615093907466774,
+    "lo": -0.07874793812828733,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.032586558044806514
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 83,
+   "n_items": 491,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.18465490886736335,
+    "lo": 0.07234383685014106,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.12627291242362526
+   },
+   "rate_b": {
+    "hi": 0.20708592837680032,
+    "lo": 0.11435182822044136,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.15885947046843177
+   },
+   "reloaded_as_lost": {
+    "a": "antigravity",
+    "b": "pi",
+    "compaction_any_diff": {
+     "hi": -0.04938271604938271,
+     "lo": -0.2613920454545454,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.1566265060240964
+    },
+    "diff": {
+     "hi": 0.011185891014725032,
+     "lo": -0.08064614717248994,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.034623217922606926
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 83,
+    "n_items": 491,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.18738641622333266,
+     "lo": 0.07430694336427805,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.12830957230142567
+    },
+    "rate_b": {
+     "hi": 0.2101029096272459,
+     "lo": 0.11929523838417548,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.1629327902240326
+    }
+   }
+  },
+  {
+   "a": "cc_native",
+   "b": "codex_local",
+   "compaction_any_diff": {
+    "hi": 0.3625,
+    "lo": 0.1204698795180723,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.23809523809523808
+   },
+   "diff": {
+    "hi": 0.19962444889402783,
+    "lo": 0.059672919187844564,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.13373253493013973
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 84,
+   "n_items": 501,
+   "n_session_groups": 59,
+   "rate_a": {
+    "hi": 0.2884366434745941,
+    "lo": 0.14508928571428573,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.21756487025948104
+   },
+   "rate_b": {
+    "hi": 0.13199587286893463,
+    "lo": 0.0482507174586698,
+    "n_boot_valid": 2000,
+    "n_clusters": 59,
+    "point": 0.08383233532934131
+   },
+   "reloaded_as_lost": {
+    "a": "cc_native",
+    "b": "codex_local",
+    "compaction_any_diff": {
+     "hi": 0.3625,
+     "lo": 0.1204698795180723,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.23809523809523808
+    },
+    "diff": {
+     "hi": 0.20307115037522558,
+     "lo": 0.06305324397967449,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.1377245508982036
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 84,
+    "n_items": 501,
+    "n_session_groups": 59,
+    "rate_a": {
+     "hi": 0.2920242120026574,
+     "lo": 0.14950267897856817,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.2215568862275449
+    },
+    "rate_b": {
+     "hi": 0.13199587286893463,
+     "lo": 0.0482507174586698,
+     "n_boot_valid": 2000,
+     "n_clusters": 59,
+     "point": 0.08383233532934131
+    }
+   }
+  },
+  {
+   "a": "codex_local",
+   "b": "opencode",
+   "compaction_any_diff": {
+    "hi": -0.30120481927710846,
+    "lo": -0.512202743902439,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.4117647058823529
+   },
+   "diff": {
+    "hi": -0.14080679445107402,
+    "lo": -0.27500232342007436,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.20916334661354583
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 85,
+   "n_items": 502,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.1329256950789714,
+    "lo": 0.049392430397541126,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.08366533864541832
+   },
+   "rate_b": {
+    "hi": 0.3588245723821443,
+    "lo": 0.22726497052435618,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.29282868525896416
+   },
+   "reloaded_as_lost": {
+    "a": "codex_local",
+    "b": "opencode",
+    "compaction_any_diff": {
+     "hi": -0.30120481927710846,
+     "lo": -0.512202743902439,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.4117647058823529
+    },
+    "diff": {
+     "hi": -0.1451562076443481,
+     "lo": -0.27888046975638264,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.21314741035856574
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 85,
+    "n_items": 502,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.1329256950789714,
+     "lo": 0.049392430397541126,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.08366533864541832
+    },
+    "rate_b": {
+     "hi": 0.36119263253280454,
+     "lo": 0.23298847786537297,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.2968127490039841
+    }
+   }
+  },
+  {
+   "a": "codex_local",
+   "b": "pi",
+   "compaction_any_diff": {
+    "hi": -0.047058823529411764,
+    "lo": -0.3014305531472169,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.17857142857142858
+   },
+   "diff": {
+    "hi": -0.020990575659907834,
+    "lo": -0.11824183674866817,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": -0.07228915662650602
+   },
+   "label": "exploratory",
+   "metric": "user-given rules lost",
+   "n_compactions": 84,
+   "n_items": 498,
+   "n_session_groups": 60,
+   "rate_a": {
+    "hi": 0.13386458070292231,
+    "lo": 0.049312654133457236,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.08433734939759036
+   },
+   "rate_b": {
+    "hi": 0.20304843861071895,
+    "lo": 0.11357834645860324,
+    "n_boot_valid": 2000,
+    "n_clusters": 60,
+    "point": 0.1566265060240964
+   },
+   "reloaded_as_lost": {
+    "a": "codex_local",
+    "b": "pi",
+    "compaction_any_diff": {
+     "hi": -0.05404678872420812,
+     "lo": -0.3170731707317073,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.19047619047619047
+    },
+    "diff": {
+     "hi": -0.02354881098183304,
+     "lo": -0.12283755001936233,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": -0.07630522088353414
+    },
+    "label": "exploratory",
+    "metric": "user-given rules lost",
+    "n_compactions": 84,
+    "n_items": 498,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.13386458070292231,
+     "lo": 0.049312654133457236,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.08433734939759036
+    },
+    "rate_b": {
+     "hi": 0.20624191906687572,
+     "lo": 0.11883197869955156,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.1606425702811245
+    }
+   }
+  }
+ ],
+ "judge": "haiku-max",
+ "metric": "user-given rules lost (dropped or misstated, availability lost), paired by history",
+ "n_boot": 2000,
+ "primary_contrast": [
+  "cc_prompt",
+  "codex_local"
+ ],
+ "reading_rule": {
+  "disagree": true,
+  "filtered_excludes_0": false,
+  "headline": "the cc_prompt vs codex_local difference depends on the carry-over rule; give both",
+  "opposite_signs": false,
+  "rule": "disagree if opposite signs, or one 95% interval excludes 0 and the other doesn't",
+  "unfiltered_excludes_0": true
+ },
+ "release": {
+  "digest": "9666222d6854752db12b5a1e3949032a5ac5d412e1826672886d71178ac131b8",
+  "release_name": "main",
+  "released_utc": "2026-10-23T15:36:06Z",
+  "stage": "S1"
+ },
+ "rules": {
+  "filtered": {
+   "arms": {
+    "antigravity": {
+     "arm": "antigravity",
+     "compactions_losing_user_rule": {
+      "hi": 0.37665901171998717,
+      "lo": 0.18602497846683894,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.2857142857142857
+     },
+     "drop_rate": {
+      "hi": 0.1960574920000859,
+      "lo": 0.13323162491480323,
+      "n_boot_valid": 2000,
+      "n_clusters": 73,
+      "point": 0.16646989374262103
+     },
+     "n_compactions": 100,
+     "n_items": 2541,
+     "n_user_rules": 499,
+     "user_rule_loss_rate": {
+      "hi": 0.19760653112379892,
+      "lo": 0.08372093023255814,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.14228456913827656
+     },
+     "user_rule_loss_rate_corrected": {
+      "alternatives": {
+       "reloaded_excluded": {
+        "hi": 0.14232356456729642,
+        "lo": 0.0518829264334131,
+        "point": 0.0970122062306431,
+        "precision": {
+         "n": 22,
+         "n_hits": 15,
+         "point": 0.6818181818181818
+        },
+        "provenance": {
+         "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+         "definition_settled_after_labels": true,
+         "dev_only": {
+          "n": 9,
+          "n_hits": 5
+         },
+         "held_out_only": {
+          "n": 13,
+          "n_hits": 10
+         },
+         "interval_wilson": [
+          0.47,
+          0.84
+         ]
+        }
+       }
+      },
+      "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+      "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+      "hi": 0.15279356709909098,
+      "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+      "kind": "assumption-based sensitivity, not calibrated",
+      "lo": 0.054751684772581806,
+      "point": 0.1027610777109775,
+      "precision": {
+       "n": 18,
+       "n_hits": 13,
+       "point": 0.7222222222222222
+      },
+      "provenance": {
+       "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+       "definition_settled_after_labels": true,
+       "held_out_only": {
+        "n": 11,
+        "n_hits": 9
+       },
+       "interval_wilson": [
+        0.49,
+        0.88
+       ],
+       "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+       "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+      }
+     }
+    },
+    "codex_local": {
+     "arm": "codex_local",
+     "compactions_losing_user_rule": {
+      "hi": 0.4395714285714285,
+      "lo": 0.25674809424809425,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.35294117647058826
+     },
+     "drop_rate": {
+      "hi": 0.29071980993343943,
+      "lo": 0.21546949241895974,
+      "n_boot_valid": 2000,
+      "n_clusters": 73,
+      "point": 0.25625
+     },
+     "n_compactions": 100,
+     "n_items": 2560,
+     "n_user_rules": 507,
+     "user_rule_loss_rate": {
+      "hi": 0.27273436392001127,
+      "lo": 0.12859658275727143,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.20512820512820512
+     },
+     "user_rule_loss_rate_corrected": {
+      "alternatives": {
+       "reloaded_excluded": {
+        "hi": 0.20089603315993565,
+        "lo": 0.07470378359639171,
+        "point": 0.13986013986013984,
+        "precision": {
+         "n": 22,
+         "n_hits": 15,
+         "point": 0.6818181818181818
+        },
+        "provenance": {
+         "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+         "definition_settled_after_labels": true,
+         "dev_only": {
+          "n": 9,
+          "n_hits": 5
+         },
+         "held_out_only": {
+          "n": 13,
+          "n_hits": 10
+         },
+         "interval_wilson": [
+          0.47,
+          0.84
+         ]
+        }
+       }
+      },
+      "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+      "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+      "hi": 0.21022583978340184,
+      "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+      "kind": "assumption-based sensitivity, not calibrated",
+      "lo": 0.07982998385407937,
+      "point": 0.14814814814814814,
+      "precision": {
+       "n": 18,
+       "n_hits": 13,
+       "point": 0.7222222222222222
+      },
+      "provenance": {
+       "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+       "definition_settled_after_labels": true,
+       "held_out_only": {
+        "n": 11,
+        "n_hits": 9
+       },
+       "interval_wilson": [
+        0.49,
+        0.88
+       ],
+       "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+       "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+      }
+     }
+    }
+   },
+   "primary": {
+    "a": "cc_prompt",
+    "b": "codex_local",
+    "compaction_any_diff": {
+     "hi": 0.2987012987012987,
+     "lo": 0.04052702702702703,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.17647058823529413
+    },
+    "diff": {
+     "hi": 0.15205923275690716,
+     "lo": -0.0588266253869969,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.04590818363273453
+    },
+    "diff_corrected": {
+     "alternatives": {
+      "reloaded_excluded": {
+       "hi": 0.1066713624620659,
+       "lo": -0.03962746530705132,
+       "point": 0.03130103429504627,
+       "precision": {
+        "n": 22,
+        "n_hits": 15,
+        "point": 0.6818181818181818
+       },
+       "provenance": {
+        "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+        "definition_settled_after_labels": true,
+        "dev_only": {
+         "n": 9,
+         "n_hits": 5
+        },
+        "held_out_only": {
+         "n": 13,
+         "n_hits": 10
+        },
+        "interval_wilson": [
+         0.47,
+         0.84
+        ]
+       }
+      }
+     },
+     "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+     "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+     "hi": 0.11185159795248753,
+     "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+     "kind": "assumption-based sensitivity, not calibrated",
+     "lo": -0.04146872571631109,
+     "point": 0.03315591040141938,
+     "precision": {
+      "n": 18,
+      "n_hits": 13,
+      "point": 0.7222222222222222
+     },
+     "provenance": {
+      "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+      "definition_settled_after_labels": true,
+      "held_out_only": {
+       "n": 11,
+       "n_hits": 9
+      },
+      "interval_wilson": [
+       0.49,
+       0.88
+      ],
+      "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+      "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+     }
+    },
+    "label": "primary",
+    "metric": "user-given rules lost",
+    "n_compactions": 85,
+    "n_items": 501,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.3434104095929857,
+     "lo": 0.1574926310043668,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.24750499001996007
+    },
+    "rate_b": {
+     "hi": 0.26733434193328914,
+     "lo": 0.12678741894550577,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.20159680638722555
+    },
+    "reloaded_as_lost": {
+     "a": "cc_prompt",
+     "b": "codex_local",
+     "compaction_any_diff": {
+      "hi": 0.2987012987012987,
+      "lo": 0.04052702702702703,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.17647058823529413
+     },
+     "diff": {
+      "hi": 0.15790332274405422,
+      "lo": -0.05489126114949043,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.0499001996007984
+     },
+     "label": "primary",
+     "metric": "user-given rules lost",
+     "n_compactions": 85,
+     "n_items": 501,
+     "n_session_groups": 60,
+     "rate_a": {
+      "hi": 0.35010983873240337,
+      "lo": 0.1622865217937445,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.25349301397205587
+     },
+     "rate_b": {
+      "hi": 0.27173961309753647,
+      "lo": 0.12697938026885394,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.20359281437125748
+     }
+    }
+   }
+  },
+  "unfiltered": {
+   "arms": {
+    "antigravity": {
+     "arm": "antigravity",
+     "compactions_losing_user_rule": {
+      "hi": 0.4,
+      "lo": 0.21424772036474163,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.30952380952380953
+     },
+     "drop_rate": {
+      "hi": 0.1960574920000859,
+      "lo": 0.13323162491480323,
+      "n_boot_valid": 2000,
+      "n_clusters": 73,
+      "point": 0.16646989374262103
+     },
+     "n_compactions": 100,
+     "n_items": 2541,
+     "n_user_rules": 499,
+     "user_rule_loss_rate": {
+      "hi": 0.18323639936186378,
+      "lo": 0.07286089538602102,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.12625250501002003
+     },
+     "user_rule_loss_rate_corrected": {
+      "alternatives": {
+       "reloaded_excluded": {
+        "hi": 0.13260813007082095,
+        "lo": 0.045847105250083287,
+        "point": 0.08608125341592275,
+        "precision": {
+         "n": 22,
+         "n_hits": 15,
+         "point": 0.6818181818181818
+        },
+        "provenance": {
+         "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+         "definition_settled_after_labels": true,
+         "dev_only": {
+          "n": 9,
+          "n_hits": 5
+         },
+         "held_out_only": {
+          "n": 13,
+          "n_hits": 10
+         },
+         "interval_wilson": [
+          0.47,
+          0.84
+         ]
+        }
+       }
+      },
+      "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+      "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+      "hi": 0.14308038317563412,
+      "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+      "kind": "assumption-based sensitivity, not calibrated",
+      "lo": 0.04885859355507424,
+      "point": 0.0911823647294589,
+      "precision": {
+       "n": 18,
+       "n_hits": 13,
+       "point": 0.7222222222222222
+      },
+      "provenance": {
+       "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+       "definition_settled_after_labels": true,
+       "held_out_only": {
+        "n": 11,
+        "n_hits": 9
+       },
+       "interval_wilson": [
+        0.49,
+        0.88
+       ],
+       "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+       "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+      }
+     }
+    },
+    "codex_local": {
+     "arm": "codex_local",
+     "compactions_losing_user_rule": {
+      "hi": 0.34616666666666657,
+      "lo": 0.17104460847240052,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.25882352941176473
+     },
+     "drop_rate": {
+      "hi": 0.29071980993343943,
+      "lo": 0.21546949241895974,
+      "n_boot_valid": 2000,
+      "n_clusters": 73,
+      "point": 0.25625
+     },
+     "n_compactions": 100,
+     "n_items": 2560,
+     "n_user_rules": 507,
+     "user_rule_loss_rate": {
+      "hi": 0.131784518137648,
+      "lo": 0.04849368136001204,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.08284023668639054
+     },
+     "user_rule_loss_rate_corrected": {
+      "alternatives": {
+       "reloaded_excluded": {
+        "hi": 0.09372867482125384,
+        "lo": 0.02990542801732396,
+        "point": 0.05648197955890264,
+        "precision": {
+         "n": 22,
+         "n_hits": 15,
+         "point": 0.6818181818181818
+        },
+        "provenance": {
+         "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+         "definition_settled_after_labels": true,
+         "dev_only": {
+          "n": 9,
+          "n_hits": 5
+         },
+         "held_out_only": {
+          "n": 13,
+          "n_hits": 10
+         },
+         "interval_wilson": [
+          0.47,
+          0.84
+         ]
+        }
+       }
+      },
+      "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+      "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+      "hi": 0.09863731971836326,
+      "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+      "kind": "assumption-based sensitivity, not calibrated",
+      "lo": 0.03229883198802582,
+      "point": 0.05982905982905984,
+      "precision": {
+       "n": 18,
+       "n_hits": 13,
+       "point": 0.7222222222222222
+      },
+      "provenance": {
+       "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+       "definition_settled_after_labels": true,
+       "held_out_only": {
+        "n": 11,
+        "n_hits": 9
+       },
+       "interval_wilson": [
+        0.49,
+        0.88
+       ],
+       "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+       "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+      }
+     }
+    }
+   },
+   "primary": {
+    "a": "cc_prompt",
+    "b": "codex_local",
+    "compaction_any_diff": {
+     "hi": 0.39083178005591784,
+     "lo": 0.1348314606741573,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.27058823529411763
+    },
+    "diff": {
+     "hi": 0.2599674228812278,
+     "lo": 0.06480927698032961,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.16367265469061876
+    },
+    "diff_corrected": {
+     "alternatives": {
+      "reloaded_excluded": {
+       "hi": 0.18005008401268077,
+       "lo": 0.04122580100585574,
+       "point": 0.1115949918345128,
+       "precision": {
+        "n": 22,
+        "n_hits": 15,
+        "point": 0.6818181818181818
+       },
+       "provenance": {
+        "cards": "all 60 cards pooled, second look applied, item units with availability 'reloaded' excluded (other availability classes kept); hit = dropped or misstated",
+        "definition_settled_after_labels": true,
+        "dev_only": {
+         "n": 9,
+         "n_hits": 5
+        },
+        "held_out_only": {
+         "n": 13,
+         "n_hits": 10
+        },
+        "interval_wilson": [
+         0.47,
+         0.84
+        ]
+       }
+      }
+     },
+     "assumption": "precision measured on judge-dropped item cards (second look applied; see provenance), transferred to lost = dropped or misstated with availability lost, and to every stratum, arm and item type, none of which was validated separately; definition settled after the labels",
+     "estimand": "rate of the judge's correct positives (detected rate); not a bound",
+     "hi": 0.1961672467431556,
+     "independence": "the rate's session-bootstrap draws and the precision's Beta(h + 1/2, n - h + 1/2) posterior draws are treated as independent; both lie in [0, 1] (a difference in [-1, 1]), so no clipping is applied",
+     "kind": "assumption-based sensitivity, not calibrated",
+     "lo": 0.04338433619440474,
+     "point": 0.1182080283876691,
+     "precision": {
+      "n": 18,
+      "n_hits": 13,
+      "point": 0.7222222222222222
+     },
+     "provenance": {
+      "cards": "fresh page (draw c453e7c874c2380f), all 60 cards pooled, second look applied; item units whose row's availability is 'lost' (the headline's own class); a hit is Jacob labelling the item dropped or misstated",
+      "definition_settled_after_labels": true,
+      "held_out_only": {
+       "n": 11,
+       "n_hits": 9
+      },
+      "interval_wilson": [
+       0.49,
+       0.88
+      ],
+      "measured_on": "judge-dropped item cards only (the page sampled no judge-misstated calls)",
+      "note": "The gate first scored 'dropped' alone on the 35 held-out cards (8/13 = 0.62, below the 0.7 floor, reloaded items excluded). Counting 'dropped or misstated' (the analysis's LOST_GRADES) and restricting to availability 'lost' were decided after seeing the labels."
+     }
+    },
+    "label": "primary",
+    "metric": "user-given rules lost",
+    "n_compactions": 85,
+    "n_items": 501,
+    "n_session_groups": 60,
+    "rate_a": {
+     "hi": 0.3434104095929857,
+     "lo": 0.1574926310043668,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.24750499001996007
+    },
+    "rate_b": {
+     "hi": 0.13305001176615602,
+     "lo": 0.04924950041960989,
+     "n_boot_valid": 2000,
+     "n_clusters": 60,
+     "point": 0.08383233532934131
+    },
+    "reloaded_as_lost": {
+     "a": "cc_prompt",
+     "b": "codex_local",
+     "compaction_any_diff": {
+      "hi": 0.39083178005591784,
+      "lo": 0.1348314606741573,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.27058823529411763
+     },
+     "diff": {
+      "hi": 0.26502181971460803,
+      "lo": 0.06932583975418423,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.16966067864271456
+     },
+     "label": "primary",
+     "metric": "user-given rules lost",
+     "n_compactions": 85,
+     "n_items": 501,
+     "n_session_groups": 60,
+     "rate_a": {
+      "hi": 0.35010983873240337,
+      "lo": 0.1622865217937445,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.25349301397205587
+     },
+     "rate_b": {
+      "hi": 0.13305001176615602,
+      "lo": 0.04924950041960989,
+      "n_boot_valid": 2000,
+      "n_clusters": 60,
+      "point": 0.08383233532934131
+     }
+    }
+   }
+  }
+ },
+ "second_look": {
+  "applies": true,
+  "claim": {
+   "categories": {
+    "None": 0,
+    "carried_forward": 0,
+    "contradicted": 0,
+    "supported": 0,
+    "unsourced": 0
+   },
+   "final": {},
+   "n_changed": 0,
+   "n_invalid": 0,
+   "n_rechecked": 0
+  },
+  "item": {
+   "final": {
+    "dropped": 4352,
+    "kept": 116,
+    "misstated": 72
+   },
+   "n_changed": 188,
+   "n_invalid": 2,
+   "n_rechecked": 4540
+  }
+ },
+ "seed": 20261020,
+ "unfiltered_arms": [
+  "codex_local",
+  "antigravity"
+ ],
+ "user_rule_availability_transitions": {
+  "antigravity": {
+   "jacob": {
+    "lost->lost": 37,
+    "lost->still_present": 24,
+    "recoverable->recoverable": 1,
+    "reloaded->still_present": 1,
+    "still_present->lost": 16,
+    "still_present->reloaded": 1,
+    "still_present->still_present": 8
+   },
+   "swe-chat-v1": {
+    "lost->lost": 10
+   }
+  },
+  "codex_local": {
+   "jacob": {
+    "lost->lost": 19,
+    "lost->still_present": 68,
+    "recoverable->recoverable": 2,
+    "reloaded->still_present": 1,
+    "still_present->lost": 6,
+    "still_present->still_present": 54
+   },
+   "swe-chat-v1": {
+    "lost->lost": 17,
+    "still_present->still_present": 7
+   }
+  }
+ }
+}
