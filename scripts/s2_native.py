@@ -179,7 +179,11 @@ def cmd_agy_base(a) -> int:
                                        effort=a.effort or None),
                        host=a.host, sim_cap_usd=cap,
                        stop_after=a.stop_after if a.stop_after is not None
-                       else (1 if a.smoke else None))
+                       else (1 if a.smoke else None),
+                       step_timeout_s={"02_implement": a.implement_timeout},
+                       cpus=N.HEAVY_CPUS if a.heavy else N.AGENT_CPUS,
+                       memory_mb=N.HEAVY_MEMORY_MB if a.heavy else N.AGENT_MEMORY_MB,
+                       min_free_gb=N.HEAVY_MIN_FREE_GB if a.heavy else N.AGENT_MIN_FREE_GB)
     sim = _sim_model(root, f"{cfg.run_key}-base", cap)
     res = A.run_base(cfg, sim_model=sim)
     print(json.dumps({k: res.get(k) for k in ("run_key", "end", "boundaries", "sim_cost_usd",
@@ -188,6 +192,280 @@ def cmd_agy_base(a) -> int:
     print("run dir:", cfg.run_dir)
     ok = res["end"] in ("submitted", "stop_after", "eligible")
     return 0 if ok and not res.get("cleanup_unconfirmed") else 1
+
+
+BATCH_TASKS = ("testem-bail-on-test-failure", "boa-hierarchical-evaluation-cancellation",
+               "vitest-duration-sharding", "helm-array-merge-strategies",
+               "kombu-single-active-consumer-priority", "fastapi-implicit-head-options")
+RATE_BACKOFF_S = 900
+SEVEN_DAY_HOLD = 0.90  # hold new launches here (main session, 24 Oct): the Opus screens,
+# decay grading and audits share Max's weekly window and need headroom
+
+
+def _latest_rate(root: Path) -> dict | None:
+    """The newest rate_limit_event of any Claude Code stream under `root`."""
+    best = None
+    for p in Path(root).glob("*/steps/*/stream.jsonl"):
+        for line in p.read_text(errors="replace").splitlines()[::-1]:
+            if '"rate_limit_event"' in line:
+                try:
+                    info = json.loads(line).get("rate_limit_info") or {}
+                except ValueError:
+                    break
+                if best is None or p.stat().st_mtime > best[0]:
+                    best = (p.stat().st_mtime, info)
+                break
+    return best[1] if best else None
+
+
+HEAVY_TASKS = ("testem-bail-on-test-failure", "vitest-duration-sharding")  # node suites
+
+
+def _live_sessions(host: str | None) -> int:
+    """Claude Code task containers running on the host (all launchers' together; the egress
+    sidecars aren't counted). -1 when the query fails."""
+    from compaction.deepswe import sandbox as SB
+    with SB.using_host(host):
+        names = SB._list(["ps", "--filter", f"label={SB.LABEL_KEY}={N.purpose(CC.ARM)}",
+                          "--format", "{{.Names}}"])
+    if names is None:
+        return -1
+    return sum(1 for n in names if "-egress-" not in n and "-install-" not in n)
+
+
+def _rate_limited(res: dict) -> bool:
+    for st in (res.get("steps") or {}).values():
+        info = (st.get("rate_limit") or {}).get("rate_limit_info") or {}
+        if info.get("status") == "rejected":
+            return True
+        text = str((st.get("result") or {}).get("text") or "").lower()
+        if st.get("failed") and ("usage limit" in text or "rate limit" in text):
+            return True
+    return False
+
+
+def window_hold(rate: dict | None, now: float) -> tuple[str | None, float]:
+    """(why new launches hold, seconds to wait) from Max's newest rate-limit info: a rejected
+    window, or the 7-day window at >= SEVEN_DAY_HOLD. A window whose resetsAt has passed no
+    longer holds (the event is stale: nothing has refreshed it since; astra delta r1 #3)."""
+    rate = rate or {}
+    wins = dict(rate.get("unifiedWindows") or {})
+    if not wins and rate.get("rateLimitType"):
+        wins[rate["rateLimitType"]] = rate
+    for name, w in wins.items():
+        reset = float(w.get("resetsAt") or 0)
+        if reset and now >= reset:
+            continue
+        util = w.get("utilization")
+        if w.get("status") == "rejected" or (name == "seven_day" and util is not None
+                                             and util >= SEVEN_DAY_HOLD):
+            wait = reset - now if reset else RATE_BACKOFF_S
+            return f"{name}: {w.get('status')} at {util}", max(60.0, wait)
+    return None, 0.0
+
+
+def _slot(root: Path, name: str | None = None, release: bool = False):
+    """Batch slot files under <root>/_batch/slots, one per launched run, created and counted
+    under one file lock (all launchers of this root), removed when the run ends. Returns the
+    (count, claimed in the last 5 min) of the slots when called without `name`."""
+    import time
+    d = root / "_batch" / "slots"
+    d.mkdir(parents=True, exist_ok=True)
+    if release:
+        (d / name).unlink(missing_ok=True)
+        return None
+    if name:
+        (d / name).write_text(str(time.time()))
+        return None
+    now = time.time()
+    ages = [now - p.stat().st_mtime for p in d.iterdir() if p.is_file()]
+    return len(ages), sum(1 for x in ages if x < 300)
+
+
+def cmd_cc_batch(a) -> int:
+    """Claude Code base runs, at most `concurrency` sessions on the host (all launchers), to
+    completion (no fork trigger), each followed by both Q1 audits (native.audit), per run.
+    Launches hold, never drop: past the simulator projection (finished runs' actual cost +
+    the cap of every running and the next run), while Max's window is rejected or the 7-day
+    window is at >= 90% (until it resets); a run that hit Max's rate limit is re-queued after a
+    back-off, never moved to a paid route; an infra_killed or pre-start failure reruns once
+    (heavy after a kill). One status line per finished run (stdout and <root>/_batch/<id>.jsonl)."""
+    import fcntl
+    import threading
+    import time
+    import traceback
+    from collections import deque
+    from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
+
+    from compaction import s1_second_look as SL
+    from compaction.s2.native import audit as AU
+    if not a.go_from_jacob:
+        sys.exit("paid batch: pass --go-from-jacob")
+    _env()
+    token = _token()
+    SL.check_frozen()
+    root = Path(a.root) if a.root else CC.root()
+    bid = _stamp()
+    bdir = root / "_batch"
+    bdir.mkdir(parents=True, exist_ok=True)
+    status = bdir / f"{bid}.jsonl"
+    lock_path = bdir / "slots.lock"
+    la_lock = threading.Lock()
+    tasks = deque(a.tasks.split(",") if a.tasks else BATCH_TASKS)
+    timeouts = {"01_plan": CC.STEP_TIMEOUT_S["01_plan"], "02_implement": a.implement_timeout}
+
+    def line(**kw) -> None:
+        kw.setdefault("utc", datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        week = (((_latest_rate(root) or {}).get("unifiedWindows") or {}).get("seven_day")
+                or {})
+        kw.setdefault("max_7d_pct", round(100 * week["utilization"], 1)
+                      if week.get("utilization") is not None else None)
+        with open(status, "a") as f:
+            f.write(json.dumps(kw) + "\n")
+        print(json.dumps(kw), flush=True)
+
+    def backend_factory():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "s2_interact_audit", C.REPO_ROOT / "scripts" / "s2_interact_audit.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.max_backend(4)
+
+    heavy_tasks = set((a.heavy_tasks or "").split(",")) - {""}
+    heavy_now: set[str] = set()
+    reruns: dict[str, int] = {}
+
+    def audits(rd: Path, rk: str) -> dict:
+        """Both audits of one run, into its own dirs (astra delta r1 #7); failures are
+        recorded, never lose the run (r1 #4)."""
+        out: dict = {}
+        try:
+            out["requirements"] = AU.requirements(rd, backend_factory)
+        except Exception as e:  # noqa: BLE001
+            out["requirements_error"] = f"{type(e).__name__}: {e}"[:500]
+        ad = root / "_audit" / rk
+        try:
+            with la_lock:
+                AU.stage_lossaudit([rd], ad / "staging")
+                out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit")
+            out["lossaudit"] = AU.lossaudit_counts(ad / "lossaudit", rk)
+        except Exception as e:  # noqa: BLE001
+            out["lossaudit_error"] = f"{type(e).__name__}: {e}"[:500]
+        return out
+
+    def one(task_id: str, attempt: int, slot: str) -> dict:
+        rk = CC.run_key(task_id, attempt)
+        try:
+            task = IR.load_task(task_id)
+            heavy = task_id in heavy_tasks or task_id in heavy_now
+            cfg = CC.BaseConfig(task=task, root=root, attempt=attempt,
+                                cc=CC.CCConfig(model=a.model, effort=a.effort or None,
+                                               auto_compact_window=a.window),
+                                host=a.host, sim_cap_usd=a.sim_cap,
+                                step_timeout_s=dict(timeouts),
+                                cpus=N.HEAVY_CPUS if heavy else N.AGENT_CPUS,
+                                memory_mb=N.HEAVY_MEMORY_MB if heavy else N.AGENT_MEMORY_MB,
+                                min_free_gb=N.HEAVY_MIN_FREE_GB if heavy
+                                else N.AGENT_MIN_FREE_GB)
+            sim = _sim_model(root, f"{cfg.run_key}-base", a.sim_cap)
+            try:
+                res = CC.run_base(cfg, sim_model=sim, token=token)
+            except Exception:  # noqa: BLE001 - outside run_base's own guard (e.g. the install)
+                res = {"run_key": rk, "end": "infra_error", "boundaries": [],
+                       "sim_cost_usd": 0.0, "error": traceback.format_exc()[-1500:]}
+            res["run_dir"] = str(cfg.run_dir)
+            if not _rate_limited(res) and (res.get("boundaries") or res["end"] == "submitted"):
+                res["audit"] = audits(cfg.run_dir, rk)
+            return res
+        finally:
+            _slot(root, slot, release=True)
+
+    finished_usd, held, running = 0.0, False, {}
+    hold_until, hold_why = 0.0, None
+    with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
+        while tasks or running:
+            now = time.time()
+            why, w = window_hold(_latest_rate(root), now)
+            if why and why != hold_why:
+                line(event="hold", reason="max_window", detail=why, wait_s=round(w),
+                     queued=list(tasks))
+            hold_why = why
+            if why:
+                hold_until = max(hold_until, now + w)
+            while tasks and len(running) < a.concurrency and not held and \
+                    time.time() >= hold_until:
+                proj = finished_usd + a.sim_cap * (len(running) + 1)
+                if proj > a.projection_usd:
+                    line(event="hold", reason="projection", projected_usd=proj,
+                         queued=list(tasks))
+                    held = True
+                    break
+                with open(lock_path, "a") as lk:  # slot check + claim, atomic across launchers
+                    fcntl.flock(lk, fcntl.LOCK_EX)
+                    live = _live_sessions(a.host)
+                    n_slots, fresh = _slot(root)
+                    # a slot claimed in the last 5 min may not show a container yet
+                    if live < 0 or max(live, n_slots - fresh) + fresh >= a.concurrency:
+                        break
+                    t = tasks[0]
+                    att = CC.next_attempt(root, t)
+                    sname = CC.run_key(t, att)
+                    _slot(root, sname)
+                tasks.popleft()
+                fut = ex.submit(one, t, att, sname)
+                running[fut] = t
+                line(event="launch", task=t, attempt=att, running=len(running),
+                     heavy=t in heavy_tasks or t in heavy_now)
+            if not running:
+                if held or not tasks:
+                    break  # held with nothing running: the queued tasks stay held
+                time.sleep(min(60.0, max(5.0, hold_until - time.time())))
+                continue
+            done, _ = wait(list(running), timeout=60, return_when=FIRST_COMPLETED)
+            for fut in done:
+                t = running.pop(fut)
+                try:
+                    res = fut.result()
+                except Exception as e:  # noqa: BLE001 - `one` returns results; this is a bug
+                    line(event="run_crashed", task=t, error=f"{type(e).__name__}: {e}"[:500])
+                    continue
+                finished_usd += float(res.get("sim_cost_usd") or 0.0)
+                early = res.get("end") in ("infra_error", "error") and not res.get("boundaries") \
+                    and float(res.get("sim_cost_usd") or 0.0) == 0.0
+                # infrastructure, never a task result: rerun once (heavy after a kill)
+                if (res.get("end") == "infra_killed" or early) and reruns.get(t, 0) < 1:
+                    reruns[t] = reruns.get(t, 0) + 1
+                    if res.get("end") == "infra_killed":
+                        heavy_now.add(t)
+                    line(event="rerun", task=t, run_key=res["run_key"], end=res["end"],
+                         heavy=t in heavy_tasks or t in heavy_now,
+                         error=(res.get("error") or "")[-300:])
+                    tasks.append(t)
+                    continue
+                if _rate_limited(res):
+                    line(event="rate_limited", task=t, run_key=res["run_key"],
+                         requeue_after_s=RATE_BACKOFF_S)
+                    hold_until = max(hold_until, time.time() + RATE_BACKOFF_S)
+                    tasks.append(t)
+                    continue
+                au = res.get("audit") or {}
+                reqs = au.get("requirements") or []
+                line(event="done", task=t, run_key=res["run_key"], end=res["end"],
+                     compactions=len(res.get("boundaries") or []),
+                     pre_tokens=[r.get("pre_tokens") for r in reqs] or None,
+                     items=sum(r["items"] for r in reqs), lost=sum(r["lost"] for r in reqs),
+                     lost_new=sum(r.get("lost_new", 0) for r in reqs),
+                     lost_inherited=sum(r.get("lost_inherited", 0) for r in reqs),
+                     la_items=(au.get("lossaudit") or {}).get("items"),
+                     la_lost=(au.get("lossaudit") or {}).get("lost"),
+                     la_rc=au.get("lossaudit_rc"),
+                     audit_errors={k: v for k, v in au.items() if k.endswith("_error")} or None,
+                     sim_usd=res.get("sim_cost_usd"), finished_usd=round(finished_usd, 4),
+                     seconds=res.get("seconds"), cleanup=res.get("cleanup_unconfirmed"),
+                     error=(res.get("error") or "")[:300] or None)
+    line(event="batch_end", held=list(tasks), finished_usd=round(finished_usd, 4))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -217,6 +495,20 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--out")
     f.add_argument("--timeout", type=int, default=1800)
     f.add_argument("--sim-cap", type=float, default=C.INTERACT_SECONDARY_CAP_USD)
+    cb = sub.add_parser("cc-batch")
+    cb.add_argument("--tasks", help="comma-separated; default the 6 pilot tasks")
+    cb.add_argument("--window", type=int, default=163_000)
+    cb.add_argument("--model", default=CC.MODEL)
+    cb.add_argument("--effort", default=CC.EFFORT)
+    cb.add_argument("--sim-cap", type=float, default=6.5)
+    cb.add_argument("--projection-usd", type=float, default=40.0)
+    cb.add_argument("--implement-timeout", type=int, default=7200)
+    cb.add_argument("--concurrency", type=int, default=3,
+                    help="Claude Code sessions on the host, across every launcher")
+    cb.add_argument("--heavy-tasks", default=",".join(HEAVY_TASKS),
+                    help="tasks run as heavy containers (8 GB, 4 CPUs, >= 10 GB free)")
+    cb.add_argument("--root")
+    cb.add_argument("--go-from-jacob", action="store_true")
     g2 = sub.add_parser("agy-base")
     g2.add_argument("--task", default=SMOKE_TASK)
     g2.add_argument("--compact-at", type=int, default=150_000,
@@ -226,12 +518,15 @@ def main(argv: list[str] | None = None) -> int:
     g2.add_argument("--stop-after", type=int)
     g2.add_argument("--sim-cap", type=float, default=C.INTERACT_BASE_CAP_USD)
     g2.add_argument("--root")
+    g2.add_argument("--heavy", action="store_true", help="8 GB / 4 CPUs, >= 10 GB free")
+    g2.add_argument("--implement-timeout", type=int, default=7200)
     for sp in (b, f, g2):
         sp.add_argument("--smoke", action="store_true")
         sp.add_argument("--go-from-jacob", action="store_true")
     a = p.parse_args(argv)
     return {"egress-check": cmd_egress_check, "cc-base": cmd_cc_base,
-            "cc-fork": cmd_cc_fork, "agy-base": cmd_agy_base}[a.cmd](a)
+            "cc-fork": cmd_cc_fork, "agy-base": cmd_agy_base,
+            "cc-batch": cmd_cc_batch}[a.cmd](a)
 
 
 if __name__ == "__main__":

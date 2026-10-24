@@ -314,8 +314,9 @@ def start_task_container(inv: SB.Invocation, image: str, *, network: str,
 class StreamResult:
     rc: int
     seconds: float
-    timed_out: bool
+    timed_out: bool  # rc 124/137: the in-container timeout fired, or something killed it
     killed: str | None = None  # why the runner stopped it, if it did
+    timed_out_by_cli: bool = False  # the in-container `timeout` ran out (its deadline passed)
 
 
 def stream_exec(sb: SB.Sandbox, cmd: str, *, timeout_s: int, log_path: Path,
@@ -371,7 +372,9 @@ def stream_exec(sb: SB.Sandbox, cmd: str, *, timeout_s: int, log_path: Path,
             p.wait(timeout=30)
         th.join(timeout=30)
     rc = p.returncode if p.returncode is not None else -1
-    return StreamResult(rc, round(time.monotonic() - t0, 1), rc in (124, 137), killed)
+    secs = time.monotonic() - t0
+    return StreamResult(rc, round(secs, 1), rc in (124, 137), killed,
+                        rc in (124, 137) and secs >= timeout_s - 1)
 
 
 def exec_env(sb: SB.Sandbox, cmd: str, env: dict[str, str], *, timeout_s: int = 300,
@@ -452,6 +455,29 @@ def mark_session_start(sb: SB.Sandbox) -> None:
                 workdir="/")
     if r.rc != 0:
         raise SB.SandboxError(f"session marker: {r.stderr[-300:]}")
+
+
+def tolerant_exec(sb: SB.Sandbox) -> Callable[..., SB.ExecResult]:
+    """`Sandbox.exec` without its kill switch. Sandbox._guarded removes the whole container
+    when a docker client outlives its command's timeout + grace; under a saturated sshd on the
+    docker host (24 Oct) that killed live sessions mid-ask_user (native-codex: rc 137, no OOM).
+    Here a client timeout only kills the client and returns rc 124; the in-container
+    `timeout -k 5` still ends the command itself. Counts are kept in sb.client_timeouts."""
+    def exec_(cmd: str, timeout_s: int = 600, workdir: str = "/app") -> SB.ExecResult:
+        t0 = time.monotonic()
+        argv = SB.docker_argv(SB.exec_args(sb.name, cmd, timeout_s, workdir), sb.host)
+        try:
+            p = subprocess.run(argv, capture_output=True, timeout=timeout_s + SB.CLIENT_GRACE_S,
+                               check=False)
+        except subprocess.TimeoutExpired:
+            sb.client_timeouts = getattr(sb, "client_timeouts", 0) + 1
+            return SB.ExecResult(124, "", f"docker client timeout after {timeout_s}s",
+                                 time.monotonic() - t0)
+        r = SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
+                          p.stderr.decode(errors="replace"), time.monotonic() - t0)
+        sb.log.append({"op": "exec", "cmd": cmd[:200], "rc": r.rc, "seconds": r.seconds})
+        return r
+    return exec_
 
 
 def secret_scan(sb: SB.Sandbox, secrets: dict[str, str], pattern_cmd: str | None = None) -> dict:
@@ -885,12 +911,15 @@ def available_gb(host: str | None) -> float | None:
     if not host or not host.startswith("ssh://"):
         return None
     cmd = "awk '/MemAvailable/ {print $2}' /proc/meminfo"
-    p = subprocess.run(["ssh", host.removeprefix("ssh://"), cmd], capture_output=True,
-                       text=True, timeout=30, check=False)
-    try:
-        return int(p.stdout.strip()) / 1024 / 1024
-    except ValueError:
-        return None
+    for attempt in range(3):  # a busy sshd (MaxStartups) can stall a connection: retry
+        try:
+            p = subprocess.run(["ssh", "-o", "ConnectTimeout=20", host.removeprefix("ssh://"),
+                                cmd], capture_output=True, text=True, timeout=60,
+                               check=False)
+            return int(p.stdout.strip()) / 1024 / 1024
+        except (subprocess.TimeoutExpired, ValueError, OSError):
+            time.sleep(10 * (attempt + 1))
+    return None  # unknown: the caller goes ahead (Docker's own --memory limit still holds)
 
 
 def wait_for_memory(host: str | None, need_gb: float, wait_s: float = 1800,
@@ -900,11 +929,14 @@ def wait_for_memory(host: str | None, need_gb: float, wait_s: float = 1800,
     t0 = time.monotonic()
     while True:
         gb = available_gb(host)
-        if gb is None or gb >= need_gb:
+        if gb is not None and gb >= need_gb:
             return gb
+        if gb is None and not host:
+            return None  # the local daemon: nothing to ask
+        # unknown (the probe failed) holds like too little (astra delta r1 #6)
         if time.monotonic() - t0 > wait_s:
-            raise SB.SandboxError(f"{host}: {gb:.1f} GB available < {need_gb} GB for "
-                                  f"{wait_s:.0f}s")
+            have = "unknown" if gb is None else f"{gb:.1f} GB"
+            raise SB.SandboxError(f"{host}: {have} available < {need_gb} GB for {wait_s:.0f}s")
         time.sleep(poll_s)
 
 
@@ -966,6 +998,7 @@ class NativeSession:
                                            extra_args=self.extra_args,
                                            lifetime_s=self.lifetime_s, cpus=self.cpus,
                                            memory_mb=self.memory_mb)
+            self.sb.exec = tolerant_exec(self.sb)  # every exec of the session, sim included
             holder["run"] = I.sandbox_runner(self.sb)
             if image_entrypoint(self.image, self.host):  # services first (refactoring tasks)
                 self.entrypoint_rc = wait_entrypoint(self.sb)

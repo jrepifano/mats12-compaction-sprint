@@ -569,6 +569,7 @@ class BaseConfig:
     stop_after: int | None = None  # stop after this many boundaries (smokes)
     cpus: float = N.AGENT_CPUS
     memory_mb: int = N.AGENT_MEMORY_MB
+    min_free_gb: float = N.AGENT_MIN_FREE_GB
 
     @property
     def run_key(self) -> str:
@@ -601,6 +602,7 @@ def _stream_watch(state: dict, stop: threading.Event) -> Callable[[str], None]:
             state["result"] = {k: ev.get(k) for k in ("subtype", "is_error", "num_turns",
                                                       "total_cost_usd", "duration_ms",
                                                       "session_id", "modelUsage", "usage")}
+            state["result"]["text"] = str(ev.get("result") or "")[:500]
         elif ev.get("type") == "rate_limit_event":
             state["rate_limit"] = ev
         elif ev.get("type") == "system" and ev.get("subtype") == "compact_boundary":
@@ -627,6 +629,10 @@ def _step_ok(r: N.StreamResult, state: dict) -> str | None:
     if r.killed == "stop":
         return None
     res = state.get("result")
+    if r.rc == 137 and not r.timed_out_by_cli:
+        # SIGKILL from outside the CLI: the container's memory limit (node test suites at
+        # 3 GB, 24 Oct), never a task result; rerun once as a heavy container
+        return "infra_killed: exit 137"
     if r.rc != 0:
         return f"CLI exit {r.rc}"
     if res is None:
@@ -654,7 +660,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                            extra={"effort": cfg.cc.effort, "disallowed_tools": DISALLOWED,
                                   "host": cfg.host, "egress_allow": list(N.ALLOW[ARM]),
                                   "steps": list(cfg.steps), "step_timeout_s": cfg.step_timeout_s,
-                                  "stop_after": cfg.stop_after})
+                                  "stop_after": cfg.stop_after, "cpus": cfg.cpus,
+                                  "memory_mb": cfg.memory_mb})
     IR._dump(rd / "run.json", rj)
     chains = {GRADED_STEP: (rd, SS.KeepStore(rd, cfg.run_key, host=cfg.host))}
     plan_root = rd / PLAN_DIR
@@ -707,8 +714,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
 
     ensure_cli_volume(cfg.host, task.info.image)
     ns = session_cls(ARM, task.info.image, sim_factory, host=cfg.host, extra_args=run_args(),
-                     cpus=cfg.cpus, memory_mb=cfg.memory_mb, on_boundary=on_boundary,
-                     on_cap=on_cap, before_close=drain)
+                     cpus=cfg.cpus, memory_mb=cfg.memory_mb, min_free_gb=cfg.min_free_gb,
+                     on_boundary=on_boundary, on_cap=on_cap, before_close=drain)
     ns._cc_token = token  # for the secret scan; never written anywhere
     observed = 0
     try:
@@ -771,13 +778,14 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 if step == "01_plan":
                     res["plan_md"] = ns.sb.exec("cat /tmp/plan.md 2>/dev/null", timeout_s=60,
                                                 workdir="/").stdout or None
-                if r.timed_out or r.killed == "client_timeout":
+                if r.timed_out_by_cli or r.killed == "client_timeout":
                     end_reason.setdefault("end", "time_cap")
                     break
                 if r.killed == "stop":
                     break  # a boundary, the cap or the auth watch stopped it: end_reason says
                 if bad:
-                    end_reason.setdefault("end", "cli_error")
+                    end_reason.setdefault(
+                        "end", "infra_killed" if bad.startswith("infra_killed") else "cli_error")
                     res["error"] = f"{step}: {bad}"
                     break
             captured = len(res["boundaries"]) + len(res["plan_boundaries"])

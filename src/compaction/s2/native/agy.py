@@ -104,8 +104,10 @@ def keep_token_linked(sb: SB.Sandbox) -> str:
 
 # the token store's long strings, printed inside the container (they never leave the docker
 # host), as patterns for the pre-commit secret scan; fails if there are none
-TOKEN_PATTERNS = (f"grep -oE '[A-Za-z0-9._~/+=-]{{40,}}' {AUTH_DIR}/{TOKEN_FILE} | "
-                  "grep . ")
+TOKEN_PATTERNS = (f"{{ cat {AUTH_DIR}/{TOKEN_FILE}; cat {STATE_DIR}/{TOKEN_FILE} 2>/dev/null "
+                  "|| true; } | grep -oE '[A-Za-z0-9._~/+=-]{40,}' | grep . ")
+# (both the retained store and the live one: agy may have written a refreshed store in place
+# of the link since the last commit; astra delta r1 #2)
 
 
 # ------------------------------------------------------------------------------------------
@@ -138,12 +140,20 @@ F="${T%/*}/transcript_full.jsonl"; [ -f "$F" ] || F="$T"
 L=$(grep '"type" *: *"PLANNER_RESPONSE"' "$F" 2>/dev/null | tail -n 1)
 I=$(printf '%s' "$L" | sed -n 's/.*"input_tokens" *: *\([0-9]*\).*/\1/p')
 R=$(printf '%s' "$L" | sed -n 's/.*"cache_read_tokens" *: *\([0-9]*\).*/\1/p')
-N=$(( ${I:-0} + ${R:-0} ))
-A=$(cat ''' + COMPACT_AT_FILE + r''' 2>/dev/null || echo 0)
+A=$(cat ''' + COMPACT_AT_FILE + r''' 2>/dev/null)
+if [ -z "$C" ] || [ -z "$I" ] || [ -z "$A" ]; then  # no evidence: the runner fails the run
+  printf '%s NA\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ''' + XDIR + r'''/ctx-${C:-unknown}.log
+  echo '{}'; exit 0
+fi
+N=$(( I + ${R:-0} ))
 printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$N" >> ''' + XDIR + r'''/ctx-$C.log
-if [ "${A:-0}" -gt 0 ] && [ "$N" -ge "$A" ]; then
-  echo "$N" > ''' + XDIR + r'''/compact-$C
-  echo '{"terminationBehavior":"terminate"}'
+if [ "$A" -gt 0 ] && [ "$N" -ge "$A" ]; then
+  if echo "$N" > ''' + XDIR + r'''/compact-$C; then
+    echo '{"terminationBehavior":"terminate"}'
+  else  # no marker, no terminate: the runner sees a count past the threshold and fails the run
+    printf '%s MARKERFAIL\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> ''' + XDIR + r'''/ctx-$C.log
+    echo '{}'
+  fi
 else
   echo '{}'
 fi
@@ -185,7 +195,12 @@ class AgyConfig:
                 "measure": "input + cache_read tokens of the last model call"}
 
 
+TURN_OUT, TURN_ERR = f"{XDIR}/turn.json", f"{XDIR}/turn.err"
+
+
 def agy_command(cfg: AgyConfig, prompt: str, conversation: str | None, timeout_s: int) -> str:
+    """The in-container turn; its stdout and stderr go to the tmpfs, to be screened for
+    secrets before they leave the container (`run_turn`)."""
     parts = [CLI, "-p", prompt, "--model", cfg.model, "--dangerously-skip-permissions",
              "--output-format", "json", "--print-timeout", f"{int(timeout_s)}s", "--add-dir",
              "/app"]
@@ -193,7 +208,8 @@ def agy_command(cfg: AgyConfig, prompt: str, conversation: str | None, timeout_s
         parts += ["--effort", cfg.effort]
     if conversation:
         parts += ["--conversation", conversation]
-    return "cd /app && " + shlex.join(parts) + " </dev/null"
+    return (f"cd /app && {shlex.join(parts)} </dev/null > {TURN_OUT} 2> {TURN_ERR}; "
+            "rc=$?; exit $rc")
 
 
 def result_of(log_path: Path) -> dict:
@@ -339,6 +355,43 @@ def checkpoint_boundary(steps: list[dict], j: int, *, model: str,
 # ------------------------------------------------------------------------------------------
 
 
+def hook_evidence(sb: SB.Sandbox, cid: str, steps: list[dict],
+                  compact_at: int | None = None) -> tuple[str | None, int | None]:
+    """(problem or None, the marker's context size or None). The hook logs one line per model
+    call; every PLANNER_RESPONSE so far must have one, with a numeric size (astra agy r1 #3).
+    The marker is read and removed in one step; a failed read is a problem, not "no marker"."""
+    r = sb.exec(f"f={XDIR}/compact-{cid}; if [ -f $f ]; then cat $f && rm -f $f; "
+                f"else echo NONE; fi", timeout_s=30, workdir="/")
+    if r.rc != 0:
+        return f"marker read failed rc={r.rc}", None
+    m = r.stdout.strip()
+    marker = None if m == "NONE" else int(m) if m.isdigit() else -1
+    if marker == -1:
+        return f"bad marker {m[:40]!r}", None
+    lg = sb.exec(f"cat {XDIR}/ctx-{cid}.log 2>/dev/null; true", timeout_s=30, workdir="/")
+    vals = [ln.split()[-1] for ln in lg.stdout.splitlines() if ln.strip()]
+    if "MARKERFAIL" in vals:
+        return "the hook could not write its compaction marker", marker
+    n_calls = sum(1 for s in steps if s.get("type") == "PLANNER_RESPONSE")
+    if any(not v.isdigit() for v in vals):
+        return "the hook found no token counts for a call", marker
+    if len(vals) != n_calls:
+        return f"hook ran for {len(vals)} of {n_calls} model calls", marker
+    if compact_at and vals and int(vals[-1]) >= compact_at and marker is None:
+        # the last call crossed the threshold, so a marker must exist (astra delta r1 #1)
+        return f"last call at {vals[-1]} >= {compact_at} but no marker", marker
+    return None, marker
+
+
+def new_checkpoint_ok(steps: list[dict], seen: int) -> bool:
+    """Exactly one new CHECKPOINT, preceded (since the previous one) by our /compact input."""
+    cps = [i for i, s in enumerate(steps) if s.get("type") == "CHECKPOINT"]
+    if len(cps) != seen + 1:
+        return False
+    lo = cps[-2] if len(cps) > 1 else -1
+    return any(_is_compact_input(steps[i]) for i in range(lo + 1, cps[-1]))
+
+
 def run_key(task_id: str, attempt: int, prefix: str = "") -> str:
     return f"{prefix}{task_id}-agy-flash-a{attempt}"
 
@@ -370,6 +423,7 @@ class BaseConfig:
     max_turns: int = 60  # per step: one per forced compaction, plus the first
     cpus: float = N.AGENT_CPUS
     memory_mb: int = N.AGENT_MEMORY_MB
+    min_free_gb: float = N.AGENT_MIN_FREE_GB
 
     @property
     def run_key(self) -> str:
@@ -380,9 +434,60 @@ class BaseConfig:
         return Path(self.root) / self.run_key
 
 
-def _turn_ok(r: N.StreamResult, out: dict) -> str | None:
+class SecretFound(RuntimeError):
+    pass
+
+
+def screen_script(paths: list[str]) -> str:
+    """In-container: the token store's strings and $EMX_SIM_TOKEN as patterns (a /dev/shm
+    file), grep -lF over the existing `paths`; exit 0 = a hit, 1 = clean, else an error."""
+    plist = " ".join(shlex.quote(p) for p in paths)
+    return ("set -o pipefail; P=$(mktemp -p /dev/shm) || exit 3; { " + TOKEN_PATTERNS +
+            "; } > \"$P\" || { rm -f \"$P\"; exit 5; }; printf '%s\\n' \"$EMX_SIM_TOKEN\" "
+            f">> \"$P\"; F=''; for f in {plist}; do [ -e \"$f\" ] && F=\"$F $f\"; done; "
+            "if [ -z \"$F\" ]; then rc=1; else grep -lF -f \"$P\" -- $F; rc=$?; fi; "
+            "rm -f \"$P\"; exit $rc")
+
+
+def screen(sb: SB.Sandbox, paths: list[str], sim_token: str) -> None:
+    """Refuse to let `paths` leave the container if any holds the agy token's strings or the
+    SimServer token (astra agy r1 #4). Fails closed: a scan error raises too."""
+    r = N.exec_env(sb, screen_script(paths), {"EMX_SIM_TOKEN": sim_token}, timeout_s=300)
+    if r.rc == 0:
+        raise SecretFound(f"a secret is in {r.stdout.split()[:5]}; not exported")
+    if r.rc != 1:
+        raise SB.SandboxError(f"secret screen failed rc={r.rc}")
+
+
+def run_turn(sb: SB.Sandbox, cfg: AgyConfig, prompt: str, cid: str | None, timeout_s: int,
+             log: Path, env: dict, stop, sim_token: str) -> tuple[N.StreamResult, dict, str]:
+    """One agy turn: run, screen its output in the container, then copy it to `log` (and
+    `log`.err). Returns (the exec result, the result JSON, stderr)."""
+    r = N.stream_exec(sb, agy_command(cfg, prompt, cid, max(30, timeout_s - 15)),
+                      timeout_s=timeout_s, log_path=Path(str(log) + ".exec"), env=env,
+                      stop=stop)
+    screen(sb, [TURN_OUT, TURN_ERR], sim_token)
+    out_text = sb.exec(f"cat {TURN_OUT} 2>/dev/null; true", timeout_s=60, workdir="/").stdout
+    err_text = sb.exec(f"cat {TURN_ERR} 2>/dev/null; true", timeout_s=60, workdir="/").stdout
+    Path(log).write_text(out_text)
+    Path(str(log) + ".err").write_text(err_text)
+    return r, result_of(log), err_text
+
+
+def _turn_ok(r: N.StreamResult, out: dict, err: str = "",
+             print_timeout_s: float | None = None) -> str | None:
+    """Why a finished turn failed (None: it didn't). agy returns partial output with exit 0
+    and status SUCCESS when --print-timeout expires (src/compaction/agy.py): a turn that ran
+    to the timeout, or warned of one, is "cli_timeout" (astra agy r1 #1)."""
+    from compaction import agy as AG
     if r.killed == "stop":
         return None
+    if print_timeout_s and r.seconds >= print_timeout_s - 5:
+        return f"cli_timeout: ran {r.seconds:.0f}s of {print_timeout_s:.0f}s"
+    if AG.CLI_TIMEOUT_WARNING.search(err or ""):
+        return "cli_timeout: agy warned of its print timeout"
+    if r.rc == 137 and not r.timed_out_by_cli:
+        return "infra_killed: exit 137"
     if r.rc != 0:
         return f"agy exit {r.rc}: {str(out.get('error'))[:200]}"
     if out.get("status") != "SUCCESS":
@@ -414,7 +519,8 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                            extra={"host": cfg.host, "egress_allow": list(N.ALLOW[ARM]),
                                   "steps": list(cfg.steps), "step_timeout_s": timeouts,
                                   "stop_after": cfg.stop_after, "continue_prompt":
-                                      CONTINUE_PROMPT, "effort": cfg.agy.effort})
+                                      CONTINUE_PROMPT, "effort": cfg.agy.effort,
+                                  "cpus": cfg.cpus, "memory_mb": cfg.memory_mb})
     IR._dump(rd / "run.json", rj)
     chains: dict = {GRADED_STEP: (rd, SS.KeepStore(rd, cfg.run_key, host=cfg.host))}
     res: dict = {"run_key": cfg.run_key, "end": "error", "boundaries": [],
@@ -447,7 +553,7 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
     ensure_cli_volume(cfg.host, task.info.image)
     ns = session_cls(ARM, task.info.image, sim_factory or default_sim, host=cfg.host,
                      extra_args=run_args(), cpus=cfg.cpus, memory_mb=cfg.memory_mb,
-                     on_cap=on_cap)
+                     min_free_gb=cfg.min_free_gb, on_cap=on_cap)
     observed = 0
     try:
         with ns:
@@ -470,50 +576,64 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                 sd.mkdir(parents=True, exist_ok=True)
                 cid, prompt, turns, seen_cp = None, task.steps[step], [], 0
                 deadline = time.monotonic() + timeouts.get(step, 5400)
+                tok = ns.server.token
                 while True:
                     if len(turns) >= cfg.max_turns:
                         end.setdefault("end", "max_turns")
                         break
                     left = int(deadline - time.monotonic())
-                    if left <= 30:
+                    if left <= 60:
                         end.setdefault("end", "time_cap")
                         break
                     n = len(turns) + 1
-                    log = sd / f"turn{n:03d}.json"
-                    r = N.stream_exec(sb, agy_command(cfg.agy, prompt, cid, left - 10),
-                                      timeout_s=left, log_path=log, env=env, stop=stop)
-                    out = result_of(log)
+                    r, out, err = run_turn(sb, cfg.agy, prompt, cid, left, sd / f"turn{n:03d}.json",
+                                           env, stop, tok)
                     cid = cid or out.get("conversation_id") or None
-                    bad = _turn_ok(r, out)
-                    marker = sb.exec(f"cat {XDIR}/compact-{cid} 2>/dev/null; "
-                                     f"rm -f {XDIR}/compact-{cid}", timeout_s=30,
-                                     workdir="/").stdout.strip() if cid else ""
+                    bad = _turn_ok(r, out, err, max(30, left - 15))
+                    marker, prob = None, None
+                    if cid is None:
+                        prob = "agy returned no conversation id"
+                    else:
+                        steps_ = read_steps(sb, cid)
+                        prob, marker = hook_evidence(sb, cid, steps_, cfg.agy.compact_at)
+                        ncp_now = sum(1 for x in steps_ if x.get("type") == "CHECKPOINT")
+                        if prob is None and ncp_now != seen_cp:
+                            prob = f"agy compacted on its own ({ncp_now} checkpoints, " \
+                                   f"{seen_cp} captured)"
+                            end.setdefault("end", "boundary_missing")
                     turns.append({"n": n, "prompt": prompt[:200], "rc": r.rc,
                                   "status": out.get("status"), "usage": out.get("usage"),
                                   "seconds": r.seconds, "killed": r.killed,
-                                  "hook_terminated_at": int(marker) if marker.isdigit() else None,
-                                  "failed": bad})
-                    if bad or r.killed:
-                        if bad:
-                            end.setdefault("end", "cli_error")
-                            res["error"] = f"{step} turn {n}: {bad}"
+                                  "hook_terminated_at": marker, "failed": bad, "problem": prob})
+                    if prob:
+                        end.setdefault("end", "hook_error")
+                        res["error"] = f"{step} turn {n}: {prob}"
                         break
-                    if not marker:
-                        break  # agy ended the turn on its own: the step is done
-                    # forced compaction at this turn boundary
-                    clog = sd / f"turn{n:03d}-compact.json"
-                    rc_ = N.stream_exec(sb, agy_command(cfg.agy, "/compact", cid, 600),
-                                        timeout_s=660, log_path=clog, env=env, stop=stop)
+                    if bad:
+                        end.setdefault("end", "time_cap" if bad.startswith("cli_timeout") else
+                                       "infra_killed" if bad.startswith("infra_killed") else
+                                       "cli_error")
+                        res["error"] = f"{step} turn {n}: {bad}"
+                        break
+                    if r.killed or marker is None:
+                        break  # stopped, or agy ended the turn on its own: the step is done
+                    # forced compaction at this turn boundary, within the step's deadline
+                    left = int(deadline - time.monotonic())
+                    if left <= 120:
+                        end.setdefault("end", "time_cap")
+                        break
+                    rc_, _, _ = run_turn(sb, cfg.agy, "/compact", cid, min(660, left - 60),
+                                               sd / f"turn{n:03d}-compact.json", env, stop, tok)
                     steps_ = read_steps(sb, cid)
-                    ncp = sum(1 for s in steps_ if s.get("type") == "CHECKPOINT")
-                    if rc_.rc != 0 or ncp <= seen_cp:
+                    if rc_.rc != 0 or not new_checkpoint_ok(steps_, seen_cp):
                         end.setdefault("end", "boundary_error")
-                        res["error"] = f"{step} turn {n}: /compact made no checkpoint"
+                        res["error"] = f"{step} turn {n}: /compact did not add exactly one " \
+                                       "checkpoint after our input"
                         break
-                    seen_cp = ncp
+                    seen_cp += 1
                     broot, keep = chain(step)
                     try:
-                        k = capture(ns, cid=cid, j=ncp, ctx=int(marker), steps=steps_,
+                        k = capture(ns, cid=cid, j=seen_cp, ctx=marker, steps=steps_,
                                     rd=broot, rj=rj, keep=keep, cfg=cfg, step=step,
                                     eligible=eligible if step == GRADED_STEP else None)
                     except Exception:  # noqa: BLE001 - the run ends; nothing past it
@@ -522,7 +642,7 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                         end.setdefault("end", "boundary_error")
                         break
                     res["boundaries" if step == GRADED_STEP else "plan_boundaries"].append(k)
-                    mark("boundary_saved", step=step, k=k, ctx=int(marker))
+                    mark("boundary_saved", step=step, k=k, ctx=marker)
                     f = json.loads((broot / f"b{k}" / "boundary" / "boundary.json").read_text())
                     if f.get("eligible"):
                         end.setdefault("end", "eligible")
@@ -532,7 +652,10 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                     if end.get("end"):
                         break
                     prompt = CONTINUE_PROMPT
-                steps_final = read_steps(sb, cid) if cid else []
+                steps_final = []
+                if cid:
+                    screen(sb, [transcript_file(cid)], tok)
+                    steps_final = read_steps(sb, cid)
                 (sd / "transcript_full.jsonl").write_text(
                     "".join(json.dumps(x, ensure_ascii=False) + "\n" for x in steps_final))
                 ctx_log = sb.exec(f"cat {XDIR}/ctx-{cid}.log 2>/dev/null", timeout_s=30,
@@ -546,6 +669,7 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, sim_factory=None,
                     end.setdefault("end", "boundary_missing")
                     res["error"] = f"{step}: {n_cp} checkpoints, {seen_cp} captured"
                 if step == "01_plan":
+                    screen(sb, ["/tmp/plan.md"], tok)
                     res["plan_md"] = sb.exec("cat /tmp/plan.md 2>/dev/null", timeout_s=60,
                                              workdir="/").stdout or None
             res["end"] = end.get("end") or "submitted"
@@ -606,7 +730,9 @@ def capture(ns: N.NativeSession, *, cid: str, j: int, ctx: int, steps: list[dict
         N.signal_pids(sb, sorted(stopped), "CONT")
     snap["processes"] = [f"{p} {v}" for p, v in sorted(stopped.items())]
     nb = checkpoint_boundary(steps, j, model=cfg.agy.model, ctx_tokens=ctx)
-    db = sb.read_file(f"{STATE_DIR}/conversations/{cid}.db", timeout_s=120)
+    dbp = f"{STATE_DIR}/conversations/{cid}.db"
+    screen(sb, [transcript_file(cid), dbp], server.token)
+    db = sb.read_file(dbp, timeout_s=120)
     nb.native_files.update({
         "transcript_full.jsonl": "".join(json.dumps(x, ensure_ascii=False) + "\n"
                                          for x in steps),
@@ -618,7 +744,10 @@ def capture(ns: N.NativeSession, *, cid: str, j: int, ctx: int, steps: list[dict
              "model": cfg.agy.model, "secret_scan": {"scanned": scan["scanned"],
                                                      "seconds": scan["seconds"]},
              "token_link": link, "quiescent": not stopped, "services_running": services,
-             "capture_times": times, "pre_tokens_source": "hook: last call input+cache_read"}
+             "capture_times": times, "pre_tokens_kind": "trigger_request_context",
+             # the hook measures the request of the call that crossed the threshold: not its
+             # output nor the tool results the summarizer also saw (astra agy r1 #5)
+             "pre_tokens_source": "hook: last call input+cache_read"}
     gate = eligible
     if why:
         extra["ineligible_reason"] = why

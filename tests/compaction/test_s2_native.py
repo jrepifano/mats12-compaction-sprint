@@ -1020,3 +1020,35 @@ def test_forks_refuse_boundaries_that_are_not_fork_sources(tmp_path, monkeypatch
     bdir = _fork_dir(tmp_path, {"ineligible_reason": "services_unvalidated"})
     with pytest.raises(CC.ForkMismatch):
         _fork(tmp_path, monkeypatch, bdir, cap=False)
+
+
+def test_a_client_timeout_never_removes_the_container(monkeypatch):
+    import subprocess as sp
+
+    closed = []
+    sb = N.SB.Sandbox(name="c1", image="i", purpose="p")
+    monkeypatch.setattr(N.SB.Sandbox, "close", lambda self: closed.append(1) or True)
+
+    def hang(*a, **kw):
+        raise sp.TimeoutExpired(a[0], kw.get("timeout"))
+
+    monkeypatch.setattr(N.subprocess, "run", hang)
+    r = N.tolerant_exec(sb)("git status", timeout_s=5)
+    assert r.rc == 124 and not closed and sb.client_timeouts == 1
+
+
+def test_window_hold_expires_with_the_window():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2n", "scripts/s2_native.py")
+    S = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(S)
+    rate = {"unifiedWindows": {"seven_day": {"utilization": 0.93, "resetsAt": 2000,
+                                             "status": "allowed"},
+                               "five_hour": {"utilization": 0.2, "resetsAt": 1500,
+                                             "status": "allowed"}}}
+    why, wait_s = S.window_hold(rate, 1000)
+    assert why.startswith("seven_day") and wait_s == 1000
+    assert S.window_hold(rate, 2001) == (None, 0.0)  # reset since: stale, no hold
+    rej = {"unifiedWindows": {"five_hour": {"status": "rejected", "resetsAt": 1100}}}
+    assert S.window_hold(rej, 1000)[0].startswith("five_hour")
+    assert S.window_hold({"unifiedWindows": {"seven_day": {"utilization": 0.5}}}, 1)[0] is None
