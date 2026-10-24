@@ -1,0 +1,1621 @@
+{
+ "brief": "logs/s2/briefs/sonnet-judge-test.md",
+ "created_utc": "2026-10-24T17:43:59Z",
+ "decision_line": "results/sprint/judge_compare/decision_line.md",
+ "decision_line_sha256": "1c02e4a6344d8df45bba771327de56a6c6b2c8607c7c39bfdd72377c7491caf7",
+ "exclusions": {
+  "available_another_way": 17,
+  "by_label": {
+   "cant_tell": 2
+  },
+  "labelled_item_cards": 104,
+  "no_usable_label": 2,
+  "sonnet_invalid_grade_counted_not_lost": 1,
+  "sonnet_no_answer": 0
+ },
+ "haiku_request_match": {
+  "audit": {
+   "availability_mismatch_vs_stored": 0,
+   "cache": "data/raw/sprint/s1/cache/haiku-max/s1_judge.jsonl",
+   "n_match": 8,
+   "n_requests": 8
+  },
+  "s2_losscal": {
+   "availability_mismatch_vs_stored": 0,
+   "cache": "data/raw/sprint/s2/cache/lossaudit-haiku-max/s2_lossaudit.jsonl",
+   "n_match": 15,
+   "n_requests": 15
+  },
+  "swechat_ext": {
+   "availability_mismatch_vs_stored": 0,
+   "cache": "data/raw/sprint/s1/cache/haiku-max/s1_judge.jsonl",
+   "n_match": 18,
+   "n_requests": 18
+  },
+  "val2": {
+   "availability_mismatch_vs_stored": 0,
+   "cache": "data/raw/sprint/s1/cache/haiku-max/s1_judge.jsonl",
+   "n_match": 16,
+   "n_requests": 16
+  }
+ },
+ "max_ledger": {
+  "calls": 118,
+  "paid_route": false,
+  "rows": 8,
+  "usd": 0.0
+ },
+ "metrics": {
+  "by_set": {
+   "audit": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.625,
+       1.0
+      ],
+      "k": 7,
+      "n": 8,
+      "n_clusters": 8,
+      "p": 0.875,
+      "wilson95": [
+       0.5291,
+       0.9776
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.75
+      ],
+      "k": 1,
+      "n": 4,
+      "n_clusters": 4,
+      "p": 0.25,
+      "wilson95": [
+       0.0456,
+       0.6994
+      ]
+     },
+     "n_lost_calls": 5,
+     "precision_lost": {
+      "boot95": [
+       0.4,
+       1.0
+      ],
+      "k": 4,
+      "n": 5,
+      "n_clusters": 5,
+      "p": 0.8,
+      "wilson95": [
+       0.3755,
+       0.9638
+      ]
+     }
+    },
+    "n_cards": 8,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.875,
+     "n": 8,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.875
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.25,
+     "n": 4,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.25
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.625,
+       1.0
+      ],
+      "k": 7,
+      "n": 8,
+      "n_clusters": 8,
+      "p": 0.875,
+      "wilson95": [
+       0.5291,
+       0.9776
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.75
+      ],
+      "k": 1,
+      "n": 4,
+      "n_clusters": 4,
+      "p": 0.25,
+      "wilson95": [
+       0.0456,
+       0.6994
+      ]
+     },
+     "n_lost_calls": 5,
+     "precision_lost": {
+      "boot95": [
+       0.4,
+       1.0
+      ],
+      "k": 4,
+      "n": 5,
+      "n_clusters": 5,
+      "p": 0.8,
+      "wilson95": [
+       0.3755,
+       0.9638
+      ]
+     }
+    },
+    "truth": {
+     "kept": 3,
+     "lost": 4,
+     "not_lost": 1
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "lost": 4,
+      "n": 5,
+      "not_lost": 1
+     },
+     "haiku_lost|sonnet_not": {
+      "n": 0
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 3,
+      "n": 3
+     }
+    }
+   },
+   "s2_losscal": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.68,
+       0.9167
+      ],
+      "boot95_weighted": [
+       0.8973,
+       0.9851
+      ],
+      "k": 20,
+      "n": 25,
+      "n_clusters": 6,
+      "p": 0.8,
+      "p_weighted": 0.9528,
+      "wilson95": [
+       0.6087,
+       0.9114
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1818,
+       0.6
+      ],
+      "boot95_weighted": [
+       0.0164,
+       0.1189
+      ],
+      "k": 5,
+      "n": 13,
+      "n_clusters": 6,
+      "p": 0.3846,
+      "p_weighted": 0.0532,
+      "wilson95": [
+       0.1771,
+       0.6448
+      ]
+     },
+     "n_lost_calls": 17,
+     "precision_lost": {
+      "boot95": [
+       0.5652,
+       0.875
+      ],
+      "boot95_weighted": [
+       0.5652,
+       0.875
+      ],
+      "k": 12,
+      "n": 17,
+      "n_clusters": 6,
+      "p": 0.7059,
+      "p_weighted": 0.7059,
+      "wilson95": [
+       0.4687,
+       0.8672
+      ]
+     }
+    },
+    "n_cards": 25,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.8,
+     "n": 25,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.8
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.3846,
+     "n": 13,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.3846
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.68,
+       0.9167
+      ],
+      "boot95_weighted": [
+       0.8973,
+       0.9851
+      ],
+      "k": 20,
+      "n": 25,
+      "n_clusters": 6,
+      "p": 0.8,
+      "p_weighted": 0.9528,
+      "wilson95": [
+       0.6087,
+       0.9114
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1818,
+       0.6
+      ],
+      "boot95_weighted": [
+       0.0164,
+       0.1189
+      ],
+      "k": 5,
+      "n": 13,
+      "n_clusters": 6,
+      "p": 0.3846,
+      "p_weighted": 0.0532,
+      "wilson95": [
+       0.1771,
+       0.6448
+      ]
+     },
+     "n_lost_calls": 17,
+     "precision_lost": {
+      "boot95": [
+       0.5652,
+       0.875
+      ],
+      "boot95_weighted": [
+       0.5652,
+       0.875
+      ],
+      "k": 12,
+      "n": 17,
+      "n_clusters": 6,
+      "p": 0.7059,
+      "p_weighted": 0.7059,
+      "wilson95": [
+       0.4687,
+       0.8672
+      ]
+     }
+    },
+    "truth": {
+     "kept": 13,
+     "lost": 12
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 5,
+      "lost": 12,
+      "n": 17
+     },
+     "haiku_lost|sonnet_not": {
+      "n": 0
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 8,
+      "n": 8
+     }
+    }
+   },
+   "swechat_ext": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.5789,
+       0.8947
+      ],
+      "boot95_weighted": [
+       0.789,
+       0.9793
+      ],
+      "k": 15,
+      "n": 20,
+      "n_clusters": 14,
+      "p": 0.75,
+      "p_weighted": 0.9373,
+      "wilson95": [
+       0.5313,
+       0.8881
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.2857,
+       0.875
+      ],
+      "boot95_weighted": [
+       0.0188,
+       0.2508
+      ],
+      "k": 5,
+      "n": 8,
+      "n_clusters": 7,
+      "p": 0.625,
+      "p_weighted": 0.0738,
+      "wilson95": [
+       0.3057,
+       0.8632
+      ]
+     },
+     "n_lost_calls": 19,
+     "precision_lost": {
+      "boot95": [
+       0.3889,
+       0.8235
+      ],
+      "boot95_weighted": [
+       0.3889,
+       0.8235
+      ],
+      "k": 12,
+      "n": 19,
+      "n_clusters": 14,
+      "p": 0.6316,
+      "p_weighted": 0.6316,
+      "wilson95": [
+       0.4104,
+       0.8085
+      ]
+     }
+    },
+    "n_cards": 23,
+    "paired_agreement": {
+     "boot95": [
+      -0.25,
+      0.1154
+     ],
+     "diff": -0.05,
+     "haiku": 0.75,
+     "n": 20,
+     "only_haiku": 2,
+     "only_sonnet": 1,
+     "sonnet": 0.7
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      -0.2222,
+      0.5714
+     ],
+     "diff": 0.125,
+     "haiku": 0.625,
+     "n": 8,
+     "only_haiku": 1,
+     "only_sonnet": 2,
+     "sonnet": 0.75
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.5,
+       0.875
+      ],
+      "boot95_weighted": [
+       0.0931,
+       0.9481
+      ],
+      "k": 14,
+      "n": 20,
+      "n_clusters": 14,
+      "p": 0.7,
+      "p_weighted": 0.4253,
+      "wilson95": [
+       0.481,
+       0.8545
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.4,
+       1.0
+      ],
+      "boot95_weighted": [
+       0.1024,
+       1.0
+      ],
+      "k": 6,
+      "n": 8,
+      "n_clusters": 7,
+      "p": 0.75,
+      "p_weighted": 0.6765,
+      "wilson95": [
+       0.4093,
+       0.9285
+      ]
+     },
+     "n_lost_calls": 20,
+     "precision_lost": {
+      "boot95": [
+       0.3684,
+       0.7917
+      ],
+      "boot95_weighted": [
+       0.0652,
+       0.7391
+      ],
+      "k": 12,
+      "n": 20,
+      "n_clusters": 15,
+      "p": 0.6,
+      "p_weighted": 0.2006,
+      "wilson95": [
+       0.3866,
+       0.7812
+      ]
+     }
+    },
+    "truth": {
+     "kept": 8,
+     "lost": 12,
+     "not_an_item": 3
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 4,
+      "lost": 12,
+      "n": 18,
+      "not_an_item": 2
+     },
+     "haiku_lost|sonnet_not": {
+      "kept": 1,
+      "n": 1
+     },
+     "haiku_not|sonnet_lost": {
+      "kept": 2,
+      "n": 2
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 1,
+      "n": 2,
+      "not_an_item": 1
+     }
+    }
+   },
+   "val2": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.7931,
+       1.0
+      ],
+      "boot95_weighted": [
+       0.9556,
+       1.0
+      ],
+      "k": 23,
+      "n": 26,
+      "n_clusters": 15,
+      "p": 0.8846,
+      "p_weighted": 0.9797,
+      "wilson95": [
+       0.7102,
+       0.96
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.4
+      ],
+      "boot95_weighted": [
+       0.0,
+       0.0485
+      ],
+      "k": 2,
+      "n": 12,
+      "n_clusters": 8,
+      "p": 0.1667,
+      "p_weighted": 0.015,
+      "wilson95": [
+       0.047,
+       0.448
+      ]
+     },
+     "n_lost_calls": 18,
+     "precision_lost": {
+      "boot95": [
+       0.4762,
+       1.0
+      ],
+      "boot95_weighted": [
+       0.4762,
+       1.0
+      ],
+      "k": 13,
+      "n": 18,
+      "n_clusters": 11,
+      "p": 0.7222,
+      "p_weighted": 0.7222,
+      "wilson95": [
+       0.4913,
+       0.875
+      ]
+     }
+    },
+    "n_cards": 29,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.8846,
+     "n": 26,
+     "only_haiku": 1,
+     "only_sonnet": 1,
+     "sonnet": 0.8846
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      -0.3,
+      0.0
+     ],
+     "diff": -0.0833,
+     "haiku": 0.1667,
+     "n": 12,
+     "only_haiku": 1,
+     "only_sonnet": 0,
+     "sonnet": 0.0833
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.7931,
+       1.0
+      ],
+      "boot95_weighted": [
+       0.9556,
+       1.0
+      ],
+      "k": 23,
+      "n": 26,
+      "n_clusters": 15,
+      "p": 0.8846,
+      "p_weighted": 0.9797,
+      "wilson95": [
+       0.7102,
+       0.96
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.25
+      ],
+      "boot95_weighted": [
+       0.0,
+       0.0254
+      ],
+      "k": 1,
+      "n": 12,
+      "n_clusters": 8,
+      "p": 0.0833,
+      "p_weighted": 0.0075,
+      "wilson95": [
+       0.0149,
+       0.3539
+      ]
+     },
+     "n_lost_calls": 15,
+     "precision_lost": {
+      "boot95": [
+       0.5714,
+       1.0
+      ],
+      "boot95_weighted": [
+       0.5714,
+       1.0
+      ],
+      "k": 12,
+      "n": 15,
+      "n_clusters": 10,
+      "p": 0.8,
+      "p_weighted": 0.8,
+      "wilson95": [
+       0.5481,
+       0.9295
+      ]
+     }
+    },
+    "truth": {
+     "kept": 12,
+     "lost": 14,
+     "not_an_item": 3
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 1,
+      "lost": 12,
+      "n": 15,
+      "not_an_item": 2
+     },
+     "haiku_lost|sonnet_not": {
+      "kept": 1,
+      "lost": 1,
+      "n": 3,
+      "not_an_item": 1
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 10,
+      "lost": 1,
+      "n": 11
+     }
+    }
+   }
+  },
+  "by_source": {
+   "deepswe": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.68,
+       0.9167
+      ],
+      "k": 20,
+      "n": 25,
+      "n_clusters": 6,
+      "p": 0.8,
+      "wilson95": [
+       0.6087,
+       0.9114
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1818,
+       0.6
+      ],
+      "k": 5,
+      "n": 13,
+      "n_clusters": 6,
+      "p": 0.3846,
+      "wilson95": [
+       0.1771,
+       0.6448
+      ]
+     },
+     "n_lost_calls": 17,
+     "precision_lost": {
+      "boot95": [
+       0.5652,
+       0.875
+      ],
+      "k": 12,
+      "n": 17,
+      "n_clusters": 6,
+      "p": 0.7059,
+      "wilson95": [
+       0.4687,
+       0.8672
+      ]
+     }
+    },
+    "n_cards": 25,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.8,
+     "n": 25,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.8
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.3846,
+     "n": 13,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.3846
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.68,
+       0.9167
+      ],
+      "k": 20,
+      "n": 25,
+      "n_clusters": 6,
+      "p": 0.8,
+      "wilson95": [
+       0.6087,
+       0.9114
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1818,
+       0.6
+      ],
+      "k": 5,
+      "n": 13,
+      "n_clusters": 6,
+      "p": 0.3846,
+      "wilson95": [
+       0.1771,
+       0.6448
+      ]
+     },
+     "n_lost_calls": 17,
+     "precision_lost": {
+      "boot95": [
+       0.5652,
+       0.875
+      ],
+      "k": 12,
+      "n": 17,
+      "n_clusters": 6,
+      "p": 0.7059,
+      "wilson95": [
+       0.4687,
+       0.8672
+      ]
+     }
+    },
+    "truth": {
+     "kept": 13,
+     "lost": 12
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 5,
+      "lost": 12,
+      "n": 17
+     },
+     "haiku_lost|sonnet_not": {
+      "n": 0
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 8,
+      "n": 8
+     }
+    }
+   },
+   "frontierml": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.6667,
+       1.0
+      ],
+      "k": 3,
+      "n": 4,
+      "n_clusters": 2,
+      "p": 0.75,
+      "wilson95": [
+       0.3006,
+       0.9544
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.5
+      ],
+      "k": 1,
+      "n": 3,
+      "n_clusters": 2,
+      "p": 0.3333,
+      "wilson95": [
+       0.0615,
+       0.7923
+      ]
+     },
+     "n_lost_calls": 3,
+     "precision_lost": {
+      "boot95": [
+       0.3333,
+       0.3333
+      ],
+      "k": 1,
+      "n": 3,
+      "n_clusters": 1,
+      "p": 0.3333,
+      "wilson95": [
+       0.0615,
+       0.7923
+      ]
+     }
+    },
+    "n_cards": 5,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.75,
+     "n": 4,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.75
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.3333,
+     "n": 3,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.3333
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.6667,
+       1.0
+      ],
+      "k": 3,
+      "n": 4,
+      "n_clusters": 2,
+      "p": 0.75,
+      "wilson95": [
+       0.3006,
+       0.9544
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.5
+      ],
+      "k": 1,
+      "n": 3,
+      "n_clusters": 2,
+      "p": 0.3333,
+      "wilson95": [
+       0.0615,
+       0.7923
+      ]
+     },
+     "n_lost_calls": 3,
+     "precision_lost": {
+      "boot95": [
+       0.3333,
+       0.3333
+      ],
+      "k": 1,
+      "n": 3,
+      "n_clusters": 1,
+      "p": 0.3333,
+      "wilson95": [
+       0.0615,
+       0.7923
+      ]
+     }
+    },
+    "truth": {
+     "kept": 3,
+     "lost": 1,
+     "not_an_item": 1
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 1,
+      "lost": 1,
+      "n": 3,
+      "not_an_item": 1
+     },
+     "haiku_lost|sonnet_not": {
+      "n": 0
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 2,
+      "n": 2
+     }
+    }
+   },
+   "jacob": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.5714,
+       1.0
+      ],
+      "k": 5,
+      "n": 6,
+      "n_clusters": 4,
+      "p": 0.8333,
+      "wilson95": [
+       0.4365,
+       0.9699
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       1.0
+      ],
+      "k": 1,
+      "n": 2,
+      "n_clusters": 2,
+      "p": 0.5,
+      "wilson95": [
+       0.0945,
+       0.9055
+      ]
+     },
+     "n_lost_calls": 7,
+     "precision_lost": {
+      "boot95": [
+       0.4,
+       1.0
+      ],
+      "k": 4,
+      "n": 7,
+      "n_clusters": 4,
+      "p": 0.5714,
+      "wilson95": [
+       0.2505,
+       0.8418
+      ]
+     }
+    },
+    "n_cards": 8,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.8333,
+     "n": 6,
+     "only_haiku": 1,
+     "only_sonnet": 1,
+     "sonnet": 0.8333
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      -1.0,
+      0.0
+     ],
+     "diff": -0.5,
+     "haiku": 0.5,
+     "n": 2,
+     "only_haiku": 1,
+     "only_sonnet": 0,
+     "sonnet": 0.0
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.5714,
+       1.0
+      ],
+      "k": 5,
+      "n": 6,
+      "n_clusters": 4,
+      "p": 0.8333,
+      "wilson95": [
+       0.4365,
+       0.9699
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.0
+      ],
+      "k": 0,
+      "n": 2,
+      "n_clusters": 2,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.6576
+      ]
+     },
+     "n_lost_calls": 4,
+     "precision_lost": {
+      "boot95": [
+       0.5,
+       1.0
+      ],
+      "k": 3,
+      "n": 4,
+      "n_clusters": 3,
+      "p": 0.75,
+      "wilson95": [
+       0.3006,
+       0.9544
+      ]
+     }
+    },
+    "truth": {
+     "kept": 2,
+     "lost": 4,
+     "not_an_item": 2
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "lost": 3,
+      "n": 4,
+      "not_an_item": 1
+     },
+     "haiku_lost|sonnet_not": {
+      "kept": 1,
+      "lost": 1,
+      "n": 3,
+      "not_an_item": 1
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 1,
+      "n": 1
+     }
+    }
+   },
+   "posttrainbench": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       1.0,
+       1.0
+      ],
+      "k": 9,
+      "n": 9,
+      "n_clusters": 6,
+      "p": 1.0,
+      "wilson95": [
+       0.7009,
+       1.0
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.0
+      ],
+      "k": 0,
+      "n": 1,
+      "n_clusters": 1,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.7935
+      ]
+     },
+     "n_lost_calls": 8,
+     "precision_lost": {
+      "boot95": [
+       1.0,
+       1.0
+      ],
+      "k": 8,
+      "n": 8,
+      "n_clusters": 5,
+      "p": 1.0,
+      "wilson95": [
+       0.6756,
+       1.0
+      ]
+     }
+    },
+    "n_cards": 9,
+    "paired_agreement": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 1.0,
+     "n": 9,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 1.0
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      0.0,
+      0.0
+     ],
+     "diff": 0.0,
+     "haiku": 0.0,
+     "n": 1,
+     "only_haiku": 0,
+     "only_sonnet": 0,
+     "sonnet": 0.0
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       1.0,
+       1.0
+      ],
+      "k": 9,
+      "n": 9,
+      "n_clusters": 6,
+      "p": 1.0,
+      "wilson95": [
+       0.7009,
+       1.0
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.0,
+       0.0
+      ],
+      "k": 0,
+      "n": 1,
+      "n_clusters": 1,
+      "p": 0.0,
+      "wilson95": [
+       0.0,
+       0.7935
+      ]
+     },
+     "n_lost_calls": 8,
+     "precision_lost": {
+      "boot95": [
+       1.0,
+       1.0
+      ],
+      "k": 8,
+      "n": 8,
+      "n_clusters": 5,
+      "p": 1.0,
+      "wilson95": [
+       0.6756,
+       1.0
+      ]
+     }
+    },
+    "truth": {
+     "kept": 1,
+     "lost": 8
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "lost": 8,
+      "n": 8
+     },
+     "haiku_lost|sonnet_not": {
+      "n": 0
+     },
+     "haiku_not|sonnet_lost": {
+      "n": 0
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 1,
+      "n": 1
+     }
+    }
+   },
+   "swe-chat-v1": {
+    "haiku": {
+     "agreement": {
+      "boot95": [
+       0.6857,
+       0.9062
+      ],
+      "k": 28,
+      "n": 35,
+      "n_clusters": 25,
+      "p": 0.8,
+      "wilson95": [
+       0.6411,
+       0.8996
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1304,
+       0.6
+      ],
+      "k": 6,
+      "n": 18,
+      "n_clusters": 14,
+      "p": 0.3333,
+      "wilson95": [
+       0.1628,
+       0.5625
+      ]
+     },
+     "n_lost_calls": 24,
+     "precision_lost": {
+      "boot95": [
+       0.4762,
+       0.84
+      ],
+      "k": 16,
+      "n": 24,
+      "n_clusters": 19,
+      "p": 0.6667,
+      "wilson95": [
+       0.4671,
+       0.8203
+      ]
+     }
+    },
+    "n_cards": 38,
+    "paired_agreement": {
+     "boot95": [
+      -0.1379,
+      0.0645
+     ],
+     "diff": -0.0286,
+     "haiku": 0.8,
+     "n": 35,
+     "only_haiku": 2,
+     "only_sonnet": 1,
+     "sonnet": 0.7714
+    },
+    "paired_kept_to_lost": {
+     "boot95": [
+      -0.1111,
+      0.25
+     ],
+     "diff": 0.0556,
+     "haiku": 0.3333,
+     "n": 18,
+     "only_haiku": 1,
+     "only_sonnet": 2,
+     "sonnet": 0.3889
+    },
+    "sonnet": {
+     "agreement": {
+      "boot95": [
+       0.6333,
+       0.8947
+      ],
+      "k": 27,
+      "n": 35,
+      "n_clusters": 25,
+      "p": 0.7714,
+      "wilson95": [
+       0.6098,
+       0.8793
+      ]
+     },
+     "kept_to_lost": {
+      "boot95": [
+       0.1667,
+       0.6875
+      ],
+      "k": 7,
+      "n": 18,
+      "n_clusters": 14,
+      "p": 0.3889,
+      "wilson95": [
+       0.2031,
+       0.6138
+      ]
+     },
+     "n_lost_calls": 25,
+     "precision_lost": {
+      "boot95": [
+       0.4348,
+       0.8077
+      ],
+      "k": 16,
+      "n": 25,
+      "n_clusters": 20,
+      "p": 0.64,
+      "wilson95": [
+       0.4452,
+       0.7975
+      ]
+     }
+    },
+    "truth": {
+     "kept": 17,
+     "lost": 17,
+     "not_an_item": 3,
+     "not_lost": 1
+    },
+    "two_by_two": {
+     "haiku_lost|sonnet_lost": {
+      "kept": 4,
+      "lost": 16,
+      "n": 23,
+      "not_an_item": 2,
+      "not_lost": 1
+     },
+     "haiku_lost|sonnet_not": {
+      "kept": 1,
+      "n": 1
+     },
+     "haiku_not|sonnet_lost": {
+      "kept": 2,
+      "n": 2
+     },
+     "haiku_not|sonnet_not": {
+      "kept": 10,
+      "lost": 1,
+      "n": 12,
+      "not_an_item": 1
+     }
+    }
+   }
+  },
+  "decision": {
+   "kept_to_lost_diff": 0.0,
+   "kept_to_lost_diff_boot95": [
+    -0.1111,
+    0.1143
+   ],
+   "kept_to_lost_lower_excl_0": false,
+   "n_sonnet_lost_haiku_kept": 2,
+   "precision_bar": 0.8,
+   "precision_met": false,
+   "sonnet_precision_unweighted": 0.7018,
+   "verdict": "keep_haiku"
+  },
+  "overall": {
+   "haiku": {
+    "agreement": {
+     "boot95": [
+      0.7564,
+      0.8929
+     ],
+     "k": 65,
+     "n": 79,
+     "n_clusters": 43,
+     "p": 0.8228,
+     "wilson95": [
+      0.7242,
+      0.8914
+     ]
+    },
+    "kept_to_lost": {
+     "boot95": [
+      0.2105,
+      0.5
+     ],
+     "k": 13,
+     "n": 37,
+     "n_clusters": 25,
+     "p": 0.3514,
+     "wilson95": [
+      0.2183,
+      0.5124
+     ]
+    },
+    "n_lost_calls": 59,
+    "precision_lost": {
+     "boot95": [
+      0.5902,
+      0.7937
+     ],
+     "k": 41,
+     "n": 59,
+     "n_clusters": 35,
+     "p": 0.6949,
+     "wilson95": [
+      0.5685,
+      0.7975
+     ]
+    }
+   },
+   "n_cards": 85,
+   "paired_agreement": {
+    "boot95": [
+     -0.0625,
+     0.0282
+    ],
+    "diff": -0.0127,
+    "haiku": 0.8228,
+    "n": 79,
+    "only_haiku": 3,
+    "only_sonnet": 2,
+    "sonnet": 0.8101
+   },
+   "paired_kept_to_lost": {
+    "boot95": [
+     -0.1111,
+     0.1143
+    ],
+    "diff": 0.0,
+    "haiku": 0.3514,
+    "n": 37,
+    "only_haiku": 2,
+    "only_sonnet": 2,
+    "sonnet": 0.3514
+   },
+   "sonnet": {
+    "agreement": {
+     "boot95": [
+      0.7368,
+      0.8816
+     ],
+     "k": 64,
+     "n": 79,
+     "n_clusters": 43,
+     "p": 0.8101,
+     "wilson95": [
+      0.7101,
+      0.8814
+     ]
+    },
+    "kept_to_lost": {
+     "boot95": [
+      0.2083,
+      0.5
+     ],
+     "k": 13,
+     "n": 37,
+     "n_clusters": 25,
+     "p": 0.3514,
+     "wilson95": [
+      0.2183,
+      0.5124
+     ]
+    },
+    "n_lost_calls": 57,
+    "precision_lost": {
+     "boot95": [
+      0.5932,
+      0.8085
+     ],
+     "k": 40,
+     "n": 57,
+     "n_clusters": 35,
+     "p": 0.7018,
+     "wilson95": [
+      0.5734,
+      0.8047
+     ]
+    }
+   },
+   "truth": {
+    "kept": 36,
+    "lost": 42,
+    "not_an_item": 6,
+    "not_lost": 1
+   },
+   "two_by_two": {
+    "haiku_lost|sonnet_lost": {
+     "kept": 10,
+     "lost": 40,
+     "n": 55,
+     "not_an_item": 4,
+     "not_lost": 1
+    },
+    "haiku_lost|sonnet_not": {
+     "kept": 2,
+     "lost": 1,
+     "n": 4,
+     "not_an_item": 1
+    },
+    "haiku_not|sonnet_lost": {
+     "kept": 2,
+     "n": 2
+    },
+    "haiku_not|sonnet_not": {
+     "kept": 22,
+     "lost": 1,
+     "n": 24,
+     "not_an_item": 1
+    }
+   }
+  }
+ },
+ "n_boot": 2000,
+ "second_look": {
+  "audit": {
+   "pass1b_errors": 0,
+   "records": 8,
+   "second_look_calls": 5,
+   "second_look_invalid": 0
+  },
+  "s2_losscal": {
+   "pass1b_errors": 0,
+   "records": 15,
+   "second_look_calls": 13,
+   "second_look_invalid": 0
+  },
+  "swechat_ext": {
+   "pass1b_errors": 0,
+   "records": 18,
+   "second_look_calls": 19,
+   "second_look_invalid": 0
+  },
+  "val2": {
+   "pass1b_errors": 0,
+   "records": 16,
+   "second_look_calls": 16,
+   "second_look_invalid": 0
+  }
+ },
+ "seed": 20261024,
+ "sets": [
+  "val2",
+  "audit",
+  "s2_losscal",
+  "swechat_ext"
+ ],
+ "sonnet": {
+  "concurrency": 4,
+  "effort": "medium",
+  "model": "claude-sonnet-5-5",
+  "purpose": "judge_compare",
+  "route": "claude -p on the Max plan"
+ },
+ "usage_after": {
+  "five_hour": 0.08,
+  "seven_day": 0.65
+ },
+ "usage_before": {
+  "five_hour": 0.08,
+  "seven_day": 0.65
+ }
+}
