@@ -1,0 +1,2114 @@
+{
+ "what": "DeepSWE repos with >= 2 tasks and whether their tasks can be chained in one container (chained-pilot step 1)",
+ "created_utc": "2026-10-24T14:55:30Z",
+ "inputs": {
+  "tasks_dir": "data/raw/sprint/deepswe/repo/tasks",
+  "trials_sha256": "310cb428fe8914cff21b8edcb0b17256884efca55666bd6d6646d223c77d2ce6",
+  "images_sha256": "eee37dec8f74dd1e9fc2599a7c4a81aa3be6c602034f0c2f55dd8090bfe7e257",
+  "docker_images_listed": true
+ },
+ "notes": [
+  "Held-out tasks (S0's draw for S5) are listed but never chained.",
+  "peaks: DeepSWE's uncompacted mini-swe-agent peaks (4 rollouts per config); Haiku 5.5 has none.",
+  "reference_solution_overlap: files both reference patches touch, a proxy for conflicting edits; the agents' own edits may differ.",
+  "chain_groups: tasks sharing a base commit (held-out removed); dockerfiles_same_ignoring_comments compares the files without comments, blank lines and wrapping. Each task is still graded in its own verifier image.",
+  "same_image_layers compares images.json layer digests; a distinct tag per task with identical Dockerfiles may still differ in the last layers."
+ ],
+ "n_repos": 15,
+ "repos": [
+  {
+   "repository_url": "https://github.com/pmndrs/koota",
+   "n_tasks": 5,
+   "n_usable": 4,
+   "same_base_commit": false,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "koota-composite-trait-aspects",
+     "b": "koota-entity-snapshot-rollback",
+     "files": [
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    },
+    {
+     "a": "koota-composite-trait-aspects",
+     "b": "koota-pair-relation-tracking",
+     "files": [
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/check-query-tracking.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    },
+    {
+     "a": "koota-composite-trait-aspects",
+     "b": "koota-query-predicates",
+     "files": [
+      "packages/core/src/index.ts",
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/not.ts",
+      "packages/core/src/query/modifiers/or.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/trait/trait.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    },
+    {
+     "a": "koota-entity-snapshot-rollback",
+     "b": "koota-pair-relation-tracking",
+     "files": [
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/entity/types.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    },
+    {
+     "a": "koota-entity-snapshot-rollback",
+     "b": "koota-query-predicates",
+     "files": [
+      "packages/core/src/index.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    },
+    {
+     "a": "koota-pair-relation-tracking",
+     "b": "koota-query-predicates",
+     "files": [
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ]
+    }
+   ],
+   "chainable": "hard: tasks start from different base commits, so a chain needs a checkout between tasks and each task's own image differs",
+   "chain_groups": [
+    {
+     "base_commit": "9c434858b2b522002f8c5eb4a554fa8836a7cf3c",
+     "tasks": [
+      "koota-composite-trait-aspects",
+      "koota-pair-relation-tracking",
+      "koota-query-predicates"
+     ],
+     "dockerfiles_same_ignoring_comments": true,
+     "image_layers_same": true,
+     "any_pilot_task": true,
+     "images_local": [
+      "koota-composite-trait-aspects",
+      "koota-pair-relation-tracking",
+      "koota-query-predicates"
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "task": "koota-composite-trait-aspects",
+     "rank_top45": 10,
+     "status": "replacement",
+     "language": "typescript",
+     "base_commit": "9c434858b2b522002f8c5eb4a554fa8836a7cf3c",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh705e1hgmtj22pyetcmqa8ygs83bh33-v1.1",
+     "image_local": true,
+     "image_compressed_gb": 0.88,
+     "dockerfile_sha256": "02482161ba013a92d585c04960e8c319e4acbb5f6fcdce8d6d6b56982b29b116",
+     "instruction_chars": 1608,
+     "solution_files": [
+      "packages/core/src/aspect.ts",
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/not.ts",
+      "packages/core/src/query/modifiers/or.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/check-query-tracking.ts",
+      "packages/core/src/query/utils/check-query.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/trait/trait.ts",
+      "packages/core/src/world/world.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 279,
+      "median_peak_all": 202491,
+      "pass_rate_all": 0.376,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 262922.0,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 330479.0,
+       "passed": 3
+      },
+      "glm": {
+       "n": 3,
+       "median_peak": 263079,
+       "passed": 1
+      }
+     }
+    },
+    {
+     "task": "koota-deferred-mutation-buffer",
+     "rank_top45": 7,
+     "status": "heldout",
+     "language": "typescript",
+     "base_commit": "31cbe9a1a26b3822a6c82ad50132508087cd24bc",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7evrvtwkk64hraqvefgx9ndd821j43-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.88,
+     "dockerfile_sha256": "ca8ccab21b98b92d30fccbeee31b929d638c9d36753ae0a2d98b9de0db2a80bf",
+     "instruction_chars": 1031,
+     "solution_files": [
+      "packages/core/src/deferred/deferred.ts",
+      "packages/core/src/deferred/index.ts",
+      "packages/core/src/deferred/types.ts",
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/trait/trait.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 169989,
+      "pass_rate_all": 0.343,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 282617.0,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 280413.0,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 208534.5,
+       "passed": 0
+      }
+     }
+    },
+    {
+     "task": "koota-entity-snapshot-rollback",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "72ebef44b8e024d877250f055eea60cdfaa4506",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71b98xenay7p45357036xq5x82tcdf-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.88,
+     "dockerfile_sha256": "8a11212a1821f0ff49fa083f7913e17f9010bd28f351378e15b13b305e4d208c",
+     "instruction_chars": 2486,
+     "solution_files": [
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/entity/types.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts",
+      "packages/core/src/snapshot/snapshot.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 279,
+      "median_peak_all": 113521,
+      "pass_rate_all": 0.706,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 164767.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 194149.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 143717.0,
+       "passed": 2
+      }
+     }
+    },
+    {
+     "task": "koota-pair-relation-tracking",
+     "rank_top45": 5,
+     "status": "pilot",
+     "language": "typescript",
+     "base_commit": "9c434858b2b522002f8c5eb4a554fa8836a7cf3c",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7cshjqfe84fmtb2ye37nrd6h82dds6-v1.1",
+     "image_local": true,
+     "image_compressed_gb": 0.88,
+     "dockerfile_sha256": "02482161ba013a92d585c04960e8c319e4acbb5f6fcdce8d6d6b56982b29b116",
+     "instruction_chars": 1081,
+     "solution_files": [
+      "packages/core/src/entity/entity-methods-patch.ts",
+      "packages/core/src/entity/entity.ts",
+      "packages/core/src/entity/types.ts",
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/check-query-tracking.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/relation/relation.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 223016.5,
+      "pass_rate_all": 0.243,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 283247.0,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 340007.5,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 252505.5,
+       "passed": 1
+      }
+     }
+    },
+    {
+     "task": "koota-query-predicates",
+     "rank_top45": 11,
+     "status": "replacement",
+     "language": "typescript",
+     "base_commit": "9c434858b2b522002f8c5eb4a554fa8836a7cf3c",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7dkes3xb054yt1fd3g6nym5s83bz2h-v1.1",
+     "image_local": true,
+     "image_compressed_gb": 0.88,
+     "dockerfile_sha256": "e03ab75b44e42ad12484fb518de0569a59c1a050f67b57bbeafb138357a0e7ba",
+     "instruction_chars": 958,
+     "solution_files": [
+      "packages/core/src/index.ts",
+      "packages/core/src/query/modifiers/added.ts",
+      "packages/core/src/query/modifiers/changed.ts",
+      "packages/core/src/query/modifiers/not.ts",
+      "packages/core/src/query/modifiers/or.ts",
+      "packages/core/src/query/modifiers/removed.ts",
+      "packages/core/src/query/predicate.ts",
+      "packages/core/src/query/query-result.ts",
+      "packages/core/src/query/query.ts",
+      "packages/core/src/query/types.ts",
+      "packages/core/src/query/utils/check-query-with-relations.ts",
+      "packages/core/src/query/utils/create-query-hash.ts",
+      "packages/core/src/query/utils/evaluate-predicate.ts",
+      "packages/core/src/trait/trait.ts",
+      "packages/core/src/trait/types.ts",
+      "packages/core/src/world/types.ts",
+      "packages/core/src/world/world.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 186175,
+      "pass_rate_all": 0.307,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 261784.0,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 315425.5,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 183390.0,
+       "passed": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/PyCQA/bandit.git",
+   "n_tasks": 3,
+   "n_usable": 3,
+   "same_base_commit": false,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "bandit-incremental-cache-control",
+     "b": "bandit-interprocedural-taint-checks",
+     "files": [
+      "bandit/core/issue.py"
+     ]
+    },
+    {
+     "a": "bandit-incremental-cache-control",
+     "b": "bandit-structured-nosec-directives",
+     "files": [
+      "bandit/core/manager.py"
+     ]
+    }
+   ],
+   "chainable": "hard: tasks start from different base commits, so a chain needs a checkout between tasks and each task's own image differs",
+   "chain_groups": [
+    {
+     "base_commit": "b46fa3a2723635aa29cc012538df4867ac2ac006",
+     "tasks": [
+      "bandit-interprocedural-taint-checks",
+      "bandit-structured-nosec-directives"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "bandit-incremental-cache-control",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "765f00d3f202f83f61d03f882f80a2d5142d81f8",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7drfg2vkvdvfh9xx0nfd5pz9821xr7-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.78,
+     "dockerfile_sha256": "439d3b13920b498e1af31f928acf47c46cf4523eb93041e582a2a44d85513d60",
+     "instruction_chars": 1846,
+     "solution_files": [
+      "bandit/cli/main.py",
+      "bandit/core/cache_manager.py",
+      "bandit/core/issue.py",
+      "bandit/core/manager.py",
+      "bandit/core/metrics.py",
+      "bandit/formatters/json.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 113361,
+      "pass_rate_all": 0.532,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 166840.5,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 184752.0,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 144650.0,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "bandit-interprocedural-taint-checks",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "b46fa3a2723635aa29cc012538df4867ac2ac006",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77yap0nc4zwm5bysc954xbr182tptg-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.78,
+     "dockerfile_sha256": "1af159eefc1421c0ca49a5e0846583b6efd0588d591715efada37d033ed6a4da",
+     "instruction_chars": 1181,
+     "solution_files": [
+      "bandit/core/issue.py",
+      "bandit/core/node_visitor.py",
+      "bandit/core/taint.py",
+      "bandit/plugins/taint_path_traversal.py",
+      "bandit/plugins/taint_shell_injection.py",
+      "bandit/plugins/taint_sql_injection.py",
+      "bandit/plugins/taint_ssrf.py",
+      "bandit/plugins/taint_xss.py",
+      "setup.cfg"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 102722.5,
+      "pass_rate_all": 0.511,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 178554.0,
+       "passed": 4
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 151017.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 112965.0,
+       "passed": 2
+      }
+     }
+    },
+    {
+     "task": "bandit-structured-nosec-directives",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "b46fa3a2723635aa29cc012538df4867ac2ac006",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh757d8ggvnfaszv8zcav3msy982ma7f-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.78,
+     "dockerfile_sha256": "62b268ffaa054727799a7c46df61ab8d9834a37ad435606c4eb9420c56f2b6d3",
+     "instruction_chars": 2821,
+     "solution_files": [
+      "bandit/core/manager.py",
+      "bandit/core/nosec.py",
+      "bandit/core/nosec_parse.py",
+      "bandit/core/nosec_selector.py",
+      "bandit/core/test_set.py",
+      "bandit/core/tester.py",
+      "bandit/core/utils.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 120236.0,
+      "pass_rate_all": 0.068,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 174311.5,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 182876.0,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 120508.0,
+       "passed": 1
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/encode/httpx",
+   "n_tasks": 3,
+   "n_usable": 3,
+   "same_base_commit": true,
+   "same_dockerfile": true,
+   "same_image_layers": true,
+   "reference_solution_overlap": [
+    {
+     "a": "httpx-deterministic-cookie-store",
+     "b": "httpx-multipart-response-parsing",
+     "files": [
+      "httpx/__init__.py",
+      "httpx/_models.py"
+     ]
+    },
+    {
+     "a": "httpx-deterministic-cookie-store",
+     "b": "httpx-streaming-json-iteration",
+     "files": [
+      "httpx/_models.py",
+      "httpx/_types.py"
+     ]
+    },
+    {
+     "a": "httpx-multipart-response-parsing",
+     "b": "httpx-streaming-json-iteration",
+     "files": [
+      "httpx/_models.py"
+     ]
+    }
+   ],
+   "chainable": "yes: same base commit and identical Dockerfile; run in the first task's image, no reset between tasks",
+   "chain_groups": [
+    {
+     "base_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+     "tasks": [
+      "httpx-deterministic-cookie-store",
+      "httpx-multipart-response-parsing",
+      "httpx-streaming-json-iteration"
+     ],
+     "dockerfiles_same_ignoring_comments": true,
+     "image_layers_same": true,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "httpx-deterministic-cookie-store",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "typescript",
+     "base_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7ccr1w93zymhy42k5hs2m9w1831xpx-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.9,
+     "dockerfile_sha256": "aa71466fa6f71fab7fc6df1278377549c57a1d6b74bfd270a70005ce0fede297",
+     "instruction_chars": 3250,
+     "solution_files": [
+      "httpx/__init__.py",
+      "httpx/_client.py",
+      "httpx/_cookie_store.py",
+      "httpx/_models.py",
+      "httpx/_types.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 94890.0,
+      "pass_rate_all": 0.861,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 198524.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 150028.5,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 91079.5,
+       "passed": 4
+      }
+     }
+    },
+    {
+     "task": "httpx-multipart-response-parsing",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fr6f1yw1289ye5ttsfvaqen8319dq-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.9,
+     "dockerfile_sha256": "aa71466fa6f71fab7fc6df1278377549c57a1d6b74bfd270a70005ce0fede297",
+     "instruction_chars": 2212,
+     "solution_files": [
+      "httpx/__init__.py",
+      "httpx/_content.py",
+      "httpx/_models.py",
+      "httpx/_multipart.py",
+      "httpx/_multipart_response.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 97689.0,
+      "pass_rate_all": 0.621,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 172652.5,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 145438.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 91152.5,
+       "passed": 4
+      }
+     }
+    },
+    {
+     "task": "httpx-streaming-json-iteration",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh73snc7v9x3psk69rg4eqvjgs836v5a-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.9,
+     "dockerfile_sha256": "aa71466fa6f71fab7fc6df1278377549c57a1d6b74bfd270a70005ce0fede297",
+     "instruction_chars": 2632,
+     "solution_files": [
+      "httpx/_json_stream.py",
+      "httpx/_models.py",
+      "httpx/_types.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 90090.0,
+      "pass_rate_all": 0.436,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 167381.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 132109.5,
+       "passed": 1
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 92472.0,
+       "passed": 0
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/platers/obsidian-linter",
+   "n_tasks": 3,
+   "n_usable": 3,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "obsidian-linter-auto-table-of-contents",
+     "b": "obsidian-linter-link-format-conversion",
+     "files": [
+      "src/lang/locale/en.ts"
+     ]
+    },
+    {
+     "a": "obsidian-linter-auto-table-of-contents",
+     "b": "obsidian-linter-scoped-ignore-markers",
+     "files": [
+      "src/rules-runner.ts"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f",
+     "tasks": [
+      "obsidian-linter-auto-table-of-contents",
+      "obsidian-linter-link-format-conversion",
+      "obsidian-linter-scoped-ignore-markers"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "obsidian-linter-auto-table-of-contents",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "typescript",
+     "base_commit": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh74j15mp1vrxx737y8b47tc8h832a37-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "fb7e8fcdca2a39c67aec5bcb81d10011b8be0c53cc93a2733720ac6fe93e1add",
+     "instruction_chars": 1558,
+     "solution_files": [
+      "src/lang/locale/en.ts",
+      "src/rules-runner.ts",
+      "src/rules/auto-toc.ts",
+      "src/rules/rule-builder.ts",
+      "src/utils/toc.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 110498.0,
+      "pass_rate_all": 0.025,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 200850.5,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 175234.0,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 103854.5,
+       "passed": 1
+      }
+     }
+    },
+    {
+     "task": "obsidian-linter-link-format-conversion",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "typescript",
+     "base_commit": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7anfdjd1c4e5ejxncny0j1ed82xjm4-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "b07d8202844b1e0d4f179a966c6764f541317cba17b76df065ce7dc51abead0a",
+     "instruction_chars": 2196,
+     "solution_files": [
+      "src/lang/locale/en.ts",
+      "src/rules/link-style.ts",
+      "src/utils/links.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 110182.5,
+      "pass_rate_all": 0.246,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 165973.0,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 177325.5,
+       "passed": 2
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 111402.5,
+       "passed": 0
+      }
+     }
+    },
+    {
+     "task": "obsidian-linter-scoped-ignore-markers",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "typescript",
+     "base_commit": "6393b3ab32a2ace1fc24d4b0f5e0f13a179c874f",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fmf1y6r9ajpg3htmaj237h182vztd-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "68e8ade02fbb14a6f0d0ca526c729001eb115acbd94568c51347a38569c2d2b7",
+     "instruction_chars": 2241,
+     "solution_files": [
+      "feature.md",
+      "src/rules-runner.ts",
+      "src/rules.ts",
+      "src/utils/ignore-types.ts",
+      "src/utils/regex.ts",
+      "src/utils/scoped-ignore.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 136231.0,
+      "pass_rate_all": 0.711,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 204385.0,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 197331.5,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 154794.5,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/Textualize/textual",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": false,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [],
+   "chainable": "hard: tasks start from different base commits, so a chain needs a checkout between tasks and each task's own image differs",
+   "chain_groups": [],
+   "tasks": [
+    {
+     "task": "textual-kitty-key-phases",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "9737a5ab723f79e59f0a83eb036a3d15fad6b054",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7b36e22me6fzbav0na7kt14h82wk1m-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 1.02,
+     "dockerfile_sha256": "b79d9ead0a67ad9fd94e4d8847cdbb4526159ef7a5ea0674712bc0ec897abb01",
+     "instruction_chars": 1765,
+     "solution_files": [
+      "examples/kitty_keyboard_protocol.py",
+      "src/textual/_keyboard_protocol.py",
+      "src/textual/_xterm_parser.py",
+      "src/textual/drivers/linux_driver.py",
+      "src/textual/drivers/windows_driver.py",
+      "src/textual/events.py",
+      "tests/test_xterm_parser.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 118035.0,
+      "pass_rate_all": 0.429,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 198917.0,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 195717.5,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 112893.5,
+       "passed": 1
+      }
+     }
+    },
+    {
+     "task": "textual-richlog-follow-state",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "0f0849fd37fbd0d4d6f81889476c22340129df67",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh70247kxfz01g03p1dpz9fqv183g47e-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.87,
+     "dockerfile_sha256": "bf624aeac7958ed0d3815d8cf79cee1aaff22e6a6b65c1b3a29d954971e7f27e",
+     "instruction_chars": 1664,
+     "solution_files": [
+      "examples/rich_log_follow_state.py",
+      "src/textual/widgets/_log.py",
+      "src/textual/widgets/_rich_log.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 131299.0,
+      "pass_rate_all": 0.696,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 217942.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 192893.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 170094.5,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/abs-lang/abs",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": true,
+   "reference_solution_overlap": [],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "cb1b3b671d0ee9fa9da9f7b02f86967953ffd10a",
+     "tasks": [
+      "abs-module-cache-flags",
+      "abs-stepped-slices"
+     ],
+     "dockerfiles_same_ignoring_comments": true,
+     "image_layers_same": true,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "abs-module-cache-flags",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "cb1b3b671d0ee9fa9da9f7b02f86967953ffd10a",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh75679ajj3b8dtd7se3h7z0a1833y6r-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "69f10920ca0e9d9aa53d0bdb5e2d1ddff39f7eefc0b2d29b96dba9032ddbdbd8",
+     "instruction_chars": 2624,
+     "solution_files": [
+      "evaluator/functions.go",
+      "repl/repl.go",
+      "util/util.go",
+      "evaluator/module_loader.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 94405.0,
+      "pass_rate_all": 0.754,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 157549.0,
+       "passed": 4
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 148087.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 93178.0,
+       "passed": 4
+      }
+     }
+    },
+    {
+     "task": "abs-stepped-slices",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "cb1b3b671d0ee9fa9da9f7b02f86967953ffd10a",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7d5m4ed35zfp7gyhx7wdahed82yw72-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "dacb211959cc973ccece0461b252076a1d01c744699e2621a6db42bd6654d0ab",
+     "instruction_chars": 3484,
+     "solution_files": [
+      "ast/ast.go",
+      "evaluator/evaluator.go",
+      "parser/parser.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 98944.5,
+      "pass_rate_all": 0.732,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 142443.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 145158.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 92872.5,
+       "passed": 3
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/capricorn86/happy-dom",
+   "n_tasks": 2,
+   "n_usable": 1,
+   "same_base_commit": true,
+   "same_dockerfile": true,
+   "same_image_layers": true,
+   "reference_solution_overlap": [],
+   "chainable": "no: fewer than 2 tasks once the held-out task is removed",
+   "chain_groups": [],
+   "tasks": [
+    {
+     "task": "happy-dom-abort-pending-body-reads",
+     "rank_top45": 23,
+     "status": "heldout",
+     "language": "typescript",
+     "base_commit": "82a0888cb2c87a6123e05424b528f8e8c9b3e426",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7c2re7cvbseq7xz6samd1xr182y1dc-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.96,
+     "dockerfile_sha256": "84f8bca577143b631b03a2f37c3b829e33fef54ecef70dc1d70bf94057de93c5",
+     "instruction_chars": 764,
+     "solution_files": [
+      "packages/happy-dom/src/PropertySymbol.ts",
+      "packages/happy-dom/src/fetch/Request.ts",
+      "packages/happy-dom/src/fetch/Response.ts",
+      "packages/happy-dom/src/fetch/multipart/MultipartFormDataParser.ts",
+      "packages/happy-dom/src/fetch/utilities/FetchBodyUtility.ts",
+      "packages/happy-dom/src/window/BrowserWindow.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 181400.5,
+      "pass_rate_all": 0.904,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 231324.0,
+       "passed": 4
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 281666.5,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 177606.5,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "happy-dom-deterministic-intersectionobserver",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "typescript",
+     "base_commit": "82a0888cb2c87a6123e05424b528f8e8c9b3e426",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh75ggdejhnymjbhkbtkxvhz758352br-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.96,
+     "dockerfile_sha256": "6b16bb76389b541ffa58d08732dc8abdeb6f9d9f5a5987e846407470133b3263",
+     "instruction_chars": 1542,
+     "solution_files": [
+      "packages/happy-dom/src/intersection-observer/IIntersectionObserverInit.ts",
+      "packages/happy-dom/src/intersection-observer/IntersectionObserver.ts",
+      "packages/happy-dom/src/intersection-observer/types/IIntersectionObserverMarginValue.ts",
+      "packages/happy-dom/src/intersection-observer/types/IIntersectionObserverRootMargin.ts",
+      "packages/happy-dom/src/intersection-observer/types/IIntersectionObserverTargetState.ts",
+      "packages/happy-dom/src/intersection-observer/utilities/IntersectionObserverGeometryUtility.ts",
+      "packages/happy-dom/src/intersection-observer/utilities/IntersectionObserverRootMarginParser.ts",
+      "packages/happy-dom/src/intersection-observer/utilities/IntersectionObserverThresholdParser.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 114366.5,
+      "pass_rate_all": 0.307,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 166469.5,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 251580.0,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 138019.5,
+       "passed": 3
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/celery/kombu",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "kombu-single-active-consumer-priority",
+     "b": "kombu-virtual-queue-dead-lettering",
+     "files": [
+      "kombu/entity.py",
+      "kombu/transport/filesystem.py",
+      "kombu/transport/memory.py",
+      "kombu/transport/virtual/base.py"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "3c5c1bd86376ee73d52a4cc770bdaeab15bbc2f3",
+     "tasks": [
+      "kombu-single-active-consumer-priority",
+      "kombu-virtual-queue-dead-lettering"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "kombu-single-active-consumer-priority",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "3c5c1bd86376ee73d52a4cc770bdaeab15bbc2f3",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71vrtr4b1jj5vavv6aybnvjd83pcar-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "4d5a8b0bef8b52454d96ec94b5c95cd8fe22f13d729e4a3b08f5facae5fd8724",
+     "instruction_chars": 4365,
+     "solution_files": [
+      "kombu/entity.py",
+      "kombu/messaging.py",
+      "kombu/transport/filesystem.py",
+      "kombu/transport/memory.py",
+      "kombu/transport/pyro.py",
+      "kombu/transport/virtual/base.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 115782.0,
+      "pass_rate_all": 0.604,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 215772.0,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 199334.5,
+       "passed": 2
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 111077.5,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "kombu-virtual-queue-dead-lettering",
+     "rank_top45": 39,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "3c5c1bd86376ee73d52a4cc770bdaeab15bbc2f3",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh72pgvncj82fnbfq2bvmy1qs183jdc5-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "d261f273070c961825bf7df7f79d40cb311555df425aea2be1b7274ab0045045",
+     "instruction_chars": 4483,
+     "solution_files": [
+      "kombu/entity.py",
+      "kombu/transport/base.py",
+      "kombu/transport/filesystem.py",
+      "kombu/transport/memory.py",
+      "kombu/transport/virtual/base.py",
+      "kombu/transport/virtual/exchange.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 130261.5,
+      "pass_rate_all": 0.346,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 210828.5,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 216827.5,
+       "passed": 2
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 139264.5,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/d5/tengo",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": true,
+   "reference_solution_overlap": [
+    {
+     "a": "tengo-callable-instance-isolation",
+     "b": "tengo-destructuring-bindings",
+     "files": [
+      "vm.go"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "3cad0da7a51b1206c6f01e3f4fbb44b976d5275c",
+     "tasks": [
+      "tengo-callable-instance-isolation",
+      "tengo-destructuring-bindings"
+     ],
+     "dockerfiles_same_ignoring_comments": true,
+     "image_layers_same": true,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "tengo-callable-instance-isolation",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "3cad0da7a51b1206c6f01e3f4fbb44b976d5275c",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77n9t7ybdq9387d08jzdp1y183ffe6-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.77,
+     "dockerfile_sha256": "6287821adfc100159513264822b2ffcf35d49193250ded716225b6a5f308b61d",
+     "instruction_chars": 1346,
+     "solution_files": [
+      "call.go",
+      "objects.go",
+      "script.go",
+      "vm.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 136586.5,
+      "pass_rate_all": 0.671,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 180291.5,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 251421.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 138995.0,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "tengo-destructuring-bindings",
+     "rank_top45": 19,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "3cad0da7a51b1206c6f01e3f4fbb44b976d5275c",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7ajwvesks1d5kkpeqx7y79sd8238zn-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.77,
+     "dockerfile_sha256": "3cb14fd6136bbab47504b8367478a14652243841783f31e2989ec787db8f06fb",
+     "instruction_chars": 1051,
+     "solution_files": [
+      "compiler.go",
+      "parser/expr.go",
+      "parser/opcodes.go",
+      "parser/parser.go",
+      "parser/stmt.go",
+      "vm.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 154255.0,
+      "pass_rate_all": 0.629,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 238765.0,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 234445.5,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 154305.0,
+       "passed": 2
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/dynamodb-toolbox/dynamodb-toolbox",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": true,
+   "reference_solution_overlap": [
+    {
+     "a": "dynamodb-toolbox-conditional-attribute-requirements",
+     "b": "dynamodb-toolbox-lazy-recursive-schemas",
+     "files": [
+      "src/schema/map/schema.ts"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "1f2a18664f8aded292707fcafb01ff15ea33d3b8",
+     "tasks": [
+      "dynamodb-toolbox-conditional-attribute-requirements",
+      "dynamodb-toolbox-lazy-recursive-schemas"
+     ],
+     "dockerfiles_same_ignoring_comments": true,
+     "image_layers_same": true,
+     "any_pilot_task": true,
+     "images_local": [
+      "dynamodb-toolbox-conditional-attribute-requirements",
+      "dynamodb-toolbox-lazy-recursive-schemas"
+     ]
+    }
+   ],
+   "tasks": [
+    {
+     "task": "dynamodb-toolbox-conditional-attribute-requirements",
+     "rank_top45": 4,
+     "status": "pilot",
+     "language": "typescript",
+     "base_commit": "1f2a18664f8aded292707fcafb01ff15ea33d3b8",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh79xyw12drtaz3reht4enc2hs83ef6v-v1.1",
+     "image_local": true,
+     "image_compressed_gb": 0.9,
+     "dockerfile_sha256": "2a36a5917d14b89e418d253adf456018cb69c364a8bfabf75e870250e39d65a8",
+     "instruction_chars": 1342,
+     "solution_files": [
+      "src/entity/actions/update/updateItemParams/updateItemParams.ts",
+      "src/schema/actions/dto/getSchemaDTO/any.ts",
+      "src/schema/actions/dto/getSchemaDTO/anyOf.ts",
+      "src/schema/actions/dto/getSchemaDTO/list.ts",
+      "src/schema/actions/dto/getSchemaDTO/map.ts",
+      "src/schema/actions/dto/getSchemaDTO/primitive.ts",
+      "src/schema/actions/dto/getSchemaDTO/record.ts",
+      "src/schema/actions/dto/getSchemaDTO/set.ts",
+      "src/schema/actions/dto/types.ts",
+      "src/schema/actions/fromDTO/fromSchemaDTO/anyOf.ts",
+      "src/schema/actions/jsonSchemer/formattedValue/item.ts",
+      "src/schema/actions/jsonSchemer/formattedValue/map.ts",
+      "src/schema/actions/parse/errors.ts",
+      "src/schema/actions/parse/item.ts",
+      "src/schema/actions/parse/map.ts",
+      "src/schema/actions/zodSchemer/formatter/item.ts",
+      "src/schema/actions/zodSchemer/formatter/map.ts",
+      "src/schema/actions/zodSchemer/parser/item.ts",
+      "src/schema/actions/zodSchemer/parser/map.ts",
+      "src/schema/any/schema_.ts",
+      "src/schema/anyOf/schema_.ts",
+      "src/schema/binary/schema_.ts",
+      "src/schema/boolean/schema_.ts",
+      "src/schema/item/errors.ts",
+      "src/schema/item/schema.ts",
+      "src/schema/list/schema_.ts",
+      "src/schema/map/schema.ts",
+      "src/schema/map/schema_.ts",
+      "src/schema/null/schema_.ts",
+      "src/schema/number/schema_.ts",
+      "src/schema/record/schema_.ts",
+      "src/schema/set/schema_.ts",
+      "src/schema/string/schema_.ts",
+      "src/schema/types/index.ts",
+      "src/schema/types/schemaProps.ts",
+      "vitest.config.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 279,
+      "median_peak_all": 185278.0,
+      "pass_rate_all": 0.781,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 292606.5,
+       "passed": 3
+      },
+      "luna": {
+       "n": 3,
+       "median_peak": 355858,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 203867.5,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "dynamodb-toolbox-lazy-recursive-schemas",
+     "rank_top45": 3,
+     "status": "pilot",
+     "language": "typescript",
+     "base_commit": "1f2a18664f8aded292707fcafb01ff15ea33d3b8",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh72mtcjbhgxmwq036jccx77dh83dj5n-v1.1",
+     "image_local": true,
+     "image_compressed_gb": 0.9,
+     "dockerfile_sha256": "7a0e3848e3abd724fda65ec36a7205bedbce82ffea6e53caca52e0f40e15b227",
+     "instruction_chars": 1365,
+     "solution_files": [
+      "src/entity/actions/update/updateItemParams/extension/attribute.ts",
+      "src/entity/actions/updateAttributes/updateAttributesParams/extension/attribute.ts",
+      "src/schema/actions/dto/dto.ts",
+      "src/schema/actions/dto/getSchemaDTO/index.ts",
+      "src/schema/actions/dto/getSchemaDTO/schema.ts",
+      "src/schema/actions/finder/finder.ts",
+      "src/schema/actions/format/schema.ts",
+      "src/schema/actions/fromDTO/fromSchemaDTO.ts",
+      "src/schema/actions/fromDTO/fromSchemaDTO/attribute.ts",
+      "src/schema/actions/fromDTO/fromSchemaDTO/index.ts",
+      "src/schema/actions/jsonSchemer/formattedValue/index.ts",
+      "src/schema/actions/jsonSchemer/formattedValue/schema.ts",
+      "src/schema/actions/jsonSchemer/jsonSchemer.ts",
+      "src/schema/actions/parse/schema.ts",
+      "src/schema/actions/zodSchemer/formatter/schema.ts",
+      "src/schema/actions/zodSchemer/parser/schema.ts",
+      "src/schema/anyOf/schema.ts",
+      "src/schema/errors.ts",
+      "src/schema/index.ts",
+      "src/schema/lazy/constants.ts",
+      "src/schema/lazy/errors.ts",
+      "src/schema/lazy/index.ts",
+      "src/schema/lazy/schema.ts",
+      "src/schema/lazy/schema_.ts",
+      "src/schema/lazy/types.ts",
+      "src/schema/map/schema.ts",
+      "src/schema/types/schema.ts",
+      "src/schema/utils/light.ts"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 275,
+      "median_peak_all": 230108,
+      "pass_rate_all": 0.735,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 313270.5,
+       "passed": 4
+      },
+      "luna": {
+       "n": 1,
+       "median_peak": 417105,
+       "passed": 1
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 255630.0,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/fastapi/fastapi",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "fastapi-deprecation-response-headers",
+     "b": "fastapi-implicit-head-options",
+     "files": [
+      "fastapi/applications.py",
+      "fastapi/routing.py"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "11614be9021aa4ac078d4d0693a8b5250a1010d8",
+     "tasks": [
+      "fastapi-deprecation-response-headers",
+      "fastapi-implicit-head-options"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "fastapi-deprecation-response-headers",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "11614be9021aa4ac078d4d0693a8b5250a1010d8",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh75azsnb5eqs3mf4xm0zkzha582rvcd-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "262992aa68ad90e32aab45aadb01c777c34a4dfde10c4523da70e5a9878ed633",
+     "instruction_chars": 3071,
+     "solution_files": [
+      "fastapi/applications.py",
+      "fastapi/middleware/deprecation.py",
+      "fastapi/openapi/utils.py",
+      "fastapi/routing.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 110661.0,
+      "pass_rate_all": 0.507,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 176232.5,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 191127.5,
+       "passed": 1
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 107856.5,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "fastapi-implicit-head-options",
+     "rank_top45": 29,
+     "status": "unused",
+     "language": "python",
+     "base_commit": "11614be9021aa4ac078d4d0693a8b5250a1010d8",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7191qb52n5pfwh0a4yhahmt18343sn-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.84,
+     "dockerfile_sha256": "c09996d6d4fadb04cbf3a1c89cae4d7e8a931fc5e887501d7197bc8552f09f5b",
+     "instruction_chars": 1702,
+     "solution_files": [
+      "fastapi/applications.py",
+      "fastapi/middleware/__init__.py",
+      "fastapi/middleware/methods.py",
+      "fastapi/routing.py"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 137905,
+      "pass_rate_all": 0.568,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 218582.0,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 233663.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 129478.0,
+       "passed": 2
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/helm/helm",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "helm-array-merge-strategies",
+     "b": "helm-unified-manifest-stream",
+     "files": [
+      "pkg/action/install.go",
+      "pkg/action/upgrade.go",
+      "pkg/cmd/upgrade.go"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "42f78ba60edf531d5161e00d9819a7c34d976343",
+     "tasks": [
+      "helm-array-merge-strategies",
+      "helm-unified-manifest-stream"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "helm-array-merge-strategies",
+     "rank_top45": 26,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "42f78ba60edf531d5161e00d9819a7c34d976343",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh72a3qcr0kjpdr153havavn8s83bx8t-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 1.11,
+     "dockerfile_sha256": "23087a458240aceeb106be6e5a57126f37e94fcd4983746d0824bd22fe4dbe1e",
+     "instruction_chars": 2882,
+     "solution_files": [
+      "internal/chart/v3/lint/rules/chartfile.go",
+      "pkg/action/install.go",
+      "pkg/action/merge_strategy.go",
+      "pkg/action/upgrade.go",
+      "pkg/chart/common.go",
+      "pkg/chart/common/util/coalesce.go",
+      "pkg/chart/interfaces.go",
+      "pkg/chart/v2/lint/rules/chartfile.go",
+      "pkg/cmd/install.go",
+      "pkg/cmd/upgrade.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 141656,
+      "pass_rate_all": 0.2,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 222965.5,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 239866.0,
+       "passed": 0
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 129146.0,
+       "passed": 3
+      }
+     }
+    },
+    {
+     "task": "helm-unified-manifest-stream",
+     "rank_top45": 35,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "42f78ba60edf531d5161e00d9819a7c34d976343",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7dvkse99x41x83c5z6f2eq7n82w8fm-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 1.1,
+     "dockerfile_sha256": "104631d393aa3ec3d8c60ca38389fbdb8d38e0cef5001ed3386ee7e05419b001",
+     "instruction_chars": 1054,
+     "solution_files": [
+      "pkg/action/action.go",
+      "pkg/action/install.go",
+      "pkg/action/rollback.go",
+      "pkg/action/status.go",
+      "pkg/action/uninstall.go",
+      "pkg/action/upgrade.go",
+      "pkg/cmd/get_manifest.go",
+      "pkg/cmd/status.go",
+      "pkg/cmd/template.go",
+      "pkg/cmd/upgrade.go",
+      "pkg/release/v1/util/manifest_sorter.go",
+      "pkg/release/v1/util/manifest_stream.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 152910,
+      "pass_rate_all": 0.818,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 212808.5,
+       "passed": 4
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 272883.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 122234.0,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/mattn/anko",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": false,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [],
+   "chainable": "hard: tasks start from different base commits, so a chain needs a checkout between tasks and each task's own image differs",
+   "chain_groups": [],
+   "tasks": [
+    {
+     "task": "anko-default-function-arguments",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "9d2d84bb1564e9513287998c56ccf16c01c19008",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fj3hc92zehtc8azrm32xzb182w9dr-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.77,
+     "dockerfile_sha256": "2aefca1d5b234426d2aac51c599ba10a897f20ace48edb218966362b3252f0ef",
+     "instruction_chars": 973,
+     "solution_files": [
+      "core/core.go",
+      "parser/default_args.go",
+      "parser/lexer.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 149728.5,
+      "pass_rate_all": 0.732,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 247552.0,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 199582.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 170612.0,
+       "passed": 4
+      }
+     }
+    },
+    {
+     "task": "anko-typed-variable-bindings",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "3f269a72ff69398b1250c584171f32d12c0d8085",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh79betfed7ets4an20cr4j57182y9wt-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.79,
+     "dockerfile_sha256": "167c90098edde010922af29a44456c905d91e5d61be1c5411cd99e828a24419e",
+     "instruction_chars": 1825,
+     "solution_files": [
+      "ast/stmt.go",
+      "env/env.go",
+      "env/envConstraints.go",
+      "env/envValues.go",
+      "parser/parser.go.y",
+      "vm/vm.go",
+      "vm/vmLetExpr.go",
+      "vm/vmStmt.go",
+      "vm/vmTypedBindings.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 103893.5,
+      "pass_rate_all": 0.514,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 210268.0,
+       "passed": 3
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 172281.0,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 109161.0,
+       "passed": 2
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/open-policy-agent/opa",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": true,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "opa-rego-rule-profiling",
+     "b": "opa-template-string-reconstruction",
+     "files": [
+      "v1/rego/rego.go"
+     ]
+    }
+   ],
+   "chainable": "check: same base commit but the Dockerfiles differ (dependencies)",
+   "chain_groups": [
+    {
+     "base_commit": "1ac64ef1a57a531c2723c59848890b88e816d777",
+     "tasks": [
+      "opa-rego-rule-profiling",
+      "opa-template-string-reconstruction"
+     ],
+     "dockerfiles_same_ignoring_comments": false,
+     "image_layers_same": false,
+     "any_pilot_task": false,
+     "images_local": []
+    }
+   ],
+   "tasks": [
+    {
+     "task": "opa-rego-rule-profiling",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "1ac64ef1a57a531c2723c59848890b88e816d777",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh78zjag0xnxppgym5v4sshav982y8s4-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 2.09,
+     "dockerfile_sha256": "88e7afcd41fe3507ad804b18bdab1d26da69ca834ac52fb4f7d34923db660ed7",
+     "instruction_chars": 2948,
+     "solution_files": [
+      "v1/rego/profile.go",
+      "v1/rego/rego.go",
+      "v1/rego/resultset.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 104975.0,
+      "pass_rate_all": 0.611,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 183466.5,
+       "passed": 1
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 183168.5,
+       "passed": 2
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 80121.5,
+       "passed": 1
+      }
+     }
+    },
+    {
+     "task": "opa-template-string-reconstruction",
+     "rank_top45": 21,
+     "status": "unused",
+     "language": "go",
+     "base_commit": "1ac64ef1a57a531c2723c59848890b88e816d777",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7eq7eek21pjhv1zx8c2cmmed82yd7v-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 2.09,
+     "dockerfile_sha256": "5c0b31159e67c3e33a1dcce8c8b9bc652a9f6f5f0f035d2ff027db478b517551",
+     "instruction_chars": 1141,
+     "solution_files": [
+      "v1/rego/partial_template_string.go",
+      "v1/rego/partial_template_string_body.go",
+      "v1/rego/partial_template_string_term.go",
+      "v1/rego/rego.go"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 279,
+      "median_peak_all": 188734,
+      "pass_rate_all": 0.67,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 233282.5,
+       "passed": 4
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 264851.5,
+       "passed": 4
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 230893.5,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  },
+  {
+   "repository_url": "https://github.com/testem/testem",
+   "n_tasks": 2,
+   "n_usable": 2,
+   "same_base_commit": false,
+   "same_dockerfile": false,
+   "same_image_layers": false,
+   "reference_solution_overlap": [
+    {
+     "a": "testem-bail-on-test-failure",
+     "b": "testem-per-launcher-reports",
+     "files": [
+      "lib/config.js",
+      "lib/reporters/tap_reporter.js",
+      "lib/reporters/xunit_reporter.js",
+      "lib/utils/reporter.js"
+     ]
+    }
+   ],
+   "chainable": "hard: tasks start from different base commits, so a chain needs a checkout between tasks and each task's own image differs",
+   "chain_groups": [],
+   "tasks": [
+    {
+     "task": "testem-bail-on-test-failure",
+     "rank_top45": 22,
+     "status": "unused",
+     "language": "javascript",
+     "base_commit": "06a1adb7a70e85e7322d8cfae3181508785de95d",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77k18d31qx7jj0c7nyv0xd8s82cznp-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.85,
+     "dockerfile_sha256": "0fa245ea457b0d73a1455b1536e55987060ff5c87ba0c55bf173edb77e0a7e30",
+     "instruction_chars": 2476,
+     "solution_files": [
+      "lib/app.js",
+      "lib/config.js",
+      "lib/reporters/dot_reporter.js",
+      "lib/reporters/tap_reporter.js",
+      "lib/reporters/teamcity_reporter.js",
+      "lib/reporters/xunit_reporter.js",
+      "lib/runners/browser_test_runner.js",
+      "lib/runners/process_test_runner.js",
+      "lib/runners/tap_process_test_runner.js",
+      "lib/server/index.js",
+      "lib/utils/displayutils.js",
+      "lib/utils/reporter.js",
+      "public/testem/jasmine2_adapter.js",
+      "public/testem/mocha_adapter.js",
+      "public/testem/qunit_adapter.js",
+      "public/testem/testem_client.js",
+      "public/testem/testem_connection.js",
+      "testem.js"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 150462.0,
+      "pass_rate_all": 0.239,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 231489.5,
+       "passed": 0
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 255906.0,
+       "passed": 2
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 144693.0,
+       "passed": 2
+      }
+     }
+    },
+    {
+     "task": "testem-per-launcher-reports",
+     "rank_top45": null,
+     "status": "unused",
+     "language": "javascript",
+     "base_commit": "158f61ea91c9613d2011c41ee9be40ada1d7a307",
+     "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7322qjz1xfjspavxy0kamf9h83277p-v1.1",
+     "image_local": false,
+     "image_compressed_gb": 0.85,
+     "dockerfile_sha256": "5baf0e49c465ece46a61ab21b22840164fa4ceb7165459026307bf99823a358a",
+     "instruction_chars": 2192,
+     "solution_files": [
+      "lib/config.js",
+      "lib/launcher.js",
+      "lib/reporters/tap_reporter.js",
+      "lib/reporters/xunit_reporter.js",
+      "lib/utils/report-file.js",
+      "lib/utils/reporter.js"
+     ],
+     "agent_timeout_sec": 10800.0,
+     "peaks": {
+      "n": 280,
+      "median_peak_all": 103730,
+      "pass_rate_all": 0.729,
+      "deepseek": {
+       "n": 4,
+       "median_peak": 151107.5,
+       "passed": 2
+      },
+      "luna": {
+       "n": 4,
+       "median_peak": 175289.0,
+       "passed": 3
+      },
+      "glm": {
+       "n": 4,
+       "median_peak": 87637.0,
+       "passed": 4
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
