@@ -778,3 +778,121 @@ def test_adopted_run_carries_its_pids_for_the_tag_gate(monkeypatch):
     ad = m._Adopted("helm", None)
     # its own reservation (keyed by the uv wrapper, 199) is excluded from "my other drivers"
     assert ad.pids == {199, 200} and ad.cap == 3.5
+
+
+def test_reciter_gives_each_concurrent_recitation_its_own_home(monkeypatch, tmp_path):
+    auth = tmp_path / "auth.json"
+    auth.write_text(json.dumps({"tokens": {"access_token": "a" * 40}}))
+    rc = X.Reciter(tmp_path / "run", auth)
+    homes = []
+
+    def fake(home, *a, tag="", **k):
+        homes.append(str(home.path))
+        ok = len(homes) != 2  # the second one fails
+        return X.Recitation(1, "t", "x" if ok else None, "x", 0, 0.1, 0 if ok else 1, None)
+
+    monkeypatch.setattr(X, "recite", fake)
+    recs = rc.run_until(rollout(), 1, 3, label="_k1")
+    assert len(set(homes[:3])) == 3  # three concurrent recitations, three homes
+    assert sum(r.valid for r in recs) == 3 and len(recs) == 4  # topped up after the failure
+    rc.close()
+
+
+def _rerecite_fixture(monkeypatch, tmp_path):
+    from compaction.s2 import compact as K
+    rd = tmp_path / "run"
+    b = rd / "b1"
+    (b / "boundary").mkdir(parents=True)
+    (b / "native").mkdir()
+    (rd / "sim").mkdir()
+    (rd / "sim" / "replies.json").write_text("[]")
+    lines = rollout()[:18]
+    X.write_rollout(b / "native" / "rollout.jsonl", lines)
+    nb = X.rollout_boundary(lines, 1, {1: "OLD"}, model="gpt-6-luna")
+    rec = K.boundary_record("run-b1", nb.pre_messages, model=nb.model, pre_tokens=1,
+                            summary="OLD")
+    for name, obj in (("record", rec), ("pre_messages", nb.pre_messages),
+                      ("post_messages", nb.post_messages), ("sim_replies", []),
+                      ("compaction", {"summary": "OLD", "post_messages": nb.post_messages}),
+                      ("boundary", {"boundary_in_session": 1, "rollout_path": "p",
+                                    "summary_index": nb.summary_index,
+                                    "cli_version": X.CLI_VERSION})):
+        (b / "boundary" / f"{name}.json").write_text(json.dumps(obj))
+    old = X.Recitation(1, "t0", "OLD", "OLD", 0, 0.1, 0, None)
+    (b / "native" / "recitations.json").write_text(
+        json.dumps([old.to_dict(), X.Recitation(1, "t1", None, "", 0, 0.1, 1, None).to_dict()]))
+
+    def run_until(self, lines, k, repeats, *, label="", left=None, retries=2, have=None):
+        recs = list(have)
+        while sum(r.valid for r in recs) < repeats:
+            recs.append(X.Recitation(1, "n", "- line a\n- line b", "", 0, 0.1, 0, None))
+        return recs
+
+    monkeypatch.setattr(X.Reciter, "run_until", run_until)
+    monkeypatch.setattr(X, "codex_version", lambda: X.CLI_VERSION)
+    auth = tmp_path / "auth.json"
+    auth.write_text(json.dumps({"tokens": {"access_token": "a" * 40}}))
+    return rd, b, rec, auth
+
+
+def test_rerecite_run_tops_up_keeps_identity_and_originals(monkeypatch, tmp_path):
+    rd, b, rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    rows = X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    assert rows[0]["valid_before"] == 1 and rows[0]["complete"]
+    bj = json.loads((b / "boundary" / "boundary.json").read_text())
+    assert bj["rerecited"]["valid_after"] == 3 and len(bj["recite_agreement"]) == 3
+    assert "original" in bj["rerecited"] and (b / "native" / "orig" / "record.json").exists()
+    new = json.loads((b / "boundary" / "record.json").read_text())
+    assert new["summary"] == "- line a\n- line b"
+    assert new["id"] == rec["id"] and new["session_id"] == rec["session_id"]
+    X.rerecite_run(rd, auth_path=auth, log=lambda s: None)  # a second pass: identity holds
+    again = json.loads((b / "boundary" / "record.json").read_text())
+    assert again["id"] == rec["id"]
+    assert json.loads((rd / "rerecite.json").read_text())["status"] == "complete"
+
+
+def test_rerecite_rolls_back_an_interrupted_publication(monkeypatch, tmp_path):
+    rd, b, rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    X._backup(b)
+    (b / "boundary" / "boundary.json").replace(b / "boundary" / "boundary.json.rerecite-pending")
+    (b / "boundary" / "record.json").write_text('{"half": "written"}')
+    rows = X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    assert rows and rows[0]["complete"]
+    assert not (b / "boundary" / "boundary.json.rerecite-pending").exists()
+    assert json.loads((b / "boundary" / "record.json").read_text())["id"] == rec["id"]
+
+
+def test_rerecite_refuses_another_cli_version(monkeypatch, tmp_path):
+    import pytest
+    rd, _b, _rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    monkeypatch.setattr(X, "codex_version", lambda: "0.170.0")
+    with pytest.raises(RuntimeError):
+        X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+
+
+def test_rerecite_rollback_with_both_markers_and_stable_original(monkeypatch, tmp_path):
+    rd, b, rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    first = json.loads((b / "boundary" / "boundary.json").read_text())["rerecited"]["original"]
+    # interrupted after publishing boundary.json but before removing the pending marker
+    (b / "boundary" / "boundary.json.rerecite-pending").write_text("{}")
+    (b / "boundary" / "record.json").write_text('{"half": "written"}')
+    rows = X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    assert rows[0]["complete"]
+    assert json.loads((b / "boundary" / "record.json").read_text())["id"] == rec["id"]
+    second = json.loads((b / "boundary" / "boundary.json").read_text())["rerecited"]
+    assert second["original"] == first  # the capture's own values, not the last repair's
+    assert not (b / "boundary" / "boundary.json.rerecite-pending").exists()
+
+
+def test_rerecite_refuses_a_missing_version_before_any_write(monkeypatch, tmp_path):
+    import pytest
+    rd, b, _rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    bj = json.loads((b / "boundary" / "boundary.json").read_text())
+    bj.pop("cli_version")
+    (b / "boundary" / "boundary.json").write_text(json.dumps(bj))
+    before = {p: p.read_bytes() for p in b.rglob("*") if p.is_file()}
+    with pytest.raises(RuntimeError):
+        X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    after = {p: p.read_bytes() for p in b.rglob("*") if p.is_file()}
+    assert before == after and not (rd / "rerecite.json").exists()

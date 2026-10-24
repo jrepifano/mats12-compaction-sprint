@@ -852,7 +852,7 @@ HOOK_TIMEOUT_S = 1800
 CONTINUE_PROMPT = "Continue."
 SECRET_ENV = "EMX_CODEX_SECRET"
 ROLLOUT_WAIT_S = 60
-RECITE_RETRIES = 2  # extra single recitations when none of the first batch is valid
+RECITE_RETRIES = 2  # extra rounds for the missing valid recitations
 CAPTURE_DEADLINE_S = HOOK_TIMEOUT_S - 120  # a capture must end before the hook's curl does
 SCAN_BUDGET_S = 600  # secret_scan's exec timeout
 COMMIT_BUDGET_S = 900  # what a kept commit may take (sandbox commit timeout)
@@ -1197,11 +1197,14 @@ def majority(texts: list[str]) -> tuple[int, list[float]]:
 
 
 class Reciter:
-    """Route (b) on the laptop for a run: its own clean CODEX_HOME (auth copy) and an empty
-    working dir, so the recitations can't read any workspace."""
+    """Route (b) on the laptop for a run: clean CODEX_HOMEs (auth copies) and an empty
+    working dir, so the recitations can't read any workspace. Each concurrent recitation gets
+    its own CODEX_HOME: parallel `codex exec resume`s in one home collide on its state DB
+    ("thread/resume failed: list_turns is not supported yet", 24 Oct, boa a6)."""
 
     def __init__(self, run_dir: Path, auth_path: Path):
         self.dir = Path(tempfile.mkdtemp(prefix="emx-codex-recite-"))
+        self.auth_path = Path(auth_path)
         try:
             self.home = CodexHome(self.dir / "home", {"model": MODEL}).setup(auth_path)
             self.cwd = self.dir / "empty"
@@ -1211,7 +1214,15 @@ class Reciter:
             raise
         self.log_dir = Path(run_dir) / "recite"
         self._n = 0
+        self._homes: list[CodexHome] = [self.home]
         self._lock = threading.Lock()
+
+    def _home(self, i: int) -> CodexHome:
+        with self._lock:
+            while len(self._homes) <= i:
+                self._homes.append(CodexHome(self.dir / f"home{len(self._homes)}",
+                                             {"model": MODEL}).setup(self.auth_path))
+            return self._homes[i]
 
     def run(self, lines: list[dict], k: int, repeats: int, *, label: str = "",
             timeout_s: int = 900) -> list[Recitation]:
@@ -1222,10 +1233,25 @@ class Reciter:
         with self._lock:
             tags = [f"{label}_t{self._n + i + 1}" for i in range(repeats)]
             self._n += repeats
+        homes = [self._home(i) for i in range(len(tags))]  # one CODEX_HOME per concurrent run
         with ThreadPoolExecutor(max_workers=max(1, repeats)) as ex:
-            futs = [ex.submit(recite, self.home, lines, k, cwd=self.cwd, log_dir=self.log_dir,
-                              tag=t, timeout_s=timeout_s) for t in tags]
+            futs = [ex.submit(recite, h, lines, k, cwd=self.cwd, log_dir=self.log_dir,
+                              tag=t, timeout_s=timeout_s) for h, t in zip(homes, tags,
+                                                                          strict=True)]
             return [f.result() for f in futs]
+
+    def run_until(self, lines: list[dict], k: int, repeats: int, *, label: str = "",
+                  left: Callable[[], float] = lambda: 900.0, retries: int = 2,
+                  have: list[Recitation] | None = None) -> list[Recitation]:
+        """Recitations until `repeats` are valid (counting `have`), with up to `retries`
+        extra rounds for the missing ones, each bounded by `left()` (seconds remaining)."""
+        recs = list(have or [])
+        for attempt in range(retries + 1):
+            missing = repeats - sum(r.valid for r in recs)
+            if missing <= 0 or left() < 60:
+                break
+            recs += self.run(lines, k, missing, label=label, timeout_s=int(left()))
+        return recs
 
     def close(self) -> None:
         shutil.rmtree(self.dir, ignore_errors=True)
@@ -1455,11 +1481,8 @@ def capture(ns, payload: dict, *, rd: Path, rj: dict, keep, cfg: BaseConfig, ste
     if left() < 60:
         raise RuntimeError(f"boundary {k}: no time left for recitation before the hook "
                            "deadline")
-    recs = reciter.run(lines, want, cfg.recite_repeats, label=label, timeout_s=left())
-    for _ in range(RECITE_RETRIES):
-        if any(r.valid for r in recs) or left() < 60:
-            break
-        recs += reciter.run(lines, want, 1, label=label, timeout_s=left())
+    recs = reciter.run_until(lines, want, cfg.recite_repeats, label=label, left=left,
+                             retries=RECITE_RETRIES)
     phases["recite_s"] = round(time.monotonic() - t, 1)
     mark("recited", k=k, valid=[r.valid for r in recs])
     good = [r for r in recs if r.valid]
@@ -1839,3 +1862,195 @@ def detached_step(sb, cmd: str, *, name: str, env: dict[str, str], stdin: bytes 
     res.reconnects = sessions - 1  # type: ignore[attr-defined]
     res.output_incomplete = incomplete  # type: ignore[attr-defined]
     return res
+
+
+# ------------------------------------------------------------------------------------------
+# Re-recitation of finished boundaries (runs hit by the shared-CODEX_HOME bug)
+# ------------------------------------------------------------------------------------------
+
+
+RERECITE_FILES = ("pre_messages", "post_messages", "record", "compaction", "sim_replies")
+
+
+def _write_atomic(path: Path, obj) -> None:
+    tmp = path.with_name(path.name + f".tmp-{uuid.uuid4().hex[:8]}")
+    tmp.write_text(json.dumps(obj, indent=1, ensure_ascii=False, default=str))
+    tmp.replace(path)
+
+
+def codex_version() -> str:
+    p = subprocess.run(["codex", "--version"], capture_output=True, text=True, timeout=60,
+                       check=False)
+    return p.stdout.strip().split()[-1] if p.returncode == 0 and p.stdout.strip() else ""
+
+
+def _copy_atomic(src: Path, dst: Path) -> None:
+    tmp = dst.with_name(dst.name + f".tmp-{uuid.uuid4().hex[:8]}")
+    shutil.copy2(src, tmp)
+    tmp.replace(dst)
+
+
+def _rollback(b: Path) -> None:
+    """Restore an interrupted publication of boundary `b` from its backup, in an order that is
+    itself safe to interrupt: the completeness marker (boundary.json) goes first, every
+    dependent file is restored atomically, boundary.json comes back last, and only then is
+    the pending marker removed (so a rerun rolls back again until this has finished)."""
+    orig = b / "native" / "orig"
+    with contextlib.suppress(FileNotFoundError):
+        (b / "boundary" / "boundary.json").unlink()  # incomplete while restoring
+    for name in RERECITE_FILES:
+        src = orig / f"{name}.json"
+        if src.exists():
+            _copy_atomic(src, b / "boundary" / f"{name}.json")
+    if (orig / "recitations.json").exists():
+        _copy_atomic(orig / "recitations.json", b / "native" / "recitations.json")
+    _copy_atomic(orig / "boundary.json", b / "boundary" / "boundary.json")
+    with contextlib.suppress(FileNotFoundError):
+        (b / "boundary" / "boundary.json.rerecite-pending").unlink()
+
+
+def _backup(b: Path) -> None:
+    """The originals, once: built in a temp dir, then renamed into place (all or nothing)."""
+    orig = b / "native" / "orig"
+    if orig.exists():
+        return
+    tmp = b / "native" / f"orig.tmp-{uuid.uuid4().hex[:8]}"
+    tmp.mkdir()
+    for name in RERECITE_FILES + ("boundary",):
+        src = b / "boundary" / f"{name}.json"
+        if src.exists():
+            shutil.copy2(src, tmp / src.name)
+    shutil.copy2(b / "native" / "recitations.json", tmp / "recitations.json")
+    tmp.rename(orig)
+
+
+def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = None,
+                 log: Callable[[str], None] = print) -> list[dict]:
+    """Top every boundary of a finished run up to `repeats` valid recitations from its saved
+    rollout (b<k>/native/rollout.jsonl: the session up to that `compacted` line; the saved
+    encrypted compaction state is resumed, the compactor is not rerun), re-pick the
+    majority, and re-derive the boundary files with the new summaries (later boundaries'
+    histories carry the earlier ones). What changes is the recovered-text proxy that is
+    graded, so grading must be rerun after.
+
+    Two phases: everything is recited and derived in memory first; then each boundary is
+    published in order: originals backed up once (temp dir, then rename), boundary.json moved
+    aside (the boundary reads as incomplete), the files written atomically, boundary.json
+    last. An interrupted publication is rolled back from the backup on the next call, and
+    <run>/rerecite.json says whether the last pass completed. Refuses unless the `codex` on
+    PATH is CLI_VERSION and matches the boundaries' cli_version. Returns one row per
+    boundary (`complete`: reached `repeats` valid)."""
+    from compaction.s2 import compact as K
+    from compaction.s2 import interact_run as IR
+    rd = Path(run_dir)
+    ver = codex_version()
+    if ver != CLI_VERSION:
+        raise RuntimeError(f"codex on PATH is {ver!r}, not {CLI_VERSION}")
+    found = []
+    for b in rd.iterdir():
+        m = re.fullmatch(r"b(\d+)", b.name)
+        if not m:
+            continue
+        pending = (b / "boundary" / "boundary.json.rerecite-pending").exists()
+        meta = (b / "native" / "orig" / "boundary.json") if pending \
+            else (b / "boundary" / "boundary.json")
+        if not meta.exists():
+            continue  # never completed: not a graded boundary
+        cv = json.loads(meta.read_text()).get("cli_version")
+        if cv != CLI_VERSION:  # preflight, before any write (rollbacks included)
+            raise RuntimeError(f"{b}: recorded cli_version {cv!r} != {CLI_VERSION}")
+        found.append((int(m.group(1)), b, pending))
+    bdirs = []
+    for k, b, pending in sorted(found):
+        if pending:
+            _rollback(b)  # an interrupted publication: back to the originals
+        bdirs.append((k, b))
+    _write_atomic(rd / "rerecite.json", {"status": "in_progress", "utc": utc()})
+    reciter = Reciter(rd, auth_path or Path.home() / ".codex" / "auth.json")
+    staged, rows, summaries = [], [], {}
+    try:
+        for k, b in bdirs:  # phase 1: recite and derive, no writes to the boundary
+            bj = json.loads((b / "boundary" / "boundary.json").read_text())
+            lines = read_rollout(b / "native" / "rollout.jsonl")
+            want = int(bj.get("boundary_in_session") or len(compaction_lines(lines)))
+            path = bj.get("rollout_path") or ""
+            have = [Recitation(**{f: r.get(f) for f in ("k", "thread_id", "text", "raw",
+                                                         "tool_calls", "seconds", "rc",
+                                                         "plaintext_bound")})
+                    for r in json.loads((b / "native" / "recitations.json").read_text())]
+            before = sum(r.valid for r in have)
+            recs = reciter.run_until(lines, want, repeats, label=f"_rerecite_k{k}",
+                                     have=have, retries=3)
+            good = [r for r in recs if r.valid]
+            row = {"boundary": str(b), "valid_before": before, "valid_after": len(good),
+                   "complete": len(good) >= repeats}
+            if not good:
+                row["skipped"] = "no valid recitation"
+                rows.append(row)
+                log(json.dumps(row))
+                summaries.setdefault(path, {})  # later boundaries keep their history
+                continue
+            texts = [r.text or "" for r in good]
+            used, means = majority(texts)
+            chosen = good[used]
+            summaries.setdefault(path, {})[want] = texts[used]
+            nb = rollout_boundary(lines, want, summaries[path], model=bj.get("model") or MODEL)
+            rec = json.loads((b / "boundary" / "record.json").read_text())
+            new = K.boundary_record(rec["session_id"], nb.pre_messages, model=nb.model,
+                                    pre_tokens=int(nb.pre_tokens or 0), summary=nb.summary)
+            record = dict(rec)  # identity and every other field preserved
+            record.update(source_messages=new["source_messages"], summary=new["summary"],
+                          user_turns=new["user_turns"], pre_tokens=new["pre_tokens"])
+            assert record["id"] == rec["id"]
+            comp = json.loads((b / "boundary" / "compaction.json").read_text())
+            comp.update(summary=nb.summary, post_messages=nb.post_messages,
+                        summary_index=nb.summary_index, kept_indices=nb.kept_indices)
+            replies = json.loads((rd / "sim" / "replies.json").read_text()) \
+                if (rd / "sim" / "replies.json").exists() else []
+            at = compaction_lines(lines)[want - 1]
+            agree = [round(item_overlap(texts[i], texts[j]), 3)
+                     for i in range(len(texts)) for j in range(i + 1, len(texts))]
+            keys = ("summary_chars", "summary_index", "kept_indices", "post_tokens",
+                    "post_tokens_est", "recite_tries", "recite_valid", "recite_used",
+                    "recite_mean_agreement", "recite_agreement", "recite_invented_tokens",
+                    "recite_plaintext_bound", "recite_tool_calls")
+            first = b / "native" / "orig" / "boundary.json"  # the capture's own values
+            src_bj = json.loads(first.read_text()) if first.exists() else bj
+            original = (bj.get("rerecited") or {}).get("original") \
+                or {x: src_bj.get(x) for x in keys}
+            bj.update(summary_chars=len(nb.summary), summary_index=nb.summary_index,
+                      kept_indices=nb.kept_indices, post_tokens=nb.post_tokens,
+                      post_tokens_est=nb.post_tokens, recite_tries=len(recs),
+                      recite_valid=len(good), recite_used=recs.index(chosen),
+                      recite_mean_agreement=means, recite_agreement=agree,
+                      recite_invented_tokens=invented_tokens(
+                          texts[used], history_text(lines, at - 1))[:50],
+                      recite_plaintext_bound=chosen.plaintext_bound,
+                      recite_tool_calls=[r.tool_calls for r in recs],
+                      rerecited={"utc": utc(), "valid_before": before,
+                                 "valid_after": len(good), "cli": f"codex-cli {ver}",
+                                 "why": "parallel recitations shared one CODEX_HOME",
+                                 "original": original})
+            files = {"pre_messages": nb.pre_messages, "post_messages": nb.post_messages,
+                     "record": record, "compaction": comp,
+                     "sim_replies": IR.reply_index(replies, nb.pre_messages)}
+            staged.append((b, files, bj, [r.to_dict() for r in recs]))
+            row["agreement"] = agree
+            row["summary_changed"] = nb.summary != rec.get("summary")
+            rows.append(row)
+            log(json.dumps(row))
+        for b, files, bj, recs_out in staged:  # phase 2: publish, boundary by boundary
+            _backup(b)
+            bp = b / "boundary" / "boundary.json"
+            bp.replace(b / "boundary" / "boundary.json.rerecite-pending")  # now incomplete
+            for name, obj in files.items():
+                _write_atomic(b / "boundary" / f"{name}.json", obj)
+            _write_atomic(b / "native" / "recitations.json", recs_out)
+            _write_atomic(bp, bj)  # complete again
+            (b / "boundary" / "boundary.json.rerecite-pending").unlink()
+    finally:
+        reciter.close()
+    _write_atomic(rd / "rerecite.json", {
+        "status": "complete" if all(r["complete"] for r in rows) else "incomplete",
+        "utc": utc(), "repeats": repeats, "cli": f"codex-cli {ver}", "boundaries": rows})
+    return rows

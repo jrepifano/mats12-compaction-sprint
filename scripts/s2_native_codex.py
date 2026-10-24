@@ -22,6 +22,8 @@
              print one status line (compactions, items, lost, new/inherited, first-boundary
              pre_tokens). Refuses to launch a run if the finished runs' simulator spend plus
              --sim-cap for every unfinished run would pass --spend-stop ($5).
+  rerecite RUN_DIR...  top every boundary up to 3 valid recitations from its saved rollout
+             ($0), re-pick the majority and re-derive the boundary (originals kept).
   fork BDIR  Q2: resume boundary BDIR from its kept image with the encrypted summary replaced
              by readable text (the boundary's recited summary unless --summary-file), in a new
              thread, given --prompt. --probe-word W appends "FORK-PROBE: <W>" and asks the fork
@@ -922,6 +924,20 @@ def cmd_laptop_smoke(a) -> int:
     return 0 if res.get("boundaries") and res.get("end") == "stop_after" else 1
 
 
+def cmd_rerecite(a) -> int:
+    """$0 (ChatGPT plan): top each boundary of the given runs up to --repeats valid
+    recitations from its saved rollout, re-pick the majority, re-derive the boundary files
+    (originals under b<k>/native/orig/). Rerun the grading afterwards."""
+    rows = []
+    for rd in a.run_dirs:
+        rows += X.rerecite_run(Path(rd), repeats=a.repeats)
+    bad = [r for r in rows if not r["complete"]]
+    for r in rows:
+        print(json.dumps(r))
+    print(json.dumps({"boundaries": len(rows), "incomplete": len(bad)}))
+    return 0 if rows and not bad else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -997,6 +1013,10 @@ def main(argv: list[str] | None = None) -> int:
     bt.add_argument("--adopt", help="tasks whose base runs are already going (grade on exit)")
     bt.add_argument("--go-from-jacob", action="store_true")
     bt.set_defaults(fn=cmd_batch)
+    rr = sub.add_parser("rerecite")
+    rr.add_argument("run_dirs", nargs="+")
+    rr.add_argument("--repeats", type=int, default=3)
+    rr.set_defaults(fn=cmd_rerecite)
     ls = sub.add_parser("laptop-smoke")
     ls.add_argument("--task", default=SMOKE_TASK)
     ls.add_argument("--limit", type=int, default=15000)
