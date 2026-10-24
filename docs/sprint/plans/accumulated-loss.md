@@ -1,6 +1,6 @@
 # Do accumulated compaction losses change what a coding agent does?
 
-Draft v0.2, 24 Oct 2026: astra r1 fixes folded in, with Jacob's agreement (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Fast path first: prove the signal on the 6 runs, then build out the other task families, agent models and compaction methods. It follows the SWE-Interact pilot (`docs/sprint/plans/swe-interact-pilot.md`, v0.4), whose go line was missed, and Jacob's proposal to continue runs and fork on accumulated losses.
+Draft v0.3, 24 Oct 2026: astra r1 and r2 fixes folded in, with Jacob's agreement (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Fast path first: prove the signal on the 6 runs, then build out the other task families, agent models and compaction methods. It follows the SWE-Interact pilot (`docs/sprint/plans/swe-interact-pilot.md`, v0.4), whose go line was missed, and Jacob's proposal to continue runs and fork on accumulated losses.
 
 ## The question
 
@@ -27,7 +27,7 @@ Here:
    - **Agent:** DeepSeek V4.1 Flash in our harness, pi's compaction, 150k tokens.
 2. **Run every session to completion:** ship-it, $8, 600 calls or 3 h. Compaction repeats with pi's update prompt, and every compaction point is snapshotted (workspace, agent context, simulator state). The 6 pilot runs resume from their saved first boundary (build about 4 h; `s2-feas`'s estimate).
 3. **At every compaction point:**
-   - **Summaries:** the live pi summary, plus 4 replays (Claude Code's prompt, Codex, OpenCode, Antigravity-style), all written by Haiku 5.5 on Max.
+   - **Summaries:** the live pi summary, plus 5 replays written by Haiku 5.5 on Max: pi's prompt (an anchor for model vs prompt, never a fork source), Claude Code's prompt, Codex, OpenCode and Antigravity-style.
    - **Grading:** each summary is graded against every requirement the maintainer has disclosed so far (Experiment 1's judge with the second look). This is the Q1 data: a loss curve per summarizer and compaction number.
 4. **Fork rule, fixed before any continued run (v0.2):** fork at the **first** compaction point where one summary has **at least 1 dropped requirement that passes the checks and has a concrete pending governed decision**, evidenced at the snapshot: an unimplemented or still-editable spot the requirement governs.
    - **Source order:** live pi, then the Claude Code prompt, Codex, OpenCode, Antigravity-style.
@@ -36,7 +36,13 @@ Here:
    - **Exclusions:** only fails backed by evidence code can verify. Everything unresolved goes to Jacob's card.
    - **One primary fork per task.** Repeats per task are not independent evidence.
    - **A non-pi source** is reported as a mixed setup (DeepSeek resumes from a Haiku-written summary in another harness's format), kept separate from live-sourced cases.
-   - **Sealing:** once a boundary has a carded candidate, any base continuation past it is sealed like an arm, so no one reads it before the freeze.
+   - **Selection state machine (as built, `fork_v2/selection.json`, `selection_log.jsonl`):**
+     - The run pauses at each qualifying compaction, screens inline, and continues only if nothing is carded or every candidate there is exhausted.
+     - After a rejection, the next candidate goes in the order above: same source first.
+     - At most 2 cards per compaction and 12 in all; an unresolved card counts as rejected.
+     - The pilot's six checks keep their frozen prompts and output mapping. Jacob's card confirms retention, applicability with the pending decision, and the act within the window. Recoverability and reference stay code checks, and an unresolved one shows on the card.
+     - **Superseded from the pilot:** fresh-only eligibility. Inherited losses are eligible and flagged.
+   - **Sealing:** a base run never continues past a qualifying compaction until its screen has finished and either nothing was carded or the freeze is final. Later boundaries that already exist (boa b2) are sealed.
 5. **Arms, from the same snapshot, 2 repeats each:**
    - **Primary, one item:** Repair (that requirement, in the maintainer's own words) vs Matched control (one irrelevant item from the same history, matched in length).
    - **Pre-registered secondary, bundle:** where at least 2 qualify from the same source at that boundary, also repair-all vs matched-all. This is reported as the effect of restoring the bundle, not of any single item.
@@ -56,12 +62,14 @@ Here:
 | D. Reruns | 4 primaries per fork; secondaries on a few | ~$1–2 per fork | hours | Target ≥ 10 forks across ≥ 6 tasks |
 
 **Headline and reading rule (fixed now):** the act rate is the share of continuations doing what the requirement says. The headline is repair minus control, averaged within task, then across tasks, with a 95% task-clustered bootstrap interval.
-- **The smallest effect of interest is +25 points.**
-- **Reading:**
-  - **effect:** the interval excludes 0;
-  - **informative null:** the whole interval is below +25;
-  - **inconclusive:** otherwise.
-- **Sample size:** about 10 forks gives roughly ±25–30 points, enough for a large effect but not an informative null, which needs about 20.
+- **Outcome per continuation, with a frozen per-act scorer:** complied, contradicted, or not reached.
+  - **Act rate** = complied / reached. The **reached rate** is reported beside it, in every arm.
+  - Not reached never counts as compliance.
+- **Two separate conclusions, both fixed now:**
+  - **(1) Is a signed effect detected?** Does the interval exclude 0? A negative effect is reported explicitly as harm.
+  - **(2) Is a large benefit ruled out?** Is the interval entirely below +25 points? That reads as "rules out the prespecified large benefit". +25 is a pragmatic threshold for a large immediate effect, not an empirically established minimum.
+  - An interval like [+5, +20] does both.
+- **Sample size, illustrative only:** assuming independent binary continuations, 2 per arm and rates near 0.5, the half-width is about 31 points at 10 tasks and about 22 at 20. Task heterogeneity and few-cluster bootstrap behaviour can make it worse; nothing guarantees ruling out +25.
 - **Task reward** from the secondary readout is exploratory.
 
 **Q1 bookkeeping:**
@@ -101,3 +109,12 @@ About $70–110 (astra r1) inside Experiment 3's stage (SPRINT-S3-Q2, $270; the 
   - **The Q1 curves aren't independent:** new and inherited losses are separated, the curves relabelled, and model vs prompt compared.
   - **Bundled repair:** now a secondary, framed as a package effect.
   - Jacob agreed to all of these on 24 Oct and chose the fast path.
+- **astra r2** (`logs/reviews/20261024-accumulated-loss-plan-r2.md`): 4 of the 7 r1 findings resolved, 3 partly. New BLOCKING findings, fixed in v0.3 and the build (astra build r1–r3):
+  - the selection state machine and sealing from screening onward;
+  - the two-conclusion reading rule;
+  - a compliance scorer with "not reached";
+  - an illustrative-only sample-size note;
+  - the pi anchor added to the replay list.
+  - Its updated estimates: 35% for at least 10 valid primary forks across at least 6 tasks by Friday; 25% for an interpretable Q2 headline (about 55% given that sample).
+- **24 Oct, Jacob:** the fast path first. Native-harness arms (Claude Code feasible for Q1 and Q2; `logs/s2/native_harness_feasibility.md`) and the SWE-bench Pro and Refactoring families (being integrated and leak-validated on the desktop) come after phase B shows signal.
+- **Phase B launch:** 5 runs resume from their kept boundaries; kombu reruns as a2, its one infrastructure rerun after the kept-image incident.
