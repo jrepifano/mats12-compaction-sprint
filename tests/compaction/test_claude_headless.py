@@ -134,11 +134,13 @@ def _dead(pid: int, wait_s: float = 5.0) -> bool:
 
 def test_clean_env_strips_and_sets():
     base = {k: "x" for k in ch.STRIP_ENV + ch.GEN_ENV}
-    base |= {"PATH": "/bin", "CLAUDE_CODE_OAUTH_TOKEN": "keep"}
+    base |= {"PATH": "/bin"}
     env = ch.clean_env(1234, base=base)
     assert not set(ch.STRIP_ENV) & set(env)
     assert "CLAUDE_CODE_EFFORT_LEVEL" not in env
-    assert env["PATH"] == "/bin" and env["CLAUDE_CODE_OAUTH_TOKEN"] == "keep"
+    # the .env setup token is for native-harness containers; host calls use the keychain
+    # Max login, which check_auth requires (24 Oct)
+    assert env["PATH"] == "/bin" and "CLAUDE_CODE_OAUTH_TOKEN" not in env
     assert env["DISABLE_COMPACT"] == "1" and env["DISABLE_AUTOUPDATER"] == "1"
     assert env["CLAUDE_CODE_MAX_OUTPUT_TOKENS"] == "1234"
     assert "CLAUDE_CODE_MAX_OUTPUT_TOKENS" not in ch.clean_env(base=base)

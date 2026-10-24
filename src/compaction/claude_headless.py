@@ -115,6 +115,9 @@ STRIP_ENV = (
     "CLAUDE_CODE_USE_BEDROCK",
     "CLAUDE_CODE_USE_VERTEX",
     "CLAUDE_CODE_USE_FOUNDRY",
+    # the setup token in .env is for the native-harness containers; host calls use the
+    # keychain Max login, which check_auth verifies (24 Oct)
+    "CLAUDE_CODE_OAUTH_TOKEN",
 )
 # generation overrides: set per call, never inherited
 GEN_ENV = ("CLAUDE_CODE_EFFORT_LEVEL", "CLAUDE_CODE_MAX_OUTPUT_TOKENS")
