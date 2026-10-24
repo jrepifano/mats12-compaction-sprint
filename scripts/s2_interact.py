@@ -364,7 +364,12 @@ def cmd_cohort_screen(a) -> int:
             # the boundary's screen is incomplete and unwritten; rerun it after the reset
             print(json.dumps({"event": "hold", "k": k, "why": str(e)}))
             return 3
-        asg = IR.assignment(bdir)
+        stored = bdir / "boundary" / RQ.SCREEN_V2 / IR.ASSIGNMENT_NAME
+        stale = stored.exists() and json.loads(stored.read_text()).get("screen_sha256") != \
+            out["screen_sha256"]
+        # an assignment under older rules is remade only while no card is resolved there
+        # (assignment(fresh=True) refuses otherwise)
+        asg = IR.assignment(bdir, fresh=stale)
         print(json.dumps({"k": k, "max_7d": util, "passing": len(out["passing"]),
                           "assigned": asg["assigned"], "dropped": len(asg["dropped"])}))
     return 0

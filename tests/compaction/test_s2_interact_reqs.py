@@ -896,7 +896,11 @@ def test_v2_screen_excludes_a_candidate_without_a_pending_spot(run):
         (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink(missing_ok=True)
         out = _screen_b1(run, draft=bad, sources=["live"])
         disp = [c["disposition"] for c in out["candidates"]]
-        assert disp[:2] == ["excluded:applicability:pending"] * 2 and out["carded"] is None
+        # no spot cited at all takes the occasion route (25 Oct); the stub's verdict is an
+        # unbuilt decision, so the gate excludes it
+        want = ("excluded:occasion:not_process_rule" if bad["pending_path"] is None
+                else "excluded:applicability:pending")
+        assert disp[:2] == [want] * 2 and out["carded"] is None
 
 
 @pytest.fixture(scope="module")
@@ -1583,3 +1587,164 @@ def test_an_override_of_the_repair_goes_back_to_the_screen_too(run, tmp_path, CA
                  "v": key2["cards"][c2]["content_sha256"][:16]}}
     r2 = CARDS.freeze_v2(lab2, key2, runner=_ref_pass, overrides={c2: ov[cid]})[0]
     assert r2["status"] == "frozen", r2["reasons"]
+
+
+
+# --- the occasion gate (Jacob, 25 Oct): process rules have no pending code spot
+
+NO_SPOT = dict(DRAFT_V2, pending_path=None, pending_quote=None,
+               pending_reason="a rule about how to work: no code line is open")
+PENDING = "- [ ] next: keep the save_record signature free of a force flag"
+OCC_PLAN = f"# Plan\n- [x] add the conflict check\n{PENDING}\n"
+RULE = {"item_type": "process_rule", "occasion": "ahead", "occasion_kind": "prohibition",
+        "occasion_quote": PENDING, "occasion_reason": "the signature work is still to come"}
+
+
+def _occ(run, verdicts, *, draft=NO_SPOT, plan=OCC_PLAN, diff=""):
+    opus = StubBackend(lambda req: dict(OPUS_LOST, **verdicts.get(req.key.split("|")[-1], {})))
+    facts = {"status": "ok", "base": "B", "files": {}, "plan": plan, "diff": diff,
+             "version": R.AUTHORITY_VERSION}
+    return R.screen_v2(run / "b1", backend=StubBackend(lambda req: dict(draft)),
+                       grep_runner=_grep_v2, ref_runner=_ref_pass, file_runner=_files,
+                       task=TASK, opus_backend=opus, sources=["live"], full=True,
+                       authority_runner=lambda image: dict(facts)), opus
+
+
+def test_a_process_rule_with_its_occasion_ahead_passes_without_a_code_spot(run):
+    _v2_two_boundaries(run)
+    out, opus = _occ(run, {"live.b1-q2": RULE})
+    c = {x["cand_id"]: x for x in out["candidates"]}
+    a = c["live.b1-q2"]
+    assert a["disposition"] == "passed", a["disposition"]
+    assert a["checks"]["applicability"]["outcome"] == "pass"
+    occ = a["checks"]["applicability"]["evidence"]["occasion"]
+    assert occ["quote_found_in"] == "plan_file" and occ["workspace_act"] == []
+    assert occ["span"]["cue"] == "[ ]" and "save_record" in occ["span"]["tie"]
+    assert "<plan_file>" in opus.seen[0].user
+    # the stub's other verdicts are unbuilt decisions: not this route
+    assert c["live.b1-q3"]["disposition"] == "excluded:occasion:not_process_rule"
+
+
+def test_the_occasion_gate_refuses_unverified_passed_or_already_done(run):
+    _v2_two_boundaries(run)
+    other = "- [ ] then check the save_record force flag stays out"
+    cases = {
+        "quote_not_found": dict(RULE, occasion_quote=other),
+        "passed": dict(RULE, occasion="passed", occasion_quote=None),
+        "unclear": dict(RULE, occasion="unclear", occasion_quote=None),
+        # a generic word, a span with no pending cue, a completed step, an unrelated step
+        "quote_not_substantive": dict(RULE, occasion_quote="commit"),
+        "quote_not_pending": dict(RULE, occasion_quote="keep the save_record signature as is"),
+        "quote_describes_a_done_step": dict(RULE, occasion_quote="- [x] add the conflict "
+                                                                  "check"),
+        "quote_not_about_the_act": dict(RULE, occasion_quote="- [ ] next: write the "
+                                                             "changelog entry")}
+    for why, v in cases.items():
+        (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink(missing_ok=True)
+        out, _ = _occ(run, {"live.b1-q2": v})
+        d = {x["cand_id"]: x["disposition"] for x in out["candidates"]}
+        assert d["live.b1-q2"] == f"excluded:occasion:{why}", (why, d)
+    # the same quote in the plan file on the kept image is enough
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    (run / "b1" / "boundary" / "fork_v2" / R.AUTHORITY_FILES_NAME).unlink(missing_ok=True)
+    out, _ = _occ(run, {"live.b1-q2": cases["quote_not_found"]}, plan=OCC_PLAN + other + "\n")
+    a = {x["cand_id"]: x for x in out["candidates"]}["live.b1-q2"]
+    assert a["disposition"] == "passed"
+    assert a["checks"]["occasion"]["evidence"]["quote_found_in"] == "plan_file"
+    # a prohibition already broken in the workspace diff from the base commit
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    (run / "b1" / "boundary" / "fork_v2" / R.AUTHORITY_FILES_NAME).unlink()
+    broken = ("diff --git a/api.py b/api.py\n--- a/api.py\n+++ b/api.py\n@@ -1 +1 @@\n"
+              "-def save_record(r):\n+def save_record(r, force=False):\n")
+    out, _ = _occ(run, {"live.b1-q2": RULE}, diff=broken)
+    a = {x["cand_id"]: x for x in out["candidates"]}["live.b1-q2"]
+    assert a["disposition"] == "excluded:occasion:already_in_workspace"
+    assert a["checks"]["occasion"]["evidence"]["workspace_act"][0]["path"] == "api.py"
+    # a diff that couldn't be read is never "not done": the prohibition is excluded
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    (run / "b1" / "boundary" / "fork_v2" / R.AUTHORITY_FILES_NAME).unlink()
+    out, _ = _occ(run, {"live.b1-q2": RULE}, diff=None)
+    a = {x["cand_id"]: x for x in out["candidates"]}["live.b1-q2"]
+    assert a["disposition"] == "excluded:occasion:workspace_unreadable"
+
+
+def test_only_observable_applicable_no_spot_candidates_take_the_occasion_route(run):
+    _v2_two_boundaries(run)
+    judged = dict(NO_SPOT, act_kind="judge", act_pattern=None, act_path=None)
+    out, _ = _occ(run, {"live.b1-q2": RULE}, draft=judged)
+    assert out["candidates"][0]["disposition"] == "excluded:applicability:pending"
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    out, _ = _occ(run, {"live.b1-q2": RULE}, draft=dict(NO_SPOT, applicable="unsure"))
+    assert out["candidates"][0]["disposition"] == "excluded:applicability:pending"
+    # a cited spot that isn't in the file still fails as before
+    (run / "b1" / "boundary" / "fork_v2" / "candidates.json").unlink()
+    out, _ = _occ(run, {"live.b1-q2": RULE}, draft=dict(DRAFT_V2, pending_path="gone.py"))
+    assert out["candidates"][0]["disposition"] == "excluded:applicability:pending"
+
+
+def test_the_boundary_facts_carry_the_plan_and_the_workspace_diff():
+    import base64
+    b = lambda x: base64.b64encode(x.encode()).decode()
+    out = R.parse_authority("@@BASE@@ abc\n" f"@@EMX_AUTH_FILE@@ {b('AGENTS.md')} {b('rules')}\n"
+                            f"@@EMX_PLAN@@ {b('# Plan')}\n@@EMX_DIFF@@ {b('diff --git')}\n"
+                            "@@END@@\n")
+    assert out["files"] == {"AGENTS.md": "rules"} and out["plan"] == "# Plan"
+    assert out["diff"] == "diff --git" and out["version"] == R.AUTHORITY_VERSION
+    assert R.parse_authority("@@BASE@@ abc\n@@EMX_DIFF@@ \n@@END@@\n")["plan"] is None
+
+
+
+def _script_in(repo: Path, tmp: Path) -> str:
+    """The real authority script, pointed at a local repo and temp files instead of /app and
+    /tmp (the same commands otherwise)."""
+    return (R.authority_script().replace("/app", str(repo))
+            .replace("/tmp/base_commit.txt", str(tmp / "base_commit.txt"))
+            .replace("/tmp/plan.md", str(tmp / "plan.md")))
+
+
+def test_the_real_script_reads_the_workspace_and_fails_closed(tmp_path):
+    import subprocess
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    g = ["git", "-C", str(repo), "-c", "user.email=a@b", "-c", "user.name=a"]
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / "AGENTS.md").write_text("Run clippy before every commit.\n")
+    (repo / "api.py").write_text("def save_record(r):\n    pass\n")
+    subprocess.run([*g, "add", "-A"], check=True)
+    subprocess.run([*g, "commit", "-qm", "base"], check=True)
+    base = subprocess.run([*g, "rev-parse", "HEAD"], capture_output=True, text=True,
+                          check=True).stdout.strip()
+    (tmp_path / "base_commit.txt").write_text(base + "\n")
+    (tmp_path / "plan.md").write_text(OCC_PLAN)
+    (repo / "api.py").write_text("def save_record(r, force=False):\n    pass\n")
+    (repo / "new.py").write_text("x = 1\n")  # untracked: in the diff too
+    out = subprocess.run(["bash", "-c", _script_in(repo, tmp_path)], capture_output=True,
+                         text=True, check=False)
+    f = R.parse_authority(out.stdout)
+    assert f["status"] == "ok" and f["files"] == {"AGENTS.md": "Run clippy before every commit.\n"}
+    assert f["plan"] == OCC_PLAN and f["diff_error"] is None
+    assert "+def save_record(r, force=False):" in f["diff"] and "new.py" in f["diff"]
+    assert subprocess.run([*g, "status", "--porcelain"], capture_output=True, text=True,
+                          check=True).stdout.count("??") == 1  # the repo's index untouched
+    # git add failing (a wrapper on PATH): the diff is unreadable, never empty
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    real = subprocess.run(["bash", "-c", "command -v git"], capture_output=True, text=True,
+                          check=True).stdout.strip()
+    (bin_ / "git").write_text(f'#!/bin/bash\nfor a in "$@"; do [ "$a" = add ] && exit 1; done\n'
+                              f'exec {real} "$@"\n')
+    (bin_ / "git").chmod(0o755)
+    env = {**__import__("os").environ, "PATH": f"{bin_}:{__import__('os').environ['PATH']}"}
+    out = subprocess.run(["bash", "-c", _script_in(repo, tmp_path)], capture_output=True,
+                         text=True, check=False, env=env)
+    f = R.parse_authority(out.stdout)
+    assert f["diff"] is None and f["diff_error"] == "git_add"
+    spec = {"act": {"kind": "diff_added", "pattern": r"def save_record\(.*force",
+                    "path": "*.py", "negate": False}}
+    view = {"post": [{"role": "user", "content": "summary"}]}
+    assert R.occasion_check(RULE, view, f, spec)["reason"] == "occasion:workspace_unreadable"
+    # no index to copy (a repo without one): unreadable too
+    (repo / ".git" / "index").unlink()
+    f = R.parse_authority(subprocess.run(["bash", "-c", _script_in(repo, tmp_path)],
+                                         capture_output=True, text=True, check=False).stdout)
+    assert f["diff"] is None and f["diff_error"] == "index_copy"

@@ -1277,6 +1277,13 @@ def screen_sha_v2() -> str:
                                     "base commit, regular, read by the agent"},
         "dedupe": "same_obligation_once_per_task",
         "pointer": "named+reread_instructed (recorded)",
+        "occasion": {"route": "no_pending_spot+draft_applicable+observable_act",
+                     "gate": "process_rule+ahead+quote_in_resumed_or_plan+diff_act_not_done",
+                     "quote": {"min_words": OCCASION_MIN_WORDS, "future": _FUTURE.pattern,
+                               "done": _DONE.pattern, "kind_terms": {
+                                   k: sorted(v) for k, v in _KIND_TERMS.items()}},
+                     "diff": "fails_closed",
+                     "facts_version": AUTHORITY_VERSION},
         "chain": {"k>1": list(CHAIN_SOURCES)},
         "opus": {"prompt": load_prompt(OPUS_PROMPT, PROMPT_DIR).sha256, "model": OPUS_MODEL,
                  "schema": OPUS_SCHEMA, "types_in": ITEM_TYPES_IN, "near": [NEAR_SHARE,
@@ -1327,7 +1334,11 @@ OPUS_SCHEMA = T._obj({
                      "agent_plan_own", "other")), "authority_reason": _S(),
     "authority_quote": _S(nullable=True),
     "conflict": _S(("none", "conflicts")), "conflict_quote": _S(nullable=True),
-    "conflict_reason": _S()})
+    "conflict_reason": _S(),
+    "occasion": _S(("ahead", "passed", "unclear", "not_a_process_rule")),
+    "occasion_kind": _S(("commit", "lint_or_test", "validation", "prohibition", "other",
+                         "none")),
+    "occasion_quote": _S(nullable=True), "occasion_reason": _S()})
 # the authority and consistency gate (consult r2, the main session, 25 Oct): an agent-written
 # plan item counts only if it restates an authoritative source or an agreed decision, and no
 # candidate may conflict with a retained rule or another requirement
@@ -1412,7 +1423,7 @@ def _code_excerpt(pend: dict | None, image: str | None, file_runner) -> str:
 
 
 def opus_request(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str,
-                 code: str) -> T.Req:
+                 code: str, plan: str | None = None) -> T.Req:
     p = load_prompt(OPUS_PROMPT, PROMPT_DIR)
     reply = next((r for r in _read_or_none(Path(bdir) / "boundary" / "sim_replies.json") or []
                   if r.get("reply_id") == it.get("source_reply_id")), {})
@@ -1439,7 +1450,8 @@ def opus_request(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str,
                  requirement=json.dumps({"text": it["text"], "quote": it["quote"]},
                                         ensure_ascii=False),
                  reply=reply.get("reply") or "", replies=mreplies, resumed=resumed_text(view),
-                 checks=json.dumps(summary, ensure_ascii=False, indent=1), code=code)
+                 checks=json.dumps(summary, ensure_ascii=False, indent=1), code=code,
+                 plan=plan or "")
     rid = f"interact:{Path(bdir).parent.name}:b{boundary_index(bdir)}"
     return T.Req(key=f"opus|{rid}|{cand_id(src, it['req_id'])}", system=p.system, user=user,
                  schema=OPUS_SCHEMA, max_output_tokens=OPUS_MAX_OUT, rid=rid,
@@ -1480,6 +1492,7 @@ AUTHORITY_NAMES = ("AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "CONTRIBUTING", 
                    "README", "README.rst", "README.txt")
 AUTHORITY_MIN_WORDS = 6
 AUTHORITY_FILES_NAME = "authority_files.json"
+AUTHORITY_VERSION = 3  # 2: the plan file and the workspace diff; 3: the diff fails closed
 # which pool sources each authority value may be verified in
 AUTHORITY_SOURCES = {"task": ("task",), "maintainer": ("maintainer",),
                      "repo_instructions": ("file",),
@@ -1506,6 +1519,23 @@ def authority_script() -> str:
         (f'  printf \'{_AUTH_MARK} %s %s\\n\' "$(printf %s "$p" | base64 | tr -d \'\\n\')" '
          f'"$({g} cat-file -p "$B:$p" | base64 | tr -d \'\\n\')"'),
         "done",
+        # the occasion gate's evidence: the plan file, and the workspace diff from the base
+        # commit with untracked files, through a scratch index (the image's is never touched)
+        'if [ -f /tmp/plan.md ]; then echo "@@EMX_PLAN@@ $(base64 < /tmp/plan.md | tr -d \'\\n\')"; fi',
+        # every step's exit status is checked: any failure marks the diff unreadable, never
+        # empty (astra occasion-gate r1 #1)
+        'emx_diff() {',
+        '  t=$(mktemp) || { echo "@@EMX_DIFF_ERR@@ mktemp"; return; }',
+        '  if ! cp .git/index "$t"; then echo "@@EMX_DIFF_ERR@@ index_copy"; rm -f "$t"; return; fi',
+        f'  if ! GIT_INDEX_FILE="$t" {g} add -A >/dev/null 2>&1; then',
+        '    echo "@@EMX_DIFF_ERR@@ git_add"; rm -f "$t"; return; fi',
+        f'  if ! GIT_INDEX_FILE="$t" {g} diff --cached "$B" > "$t.d"; then',
+        '    echo "@@EMX_DIFF_ERR@@ git_diff"; rm -f "$t" "$t.d"; return; fi',
+        '  if ! enc=$(base64 < "$t.d" | tr -d \'\\n\'); then',
+        '    echo "@@EMX_DIFF_ERR@@ encode"; rm -f "$t" "$t.d"; return; fi',
+        '  echo "@@EMX_DIFF@@ $enc"; rm -f "$t" "$t.d"',
+        '}',
+        'emx_diff',
         "echo @@END@@"])
 
 
@@ -1515,14 +1545,21 @@ def parse_authority(out: str) -> dict:
     if "@@END@@" not in out or "@@BASE@@" not in out:
         return {"status": "error", "error": out[-300:], "files": {}}
     base = out.split("@@BASE@@ ", 1)[1].split("\n", 1)[0].strip()
-    files = {}
+    files, extra = {}, {"plan": None, "diff": None, "diff_error": None}
     for line in out.splitlines():
+        if line.startswith("@@EMX_DIFF_ERR@@"):
+            extra["diff_error"] = line[len("@@EMX_DIFF_ERR@@"):].strip() or "unknown"
+        for key, mark in (("plan", "@@EMX_PLAN@@"), ("diff", "@@EMX_DIFF@@")):
+            if line.startswith(mark):
+                extra[key] = base64.b64decode(line[len(mark):].strip() or "").decode(
+                    "utf-8", "replace")
         if line.startswith(_AUTH_MARK + " "):
             parts = line.split(" ")
             path = base64.b64decode(parts[1]).decode("utf-8", "replace")
             files[path] = base64.b64decode(parts[2] if len(parts) > 2 else "").decode(
                 "utf-8", "replace")
-    return {"status": "ok", "base": base, "files": files}
+    return {"status": "ok", "base": base, "files": files, "version": AUTHORITY_VERSION,
+            **extra}
 
 
 def docker_authority_runner(host: str | None = None) -> AuthorityRunner:
@@ -1542,7 +1579,8 @@ def authority_files(bdir: Path, image: str | None, runner: AuthorityRunner | Non
     """The boundary's authoritative files at the base commit, cached in fork_v2/ per image."""
     p = v2_dir(bdir) / AUTHORITY_FILES_NAME
     old = _read_or_none(p)
-    if old and old.get("image") == image and old.get("status") == "ok":
+    if old and old.get("image") == image and old.get("status") == "ok" and \
+            old.get("version") == AUTHORITY_VERSION:
         return old
     if runner is None or not image:
         return {"status": "not_checked", "files": {}}
@@ -1674,6 +1712,103 @@ def verify_authority(v: dict, obligation: str, pool: list[dict]) -> dict:
             "span": span, "source": src["source"], **sup}
 
 
+# The occasion gate (Jacob, 25 Oct; plan deviation "rules about how to work have no code
+# spot"): a process rule (how to work, prohibitions) has no pending code line, so a candidate
+# whose only exclusion would be "no pending spot" goes on to Opus when the draft found it
+# applicable and its act is an observable command or diff. It passes check 2 only if Opus
+# types it a process rule whose occasion is still ahead, quoting the resumed input or the
+# plan file (verified by code), and, for a diff act, the act isn't already in the workspace
+# diff from the base commit (code, on the kept image). Everything else is unchanged.
+OCCASION_TO_CHECK = "occasion:to_check"
+_DIFF_ACTS = ("diff_added", "diff_removed", "file_touched")
+
+
+def occasion_route(d: dict, applicability: dict, spec: dict | None) -> dict:
+    """Check 2 for a candidate the occasion gate may admit: unresolved until the gate runs
+    (it no longer excludes), else check 2 unchanged."""
+    pend = (applicability.get("evidence") or {}).get("pending") or {}
+    if applicability.get("code_fail") and pend.get("reason") == "no_pending_spot" and \
+            d.get("applicable") == "yes" and \
+            ((spec or {}).get("act") or {}).get("kind") in S.MATCH_KINDS:
+        return _check("unresolved", OCCASION_TO_CHECK, why=d.get("applicability_reason"),
+                      pending=pend, occasion_gate=True)
+    return applicability
+
+
+OCCASION_MIN_WORDS = 5
+_FUTURE = re.compile(r"\[ \]|\b(?:next|then|later|remaining|remains?|still|todo|to-do|to do|"
+                     r"pending|not yet|yet to|will|once|finally|afterwards?|before (?:\w+ ){0,2}"
+                     r"(?:submit\w*|commit\w*|finish\w*|merg\w*|push\w*|hand\w*|done))\b",
+                     re.IGNORECASE)
+_DONE = re.compile(r"\[x\]|✅|\b(?:committed|ran|completed|finished|already|passed|was run|"
+                   r"were run)\b", re.IGNORECASE)
+_KIND_TERMS = {"commit": {"commit", "commits", "signoff", "sign"},
+               "lint_or_test": {"lint", "clippy", "test", "tests", "pytest", "check", "fmt"},
+               "validation": {"validate", "validation", "verify", "check", "checks"}}
+
+
+def act_terms(spec: dict, kind: str | None) -> set[str]:
+    """Words tying a span to the act: identifiers of the act's and decision's patterns and
+    paths, plus the occasion kind's own words (a commit, a lint or test run)."""
+    out = set(_KIND_TERMS.get(kind or "", set()))
+    for m in (spec.get("act") or {}, spec.get("decision") or {}):
+        for x in (m.get("pattern") or "", m.get("path") or ""):
+            out |= {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9_]{2,}", x)}
+            out |= {w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9]{2,}", x)}
+    return out - {"def", "the", "and", "for", "not"}
+
+
+def pending_step(q: str | None, spec: dict, kind: str | None) -> dict:
+    """Is an occasion quote a concrete pending step (astra occasion-gate r1 #2): at least
+    OCCASION_MIN_WORDS words, a future or pending cue, a word tied to the act, and nothing
+    describing a completed step."""
+    words = re.findall(r"[A-Za-z0-9_]+", q or "")
+    if len(words) < OCCASION_MIN_WORDS:
+        return {"ok": False, "why": "quote_not_substantive", "words": len(words)}
+    if _DONE.search(q):
+        return {"ok": False, "why": "quote_describes_a_done_step",
+                "done": _DONE.search(q).group(0)}
+    cue = _FUTURE.search(q)
+    if not cue:
+        return {"ok": False, "why": "quote_not_pending", "words": len(words)}
+    tie = sorted({w.lower() for w in words} & act_terms(spec, kind))
+    if not tie:
+        return {"ok": False, "why": "quote_not_about_the_act", "cue": cue.group(0)}
+    return {"ok": True, "why": None, "cue": cue.group(0), "tie": tie, "words": len(words)}
+
+
+def occasion_check(v: dict, view: dict, facts: dict, spec: dict) -> dict:
+    """The gate itself (the section comment), from Opus's verdict and code."""
+    ev = {"occasion": v.get("occasion"), "kind": v.get("occasion_kind"),
+          "quote": v.get("occasion_quote"), "why": v.get("occasion_reason")}
+    if v.get("item_type") != "process_rule":
+        return _check("fail", "occasion:not_process_rule", **ev)
+    if v.get("occasion") != "ahead":
+        return _check("fail", f"occasion:{v.get('occasion')}", **ev)
+    q = v.get("occasion_quote")
+    span = pending_step(q, spec, v.get("occasion_kind"))
+    ev["span"] = span
+    if not span["ok"]:
+        return _check("fail", f"occasion:{span['why']}", **ev)
+    where = ("resumed_input" if T.quote_in(q, resumed_text(view)) else
+             "plan_file" if facts.get("plan") and T.quote_in(q, facts["plan"]) else None)
+    ev["quote_found_in"] = where
+    if where is None:
+        return _check("fail", "occasion:quote_not_found", **ev)
+    act = spec.get("act") or {}
+    if act.get("kind") not in S.MATCH_KINDS:
+        return _check("fail", "occasion:act_not_observable", **ev)
+    if act["kind"] in _DIFF_ACTS and not act.get("negate"):
+        if facts.get("diff") is None or facts.get("diff_error"):
+            ev["diff_error"] = facts.get("diff_error") or "no diff"
+            return _check("fail", "occasion:workspace_unreadable", **ev)
+        done = S.score_parts(spec, facts["diff"], [])
+        ev["workspace_act"] = done["evidence"]["act"]
+        if done["act_raw"]:
+            return _check("fail", "occasion:already_in_workspace", **ev)
+    return _check("pass", None, **ev)
+
+
 def opus_gate(v: dict) -> str | None:
     """None when the candidate goes forward, else why not."""
     if v["retention"] != "lost":
@@ -1710,12 +1845,14 @@ def _opus_lock():
 
 
 def opus_screen(bdir: Path, src: str, it: dict, view: dict, c: dict, task: str, *,
-                backend, image: str | None, file_runner, pool: list[dict] | None = None) -> dict:
+                backend, image: str | None, file_runner, pool: list[dict] | None = None,
+                plan: str | None = None) -> dict:
     """The Opus check for one candidate (the section comment), logged whatever it says. A
     failed call raises: the screen fails and is retried, never cards without the verdict."""
     pend = ((c.get("checks") or {}).get("applicability") or {}).get("evidence", {}).get(
         "pending")
-    req = opus_request(bdir, src, it, view, c, task, _code_excerpt(pend, image, file_runner))
+    req = opus_request(bdir, src, it, view, c, task, _code_excerpt(pend, image, file_runner),
+                       plan)
     with _opus_lock():
         r = backend.run([req], purpose=OPUS_PURPOSE).get(req.key)
     if r is None or r.error or not isinstance(r.data, dict):
@@ -1865,7 +2002,7 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
             c["act_spec"] = spec = (edit or {}).get("act_spec") or spec_from_draft(d)
             pend = (prev.get("checks") or {}).get("applicability", {}).get(
                 "evidence", {}).get("pending") or check_pending(d, image, file_runner)
-            checks["applicability"] = applicability_v2(d, pend)
+            checks["applicability"] = occasion_route(d, applicability_v2(d, pend), spec)
             dec = DRAFT_MAP["decision_observable"][d["decision_observable"]]
             checks["decision"] = _check(dec, None, decision=d["decision"])
             checks["design"] = check_design(it, d, spec, views[src], pre,
@@ -1893,8 +2030,19 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
                 task = task if task is not None else task_text(bdir)
                 checks["opus"] = opus_screen(bdir, src, it, views[src], c, task,
                                              backend=opus_backend, image=image,
-                                             file_runner=file_runner, pool=pool)
+                                             file_runner=file_runner, pool=pool,
+                                             plan=files.get("plan"))
             why = checks["opus"].get("reason")
+        app = checks.get("applicability") or {}
+        if not why and cid not in rejected and app.get("reason") == OCCASION_TO_CHECK:
+            occ = occasion_check(((checks["opus"].get("evidence") or {}).get("verdict") or {}),
+                                 views[src], files, c["act_spec"] or {})
+            checks["occasion"] = occ
+            if occ["outcome"] == "pass":
+                checks["applicability"] = _check("pass", None, **(app.get("evidence") or {}),
+                                                 occasion=occ["evidence"])
+            else:
+                why = occ["reason"]
         if why:
             c["disposition"] = f"excluded:{why}"
         elif cid in rejected:
