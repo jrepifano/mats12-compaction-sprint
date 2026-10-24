@@ -136,6 +136,7 @@ class Loop:
     asks: int = 0
     bash_calls: int = 0
     stop: threading.Event | None = None
+    tools: list[dict] = field(default_factory=lambda: TOOLS)  # SWE-Interact swaps ask_user
 
     def append(self, msgs: list[dict]) -> None:
         self.messages.extend(msgs)
@@ -151,7 +152,7 @@ class Loop:
         r = self.model.route
         t0 = time.monotonic()
         try:
-            reply = self.model.complete(list(self.messages), TOOLS, r.max_output,
+            reply = self.model.complete(list(self.messages), self.tools, r.max_output,
                                         purpose=f"{self.purpose}:{self.n_calls + 1}")
         except ModelError as e:
             self.cost_usd += e.cost_usd  # failed attempts are spend too

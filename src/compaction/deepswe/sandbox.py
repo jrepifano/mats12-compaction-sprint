@@ -395,8 +395,14 @@ class Sandbox:
             raise SandboxError(f"ps failed in {self.name} rc={r.rc}: {r.stderr[-500:]}")
         return stray_processes(r.stdout, token)
 
-    def snapshot(self, tag: str) -> float:
+    def snapshot(self, tag: str, *, labels: dict[str, str] | None = None) -> float:
         """docker commit the container's filesystem to `tag`; returns seconds taken.
+
+        `labels` (e.g. {"emx.keep": <run key>}) replace the default emx.run label: the image
+        then carries emx.run="" (the container's own emx.run label would otherwise be inherited
+        by the commit) and is outside this run's sweep, so `Invocation.cleanup` keeps it; the
+        caller owns its removal and must not track `tag` with `Invocation.new_tag`. The
+        emx.sandbox purpose label is always set.
 
         Refuses (NotQuiescentError) unless the boundary is quiescent. The caller must already be
         tracking `tag` for cleanup (Invocation.new_tag does). If the commit fails, the tag is
@@ -408,12 +414,18 @@ class Sandbox:
             raise NotQuiescentError(f"{self.name}: background processes at the snapshot "
                                     f"boundary: {stray}")
         with using_host(self.host):
-            return self._commit(tag)
+            return self._commit(tag, labels)
 
-    def _commit(self, tag: str) -> float:
+    def _commit(self, tag: str, extra: dict[str, str] | None = None) -> float:
         t0 = time.monotonic()
         labels = [f"LABEL {LABEL_KEY}={self.purpose}"]
-        if self.run_id:
+        if extra is not None:
+            bad = [k for k in extra if k in (LABEL_KEY, RUN_LABEL_KEY)]
+            if bad:
+                raise ValueError(f"snapshot labels may not set {bad}")
+            labels.append(f"LABEL {RUN_LABEL_KEY}=")  # not inherited from the container
+            labels += [f"LABEL {k}={v}" for k, v in extra.items()]
+        elif self.run_id:
             labels.append(f"LABEL {RUN_LABEL_KEY}={self.run_id}")
         since = time.time() - 1
         try:

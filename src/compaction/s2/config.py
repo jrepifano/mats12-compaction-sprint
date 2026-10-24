@@ -193,3 +193,48 @@ TRAPS_HOME = "/opt/traps"
 WORKSPACE = "/app"
 AGENT_NAME, AGENT_EMAIL = "Agent", "agent@example.com"
 HARNESS_NAME, HARNESS_EMAIL = "DSW Harness", "harness@example.com"
+
+
+# ------------------------------------------------------------------------------------------
+# SWE-Interact pilot (docs/sprint/plans/swe-interact-pilot.md; build split
+# logs/s2/briefs/swe-interact-build.md). Experiment 3's first step: books to SPRINT-S3-Q2.
+# ------------------------------------------------------------------------------------------
+
+INTERACT_STAGE = "SPRINT-S3-Q2"  # compaction.budget stage and emx.spend exp (main session, 24 Oct)
+INTERACT_TAG = "s3q2-interact-pilot"  # in every reservation and ledger note of the pilot
+INTERACT_CAP_USD = 120.0  # the pilot cap, enforced on the tag inside the stage
+INTERACT_FALLBACK_TAG = "s3q2-interact-fallback"  # OpenRouter Haiku when Max is down
+INTERACT_FALLBACK_CAP_USD = 12.0  # sub-cap on fallback spend (plan v0.4.1, astra r2)
+INTERACT_MAX_TIMEOUT_S = 600  # a Max stage with no answer in 10 min switches to the fallback
+INTERACT_SEED = 20261025  # the committed task permutation
+INTERACT_THRESHOLD = 150_000  # declared in the plan, in place of the pilot's 169k
+INTERACT_TASKS = (  # the plan's fixed rule: non-held-out, top 6 by DeepSeek peak, 1 per repo
+    "boa-hierarchical-evaluation-cancellation", "testem-bail-on-test-failure",
+    "helm-array-merge-strategies", "fastapi-implicit-head-options",
+    "kombu-single-active-consumer-priority", "vitest-duration-sharding")
+INTERACT_SPARE_TASKS = ("pwntools-tube-multiplexing", "sqlite-utils-safe-import-checkpoints")
+INTERACT_CONCURRENCY = 6  # all 6 base runs at once (Jacob, 24 Oct; Docker 24 GB, 18 CPUs)
+INTERACT_RERUN_CONCURRENCY = 3  # if two runs end infra_oom, reruns go 3 at a time
+DOCKER_STATS_EVERY_S = 180
+# Base runs: stop at the first eligible boundary, at ship-it (submission of 02_implement) with
+# none, or at these caps. Per-run reservation = the cap, settled to the real charge.
+INTERACT_BASE_CAP_USD = 8.0  # agent + simulator
+INTERACT_BASE_MAX_CALLS = 600
+INTERACT_BASE_MAX_S = 3 * 3600
+INTERACT_PLAN_MAX_CALLS = 100  # 01_plan is a short conversation
+INTERACT_PRIMARY_CALLS = 60
+INTERACT_SECONDARY_CALLS = 300  # counted from the fork
+INTERACT_SECONDARY_CAP_USD = 6.0
+INTERACT_SIM_GATE_USD = 2.5  # a base run whose simulator spend passes this stops ("sim_gate") for
+# re-projection: the plan's first-run gate, applied to each of the 6 concurrent runs
+INTERACT_SECONDARY_CASE_USD = 4 * INTERACT_SECONDARY_CAP_USD  # headroom one secondary case needs
+INTERACT_SOURCES = ("live", "cc_prompt", "codex_local", "opencode", "antigravity")  # order
+SIM_ROUTE = Route(
+    # The released simulator config (GPT-5.5, reasoning high, 32,768 output tokens). OpenAI's
+    # chat completions refuse tools + reasoning_effort for gpt-5.5 (400, feasibility §5), so it
+    # goes through OpenRouter pinned to OpenAI, which accepts both (as luna); a logged deviation.
+    name="sim-gpt55", model="openai/gpt-5.5", transport="openrouter",
+    key_env="OPENROUTER_API_KEY", provider_pin="OpenAI",
+    prices={"input": 5.0, "output": 30.0, "cache_read": 0.5},  # standard tier, <272k prompt
+    window=1_050_000, max_output=32_768, bytes_per_token=3.0,
+    reasoning={"reasoning": {"effort": "high"}})

@@ -191,7 +191,14 @@ Run 2 total: $0.225.
 
 Same task state, different corrections: run 1's re-review asked for lifecycle events on `promote_consumer`, while run 2's asked for non-SAC `is_active` semantics. The replies are stochastic, so this is one sample, not evidence of a systematic difference. Recommend (a), logged as a deviation, with the 400 noted.
 
-**Also noted:** on the final state (the full reference solution applied) both runs still raised a correction. So the simulator can ask for things the reference solution doesn't do. Check whether such a correction is something the hidden tests verify before it counts as a scorable dropped requirement.
+**Also noted:** on the final state (the full reference solution applied) both runs still raised a correction. So the simulator can ask for things the reference solution doesn't do.
+
+s2-plan checked run 2's correction (non-SAC `is_active` true only for the top-priority tag) against the reference solution and the tests:
+- The spec sentence it leans on ("for non-SAC, the highest-priority consumer is considered active") is about `get_active_consumer` (hidden tests, lines 474–484).
+- The reference `consumer_is_active` returns True for every non-SAC consumer (`solution.patch:344–350`).
+- The tests check `is_active` only with one consumer.
+
+So the simulator over-read the spec and contradicted the reference. The plan now requires, for every candidate, that the reference solution applied to the boundary's base passes the frozen act's scorer.
 
 ## Files
 
