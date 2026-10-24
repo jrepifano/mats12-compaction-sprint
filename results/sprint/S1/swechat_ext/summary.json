@@ -44,6 +44,276 @@
   "n_shared_session_groups": 4,
   "point": -0.07575873112703979
  },
+ "population_design": {
+  "design": {
+   "fixed": "Experiment 1's 250 judged SWE-chat records, weight 1 each",
+   "interval_kind": "approximate session-group bootstrap of the sample, the 250 held fixed (conditional on Experiment 1's draw). Not an exact design-based interval: a resample's record count varies while the weight stays pool/n, and no finite-population correction is applied (it would shrink the standard error by about 0.96, so these are slightly wide). It leaves out judge noise, systematic judge error (rates are not precision-corrected) and any uncertainty beyond these 928 records",
+   "n_boot": 2000,
+   "n_sample_session_groups": 47,
+   "post_stratified_cells": {
+    "opus46": {
+     "pool": 586,
+     "sample": 45,
+     "weight": 13.022222222222222
+    },
+    "other": {
+     "pool": 92,
+     "sample": 5,
+     "weight": 18.4
+    }
+   },
+   "sample": "50 of the 678 other eligible records (seeded simple random sample), weight 13.5600 each (primary)",
+   "seed": 20261020
+  },
+  "experiment1_sampling": "s1_data.sample_part_a: audit_logs.sample(pool, 250, seed 20261020, strata='model,harness') over the eligible SWE-chat records: n split as evenly as possible across (model, harness) strata, a stratum smaller than its share taken whole and the rest spread over the others; not proportional",
+  "post_stratified": {
+   "invented_span_share": {
+    "hi": 0.05799002282887026,
+    "lo": 0.04150980117342858,
+    "n_fixed_den": 9642.0,
+    "n_sample_den": 1944.0,
+    "point": 0.04937414789727265
+   },
+   "lost_commitment": {
+    "hi": 0.22641898649517667,
+    "lo": 0.034574468085106384,
+    "n_fixed_den": 83.0,
+    "n_sample_den": 20.0,
+    "point": 0.11368489162083467
+   },
+   "lost_decision": {
+    "hi": 0.15817936019024526,
+    "lo": 0.08964023253558481,
+    "n_fixed_den": 923.0,
+    "n_sample_den": 206.0,
+    "point": 0.12130207923964764
+   },
+   "lost_permission": {
+    "hi": 0.388778603810374,
+    "lo": 0.13170565488030744,
+    "n_fixed_den": 100.0,
+    "n_sample_den": 17.0,
+    "point": 0.24521611133413623
+   },
+   "lost_rule": {
+    "hi": 0.37437646251251616,
+    "lo": 0.2575261661458685,
+    "n_fixed_den": 912.0,
+    "n_sample_den": 191.0,
+    "point": 0.3157028287383417
+   },
+   "lost_task_state": {
+    "hi": 0.23705450014943272,
+    "lo": 0.14644768937074007,
+    "n_fixed_den": 1142.0,
+    "n_sample_den": 230.0,
+    "point": 0.18845293121117687
+   },
+   "n_boot_valid": 1986,
+   "pooled_lost": {
+    "hi": 0.23505696408240126,
+    "lo": 0.1754584618096677,
+    "n_fixed_den": 3160.0,
+    "n_sample_den": 664.0,
+    "point": 0.20401279912806863
+   },
+   "summaries_with_invented": {
+    "hi": 0.84794061302682,
+    "lo": 0.6864779041127276,
+    "n_fixed_den": 250.0,
+    "n_sample_den": 50.0,
+    "point": 0.7719827586206897
+   },
+   "user_rule_loss_share": {
+    "hi": 0.4528670907405587,
+    "lo": 0.24159112548218628,
+    "n_fixed_den": 206.0,
+    "n_sample_den": 46.0,
+    "point": 0.3474730206218613
+   }
+  },
+  "primary": {
+   "invented_span_share": {
+    "hi": 0.057931125697829725,
+    "lo": 0.04173616373489999,
+    "n_fixed_den": 9642.0,
+    "n_sample_den": 1944.0,
+    "point": 0.049505258503265315
+   },
+   "lost_commitment": {
+    "hi": 0.22819234784112774,
+    "lo": 0.032921393841166935,
+    "n_fixed_den": 83.0,
+    "n_sample_den": 20.0,
+    "point": 0.11326933935629589
+   },
+   "lost_decision": {
+    "hi": 0.15896604375631904,
+    "lo": 0.09043779848893363,
+    "n_fixed_den": 923.0,
+    "n_sample_den": 206.0,
+    "point": 0.12155980583151255
+   },
+   "lost_permission": {
+    "hi": 0.3793253221369625,
+    "lo": 0.12321067989677298,
+    "n_fixed_den": 100.0,
+    "n_sample_den": 17.0,
+    "point": 0.23502359917705437
+   },
+   "lost_rule": {
+    "hi": 0.37335236540271804,
+    "lo": 0.2557198241252804,
+    "n_fixed_den": 912.0,
+    "n_sample_den": 191.0,
+    "point": 0.31428114541571
+   },
+   "lost_task_state": {
+    "hi": 0.23739198806611825,
+    "lo": 0.14563172694657228,
+    "n_fixed_den": 1142.0,
+    "n_sample_den": 230.0,
+    "point": 0.18873450995118288
+   },
+   "n_boot_valid": 2000,
+   "pooled_lost": {
+    "hi": 0.23461451597667327,
+    "lo": 0.17431474911025674,
+    "n_fixed_den": 3160.0,
+    "n_sample_den": 664.0,
+    "point": 0.2034160265179417
+   },
+   "summaries_with_invented": {
+    "hi": 0.8450988942507004,
+    "lo": 0.6888567908577256,
+    "n_fixed_den": 250.0,
+    "n_sample_den": 50.0,
+    "point": 0.7719827586206897
+   },
+   "user_rule_loss_share": {
+    "hi": 0.4481674861864449,
+    "lo": 0.24247023668358395,
+    "n_fixed_den": 206.0,
+    "n_sample_den": 46.0,
+    "point": 0.3444851523332048
+   }
+  },
+  "strata": [
+   {
+    "eligible": 640,
+    "experiment1_drawn": 54,
+    "experiment1_weight": 11.851851851851851,
+    "extension_sample": 45,
+    "pool": 586,
+    "stratum": "claude-opus-4-6 | claude-code"
+   },
+   {
+    "eligible": 102,
+    "experiment1_drawn": 53,
+    "experiment1_weight": 1.9245283018867925,
+    "extension_sample": 2,
+    "pool": 49,
+    "stratum": "claude-opus-4-5-20251101 | claude-code"
+   },
+   {
+    "eligible": 92,
+    "experiment1_drawn": 54,
+    "experiment1_weight": 1.7037037037037037,
+    "extension_sample": 2,
+    "pool": 38,
+    "stratum": "claude-sonnet-4-6 | claude-code"
+   },
+   {
+    "eligible": 59,
+    "experiment1_drawn": 54,
+    "experiment1_weight": 1.0925925925925926,
+    "extension_sample": 1,
+    "pool": 5,
+    "stratum": "claude-sonnet-4-5-20250929 | claude-code"
+   },
+   {
+    "eligible": 10,
+    "experiment1_drawn": 10,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-opus-4-1-20250805 | claude-code"
+   },
+   {
+    "eligible": 7,
+    "experiment1_drawn": 7,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-sonnet-4-20250514 | claude-code"
+   },
+   {
+    "eligible": 5,
+    "experiment1_drawn": 5,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "gpt-5.3-codex | opencode"
+   },
+   {
+    "eligible": 4,
+    "experiment1_drawn": 4,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "glm-5 | claude-code"
+   },
+   {
+    "eligible": 3,
+    "experiment1_drawn": 3,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-opus-4-7 | claude-code"
+   },
+   {
+    "eligible": 2,
+    "experiment1_drawn": 2,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "glm-4.7 | claude-code"
+   },
+   {
+    "eligible": 1,
+    "experiment1_drawn": 1,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-haiku-4-5-20251001 | claude-code"
+   },
+   {
+    "eligible": 1,
+    "experiment1_drawn": 1,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-opus-4.6 | opencode"
+   },
+   {
+    "eligible": 1,
+    "experiment1_drawn": 1,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "claude-sonnet-4.6 | opencode"
+   },
+   {
+    "eligible": 1,
+    "experiment1_drawn": 1,
+    "experiment1_weight": 1.0,
+    "extension_sample": 0,
+    "pool": 0,
+    "stratum": "exact-dodo | claude-code"
+   }
+  ],
+  "why_not_stratum_weights": "Weighting the 250 by eligible/drawn makes them stand for all 928 records, and the 50 at pool/n stand for the 678 again: the 678 would count twice. Conditional on the 250 drawn, each of them is a fully observed population record (weight 1), and the 50 are a simple random sample of the rest."
+ },
  "population_estimate_weights": {
   "experiment1_250": 1.0,
   "extension": 13.56
@@ -1203,98 +1473,73 @@
     "n_spans": 11586,
     "n_summaries": 300,
     "span_share": {
-     "hi": null,
-     "lo": null,
-     "n_clusters": null,
+     "hi": 0.057931125697829725,
+     "lo": 0.04173616373489999,
      "point": 0.049505258503265315
     },
     "summaries_with_invented": {
-     "hi": null,
-     "lo": null,
-     "n_clusters": null,
+     "hi": 0.8450988942507004,
+     "lo": 0.6888567908577256,
      "point": 0.7719827586206897
     }
    },
    "lost_by_type": {
     "commitment": {
      "lost_rate": {
-      "hi": null,
-      "lo": null,
-      "n_clusters": null,
-      "point": 0.11326933935629588
+      "hi": 0.22819234784112774,
+      "lo": 0.032921393841166935,
+      "point": 0.11326933935629589
      },
-     "n_items": 103,
-     "n_lost": 15
+     "n_items": 103
     },
     "decision": {
      "lost_rate": {
-      "hi": null,
-      "lo": null,
-      "n_clusters": null,
-      "point": 0.12155980583151257
+      "hi": 0.15896604375631904,
+      "lo": 0.09043779848893363,
+      "point": 0.12155980583151255
      },
-     "n_items": 1129,
-     "n_lost": 188
+     "n_items": 1129
     },
     "permission": {
      "lost_rate": {
-      "hi": null,
-      "lo": null,
-      "n_clusters": null,
-      "point": 0.23502359917705434
+      "hi": 0.3793253221369625,
+      "lo": 0.12321067989677298,
+      "point": 0.23502359917705437
      },
-     "n_items": 117,
-     "n_lost": 40
+     "n_items": 117
     },
     "rule": {
      "lost_rate": {
-      "hi": null,
-      "lo": null,
-      "n_clusters": null,
+      "hi": 0.37335236540271804,
+      "lo": 0.2557198241252804,
       "point": 0.31428114541571
      },
-     "n_items": 1103,
-     "n_lost": 347
+     "n_items": 1103
     },
     "task_state": {
      "lost_rate": {
-      "hi": null,
-      "lo": null,
-      "n_clusters": null,
+      "hi": 0.23739198806611825,
+      "lo": 0.14563172694657228,
       "point": 0.18873450995118288
      },
-     "n_items": 1372,
-     "n_lost": 352
+     "n_items": 1372
     }
    },
-   "n_records": 300,
-   "n_records_ok": 300,
    "pooled": {
-    "dropped_rate": {
-     "hi": null,
-     "lo": null,
-     "n_clusters": null,
-     "point": 0.2117226139113964
-    },
     "lost_rate": {
-     "hi": null,
-     "lo": null,
-     "n_clusters": null,
-     "point": 0.20341602651794174
+     "hi": 0.23461451597667327,
+     "lo": 0.17431474911025674,
+     "point": 0.2034160265179417
     },
-    "n_items": 3824,
-    "n_lost": 942,
-    "n_session_groups": 210
+    "n_items": 3824
    },
    "user_rule_loss": {
-    "n_compactions": 300,
     "n_losing": 110,
     "n_with_user_rule": 252,
     "share": {
-     "hi": null,
-     "lo": null,
-     "n_clusters": null,
-     "point": 0.34448515233320476
+     "hi": 0.4481674861864449,
+     "lo": 0.24247023668358395,
+     "point": 0.3444851523332048
     }
    }
   }

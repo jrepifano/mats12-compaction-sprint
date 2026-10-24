@@ -488,6 +488,201 @@ def points_only(d: Any) -> Any:
     return d
 
 
+# ------------------------------------------------------------------------------------------
+# Population estimate for all eligible records (design-based)
+# ------------------------------------------------------------------------------------------
+
+OPUS_46 = "claude-opus-4-6 | claude-code"
+INTERVAL_KIND = (
+    "approximate session-group bootstrap of the sample, the 250 held fixed (conditional on "
+    "Experiment 1's draw). Not an exact design-based interval: a resample's record count varies "
+    "while the weight stays pool/n, and no finite-population correction is applied (it would "
+    "shrink the standard error by about 0.96, so these are slightly wide). It leaves out judge "
+    "noise, systematic judge error (rates are not precision-corrected) and any uncertainty "
+    "beyond these 928 records"
+)
+
+
+def per_record(items, claims, roster) -> pd.DataFrame:
+    """One row per successfully judged record: its item counts (all and by type), whether it has
+    a usable user-given rule and loses one, and its primary-tier span counts and whether it
+    counts as a summary (complete history), each from s1_analysis's own functions."""
+    ok = {r: m for r, m in roster.items() if m.get("ok")}
+    df = A._item_frame([r for r in items if r["rid"] in ok])
+    rows = {
+        rid: {
+            "rid": rid,
+            "session_group": A.session_group_of({"rid": rid, **m}),
+            "stratum": f"{m.get('model')} | {m.get('harness')}",
+        }
+        for rid, m in ok.items()
+    }
+    for rid, g in df.groupby("rid"):
+        x = rows[rid]
+        x["lost"], x["n"] = int(g["lost"].sum()), int(g["n"].sum())
+        for t, gt in g.groupby("type"):
+            x[f"lost_{t}"], x[f"n_{t}"] = int(gt["lost"].sum()), int(gt["n"].sum())
+        x["has_rule"] = int(g["user_rule"].max())
+        x["rule_lost"] = int((g["lost"] * g["user_rule"]).max())
+    by_rid: dict[str, list[dict]] = {}
+    for c in claims:
+        by_rid.setdefault(c["rid"], []).append(c)
+    for rid, m in ok.items():
+        if not m.get("history_complete"):
+            continue
+        inv = A.invented_rates(by_rid.get(rid, []), roster={rid: m}, n_boot=1)
+        if inv:
+            rows[rid].update(
+                spans=inv[0]["n_spans"],
+                inv_spans=inv[0]["n_invented_spans"],
+                summary=1,
+                any_inv=int(inv[0]["n_invented_spans"] > 0),
+            )
+    return pd.DataFrame(list(rows.values())).fillna(0)
+
+
+def _metrics() -> dict[str, tuple[str, str]]:
+    m = {
+        "pooled_lost": ("lost", "n"),
+        "user_rule_loss_share": ("rule_lost", "has_rule"),
+        "invented_span_share": ("inv_spans", "spans"),
+        "summaries_with_invented": ("any_inv", "summary"),
+    }
+    m.update({f"lost_{t}": (f"lost_{t}", f"n_{t}") for t in TYPES})
+    return m
+
+
+def population_estimates(fixed: pd.DataFrame, sample: pd.DataFrame, pool: Counter) -> dict:
+    """Estimates for every eligible record from Experiment 1's records (`fixed`, each standing
+    for itself: weight 1, no sampling error) and a simple random sample of the rest (`sample`).
+
+    Primary: each sampled record has weight pool size / sample size. Sensitivity: post-
+    stratified to Opus 4.6 vs every other stratum (weight = pool count / sample count within the
+    cell; finer cells hold 1 or 2 sampled records). Intervals: 2.5th and 97.5th percentiles of
+    N_BOOT resamples of the sample's session groups (seed S1_SEED), the fixed part held fixed;
+    the post-stratified weights are recomputed in each resample and a resample missing a cell is
+    dropped (counted). Ratios: (fixed num + sum w num) / (fixed den + sum w den)."""
+    mets = _metrics()
+    cols = sorted({c for pair in mets.values() for c in pair})
+    for d in (fixed, sample):
+        for c in cols:
+            if c not in d:
+                d[c] = 0
+    F = fixed[cols].sum()
+    sample = sample.assign(cell=np.where(sample["stratum"] == OPUS_46, "opus46", "other"))
+    pool_cell = {"opus46": pool[OPUS_46], "other": sum(pool.values()) - pool[OPUS_46]}
+    g = sample.groupby(["session_group", "cell"])[cols + ["rid"]].agg(
+        {**{c: "sum" for c in cols}, "rid": "count"}
+    )
+    groups = sorted({k[0] for k in g.index})
+    gi = {k: i for i, k in enumerate(groups)}
+    cells = ("opus46", "other")
+    arr = np.zeros((len(groups), 2, len(cols) + 1))
+    for (grp, cell), row in g.iterrows():
+        arr[gi[grp], cells.index(cell)] = [*row[cols].to_numpy(float), row["rid"]]
+    n_pool, n_sample = sum(pool.values()), len(sample)
+
+    def est(a: np.ndarray, post: bool) -> np.ndarray | None:
+        tot = a.sum(axis=0)  # (cell, col + count)
+        if post:
+            if (tot[:, -1] == 0).any():
+                return None
+            w = np.array([pool_cell[c] for c in cells]) / tot[:, -1]
+            s_ = (tot[:, :-1] * w[:, None]).sum(axis=0)
+        else:
+            s_ = tot[:, :-1].sum(axis=0) * n_pool / n_sample
+        return F.to_numpy(float) + s_
+
+    out: dict[str, Any] = {}
+    rng = np.random.default_rng(S1_SEED)
+    picks = [rng.integers(0, len(groups), len(groups)) for _ in range(A.N_BOOT)]
+    for post, name in ((False, "primary"), (True, "post_stratified")):
+        point = est(arr, post)
+        if point is None:  # the sample itself lacks a post-stratification cell
+            out[name] = {"unavailable": "the sample has no record in one of the cells"}
+            continue
+        draws = [d for d in (est(arr[p], post) for p in picks) if d is not None]
+        res = {}
+        for mname, (num, den) in mets.items():
+            i, j = cols.index(num), cols.index(den)
+            v = np.array([d[i] / d[j] for d in draws if d[j] > 0])
+            lo, hi = np.percentile(v, [2.5, 97.5]) if len(v) else (None, None)
+            res[mname] = {
+                "point": float(point[i] / point[j]) if point[j] > 0 else None,
+                "lo": None if lo is None else float(lo),
+                "hi": None if hi is None else float(hi),
+                "n_fixed_den": float(F[den]),
+                "n_sample_den": float(sample[den].sum()),
+            }
+        res["n_boot_valid"] = len(draws)
+        out[name] = res
+    out["design"] = {
+        "fixed": f"Experiment 1's {len(fixed)} judged SWE-chat records, weight 1 each",
+        "sample": f"{n_sample} of the {n_pool} other eligible records (seeded simple random "
+        f"sample), weight {n_pool / n_sample:.4f} each (primary)",
+        "post_stratified_cells": {
+            c: {
+                "pool": pool_cell[c],
+                "sample": int((sample["cell"] == c).sum()),
+                "weight": pool_cell[c] / max(1, int((sample["cell"] == c).sum())),
+            }
+            for c in cells
+        },
+        "n_sample_session_groups": len(groups),
+        "n_boot": A.N_BOOT,
+        "seed": S1_SEED,
+        "interval_kind": INTERVAL_KIND,
+    }
+    return out
+
+
+def experiment1_strata(manifest: dict, pool: Counter, sample_strata: Counter) -> list[dict]:
+    """Experiment 1's SWE-chat strata: eligible count, its draw, the rest, and this sample."""
+    pop, drawn = manifest["strata_population"][SOURCE], manifest["strata_part_a"][SOURCE]
+    return [
+        {
+            "stratum": k,
+            "eligible": pop[k],
+            "experiment1_drawn": drawn.get(k, 0),
+            "experiment1_weight": pop[k] / drawn[k] if drawn.get(k) else None,
+            "pool": pool.get(k, 0),
+            "extension_sample": sample_strata.get(k, 0),
+        }
+        for k in sorted(pop, key=lambda k: -pop[k])
+    ]
+
+
+def population_set(pe: dict, fixed: pd.DataFrame, sample: pd.DataFrame) -> dict:
+    """The primary population estimates in set_numbers' shape, for the summary tables."""
+    p = pe["primary"]
+
+    def ci(k: str) -> dict:
+        return {x: p[k][x] for x in ("point", "lo", "hi")}
+
+    def n(col: str) -> int:
+        return int(
+            fixed.get(col, pd.Series(dtype=float)).sum()
+            + sample.get(col, pd.Series(dtype=float)).sum()
+        )
+
+    return {
+        "lost_by_type": {t: {"n_items": n(f"n_{t}"), "lost_rate": ci(f"lost_{t}")} for t in TYPES},
+        "pooled": {"n_items": n("n"), "lost_rate": ci("pooled_lost")},
+        "user_rule_loss": {
+            "share": ci("user_rule_loss_share"),
+            "n_losing": n("rule_lost"),
+            "n_with_user_rule": n("has_rule"),
+        },
+        "invented_exploratory": {
+            "span_share": ci("invented_span_share"),
+            "summaries_with_invented": ci("summaries_with_invented"),
+            "n_invented_spans": n("inv_spans"),
+            "n_spans": n("spans"),
+            "n_summaries": n("summary"),
+        },
+    }
+
+
 def cmd_summary(a) -> None:
     ext = load_extension()
     e1 = load_experiment1()
@@ -507,6 +702,26 @@ def cmd_summary(a) -> None:
     def pop_w(r) -> float:
         return 1.0 if r["rid"] in e1["roster"] else w_ext
 
+    fixed = per_record(e1["items"], e1["claims"], e1["roster"])
+    sample = per_record(ext["items"], ext["claims"], ext["roster"])
+    index = s1_data.index_all()
+    by = {e["id"]: e for e in index}
+    pool = Counter(f"{by[r]['model']} | {by[r]['harness']}" for r in extension_ids(index, manifest))
+    pe = population_estimates(fixed, sample, pool)
+    # check: the primary points equal s1_analysis's own weighted estimators (weights 1 and w_ext)
+    chk = points_only(set_numbers(both["items"], both["claims"], both["roster"], weights=pop_w))
+    pairs = [
+        (pe["primary"]["pooled_lost"], chk["pooled"]["lost_rate"]),
+        (pe["primary"]["user_rule_loss_share"], chk["user_rule_loss"]["share"]),
+        (pe["primary"]["invented_span_share"], chk["invented_exploratory"]["span_share"]),
+        (
+            pe["primary"]["summaries_with_invented"],
+            chk["invented_exploratory"]["summaries_with_invented"],
+        ),
+    ] + [(pe["primary"][f"lost_{t}"], chk["lost_by_type"][t]["lost_rate"]) for t in TYPES]
+    for got, want in pairs:
+        if abs(got["point"] - want["point"]) > 1e-9:
+            raise SystemExit(f"population point {got['point']} != s1_analysis's {want['point']}")
     summary = {
         "note": "Experiment 1 extension (brief logs/s2/briefs/swechat-extension.md): the judge "
         "unchanged on a seeded simple random sample of the eligible SWE-chat v1 records outside "
@@ -529,15 +744,27 @@ def cmd_summary(a) -> None:
             ),
             "extension": set_numbers(ext["items"], ext["claims"], ext["roster"]),
             "pooled_descriptive": set_numbers(both["items"], both["claims"], both["roster"]),
-            # points only: a bootstrap over every session group would resample the 250, which
-            # are fixed here, so its interval would not match the design (astra r1)
-            "population_estimate": points_only(
-                set_numbers(both["items"], both["claims"], both["roster"], weights=pop_w)
-            ),
         },
         "pooled_lost_difference_extension_minus_250": difference(e1["items"], ext["items"]),
+        "population_design": {
+            **pe,
+            "experiment1_sampling": "s1_data.sample_part_a: audit_logs.sample(pool, 250, seed "
+            f"{manifest['seed']}, strata='model,harness') over the eligible SWE-chat records: n "
+            "split as evenly as possible across (model, harness) strata, a stratum smaller than "
+            "its share taken whole and the rest spread over the others; not proportional",
+            "strata": experiment1_strata(
+                manifest,
+                pool,
+                Counter(m["model"] + " | " + m["harness"] for m in ext["roster"].values()),
+            ),
+            "why_not_stratum_weights": "Weighting the 250 by eligible/drawn makes them stand for "
+            "all 928 records, and the 50 at pool/n stand for the 678 again: the 678 would count "
+            "twice. Conditional on the 250 drawn, each of them is a fully observed population "
+            "record (weight 1), and the 50 are a simple random sample of the rest.",
+        },
         "max_usage": max_usage(set(meta["record_ids"])),
     }
+    summary["sets"]["population_estimate"] = population_set(pe, fixed, sample)
     _atomic(OUT / "summary.json", json.dumps(summary, indent=1, sort_keys=True) + "\n")
     _atomic(OUT / "summary.md", summary_md(summary))
     print(summary_md(summary))
@@ -578,7 +805,7 @@ SET_NAMES = {
     "experiment1_250_population_weighted": "Experiment 1's 250, reweighted to the population",
     "extension": "Extension",
     "pooled_descriptive": "250 + extension, pooled (descriptive)",
-    "population_estimate": "Population estimate, all eligible",
+    "population_estimate": "Population estimate, all eligible (weighted rate; counts observed, unweighted)",
 }
 
 
@@ -650,6 +877,51 @@ def summary_md(s: dict) -> str:
             lines.append(
                 f"| {SET_NAMES[k]} | {m} | {x['n_items']:,} | {_pct(x['lost_rate'])} | "
                 f"{_pct(ru.get('share'))} ({ru.get('n_losing', 0)}/{ru.get('n_with_user_rule', 0)}) |"
+            )
+    if "population_design" in s:
+        pd_ = s["population_design"]
+        names = {
+            "pooled_lost": "Pooled lost rate",
+            **{f"lost_{t}": f"Lost rate, {t}" for t in TYPES},
+            "user_rule_loss_share": "Compactions with a user rule losing one",
+            "invented_span_share": "Invented span share (exploratory)",
+            "summaries_with_invented": "Summaries with an invented span (exploratory)",
+        }
+        lines += [
+            "",
+            "## Population estimate for all eligible SWE-chat records",
+            "",
+            f"Design: {pd_['design']['fixed']}; {pd_['design']['sample']}. "
+            f"{pd_['why_not_stratum_weights']} Intervals: {pd_['design']['interval_kind']} "
+            f"({pd_['design']['n_sample_session_groups']} session groups, "
+            f"{pd_['design']['n_boot']} resamples, seed {pd_['design']['seed']}). Counts in "
+            "brackets in the tables above are observed and unweighted. Sensitivity: the "
+            "sample post-stratified to Opus 4.6 vs the other models "
+            + ", ".join(
+                f"{c} {v['sample']}/{v['pool']} (weight {v['weight']:.2f})"
+                for c, v in pd_["design"]["post_stratified_cells"].items()
+            )
+            + f"; {pd_['post_stratified'].get('n_boot_valid', 0)} valid resamples.",
+            "",
+            "| Measure | Primary (weights 1 and pool/n) | Post-stratified by Opus 4.6 vs other |",
+            "|---|---|---|",
+        ]
+        for k, label in names.items():
+            lines.append(
+                f"| {label} | {_pct(pd_['primary'][k])} | {_pct(pd_['post_stratified'].get(k))} |"
+            )
+        lines += [
+            "",
+            f"Experiment 1's sampling: {pd_['experiment1_sampling']}.",
+            "",
+            "| Stratum (model, harness) | Eligible | Experiment 1 drew | E1 weight | Rest | Sample |",
+            "|---|---|---|---|---|---|",
+        ]
+        for r in pd_["strata"]:
+            w = f"{r['experiment1_weight']:.2f}" if r["experiment1_weight"] else "n/a"
+            lines.append(
+                f"| {r['stratum'].replace(' | ', ', ')} | {r['eligible']} | {r['experiment1_drawn']} | {w} | "
+                f"{r['pool']} | {r['extension_sample']} |"
             )
     u = s["max_usage"]
     lines += [

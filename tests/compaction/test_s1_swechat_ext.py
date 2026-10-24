@@ -248,3 +248,39 @@ def test_rate_limit_detection_reads_error_fields_only(tmp_path):
         + json.dumps({"error": "overloaded_error"}) + "\n"
     )  # fmt: skip
     assert X._rate_limited(tmp_path) == 2
+
+
+def test_population_estimates_hold_the_fixed_part_and_weight_the_sample():
+    from collections import Counter
+
+    import pandas as pd
+
+    def rec(rid, grp, stratum, lost, n):
+        return {"rid": rid, "session_group": grp, "stratum": stratum, "lost": lost, "n": n,
+                "has_rule": 1, "rule_lost": int(lost > 0), "spans": 2, "inv_spans": 0,
+                "summary": 1, "any_inv": 0}  # fmt: skip
+
+    fixed = pd.DataFrame([rec("f1", "a", X.OPUS_46, 1, 10)])
+    sample = pd.DataFrame([rec("s1", "b", X.OPUS_46, 2, 10), rec("s2", "c", "other | cc", 0, 10)])
+    pool = Counter({X.OPUS_46: 3, "other | cc": 1})
+    pe = X.population_estimates(fixed, sample, pool)
+    # primary: (1 + 2 * (2 + 0)) / (10 + 2 * 20) with weight 4/2
+    assert pe["primary"]["pooled_lost"]["point"] == pytest.approx(5 / 50)
+    # post-stratified: opus46 weight 3/1, other weight 1/1 -> (1 + 6) / (10 + 30 + 10)
+    assert pe["post_stratified"]["pooled_lost"]["point"] == pytest.approx(7 / 50)
+    # resamples of the two groups: {s1, s1} -> 9/50, {s2, s2} -> 1/50, mixed -> 5/50; the fixed
+    # record is in every one, so the extremes are attained exactly
+    assert pe["primary"]["pooled_lost"]["lo"] == pytest.approx(1 / 50)
+    assert pe["primary"]["pooled_lost"]["hi"] == pytest.approx(9 / 50)
+
+
+def test_population_estimates_report_a_missing_post_stratification_cell():
+    from collections import Counter
+
+    import pandas as pd
+
+    row = {"rid": "s1", "session_group": "b", "stratum": X.OPUS_46, "lost": 1, "n": 4}
+    fixed = pd.DataFrame([{**row, "rid": "f1", "session_group": "a"}])
+    pe = X.population_estimates(fixed, pd.DataFrame([row]), Counter({X.OPUS_46: 3, "o | cc": 2}))
+    assert "unavailable" in pe["post_stratified"]
+    assert pe["primary"]["pooled_lost"]["point"] == pytest.approx((1 + 5) / (4 + 20))
