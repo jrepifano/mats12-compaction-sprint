@@ -1,0 +1,1302 @@
+{
+ "config": {
+  "frozen_config": "results/sprint/S1/frozen_config.json",
+  "haiku": {
+   "effort": "medium",
+   "model": "claude-haiku-5-5"
+  },
+  "prompts_sha256": {
+   "pass1a_items.md": "1d452823204e9f2570043597b439b43f883864f75b8d1c0b54242b769d63054a",
+   "pass1b_grade.md": "09ce2acad305e2a6d6b51630c1e69cb96bd4c1a43daaf2e3d71e05f2e8854f12",
+   "pass2_claims.md": "a4537f95b73cd36713acf9182208e8daf2ea3cb152014c3510adeed65dc9871e"
+  },
+  "ptb_prompts_sha256": "fca8acbdc3e2d492653f850b004ecca835342acd7c553c7823df115763fc9958",
+  "schemas_sha256": {
+   "PASS1A_SCHEMA": "7313b2f953c9238397d2d5e1bd90bc4333fdef9acc89138084cf811c2a1f41a3",
+   "PASS1B_SCHEMA": "778d0b3b93864bffe5dbf080e0d631b1868d464d5ae21b83af00c91e423909bc",
+   "PASS2_SCHEMA": "7d92f6911f072540860292e29e38e63b577dc08eabe79c89ac63ab4ed76de5b2"
+  },
+  "second_look_config_sha": "4347bb6a277b9e8fdaf0e944ddb51ec68d1a2192b772947ba020fdfd5bd51370"
+ },
+ "extension_complete": true,
+ "failed_records": [],
+ "max_usage": {
+  "cache_read_tokens": 15877590,
+  "calls": 448,
+  "errors": 1,
+  "input_tokens": 35801763,
+  "notional_usd": 21.63,
+  "output_tokens": 2661523,
+  "purpose:s1_judge": 151,
+  "purpose:s1_second_look": 297,
+  "thinking_tokens": 1827608
+ },
+ "n_extension_judged": 50,
+ "n_extension_records": 50,
+ "note": "Experiment 1 extension (brief logs/s2/briefs/swechat-extension.md): the judge unchanged on a seeded simple random sample of the eligible SWE-chat v1 records outside Experiment 1's 250 (descriptive at this size). Rates are what the single LLM judge detects, after the second look; not precision-corrected. Intervals: session-group bootstrap (s1_analysis, N_BOOT resamples, seed S1_SEED).",
+ "order_seed": "s1-swechat-ext:20261024",
+ "pool_size": 678,
+ "pooled_lost_difference_extension_minus_250": {
+  "hi": -0.024907734491979815,
+  "lo": -0.12275250318264112,
+  "n_boot_valid": 2000,
+  "n_session_groups": 210,
+  "n_shared_session_groups": 4,
+  "point": -0.07575873112703979
+ },
+ "population_estimate_weights": {
+  "experiment1_250": 1.0,
+  "extension": 13.56
+ },
+ "second_look": {
+  "experiment1_250": {
+   "claim": {
+    "categories": {
+     "None": 5,
+     "carried_forward": 68,
+     "contradicted": 67,
+     "supported": 168,
+     "unsourced": 397
+    },
+    "final": {
+     "contradicted": 67,
+     "supported": 236,
+     "unsupported": 402
+    },
+    "n_changed": 303,
+    "n_invalid": 5,
+    "n_rechecked": 705
+   },
+   "item": {
+    "final": {
+     "dropped": 845,
+     "kept": 52,
+     "misstated": 12
+    },
+    "n_changed": 64,
+    "n_invalid": 1,
+    "n_rechecked": 909
+   }
+  },
+  "extension": {
+   "claim": {
+    "categories": {
+     "None": 0,
+     "carried_forward": 12,
+     "contradicted": 23,
+     "supported": 32,
+     "unsourced": 76
+    },
+    "final": {
+     "contradicted": 23,
+     "supported": 44,
+     "unsupported": 76
+    },
+    "n_changed": 67,
+    "n_invalid": 0,
+    "n_rechecked": 143
+   },
+   "item": {
+    "final": {
+     "dropped": 137,
+     "kept": 16,
+     "misstated": 1
+    },
+    "n_changed": 17,
+    "n_invalid": 0,
+    "n_rechecked": 154
+   }
+  }
+ },
+ "sets": {
+  "experiment1_250": {
+   "by_model": {
+    "claude-haiku-4-5-20251001": {
+     "lost_rate": {
+      "hi": 0.47619047619047616,
+      "lo": 0.47619047619047616,
+      "n_clusters": 1,
+      "point": 0.47619047619047616
+     },
+     "n_compactions": 1,
+     "n_items": 21,
+     "n_lost": 10
+    },
+    "claude-opus-4-1-20250805": {
+     "lost_rate": {
+      "hi": 0.33620689655172414,
+      "lo": 0.2857142857142857,
+      "n_clusters": 2,
+      "point": 0.3263888888888889
+     },
+     "n_compactions": 10,
+     "n_items": 144,
+     "n_lost": 47
+    },
+    "claude-opus-4-5-20251101": {
+     "lost_rate": {
+      "hi": 0.3623256177666562,
+      "lo": 0.23912930489017448,
+      "n_clusters": 34,
+      "point": 0.2951388888888889
+     },
+     "n_compactions": 53,
+     "n_items": 576,
+     "n_lost": 170
+    },
+    "claude-opus-4-6": {
+     "lost_rate": {
+      "hi": 0.3017711840628507,
+      "lo": 0.15964931890667383,
+      "n_clusters": 51,
+      "point": 0.22770919067215364
+     },
+     "n_compactions": 54,
+     "n_items": 729,
+     "n_lost": 166
+    },
+    "claude-opus-4-7": {
+     "lost_rate": {
+      "hi": 0.2711864406779661,
+      "lo": 0.09090909090909091,
+      "n_clusters": 2,
+      "point": 0.24285714285714285
+     },
+     "n_compactions": 3,
+     "n_items": 70,
+     "n_lost": 17
+    },
+    "claude-opus-4.6": {
+     "lost_rate": {
+      "hi": 0.1,
+      "lo": 0.1,
+      "n_clusters": 1,
+      "point": 0.1
+     },
+     "n_compactions": 1,
+     "n_items": 10,
+     "n_lost": 1
+    },
+    "claude-sonnet-4-20250514": {
+     "lost_rate": {
+      "hi": 0.39285714285714285,
+      "lo": 0.1875,
+      "n_clusters": 3,
+      "point": 0.3375
+     },
+     "n_compactions": 7,
+     "n_items": 80,
+     "n_lost": 27
+    },
+    "claude-sonnet-4-5-20250929": {
+     "lost_rate": {
+      "hi": 0.34580824372759855,
+      "lo": 0.24868467793942442,
+      "n_clusters": 22,
+      "point": 0.30261136712749614
+     },
+     "n_compactions": 54,
+     "n_items": 651,
+     "n_lost": 197
+    },
+    "claude-sonnet-4-6": {
+     "lost_rate": {
+      "hi": 0.2397478734149342,
+      "lo": 0.1638845468709558,
+      "n_clusters": 42,
+      "point": 0.20118343195266272
+     },
+     "n_compactions": 54,
+     "n_items": 676,
+     "n_lost": 136
+    },
+    "claude-sonnet-4.6": {
+     "lost_rate": {
+      "hi": 0.4,
+      "lo": 0.4,
+      "n_clusters": 1,
+      "point": 0.4
+     },
+     "n_compactions": 1,
+     "n_items": 5,
+     "n_lost": 2
+    },
+    "exact-dodo": {
+     "lost_rate": {
+      "hi": 0.0967741935483871,
+      "lo": 0.0967741935483871,
+      "n_clusters": 1,
+      "point": 0.0967741935483871
+     },
+     "n_compactions": 1,
+     "n_items": 31,
+     "n_lost": 3
+    },
+    "glm-4.7": {
+     "lost_rate": {
+      "hi": 0.13333333333333333,
+      "lo": 0.13333333333333333,
+      "n_clusters": 1,
+      "point": 0.13333333333333333
+     },
+     "n_compactions": 2,
+     "n_items": 15,
+     "n_lost": 2
+    },
+    "glm-5": {
+     "lost_rate": {
+      "hi": 0.3125,
+      "lo": 0.2692307692307692,
+      "n_clusters": 3,
+      "point": 0.29333333333333333
+     },
+     "n_compactions": 4,
+     "n_items": 75,
+     "n_lost": 22
+    },
+    "gpt-5.3-codex": {
+     "lost_rate": {
+      "hi": 0.4583333333333333,
+      "lo": 0.11764705882352941,
+      "n_clusters": 3,
+      "point": 0.2597402597402597
+     },
+     "n_compactions": 5,
+     "n_items": 77,
+     "n_lost": 20
+    }
+   },
+   "invented_exploratory": {
+    "n_invented_spans": 467,
+    "n_spans": 9642,
+    "n_summaries": 250,
+    "span_share": {
+     "hi": 0.05624554627200772,
+     "lo": 0.04099698035327781,
+     "n_clusters": 167,
+     "point": 0.04843393486828459
+    },
+    "summaries_with_invented": {
+     "hi": 0.7529005195671863,
+     "lo": 0.6375519755040971,
+     "n_clusters": 167,
+     "point": 0.696
+    }
+   },
+   "lost_by_type": {
+    "commitment": {
+     "lost_rate": {
+      "hi": 0.2375,
+      "lo": 0.08433734939759036,
+      "n_clusters": 57,
+      "point": 0.1566265060240964
+     },
+     "n_items": 83,
+     "n_lost": 13
+    },
+    "decision": {
+     "lost_rate": {
+      "hi": 0.21494690153503712,
+      "lo": 0.1459270985974461,
+      "n_clusters": 159,
+      "point": 0.180931744312026
+     },
+     "n_items": 923,
+     "n_lost": 167
+    },
+    "permission": {
+     "lost_rate": {
+      "hi": 0.46875,
+      "lo": 0.27448916408668733,
+      "n_clusters": 68,
+      "point": 0.37
+     },
+     "n_items": 100,
+     "n_lost": 37
+    },
+    "rule": {
+     "lost_rate": {
+      "hi": 0.356735588972431,
+      "lo": 0.2750943999461533,
+      "n_clusters": 151,
+      "point": 0.31469298245614036
+     },
+     "n_items": 912,
+     "n_lost": 287
+    },
+    "task_state": {
+     "lost_rate": {
+      "hi": 0.3090955951265229,
+      "lo": 0.2468391451964931,
+      "n_clusters": 167,
+      "point": 0.276707530647986
+     },
+     "n_items": 1142,
+     "n_lost": 316
+    }
+   },
+   "n_records": 250,
+   "n_records_ok": 250,
+   "pooled": {
+    "dropped_rate": {
+     "hi": 0.2801071292952119,
+     "lo": 0.22638101619042308,
+     "n_clusters": 167,
+     "point": 0.2528481012658228
+    },
+    "lost_rate": {
+     "hi": 0.286058111150483,
+     "lo": 0.23140172126668238,
+     "n_clusters": 167,
+     "point": 0.25949367088607594
+    },
+    "n_items": 3160,
+    "n_lost": 820,
+    "n_session_groups": 167
+   },
+   "user_rule_loss": {
+    "n_compactions": 250,
+    "n_losing": 96,
+    "n_with_user_rule": 206,
+    "share": {
+     "hi": 0.5305278574099463,
+     "lo": 0.3962241363594932,
+     "n_clusters": 134,
+     "point": 0.46601941747572817
+    }
+   },
+   "user_rule_loss_by_model": {
+    "claude-haiku-4-5-20251001": {
+     "n_losing": 1,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 1.0,
+      "lo": 1.0,
+      "n_clusters": 1,
+      "point": 1.0
+     }
+    },
+    "claude-opus-4-1-20250805": {
+     "n_losing": 7,
+     "n_with_user_rule": 10,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.625,
+      "n_clusters": 2,
+      "point": 0.7
+     }
+    },
+    "claude-opus-4-5-20251101": {
+     "n_losing": 22,
+     "n_with_user_rule": 40,
+     "share": {
+      "hi": 0.6774481566820274,
+      "lo": 0.4255186170212766,
+      "n_clusters": 24,
+      "point": 0.55
+     }
+    },
+    "claude-opus-4-6": {
+     "n_losing": 21,
+     "n_with_user_rule": 46,
+     "share": {
+      "hi": 0.6037735849056604,
+      "lo": 0.3023255813953488,
+      "n_clusters": 43,
+      "point": 0.45652173913043476
+     }
+    },
+    "claude-opus-4-7": {
+     "n_losing": 2,
+     "n_with_user_rule": 3,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.6666666666666666
+     }
+    },
+    "claude-opus-4.6": {
+     "n_losing": 0,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 0.0,
+      "lo": 0.0,
+      "n_clusters": 1,
+      "point": 0.0
+     }
+    },
+    "claude-sonnet-4-20250514": {
+     "n_losing": 4,
+     "n_with_user_rule": 7,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.4,
+      "n_clusters": 3,
+      "point": 0.5714285714285714
+     }
+    },
+    "claude-sonnet-4-5-20250929": {
+     "n_losing": 21,
+     "n_with_user_rule": 46,
+     "share": {
+      "hi": 0.6458333333333334,
+      "lo": 0.2777777777777778,
+      "n_clusters": 19,
+      "point": 0.45652173913043476
+     }
+    },
+    "claude-sonnet-4-6": {
+     "n_losing": 13,
+     "n_with_user_rule": 41,
+     "share": {
+      "hi": 0.46808510638297873,
+      "lo": 0.16666666666666666,
+      "n_clusters": 32,
+      "point": 0.3170731707317073
+     }
+    },
+    "claude-sonnet-4.6": {
+     "n_losing": 0,
+     "n_with_user_rule": 0,
+     "share": {
+      "hi": NaN,
+      "lo": NaN,
+      "n_clusters": 0,
+      "point": NaN
+     }
+    },
+    "exact-dodo": {
+     "n_losing": 0,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 0.0,
+      "lo": 0.0,
+      "n_clusters": 1,
+      "point": 0.0
+     }
+    },
+    "glm-4.7": {
+     "n_losing": 1,
+     "n_with_user_rule": 2,
+     "share": {
+      "hi": 0.5,
+      "lo": 0.5,
+      "n_clusters": 1,
+      "point": 0.5
+     }
+    },
+    "glm-5": {
+     "n_losing": 1,
+     "n_with_user_rule": 3,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.3333333333333333
+     }
+    },
+    "gpt-5.3-codex": {
+     "n_losing": 3,
+     "n_with_user_rule": 5,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.3333333333333333,
+      "n_clusters": 3,
+      "point": 0.6
+     }
+    }
+   }
+  },
+  "experiment1_250_population_weighted": {
+   "invented_exploratory": {
+    "n_invented_spans": 467,
+    "n_spans": 9642,
+    "n_summaries": 250,
+    "span_share": {
+     "hi": 0.056210910345333445,
+     "lo": 0.03794403274162896,
+     "n_clusters": 167,
+     "point": 0.0469116722748166
+    },
+    "summaries_with_invented": {
+     "hi": 0.7901270303056684,
+     "lo": 0.6228943199719609,
+     "n_clusters": 167,
+     "point": 0.7093412642473312
+    }
+   },
+   "lost_by_type": {
+    "commitment": {
+     "lost_rate": {
+      "hi": 0.28661973661047985,
+      "lo": 0.06473487935064333,
+      "n_clusters": 57,
+      "point": 0.16665073206102604
+     },
+     "n_items": 83,
+     "n_lost": 13
+    },
+    "decision": {
+     "lost_rate": {
+      "hi": 0.20127241067471432,
+      "lo": 0.0974223188626595,
+      "n_clusters": 159,
+      "point": 0.14511072374236808
+     },
+     "n_items": 923,
+     "n_lost": 167
+    },
+    "permission": {
+     "lost_rate": {
+      "hi": 0.4162563139758678,
+      "lo": 0.17010171131901786,
+      "n_clusters": 68,
+      "point": 0.2858737198435183
+     },
+     "n_items": 100,
+     "n_lost": 37
+    },
+    "rule": {
+     "lost_rate": {
+      "hi": 0.39256963503245446,
+      "lo": 0.2535001551990002,
+      "n_clusters": 151,
+      "point": 0.32103080185379895
+     },
+     "n_items": 912,
+     "n_lost": 287
+    },
+    "task_state": {
+     "lost_rate": {
+      "hi": 0.29794323734039896,
+      "lo": 0.17908860916540442,
+      "n_clusters": 167,
+      "point": 0.23509024438301948
+     },
+     "n_items": 1142,
+     "n_lost": 316
+    }
+   },
+   "n_records": 250,
+   "n_records_ok": 250,
+   "pooled": {
+    "dropped_rate": {
+     "hi": 0.296969879121283,
+     "lo": 0.19032837149799797,
+     "n_clusters": 167,
+     "point": 0.24052072002304217
+    },
+    "lost_rate": {
+     "hi": 0.2955946714423163,
+     "lo": 0.1889609770028587,
+     "n_clusters": 167,
+     "point": 0.23827334997789645
+    },
+    "n_items": 3160,
+    "n_lost": 820,
+    "n_session_groups": 167
+   },
+   "user_rule_loss": {
+    "n_compactions": 250,
+    "n_losing": 96,
+    "n_with_user_rule": 206,
+    "share": {
+     "hi": 0.5667800301362959,
+     "lo": 0.3488869400180476,
+     "n_clusters": 134,
+     "point": 0.45831478012875176
+    }
+   }
+  },
+  "extension": {
+   "by_model": {
+    "claude-opus-4-5-20251101": {
+     "lost_rate": {
+      "hi": 0.25,
+      "lo": 0.14285714285714285,
+      "n_clusters": 2,
+      "point": 0.21052631578947367
+     },
+     "n_compactions": 2,
+     "n_items": 19,
+     "n_lost": 4
+    },
+    "claude-opus-4-6": {
+     "lost_rate": {
+      "hi": 0.22320290638073864,
+      "lo": 0.1396011425283577,
+      "n_clusters": 42,
+      "point": 0.1821138211382114
+     },
+     "n_compactions": 45,
+     "n_items": 615,
+     "n_lost": 112
+    },
+    "claude-sonnet-4-5-20250929": {
+     "lost_rate": {
+      "hi": 0.09090909090909091,
+      "lo": 0.09090909090909091,
+      "n_clusters": 1,
+      "point": 0.09090909090909091
+     },
+     "n_compactions": 1,
+     "n_items": 11,
+     "n_lost": 1
+    },
+    "claude-sonnet-4-6": {
+     "lost_rate": {
+      "hi": 0.38461538461538464,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.2631578947368421
+     },
+     "n_compactions": 2,
+     "n_items": 19,
+     "n_lost": 5
+    }
+   },
+   "invented_exploratory": {
+    "n_invented_spans": 97,
+    "n_spans": 1944,
+    "n_summaries": 50,
+    "span_share": {
+     "hi": 0.061464829741167966,
+     "lo": 0.039276006004153555,
+     "n_clusters": 47,
+     "point": 0.04989711934156379
+    },
+    "summaries_with_invented": {
+     "hi": 0.9000490196078429,
+     "lo": 0.6862745098039216,
+     "n_clusters": 47,
+     "point": 0.8
+    }
+   },
+   "lost_by_type": {
+    "commitment": {
+     "lost_rate": {
+      "hi": 0.2631578947368421,
+      "lo": 0.0,
+      "n_clusters": 18,
+      "point": 0.1
+     },
+     "n_items": 20,
+     "n_lost": 2
+    },
+    "decision": {
+     "lost_rate": {
+      "hi": 0.15151874192158551,
+      "lo": 0.061399033297529534,
+      "n_clusters": 45,
+      "point": 0.10194174757281553
+     },
+     "n_items": 206,
+     "n_lost": 21
+    },
+    "permission": {
+     "lost_rate": {
+      "hi": 0.38472222222222163,
+      "lo": 0.0,
+      "n_clusters": 13,
+      "point": 0.17647058823529413
+     },
+     "n_items": 17,
+     "n_lost": 3
+    },
+    "rule": {
+     "lost_rate": {
+      "hi": 0.39485115223750034,
+      "lo": 0.23225518433179723,
+      "n_clusters": 47,
+      "point": 0.31413612565445026
+     },
+     "n_items": 191,
+     "n_lost": 60
+    },
+    "task_state": {
+     "lost_rate": {
+      "hi": 0.22280737841624224,
+      "lo": 0.09813084112149532,
+      "n_clusters": 47,
+      "point": 0.1565217391304348
+     },
+     "n_items": 230,
+     "n_lost": 36
+    }
+   },
+   "n_records": 50,
+   "n_records_ok": 50,
+   "pooled": {
+    "dropped_rate": {
+     "hi": 0.23650851010575058,
+     "lo": 0.15503134311032002,
+     "n_clusters": 47,
+     "point": 0.19728915662650603
+    },
+    "lost_rate": {
+     "hi": 0.22625250049190004,
+     "lo": 0.1428514829069504,
+     "n_clusters": 47,
+     "point": 0.18373493975903615
+    },
+    "n_items": 664,
+    "n_lost": 122,
+    "n_session_groups": 47
+   },
+   "user_rule_loss": {
+    "n_compactions": 50,
+    "n_losing": 14,
+    "n_with_user_rule": 46,
+    "share": {
+     "hi": 0.4375,
+     "lo": 0.1702127659574468,
+     "n_clusters": 43,
+     "point": 0.30434782608695654
+    }
+   },
+   "user_rule_loss_by_model": {
+    "claude-opus-4-5-20251101": {
+     "n_losing": 1,
+     "n_with_user_rule": 2,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.5
+     }
+    },
+    "claude-opus-4-6": {
+     "n_losing": 12,
+     "n_with_user_rule": 41,
+     "share": {
+      "hi": 0.4358974358974359,
+      "lo": 0.15384615384615385,
+      "n_clusters": 38,
+      "point": 0.2926829268292683
+     }
+    },
+    "claude-sonnet-4-5-20250929": {
+     "n_losing": 0,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 0.0,
+      "lo": 0.0,
+      "n_clusters": 1,
+      "point": 0.0
+     }
+    },
+    "claude-sonnet-4-6": {
+     "n_losing": 1,
+     "n_with_user_rule": 2,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.5
+     }
+    }
+   }
+  },
+  "pooled_descriptive": {
+   "by_model": {
+    "claude-haiku-4-5-20251001": {
+     "lost_rate": {
+      "hi": 0.47619047619047616,
+      "lo": 0.47619047619047616,
+      "n_clusters": 1,
+      "point": 0.47619047619047616
+     },
+     "n_compactions": 1,
+     "n_items": 21,
+     "n_lost": 10
+    },
+    "claude-opus-4-1-20250805": {
+     "lost_rate": {
+      "hi": 0.33620689655172414,
+      "lo": 0.2857142857142857,
+      "n_clusters": 2,
+      "point": 0.3263888888888889
+     },
+     "n_compactions": 10,
+     "n_items": 144,
+     "n_lost": 47
+    },
+    "claude-opus-4-5-20251101": {
+     "lost_rate": {
+      "hi": 0.3592177266306131,
+      "lo": 0.23587624584717606,
+      "n_clusters": 36,
+      "point": 0.292436974789916
+     },
+     "n_compactions": 55,
+     "n_items": 595,
+     "n_lost": 174
+    },
+    "claude-opus-4-6": {
+     "lost_rate": {
+      "hi": 0.256817929833273,
+      "lo": 0.16280255768992702,
+      "n_clusters": 89,
+      "point": 0.20684523809523808
+     },
+     "n_compactions": 99,
+     "n_items": 1344,
+     "n_lost": 278
+    },
+    "claude-opus-4-7": {
+     "lost_rate": {
+      "hi": 0.2711864406779661,
+      "lo": 0.09090909090909091,
+      "n_clusters": 2,
+      "point": 0.24285714285714285
+     },
+     "n_compactions": 3,
+     "n_items": 70,
+     "n_lost": 17
+    },
+    "claude-opus-4.6": {
+     "lost_rate": {
+      "hi": 0.1,
+      "lo": 0.1,
+      "n_clusters": 1,
+      "point": 0.1
+     },
+     "n_compactions": 1,
+     "n_items": 10,
+     "n_lost": 1
+    },
+    "claude-sonnet-4-20250514": {
+     "lost_rate": {
+      "hi": 0.39285714285714285,
+      "lo": 0.1875,
+      "n_clusters": 3,
+      "point": 0.3375
+     },
+     "n_compactions": 7,
+     "n_items": 80,
+     "n_lost": 27
+    },
+    "claude-sonnet-4-5-20250929": {
+     "lost_rate": {
+      "hi": 0.341417348747491,
+      "lo": 0.24270876764548216,
+      "n_clusters": 23,
+      "point": 0.2990936555891239
+     },
+     "n_compactions": 55,
+     "n_items": 662,
+     "n_lost": 198
+    },
+    "claude-sonnet-4-6": {
+     "lost_rate": {
+      "hi": 0.24103448275862063,
+      "lo": 0.1658469902759243,
+      "n_clusters": 44,
+      "point": 0.20287769784172663
+     },
+     "n_compactions": 56,
+     "n_items": 695,
+     "n_lost": 141
+    },
+    "claude-sonnet-4.6": {
+     "lost_rate": {
+      "hi": 0.4,
+      "lo": 0.4,
+      "n_clusters": 1,
+      "point": 0.4
+     },
+     "n_compactions": 1,
+     "n_items": 5,
+     "n_lost": 2
+    },
+    "exact-dodo": {
+     "lost_rate": {
+      "hi": 0.0967741935483871,
+      "lo": 0.0967741935483871,
+      "n_clusters": 1,
+      "point": 0.0967741935483871
+     },
+     "n_compactions": 1,
+     "n_items": 31,
+     "n_lost": 3
+    },
+    "glm-4.7": {
+     "lost_rate": {
+      "hi": 0.13333333333333333,
+      "lo": 0.13333333333333333,
+      "n_clusters": 1,
+      "point": 0.13333333333333333
+     },
+     "n_compactions": 2,
+     "n_items": 15,
+     "n_lost": 2
+    },
+    "glm-5": {
+     "lost_rate": {
+      "hi": 0.3125,
+      "lo": 0.2692307692307692,
+      "n_clusters": 3,
+      "point": 0.29333333333333333
+     },
+     "n_compactions": 4,
+     "n_items": 75,
+     "n_lost": 22
+    },
+    "gpt-5.3-codex": {
+     "lost_rate": {
+      "hi": 0.4583333333333333,
+      "lo": 0.11764705882352941,
+      "n_clusters": 3,
+      "point": 0.2597402597402597
+     },
+     "n_compactions": 5,
+     "n_items": 77,
+     "n_lost": 20
+    }
+   },
+   "invented_exploratory": {
+    "n_invented_spans": 564,
+    "n_spans": 11586,
+    "n_summaries": 300,
+    "span_share": {
+     "hi": 0.055522808346183,
+     "lo": 0.042254375180505635,
+     "n_clusters": 210,
+     "point": 0.04867944070429829
+    },
+    "summaries_with_invented": {
+     "hi": 0.7658227848101266,
+     "lo": 0.6588503790809221,
+     "n_clusters": 210,
+     "point": 0.7133333333333334
+    }
+   },
+   "lost_by_type": {
+    "commitment": {
+     "lost_rate": {
+      "hi": 0.21649484536082475,
+      "lo": 0.08411214953271028,
+      "n_clusters": 75,
+      "point": 0.14563106796116504
+     },
+     "n_items": 103,
+     "n_lost": 15
+    },
+    "decision": {
+     "lost_rate": {
+      "hi": 0.198767986542443,
+      "lo": 0.13605849483365884,
+      "n_clusters": 201,
+      "point": 0.16651904340124005
+     },
+     "n_items": 1129,
+     "n_lost": 188
+    },
+    "permission": {
+     "lost_rate": {
+      "hi": 0.4312082985821517,
+      "lo": 0.2540522079456506,
+      "n_clusters": 79,
+      "point": 0.3418803418803419
+     },
+     "n_items": 117,
+     "n_lost": 40
+    },
+    "rule": {
+     "lost_rate": {
+      "hi": 0.35294253185145025,
+      "lo": 0.2764633535129717,
+      "n_clusters": 194,
+      "point": 0.314596554850408
+     },
+     "n_items": 1103,
+     "n_lost": 347
+    },
+    "task_state": {
+     "lost_rate": {
+      "hi": 0.28762498098041944,
+      "lo": 0.22602960393155744,
+      "n_clusters": 210,
+      "point": 0.2565597667638484
+     },
+     "n_items": 1372,
+     "n_lost": 352
+    }
+   },
+   "n_records": 300,
+   "n_records_ok": 300,
+   "pooled": {
+    "dropped_rate": {
+     "hi": 0.2665759196020777,
+     "lo": 0.21930042706481775,
+     "n_clusters": 210,
+     "point": 0.24320083682008367
+    },
+    "lost_rate": {
+     "hi": 0.2702439095388347,
+     "lo": 0.22069291057159632,
+     "n_clusters": 210,
+     "point": 0.24633891213389122
+    },
+    "n_items": 3824,
+    "n_lost": 942,
+    "n_session_groups": 210
+   },
+   "user_rule_loss": {
+    "n_compactions": 300,
+    "n_losing": 110,
+    "n_with_user_rule": 252,
+    "share": {
+     "hi": 0.5,
+     "lo": 0.36897859778597786,
+     "n_clusters": 173,
+     "point": 0.4365079365079365
+    }
+   },
+   "user_rule_loss_by_model": {
+    "claude-haiku-4-5-20251001": {
+     "n_losing": 1,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 1.0,
+      "lo": 1.0,
+      "n_clusters": 1,
+      "point": 1.0
+     }
+    },
+    "claude-opus-4-1-20250805": {
+     "n_losing": 7,
+     "n_with_user_rule": 10,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.625,
+      "n_clusters": 2,
+      "point": 0.7
+     }
+    },
+    "claude-opus-4-5-20251101": {
+     "n_losing": 23,
+     "n_with_user_rule": 42,
+     "share": {
+      "hi": 0.6774193548387096,
+      "lo": 0.42102631578947364,
+      "n_clusters": 26,
+      "point": 0.5476190476190477
+     }
+    },
+    "claude-opus-4-6": {
+     "n_losing": 33,
+     "n_with_user_rule": 87,
+     "share": {
+      "hi": 0.4819277108433735,
+      "lo": 0.26827141236528645,
+      "n_clusters": 77,
+      "point": 0.3793103448275862
+     }
+    },
+    "claude-opus-4-7": {
+     "n_losing": 2,
+     "n_with_user_rule": 3,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.6666666666666666
+     }
+    },
+    "claude-opus-4.6": {
+     "n_losing": 0,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 0.0,
+      "lo": 0.0,
+      "n_clusters": 1,
+      "point": 0.0
+     }
+    },
+    "claude-sonnet-4-20250514": {
+     "n_losing": 4,
+     "n_with_user_rule": 7,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.4,
+      "n_clusters": 3,
+      "point": 0.5714285714285714
+     }
+    },
+    "claude-sonnet-4-5-20250929": {
+     "n_losing": 21,
+     "n_with_user_rule": 47,
+     "share": {
+      "hi": 0.6153846153846154,
+      "lo": 0.25639534883720927,
+      "n_clusters": 20,
+      "point": 0.44680851063829785
+     }
+    },
+    "claude-sonnet-4-6": {
+     "n_losing": 14,
+     "n_with_user_rule": 43,
+     "share": {
+      "hi": 0.475,
+      "lo": 0.1794871794871795,
+      "n_clusters": 34,
+      "point": 0.32558139534883723
+     }
+    },
+    "claude-sonnet-4.6": {
+     "n_losing": 0,
+     "n_with_user_rule": 0,
+     "share": {
+      "hi": NaN,
+      "lo": NaN,
+      "n_clusters": 0,
+      "point": NaN
+     }
+    },
+    "exact-dodo": {
+     "n_losing": 0,
+     "n_with_user_rule": 1,
+     "share": {
+      "hi": 0.0,
+      "lo": 0.0,
+      "n_clusters": 1,
+      "point": 0.0
+     }
+    },
+    "glm-4.7": {
+     "n_losing": 1,
+     "n_with_user_rule": 2,
+     "share": {
+      "hi": 0.5,
+      "lo": 0.5,
+      "n_clusters": 1,
+      "point": 0.5
+     }
+    },
+    "glm-5": {
+     "n_losing": 1,
+     "n_with_user_rule": 3,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.0,
+      "n_clusters": 2,
+      "point": 0.3333333333333333
+     }
+    },
+    "gpt-5.3-codex": {
+     "n_losing": 3,
+     "n_with_user_rule": 5,
+     "share": {
+      "hi": 1.0,
+      "lo": 0.3333333333333333,
+      "n_clusters": 3,
+      "point": 0.6
+     }
+    }
+   }
+  },
+  "population_estimate": {
+   "invented_exploratory": {
+    "n_invented_spans": 564,
+    "n_spans": 11586,
+    "n_summaries": 300,
+    "span_share": {
+     "hi": null,
+     "lo": null,
+     "n_clusters": null,
+     "point": 0.049505258503265315
+    },
+    "summaries_with_invented": {
+     "hi": null,
+     "lo": null,
+     "n_clusters": null,
+     "point": 0.7719827586206897
+    }
+   },
+   "lost_by_type": {
+    "commitment": {
+     "lost_rate": {
+      "hi": null,
+      "lo": null,
+      "n_clusters": null,
+      "point": 0.11326933935629588
+     },
+     "n_items": 103,
+     "n_lost": 15
+    },
+    "decision": {
+     "lost_rate": {
+      "hi": null,
+      "lo": null,
+      "n_clusters": null,
+      "point": 0.12155980583151257
+     },
+     "n_items": 1129,
+     "n_lost": 188
+    },
+    "permission": {
+     "lost_rate": {
+      "hi": null,
+      "lo": null,
+      "n_clusters": null,
+      "point": 0.23502359917705434
+     },
+     "n_items": 117,
+     "n_lost": 40
+    },
+    "rule": {
+     "lost_rate": {
+      "hi": null,
+      "lo": null,
+      "n_clusters": null,
+      "point": 0.31428114541571
+     },
+     "n_items": 1103,
+     "n_lost": 347
+    },
+    "task_state": {
+     "lost_rate": {
+      "hi": null,
+      "lo": null,
+      "n_clusters": null,
+      "point": 0.18873450995118288
+     },
+     "n_items": 1372,
+     "n_lost": 352
+    }
+   },
+   "n_records": 300,
+   "n_records_ok": 300,
+   "pooled": {
+    "dropped_rate": {
+     "hi": null,
+     "lo": null,
+     "n_clusters": null,
+     "point": 0.2117226139113964
+    },
+    "lost_rate": {
+     "hi": null,
+     "lo": null,
+     "n_clusters": null,
+     "point": 0.20341602651794174
+    },
+    "n_items": 3824,
+    "n_lost": 942,
+    "n_session_groups": 210
+   },
+   "user_rule_loss": {
+    "n_compactions": 300,
+    "n_losing": 110,
+    "n_with_user_rule": 252,
+    "share": {
+     "hi": null,
+     "lo": null,
+     "n_clusters": null,
+     "point": 0.34448515233320476
+    }
+   }
+  }
+ }
+}
