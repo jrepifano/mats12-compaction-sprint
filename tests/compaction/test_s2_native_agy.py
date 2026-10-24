@@ -292,6 +292,7 @@ def test_a_killed_agy_run_after_spend_reruns_once_heavy(tmp_path, monkeypatch):
     monkeypatch.setattr(A, "run_base", fake_run)
     monkeypatch.setattr(S, "_sim_model", lambda r, n, c: None)
     monkeypatch.setattr(S, "_live_sessions", lambda h, arm="x": 0)
+    monkeypatch.setattr(S, "_max_ping", lambda r: None)  # never a real claude -p in tests
     monkeypatch.setattr(S, "_latest_rate", lambda r: {})
     monkeypatch.setattr(S, "RATE_BACKOFF_S", 0)
     monkeypatch.setattr(N, "code_version", lambda: {"dirty": False})
@@ -365,3 +366,286 @@ def test_a_background_kill_with_survivors_is_unconfirmed(monkeypatch):
     sb, rec = BgSB(immortal={21}), []
     assert A.background_rule(sb, None, rec)() is True  # tells detached_exec to stop waiting
     assert rec[0]["outcome"] == "unconfirmed" and rec[0]["survivors"] == [21]
+
+
+def _s2n():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2n", "scripts/s2_native.py")
+    S = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(S)
+    return S
+
+
+def _audit_stubs(monkeypatch, S, rc=0):
+    from compaction.s2.native import audit as AU
+    calls = {"requirements": 0, "lossaudit": 0}
+
+    def reqs(rd, bf):
+        calls["requirements"] += 1
+        for b in Path(rd).glob("b*/boundary"):  # its outputs, as the real ledger writes them
+            (b / "requirements.json").write_text("{}")
+        return [{"pre_tokens": 150_000, "items": 4, "lost": 1, "lost_new": 1}]
+
+    def la(st, out, docker_host=None):
+        calls["lossaudit"] += 1
+        Path(out).mkdir(parents=True, exist_ok=True)
+        (Path(out) / "losses.jsonl").write_text("")  # an empty out dir is never reused
+        return rc
+
+    monkeypatch.setattr(AU, "requirements", reqs)
+    monkeypatch.setattr(AU, "stage_lossaudit", lambda rds, st: [])
+    monkeypatch.setattr(AU, "run_lossaudit", la)
+    monkeypatch.setattr(AU, "lossaudit_counts", lambda out, rk: {"items": 3, "lost": 0})
+    monkeypatch.setattr(S, "_max_ping", lambda r: None)  # never a real claude -p in tests
+    return calls
+
+
+def _queued_run(tmp_path, S, rk="kombu-agy-a1", comps=("requirements", "lossaudit")):
+    rd = tmp_path / rk
+    (rd / "b1" / "boundary").mkdir(parents=True, exist_ok=True)
+    (rd / "run.json").write_text(json.dumps({"run_key": rk}))
+    for n in ("boundary.json", "record.json"):
+        (rd / "b1" / "boundary" / n).write_text(json.dumps({"pre_tokens": 1}))
+    from compaction.s2 import session as SS
+    assert [b.name for b in SS.boundary_dirs(rd)] == ["b1"]
+    return rd, S._queue_audit(tmp_path, rd, rk, "seven_day at 0.91", comps,
+                              S.audit_inputs(rd))
+
+
+def test_past_the_max_hold_audits_queue_and_run_after_the_reset(tmp_path, monkeypatch):
+    import sys as _sys
+    S = _s2n()
+    week = {"now": {}}
+    held = {"unifiedWindows": {"seven_day": {"utilization": 0.91, "resetsAt": 4e9,
+                                             "status": "allowed"}}}
+
+    def fake_run(cfg, sim_model):
+        cfg.run_dir.mkdir(parents=True)
+        (cfg.run_dir / "run.json").write_text(json.dumps({"run_key": cfg.run_key}))
+        week["now"] = held  # the window crosses 90% while the run is live
+        return {"run_key": cfg.run_key, "end": "submitted", "boundaries": [1],
+                "sim_cost_usd": 0.5, "steps": {}}
+
+    calls = _audit_stubs(monkeypatch, S)
+    monkeypatch.setattr(A, "run_base", fake_run)
+    monkeypatch.setattr(S, "_sim_model", lambda r, n, c: None)
+    monkeypatch.setattr(S, "_live_sessions", lambda h, arm="x": 0)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: week["now"])
+    monkeypatch.setattr(N, "code_version", lambda: {"dirty": False})
+    import compaction.s1_second_look as SL
+    monkeypatch.setattr(SL, "check_frozen", lambda: None)
+    _sys.argv = ["x"]
+    S.main(["agy-batch", "--go-from-jacob", "--root", str(tmp_path),
+            "--tasks", "kombu-single-active-consumer-priority"])
+    assert calls == {"requirements": 0, "lossaudit": 0}
+    (q,) = (tmp_path / S.AUDIT_QUEUE).glob("*.json")
+    entry = json.loads(q.read_text())
+    assert entry["components"] == ["requirements", "lossaudit"]
+    assert Path(entry["run_dir"]).is_absolute()
+    rows = [json.loads(x) for x in next((tmp_path / "_batch").glob("*.jsonl")).read_text()
+            .splitlines()]
+    done = next(r for r in rows if r["event"] == "done")
+    assert done["audit_queued"] == str(q) and done["items"] is None and done["lost"] is None
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 3  # still held
+    assert q.exists() and calls["requirements"] == 0
+    week["now"] = {}
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 0
+    assert calls == {"requirements": 1, "lossaudit": 1}
+    assert not q.exists() and (q.parent / "done" / q.name).exists()
+    ad = tmp_path / "_audit" / entry["run_key"]
+    assert json.loads((ad / "lossaudit.done.json").read_text())["result"]["lossaudit"] == {
+        "items": 3, "lost": 0}
+
+
+def test_the_second_audit_holds_if_the_window_crosses_during_the_first(tmp_path, monkeypatch):
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S)
+    rd, _ = _queued_run(tmp_path, S)
+    import threading
+
+    def hold():
+        return "seven_day at 0.9" if calls["requirements"] else None
+
+    au = S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock(), hold=hold)
+    assert au["pending"] == ["lossaudit"] and calls == {"requirements": 1, "lossaudit": 0}
+    assert S._audit_counts(au)["items"] == 4 and S._audit_counts(au)["la_items"] is None
+
+
+def test_a_failed_audit_stays_queued_and_a_done_component_is_not_rerun(tmp_path, monkeypatch):
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S, rc=1)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    _, q = _queued_run(tmp_path, S)
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 5
+    e = json.loads(q.read_text())
+    assert e["components"] == ["lossaudit"] and "lossaudit rc 1" in e["last_error"]
+    calls2 = _audit_stubs(monkeypatch, S, rc=0)
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 0
+    assert calls["requirements"] == 1 and calls2 == {"requirements": 0, "lossaudit": 1}
+    # a crash after the work but before the entry moved: the records are reused
+    _, q2 = _queued_run(tmp_path, S, rk="kombu-agy-a1")
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 0
+    assert calls2 == {"requirements": 0, "lossaudit": 1} and not q2.exists()
+
+
+def test_a_changed_run_or_malformed_entry_stays_queued(tmp_path, monkeypatch):
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    rd, q = _queued_run(tmp_path, S)
+    (rd / "b1" / "boundary" / "boundary.json").write_text(json.dumps({"pre_tokens": 2}))
+    (q.parent / "zz-broken.json").write_text("{trunc")
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 5
+    assert calls == {"requirements": 0, "lossaudit": 0}
+    assert "inputs changed" in json.loads(q.read_text())["last_error"]
+    assert (q.parent / "zz-broken.json").exists()
+
+
+def test_one_audit_queued_at_a_time(tmp_path, monkeypatch):
+    import fcntl
+    S = _s2n()
+    _audit_stubs(monkeypatch, S)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    _queued_run(tmp_path, S)
+    with open(tmp_path / S.AUDIT_QUEUE / ".lock", "a") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 4
+
+
+def test_block_slots_hold_only_older_launchers(tmp_path):
+    import os
+    S = _s2n()
+    S._slot(tmp_path, "run-a1")
+    S._slot(tmp_path, S.BLOCK_PREFIX + "1")
+    blk = tmp_path / "_batch" / "slots" / (S.BLOCK_PREFIX + "1")
+    os.utime(blk, (1, 1))  # aged placeholders stay ignored too
+    assert S._slot(tmp_path) == (1, 1)
+
+
+def _ping_events(source="none"):
+    info = {"unifiedWindows": {"seven_day": {"utilization": 0.91, "resetsAt": 4e9}},
+            "isUsingOverage": False, "overageStatus": "rejected"}
+    return [{"type": "system", "subtype": "init", "apiKeySource": source, "cwd": "/x"},
+            {"type": "rate_limit_event", "rate_limit_info": info},
+            {"type": "result", "result": "OK"}, {"type": "_process", "returncode": 0}]
+
+
+def test_max_ping_only_when_streams_are_stale_and_keeps_rate_events_only(tmp_path):
+    import os
+    S = _s2n()
+    live = tmp_path / "run-a1" / "steps" / "02_implement" / "stream.jsonl"
+    live.parent.mkdir(parents=True)
+    live.write_text("")
+    calls, checks = [], []
+
+    def fake(cwd, args, stdin, timeout_s, env, on_event):
+        calls.append((args, env))
+        evs = _ping_events()
+        assert not any(on_event(e) for e in evs)
+        return evs
+
+    def ping():
+        return S._max_ping(tmp_path, run=fake, checks=lambda: checks.append(1))
+
+    assert ping() is None and not calls  # a stream is fresh
+    old = live.stat().st_mtime - 2 * S.MAX_PING_S
+    os.utime(live, (old, old))
+    assert ping() == "ok" and checks == [1]
+    args, env = calls[0]
+    assert "CLAUDE_CODE_OAUTH_TOKEN" not in env and "ANTHROPIC_API_KEY" not in env
+    assert args[args.index("--model") + 1] == S.CC.MODEL and args[args.index("--tools") + 1] == ""
+    (f,) = tmp_path.glob("_ping/steps/*/stream.jsonl")
+    assert [json.loads(x)["type"] for x in f.read_text().splitlines()] == ["rate_limit_event"]
+    assert S.window_hold(S._latest_rate(tmp_path), 1000)[0].startswith("seven_day")
+    assert ping() is None and len(calls) == 1  # spaced
+
+
+def test_a_ping_off_the_subscription_is_killed_unpublished_and_stops_pings(tmp_path):
+    S = _s2n()
+    killed = []
+
+    def fake(cwd, args, stdin, timeout_s, env, on_event):
+        for e in _ping_events("ANTHROPIC_API_KEY"):
+            if on_event(e):
+                killed.append(e["type"])
+                return [e]
+        return []
+
+    assert S._max_ping(tmp_path, run=fake, checks=lambda: None) == "bad"
+    assert killed == ["system"] and not list(tmp_path.glob("_ping/steps/*/stream.jsonl"))
+    for p in (tmp_path / "_ping" / "attempts").iterdir():
+        p.unlink()
+    assert S._max_ping(tmp_path, run=fake, checks=lambda: None) is None  # off for the process
+
+
+def test_a_done_record_is_not_reused_once_its_outputs_are_gone(tmp_path, monkeypatch):
+    import threading
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S)
+    rd, _ = _queued_run(tmp_path, S)
+    from compaction.s2.native import audit as AU
+
+    def reqs(rd, bf):  # the real one writes its outputs into each boundary
+        calls["requirements"] += 1
+        (rd / "b1" / "boundary" / "grades.json").write_text("{}")
+        return [{"pre_tokens": 1, "items": 4, "lost": 1}]
+
+    def la(st, out, docker_host=None):
+        calls["lossaudit"] += 1
+        Path(out).mkdir(parents=True, exist_ok=True)
+        (Path(out) / "losses.jsonl").write_text("")
+        return 0
+
+    monkeypatch.setattr(AU, "requirements", reqs)
+    monkeypatch.setattr(AU, "run_lossaudit", la)
+    for _ in range(2):
+        S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())
+    assert calls == {"requirements": 1, "lossaudit": 1}  # the second pass reused both
+    (rd / "b1" / "boundary" / "grades.json").unlink()
+    (tmp_path / "_audit" / "kombu-agy-a1" / "lossaudit" / "losses.jsonl").unlink()
+    S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())
+    assert calls == {"requirements": 2, "lossaudit": 2}
+
+
+def test_boundary_metadata_is_part_of_the_audit_inputs(tmp_path):
+    S = _s2n()
+    rd, _ = _queued_run(tmp_path, S)
+    (rd / "b1" / "run.json").write_text(json.dumps({"image": "a"}))
+    before = S.audit_inputs(rd)
+    (rd / "b1" / "run.json").write_text(json.dumps({"image": "b"}))
+    assert S.audit_inputs(rd) != before
+
+
+def test_entries_with_a_bad_schema_are_reported_and_skipped(tmp_path, monkeypatch):
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    _, q = _queued_run(tmp_path, S)
+    good = json.loads(q.read_text())
+    qd = q.parent
+    (qd / "a-list.json").write_text("[]")
+    (qd / "b-typo.json").write_text(json.dumps({**good, "components": ["lossaudit", "typo"]}))
+    (qd / "c-rel.json").write_text(json.dumps({**good, "run_dir": "kombu-agy-a1"}))
+    (qd / "c-nested.json").write_text(json.dumps({**good, "components": [{}, []]}))
+    rd2 = tmp_path / "other"
+    (rd2 / "b1" / "boundary").mkdir(parents=True)
+    (rd2 / "run.json").write_text("[1]")
+    (qd / "d-runjson.json").write_text(json.dumps({**good, "run_dir": str(rd2)}))
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 5
+    assert calls == {"requirements": 1, "lossaudit": 1} and not q.exists()  # the good one ran
+    assert all((qd / n).exists() for n in ("a-list.json", "b-typo.json", "c-rel.json",
+                                           "c-nested.json", "d-runjson.json"))
+
+
+def test_a_partly_done_entry_revalidates_its_finished_component(tmp_path, monkeypatch):
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S, rc=1)
+    monkeypatch.setattr(S, "_latest_rate", lambda r: {})
+    rd, q = _queued_run(tmp_path, S)
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 5
+    assert json.loads(q.read_text())["components"] == ["lossaudit"]
+    (rd / "b1" / "boundary" / "requirements.json").unlink()  # its outputs vanish
+    calls2 = _audit_stubs(monkeypatch, S, rc=0)
+    assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 0
+    assert calls["requirements"] == 1 and calls2 == {"requirements": 1, "lossaudit": 1}
+    assert (rd / "b1" / "boundary" / "requirements.json").exists() and not q.exists()

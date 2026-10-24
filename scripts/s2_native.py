@@ -21,6 +21,10 @@ Commands:
   --go-from-jacob)   resume boundary BDIR from its kept image with an edited summary.
   --probe-word W: append "FORK-PROBE: <W>" to the summary and ask the fork to repeat it
   without tools (the fork round-trip check); prints whether it did.
+- cc-batch / agy-batch: the pilot batch (see `_batch`). Past Max's hold (7-day >= 90% or a
+  rejected window) no run launches and a finished run's audits are queued, not run.
+- audit-queued [--arm claude_code|agy]   ($0 on Max) run the queued audits once the window
+  has reset.
 
 Auth: CLAUDE_CODE_OAUTH_TOKEN from .env (`claude setup-token`), passed into the container only
 as `docker exec -e`. Docker host: --host (default ssh://rig, the desktop).
@@ -199,7 +203,10 @@ BATCH_TASKS = ("testem-bail-on-test-failure", "boa-hierarchical-evaluation-cance
                "kombu-single-active-consumer-priority", "fastapi-implicit-head-options")
 RATE_BACKOFF_S = 900
 SEVEN_DAY_HOLD = 0.90  # hold new launches here (main session, 24 Oct): the Opus screens,
-# decay grading and audits share Max's weekly window and need headroom
+# decay grading and audits share Max's weekly window and need headroom; from the same point
+# audits not yet started are queued for after the reset (Jacob, 24 Oct)
+AUDIT_QUEUE = "_audit/queued"  # <root>/_audit/queued/<run key>.json, run by audit-queued
+BLOCK_PREFIX = "_block-"  # slot files of this name block launchers of older code only
 
 
 def _latest_rate(root: Path) -> dict | None:
@@ -216,6 +223,88 @@ def _latest_rate(root: Path) -> dict | None:
                     best = (p.stat().st_mtime, info)
                 break
     return best[1] if best else None
+
+
+MAX_PING_S = 900  # the window reading is refreshed when no stream is newer than this
+_PING: dict = {"checked": False, "off": None}  # per process: Max login checked; why pings stop
+
+
+def _ping_checks() -> None:
+    """The Max judges' own preconditions (claude_headless): a logged-in claude.ai Max account
+    and no local policy settings that could change the route. Raises on either."""
+    from compaction import claude_headless as H
+    H.check_auth()
+    H.check_managed_settings()
+
+
+def _max_ping(max_root: Path, now: float | None = None, run=None, checks=None) -> str | None:
+    """Keep Max's window reading fresh while no Claude Code session streams (main session,
+    24 Oct). When no stream under `max_root` is newer than MAX_PING_S and no ping was tried in
+    that time: one tiny Haiku `claude -p` on the laptop's Max login, through claude_headless
+    (its clean env strips API keys and the container token; the login and policy checks run
+    once per process; a paid-route event kills the call as it streams). Only a call whose route
+    verifies "ok" is published: its rate_limit_event lines, as <max_root>/_ping/steps/<stamp>/
+    stream.jsonl, where `_latest_rate` reads them. Attempts are spaced by <max_root>/_ping/
+    attempts/ files. Returns None when skipped, else the route ("ok", "unknown", "bad"); "bad"
+    stops pings for the process."""
+    import tempfile
+    import time
+
+    from compaction import claude_headless as H
+    now = time.time() if now is None else now
+    root = Path(max_root)
+    if _PING["off"] or any(now - p.stat().st_mtime < MAX_PING_S
+                           for p in root.glob("*/steps/*/stream.jsonl")):
+        return None
+    tries = root / "_ping" / "attempts"
+    tries.mkdir(parents=True, exist_ok=True)
+    if any(now - p.stat().st_mtime < MAX_PING_S for p in tries.iterdir()):
+        return None
+    stamp = _stamp()
+    (tries / stamp).write_text("")
+    if not _PING["checked"]:
+        (checks or _ping_checks)()
+        _PING["checked"] = True
+    paid: list[str] = []
+
+    def guard(ev: dict) -> bool:
+        why = H._paid_event(ev)
+        if why:
+            paid.append(why)
+        return bool(why)
+
+    args = ["-p", "--model", CC.MODEL, "--safe-mode", "--tools", "",
+            "--no-session-persistence", "--strict-mcp-config", "--output-format", "stream-json",
+            "--verbose", "--system-prompt", H.CANARY_SYSTEM]
+    with tempfile.TemporaryDirectory(prefix="emx-max-ping-") as cwd:
+        events = (run or H.run_session)(cwd, args, H.CANARY_USER, 120,
+                                        env=H.clean_env(H.CANARY_MAX_OUTPUT), on_event=guard)
+    route = "bad" if paid else H.verify_route(H.route_evidence(events))
+    if route == "bad":
+        _PING["off"] = paid[0] if paid else "route bad"
+        return route
+    if route == "ok":
+        out = root / "_ping" / "steps" / stamp / "stream.jsonl"
+        _write_atomic(out, "".join(json.dumps(e) + "\n" for e in events
+                                   if e.get("type") == "rate_limit_event"))
+    return route
+
+
+def _ping_logged(max_root: Path, line) -> None:
+    """`_max_ping`, its failures and non-"ok" routes logged through `line`, never raised."""
+    try:
+        route = _max_ping(max_root)
+    except Exception as e:  # noqa: BLE001 - a stale reading, never a stopped batch
+        route = f"error {type(e).__name__}: {e}"[:300]
+    if route and route != "ok":
+        line(event="max_ping", route=route, pings_off=_PING["off"])
+
+
+def _write_atomic(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
 
 
 HEAVY_TASKS = ("testem-bail-on-test-failure", "vitest-duration-sharding")  # node suites
@@ -283,8 +372,255 @@ def _slot(root: Path, name: str | None = None, release: bool = False):
         (d / name).write_text(str(time.time()))
         return None
     now = time.time()
-    ages = [now - p.stat().st_mtime for p in d.iterdir() if p.is_file()]
+    ages = [now - p.stat().st_mtime for p in d.iterdir()
+            if p.is_file() and not p.name.startswith(BLOCK_PREFIX)]
     return len(ages), sum(1 for x in ages if x < 300)
+
+
+def _backend_factory():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "s2_interact_audit", C.REPO_ROOT / "scripts" / "s2_interact_audit.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod.max_backend(4)
+
+
+AUDIT_INPUTS = ("pre_messages.json", "post_messages.json", "compaction.json", "record.json",
+                "boundary.json", "sim_state.json", "sim_replies.json")  # the capture's files
+COMPONENTS = ("requirements", "lossaudit")
+
+
+def audit_inputs(rd: Path) -> str:
+    """sha256 over what the audits read: run.json, and per graded boundary its top-level files
+    (b<k>/run.json, which names lossaudit's task and image, and the rest) and its capture files
+    (AUDIT_INPUTS; not the audits' own outputs, which they add to the same dir)."""
+    import hashlib
+
+    from compaction.s2 import session as SS
+    rd = Path(rd)
+    rj = rd / "run.json"
+    h = hashlib.sha256(rj.read_bytes() if rj.exists() else b"\0missing")
+    for bdir in SS.boundary_dirs(rd):
+        top = sorted(f.name for f in bdir.iterdir() if f.is_file())
+        for rel in [*top, *(f"boundary/{n}" for n in AUDIT_INPUTS)]:
+            f = bdir / rel
+            h.update(f"\0{bdir.name}/{rel}\0".encode())
+            h.update(f.read_bytes() if f.exists() else b"\0missing")
+    return h.hexdigest()
+
+
+def _outputs(rd: Path, ad: Path, comp: str) -> dict[str, str]:
+    """A component's output files and their sha256: requirements, everything it adds under each
+    graded boundary/ (AUDIT_INPUTS excluded); lossaudit, its out dir (the log excluded)."""
+    import hashlib
+
+    from compaction.s2 import session as SS
+    if comp == "requirements":
+        files = [f for b in SS.boundary_dirs(Path(rd)) for f in (b / "boundary").rglob("*")
+                 if f.is_file() and f.relative_to(b / "boundary").as_posix() not in AUDIT_INPUTS]
+    else:
+        files = [f for f in (ad / "lossaudit").rglob("*") if f.is_file() and f.suffix != ".log"]
+    return {str(f.resolve()): hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(files)}
+
+
+def _component_ok(au: dict, comp: str) -> bool:
+    if comp == "requirements":
+        return "requirements" in au
+    return "lossaudit" in au and au.get("lossaudit_rc") == 0
+
+
+def _audits(root: Path, rd: Path, rk: str, host: str | None, la_lock, *, hold=None,
+            only=COMPONENTS, inputs: str | None = None) -> dict:
+    """The run's audits (`only` of COMPONENTS), into its own dirs (astra delta r1 #7);
+    failures are recorded, never lose the run (r1 #4). `hold()` (a reason or None) is asked
+    right before each component, the lossaudit's after its lock: a held component is listed in
+    `pending` and not run. A component that succeeds is recorded as <root>/_audit/<rk>/
+    <component>.done.json with the inputs' hash and its outputs' manifest; a record whose
+    inputs and outputs both still match is reused instead of running the component again. So
+    a resumed queue entry repeats nothing that finished before a crash once its record was
+    written; a crash between a backend finishing and its record repeats that component (the
+    requirement split and eligibility are kept per boundary; grading and lossaudit rerun)."""
+    from compaction.s2.native import audit as AU
+    out: dict = {}
+    ad = root / "_audit" / rk
+    inputs = inputs or audit_inputs(rd)
+
+    def done(comp: str) -> bool:
+        f = ad / f"{comp}.done.json"
+        try:
+            rec = json.loads(f.read_text())
+        except (OSError, ValueError):
+            return False
+        if rec.get("inputs") != inputs or not rec.get("outputs") or \
+                _outputs(rd, ad, comp) != rec["outputs"]:
+            return False
+        out.update(rec["result"])
+        return True
+
+    def held(comp: str) -> bool:
+        why = hold() if hold else None
+        if why:
+            out.setdefault("pending", []).append(comp)
+            out["pending_why"] = why
+        return bool(why)
+
+    def record(comp: str, keys: tuple[str, ...]) -> None:
+        if _component_ok(out, comp):
+            _write_atomic(ad / f"{comp}.done.json", json.dumps(
+                {"inputs": inputs, "outputs": _outputs(rd, ad, comp),
+                 "result": {k: out[k] for k in keys if k in out}}))
+
+    if "requirements" in only and not done("requirements") and not held("requirements"):
+        try:
+            out["requirements"] = AU.requirements(rd, _backend_factory)
+        except Exception as e:  # noqa: BLE001
+            out["requirements_error"] = f"{type(e).__name__}: {e}"[:500]
+        record("requirements", ("requirements",))
+    if "lossaudit" in only and not done("lossaudit"):
+        with la_lock:
+            if not held("lossaudit"):
+                try:
+                    AU.stage_lossaudit([rd], ad / "staging")
+                    out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit",
+                                                           docker_host=host)
+                    out["lossaudit"] = AU.lossaudit_counts(ad / "lossaudit", rk)
+                except Exception as e:  # noqa: BLE001
+                    out["lossaudit_error"] = f"{type(e).__name__}: {e}"[:500]
+                record("lossaudit", ("lossaudit", "lossaudit_rc"))
+    return out
+
+
+def _queue_audit(root: Path, rd: Path, rk: str, why: str, components, inputs: str) -> Path:
+    """Defer a run's held audit components past Max's hold: one file per run under
+    AUDIT_QUEUE, bound to the run (absolute dir, run key, inputs' hash), written atomically."""
+    q = root / AUDIT_QUEUE / f"{rk}.json"
+    _write_atomic(q, json.dumps({
+        "run_key": rk, "run_dir": str(Path(rd).resolve()), "components": list(components),
+        "inputs": inputs, "why": why,
+        "queued_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}, indent=1))
+    return q
+
+
+def _audit_counts(au: dict) -> dict:
+    """The status-line fields of one run's audits: a component that didn't run (queued, or
+    no audits at all) gives None, never a zero count."""
+    reqs = au.get("requirements")
+    la = au.get("lossaudit") or {}
+    req_fields = {"pre_tokens": None, "items": None, "lost": None, "lost_new": None,
+                  "lost_inherited": None}
+    if reqs is not None:
+        req_fields = {"pre_tokens": [r.get("pre_tokens") for r in reqs] or None,
+                      "items": sum(r["items"] for r in reqs),
+                      "lost": sum(r["lost"] for r in reqs),
+                      "lost_new": sum(r.get("lost_new", 0) for r in reqs),
+                      "lost_inherited": sum(r.get("lost_inherited", 0) for r in reqs)}
+    return {**req_fields, "la_items": la.get("items"), "la_lost": la.get("lost"),
+            "la_rc": au.get("lossaudit_rc"),
+            "audit_errors": {k: v for k, v in au.items() if k.endswith("_error")} or None}
+
+
+def _entry_problem(e) -> str | None:
+    """Why a queue entry can't be used as written, or None."""
+    if not isinstance(e, dict):
+        return "not an object"
+    for k in ("run_key", "run_dir", "inputs"):
+        if not isinstance(e.get(k), str) or not e[k]:
+            return f"{k} missing or not a string"
+    if not Path(e["run_dir"]).is_absolute():
+        return "run_dir is not absolute"
+    comps = e.get("components")
+    if not isinstance(comps, list) or not comps or \
+            not all(isinstance(c, str) for c in comps) or \
+            not set(comps) <= set(COMPONENTS) or len(set(comps)) != len(comps):
+        return f"components must be distinct names from {COMPONENTS}"
+    return None
+
+
+def cmd_audit_queued(a) -> int:
+    """Run the queued audits of an arm's root, one run at a time, while Max's window allows
+    (asked before each component). One process at a time (a file lock; exit 4 if another
+    holds it). An entry whose components all succeed moves to <queue>/done/; one with a held
+    component keeps it and the command exits 3; a failed component, a malformed entry or a run
+    that no longer matches its entry (run key, inputs' hash) stays queued with `last_error`
+    and the exit is 5. Status lines to stdout and <root>/_audit/queued/<stamp>.jsonl."""
+    import fcntl
+    import threading
+    import time
+    _env()
+    mod = CC
+    if a.arm == "agy":
+        from compaction.s2.native import agy as mod
+    root = Path(a.root) if a.root else mod.root()
+    qdir = root / AUDIT_QUEUE
+    qdir.mkdir(parents=True, exist_ok=True)
+    log = qdir / f"{_stamp()}.jsonl"
+
+    def line(**kw) -> None:
+        kw.setdefault("utc", datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        with open(log, "a") as f:
+            f.write(json.dumps(kw) + "\n")
+        print(json.dumps(kw), flush=True)
+
+    def hold() -> str | None:
+        return window_hold(_latest_rate(CC.root()), time.time())[0]
+
+    lk = open(qdir / ".lock", "a")  # noqa: SIM115 - held for the whole command
+    try:
+        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        line(event="busy", detail="another audit-queued holds the queue")
+        return 4
+    rc = 0
+    for q in sorted(qdir.glob("*.json")):
+        _ping_logged(CC.root(), line)
+        if why := hold():
+            line(event="hold", reason="max_window", detail=why)
+            return 3
+        try:
+            e = json.loads(q.read_text())
+            bad = _entry_problem(e)
+        except (OSError, ValueError) as ex:
+            bad = f"{type(ex).__name__}: {ex}"[:300]
+        if bad:
+            line(event="malformed", entry=q.name, error=bad)
+            rc = 5
+            continue
+        rd, rk = Path(e["run_dir"]), e["run_key"]
+        try:
+            problem = None
+            rj = json.loads((rd / "run.json").read_text())
+            if not isinstance(rj, dict) or rj.get("run_key") != rk:
+                problem = "run.json names another run"
+            elif audit_inputs(rd) != e["inputs"]:
+                problem = "the run's inputs changed since it was queued"
+        except (OSError, ValueError) as ex:
+            problem = f"{type(ex).__name__}: {ex}"[:300]
+        if problem:
+            _write_atomic(q, json.dumps({**e, "last_error": problem}, indent=1))
+            line(event="mismatch", run_key=rk, error=problem)
+            rc = 5
+            continue
+        # every component, not just the entry's: one finished earlier is reused only while its
+        # done record's inputs and outputs still match, else it reruns (astra r3 #1)
+        au = _audits(root, rd, rk, a.host, threading.Lock(), hold=hold, inputs=e["inputs"])
+        left = [c for c in COMPONENTS if not _component_ok(au, c)]
+        line(event="audited", run_key=rk, components=e["components"], left=left,
+             **_audit_counts(au))
+        if not left:
+            _write_atomic(qdir / "done" / q.name, json.dumps(
+                {**e, "audited_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")},
+                indent=1))
+            q.unlink()
+            continue
+        errors = {k: v for k, v in au.items() if k.endswith("_error")}
+        _write_atomic(q, json.dumps({**e, "components": left,
+                                     "last_error": errors or au.get("pending_why")
+                                     or f"lossaudit rc {au.get('lossaudit_rc')}"}, indent=1))
+        if au.get("pending"):
+            return 3
+        rc = 5
+    return rc
 
 
 def cmd_cc_batch(a) -> int:
@@ -313,7 +649,6 @@ def _batch(a) -> int:
     from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 
     from compaction import s1_second_look as SL
-    from compaction.s2.native import audit as AU
     if not a.go_from_jacob:
         sys.exit("paid batch: pass --go-from-jacob")
     from compaction.s2.native import agy as A
@@ -347,36 +682,9 @@ def _batch(a) -> int:
             f.write(json.dumps(kw) + "\n")
         print(json.dumps(kw), flush=True)
 
-    def backend_factory():
-        import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "s2_interact_audit", C.REPO_ROOT / "scripts" / "s2_interact_audit.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod.max_backend(4)
-
     heavy_tasks = set((a.heavy_tasks or "").split(",")) - {""}
     heavy_now: set[str] = set()
     reruns: dict[str, int] = {}
-
-    def audits(rd: Path, rk: str) -> dict:
-        """Both audits of one run, into its own dirs (astra delta r1 #7); failures are
-        recorded, never lose the run (r1 #4)."""
-        out: dict = {}
-        try:
-            out["requirements"] = AU.requirements(rd, backend_factory)
-        except Exception as e:  # noqa: BLE001
-            out["requirements_error"] = f"{type(e).__name__}: {e}"[:500]
-        ad = root / "_audit" / rk
-        try:
-            with la_lock:
-                AU.stage_lossaudit([rd], ad / "staging")
-                out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit",
-                                                       docker_host=a.host)
-            out["lossaudit"] = AU.lossaudit_counts(ad / "lossaudit", rk)
-        except Exception as e:  # noqa: BLE001
-            out["lossaudit_error"] = f"{type(e).__name__}: {e}"[:500]
-        return out
 
     def one(task_id: str, attempt: int, slot: str) -> dict:
         rk = mod.run_key(task_id, attempt)
@@ -407,7 +715,13 @@ def _batch(a) -> int:
                        "sim_cost_usd": 0.0, "error": traceback.format_exc()[-1500:]}
             res["run_dir"] = str(cfg.run_dir)
             if not _rate_limited(res) and (res.get("boundaries") or res["end"] == "submitted"):
-                res["audit"] = audits(cfg.run_dir, rk)
+                inputs = audit_inputs(cfg.run_dir)
+                au = _audits(root, cfg.run_dir, rk, a.host, la_lock, inputs=inputs,
+                             hold=lambda: window_hold(_latest_rate(max_root), time.time())[0])
+                if au.get("pending"):  # past Max's hold: audit-queued runs them after the reset
+                    au["queued"] = str(_queue_audit(root, cfg.run_dir, rk, au["pending_why"],
+                                                    au["pending"], inputs))
+                res["audit"] = au
             return res
         finally:
             _slot(root, slot, release=True)
@@ -417,6 +731,7 @@ def _batch(a) -> int:
     with ThreadPoolExecutor(max_workers=a.concurrency) as ex:
         while tasks or running:
             held = False  # re-decided every pass: finished runs may make room (delta2 r1 #3)
+            _ping_logged(max_root, line)
             now = time.time()
             why, w = window_hold(_latest_rate(max_root), now)
             if why and why != hold_why:
@@ -483,19 +798,11 @@ def _batch(a) -> int:
                     tasks.append(t)
                     continue
                 au = res.get("audit") or {}
-                reqs = au.get("requirements") or []
                 line(event="done", task=t, run_key=res["run_key"], end=res["end"],
                      compactions=len(res.get("boundaries") or []),
                      pressure=res.get("compactions"),
                      window=a.window if is_cc else a.compact_at,
-                     pre_tokens=[r.get("pre_tokens") for r in reqs] or None,
-                     items=sum(r["items"] for r in reqs), lost=sum(r["lost"] for r in reqs),
-                     lost_new=sum(r.get("lost_new", 0) for r in reqs),
-                     lost_inherited=sum(r.get("lost_inherited", 0) for r in reqs),
-                     la_items=(au.get("lossaudit") or {}).get("items"),
-                     la_lost=(au.get("lossaudit") or {}).get("lost"),
-                     la_rc=au.get("lossaudit_rc"),
-                     audit_errors={k: v for k, v in au.items() if k.endswith("_error")} or None,
+                     **_audit_counts(au), audit_queued=au.get("queued"),
                      sim_usd=res.get("sim_cost_usd"), finished_usd=round(finished_usd, 4),
                      seconds=res.get("seconds"), cleanup=res.get("cleanup_unconfirmed"),
                      client_timeouts=res.get("client_timeouts"),
@@ -546,6 +853,9 @@ def main(argv: list[str] | None = None) -> int:
     ab.add_argument("--root")
     ab.add_argument("--go-from-jacob", action="store_true")
     ab.add_argument("--allow-dirty", action="store_true")
+    aq = sub.add_parser("audit-queued")
+    aq.add_argument("--arm", default="claude_code", choices=("claude_code", "agy"))
+    aq.add_argument("--root")
     cb = sub.add_parser("cc-batch")
     cb.add_argument("--tasks", help="comma-separated; default the 6 pilot tasks")
     # Jacob's 150k trigger: Claude Code's buffer below the window measured 20.2k at 163k
@@ -580,7 +890,8 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     return {"egress-check": cmd_egress_check, "cc-base": cmd_cc_base,
             "cc-fork": cmd_cc_fork, "agy-base": cmd_agy_base,
-            "cc-batch": cmd_cc_batch, "agy-batch": cmd_agy_batch}[a.cmd](a)
+            "cc-batch": cmd_cc_batch, "agy-batch": cmd_agy_batch,
+            "audit-queued": cmd_audit_queued}[a.cmd](a)
 
 
 if __name__ == "__main__":
