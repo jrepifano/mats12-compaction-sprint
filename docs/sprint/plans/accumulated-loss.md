@@ -1,6 +1,6 @@
 # Do accumulated compaction losses change what a coding agent does?
 
-Draft v0.1, 24 Oct 2026. Not yet reviewed. It follows the SWE-Interact pilot (`docs/sprint/plans/swe-interact-pilot.md`, v0.4), whose go line was missed, and Jacob's proposal to continue runs and fork on accumulated losses.
+Draft v0.2, 24 Oct 2026: astra r1 fixes folded in, with Jacob's agreement (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Fast path first: prove the signal on the 6 runs, then build out the other task families, agent models and compaction methods. It follows the SWE-Interact pilot (`docs/sprint/plans/swe-interact-pilot.md`, v0.4), whose go line was missed, and Jacob's proposal to continue runs and fork on accumulated losses.
 
 ## The question
 
@@ -29,14 +29,20 @@ Here:
 3. **At every compaction point:**
    - **Summaries:** the live pi summary, plus 4 replays (Claude Code's prompt, Codex, OpenCode, Antigravity-style), all written by Haiku 5.5 on Max.
    - **Grading:** each summary is graded against every requirement the maintainer has disclosed so far (Experiment 1's judge with the second look). This is the Q1 data: a loss curve per summarizer and compaction number.
-4. **Fork rule, fixed before any continued run:** fork at the first compaction point where **one summary drops at least 2 verified requirements that still apply** (the pilot's six checks, done by code plus a short card for Jacob).
-   - Otherwise continue to the next compaction.
-   - Report the source summary. A non-pi source is flagged as a mixed setup: DeepSeek resumes from a summary written by Haiku in another harness's format.
+4. **Fork rule, fixed before any continued run (v0.2):** fork at the **first** compaction point where one summary has **at least 1 dropped requirement that passes the checks and has a concrete pending governed decision**, evidenced at the snapshot: an unimplemented or still-editable spot the requirement governs.
+   - **Source order:** live pi, then the Claude Code prompt, Codex, OpenCode, Antigravity-style.
+   - **Candidate order:** within a source, by the earliest source reply, then by position in the reply.
+   - **Losses inherited from earlier compactions** count, and are flagged.
+   - **Exclusions:** only fails backed by evidence code can verify. Everything unresolved goes to Jacob's card.
+   - **One primary fork per task.** Repeats per task are not independent evidence.
+   - **A non-pi source** is reported as a mixed setup (DeepSeek resumes from a Haiku-written summary in another harness's format), kept separate from live-sourced cases.
+   - **Sealing:** once a boundary has a carded candidate, any base continuation past it is sealed like an arm, so no one reads it before the freeze.
 5. **Arms, from the same snapshot, 2 repeats each:**
-   - **Repair:** every dropped requirement, restored in the maintainer's own words.
-   - **Matched control:** the same number of irrelevant items from the same history, matched in total length.
+   - **Primary, one item:** Repair (that requirement, in the maintainer's own words) vs Matched control (one irrelevant item from the same history, matched in length).
+   - **Pre-registered secondary, bundle:** where at least 2 qualify from the same source at that boundary, also repair-all vs matched-all. This is reported as the effect of restoring the bundle, not of any single item.
 6. **Readouts:**
-   - **Primary:** each restored requirement's governed act, plus an aggregate, scored until the agent's next `ask_user`, a submission or 60 calls. The simulator can't re-raise the loss inside this window.
+   - **Primary:** the governed act, scored until the agent's next `ask_user`, a submission or 60 calls. The simulator can't re-raise the loss inside this window.
+   - **Recorded in every arm, never used to exclude:** whether the agent reached the decision, re-asked, or progressed.
    - **Secondary, on a few cases:** the simulator answers normally. Measure re-corrections, extra cost and the final verifier reward.
 7. **Jacob's card:** a plain paragraph of what happened, then 3 yes/no questions (Really lost? Still matters? Would we see the agent act on it within the window?). Code does the rest of the checks, and its evidence sits under the card.
 
@@ -44,16 +50,31 @@ Here:
 
 | Phase | What | Cost | Time | Go line |
 |---|---|---|---|---|
-| A. Build | Resume from saved state; accumulated-loss fork rule; simple card page | $0 | ~4 h | Tests, astra code review, stub smoke |
+| A. Build (minimal) | Resume from saved state; first-actionable-loss trigger; sealing; new/inherited bookkeeping; 3-question card | $0 | ~6–10 h (astra) | Tests, astra code review, stub smoke |
 | B. Continue | The 6 pilot runs to completion, every compaction screened | ~$3–6 | overnight | — |
-| C. Scale | The remaining ~18 DeepSWE tasks to completion (plus the other 50 if feasible) | ~$40–60 | ~1 day | Starts if B gives ≥ 2 forks |
+| C. Scale | The remaining ~18 DeepSWE tasks to completion. Then, if the signal holds: the other 50 SWE-Interact tasks, other agent models and other live compaction methods | ~$40–60 for DeepSWE | ~1 day | Starts if B gives ≥ 2 distinct tasks with completed valid comparisons |
 | D. Reruns | 4 primaries per fork; secondaries on a few | ~$1–2 per fork | hours | Target ≥ 10 forks across ≥ 6 tasks |
 
-**Headline:** the act rate, repair minus control, with a 95% interval clustered by task; the same for task reward. Q1 is reported as loss curves.
+**Headline and reading rule (fixed now):** the act rate is the share of continuations doing what the requirement says. The headline is repair minus control, averaged within task, then across tasks, with a 95% task-clustered bootstrap interval.
+- **The smallest effect of interest is +25 points.**
+- **Reading:**
+  - **effect:** the interval excludes 0;
+  - **informative null:** the whole interval is below +25;
+  - **inconclusive:** otherwise.
+- **Sample size:** about 10 forks gives roughly ±25–30 points, enough for a large effect but not an informative null, which needs about 20.
+- **Task reward** from the secondary readout is exploratory.
+
+**Q1 bookkeeping:**
+- At each compaction, per source, every lost requirement is marked **new** (present in the previous live summary's context) or **inherited** (already absent).
+- The curves are labelled "alternative summarizers on pi-compressed histories" from compaction 2 on.
+- **Model vs prompt:** live pi (DeepSeek) is compared with the Haiku replay of pi's prompt.
+- **Later:** recursive replay chains on fixed transcripts (each summarizer on its own previous summary, $0 on Max) give true per-summarizer trajectories.
+- **Hand checks:** kept and lost calls are hand-checked across sources and compaction depths.
 
 ## Priors (rough; the last plan's yield prior was too high: 0.5 losses per boundary expected, 0.08 seen)
 
-- 50%: B gives at least 2 forks.
+- 50%: B gives at least 2 forks, counted as distinct tasks with completed valid comparisons.
+- astra r1's estimates for v0.1: 20–30% for at least 10 valid forks across at least 6 tasks by Friday; 15–25% for an interpretable Q2 headline (40–50% given that sample).
 - 35%: at least 10 forks by Wed 28 Oct.
 - 45%: repair visibly changes the governed acts.
 
@@ -67,4 +88,16 @@ Here:
 
 ## Budget and time
 
-About $50–70 inside Experiment 3's stage (SPRINT-S3-Q2, $270; the pilot tag has spent $3.57). Jacob: about 5 minutes per fork card, about 1 hour in all. The final presentation is due Fri 30 Oct, 10 pm.
+About $70–110 (astra r1) inside Experiment 3's stage (SPRINT-S3-Q2, $270; the pilot tag has spent $3.57). Jacob: about 5 minutes per fork card, about 1 hour in all. The final presentation is due Fri 30 Oct, 10 pm.
+
+## Review history
+
+- **astra r1** (`logs/reviews/20261024-accumulated-loss-plan-r1.md`). Its verdict: for Q2, probably the strongest next step after fixes; for Q1, Experiment 1 stays stronger. BLOCKING findings and how v0.2 handles them:
+  - **The ≥2-loss trigger:** replaced by the first actionable loss.
+  - **Late forks:** a pending decision is now required.
+  - **The fork rule wasn't frozen:** source and candidate order, inheritance, exclusions and sealing are now fixed.
+  - **Repeated forks per task:** one primary per task.
+  - **No informative-null rule:** a smallest effect of interest of +25 points is now fixed.
+  - **The Q1 curves aren't independent:** new and inherited losses are separated, the curves relabelled, and model vs prompt compared.
+  - **Bundled repair:** now a secondary, framed as a package effect.
+  - Jacob agreed to all of these on 24 Oct and chose the fast path.
