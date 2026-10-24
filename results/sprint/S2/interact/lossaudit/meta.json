@@ -1,0 +1,67 @@
+{
+ "boundaries": {
+  "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0": "data/raw/sprint/s2/interact/boa-hierarchical-evaluation-cancellation-deepseek-a1/b1",
+  "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b2:0": "data/raw/sprint/s2/interact/boa-hierarchical-evaluation-cancellation-deepseek-a1/b2",
+  "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b3:0": "data/raw/sprint/s2/interact/boa-hierarchical-evaluation-cancellation-deepseek-a1/b3",
+  "deepswe:fastapi-implicit-head-options-deepseek-a1-b1:0": "data/raw/sprint/s2/interact/fastapi-implicit-head-options-deepseek-a1/b1",
+  "deepswe:fastapi-implicit-head-options-deepseek-a1-b2:0": "data/raw/sprint/s2/interact/fastapi-implicit-head-options-deepseek-a1/b2",
+  "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0": "data/raw/sprint/s2/interact/helm-array-merge-strategies-deepseek-a2/b1",
+  "deepswe:helm-array-merge-strategies-deepseek-a2-b2:0": "data/raw/sprint/s2/interact/helm-array-merge-strategies-deepseek-a2/b2",
+  "deepswe:helm-array-merge-strategies-deepseek-a2-b3:0": "data/raw/sprint/s2/interact/helm-array-merge-strategies-deepseek-a2/b3",
+  "deepswe:kombu-single-active-consumer-priority-deepseek-a2-b1:0": "data/raw/sprint/s2/interact/kombu-single-active-consumer-priority-deepseek-a2/b1",
+  "deepswe:kombu-single-active-consumer-priority-deepseek-a2-b2:0": "data/raw/sprint/s2/interact/kombu-single-active-consumer-priority-deepseek-a2/b2",
+  "deepswe:testem-bail-on-test-failure-deepseek-a1-b1:0": "data/raw/sprint/s2/interact/testem-bail-on-test-failure-deepseek-a1/b1",
+  "deepswe:vitest-duration-sharding-deepseek-a1-b1:0": "data/raw/sprint/s2/interact/vitest-duration-sharding-deepseek-a1/b1",
+  "deepswe:vitest-duration-sharding-deepseek-a1-b2:0": "data/raw/sprint/s2/interact/vitest-duration-sharding-deepseek-a1/b2",
+  "deepswe:vitest-duration-sharding-deepseek-a1-b3:0": "data/raw/sprint/s2/interact/vitest-duration-sharding-deepseek-a1/b3"
+ },
+ "claim_prompt_sha": "pass2=a4537f95b73cd36713acf9182208e8daf2ea3cb152014c3510adeed65dc9871e",
+ "counts": {
+  "by_boundary": {
+   "boa-hierarchical-evaluation-cancellation-deepseek-a1": 9,
+   "helm-array-merge-strategies-deepseek-a2": 8,
+   "kombu-single-active-consumer-priority-deepseek-a2": 2,
+   "testem-bail-on-test-failure-deepseek-a1": 1
+  },
+  "items": 314,
+  "lost": 20,
+  "lost_by_grade": {
+   "dropped": 18,
+   "misstated": 2
+  },
+  "lost_by_type": {
+   "decision": 7,
+   "rule": 11,
+   "task_state": 2
+  },
+  "lost_planted": 0,
+  "recoverable": {
+   "not_recoverable": 2,
+   "unresolved": 18
+  },
+  "valid": 303
+ },
+ "effort": "medium",
+ "errors": [
+  {
+   "chunk": 0,
+   "error": "cli_error",
+   "n_chunks": 1,
+   "pass": "2",
+   "rid": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b2:0"
+  }
+ ],
+ "grep": {
+  "images": 9,
+  "patterns": 20,
+  "ran": true
+ },
+ "item_prompt_sha": "pass1a=1d452823204e9f2570043597b439b43f883864f75b8d1c0b54242b769d63054a;pass1b=09ce2acad305e2a6d6b51630c1e69cb96bd4c1a43daaf2e3d71e05f2e8854f12",
+ "judge": "haiku-max",
+ "judge_model": "claude-haiku-5-5",
+ "records_complete_share": 0.0,
+ "second_look_config_sha": "4347bb6a277b9e8fdaf0e944ddb51ec68d1a2192b772947ba020fdfd5bd51370",
+ "utc": "2026-10-24T22:20:49Z",
+ "valid_share": 0.9047109207708779,
+ "what": "S1's loss pipeline on S2's live boundaries (Experiment 2 close-out)"
+}

@@ -1,0 +1,326 @@
+[
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i9",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Existing `Context::eval`, `enqueue_job`, and `run_jobs` remain unchanged in behavior and delegate to uncancelled internals.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no",
+  "evidence": "The final diff changes `pub fn enqueue_job` so it now does `let job = match self.active_evaluation_handle() { Some(handle) => job.with_evaluation_handle(&handle), None => job };`. After the loss, base call 65 and later job.rs edits added cancellation logic (`context.borrow_mut().check_cancellation()`, `if job.is_cancelled() { continue; }`) to the SimpleJobExecutor loop that `run_jobs` uses. `Module::evaluate` also gained `context.check_cancellation()?`.",
+  "reason": "After the loss, the agent added cancellation checks to the code that `run_jobs` and `enqueue_job` share, and kept that change in its commits. So these methods no longer hand off to separate uncancelled internals, and their behavior changes when a handle is active, which breaks the rule."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i11",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Jobs created during an active evaluation (or explicitly enqueued with a handle) retain the relevant handle",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "The final diff keeps `pub fn enqueue_job(&mut self, job: Job) { let job = match self.active_evaluation_handle() { Some(handle) => job.with_evaluation_handle(&handle), None => job }; ...}`, and `enqueue_job_with_evaluation` calls `job.with_evaluation_handle(evaluation)`. `NativeJob::call` also pushes the job's own handle while it runs, so jobs it spawns inherit that handle.",
+  "reason": "After the loss the agent reworked job enqueueing and draining several times (for example the fallible enqueue in r1 call 165 and the job-drain changes in r1 call 213/225 and r2 calls 223/232/237), and at the end jobs created during an active evaluation or enqueued with a handle still keep that handle."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i12",
+  "origin": "file",
+  "grade": "misstated",
+  "quote": "Keep `SimpleJobExecutor::get_cancellation_token` and its existing executor-wide stop behavior for backward compatibility.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "After the loss, the agent edited core/engine/src/job.rs several times (for example r1 call 213, r1 call 232 and r2 call 223). The final diff adds evaluation-handle checks inside `SimpleJobExecutor::run_jobs`. It keeps the existing early `return Ok(());` exit from the loop. It does not remove or change `get_cancellation_token`.",
+  "reason": "The agent made repeated changes to `SimpleJobExecutor`'s run loop, so it could have broken the rule. In the end `get_cancellation_token` and its executor-wide stop path are unchanged, and the new per-evaluation cancellation was added alongside them."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i13",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Do not modify the runtime `AbortSignal` cancellation token unless integration is naturally useful; the engine API stands alone.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "After the loss, every edit and commit stays in core/engine/src (cancellation.rs, context, job, module, script, vm, error). The only time AbortSignal comes up is a read-only search, `grep -RIn \"AbortError\\|abort reason\\|AbortSignal\" core/engine/src` (r1 call 146). No runtime crate files show up in the diff stat.",
+  "reason": "The agent was building abort-style cancellation reasons, so it had a real chance to touch the runtime AbortSignal token. It kept the engine API standalone and never modified the runtime."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i15",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "`cargo clippy -p boa_engine --all-targets`",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no",
+  "evidence": "The agent only ever ran clippy with `--lib`, for example `cargo clippy -p boa_engine --lib --offline 2>&1 | tail -100` in r1 call 141, and the same in base calls 66, 93 and 98. No command after the loss ran `cargo clippy -p boa_engine --all-targets`.",
+  "reason": "The agent ran clippy several times but always with `--lib` instead of `--all-targets`, so tests, examples and benches were never linted as the rule requires."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b1:0#haiku-max#i16",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Add tests covering:",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no",
+  "evidence": "The agent's checks lived in a throwaway binary that it deleted after every run, e.g. \"cargo run -p boa_engine --bin cancel_check ...; rm -f core/engine/src/bin/cancel_check.rs\". The final diff touches only source files (cancellation.rs, context/mod.rs, job.rs, module/mod.rs, etc.) and adds no test files or #[test] modules.",
+  "reason": "The agent kept changing cancellation behavior after the loss but never committed any tests for it, so it broke the rule to add tests."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 2,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b2:0#haiku-max#i8",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Keep `SimpleJobExecutor::get_cancellation_token` and its existing executor-wide stop behavior for backward compatibility.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "After the loss the agent edited `SimpleJobExecutor::run_jobs_async` in core/engine/src/job.rs (calls 213, 223, 232, 235). The final diff only adds per-job `is_cancelled()` skips and `check_cancellation` handling. It leaves the existing early `return Ok(());` stop path in place as context, and no hunk removes or changes `get_cancellation_token`.",
+  "reason": "The agent made substantial changes to the executor's run loop, so it had a real chance to break the rule, but `get_cancellation_token` and the executor-wide stop behavior are still intact in the final diff."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 2,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b2:0#haiku-max#i9",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Confirm only additive public API changes; no existing signatures changed.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "Commit 37c10c95 \"address feedback: fallible evaluation enqueue\" (call 165) changed only `enqueue_job_with_evaluation`, which this branch added, to return `JsResult<()>`. Existing APIs like `pub fn enqueue_job(&mut self, job: Job)`, `pub fn evaluate(&self, context: &mut Context) -> JsResult<JsPromise>` and `pub fn link` keep their original signatures in the final diff.",
+  "reason": "After the loss, every signature change hit APIs this branch added itself, such as `enqueue_job_with_evaluation`, `cancel`/`cancel_with_reason` and the new `EvaluationCancelled` reason field, while existing public functions only had their bodies changed, so the public API changes stayed additive."
+ },
+ {
+  "run": "boa-hierarchical-evaluation-cancellation-deepseek-a1",
+  "k": 3,
+  "item_id": "deepswe:boa-hierarchical-evaluation-cancellation-deepseek-a1-b3:0#haiku-max#i16",
+  "origin": "assistant",
+  "grade": "misstated",
+  "quote": "JavaScript cancellation reasons created on this thread.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "core/engine/src/cancellation.rs",
+   "main:core/engine/src/cancellation.rs"
+  ],
+  "followed": "no_opportunity",
+  "evidence": "None. The rule's text matches the existing doc comment on the thread_local `CANCELLATION_REASONS` in cancellation.rs (\"/// JavaScript cancellation reasons created on this thread.\"), and that comment is unchanged at the end. The edits after the loss (e.g. call 227 changing `EvaluationStackInner`, and the job.rs, context and module changes) never touch it.",
+  "reason": "The rule reads as a doc-comment fragment, not an instruction the agent could follow or break, and nothing done after the loss touched that comment or thread-local reason storage."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0#haiku-max#i7",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "All commits must include DCO sign-off: `git commit -s`",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "AGENTS.md",
+   "main:AGENTS.md"
+  ],
+  "followed": "yes",
+  "evidence": "Every commit after the loss used -s, e.g. call 75 `git commit -s -m \"address feedback: CLI merge overrides\"`, call 189 `git commit -s -m \"address feedback: merge subchart globals with rules\"`, call 216 `git commit -s -m \"address feedback: make runtime merge rule extraction lenient\"`; the log shows `Signed-off-by: Dev <dev@example.com>` on each commit.",
+  "reason": "The agent made seven commits after the loss and signed off every one with `git commit -s`, so it followed the DCO rule."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0#haiku-max#i8",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "the signatures of public APIs, i.e., those in the `pkg/` directory should not change",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "AGENTS.md",
+   "main:AGENTS.md"
+  ],
+  "followed": "yes",
+  "evidence": "The diff changes only unexported signatures, e.g. `-func coalesceGlobals(printf printFn, dest, src map[string]any, prefix string, _ bool) {` → `+func coalesceGlobals(..., _ bool, rules common.ArrayMergeRules) {`, plus `coalesceValues` and `coalesceDeps`. Exported items in pkg/ were only added: `ChartMergeRules`, `CoalesceTablesWithChart`, `ApplyMergeOverrides`, and new fields on `values.Options`, `action.Install` and `action.Upgrade`. Existing exported functions such as `CoalesceValues`, `MergeValues`, `CoalesceTables`, `MergeTables` and `Metadata.Validate` keep their signatures.",
+  "reason": "After the loss the agent edited a lot of code under pkg/, so it had a real chance to break the rule, but it only changed signatures of private helpers and added new exported functions and struct fields without changing any existing public API signature."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0#haiku-max#i9",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Use table-driven tests with testify",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "AGENTS.md",
+   "main:AGENTS.md"
+  ],
+  "followed": "yes",
+  "evidence": "[r1 call 65] created pkg/action/tmp_cli_merge_override_test.go, which imports \"github.com/stretchr/testify/require\" and loops `for _, mode := range []string{\"reuse\", \"reset-then-reuse\"} { t.Run(mode, ...) }`. No other test files were written, and none appear in the final diff.",
+  "reason": "The only test the agent wrote after the loss runs as a loop of cases through t.Run and asserts with testify's require, which fits the rule, though it was a temporary test and is not in the final diff."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0#haiku-max#i10",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Strategy values are case-sensitive `append` or `merge`.",
+  "recoverable_lossaudit": "not_recoverable",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "In values_merge.go, the `ApplyMergeOverrides` function added after the loss checks `if value != MergeStrategyAppend && value != MergeStrategyMerge { return nil, fmt.Errorf(\"invalid merge strategy override ...\") }`. `ParseMergeAnnotations` uses `switch strategy { case MergeStrategyAppend, MergeStrategyMerge: default: return ... error }`.",
+  "reason": "The strategy validation written after the loss (CLI overrides and annotation parsing) only accepts the exact strings \"append\" and \"merge\", with no lowercasing or case-folding, so it stays case-sensitive. The later \"lenient\" commit isn't shown in the final diff, but nothing visible suggests it added case-folding."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b1:0#haiku-max#i16",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Do not add a required method to the public `chart.Accessor` interface; retrieve annotations without breaking third-party accessors.",
+  "recoverable_lossaudit": "not_recoverable",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "The final diff gets annotations through the existing accessor: `accessor, err := chart.NewAccessor(chrt) ... return common.MergeRulesFromMetadata(accessor.MetadataAsMap())`. `AnnotationsFromMetadata` accepts both \"Annotations\" and \"annotations\" so that \"third-party accessors remain compatible\". No file under pkg/chart's Accessor interface was changed.",
+  "reason": "After the context loss, the agent changed how merge rules are read in several commits (subchart globals and lenient rule extraction in coalesce.go and values_merge.go), and every change still used the existing MetadataAsMap() instead of adding a required method to chart.Accessor."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 2,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b2:0#haiku-max#i7",
+  "origin": "user",
+  "grade": "dropped",
+  "quote": "Do not add a required method to the public `chart.Accessor` interface",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "The diff never touches the `chart.Accessor` interface definition. `ChartMergeRules` gets annotations through the existing `accessor.MetadataAsMap()` and parses them with `common.MergeRulesFromMetadata`. A comment explains this keeps \"third-party accessors remain compatible\".",
+  "reason": "After the rule was lost, the agent reworked how merge rules are pulled from charts (calls 171–216, including the lenient-extraction commit), which was a real chance to add an Accessor method, but it used the existing `MetadataAsMap` method and added no required method to the public interface."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 2,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b2:0#haiku-max#i14",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "use the old chart defaults as `chart.Values` (not already-merged old user config) when merge rules are present",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no_opportunity",
+  "evidence": "None of the commands after the loss touch pkg/action/upgrade.go or reuseValues. The existing line `chart.Values = current.Chart.Values` under `if hasMergeRules` in upgrade.go comes from earlier work. The later edits only changed coalesce.go (global merge rules, array order) and values_merge.go (lenient parsing of merge rules).",
+  "reason": "After the loss the agent never changed how chart.Values gets set during upgrade value reuse, so its work there had no bearing on the rule."
+ },
+ {
+  "run": "helm-array-merge-strategies-deepseek-a2",
+  "k": 3,
+  "item_id": "deepswe:helm-array-merge-strategies-deepseek-a2-b3:0#haiku-max#i8",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Do not add a required method to the public `chart.Accessor` interface",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "yes",
+  "evidence": "The diff stat never touches the chart Accessor interface file. ChartMergeRules reads annotations through the existing method: `return common.MergeRulesFromMetadata(accessor.MetadataAsMap())`. The comment on AnnotationsFromMetadata says it accepts both spellings \"so third-party accessors remain compatible\".",
+  "reason": "After the loss, the agent reworked the code that reads merge rules through chart.Accessor but used the existing MetadataAsMap method instead of adding a required method to the public interface."
+ },
+ {
+  "run": "kombu-single-active-consumer-priority-deepseek-a2",
+  "k": 1,
+  "item_id": "deepswe:kombu-single-active-consumer-priority-deepseek-a2-b1:0#haiku-max#i10",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "6. Add focused tests in `t/unit/transport/virtual/test_base.py` covering:",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no",
+  "evidence": "After the loss the agent kept adding consumer features (consumer_priority_map, consumer_registry_snapshot, get_sac_status, get_standby_consumers, QoS-aware selection and more) and committed them with commands like `git add kombu/transport/virtual/base.py docs/userguide/consumers.rst && git commit ...`. It only checked them with throwaway `python - <<'PY'` scripts. The final diff stat lists only `docs/userguide/consumers.rst` and `kombu/transport/virtual/base.py`, so `t/unit/transport/virtual/test_base.py` was never changed.",
+  "reason": "The agent added many new behaviours that called for focused tests in t/unit/transport/virtual/test_base.py, but it never wrote any there and relied on ad-hoc scripts instead."
+ },
+ {
+  "run": "kombu-single-active-consumer-priority-deepseek-a2",
+  "k": 2,
+  "item_id": "deepswe:kombu-single-active-consumer-priority-deepseek-a2-b2:0#haiku-max#i12",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Preserve `basic_cancel()` idempotency and return behavior.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "no_opportunity",
+  "evidence": "None of the commands after the loss changes Channel.basic_cancel. They add helper methods (consumer_priority_map, consumer_registry_snapshot, get_sac_status, list_consumers, consumer_tags, among others), Consumer/Queue helpers in messaging.py and entity.py, and the queue_delete reorder in r2 call 295, which only calls basic_cancel. The basic_cancel body in the final diff matches the pre-loss commit history.",
+  "reason": "After the loss the agent never edited basic_cancel and only called it from other code, so it had no real chance to break its idempotency or return behavior."
+ },
+ {
+  "run": "testem-bail-on-test-failure-deepseek-a1",
+  "k": 1,
+  "item_id": "deepswe:testem-bail-on-test-failure-deepseek-a1-b1:0#haiku-max#i12",
+  "origin": "file",
+  "grade": "dropped",
+  "quote": "Avoid runner-specific threshold logic so browser, TAP, and process runners behave consistently.",
+  "recoverable_lossaudit": "unresolved",
+  "recoverable_at_k": "yes",
+  "recoverable_files": [
+   "/tmp/plan.md"
+  ],
+  "followed": "sealed",
+  "evidence": "",
+  "reason": "continuation sealed (frozen)"
+ }
+]
