@@ -39,6 +39,7 @@ import os
 import re
 import shutil
 import sys
+import time
 from pathlib import Path
 
 from compaction.s2 import config as C
@@ -146,13 +147,166 @@ SMOKE_TASK = "kombu-single-active-consumer-priority"
 MIN_FREE_GB = 6
 
 
+LOCAL = "local"  # --host local: the laptop's own Docker (Docker Desktop, amd64 emulated)
+LAPTOP = {"max_containers": 3, "max_mem_gb": 12.0, "max_cpus": 8.0, "min_free_pct": 30,
+          "max_load1": 12.0,  # the main session, 24 Oct: hard, for all agents combined
+          "min_host_disk_gb": 25.0, "min_docker_disk_gb": 20.0}  # and disk (24 Oct)
+
+
+def docker_disk_free_gb() -> float | None:
+    """Free space on Docker Desktop's VM disk (where images and kept snapshots live), from a
+    `df` in a throwaway container of the local egress image (--rm, a name, an emx label, no
+    network). None if it can't be measured (the gate then refuses)."""
+    import subprocess
+    import uuid
+
+    from compaction.s2.native import common as N
+    name = f"native-codex-dfprobe-{uuid.uuid4().hex[:8]}"
+    try:
+        p = subprocess.run(["docker", "run", "--rm", "--name", name, "--label",
+                            "emx.sandbox=native-codex-dfprobe", "--network", "none",
+                            "--memory", "64m", "--cpus", "0.25",
+                            "--entrypoint", "df", N.egress_image(), "-k", "/"],
+                           capture_output=True, text=True, timeout=60, check=False)
+    except subprocess.TimeoutExpired:
+        with contextlib.suppress(Exception):
+            subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60,
+                           check=False)
+        return None
+    rows = [x.split() for x in p.stdout.splitlines()[1:] if x.strip()]
+    try:
+        return int(rows[-1][3]) / 2**20
+    except (IndexError, ValueError):
+        return None
+SIDECAR_MEM_GB, SIDECAR_CPUS = 0.125, 0.5  # common.Egress's sidecar limits
+
+
+def _docker_host(host: str | None) -> str | None:
+    return None if host in (None, "", LOCAL) else host
+
+
+RESERVATIONS = C.REPO_ROOT / "logs" / "s2" / "native_codex_reservations.json"
+# A laptop reservation counts (2 containers + its limits) until the run marks it visible,
+# once its containers are up and `docker ps` counts them; a dead launcher's is dropped.
+
+
+def _live(pid: int) -> bool:
+    try:
+        os.kill(int(pid), 0)
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def reservations() -> list[dict]:
+    """Live launch reservations of every Codex driver: {pid, host, cap, mem_gb, cpus, ts}
+    (dead pids dropped). Read and written under `_launch_lock`."""
+    try:
+        rows = json.loads(RESERVATIONS.read_text())
+    except (OSError, ValueError):
+        return []
+    return [r for r in rows if isinstance(r, dict) and _live(r.get("pid", 0))]
+
+
+def reserve(pid: int, *, host: str | None, cap: float, mem_gb: float, cpus: float) -> None:
+    rows = reservations() + [{"pid": int(pid), "host": host or LOCAL, "cap": cap,
+                              "mem_gb": mem_gb, "cpus": cpus, "ts": time.time(),
+                              "visible": False}]
+    RESERVATIONS.parent.mkdir(parents=True, exist_ok=True)
+    RESERVATIONS.write_text(json.dumps(rows, indent=1))
+
+
+def mark_visible(pids: set[int]) -> None:
+    """The run's containers are up (docker ps counts them now): stop counting its
+    reservation's containers and limits, keep its cap for the tag gate. Under the lock."""
+    with _launch_lock():
+        rows = reservations()
+        for r in rows:
+            if r.get("pid") in pids:
+                r["visible"] = True
+        RESERVATIONS.write_text(json.dumps(rows, indent=1))
+
+
+def laptop_gate(mem_gb: float, cpus: float) -> tuple[bool, str]:
+    """May one more native session (task container + egress sidecar) start on the laptop?
+    Fails closed: any docker error, an emx container without memory or CPU limits, or a
+    missing reading holds. Counts every emx container already there (all agents) plus this
+    tool's laptop reservations whose containers can't be seen yet (younger than
+    RESERVE_VISIBLE_S), sums their limits, then checks memory_pressure, load and disk. Cheap
+    checks first; the disk probe (a bounded container) only when everything else passes.
+    Call under `_launch_lock` and reserve before releasing it."""
+    import shutil
+    import subprocess
+    try:
+        p = subprocess.run(["docker", "ps", "--filter", "label=emx.sandbox", "-q"],
+                           capture_output=True, text=True, timeout=60, check=False)
+        if p.returncode != 0:
+            return False, f"docker ps failed rc={p.returncode}: {p.stderr.strip()[-200:]}"
+        ids = p.stdout.split()
+        used_mem = used_cpu = 0.0
+        if ids:
+            q = subprocess.run(["docker", "inspect", "--format",
+                                "{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}", *ids],
+                               capture_output=True, text=True, timeout=60, check=False)
+            lines = q.stdout.splitlines()
+            if q.returncode != 0 or len(lines) != len(ids):
+                return False, f"docker inspect incomplete rc={q.returncode} ({len(lines)}/{len(ids)})"
+            for line in lines:
+                m_b, c_n = (int(x) for x in line.split())
+                if m_b <= 0 or c_n <= 0:
+                    return False, "an emx container has no memory or CPU limit (unbounded)"
+                used_mem += m_b / 2**30
+                used_cpu += c_n / 1e9
+        pend = [r for r in reservations() if r.get("host") == LOCAL and not r.get("visible")]
+        n = len(ids) + 2 * len(pend)
+        used_mem += sum(r["mem_gb"] + SIDECAR_MEM_GB for r in pend)
+        used_cpu += sum(r["cpus"] + SIDECAR_CPUS for r in pend)
+        mp = subprocess.run(["memory_pressure"], capture_output=True, text=True, timeout=60,
+                            check=False).stdout
+        m = re.search(r"free percentage:\s*(\d+)%", mp)
+        free_pct = int(m.group(1)) if m else -1
+        load1 = os.getloadavg()[0]
+        host_disk = shutil.disk_usage("/").free / 2**30
+    except Exception as e:  # noqa: BLE001 - an unknown reading holds, never launches
+        return False, f"gate reading failed: {type(e).__name__}: {e}"
+    why = (f"{len(ids)} emx containers + {len(pend)} pending sessions, {used_mem:.1f} GB / "
+           f"{used_cpu:.1f} CPUs limits, {free_pct}% memory free, load {load1:.1f}, "
+           f"host disk {host_disk:.0f} GB free")
+    cheap = (n + 2 <= LAPTOP["max_containers"]
+             and used_mem + mem_gb + SIDECAR_MEM_GB <= LAPTOP["max_mem_gb"]
+             and used_cpu + cpus + SIDECAR_CPUS <= LAPTOP["max_cpus"]
+             and free_pct >= LAPTOP["min_free_pct"] and load1 < LAPTOP["max_load1"]
+             and host_disk >= LAPTOP["min_host_disk_gb"])
+    if not cheap:
+        return False, why
+    try:
+        vm_disk = docker_disk_free_gb()
+    except Exception as e:  # noqa: BLE001 - an unknown reading holds
+        return False, why + f", docker disk probe failed: {type(e).__name__}: {e}"
+    why += f", docker disk {'?' if vm_disk is None else f'{vm_disk:.0f}'} GB free"
+    return vm_disk is not None and vm_disk >= LAPTOP["min_docker_disk_gb"], why
+
+
 def _free_gb(host: str) -> int:
     import subprocess
+    if _docker_host(host) is None:
+        return 999  # the laptop: `laptop_gate` decides
     ssh = host.removeprefix("ssh://")
     p = subprocess.run(["ssh", ssh, "free", "-g"], capture_output=True, text=True, timeout=60,
                        check=True)
     row = next(x for x in p.stdout.splitlines() if x.startswith("Mem:")).split()
     return int(row[6])
+
+
+def _labels(a) -> dict:
+    """run.json labels: the --label pairs, plus host=laptop for --host local and a
+    trigger_sensitivity for any non-150k limit when not given (arms stay identifiable)."""
+    lab = dict(x.split("=", 1) for x in (a.label or []))
+    if _docker_host(a.host) is None:
+        lab.setdefault("host", "laptop")
+    if a.limit and a.limit != COMMON_LIMIT:
+        lab.setdefault("trigger_sensitivity", f"{a.limit // 1000}k")
+    return lab
 
 
 def cmd_base(a) -> int:
@@ -167,9 +321,19 @@ def cmd_base(a) -> int:
     load_dotenv(C.REPO_ROOT / ".env", override=False)
     if a.recite_repeats < 1:
         sys.exit("--recite-repeats must be at least 1")
-    free = _free_gb(a.host)
-    if free < MIN_FREE_GB:
-        sys.exit(f"desktop has {free} GB available (< {MIN_FREE_GB}); not starting")
+    if a.limit and a.limit != COMMON_LIMIT and not a.root:
+        sys.exit("a non-150k run needs its own --root (arms are never mixed)")
+    if _docker_host(a.host) is None and not a.gate_reserved:
+        with _launch_lock():
+            ok, why = laptop_gate(a.memory_mb / 1024, a.cpus)
+            if not ok:
+                sys.exit(f"laptop gate: {why}; not starting")
+            reserve(os.getpid(), host=None, cap=a.sim_cap, mem_gb=a.memory_mb / 1024,
+                    cpus=a.cpus)
+    else:
+        free = _free_gb(a.host)
+        if free < MIN_FREE_GB:
+            sys.exit(f"desktop has {free} GB available (< {MIN_FREE_GB}); not starting")
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     root = Path(a.root) if a.root else X.root()
     prefix = f"smoke-{stamp}-" if a.smoke else ""
@@ -179,13 +343,14 @@ def cmd_base(a) -> int:
                        attempt=X.next_attempt(root, task.task_id, prefix),
                        cx=X.CodexConfig(model=a.model, effort=a.effort or None,
                                         auto_compact_limit=a.limit),
-                       host=a.host, recite_repeats=a.recite_repeats,
+                       host=_docker_host(a.host), recite_repeats=a.recite_repeats,
                        stop_after=a.stop_after if a.stop_after is not None
                        else (1 if a.smoke else None),
                        cpus=a.cpus, memory_mb=a.memory_mb,
-                       labels=dict(x.split("=", 1) for x in (a.label or [])))
+                       labels=_labels(a))
     if a.implement_timeout:
         cfg.step_timeout_s["02_implement"] = int(a.implement_timeout)
+    cfg.on_started = lambda: mark_visible({os.getpid(), os.getppid()})
     if a.run_dir_file:  # the driver grades exactly this execution
         Path(a.run_dir_file).write_text(str(cfg.run_dir))
     spend = RunSpend(IR.PilotSpend(), cap).attach(IR.spend_path(root, f"{cfg.run_key}-base"))
@@ -337,15 +502,57 @@ class _Adopted:
 
     def __init__(self, task: str, root: str | None = None):
         self.task, self.root, self.returncode = task, root, None
-        lines = [x for x in _base_procs() if _matches(x, task, root)]
-        m = re.search(r"--sim-cap ([0-9.]+)", " ".join(lines))
+        rows = [(pid, ppid, c) for pid, ppid, c in _base_proc_table() if _matches(c, task, root)]
+        m = re.search(r"--sim-cap ([0-9.]+)", " ".join(c for _, _, c in rows))
         self.cap = float(m.group(1)) if m else 6.5
+        self.pids = {x for pid, ppid, _ in rows for x in (pid, ppid)}  # its reservation's key
 
     def poll(self):
         if any(_matches(x, self.task, self.root) for x in _base_procs()):
             return None
         self.returncode = "adopted"
         return 0
+
+
+def prune_kept_images(rd: Path, logd: Path, say, *, q1_only: bool = False) -> list[dict]:
+    """The laptop arm's disk rule (main session, 24 Oct): once a run's lossaudit and ledger
+    audit are written, remove its kept boundary images that are not fork candidates. A
+    boundary is removed only if boundary.json says `eligible: false` explicitly, or if the arm
+    is declared Q1-only (`q1_only`: no boundary of it is ever forked, so an unevaluated
+    `eligible: null` counts as no) and it isn't `eligible: true`. Each removal is logged with
+    the image digest (<logd>/pruned.jsonl). Local Docker only (the caller checks)."""
+    import subprocess
+    out = []
+    for b in sorted(rd.glob("b*")):
+        bj = b / "boundary" / "boundary.json"
+        if not bj.exists():
+            continue
+        f = json.loads(bj.read_text())
+        tag = f.get("tag")
+        if not tag:
+            continue
+        elig = f.get("eligible")
+        if elig is True or (elig is None and not q1_only):
+            out.append({"run": rd.name, "boundary": b.name, "tag": tag,
+                        "kept": "fork candidate" if elig else "eligibility not evaluated"})
+            continue
+        q = subprocess.run(["docker", "image", "inspect", "--format", "{{.Id}}", tag],
+                           capture_output=True, text=True, timeout=60, check=False)
+        if q.returncode != 0:
+            continue  # already gone
+        digest = q.stdout.strip()
+        r = subprocess.run(["docker", "rmi", tag], capture_output=True, text=True,
+                           timeout=300, check=False)
+        row = {"utc": X.utc(), "run": rd.name, "boundary": b.name, "tag": tag,
+               "digest": digest, "removed": r.returncode == 0,
+               "why": "eligible false" if elig is False else "q1-only arm",
+               "error": r.stderr.strip()[-300:] or None}
+        out.append(row)
+        with open(logd / "pruned.jsonl", "a") as fh:
+            fh.write(json.dumps(row) + "\n")
+        say(f"{rd.name}/{b.name}: kept image {'removed' if row['removed'] else 'NOT removed'} "
+            f"({tag} {digest[:19]})")
+    return out
 
 
 def _tail(p: Path, n: int = 20000) -> str:
@@ -413,6 +620,10 @@ def cmd_batch(a) -> int:
     import time
     if not a.go_from_jacob:
         sys.exit("paid command: pass --go-from-jacob")
+    if a.prune_kept and _docker_host(a.host) is not None:
+        sys.exit("--prune-kept is for the laptop's local Docker only")
+    if a.limit != COMMON_LIMIT and not a.root:
+        sys.exit("a non-150k arm needs its own --root (arms are never mixed)")
     tasks = [x for x in a.tasks.split(",") if x]
     adopt = [x for x in (a.adopt or "").split(",") if x]
     stamp = X.utc().replace(":", "")
@@ -466,7 +677,7 @@ def cmd_batch(a) -> int:
             from compaction.s2.native import audit as AU
             t0 = time.time()
             # (b) lossaudit on Max, with the recoverability grep on the kept images (rig)
-            rc = AU.run_lossaudit(st, gd, docker_host=a.host,
+            rc = AU.run_lossaudit(st, gd, docker_host=_docker_host(a.host),
                                   log=logd / f"{task}.lossaudit.log")
             lp = gd / "losses.jsonl"
             covered = set()
@@ -486,6 +697,8 @@ def cmd_batch(a) -> int:
                 say(f"{task}: requirement ledger FAILED: {type(e).__name__}: {e}")
                 reqs = None
             (gd / "requirements_ledger.json").write_text(json.dumps(reqs, indent=1))
+        if a.prune_kept and links and la_ok and reqs is not None:
+            prune_kept_images(rd, logd, say, q1_only=a.prune_kept == "q1-only")
         s = _run_summary(rd, gd if la_ok else None)
         s["identity"] = ident
         s["req_rows"] = reqs
@@ -506,6 +719,23 @@ def cmd_batch(a) -> int:
             f"/{(s['peaks'].get('02_implement') or {}).get('calls')} "
             f"sim=${s['sim_usd']} boundary_errors={s['boundary_errors']} ({ident})")
         return s
+
+    def tag_need(task: str) -> tuple[float, str]:
+        """The pilot tag gate (main session, 24 Oct): charged + held on the tag, plus every
+        in-flight cap (this driver's, my other drivers' reservations, --external-inflight for
+        other arms), plus the next run's cap. Checked before, and again under the launch
+        lock right before, every launch."""
+        from compaction.s2 import config as Cfg
+        from compaction.s2 import interact_run as IR
+        charged, held_usd = IR.tag_totals(Cfg.INTERACT_TAG)
+        mine = sum(p.cap if isinstance(p, _Adopted) else caps[t] for t, p in running.items())
+        my_pids = {x for p in running.values()
+                   for x in (getattr(p, "pids", None) or {getattr(p, "pid", None)})}
+        others = sum(r.get("cap", 0) for r in reservations() if r.get("pid") not in my_pids)
+        need = charged + held_usd + mine + others + a.external_inflight + caps[task]
+        return need, (f"${charged:.2f} charged + ${held_usd:.2f} held + ${mine:.2f} mine + "
+                      f"${others:.2f} my other drivers + ${a.external_inflight:.2f} other arms"
+                      f" + ${caps[task]:.2f} next = ${need:.2f} > ${a.tag_limit}")
 
     from concurrent.futures import ThreadPoolExecutor
     grader = ThreadPoolExecutor(max_workers=1)  # grading never blocks scheduling
@@ -571,6 +801,14 @@ def cmd_batch(a) -> int:
                     pending = []
                 time.sleep(30)
                 continue
+            if a.tag_limit:
+                need, msg = tag_need(pending[0])
+                if need > a.tag_limit:
+                    if not held:
+                        say(f"HOLD (tag): {msg}")
+                    held = True
+                    time.sleep(60)
+                    continue
             held = False
             try:
                 free = _free_gb(a.host)
@@ -578,7 +816,11 @@ def cmd_batch(a) -> int:
                 free = -1
                 say(f"free check failed: {e}")
             gate = a.heavy_free_gb if pending[0] in heavy else MIN_FREE_GB
-            if free >= gate:
+            if _docker_host(a.host) is None:
+                ok, free, gate = True, "laptop (gated at launch)", None  # under the lock
+            else:
+                ok = free >= gate
+            if ok:
                 task = pending.pop(0)
                 cmd = ["uv", "run", "--with", "fastmcp==4.1.3", "python",
                        "scripts/s2_native_codex.py", "base", "--go-from-jacob", "--task", task,
@@ -595,21 +837,89 @@ def cmd_batch(a) -> int:
                     cmd += ["--label", lab]
                 if task in mem:  # an infrastructure rerun: the heavy-container rule
                     cmd += ["--memory-mb", str(mem[task]), "--cpus", str(a.heavy_cpus)]
-                with _launch_lock():  # check + launch + register, atomic across drivers
+                mem_gb = mem.get(task, 3072) / 1024
+                cpus = a.heavy_cpus if task in heavy else 2
+                wait_s = 0  # every HOLD sleeps after the lock is released
+                with _launch_lock():  # check + launch + reserve, atomic across my drivers
                     if a.global_concurrency and _all_base_runs() >= a.global_concurrency:
-                        pending.insert(0, task)
-                        time.sleep(30)
-                        continue
-                    with open(logd / f"{task}.log", "w") as fh:  # the child keeps its own fd
-                        running[task] = subprocess.Popen(cmd, cwd=C.REPO_ROOT, stdout=fh,
-                                                         stderr=subprocess.STDOUT)
-                    _register(running[task].pid)
+                        wait_s = 30
+                    elif a.tag_limit and tag_need(task)[0] > a.tag_limit:
+                        wait_s = 60  # rechecked under the lock: still over
+                    elif _docker_host(a.host) is None:
+                        ok, why = laptop_gate(mem_gb, cpus)
+                        if not ok:
+                            if not held:
+                                say(f"HOLD (laptop): {why}")
+                            held = True
+                            wait_s = 60
+                        else:
+                            free = why
+                            cmd += ["--gate-reserved"]
+                    if not wait_s:
+                        with open(logd / f"{task}.log", "w") as fh:  # the child keeps its fd
+                            running[task] = subprocess.Popen(cmd, cwd=C.REPO_ROOT, stdout=fh,
+                                                             stderr=subprocess.STDOUT)
+                        _register(running[task].pid)
+                        reserve(running[task].pid, host=_docker_host(a.host),
+                                cap=caps[task], mem_gb=mem_gb, cpus=cpus)
+                if wait_s:
+                    pending.insert(0, task)
+                    time.sleep(wait_s)
+                    continue
                 say(f"{task}: launched (desktop {free} GB available)")
                 time.sleep(60)  # let it start its container before the next gate check
                 continue
         time.sleep(30)
     say(f"DONE: {len(summaries)} runs, simulator ${spent():.4f}")
     return 0
+
+
+LAPTOP_SMOKE_PROMPT = (
+    "Do not ask the user anything and do not change any files. Run these shell commands one "
+    "at a time and read their output: `ls -la /app`, `git -C /app log --oneline -n 30`, "
+    "`find /app -maxdepth 2 -name '*.py' | head -60`, `sed -n '1,200p' /app/README.rst` (or "
+    "the README that exists), `sed -n '1,250p' /app/setup.py` (or pyproject.toml). Then reply "
+    "with three bullets describing the repository.")
+
+
+def cmd_laptop_smoke(a) -> int:
+    """$0: one Codex session on the laptop's Docker with a prompt that never asks the
+    simulator, a tiny compaction limit so the PostCompact capture runs, stop after b1."""
+    from dataclasses import replace
+    from datetime import UTC, datetime
+
+    from compaction.s2 import interact_run as IR
+
+    class _NoSim:  # any simulator call would be a bug in this smoke
+        def __getattr__(self, name):
+            raise RuntimeError(f"the laptop smoke must not call the simulator ({name})")
+
+    with _launch_lock():
+        ok, why = laptop_gate(3.0, 2)
+        print("laptop gate:", ok, why)
+        if not ok:
+            return 2
+        reserve(os.getpid(), host=None, cap=0.0, mem_gb=3.0, cpus=2)
+    task = IR.load_task(a.task)
+    task = replace(task, steps={"01_plan": LAPTOP_SMOKE_PROMPT})
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    root = OUT / "laptop_smoke"
+    cfg = X.BaseConfig(task=task, root=root, prefix=f"laptopsmoke-{stamp}-",
+                       attempt=1, cx=X.CodexConfig(auto_compact_limit=a.limit),
+                       host=None, steps=("01_plan",), stop_after=1, recite_repeats=1,
+                       cpus=2, memory_mb=3072,
+                       labels={"host": "laptop", "trigger_sensitivity": "laptop-smoke"},
+                       on_started=lambda: mark_visible({os.getpid()}))
+    res = X.run_base(cfg, sim_model=_NoSim())
+    st = res.get("steps", {}).get("01_plan", {})
+    out = {k: res.get(k) for k in ("run_key", "end", "boundaries", "sim_cost_usd", "seconds",
+                                   "error", "cleanup_unconfirmed")}
+    out["egress_ok"] = (res.get("egress_check") or {}).get("ok")
+    out["step"] = {k: st.get(k) for k in ("rc", "seconds", "reconnects", "output_incomplete",
+                                          "api_calls", "compactions")}
+    print(json.dumps(out, indent=1)[:3000])
+    print("run dir:", cfg.run_dir)
+    return 0 if res.get("boundaries") and res.get("end") == "stop_after" else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -624,7 +934,7 @@ def main(argv: list[str] | None = None) -> int:
     lo.add_argument("--dump-lines", type=int, default=3000)
     lo.set_defaults(fn=cmd_local)
     b = sub.add_parser("base")
-    b.add_argument("--host", default="ssh://rig")
+    b.add_argument("--host", default="ssh://rig", help="docker host, or 'local' (the laptop)")
     b.add_argument("--task", default=SMOKE_TASK)
     b.add_argument("--limit", type=int, default=COMMON_LIMIT,
                    help="model_auto_compact_token_limit (tokens; default the common 150k, "
@@ -634,6 +944,8 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--stop-after", type=int)
     b.add_argument("--memory-mb", type=int, default=3072)
     b.add_argument("--run-dir-file", help="write this run's directory here (for the driver)")
+    b.add_argument("--gate-reserved", action="store_true",
+                   help="the driver already passed the laptop gate and reserved this run")
     b.add_argument("--label", action="append",
                    help="KEY=VALUE written at the top level of run.json (repeatable)")
     b.add_argument("--cpus", type=float, default=2)
@@ -650,6 +962,15 @@ def main(argv: list[str] | None = None) -> int:
     bt.add_argument("--tasks", required=True)
     bt.add_argument("--host", default="ssh://rig")
     bt.add_argument("--concurrency", type=int, default=3)
+    bt.add_argument("--prune-kept", choices=("explicit", "q1-only"),
+                    help="after both audits, remove the run's kept images: 'explicit' only "
+                         "boundaries marked eligible=false; 'q1-only' every boundary not "
+                         "eligible=true (an arm that is never forked). Local Docker only.")
+    bt.add_argument("--tag-limit", type=float,
+                    help="hold launches while the pilot tag's charged + held + in-flight caps + "
+                         "the next run's cap would pass this")
+    bt.add_argument("--external-inflight", type=float, default=0.0,
+                    help="other arms' in-flight caps on the pilot tag (from the main session)")
     bt.add_argument("--global-concurrency", type=int,
                     help="launch only while fewer base runs than this go on the laptop, "
                          "counting every driver and arm (the lower-priority arm sets it)")
@@ -676,6 +997,10 @@ def main(argv: list[str] | None = None) -> int:
     bt.add_argument("--adopt", help="tasks whose base runs are already going (grade on exit)")
     bt.add_argument("--go-from-jacob", action="store_true")
     bt.set_defaults(fn=cmd_batch)
+    ls = sub.add_parser("laptop-smoke")
+    ls.add_argument("--task", default=SMOKE_TASK)
+    ls.add_argument("--limit", type=int, default=15000)
+    ls.set_defaults(fn=cmd_laptop_smoke)
     st = sub.add_parser("stage")
     st.add_argument("run_dirs", nargs="+")
     st.add_argument("--out", default=str(OUT / "stage"))

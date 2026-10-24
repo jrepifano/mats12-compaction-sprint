@@ -668,3 +668,113 @@ def test_raw_exec_client_timeout_is_the_budget(monkeypatch):
 
     r = X.raw_exec(Sb(), "cat /x", timeout_s=2)
     assert seen["timeout"] == 2 and r.rc == 124
+
+
+def test_prune_kept_images_policy_and_digest_log(monkeypatch, tmp_path):
+    m = _driver()
+    rd = tmp_path / "run"
+    for k, elig in ((1, False), (2, True), (3, None)):
+        (rd / f"b{k}" / "boundary").mkdir(parents=True)
+        (rd / f"b{k}" / "boundary" / "boundary.json").write_text(
+            json.dumps({"tag": f"emx-sandbox/x:b{k}", "eligible": elig}))
+    ran = []
+
+    class P:
+        def __init__(self, rc, out=""):
+            self.returncode, self.stdout, self.stderr = rc, out, ""
+
+    def run(argv, **k):
+        ran.append(argv)
+        return P(0, "sha256:abc\n") if argv[1] == "image" else P(0)
+
+    monkeypatch.setattr("subprocess.run", run)
+    rows = m.prune_kept_images(rd, tmp_path, lambda s: None)  # explicit policy
+    assert [r.get("removed") for r in rows] == [True, None, None]
+    assert rows[1]["kept"] == "fork candidate"
+    assert rows[2]["kept"] == "eligibility not evaluated"  # the default null is never pruned
+    ran.clear()
+    rows = m.prune_kept_images(rd, tmp_path, lambda s: None, q1_only=True)
+    rm = [a[2] for a in ran if a[:2] == ["docker", "rmi"]]
+    assert rm == ["emx-sandbox/x:b1", "emx-sandbox/x:b3"]  # never the eligible=true one
+    logged = [json.loads(x) for x in (tmp_path / "pruned.jsonl").read_text().splitlines()]
+    assert logged[0]["digest"] == "sha256:abc" and logged[-1]["why"] == "q1-only arm"
+
+
+class _P:
+    def __init__(self, rc=0, out="", err=""):
+        self.returncode, self.stdout, self.stderr = rc, out, err
+
+
+def _gate_env(monkeypatch, m, ps, inspect=None,
+              mp="System-wide memory free percentage: 70%"):
+    inspect = inspect or _P(0, "")
+
+    def run(argv, **k):
+        if argv[:2] == ["docker", "ps"]:
+            return ps
+        if argv[:2] == ["docker", "inspect"]:
+            return inspect
+        if argv[0] == "memory_pressure":
+            return _P(0, mp)
+        raise AssertionError(argv)
+
+    monkeypatch.setattr("subprocess.run", run)
+    monkeypatch.setattr(m, "docker_disk_free_gb", lambda: 500.0)
+    monkeypatch.setattr(m.os, "getloadavg", lambda: (1.0, 1.0, 1.0))
+
+
+def test_laptop_gate_fails_closed(monkeypatch, tmp_path):
+    m = _driver()
+    monkeypatch.setattr(m, "RESERVATIONS", tmp_path / "res.json")
+    _gate_env(monkeypatch, m, _P(1, "", "daemon down"))
+    assert m.laptop_gate(3, 2)[0] is False
+    _gate_env(monkeypatch, m, _P(0, "a b\n"), _P(0, "3221225472 2000000000\n"))  # 1 of 2
+    assert m.laptop_gate(3, 2)[0] is False
+    _gate_env(monkeypatch, m, _P(0, "a\n"), _P(0, "0 2000000000\n"))  # unlimited memory
+    assert m.laptop_gate(3, 2)[0] is False
+    _gate_env(monkeypatch, m, _P(0, ""), mp="no reading")
+    assert m.laptop_gate(3, 2)[0] is False
+    _gate_env(monkeypatch, m, _P(0, ""))
+    assert m.laptop_gate(3, 2)[0] is True
+
+
+def test_laptop_gate_counts_pending_reservations(monkeypatch, tmp_path):
+    import os
+    m = _driver()
+    monkeypatch.setattr(m, "RESERVATIONS", tmp_path / "res.json")
+    _gate_env(monkeypatch, m, _P(0, ""))
+    m.reserve(os.getpid(), host=None, cap=6.5, mem_gb=3, cpus=2)  # containers not up yet
+    ok, why = m.laptop_gate(3, 2)
+    assert not ok and "1 pending" in why  # 2 + 2 containers > 3
+
+
+def test_reservation_counts_until_marked_visible_and_probe_errors_hold(monkeypatch, tmp_path):
+    import os
+    m = _driver()
+    monkeypatch.setattr(m, "RESERVATIONS", tmp_path / "res.json")
+    monkeypatch.setattr(m, "LAUNCH_LOCK", tmp_path / "lock")
+    _gate_env(monkeypatch, m, _P(0, ""))
+    m.reserve(os.getpid(), host=None, cap=6.5, mem_gb=3, cpus=2)
+    rows = json.loads((tmp_path / "res.json").read_text())
+    rows[0]["ts"] -= 10_000  # old, but never seen: still counts
+    (tmp_path / "res.json").write_text(json.dumps(rows))
+    assert m.laptop_gate(3, 2)[0] is False
+    m.mark_visible({os.getpid()})  # its containers are up: docker ps counts them now
+    assert m.laptop_gate(3, 2)[0] is True
+    assert m.reservations()[0]["cap"] == 6.5  # the cap still counts for the tag gate
+
+    def boom():
+        raise OSError("docker gone")
+
+    monkeypatch.setattr(m, "docker_disk_free_gb", boom)
+    ok, why = m.laptop_gate(3, 2)
+    assert not ok and "probe failed" in why
+
+
+def test_adopted_run_carries_its_pids_for_the_tag_gate(monkeypatch):
+    m = _driver()
+    cmd = "/x/bin/python scripts/s2_native_codex.py base --task helm --sim-cap 3.5 --limit 1"
+    monkeypatch.setattr(m, "_base_proc_table", lambda: [(200, 199, cmd)])
+    ad = m._Adopted("helm", None)
+    # its own reservation (keyed by the uv wrapper, 199) is excluded from "my other drivers"
+    assert ad.pids == {199, 200} and ad.cap == 3.5

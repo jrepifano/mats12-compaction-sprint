@@ -1147,6 +1147,7 @@ class BaseConfig:
     memory_mb: int = 8192
     auth_path: Path = field(default_factory=lambda: Path.home() / ".codex" / "auth.json")
     labels: dict = field(default_factory=dict)  # top-level run.json keys (e.g. an arm label)
+    on_started: Callable[[], None] | None = None  # once the session's containers are up
 
     @property
     def run_key(self) -> str:
@@ -1312,6 +1313,9 @@ def run_base(cfg: BaseConfig, *, sim_model, eligible=None, session_cls=None) -> 
             res["container"] = ns.sb.name
             res["network"] = ns.egress.network
             install_config(ns.sb, ns.server, cfg.cx, auth_bytes)
+            if cfg.on_started is not None:
+                with contextlib.suppress(Exception):  # bookkeeping only (a launch gate)
+                    cfg.on_started()
             res["egress_check"] = N.egress_check(ns.sb, ns.egress, "https://chatgpt.com/")
             IR._dump(rd / "egress_check.json", res["egress_check"])
             if not res["egress_check"]["ok"]:
