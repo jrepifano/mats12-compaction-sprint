@@ -612,12 +612,8 @@ class PartBRuntime:
 
     def _actual_rate(self, snapshot, *, since=None):
         """Accept only a fresh actual event; a pre-action cache cannot settle its charge."""
-        if not isinstance(snapshot, dict):
-            return None
-        observed = snapshot.get('observed_at')
-        if not isinstance(observed, (int, float)) or not 0 <= self.clock() - observed <= 60:
-            return None
-        if since is not None and observed < since:
+        from compaction.s2.planted_runtime import reusable_rate
+        if reusable_rate(snapshot, now=self.clock(), since=since) is None:
             return None
         return self._remember_rate(snapshot)
 
@@ -789,24 +785,32 @@ class PartBRuntime:
                     timeout_s=max(1, min(1800, int(B_CUTOFF.timestamp() - self.clock()))))
                 evidence = P.read(attempt / 'fork/evidence.json')
                 context = P.read(attempt / 'fork/initial_context.json')
-                complete = (evidence.get('capture_complete') is True and context.get('ok') is True
-                            and (fork.get('fork_check') or {}).get('ok') is True
-                            and fork.get('sim_calls') == 0 and fork.get('sim_cost_usd') == 0
-                            and fork.get('cleanup_unconfirmed') == [] and not fork.get('error')
-                            and not fork.get('auth_error') and not fork.get('policy_stop')
+                safe_technical = (context.get('ok') is True
+                    and (fork.get('fork_check') or {}).get('ok') is True
+                    and fork.get('sim_calls') == 0 and fork.get('sim_cost_usd') == 0
+                    and fork.get('cleanup_unconfirmed') == []
+                    and not any(fork.get(key) for key in ('auth_error', 'paid_route', 'policy_stop')))
+                complete = (safe_technical and evidence.get('capture_complete') is True
+                            and not fork.get('error')
                             and fork.get('outcome') in {'ask_user', 'submission', 'call_cap'})
                 after = self._post_rate(fork.get('rate_limit'), identity)
                 preliminary = {'assignment': row, 'fork': fork, 'capture_complete': complete,
-                               'before': before, 'after': after}
+                               'before': before, 'after': after, 'safe_technical': safe_technical}
                 durable(attempt / 'result.json', preliminary, new=True)
                 status = 'complete' if complete else 'technical_failure'
                 self._finish_allowance(identity, status, attempt / 'result.json', after)
                 if not complete:
                     self.budget.finish(identity, status, artifact=str(attempt / 'result.json'))
-                    result['results'].append({**row, 'outcome': 'technical_failure'})
-                    raise RuntimeError('Part B capture/source/context gate failed; halt without replacement')
+                    scored = S.score(evidence.get('events', []), spec.scorer_spec(), capture_complete=False)
+                    durable(attempt / 'score.json', scored, new=True)
+                    result['results'].append({**row, 'outcome': 'technical_failure',
+                                              'score': str(attempt / 'score.json')})
+                    durable(artifact, result)
+                    if safe_technical:
+                        continue  # Planned exposure category; retain this assigned failure without replacement.
+                    raise RuntimeError('Part B source/context/safety gate failed; halt without replacement')
                 # Judges see the actual initial context only, never continuation outcomes.
-                if not any(previous['task'] == row['task'] and previous['arm'] == row['arm']
+                if not any(previous['outcome'] != 'technical_failure' and previous['task'] == row['task'] and previous['arm'] == row['arm']
                            for previous in result['results']):
                     request = {'model': A.PLAUSIBILITY_MODEL, 'system': A.PLAUSIBILITY_PROMPT,
                                'claim': spec.claim_line, 'effective_context': json.dumps(context['surfaces'], ensure_ascii=False),
@@ -829,7 +833,7 @@ class PartBRuntime:
                 self.budget.finish(identity, 'complete', artifact=str(attempt / 'result.json'))
                 result['results'].append({**row, 'outcome': scored['outcome'], 'score': str(attempt / 'score.json')})
                 durable(artifact, result)
-            result.update(status='PASS', reason='all 30 assigned Part B forks completed; cards/repair not started')
+            result.update(status='PASS', reason='all 30 assigned Part B forks processed; clean technical failures retained; cards/repair not started')
         except Exception as exc:  # noqa: BLE001 -- durable terminal stop, never rerun an assigned fork
             result.update(status='HOLD' if isinstance(exc, ValueError) else 'FAIL',
                           reason=f'{type(exc).__name__}: {exc}')

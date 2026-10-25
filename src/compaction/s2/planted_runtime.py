@@ -7,6 +7,7 @@ scoring; retention reads only base-boundary evidence. Cards/repair are not run.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import socket
@@ -42,6 +43,31 @@ def _live_stop_reason(now, deadline, stop_file):
     if Path(stop_file).exists():
         return "operator_stop"
     return None
+
+
+def reusable_rate(snapshot, *, now, since=None):
+    """Return complete, fresh stream evidence; retain valid holds for the guard."""
+    def finite_number(value):
+        try:
+            return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+        except OverflowError:
+            return False
+
+    if not isinstance(snapshot, dict):
+        return None
+    observed = snapshot.get("observed_at")
+    if not finite_number(observed) or not 0 <= now - observed <= 60:
+        return None
+    if since is not None and observed < since:
+        return None
+    info = snapshot.get("rate_limit_info")
+    if not isinstance(info, dict):
+        return None
+    windows = info.get("unifiedWindows") or {info.get("rateLimitType"): info}
+    seven = windows.get("seven_day") if isinstance(windows, dict) else None
+    if not isinstance(seven, dict) or not all(finite_number(seven.get(key)) for key in ("utilization", "resetsAt")):
+        return None
+    return snapshot
 
 
 class TaskTerminal(RuntimeError):
@@ -84,11 +110,18 @@ class GuardedMaxBackend(H.MaxBackend):
             info = event.get("rate_limit_info") or {}
             self.latest_rate = {"observed_at": self._clock(), "rate_limit_info": info}
             windows = [*(info.get("unifiedWindows") or {}).items(), (info.get("rateLimitType"), info)]
-            if any(isinstance(w, dict) and (w.get("status") in {"rejected", "rate_limited"} or
-                   isinstance(w.get("utilization"), (int, float))
-                   and name == "seven_day" and w["utilization"] >= self.max_window_utilization)
-                   for name, w in windows):
-                reason = "max_window_hold"
+            for name, window in windows:
+                if not isinstance(window, dict):
+                    continue
+                reset = window.get("resetsAt")
+                if (isinstance(reset, (int, float)) and not isinstance(reset, bool)
+                        and math.isfinite(reset) and reset <= self._clock()):
+                    continue
+                if (window.get("status") in {"rejected", "rate_limited"} or
+                        isinstance(window.get("utilization"), (int, float))
+                        and name == "seven_day" and window["utilization"] >= self.max_window_utilization):
+                    reason = "max_window_hold"
+                    break
         if reason:
             self._halt(reason)
             return True
@@ -305,19 +338,16 @@ class Runtime:
 
     def observe_rate(self, snapshot):
         """Reuse fresh native/judge stream evidence without issuing a reading call."""
-        if not isinstance(snapshot, dict) or not isinstance(snapshot.get("rate_limit_info"), dict):
+        if reusable_rate(snapshot, now=self.clock()) is None:
             return False
-        observed = snapshot.get("observed_at")
-        if not isinstance(observed, (int, float)) or not 0 <= self.clock() - observed <= 60:
-            return False
-        if self._rate and self._rate.get("observed_at", 0) > observed:
+        if reusable_rate(self._rate, now=self.clock()) and self._rate["observed_at"] > snapshot["observed_at"]:
             return False
         self._rate = snapshot
         return True
 
     def max_reading(self, *, force=False):
         self._authorized()
-        if not force and self._rate and 0 <= self.clock() - self._rate.get("observed_at", 0) <= 60:
+        if not force and reusable_rate(self._rate, now=self.clock()):
             return self._rate
         reader = self.io.get("rate_reader")
         self._rate = reader() if reader else desktop_max_reading(
@@ -351,8 +381,7 @@ class Runtime:
             return self._judge(request)
         finally:
             reading = getattr(self._judge, "latest_rate", lambda: None)()
-            self._rate = (reading if reading and
-                0 <= self.clock() - reading.get("observed_at", 0) <= 60 else None)
+            self._rate = reusable_rate(reading, now=self.clock())
             self._active_attempt = previous
 
     def _receipt(self, work_id):

@@ -37,6 +37,10 @@ class DriverStop(RuntimeError):
 class RateHold(DriverStop):
     """A measured rate hold; retryable only before an operation is assigned."""
 
+    def __init__(self, message: str, *, retry_at: float | None = None):
+        super().__init__(message)
+        self.retry_at = retry_at
+
 
 def utc(value: float) -> str:
     return datetime.fromtimestamp(value, UTC).isoformat()
@@ -100,12 +104,20 @@ def measured_rate(snapshot: dict, now: float) -> dict:
     for name, window in windows.items():
         if not isinstance(window, dict):
             raise DriverStop("invalid Max window")
+        window_reset = window.get("resetsAt")
+        if isinstance(window_reset, (int, float)) and window_reset <= now:
+            continue
         used = window.get("utilization")
         if name == "seven_day" and isinstance(used, (int, float)) and used >= .90:
             raise RateHold("Max 90% weekly hold")
         if window.get("status") in {"rejected", "rate_limited"}:
-            raise RateHold("Max rate-limit hold")
-    return {"utilization": utilization, "observed_at": observed, "resetsAt": reset}
+            retry_at = (window_reset + RESET_SETTLE_SECONDS
+                        if name == "five_hour" and isinstance(window_reset, (int, float))
+                        and math.isfinite(window_reset) else None)
+            raise RateHold("Max rate-limit hold", retry_at=retry_at)
+    return {"utilization": utilization, "observed_at": observed, "resetsAt": reset,
+            "five_hour_utilization": (windows.get("five_hour") or {}).get("utilization"),
+            "five_hour_resetsAt": (windows.get("five_hour") or {}).get("resetsAt")}
 
 
 class Driver:
@@ -189,7 +201,8 @@ class Driver:
                 f"forks A {m.get('forks_a', '?')}/60, B {m.get('forks_b', '?')}/34, "
                 f"total {m.get('forks_total', '?')}/94; "
                 f"remaining {94 - m['forks_total'] if 'forks_total' in m else '?'}; "
-                f"simulator ${m.get('simulator_usd', '?')}; Max {rate.get('utilization', '?')}\n")
+                f"simulator ${m.get('simulator_usd', '?')}; Max weekly {rate.get('utilization', '?')}, "
+                f"five-hour {rate.get('five_hour_utilization', '?')}\n")
         with self.status_path.open("a") as handle:
             handle.write(line)
             handle.flush()
@@ -238,7 +251,9 @@ class Driver:
         # Preserve the held/stale reading too; a stop line must not display the
         # preceding allowed reading as if it were the one that triggered a hold.
         self.state["max"] = {"utilization": (windows.get("seven_day") or {}).get("utilization"),
-                             "observed_at": raw.get("observed_at")}
+                             "observed_at": raw.get("observed_at"),
+                             "five_hour_utilization": (windows.get("five_hour") or {}).get("utilization"),
+                             "five_hour_resetsAt": (windows.get("five_hour") or {}).get("resetsAt")}
         self.state["max"] = measured_rate(raw, self.clock())
         self.state["last_guard"] = {"at": utc(self.clock()), "action": action,
                                     "max": self.state["max"]}
@@ -276,9 +291,11 @@ class Driver:
             retries = self.state.get("rate_guard_retries", 0)
             if retries >= MAX_RATE_RETRIES:
                 raise
+            retry_at = max(self.clock() + RATE_RETRY_SECONDS, exc.retry_at or 0)
             self.state.update(status="WAIT_MAX", rate_guard_retries=retries + 1,
-                              rate_retry_at=self.clock() + RATE_RETRY_SECONDS)
-            self._event(f"rate hold before assignment; retry {retries + 1}/{MAX_RATE_RETRIES}: {exc}")
+                              rate_retry_at=min(retry_at, B_CUTOFF.timestamp()))
+            self._event(f"rate hold before assignment; retry {retries + 1}/{MAX_RATE_RETRIES} "
+                        f"at {utc(self.state['rate_retry_at'])}: {exc}")
             return
         self.state.pop("rate_retry_at", None)
         self.state["rate_guard_retries"] = 0

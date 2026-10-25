@@ -735,3 +735,63 @@ def test_observe_rate_reuses_fresh_stream_and_never_regresses(runtime):
     assert not runtime.observe_rate(rate(.2) | {"observed_at": NOW+1})
     assert not runtime.observe_rate({"observed_at": NOW})
     assert runtime.max_reading() == rate(.3)
+
+
+@pytest.mark.parametrize("info", [None, {}, {"unifiedWindows": []}, {"unifiedWindows": [1]},
+    {"unifiedWindows": {"five_hour": {"utilization": .1, "resetsAt": NOW+100}}},
+    {"unifiedWindows": {"seven_day": "invalid"}},
+    *({"unifiedWindows": {"seven_day": {"utilization": used, "resetsAt": reset}}}
+      for used, reset in [(None, NOW+100), (.2, None), (".2", NOW+100), (.2, "later"),
+                          (float("nan"), NOW+100), (.2, float("inf")), (True, NOW+100), (.2, False)])])
+def test_malformed_judge_rate_falls_back_to_fresh_ping(runtime, info):
+    malformed = {"observed_at": NOW, "rate_limit_info": info}
+    reads = []
+    runtime.io["rate_reader"] = lambda: reads.append(1) or rate()
+    judge = lambda req: {"classification": "report"}
+    judge.latest_rate = lambda: malformed
+    runtime.io["judge"] = judge
+    assert runtime.observe_rate(malformed) is False
+    runtime._rate = malformed  # also guard native paths that directly store an event
+    runtime.judge({})
+    assert runtime.max_reading() == rate()
+    assert len(reads) == 2
+
+
+@pytest.mark.parametrize("unified", [True, False])
+def test_reusable_rate_preserves_valid_high_and_rejected_events(runtime, unified):
+    seven = {"utilization": .99, "resetsAt": NOW+100, "status": "rejected"}
+    info = {"unifiedWindows": {"seven_day": seven}} if unified else seven | {"rateLimitType": "seven_day"}
+    snapshot = {"observed_at": NOW, "rate_limit_info": info}
+    assert M.reusable_rate(snapshot, now=NOW) is snapshot
+    assert runtime.observe_rate(snapshot)
+    runtime.io["rate_reader"] = lambda: pytest.fail("valid hold must not be hidden by another ping")
+    with pytest.raises(ValueError, match="hold"):
+        runtime.guard("must-stop")
+
+
+@pytest.mark.parametrize("observed", [float("nan"), float("inf"), True, NOW+1, NOW-61])
+def test_reusable_rate_rejects_invalid_arrival_time(observed):
+    assert M.reusable_rate(rate() | {"observed_at": observed}, now=NOW) is None
+
+
+def test_reusable_rate_respects_post_action_cutoff():
+    assert M.reusable_rate(rate(), now=NOW, since=NOW+1) is None
+    assert M.reusable_rate(rate(), now=NOW, since=NOW) == rate()
+
+
+@pytest.mark.parametrize("reset,held", [(NOW-1, False), (NOW, False), (NOW+1, True),
+    (None, True), (float("nan"), True), (float("-inf"), True)])
+def test_judge_ignores_only_known_expired_rejected_window(tmp_path, reset, held):
+    backend = guarded_backend(tmp_path)
+    info = rate()["rate_limit_info"] | {"isUsingOverage": False, "overageStatus": "rejected"}
+    info["unifiedWindows"]["five_hour"] = {"utilization": 1, "status": "rejected", "resetsAt": reset}
+    assert backend._watch({"type": "rate_limit_event", "rate_limit_info": info}) is held
+    assert backend._stop.is_set() is held
+
+
+def test_expired_short_window_does_not_hide_active_weekly_hold(tmp_path):
+    backend = guarded_backend(tmp_path)
+    info = rate(.9)["rate_limit_info"] | {"isUsingOverage": False, "overageStatus": "rejected"}
+    info["unifiedWindows"]["five_hour"] = {"status": "rejected", "resetsAt": NOW-1}
+    assert backend._watch({"type": "rate_limit_event", "rate_limit_info": info})
+    assert backend.pilot_stop_reason == "max_window_hold"

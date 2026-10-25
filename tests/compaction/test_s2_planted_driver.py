@@ -660,3 +660,44 @@ def test_post_contingency_step0_uses_new_boundary_only(tmp_path):
     checks = [kwargs for phase, kwargs in runtime.calls if phase == 'step0']
     assert len(checks) == 2
     assert all(row['origin'] == 'planted_base' for row in checks[1]['boundaries'])
+
+
+def test_five_hour_rejection_waits_for_its_reset_before_assignment(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock)
+    actual = runtime.max_reading
+    reset = D.RESET.timestamp() + 5 * 3600
+    readings = []
+
+    def reading():
+        row = actual()
+        readings.append(clock())
+        row['rate_limit_info']['unifiedWindows']['five_hour'] = {
+            'utilization': 1, 'resetsAt': reset, 'status': 'rejected'}
+        return row
+
+    runtime.max_reading = reading
+    instance = driver(tmp_path, runtime, clock)
+    state = instance.run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'STOPPED_BEFORE_CARDS'
+    assert readings[1] == reset + D.RESET_SETTLE_SECONDS
+    assert state['sequence'] == 3 and len(state['completed']) == 3
+    assert phases(runtime) == ['step0', 'screen', 'chains']
+    assert 'five-hour 1' in instance.status_path.read_text()
+
+
+def test_five_hour_wait_cannot_cross_absolute_cutoff(tmp_path):
+    clock = Clock(D.B_CUTOFF - timedelta(minutes=5))
+    runtime = Runtime(clock)
+    actual = runtime.max_reading
+
+    def reading():
+        row = actual()
+        row['rate_limit_info']['unifiedWindows']['five_hour'] = {
+            'utilization': 1, 'resetsAt': clock() + 5*3600, 'status': 'rejected'}
+        return row
+
+    runtime.max_reading = reading
+    state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'HALTED' and 'cutoff' in state['reason']
+    assert not phases(runtime) and state['sequence'] == 0 and state['pending'] is None

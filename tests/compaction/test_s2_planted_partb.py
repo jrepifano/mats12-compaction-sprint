@@ -119,12 +119,43 @@ def test_no_external_action_before_reset_or_after_deadline(tmp_path, monkeypatch
     assert not calls + judgments + rates + guards
 
 
-def test_failed_capture_consumes_one_assignment_and_never_replaces(tmp_path, monkeypatch):
+def test_clean_first_technical_failure_keeps_all_thirty_assigned_rows(tmp_path, monkeypatch):
+    obj, calls, judgments, _, guards, _ = runtime(tmp_path, monkeypatch)
+    original = obj.fork_runner
+    def fork(bdir, out, **kwargs):
+        result = original(bdir, out, **kwargs)
+        if len(calls) == 1:
+            P.write(out / 'evidence.json', {'capture_complete': False, 'events': []})
+        return result
+    obj.fork_runner = fork
+    result = obj.run_part_b('technical', TASKS, guards.append)
+    assert result['status'] == 'PASS' and len(calls) == len(result['results']) == 30
+    assert len(judgments) == 6
+    attempts = obj.budget.state()['attempts']
+    assert len(attempts) == 30 and attempts[0]['status'] == 'technical_failure'
+    assert sum(row['outcome'] == 'technical_failure' for row in result['results']) == 1
+    assert P.read(obj.allowance.path)['pending'] is None
+    assert obj.recover('technical') == result
+
+
+@pytest.mark.parametrize('unsafe', ['cleanup_unconfirmed', 'sim_calls', 'sim_cost_usd',
+    'auth_error', 'paid_route', 'policy_stop', 'fork_check', 'context'])
+def test_unsafe_incomplete_fork_halts_after_one_assignment(tmp_path, monkeypatch, unsafe):
     obj, calls, judgments, _, guards, _ = runtime(tmp_path, monkeypatch, incomplete=True)
-    result = obj.run_part_b('bad', TASKS, guards.append)
+    original = obj.fork_runner
+    def fork(bdir, out, **kwargs):
+        result = original(bdir, out, **kwargs)
+        if unsafe == 'context':
+            P.write(out / 'initial_context.json', {'ok': False})
+        else:
+            result[unsafe] = {'ok': False} if unsafe == 'fork_check' else (
+                ['container'] if unsafe == 'cleanup_unconfirmed' else 1)
+        return result
+    obj.fork_runner = fork
+    result = obj.run_part_b('unsafe', TASKS, guards.append)
     assert result['status'] == 'FAIL' and len(calls) == 1 and not judgments
     assert obj.budget.state()['attempts'][0]['status'] == 'technical_failure'
-    assert obj.recover('bad') == result
+    assert obj.recover('unsafe') == result
 
 
 def test_two_point_allowance_blocks_next_launch_and_count_stays_assigned(tmp_path, monkeypatch):
@@ -431,3 +462,31 @@ def test_post_action_missing_event_cannot_ping_after_b_deadline(tmp_path, monkey
     with pytest.raises(ValueError, match='post-action rate refresh'):
         obj._post_rate(None, 'deadline')
     assert rates == [False]
+
+
+@pytest.mark.parametrize('window', [{}, {'utilization': '0.1', 'resetsAt': 1},
+    {'utilization': .1}, {'utilization': float('nan'), 'resetsAt': 1}])
+def test_malformed_actual_rate_falls_back_without_poisoning_cache(tmp_path, monkeypatch, window):
+    obj, _, _, rates, _, state = runtime(tmp_path, monkeypatch)
+    obj._reserve_allowance('malformed', obj.rate_provider())
+    event = {'observed_at': state['now'], 'rate_limit_info': {'unifiedWindows': {'seven_day': window}}}
+    assert obj._actual_rate(event) is None
+    obj._post_rate(event, 'malformed')
+    assert rates[-1] is True
+
+
+def test_clean_technical_failures_do_not_introduce_an_unplanned_streak_cap(tmp_path, monkeypatch):
+    obj, calls, judgments, _, guards, _ = runtime(tmp_path, monkeypatch, incomplete=True)
+    result = obj.run_part_b('all-technical', TASKS, guards.append)
+    assert result['status'] == 'PASS' and len(calls) == 30 and not judgments
+    assert len(result['results']) == 30
+    assert all(row['status'] == 'technical_failure' for row in obj.budget.state()['attempts'])
+
+
+def test_valid_high_utilization_event_reaches_hold_guard_without_fallback(tmp_path, monkeypatch):
+    obj, _, _, rates, _, state = runtime(tmp_path, monkeypatch)
+    event = {'observed_at': state['now'], 'rate_limit_info': {'unifiedWindows': {
+        'seven_day': {'utilization': .95, 'resetsAt': NOW.timestamp() + 604800}}}}
+    with pytest.raises(ValueError, match='hold'):
+        obj._actual_rate(event)
+    assert not rates
