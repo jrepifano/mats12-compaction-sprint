@@ -7,6 +7,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -93,9 +95,10 @@ class Stub:
         self.reqs: list[T.Req] = []
 
     def run(self, reqs, *, purpose):
-        assert len(reqs) == 1  # one call per run, under the lock
         self.reqs += reqs
-        r = reqs[0]
+        return {r.key: self._one(r) for r in reqs}
+
+    def _one(self, r):
         if r.key == "mine|cluster":
             ids = [json.loads(line)["id"] for line in r.user.splitlines() if line.startswith("{")]
             half = len(ids) // 2
@@ -111,10 +114,13 @@ class Stub:
                 {"id": f"x{i}", "category": "ban", "description": "d",
                  "consequential": "yes", "act": "a",
                  "recoverable": ("no", "unprompted_file", "repo")[i % 3], "how": "h",
-                 "speaker": "user", "kind": "rule_or_permission", "in_summary": "no"}
+                 "speaker": "user", "kind": "rule_or_permission", "in_summary": "no",
+                 "odd": "yes" if i == 0 else "no",
+                 "odd_what": "flips the rule" if i == 0 else None,
+                 "odd_summary_quote": "A summary." if i == 0 else None}
                 for i in range(n)
             ]}  # fmt: skip
-        return {r.key: T.Resp(r.key, data, None, None, meta={})}
+        return T.Resp(r.key, data, None, None, meta={})
 
 
 def _rec(rid: str) -> dict:
@@ -199,3 +205,53 @@ def test_window_and_paths():
     assert LM.touched_paths(msgs) == ["/app/plan.md"]
     assert "[m0] USER: never do thing 0" in LM.window(msgs, 0)
     assert LM.window(msgs, None) == "(message not located)"
+
+
+def test_odd_cases_are_pulled_with_quotes_and_counted():
+    picked, _ = LM.draw(_pool(), m=3, per=2)
+    labels = LM.label_all(Stub(), picked, load=lambda r: _rec(r["rid"]))
+    yes = [r for r in labels if r["odd"] == "yes"]
+    assert yes and all(r["odd_quote_found"] for r in yes)
+    rows = LM.assign_groups(labels, {"groups": []})
+    c = LM.odd_counts(rows)
+    assert c["n_odd"] == len(yes) and c["quote_in_summary"] == len(yes)
+    md = LM.odd_cases_md(rows)
+    assert md.count("## ") == len(yes) and "flips the rule" in md and "A summary." in md
+    assert "Summary quote (not found)" not in md
+
+
+def test_the_api_route_refuses_private_strata(monkeypatch):
+    picked, design = LM.draw(_pool(), m=3, per=2)
+    monkeypatch.setattr(LM, "frozen_sample", lambda *a, **k: (picked, design, {}))
+    args = LM.argparse.Namespace(lossaudit="x", redraw=False, route="api", strata="all",
+                                 cap_usd=1.0, window_stop=0.89)  # fmt: skip
+    with pytest.raises(SystemExit, match="public strata only"):
+        LM.cmd_run(args)
+
+
+def test_api_route_is_pinned_without_fallbacks():
+    r = LM.api_route()
+    assert r.provider_pin == "Anthropic" and r.transport == "openrouter"
+    assert r.model == "anthropic/claude-opus-5.5" and not r.accepts_sampling
+
+
+def test_cluster_names_stay_unique_and_unknown_ids_block_completion():
+    g = {"definition": "d", "targeted": "no", "why": "w"}
+    data = {"groups": [g | {"name": "A", "ids": ["1"]}, g | {"name": "A", "ids": ["2"]},
+                       g | {"name": "A (2)", "ids": ["3", "zz"]}]}  # fmt: skip
+    out = LM.check_clusters(T.Resp("k", data, None, None), ["1", "2", "3"])
+    names = [x["name"] for x in out["groups"]]
+    assert len(set(names)) == 3 and out["complete"] is False and out["unknown_ids"] == ["zz"]
+
+
+def test_routes_by_stratum_counts_each_labeller():
+    rows = [{"stratum": "swe-chat-v1", "route": {"backend": "opus-openrouter",
+                                                 "transport": "openrouter"}},
+            {"stratum": "jacob", "route": {"backend": "opus-max", "transport": "claude-p"}}]  # fmt: skip
+    assert LM.routes_by_stratum(rows) == {
+        "jacob": {"opus-max (claude-p)": 1}, "swe-chat-v1": {"opus-openrouter (openrouter)": 1}}  # fmt: skip
+
+
+def test_odd_cases_refuse_an_unignored_path(tmp_path):
+    with pytest.raises(SystemExit, match="not gitignored"):
+        LM.write_odd_cases([], tmp_path / "odd.md")

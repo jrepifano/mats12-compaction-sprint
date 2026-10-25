@@ -93,7 +93,7 @@ SCAN_PURPOSE = "s1_chain_scan"
 JUDGE_PURPOSE = s1_judge.PURPOSE
 CAP_USD = 30.0
 WINDOW_STOP = 0.89  # Jacob, 24 Oct: run on Max until the weekly window is about 90%
-RUN_CHUNK = 16  # requests per backend.run: the overshoot bound past a stop (astra r1 #2)
+RUN_CHUNK = 8  # requests per backend.run (= the concurrency): the overshoot bound past a stop
 CONTINUED = "This session is being continued from a previous conversation"
 N_NOT_CURRENT = 20
 USAGE_STATE = OUT / "usage_state.json"  # cumulative notional cost across restarts
@@ -230,21 +230,34 @@ class Metered:
     there is no usage reading (fail closed). Cost is the backend's own `last_stats` for the run,
     which counts every attempt (the route canary and retries included; cache hits cost
     nothing); a backend without it (the test stubs) is charged its responses' notional cost.
-    Cumulative cost persists in `state_path` across restarts. Overshoot past the window stop is
-    bounded by one chunk: at most `chunk` calls already launched when the window crossed."""
+    Cumulative cost persists in `state_path` across restarts.
+
+    With `bound` (the paid API route: each request's hard cost bound times s1_api's retry
+    margin), a chunk is sent only when spent + its bound fits the cap; the chunk is cut to the
+    longest prefix that fits, and the meter stops when not even one request does. If the
+    backend raises, that chunk is charged its bound (astra r2 #1, #2). Cached requests are
+    bounded like any other, so near the cap the meter can stop work the cache would have
+    answered for free.
+
+    Without `bound` (Max), the window check runs before each chunk, not before each attempt
+    inside the backend (MaxBackend is shared code): past the stop, at most one chunk's calls,
+    with their canary and retries, can still run (astra r2 #3, accepted: `chunk` is 8 on A
+    and 1 on B). Calls whose usage the backend could not read are counted in
+    `usage_unknown`."""
 
     def __init__(
         self,
         backend,
         cap_usd: float,
-        window_stop: float = WINDOW_STOP,
+        window_stop: float | None = WINDOW_STOP,
         reading: Callable[[], Mapping | None] = W.latest_reading,
         chunk: int = RUN_CHUNK,
         lock: Callable[[], Any] = contextlib.nullcontext,
         state_path: Path | None = None,
+        bound: Callable[[list[T.Req]], float] | None = None,
     ):
         self.backend, self.cap, self.stop_at, self.reading = backend, cap_usd, window_stop, reading
-        self.chunk, self.lock, self.state_path = chunk, lock, state_path
+        self.chunk, self.lock, self.state_path, self.bound = chunk, lock, state_path, bound
         prior = {}
         if state_path is not None and state_path.exists():
             prior = json.loads(state_path.read_text())
@@ -252,6 +265,8 @@ class Metered:
         self.n_sent = int(prior.get("n_sent") or 0)
         self.n_cached = int(prior.get("n_cached") or 0)
         self.n_runs = int(prior.get("n_runs") or 0)
+        self.usage_unknown = int(prior.get("usage_unknown") or 0)
+        self.charged_at_bound = float(prior.get("charged_at_bound_usd") or 0.0)
         self.start = prior.get("window_start", _window(reading()))
         self.name, self.model, self.family = backend.name, backend.model, backend.family
         self.context_tokens = backend.context_tokens
@@ -260,39 +275,61 @@ class Metered:
     def check(self) -> None:
         if self.spent >= self.cap:
             raise BudgetStop(f"notional ${self.spent:.2f} reached the cap ${self.cap:.2f}")
+        if self.stop_at is None:  # a paid API route: the Max window doesn't apply
+            return
         now = _window(self.reading())
         if now is None:
             raise BudgetStop("no weekly-window reading (fail closed)")
         if round(now, 6) >= self.stop_at:
             raise BudgetStop(f"weekly window at {now:.2f} (stop at {self.stop_at:.2f})")
 
-    def _charge(self, got: Mapping[str, T.Resp] | None) -> None:
+    def _charge(self, got: Mapping[str, T.Resp] | None, at_bound: float = 0.0) -> None:
         stats = getattr(self.backend, "last_stats", "absent")
-        if stats == "absent":  # a stub: its responses' own cost
+        if got is None and stats == "absent" and at_bound:  # raised: charge the bound
+            self.spent += at_bound
+            self.charged_at_bound += at_bound
+        elif stats == "absent":  # an API backend or a stub: its responses' own (billed) cost
             for r in (got or {}).values():
                 if not (r.meta or {}).get("cached"):
                     self.n_sent += 1
-                    self.spent += float((r.meta or {}).get("notional_usd") or 0.0)
+                    self.spent += float(r.usd or (r.meta or {}).get("notional_usd") or 0.0)
         elif stats:
             self.n_sent += int(stats.get("n_sent") or 0)
             self.spent += float(stats.get("notional_usd") or 0.0)
+            self.usage_unknown += int(stats.get("usage_unknown") or 0)
         self.n_cached += sum(bool((r.meta or {}).get("cached")) for r in (got or {}).values())
         self.n_runs += 1
         self.save()
 
+    def _fit(self, chunk: list[T.Req]) -> tuple[list[T.Req], float]:
+        """The longest prefix of `chunk` whose bound fits the cap, and that bound."""
+        if self.bound is None:
+            return chunk, 0.0
+        for n in range(len(chunk), 0, -1):
+            b = self.bound(chunk[:n])
+            if self.spent + b <= self.cap:
+                return chunk[:n], b
+        raise BudgetStop(
+            f"notional ${self.spent:.2f}: the next request's bound "
+            f"${self.bound(chunk[:1]):.2f} would pass the cap ${self.cap:.2f}"
+        )
+
     def run(self, reqs: list[T.Req], *, purpose: str) -> dict[str, T.Resp]:
         out: dict[str, T.Resp] = {}
-        for i in range(0, len(reqs), self.chunk):
+        i = 0
+        while i < len(reqs):
             with self.lock():
                 self.check()
+                chunk, b = self._fit(reqs[i : i + self.chunk])
                 if hasattr(self.backend, "last_stats"):
                     self.backend.last_stats = None  # set again only if this run sends anything
                 got = None
                 try:
-                    got = self.backend.run(reqs[i : i + self.chunk], purpose=purpose)
+                    got = self.backend.run(chunk, purpose=purpose)
                 finally:
-                    self._charge(got)
+                    self._charge(got, at_bound=b)
             out.update(got)
+            i += len(chunk)
         return out
 
     def state(self) -> dict:
@@ -301,6 +338,8 @@ class Metered:
             "n_sent": self.n_sent,
             "n_cached": self.n_cached,
             "n_runs": self.n_runs,
+            "usage_unknown": self.usage_unknown,
+            "charged_at_bound_usd": round(self.charged_at_bound, 4),
             "cap_usd": self.cap,
             "window_start": self.start,
             "window_stop": self.stop_at,
@@ -821,7 +860,8 @@ def examples(rows: list[dict], n: int = N_EXAMPLES, seed: str = SEED) -> list[di
     cands = []
     for (g, it, k), r in sorted(by.items()):
         nxt = by.get((g, it, k + 1))
-        ok = r["usable"] and nxt and nxt["usable"] and not nxt["not_current_by_k"]
+        ok = (r["usable"] and nxt and nxt["usable"] and not nxt["not_current_by_k"]
+              and nxt.get("scan_covered", True))  # fmt: skip
         if ok and not r["lost"] and nxt["lost"]:
             cands.append((r, nxt))
     rng = random.Random(seed + ":examples")
@@ -875,7 +915,7 @@ def summarize(rows: list[dict], design: Mapping, coverage: Mapping | None = None
 def reintroduction(rows: list[dict]) -> dict:
     by: dict[tuple, dict] = {}
     for r in rows:
-        if r["cohort"] == 1 and r["usable"]:
+        if r["cohort"] == 1 and r["usable"] and r.get("scan_covered", True):
             by[(r["group"], r["chain_item"])] = (
                 r
                 if r["k"] >= by.get((r["group"], r["chain_item"]), {"k": 0})["k"]
@@ -883,8 +923,11 @@ def reintroduction(rows: list[dict]) -> dict:
             )
     last = list(by.values())
     n = len(last)
+    n_unknown = len({(r["group"], r["chain_item"]) for r in rows if r["cohort"] == 1
+                     and r["usable"] and not r.get("scan_covered", True)} - set(by))  # fmt: skip
     return {
         "n_items": n,
+        "n_not_scan_covered": n_unknown,
         "reintroduced_share": sum(r["reintroduced_by_k"] for r in last) / n if n else None,
         "not_current_share": sum(r["not_current_by_k"] for r in last) / n if n else None,
     }

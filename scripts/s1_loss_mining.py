@@ -50,6 +50,7 @@ import argparse
 import hashlib
 import json
 import random
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from collections.abc import Callable, Mapping
@@ -95,7 +96,7 @@ YNU = ("yes", "no", "unclear")
 RECOVERABLE = ("repo", "unprompted_file", "no", "unclear")
 SPEAKERS = ("user", "agent", "tool", "system")
 KINDS = ("rule_or_permission", "decision", "commitment", "task_state", "other")
-ROW_FILES = ("labels.jsonl",)
+ROW_FILES = ("labels.jsonl", "odd_cases.md")  # both quote session text (gitignored)
 
 
 def say(msg: str) -> None:
@@ -280,6 +281,7 @@ The summary (and the kept messages, if any) is everything the agent had from the
 - "speaker": who stated it: "user", "agent", "tool" (tool output, including file contents) or "system" (system or harness text).
 - "kind": "rule_or_permission", "decision", "commitment", "task_state" or "other".
 - "in_summary": does the summary (or the kept messages) in fact hold it, so the judge was wrong? "yes", "no" or "unclear".
+- "odd": is anything odd or surprising about how the summary handles this item, beyond leaving it out? For example: the summary refuses or hedges, invents something the history doesn't hold, contradicts itself, flips a rule's or permission's meaning, carries stale state as if current, or credits the wrong speaker. "yes" or "no". "odd_what": one line on what is odd, or null. "odd_summary_quote": an exact quote (at most 300 characters) from the summary that shows it, or null.
 
 Answer with one entry per item, using the item ids given.
 </instructions>"""
@@ -309,6 +311,9 @@ LABEL_SCHEMA = T._obj(
                     "speaker": T._s(SPEAKERS),
                     "kind": T._s(KINDS),
                     "in_summary": T._s(YNU),
+                    "odd": T._s(("yes", "no")),
+                    "odd_what": T._s(nullable=True),
+                    "odd_summary_quote": T._s(nullable=True),
                 }
             ),
         }
@@ -422,7 +427,7 @@ def check_labels(resp: T.Resp | None, rows: list[dict]) -> list[dict]:
     return out
 
 
-def cluster_request(labels: list[dict]) -> T.Req:
+def cluster_request(labels: list[dict], private: bool = True) -> T.Req:
     lines = "\n".join(
         json.dumps(
             {"id": r["label_id"], "category": r["category"], "description": r["description"]},
@@ -437,8 +442,10 @@ def cluster_request(labels: list[dict]) -> T.Req:
         schema=CLUSTER_SCHEMA,
         max_output_tokens=CLUSTER_MAX_OUT,
         rid="cluster",
-        source="mixed",
-        private=True,
+        # the labels' own strata: a public source name lets the API backend's privacy check
+        # pass for public-only labels; any private stratum keeps the call Anthropic-only
+        source="mixed" if private else "swe-chat-v1",
+        private=private,
     )
 
 
@@ -456,17 +463,21 @@ def check_clusters(resp: T.Resp | None, ids: list[str]) -> dict:
         mine = list(dict.fromkeys(i for i in raw if i in known and i not in seen))
         repeats += sum(i in known for i in raw) - len(mine)
         seen |= set(mine)
-        name = str(g.get("name") or "unnamed")
+        base = name = str(g.get("name") or "unnamed")
+        k = 1
+        while name in names:  # unique against every final name (astra r2 #8)
+            k += 1
+            name = f"{base} ({k})"
+        renamed += name != base
         names[name] += 1
-        if names[name] > 1:
-            name, renamed = f"{name} ({names[name]})", renamed + 1
         groups.append(
             {k: g.get(k) for k in ("definition", "targeted", "why")} | {"name": name, "ids": mine}
         )
     unassigned = [i for i in ids if i not in seen]
+    unknown = sorted({i for g in resp.data.get("groups") or [] for i in g.get("ids") or []} - known)
     return {
         "ok": True,
-        "complete": not unassigned and not repeats and not renamed,
+        "complete": not unassigned and not repeats and not renamed and not unknown,
         "repeated_ids": repeats,
         "renamed_groups": renamed,
         "groups": groups,
@@ -480,6 +491,62 @@ def check_clusters(resp: T.Resp | None, ids: list[str]) -> dict:
 # ------------------------------------------------------------------------------------------
 # Backend
 # ------------------------------------------------------------------------------------------
+
+
+OR_ROUTE = None  # built on first use (s1_api is imported lazily)
+
+
+def api_route():
+    """Opus 5.5 on OpenRouter, pinned to Anthropic first-party with no fallbacks (main session,
+    25 Oct: B's public strata now, paid). Text JSON mode: the schema goes in the prompt (s1_api's
+    instruction) and the answer is validated in code; reasoning effort low (OpenRouter has no
+    medium); temperature not sent (thinking on). Prices: the endpoint listing on 25 Oct, $4/M in
+    and $20/M out; the billed cost is OpenRouter's own usage.cost."""
+    from compaction.s1_api import Route
+
+    return Route(
+        name="opus-openrouter",
+        model="anthropic/claude-opus-5.5",
+        transport="openrouter",
+        provider_pin="Anthropic",
+        prices={"input": 4.0, "output": 20.0, "cache_read": 0.4},
+        context_tokens=1_000_000,
+        bytes_per_token=2.2,
+        reasoning="low",
+        family="anthropic",
+        json_mode="text",
+        key_env="OPENROUTER_API_KEY",
+        prices_placeholder=False,
+        accepts_sampling=False,
+        notes="loss mining public strata, 25 Oct",
+    )
+
+
+def api_backend(cap_usd: float) -> CD.Metered:
+    """The paid route behind the meter: no Max window, the $ cap only (plus s1_api's own
+    reservation against the SPRINT-S1 stage cap, which books every call to the ledger)."""
+    from compaction.s1_api import RETRY_MARGIN, ApiBackend
+
+    be = ApiBackend(api_route(), cache_dir=R.CACHE / "opus-openrouter", concurrency=8,
+                    temperature=None)  # fmt: skip
+
+    def bound(reqs: list[T.Req]) -> float:  # s1_api's own hard bound per request (astra r2 #1)
+        return sum(be._prepare(r).worst_usd for r in reqs) * RETRY_MARGIN
+
+    return CD.Metered(be, cap_usd, window_stop=None, chunk=8, bound=bound,
+                      state_path=OUT / "usage_state_api.json")  # fmt: skip
+
+
+def route_record(be) -> dict:
+    inner = be.backend
+    r = getattr(inner, "route", None)
+    return {
+        "backend": be.name,
+        "model": be.model,
+        "transport": r.transport if r else "claude-p (Max plan)",
+        "provider_pin": r.provider_pin if r else None,
+        "reasoning": r.reasoning if r else getattr(inner, "effort", None),
+    }
 
 
 def opus_backend(cap_usd: float, window_stop: float) -> CD.Metered:
@@ -508,17 +575,34 @@ def label_all(backend, picked: list[dict], *, load=load_record) -> list[dict]:
     by: dict[str, list[dict]] = defaultdict(list)
     for r in picked:
         by[str(r["rid"])].append(r)
-    jobs = []
+    jobs, recs = [], {}
     for rid in sorted(by):
         rows = by[rid]
-        rec = load(rows[0])
+        rec = recs[rid] = load(rows[0])
         jobs.append((rid, rows, label_request(rid, rows, rec, kept_messages(rows[0], rec))))
     say(f"labelling {len(picked)} items in {len(jobs)} calls")
+    # one list; the meter sends it in chunks (one call per chunk under the Opus lock on Max)
+    resps = backend.run([req for *_, req in jobs], purpose=PURPOSE)
+    route = route_record(backend) if hasattr(backend, "backend") else {"backend": backend.name}
     out = []
-    for rid, rows, req in jobs:  # one call per run: the Opus lock is taken per call
-        resp = backend.run([req], purpose=PURPOSE).get(req.key)
-        for n, (r, lab) in enumerate(zip(rows, check_labels(resp, rows))):
-            out.append(_row(r) | lab | {"label_id": f"{rid}#x{n}"})
+    for rid, rows, req in jobs:
+        rec = recs[rid]
+        # each block the prompt showed, on its own (astra r2 #9): the summary, and each kept
+        # message as rendered (tool calls included); whitespace-normalised substring match
+        blocks = [rec.get("summary") or ""] + [
+            s1_data.render_message(i, m) for i, m in enumerate(kept_messages(rows[0], rec))
+        ]
+        for n, (r, lab) in enumerate(zip(rows, check_labels(resps.get(req.key), rows))):
+            q = lab.get("odd_summary_quote")
+            out.append(
+                _row(r)
+                | lab
+                | {
+                    "label_id": f"{rid}#x{n}",
+                    "route": route,
+                    "odd_quote_found": bool(q) and any(T.quote_in(q, b, min_len=1) for b in blocks),
+                }
+            )
     return out
 
 
@@ -693,6 +777,22 @@ def summary_md(s: Mapping) -> str:
             f"{_pct(g['consequential_and_not_in_repo'])} | {_pct(g['consequential'])} | "
             f"{_split(g['recoverability'])} | {g['targeted']} |"
         )
+    od = s.get("odd") or {}
+    out += [
+        "",
+        (
+            f"Anything odd (Opus's call, unchecked): {od.get('n_odd')} of "
+            f"{od.get('n_labelled')} items; by source {od.get('by_source')}; summary quote "
+            f"found (whitespace-normalised) in {od.get('quote_in_summary')}. Cases: "
+            "odd_cases.md (gitignored)."
+        ),
+        "",
+        (
+            f"Labelled by: {s.get('routes_by_stratum')}; clustered by "
+            f"{(s.get('cluster_route') or {}).get('backend')}. The OpenRouter route ran Opus "
+            "with reasoning effort low, the Max route with effort medium."
+        ),
+    ]
     out += ["", "## Groups", ""]
     for g in s["groups"]:
         out += [
@@ -728,52 +828,159 @@ def cmd_plan(a) -> None:
         print(f"  {s}: {d}")
 
 
+STRATA_SETS = {
+    "public": lambda s: s in T.PUBLIC_SOURCES,
+    "private": lambda s: s not in T.PUBLIC_SOURCES,
+    "all": lambda s: True,
+}
+
+
+def projection(picked: list[dict], load=load_record, out_tokens: int = 2_500) -> dict:
+    """An uncached cost projection for the API route: prompt bytes / 2.2 tokens at $4/M in,
+    plus `out_tokens` per call at $20/M (thinking and the answer)."""
+    by: dict[str, list[dict]] = defaultdict(list)
+    for r in picked:
+        by[str(r["rid"])].append(r)
+    tin = 0
+    for rid, rows in by.items():
+        rec = load(rows[0])
+        req = label_request(rid, rows, rec, kept_messages(rows[0], rec))
+        tin += len((req.system + req.user).encode()) / 2.2
+    usd = tin * 4e-6 + len(by) * out_tokens * 20e-6
+    return {"calls": len(by), "input_tokens": int(tin), "usd": round(usd, 2)}
+
+
+def _budget_refused() -> type[Exception]:
+    from compaction import budget
+
+    return budget.BudgetRefused
+
+
+def write_odd_cases(rows: list[dict], path: Path | None = None) -> None:
+    """odd_cases.md quotes session text: written only while git ignores it."""
+    path = path or OUT / "odd_cases.md"
+    r = subprocess.run(["git", "check-ignore", "-q", str(path)], cwd=ROOT, check=False)
+    if r.returncode != 0:
+        raise SystemExit(f"{path} is not gitignored: refusing to write session quotes there")
+    path.write_text(odd_cases_md(rows))
+
+
 def cmd_run(a) -> None:
-    picked, design, src = frozen_sample(Path(a.lossaudit), redraw=a.redraw)
-    be = opus_backend(a.cap_usd, a.window_stop)
+    if a.redraw and a.strata != "all" and (OUT / "labels.jsonl").exists():
+        raise SystemExit("--redraw would mix a new draw with labels of the old one (astra r2 #10)")
+    picked_all, design, src = frozen_sample(Path(a.lossaudit), redraw=a.redraw)
+    keep = STRATA_SETS[a.strata]
+    picked = [r for r in picked_all if keep(r["stratum"])]
+    if a.route == "api" and any(r["stratum"] not in T.PUBLIC_SOURCES for r in picked):
+        raise SystemExit("the API route takes public strata only (spec D2): use --strata public")
+    if a.route == "api":
+        proj = projection(picked)
+        say(f"projection (uncached): {proj}; cap ${a.cap_usd}")
+        be = api_backend(a.cap_usd)
+    else:
+        be = opus_backend(a.cap_usd, a.window_stop)
     t0 = datetime.now(UTC)
     OUT.mkdir(parents=True, exist_ok=True)
-    status = {"status": "running", "seed": SEED, "design": design, "sources": src,
-              "draw_sha256": CD._sha(DRAW), "started_utc": f"{t0:%Y-%m-%dT%H:%M:%SZ}",
-              "usage": be.state()}  # fmt: skip
-    (OUT / "meta.json").write_text(json.dumps(status, indent=1) + "\n")
-    say(f"start: {len(picked)} items; {be.state()}")
+    old_meta = json.loads((OUT / "meta.json").read_text()) if (OUT / "meta.json").exists() else {}
+    parts = dict(old_meta.get("parts") or {})
+    part = {"strata": sorted({r["stratum"] for r in picked}), "route": route_record(be),
+            "status": "running", "started_utc": f"{t0:%Y-%m-%dT%H:%M:%SZ}"}  # fmt: skip
+    parts[a.strata] = part
+
+    def write_meta(**kw) -> None:
+        meta = {"seed": SEED, "design": design, "sources": src, "draw_sha256": CD._sha(DRAW),
+                "m_per_source": M_PER_SOURCE, "items_per_compaction": ITEMS_PER_COMPACTION,
+                "prompt_sha256": prompt_sha(), "parts": parts} | kw  # fmt: skip
+        (OUT / "meta.json").write_text(json.dumps(meta, indent=1) + "\n")
+
+    write_meta(status="running")
+    say(f"start: {len(picked)} items, strata {part['strata']}, route {part['route']}; "
+        f"{be.state()}")  # fmt: skip
+    old = CD._read_jsonl(OUT / "labels.jsonl") if (OUT / "labels.jsonl").exists() else []
     try:
         labels = label_all(be, picked)
-        ok = [r for r in labels if r.get("label_ok")]
-        req = cluster_request(ok)
+        merged = [r for r in old if not keep(r["stratum"])] + labels
+        ok = [r for r in merged if r.get("label_ok")]
+        private = any(r["stratum"] not in T.PUBLIC_SOURCES for r in ok)
+        if a.route == "api" and private:
+            raise SystemExit("clustering would send private strata's labels over the API")
+        req = cluster_request(ok, private=private)
         clusters = check_clusters(
             be.run([req], purpose=PURPOSE).get(req.key), [r["label_id"] for r in ok]
         )
-    except CD.BudgetStop as e:
-        status |= {"status": "stopped", "stop": str(e), "usage": be.state(),
-                   "stopped_utc": f"{datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ}"}  # fmt: skip
-        (OUT / "meta.json").write_text(json.dumps(status, indent=1) + "\n")
+    except (CD.BudgetStop, _budget_refused()) as e:  # the meter, or the stage cap in s1_api
+        part |= {"status": "stopped", "stop": str(e), "usage": be.state(),
+                 "stopped_utc": f"{datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ}"}  # fmt: skip
+        write_meta(status="stopped")
         say(f"STOP budget: {e}; {be.state()}")
         raise SystemExit(3) from e
-    rows = assign_groups(labels, clusters)
-    OUT.mkdir(parents=True, exist_ok=True)
+    clusters |= {"route": route_record(be), "strata": sorted({r["stratum"] for r in ok})}
+    rows = assign_groups(merged, clusters)
     CD._write_jsonl(OUT / "labels.jsonl", rows)
     (OUT / "groups.json").write_text(json.dumps(clusters, indent=1, ensure_ascii=False) + "\n")
-    meta = {
-        "status": "complete" if clusters.get("complete") else "complete, clustering incomplete",
-        "draw_sha256": CD._sha(DRAW),
-        "seed": SEED,
-        "design": design,
-        "sources": src,
-        "m_per_source": M_PER_SOURCE,
-        "items_per_compaction": ITEMS_PER_COMPACTION,
-        "labeller": be.model,
-        "prompt_sha256": prompt_sha(),
-        "n_label_errors": sum(not r.get("label_ok") for r in labels),
-        "usage": be.state(),
-        "started_utc": f"{t0:%Y-%m-%dT%H:%M:%SZ}",
-        "finished_utc": f"{datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ}",
-    }
-    (OUT / "meta.json").write_text(json.dumps(meta, indent=1) + "\n")
+    write_odd_cases(rows)
+    part |= {"status": "complete", "usage": be.state(), "n_items": len(labels),
+             "n_label_errors": sum(not r.get("label_ok") for r in labels),
+             "finished_utc": f"{datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ}"}  # fmt: skip
+    done = {r["stratum"] for r in rows}
+    complete = done == {r["stratum"] for r in picked_all}
+    write_meta(
+        status=("complete" if complete else "partial: " + ", ".join(sorted(done)))
+        + ("" if clusters.get("complete") else "; clustering incomplete"),
+        strata_labelled=sorted(done),
+    )
     CD.write_hashes(OUT, ROW_FILES)
-    say(f"done: {len(rows)} rows; {be.state()}")
+    say(f"done: {len(labels)} new labels, {len(rows)} in all; {be.state()}")
     cmd_summary(a)
+
+
+def routes_by_stratum(rows: list[dict]) -> dict:
+    """Which labeller labelled which stratum (astra r2 #5): the API route ran with reasoning
+    effort low, Max with effort medium."""
+    out: dict[str, Counter] = defaultdict(Counter)
+    for r in rows:
+        rt = r.get("route") or {}
+        out[r["stratum"]][f"{rt.get('backend')} ({rt.get('transport')})"] += 1
+    return {k: dict(v) for k, v in sorted(out.items())}
+
+
+def odd_counts(rows: list[dict]) -> dict:
+    """Counts only (committable): the "anything odd" yes answers by source and group, and how
+    many quote the summary verbatim."""
+    yes = [r for r in rows if r.get("label_ok") and r.get("odd") == "yes"]
+    return {
+        "n_labelled": sum(bool(r.get("label_ok")) for r in rows),
+        "n_odd": len(yes),
+        "by_source": dict(Counter(r["stratum"] for r in yes)),
+        "by_group": dict(Counter(r.get("group") for r in yes)),
+        "quote_in_summary": sum(bool(r.get("odd_quote_found")) for r in yes),
+    }
+
+
+def odd_cases_md(rows: list[dict]) -> str:
+    """Every "anything odd" yes with its quotes, for reading (Neel's interest in surprising
+    behaviour). Quotes session text: gitignored."""
+    yes = sorted((r for r in rows if r.get("label_ok") and r.get("odd") == "yes"),
+                 key=lambda r: r["label_id"])  # fmt: skip
+    head = (
+        f"{len(yes)} of {sum(bool(r.get('label_ok')) for r in rows)} labelled items. "
+        "Opus 5.5's call, not checked by hand; a summary quote marked (not found) is not in "
+        "the summary or a kept message (whitespace-normalised match)."
+    )
+    out = ["# Loss mining: odd cases", "", head, ""]
+    for r in yes:
+        found = "" if r.get("odd_quote_found") else " (not found)"
+        out += [
+            f"## {r['label_id']} ({r['stratum']}, {r.get('type')}, group: {r.get('group')})",
+            "",
+            f"- **Odd:** {r.get('odd_what')}",
+            f"- **Item:** {r.get('text')}",
+            f"- **History quote:** “{r.get('quote')}”",
+            f"- **Summary quote{found}:** “{r.get('odd_summary_quote')}”",
+            f"- **Judge's grade and note:** {r.get('grade')}; {r.get('grade_note')}",
+            "",
+        ]
+    return "\n".join(out)
 
 
 def cmd_summary(a) -> None:
@@ -781,7 +988,10 @@ def cmd_summary(a) -> None:
     clusters = json.loads((OUT / "groups.json").read_text())
     meta = json.loads((OUT / "meta.json").read_text())
     s = summarize(rows, clusters, meta["design"])
-    s["usage"] = meta.get("usage")
+    s["usage"] = {k: p.get("usage") for k, p in (meta.get("parts") or {}).items()}
+    s["routes_by_stratum"] = routes_by_stratum(rows)
+    s["cluster_route"] = clusters.get("route")
+    s["odd"] = odd_counts(rows)
     (OUT / "summary.json").write_text(
         json.dumps(s, indent=1, ensure_ascii=False, default=float) + "\n"
     )
@@ -796,6 +1006,9 @@ def main(argv: list[str] | None = None) -> None:
         p = sub.add_parser(name)
         p.add_argument("--lossaudit", default=str(LOSSAUDIT))
         p.add_argument("--redraw", action="store_true", help="draw again (default: frozen)")
+        if name == "run":
+            p.add_argument("--route", choices=("max", "api"), default="max")
+            p.add_argument("--strata", choices=tuple(STRATA_SETS), default="all")
         if name == "run":
             p.add_argument("--cap-usd", type=float, default=CAP_USD)
             p.add_argument("--window-stop", type=float, default=CD.WINDOW_STOP)

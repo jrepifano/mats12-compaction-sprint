@@ -439,3 +439,25 @@ def test_meter_fails_closed_without_a_reading_and_checks_inside_the_lock():
     seen.clear()
     m.run(_reqs(2), purpose="p")
     assert seen == ["lock", "read", "lock", "read"]
+
+
+def test_meter_never_passes_the_cap_with_a_bound():
+    # each request may cost up to $1; actual $1 each; cap $2.5 -> two sent, then stop
+    m = CD.Metered(_Inner(usd=1.0), cap_usd=2.5, window_stop=None, chunk=8,
+                   bound=lambda reqs: 1.0 * len(reqs))  # fmt: skip
+    with pytest.raises(CD.BudgetStop, match="would pass the cap"):
+        m.run(_reqs(5), purpose="p")
+    assert m.spent == 2.0 and m.spent <= m.cap
+
+
+class _Raises(_Inner):
+    def run(self, reqs, *, purpose):
+        raise RuntimeError("transport died")
+
+
+def test_meter_charges_the_bound_when_the_backend_raises():
+    m = CD.Metered(_Raises(), cap_usd=10, window_stop=None, chunk=4,
+                   bound=lambda reqs: 0.5 * len(reqs))  # fmt: skip
+    with pytest.raises(RuntimeError):
+        m.run(_reqs(3), purpose="p")
+    assert m.spent == 1.5 and m.charged_at_bound == 1.5

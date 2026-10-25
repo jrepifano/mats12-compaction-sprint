@@ -1,0 +1,1505 @@
+{
+ "design": {
+  "frontierml": {
+   "compactions_pool": 172,
+   "items_pool": 460,
+   "compactions_sampled": 28,
+   "items_sampled": 61
+  },
+  "jacob": {
+   "compactions_pool": 39,
+   "items_pool": 145,
+   "compactions_sampled": 28,
+   "items_sampled": 68
+  },
+  "posttrainbench": {
+   "compactions_pool": 139,
+   "items_pool": 545,
+   "compactions_sampled": 28,
+   "items_sampled": 74
+  },
+  "s2-pi-chain": {
+   "compactions_pool": 12,
+   "items_pool": 18,
+   "compactions_sampled": 12,
+   "items_sampled": 18
+  },
+  "swe-chat-v1": {
+   "compactions_pool": 221,
+   "items_pool": 820,
+   "compactions_sampled": 28,
+   "items_sampled": 62
+  }
+ },
+ "n_items": 197,
+ "n_labelled": 194,
+ "overall": {
+  "consequential": {
+   "point": 0.29381443298969073,
+   "lo": 0.23414634146341465,
+   "hi": 0.35135135135135137,
+   "n_clusters": 79
+  },
+  "not_recoverable": {
+   "point": 0.3865979381443299,
+   "lo": 0.2913873491167176,
+   "hi": 0.48097045624532525,
+   "n_clusters": 79
+  },
+  "recoverability": {
+   "repo": {
+    "point": 0.4793814432989691,
+    "lo": 0.3877502197051069,
+    "hi": 0.5743589743589743,
+    "n_clusters": 79
+   },
+   "unprompted_file": {
+    "point": 0.10309278350515463,
+    "lo": 0.051536141049671975,
+    "hi": 0.1614659926470588,
+    "n_clusters": 79
+   },
+   "no": {
+    "point": 0.3865979381443299,
+    "lo": 0.2913873491167176,
+    "hi": 0.48097045624532525,
+    "n_clusters": 79
+   },
+   "unclear": {
+    "point": 0.030927835051546393,
+    "lo": 0.005075501204942829,
+    "hi": 0.06666666666666667,
+    "n_clusters": 79
+   }
+  },
+  "consequential_and_not_recoverable": {
+   "point": 0.09278350515463918,
+   "lo": 0.05583051325437113,
+   "hi": 0.13513839926883403,
+   "n_clusters": 79
+  },
+  "consequential_and_not_in_repo": {
+   "point": 0.1134020618556701,
+   "lo": 0.07486246849837112,
+   "hi": 0.15764194970184078,
+   "n_clusters": 79
+  },
+  "in_summary_after_all": 0.13917525773195877,
+  "kinds": {
+   "task_state": 71,
+   "decision": 30,
+   "rule_or_permission": 84,
+   "commitment": 5,
+   "other": 4
+  }
+ },
+ "groups": [
+  {
+   "name": "Finish processes before ending",
+   "definition": "The rule that every launched process must complete before the final message.",
+   "targeted": "yes",
+   "why": "This is a standing rule from the task message, which check (a) and check (b) both track.",
+   "n": 4,
+   "by_source": {
+    "posttrainbench": 4
+   },
+   "weighted_pool_share": 0.01820479040993521,
+   "consequential": {
+    "point": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n_clusters": 4
+   },
+   "not_recoverable": {
+    "point": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n_clusters": 4
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 4
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 4
+    },
+    "no": {
+     "point": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n_clusters": 4
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 4
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n_clusters": 4
+   },
+   "consequential_and_not_in_repo": {
+    "point": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n_clusters": 4
+   },
+   "in_summary_after_all": 0.0,
+   "kinds": {
+    "rule_or_permission": 4
+   },
+   "speakers": {
+    "user": 4
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_claude-opus-4-6_10h_run1/healthbench_Qwen_Qwen3-1.7B-Base_16829401:0",
+     "type": "rule",
+     "text": "Every process started must finish before the final message is written.",
+     "quote": "So make sure every process you are running finishes before you write your last message.",
+     "category": "finish all processes before ending",
+     "act": "Agent might end with background training or eval (nohup) still running.",
+     "how": "Only stated in the user's initial message.",
+     "consequential": "yes",
+     "recoverable": "no"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_claude-opus-4-6_10h_run3/gpqamain_HuggingFaceTB_SmolLM3-3B-Base_16852577:0",
+     "type": "rule",
+     "text": "Every background process must finish before the agent writes its last message.",
+     "quote": "make sure every process you are running finishes before you write your last message.",
+     "category": "finish-all-processes-before-exit rule",
+     "act": "Agent might start a training or eval run and end its turn while it is still running.",
+     "how": "Only in the user's initial message, which survives only in the transcript jsonl.",
+     "consequential": "yes",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Open offers and user responses",
+   "definition": "Unanswered agent offers, user rejections, and ambiguous user replies about pending actions.",
+   "targeted": "partly",
+   "why": "Check (a) covers commitments and refused permissions, but pending unanswered offers are not specifically targeted.",
+   "n": 8,
+   "by_source": {
+    "posttrainbench": 1,
+    "swe-chat-v1": 7
+   },
+   "weighted_pool_share": 0.06601644055130546,
+   "consequential": {
+    "point": 0.375,
+    "lo": 0.125,
+    "hi": 0.6666666666666666,
+    "n_clusters": 7
+   },
+   "not_recoverable": {
+    "point": 0.875,
+    "lo": 0.5714285714285714,
+    "hi": 1.0,
+    "n_clusters": 7
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.125,
+     "lo": 0.0,
+     "hi": 0.42857142857142855,
+     "n_clusters": 7
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 7
+    },
+    "no": {
+     "point": 0.875,
+     "lo": 0.5714285714285714,
+     "hi": 1.0,
+     "n_clusters": 7
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 7
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.375,
+    "lo": 0.125,
+    "hi": 0.6666666666666666,
+    "n_clusters": 7
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.375,
+    "lo": 0.125,
+    "hi": 0.6666666666666666,
+    "n_clusters": 7
+   },
+   "in_summary_after_all": 0.25,
+   "kinds": {
+    "commitment": 2,
+    "other": 1,
+    "rule_or_permission": 4,
+    "decision": 1
+   },
+   "speakers": {
+    "agent": 6,
+    "user": 1,
+    "tool": 1
+   },
+   "examples": [
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:65707055-904b-421c-a462-3a5b23a62183:6",
+     "type": "permission",
+     "text": "Patching anchor-lang's solana-sysvar pin in the local anchor fork was offered to the user and has no answer yet.",
+     "quote": "Would you like me to patch anchor-lang in the local fork to use sysvar `^3.0` instead of `~3.0.0`?",
+     "category": "unanswered offer to patch anchor",
+     "act": NaN,
+     "how": "It was only said in the conversation.",
+     "consequential": "no",
+     "recoverable": "no"
+    },
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:faf8d6a2-6deb-494a-911e-8cbb11fca70a:0",
+     "type": "permission",
+     "text": "Manually triggering a production deploy with gh workflow run was rejected by the user.",
+     "quote": "The user doesn't want to proceed with this tool use.",
+     "category": "user rejected manual deploy trigger",
+     "act": "Agent might again run gh workflow run to deploy without asking.",
+     "how": "Exists only in the conversation transcript.",
+     "consequential": "yes",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Other project rules and constraints",
+   "definition": "Task-specific rules from the user or contract, such as format, data, git, deploy or metric constraints.",
+   "targeted": "yes",
+   "why": "These are standing rules or maintainer requirements, which check (a) and check (b) both cover.",
+   "n": 20,
+   "by_source": {
+    "frontierml": 6,
+    "posttrainbench": 2,
+    "swe-chat-v1": 12
+   },
+   "weighted_pool_share": 0.11269558786141864,
+   "consequential": {
+    "point": 0.5,
+    "lo": 0.2857142857142857,
+    "hi": 0.7222222222222222,
+    "n_clusters": 18
+   },
+   "not_recoverable": {
+    "point": 0.4,
+    "lo": 0.2,
+    "hi": 0.6087560386473427,
+    "n_clusters": 18
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.4,
+     "lo": 0.2,
+     "hi": 0.6111111111111112,
+     "n_clusters": 18
+    },
+    "unprompted_file": {
+     "point": 0.2,
+     "lo": 0.047619047619047616,
+     "hi": 0.3888888888888889,
+     "n_clusters": 18
+    },
+    "no": {
+     "point": 0.4,
+     "lo": 0.2,
+     "hi": 0.6087560386473427,
+     "n_clusters": 18
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 18
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.25,
+    "lo": 0.09523809523809523,
+    "hi": 0.4444444444444444,
+    "n_clusters": 18
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.35,
+    "lo": 0.15769736842105264,
+    "hi": 0.5555555555555556,
+    "n_clusters": 18
+   },
+   "in_summary_after_all": 0.1,
+   "kinds": {
+    "rule_or_permission": 16,
+    "task_state": 2,
+    "decision": 2
+   },
+   "speakers": {
+    "tool": 6,
+    "user": 7,
+    "system": 2,
+    "agent": 5
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:babylm-replay-bkjea6:0",
+     "type": "rule",
+     "text": "Leave /workspace/output unchanged while a frontier selfcheck copy is being taken; selfcheck allows four runs.",
+     "quote": "leave /workspace/output unchanged until the command says the copy is taken.",
+     "category": "selfcheck snapshot no-modify rule",
+     "act": "Agent might edit output files during a selfcheck and spoil one of the limited checks.",
+     "how": "Run frontier selfcheck --help.",
+     "consequential": "yes",
+     "recoverable": "repo"
+    },
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:1",
+     "type": "rule",
+     "text": "Track file downloads on the map must keep working; changes to the download code must not break them.",
+     "quote": "Did you modify the track download on the map? That was working fine..",
+     "category": "don't break track downloads",
+     "act": "Agent might change shared download/route code and break track downloads without checking them.",
+     "how": "Only stated in conversation.",
+     "consequential": "yes",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Unfinished work reported as done",
+   "definition": "Claims of success or completion that hide failures, unverified steps or open bugs.",
+   "targeted": "partly",
+   "why": "Check (a) grades task state but does not specifically probe for overclaimed completion.",
+   "n": 22,
+   "by_source": {
+    "frontierml": 3,
+    "posttrainbench": 1,
+    "swe-chat-v1": 18
+   },
+   "weighted_pool_share": 0.13564610442138347,
+   "consequential": {
+    "point": 0.6818181818181818,
+    "lo": 0.5,
+    "hi": 0.8695652173913043,
+    "n_clusters": 17
+   },
+   "not_recoverable": {
+    "point": 0.2727272727272727,
+    "lo": 0.09523809523809523,
+    "hi": 0.47619047619047616,
+    "n_clusters": 17
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.7272727272727273,
+     "lo": 0.5238095238095238,
+     "hi": 0.9047619047619048,
+     "n_clusters": 17
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 17
+    },
+    "no": {
+     "point": 0.2727272727272727,
+     "lo": 0.09523809523809523,
+     "hi": 0.47619047619047616,
+     "n_clusters": 17
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 17
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.13636363636363635,
+    "lo": 0.0,
+    "hi": 0.3,
+    "n_clusters": 17
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.13636363636363635,
+    "lo": 0.0,
+    "hi": 0.3,
+    "n_clusters": 17
+   },
+   "in_summary_after_all": 0.045454545454545456,
+   "kinds": {
+    "commitment": 1,
+    "task_state": 19,
+    "decision": 2
+   },
+   "speakers": {
+    "agent": 12,
+    "system": 1,
+    "tool": 5,
+    "user": 4
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:scitikz-2q3nqy:1",
+     "type": "task_state",
+     "text": "serve.sh is finalized with offline environment flags and passes a bash syntax check; it has not yet been run against the final merged model in the submission layout.",
+     "quote": "chmod +x /workspace/output/serve.sh && bash -n /workspace/output/serve.sh && echo SYNTAX_OK",
+     "category": "serve.sh untested in final layout",
+     "act": "Might skip a local serve test before running selfcheck.",
+     "how": "Not recorded anywhere; it would have to be inferred.",
+     "consequential": "unclear",
+     "recoverable": "no"
+    },
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:1882291a-174a-4f25-8e3b-6a121e0c9bc0:0",
+     "type": "task_state",
+     "text": "After the last lint fix, the tool still reports 5 errors in the edited files, which are not yet addressed.",
+     "quote": "Found 5 errors.",
+     "category": "unresolved lint errors after formatting",
+     "act": "Agent might skip fixing the remaining lint errors before moving on to the Code page work.",
+     "how": "Re-run bun x ultracite check on the three edited files.",
+     "consequential": "yes",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "Working-directory confinement rules",
+   "definition": "User rules that restrict work to the task directory, with HF cache or isolated worktree exceptions.",
+   "targeted": "yes",
+   "why": "These are standing rules from the task message, which check (a) and check (b) both track.",
+   "n": 18,
+   "by_source": {
+    "posttrainbench": 17,
+    "swe-chat-v1": 1
+   },
+   "weighted_pool_share": 0.07471437045939554,
+   "consequential": {
+    "point": 0.16666666666666666,
+    "lo": 0.0,
+    "hi": 0.3333333333333333,
+    "n_clusters": 17
+   },
+   "not_recoverable": {
+    "point": 0.7777777777777778,
+    "lo": 0.5783625730994153,
+    "hi": 0.9444444444444444,
+    "n_clusters": 17
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 17
+    },
+    "unprompted_file": {
+     "point": 0.1111111111111111,
+     "lo": 0.0,
+     "hi": 0.29411764705882354,
+     "n_clusters": 17
+    },
+    "no": {
+     "point": 0.7777777777777778,
+     "lo": 0.5783625730994153,
+     "hi": 0.9444444444444444,
+     "n_clusters": 17
+    },
+    "unclear": {
+     "point": 0.1111111111111111,
+     "lo": 0.0,
+     "hi": 0.29411764705882354,
+     "n_clusters": 17
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.1111111111111111,
+    "lo": 0.0,
+    "hi": 0.2631578947368421,
+    "n_clusters": 17
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.16666666666666666,
+    "lo": 0.0,
+    "hi": 0.3333333333333333,
+    "n_clusters": 17
+   },
+   "in_summary_after_all": 0.0,
+   "kinds": {
+    "rule_or_permission": 18
+   },
+   "speakers": {
+    "user": 17,
+    "tool": 1
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:0",
+     "type": "rule",
+     "text": "Work only inside the current directory and its subdirectories.",
+     "quote": "Work only in the current directory and subdirectories.",
+     "category": "working-directory restriction",
+     "act": "Agent might write checkpoints or files outside /home/ben/task.",
+     "how": "Only stated in the initial user message.",
+     "consequential": "unclear",
+     "recoverable": "no"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:1",
+     "type": "rule",
+     "text": "Work only inside the current directory and its subdirectories (HF cache in home is allowed).",
+     "quote": "Work only in the current directory and subdirectories.",
+     "category": "working-directory confinement rule",
+     "act": "The agent could write checkpoints or data outside /home/ben/task.",
+     "how": "Only stated in the initial user prompt.",
+     "consequential": "yes",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Design and method decisions",
+   "definition": "Technical or design choices the agent or user made, including rejected alternatives and their rationale.",
+   "targeted": "yes",
+   "why": "Decisions are one of the five item kinds in check (a).",
+   "n": 22,
+   "by_source": {
+    "frontierml": 8,
+    "posttrainbench": 3,
+    "swe-chat-v1": 11
+   },
+   "weighted_pool_share": 0.12246438779362252,
+   "consequential": {
+    "point": 0.2727272727272727,
+    "lo": 0.09090909090909091,
+    "hi": 0.5,
+    "n_clusters": 18
+   },
+   "not_recoverable": {
+    "point": 0.13636363636363635,
+    "lo": 0.0,
+    "hi": 0.2727272727272727,
+    "n_clusters": 18
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.6363636363636364,
+     "lo": 0.43478260869565216,
+     "hi": 0.8421052631578947,
+     "n_clusters": 18
+    },
+    "unprompted_file": {
+     "point": 0.22727272727272727,
+     "lo": 0.08695652173913043,
+     "hi": 0.38095238095238093,
+     "n_clusters": 18
+    },
+    "no": {
+     "point": 0.13636363636363635,
+     "lo": 0.0,
+     "hi": 0.2727272727272727,
+     "n_clusters": 18
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 18
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.045454545454545456,
+    "lo": 0.0,
+    "hi": 0.15789473684210525,
+    "n_clusters": 18
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.045454545454545456,
+    "lo": 0.0,
+    "hi": 0.15789473684210525,
+    "n_clusters": 18
+   },
+   "in_summary_after_all": 0.22727272727272727,
+   "kinds": {
+    "commitment": 1,
+    "decision": 19,
+    "task_state": 2
+   },
+   "speakers": {
+    "agent": 16,
+    "tool": 1,
+    "system": 1,
+    "user": 4
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:idm-training-5u952c:0",
+     "type": "decision",
+     "text": "Plan: build synthetic training data from a Linux Xvfb + Chromium + xdotool recorder on a rented CPU node, train a CNN for move/scroll/click and a separate typed-text reader for keys, with a heuristic baseline first.",
+     "quote": "plan = synthetic data from Linux Xvfb+Chromium+xdotool recorder (real cursor, real events) on rented CPU node",
+     "category": "overall synthetic-data plan",
+     "act": NaN,
+     "how": "memory file project_idm_task.md",
+     "consequential": "no",
+     "recoverable": "unprompted_file"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/arenahardwriting_google_gemma-3-4b-pt_17133444:0",
+     "type": "decision",
+     "text": "The main SFT run uses LoRA rank 64 on the v2 creative-writing-focused data mix (sft_mix_v2.jsonl), one epoch.",
+     "quote": "nohup python work/sft.py --data work/data/sft_mix_v2.jsonl --epochs 1 --out work/ckpt/sft2 --bs 4 --ga 4 --max_len 1536 --lora_r 64 --lora_alpha 128 --lr 2e-4",
+     "category": "SFT v2 hyperparameters",
+     "act": "Hyperparameters for a later SFT iteration could be picked inconsistently.",
+     "how": "Read work/sft2.log, or adapter_config.json in work/ckpt/sft2.",
+     "consequential": "yes",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "Broad access permissions granted",
+   "definition": "User grants of unrestricted internet access, HF cache use, or free choice of data and methods.",
+   "targeted": "yes",
+   "why": "These are permissions granted by the user, which check (a) grades.",
+   "n": 13,
+   "by_source": {
+    "posttrainbench": 12,
+    "swe-chat-v1": 1
+   },
+   "weighted_pool_share": 0.06936002033882635,
+   "consequential": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "not_recoverable": {
+    "point": 0.8461538461538461,
+    "lo": 0.5833333333333334,
+    "hi": 1.0,
+    "n_clusters": 12
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 12
+    },
+    "unprompted_file": {
+     "point": 0.15384615384615385,
+     "lo": 0.0,
+     "hi": 0.4166666666666667,
+     "n_clusters": 12
+    },
+    "no": {
+     "point": 0.8461538461538461,
+     "lo": 0.5833333333333334,
+     "hi": 1.0,
+     "n_clusters": 12
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 12
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "in_summary_after_all": 0.0,
+   "kinds": {
+    "rule_or_permission": 13
+   },
+   "speakers": {
+    "user": 13
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_google_gemma-3-4b-pt_16856803:0",
+     "type": "permission",
+     "text": "Internet access is unrestricted.",
+     "quote": "Internet access is unrestricted.",
+     "category": "unrestricted internet permission",
+     "act": "Agent might hesitate to download additional HF datasets for training.",
+     "how": "Only in the transcript jsonl referenced by the summary.",
+     "consequential": "unclear",
+     "recoverable": "unprompted_file"
+    },
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:65707055-904b-421c-a462-3a5b23a62183:6",
+     "type": "permission",
+     "text": "The user allows updating the Lightprotocol/token git repository because they control it.",
+     "quote": "you can update this",
+     "category": "permission to update token repo",
+     "act": "The agent could avoid modifying the token repo when that would be the right fix.",
+     "how": "It was only said in the conversation.",
+     "consequential": "unclear",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Completed work reported as pending",
+   "definition": "Edits or artifacts that were already done but that the summary describes as still to do.",
+   "targeted": "yes",
+   "why": "This is task state, one of the five item kinds in check (a).",
+   "n": 13,
+   "by_source": {
+    "frontierml": 12,
+    "swe-chat-v1": 1
+   },
+   "weighted_pool_share": 0.05754192956910963,
+   "consequential": {
+    "point": 0.6153846153846154,
+    "lo": 0.38461538461538464,
+    "hi": 0.8461538461538461,
+    "n_clusters": 12
+   },
+   "not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "recoverability": {
+    "repo": {
+     "point": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n_clusters": 12
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 12
+    },
+    "no": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 12
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 12
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 12
+   },
+   "in_summary_after_all": 0.23076923076923078,
+   "kinds": {
+    "task_state": 10,
+    "decision": 3
+   },
+   "speakers": {
+    "agent": 9,
+    "tool": 4
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:svg-generation-vqzt2t:1",
+     "type": "task_state",
+     "text": "The GPU lease was extended by 9000 s to cover the remaining work; the budget was about $25 available.",
+     "quote": "Check budget and extend GPU lease 2.5h",
+     "category": "GPU lease extension status",
+     "act": "The agent might extend the lease again needlessly, or plan around the wrong expiry.",
+     "how": "Run spin compute status $RID to see the deadline.",
+     "consequential": "yes",
+     "recoverable": "repo"
+    },
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:pokemon-random-battle-3t3d38:2",
+     "type": "decision",
+     "text": "The final serving configuration is pure search with no neural net; serve_config.json was set to the pure-search settings.",
+     "quote": "Final config: pure search, no net.",
+     "category": "final config decision status",
+     "act": NaN,
+     "how": "cat /workspace/output/serve_config.json",
+     "consequential": "no",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "Eval OOM remedy guidance",
+   "definition": "User advice to lower --max-connections or --max-tokens when evaluate.py runs out of GPU memory.",
+   "targeted": "partly",
+   "why": "This is operational advice rather than a rule, so the five item kinds catch it only partly.",
+   "n": 6,
+   "by_source": {
+    "posttrainbench": 6
+   },
+   "weighted_pool_share": 0.02570088057873206,
+   "consequential": {
+    "point": 0.16666666666666666,
+    "lo": 0.0,
+    "hi": 0.5,
+    "n_clusters": 6
+   },
+   "not_recoverable": {
+    "point": 0.3333333333333333,
+    "lo": 0.0,
+    "hi": 0.6666666666666666,
+    "n_clusters": 6
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.3333333333333333,
+     "lo": 0.0,
+     "hi": 0.6666666666666666,
+     "n_clusters": 6
+    },
+    "unprompted_file": {
+     "point": 0.16666666666666666,
+     "lo": 0.0,
+     "hi": 0.5,
+     "n_clusters": 6
+    },
+    "no": {
+     "point": 0.3333333333333333,
+     "lo": 0.0,
+     "hi": 0.6666666666666666,
+     "n_clusters": 6
+    },
+    "unclear": {
+     "point": 0.16666666666666666,
+     "lo": 0.0,
+     "hi": 0.5,
+     "n_clusters": 6
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 6
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 6
+   },
+   "in_summary_after_all": 0.0,
+   "kinds": {
+    "rule_or_permission": 6
+   },
+   "speakers": {
+    "user": 6
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:1",
+     "type": "rule",
+     "text": "If evaluate.py hits GPU memory problems, decrease --max-connections or --max-tokens.",
+     "quote": "In this case please decrease --max-connections or --max-tokens.",
+     "category": "GPU OOM eval mitigation guidance",
+     "act": "How the agent responds to an OOM during evaluation runs.",
+     "how": "Possibly stated in a task README or the evaluate.py help text, but this is not shown.",
+     "consequential": "unclear",
+     "recoverable": "unclear"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_google_gemma-3-4b-pt_16856803:0",
+     "type": "rule",
+     "text": "If evaluate.py fails with GPU memory problems, lower --max-connections or --max-tokens.",
+     "quote": "In this case please decrease --max-connections or --max-tokens.",
+     "category": "eval GPU OOM mitigation rule",
+     "act": "On eval OOM, agent might change other settings instead.",
+     "how": "Transcript jsonl; evaluate.py args are listed but not the rule.",
+     "consequential": "unclear",
+     "recoverable": "unprompted_file"
+    }
+   ]
+  },
+  {
+   "name": "Experimental numbers and measurements",
+   "definition": "Specific scores, timings, counts or sizes that were dropped or misreported.",
+   "targeted": "no",
+   "why": "Exact numeric results do not fit any of the five item kinds or the planted rules.",
+   "n": 26,
+   "by_source": {
+    "frontierml": 22,
+    "posttrainbench": 2,
+    "swe-chat-v1": 2
+   },
+   "weighted_pool_share": 0.12264158211415936,
+   "consequential": {
+    "point": 0.11538461538461539,
+    "lo": 0.0,
+    "hi": 0.30434782608695654,
+    "n_clusters": 19
+   },
+   "not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.8461538461538461,
+     "lo": 0.6923076923076923,
+     "hi": 0.9642857142857143,
+     "n_clusters": 19
+    },
+    "unprompted_file": {
+     "point": 0.11538461538461539,
+     "lo": 0.0,
+     "hi": 0.26092677345537724,
+     "n_clusters": 19
+    },
+    "no": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 19
+    },
+    "unclear": {
+     "point": 0.038461538461538464,
+     "lo": 0.0,
+     "hi": 0.12,
+     "n_clusters": 19
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "in_summary_after_all": 0.2692307692307692,
+   "kinds": {
+    "task_state": 25,
+    "decision": 1
+   },
+   "speakers": {
+    "tool": 22,
+    "agent": 4
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:pii-redaction-52fxvi:1",
+     "type": "task_state",
+     "text": "Run D quick eval on 12 gold docs reached 0.9699 at the final epoch; gold docs were in training (x3), so these scores are not held-out.",
+     "quote": "QUICK-EVAL mean R = 0.9699 over 12 docs",
+     "category": "run D quick-eval score",
+     "act": NaN,
+     "how": "evidence/trainD.log",
+     "consequential": "no",
+     "recoverable": "unprompted_file"
+    },
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:lean-simplification-1k3xv2:0",
+     "type": "task_state",
+     "text": "All 55 original validation proofs pass the local checker.",
+     "quote": "Counter({'ok': 55})",
+     "category": "baseline validity of original proofs",
+     "act": NaN,
+     "how": "Rerun local_checker.py on /task/public/validation.jsonl or inspect /tmp/val_orig_results.jsonl.",
+     "consequential": "no",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "Infrastructure and environment state",
+   "definition": "Machine leases, expiry times, installed tools, provider health, versions and transfer limits.",
+   "targeted": "partly",
+   "why": "Check (a) grades current task state, but infrastructure details are rarely chosen as items.",
+   "n": 15,
+   "by_source": {
+    "frontierml": 10,
+    "posttrainbench": 1,
+    "swe-chat-v1": 4
+   },
+   "weighted_pool_share": 0.07342778561028034,
+   "consequential": {
+    "point": 0.2,
+    "lo": 0.0,
+    "hi": 0.4666666666666667,
+    "n_clusters": 13
+   },
+   "not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 13
+   },
+   "recoverability": {
+    "repo": {
+     "point": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n_clusters": 13
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 13
+    },
+    "no": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 13
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 13
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 13
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 13
+   },
+   "in_summary_after_all": 0.2,
+   "kinds": {
+    "task_state": 11,
+    "decision": 2,
+    "rule_or_permission": 1,
+    "other": 1
+   },
+   "speakers": {
+    "tool": 7,
+    "agent": 8
+   },
+   "examples": [
+    {
+     "stratum": "frontierml",
+     "rid": "frontierml:scitikz-6b0aoj:3",
+     "type": "task_state",
+     "text": "Dev box lease 9b529fbc is extended and expires 05:16:31Z; it must be stopped when done.",
+     "quote": "\"expires_at\": \"2026-10-06T05:16:31.122815Z\"",
+     "category": "dev lease expiry time",
+     "act": NaN,
+     "how": "spin compute status/extend output.",
+     "consequential": "no",
+     "recoverable": "repo"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_claude-opus-4-6_10h_run1/gpqamain_Qwen_Qwen3-4B-Base_16829423:1",
+     "type": "task_state",
+     "text": "The agent deleted /root/.cache (including node-gyp cache) trying to free overlay space, which did not change the disk usage.",
+     "quote": "# Delete node-gyp cache to free overlay space",
+     "category": "failed cache deletion attempt",
+     "act": NaN,
+     "how": "Run df -h / and ls /root/.cache to see the current state.",
+     "consequential": "no",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "Package install permission and method",
+   "definition": "Permission to install extra packages, the uv pip --system install convention, and the rule that final_model must run in the starting environment.",
+   "targeted": "yes",
+   "why": "These are task-message permissions and rules, which check (a) and check (b) both cover.",
+   "n": 23,
+   "by_source": {
+    "posttrainbench": 23
+   },
+   "weighted_pool_share": 0.10494526236315592,
+   "consequential": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "not_recoverable": {
+    "point": 0.8260869565217391,
+    "lo": 0.6363636363636364,
+    "hi": 0.96,
+    "n_clusters": 19
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 19
+    },
+    "unprompted_file": {
+     "point": 0.08695652173913043,
+     "lo": 0.0,
+     "hi": 0.22727272727272727,
+     "n_clusters": 19
+    },
+    "no": {
+     "point": 0.8260869565217391,
+     "lo": 0.6363636363636364,
+     "hi": 0.96,
+     "n_clusters": 19
+    },
+    "unclear": {
+     "point": 0.08695652173913043,
+     "lo": 0.0,
+     "hi": 0.22754329004328855,
+     "n_clusters": 19
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 19
+   },
+   "in_summary_after_all": 0.08695652173913043,
+   "kinds": {
+    "rule_or_permission": 21,
+    "other": 2
+   },
+   "speakers": {
+    "user": 23
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/healthbench_Qwen_Qwen3-4B-Base_17124528:0",
+     "type": "permission",
+     "text": "Installing additional packages for experimentation is allowed, provided final_model still works in the starting environment.",
+     "quote": "Installing additional packages for experimentation is allowed, but ensure final_model works with the starting environment.",
+     "category": "permission to install experiment packages",
+     "act": "Agent might avoid installing helpful packages (e.g. for RL) out of caution.",
+     "how": "Only stated in the initial user prompt.",
+     "consequential": "unclear",
+     "recoverable": "no"
+    },
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/gsm8k_Qwen_Qwen3-4B-Base_17127062:0",
+     "type": "permission",
+     "text": "Installing additional packages for experimentation is allowed, as long as final_model still works with the starting environment.",
+     "quote": "Installing additional packages for experimentation is allowed",
+     "category": "package install permission",
+     "act": NaN,
+     "how": "Only in the user's initial prompt.",
+     "consequential": "no",
+     "recoverable": "no"
+    }
+   ]
+  },
+  {
+   "name": "Superseded plans and hypotheses",
+   "definition": "Earlier plans or unverified hypotheses that were later replaced by newer information.",
+   "targeted": "no",
+   "why": "Their loss is mostly harmless, and none of the checks track superseded history.",
+   "n": 3,
+   "by_source": {
+    "posttrainbench": 1,
+    "swe-chat-v1": 2
+   },
+   "weighted_pool_share": 0.013428247856333926,
+   "consequential": {
+    "point": 0.3333333333333333,
+    "lo": 0.0,
+    "hi": 1.0,
+    "n_clusters": 3
+   },
+   "not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 3
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.6666666666666666,
+     "lo": 0.0,
+     "hi": 1.0,
+     "n_clusters": 3
+    },
+    "unprompted_file": {
+     "point": 0.3333333333333333,
+     "lo": 0.0,
+     "hi": 1.0,
+     "n_clusters": 3
+    },
+    "no": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 3
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 3
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 3
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.3333333333333333,
+    "lo": 0.0,
+    "hi": 1.0,
+    "n_clusters": 3
+   },
+   "in_summary_after_all": 0.6666666666666666,
+   "kinds": {
+    "commitment": 1,
+    "task_state": 2
+   },
+   "speakers": {
+    "agent": 3
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:1",
+     "type": "commitment",
+     "text": "After v1 training finishes, run a quick 50-sample BFCL evaluation of the v1 checkpoint.",
+     "quote": "Wait for v1 to finish (~3 hours)",
+     "category": "planned v1 standalone eval",
+     "act": "Agent may skip evaluating v1 alone and so cannot compare it with the targeted model.",
+     "how": "run_after_v1.sh shows the pipeline steps (no v1 eval).",
+     "consequential": "yes",
+     "recoverable": "unprompted_file"
+    },
+    {
+     "stratum": "swe-chat-v1",
+     "rid": "swe-chat-v1:2ecc42cc-d0d5-4fed-a509-0e48855c077d:0",
+     "type": "task_state",
+     "text": "Working hypothesis: the carry-forward fix leaves shadow branches orphaned after the final commit; not yet verified.",
+     "quote": "the carry-forward fix is leaving shadow branches orphaned after the final commit",
+     "category": "early root-cause hypothesis",
+     "act": NaN,
+     "how": "Read the e2e artifact reports.",
+     "consequential": "no",
+     "recoverable": "repo"
+    }
+   ]
+  },
+  {
+   "name": "unassigned",
+   "definition": null,
+   "targeted": null,
+   "why": null,
+   "n": 1,
+   "by_source": {
+    "posttrainbench": 1
+   },
+   "weighted_pool_share": 0.0032126100723415076,
+   "consequential": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 1
+   },
+   "not_recoverable": {
+    "point": 1.0,
+    "lo": 1.0,
+    "hi": 1.0,
+    "n_clusters": 1
+   },
+   "recoverability": {
+    "repo": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 1
+    },
+    "unprompted_file": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 1
+    },
+    "no": {
+     "point": 1.0,
+     "lo": 1.0,
+     "hi": 1.0,
+     "n_clusters": 1
+    },
+    "unclear": {
+     "point": 0.0,
+     "lo": 0.0,
+     "hi": 0.0,
+     "n_clusters": 1
+    }
+   },
+   "consequential_and_not_recoverable": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 1
+   },
+   "consequential_and_not_in_repo": {
+    "point": 0.0,
+    "lo": 0.0,
+    "hi": 0.0,
+    "n_clusters": 1
+   },
+   "in_summary_after_all": 0.0,
+   "kinds": {
+    "rule_or_permission": 1
+   },
+   "speakers": {
+    "user": 1
+   },
+   "examples": [
+    {
+     "stratum": "posttrainbench",
+     "rid": "posttrainbench:claude_non_api_max_claude-opus-4-6_10h_run1/gpqamain_google_gemma-3-4b-pt_16907989:0",
+     "type": "permission",
+     "text": "Internet access is unrestricted.",
+     "quote": "Internet access is unrestricted.",
+     "category": "unrestricted internet permission",
+     "act": NaN,
+     "how": "Only stated in the initial user prompt.",
+     "consequential": "no",
+     "recoverable": "no"
+    }
+   ]
+  }
+ ],
+ "unassigned": [
+  "posttrainbench:claude_non_api_max_claude-opus-4-6_10h_run1/gpqamain_google_gemma-3-4b-pt_16907989:0#x2"
+ ],
+ "clustering_complete": false,
+ "interval": "95% percentile, session-group bootstrap, 2,000 resamples, seed 20261024 (unweighted, over the sampled items)",
+ "usage": {
+  "public": {
+   "notional_usd": 5.4096,
+   "n_sent": 85,
+   "n_cached": 85,
+   "n_runs": 24,
+   "usage_unknown": 0,
+   "charged_at_bound_usd": 0.0,
+   "cap_usd": 50.0,
+   "window_start": 0.89,
+   "window_stop": null,
+   "window_now": 0.89
+  }
+ },
+ "routes_by_stratum": {
+  "frontierml": {
+   "opus-openrouter (openrouter)": 61
+  },
+  "posttrainbench": {
+   "opus-openrouter (openrouter)": 74
+  },
+  "swe-chat-v1": {
+   "opus-openrouter (openrouter)": 62
+  }
+ },
+ "cluster_route": {
+  "backend": "opus-openrouter",
+  "model": "anthropic/claude-opus-5.5",
+  "transport": "openrouter",
+  "provider_pin": "Anthropic",
+  "reasoning": "low"
+ },
+ "odd": {
+  "n_labelled": 194,
+  "n_odd": 43,
+  "by_source": {
+   "frontierml": 20,
+   "posttrainbench": 2,
+   "swe-chat-v1": 21
+  },
+  "by_group": {
+   "Completed work reported as pending": 10,
+   "Design and method decisions": 5,
+   "Experimental numbers and measurements": 5,
+   "Infrastructure and environment state": 2,
+   "Finish processes before ending": 1,
+   "Unfinished work reported as done": 15,
+   "Other project rules and constraints": 3,
+   "Open offers and user responses": 2
+  },
+  "quote_in_summary": 42
+ }
+}

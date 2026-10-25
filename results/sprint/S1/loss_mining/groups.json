@@ -1,0 +1,321 @@
+{
+ "ok": true,
+ "complete": false,
+ "repeated_ids": 0,
+ "renamed_groups": 0,
+ "groups": [
+  {
+   "definition": "User rules that restrict work to the task directory, with HF cache or isolated worktree exceptions.",
+   "targeted": "yes",
+   "why": "These are standing rules from the task message, which check (a) and check (b) both track.",
+   "name": "Working-directory confinement rules",
+   "ids": [
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_16845515:0#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/arenahardwriting_Qwen_Qwen3-4B-Base_16855637:1#x2",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/gpqamain_Qwen_Qwen3-1.7B-Base_16845436:1#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/healthbench_Qwen_Qwen3-4B-Base_16855639:0#x2",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/gpqamain_HuggingFaceTB_SmolLM3-3B-Base_16852577:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/aime2025_google_gemma-3-4b-pt_17129540:1#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gpqamain_Qwen_Qwen3-4B-Base_17107217:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gsm8k_google_gemma-3-4b-pt_17116632:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/gpqamain_Qwen_Qwen3-1.7B-Base_17124732:1#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/arenahardwriting_google_gemma-3-4b-pt_17126499:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/gsm8k_Qwen_Qwen3-4B-Base_17127062:0#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_16861031:2#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_Qwen_Qwen3-4B-Base_16861075:3#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:0#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:1#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_google_gemma-3-4b-pt_16856803:0#x1",
+    "posttrainbench:claude_non_api_max_claude-opus-4-6_10h_run1/gpqamain_google_gemma-3-4b-pt_16907989:0#x1",
+    "swe-chat-v1:05191897-e787-4cc4-8ab6-86dfbb7e5f10:0#x1"
+   ]
+  },
+  {
+   "definition": "Permission to install extra packages, the uv pip --system install convention, and the rule that final_model must run in the starting environment.",
+   "targeted": "yes",
+   "why": "These are task-message permissions and rules, which check (a) and check (b) both cover.",
+   "name": "Package install permission and method",
+   "ids": [
+    "posttrainbench:claude_claude-opus-4-6_10h_run1/healthbench_Qwen_Qwen3-1.7B-Base_16829401:0#x2",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/arenahardwriting_Qwen_Qwen3-4B-Base_16855637:1#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16852576:0#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16852576:0#x1",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/gpqamain_HuggingFaceTB_SmolLM3-3B-Base_16852577:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/aime2025_google_gemma-3-4b-pt_17129540:1#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/bfcl_Qwen_Qwen3-1.7B-Base_17116644:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gsm8k_google_gemma-3-4b-pt_17116632:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/arenahardwriting_google_gemma-3-4b-pt_17133444:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/gpqamain_Qwen_Qwen3-1.7B-Base_17124732:1#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/gpqamain_Qwen_Qwen3-4B-Base_17124525:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/healthbench_Qwen_Qwen3-4B-Base_17124528:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/healthbench_Qwen_Qwen3-4B-Base_17124528:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/aime2025_HuggingFaceTB_SmolLM3-3B-Base_17130987:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/aime2025_HuggingFaceTB_SmolLM3-3B-Base_17130987:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_17130988:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_17130988:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/gsm8k_Qwen_Qwen3-4B-Base_17127062:0#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_16861031:2#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_Qwen_Qwen3-4B-Base_16861075:3#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:0#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:0#x1",
+    "posttrainbench:claude_non_api_max_claude-opus-4-6_10h_run1/gpqamain_google_gemma-3-4b-pt_16907989:0#x0"
+   ]
+  },
+  {
+   "definition": "User grants of unrestricted internet access, HF cache use, or free choice of data and methods.",
+   "targeted": "yes",
+   "why": "These are permissions granted by the user, which check (a) grades.",
+   "name": "Broad access permissions granted",
+   "ids": [
+    "posttrainbench:claude_claude-opus-4-6_10h_run1/healthbench_Qwen_Qwen3-1.7B-Base_16829401:0#x1",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/healthbench_Qwen_Qwen3-4B-Base_16855639:0#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16852576:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gpqamain_Qwen_Qwen3-4B-Base_17107217:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gsm8k_google_gemma-3-4b-pt_17116632:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/arenahardwriting_google_gemma-3-4b-pt_17133444:0#x0",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/gpqamain_Qwen_Qwen3-4B-Base_17124525:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/healthbench_Qwen_Qwen3-4B-Base_17124528:0#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:0#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:1#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:0#x2",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_google_gemma-3-4b-pt_16856803:0#x0",
+    "swe-chat-v1:65707055-904b-421c-a462-3a5b23a62183:6#x2"
+   ]
+  },
+  {
+   "definition": "The rule that every launched process must complete before the final message.",
+   "targeted": "yes",
+   "why": "This is a standing rule from the task message, which check (a) and check (b) both track.",
+   "name": "Finish processes before ending",
+   "ids": [
+    "posttrainbench:claude_claude-opus-4-6_10h_run1/healthbench_Qwen_Qwen3-1.7B-Base_16829401:0#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_16845515:0#x1",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/healthbench_Qwen_Qwen3-4B-Base_16855639:0#x1",
+    "posttrainbench:claude_claude-opus-4-6_10h_run3/gpqamain_HuggingFaceTB_SmolLM3-3B-Base_16852577:0#x0"
+   ]
+  },
+  {
+   "definition": "User advice to lower --max-connections or --max-tokens when evaluate.py runs out of GPU memory.",
+   "targeted": "partly",
+   "why": "This is operational advice rather than a rule, so the five item kinds catch it only partly.",
+   "name": "Eval OOM remedy guidance",
+   "ids": [
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/bfcl_Qwen_Qwen3-1.7B-Base_17116644:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/gpqamain_Qwen_Qwen3-4B-Base_17107217:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/aime2025_HuggingFaceTB_SmolLM3-3B-Base_17130987:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/gsm8k_Qwen_Qwen3-4B-Base_17127062:0#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_HuggingFaceTB_SmolLM3-3B-Base_16860888:1#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_google_gemma-3-4b-pt_16856803:0#x2"
+   ]
+  },
+  {
+   "definition": "Task-specific rules from the user or contract, such as format, data, git, deploy or metric constraints.",
+   "targeted": "yes",
+   "why": "These are standing rules or maintainer requirements, which check (a) and check (b) both cover.",
+   "name": "Other project rules and constraints",
+   "ids": [
+    "frontierml:babylm-replay-bkjea6:0#x1",
+    "frontierml:pokemon-random-battle-3t3d38:2#x0",
+    "frontierml:scitikz-2q3nqy:1#x2",
+    "frontierml:video-frame-interpolation-geo1cl:1#x1",
+    "frontierml:pii-redaction-1wuf85:4#x0",
+    "frontierml:end-of-turn-3gfb8d:2#x0",
+    "posttrainbench:claude_claude-opus-4-6_10h_run2/arenahardwriting_Qwen_Qwen3-4B-Base_16855637:1#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/gpqamain_Qwen_Qwen3-4B-Base_17124525:0#x0",
+    "swe-chat-v1:4a364c97-9dde-4a98-a973-26edea2c0e8b:1#x0",
+    "swe-chat-v1:4a364c97-9dde-4a98-a973-26edea2c0e8b:3#x0",
+    "swe-chat-v1:65707055-904b-421c-a462-3a5b23a62183:6#x0",
+    "swe-chat-v1:3b4420c1-e3af-48e0-b8d5-50c3374d20be:0#x0",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:4#x0",
+    "swe-chat-v1:7f9449ff-ba3e-470b-a9f8-1ffcb5919227:0#x2",
+    "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:1#x1",
+    "swe-chat-v1:e8709847-bb64-4c05-96eb-3922e7dfa911:0#x2",
+    "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:0#x1",
+    "swe-chat-v1:d23204e9-b03c-4ee0-add6-4563428db16f:3#x0",
+    "swe-chat-v1:2292db0c-9045-4f70-949f-1869f36ae08c:1#x0",
+    "swe-chat-v1:3b4420c1-e3af-48e0-b8d5-50c3374d20be:0#x1"
+   ]
+  },
+  {
+   "definition": "Edits or artifacts that were already done but that the summary describes as still to do.",
+   "targeted": "yes",
+   "why": "This is task state, one of the five item kinds in check (a).",
+   "name": "Completed work reported as pending",
+   "ids": [
+    "frontierml:babylm-replay-4asa0g:0#x0",
+    "frontierml:babylm-replay-bkjea6:0#x0",
+    "frontierml:end-of-turn-3gfb8d:2#x1",
+    "frontierml:idm-training-5u952c:0#x2",
+    "frontierml:maple-vlm-2exlmd:2#x0",
+    "frontierml:maple-vlm-2exlmd:2#x1",
+    "frontierml:pii-redaction-52fxvi:1#x1",
+    "frontierml:svg-generation-vqzt2t:1#x0",
+    "frontierml:screen-difference-4g53in:1#x0",
+    "frontierml:scitikz-2q3nqy:1#x0",
+    "frontierml:pokemon-random-battle-3t3d38:2#x1",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:2#x0",
+    "frontierml:lean-validity-2iqh0v:0#x0"
+   ]
+  },
+  {
+   "definition": "Claims of success or completion that hide failures, unverified steps or open bugs.",
+   "targeted": "partly",
+   "why": "Check (a) grades task state but does not specifically probe for overclaimed completion.",
+   "name": "Unfinished work reported as done",
+   "ids": [
+    "frontierml:idm-training-31qken:4#x1",
+    "frontierml:scitikz-2q3nqy:1#x1",
+    "swe-chat-v1:05191897-e787-4cc4-8ab6-86dfbb7e5f10:0#x0",
+    "swe-chat-v1:05191897-e787-4cc4-8ab6-86dfbb7e5f10:0#x2",
+    "swe-chat-v1:1882291a-174a-4f25-8e3b-6a121e0c9bc0:0#x0",
+    "swe-chat-v1:2b3d00ea-c696-4982-bc37-f1eb58f0d91e:2#x0",
+    "swe-chat-v1:379ab089-c458-45de-8bb7-fcd1c607b8c7:0#x0",
+    "swe-chat-v1:379ab089-c458-45de-8bb7-fcd1c607b8c7:0#x1",
+    "swe-chat-v1:4a364c97-9dde-4a98-a973-26edea2c0e8b:1#x1",
+    "swe-chat-v1:4a364c97-9dde-4a98-a973-26edea2c0e8b:3#x1",
+    "swe-chat-v1:7d0ed455-8cec-48bb-954a-032a40e36c99:0#x2",
+    "swe-chat-v1:8016a255-0828-4a01-ae11-a955eebf2fb8:0#x0",
+    "swe-chat-v1:fae58785-be4a-4d43-9aaf-e50ab4cecb8e:0#x0",
+    "swe-chat-v1:faf8d6a2-6deb-494a-911e-8cbb11fca70a:0#x0",
+    "swe-chat-v1:c60e3f8e-333d-40f6-9b77-1141b1fb9025:0#x0",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:4#x1",
+    "swe-chat-v1:2def5933-7d7d-48c7-9c80-b3730c4d8579:7#x0",
+    "swe-chat-v1:6bafbeea-d7b3-4c07-988b-2d438e21bed3:7#x0",
+    "swe-chat-v1:c60e3f8e-333d-40f6-9b77-1141b1fb9025:0#x1",
+    "frontierml:scitikz-6b0aoj:3#x1",
+    "swe-chat-v1:2b3d00ea-c696-4982-bc37-f1eb58f0d91e:2#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:1#x1"
+   ]
+  },
+  {
+   "definition": "Specific scores, timings, counts or sizes that were dropped or misreported.",
+   "targeted": "no",
+   "why": "Exact numeric results do not fit any of the five item kinds or the planted rules.",
+   "name": "Experimental numbers and measurements",
+   "ids": [
+    "frontierml:lean-simplification-1k3xv2:0#x0",
+    "frontierml:lean-simplification-1zwaf4:4#x0",
+    "frontierml:lean-simplification-1zwaf4:4#x1",
+    "frontierml:lean-simplification-1zwaf4:4#x2",
+    "frontierml:lean-simplification-4lro7f:0#x0",
+    "frontierml:lean-simplification-opdvyc:2#x0",
+    "frontierml:lean-simplification-opdvyc:2#x1",
+    "frontierml:lean-validity-35o6wx:1#x0",
+    "frontierml:lean-validity-35o6wx:1#x1",
+    "frontierml:llm-diffusion-1dfish:5#x1",
+    "frontierml:llm-diffusion-1dfish:5#x2",
+    "frontierml:llm-diffusion-429ucw:9#x1",
+    "frontierml:llm-diffusion-4t4al2:9#x0",
+    "frontierml:llm-diffusion-5y6zjh:1#x0",
+    "frontierml:ocr-latent-compression-2rxgas:1#x0",
+    "frontierml:pii-redaction-52fxvi:1#x0",
+    "frontierml:screenshot-generation-619emw:5#x0",
+    "frontierml:screenshot-generation-619emw:5#x1",
+    "frontierml:video-frame-interpolation-geo1cl:1#x0",
+    "frontierml:video-frame-interpolation-geo1cl:1#x2",
+    "frontierml:scitikz-6b0aoj:3#x0",
+    "swe-chat-v1:2ecc42cc-d0d5-4fed-a509-0e48855c077d:0#x0",
+    "swe-chat-v1:e8709847-bb64-4c05-96eb-3922e7dfa911:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h/aime2025_google_gemma-3-4b-pt_17129540:1#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_Qwen_Qwen3-4B-Base_16861075:3#x0",
+    "frontierml:screen-difference-4g53in:1#x1"
+   ]
+  },
+  {
+   "definition": "Machine leases, expiry times, installed tools, provider health, versions and transfer limits.",
+   "targeted": "partly",
+   "why": "Check (a) grades current task state, but infrastructure details are rarely chosen as items.",
+   "name": "Infrastructure and environment state",
+   "ids": [
+    "frontierml:idm-training-5u952c:0#x1",
+    "frontierml:lean-simplification-opdvyc:2#x2",
+    "frontierml:llm-diffusion-4t4al2:9#x1",
+    "frontierml:scitikz-6b0aoj:3#x2",
+    "frontierml:screenshot-generation-619emw:5#x2",
+    "frontierml:video-frame-interpolation-1kj0li:1#x0",
+    "frontierml:video-frame-interpolation-1kj0li:1#x1",
+    "frontierml:llm-diffusion-429ucw:9#x0",
+    "frontierml:pii-redaction-1wuf85:4#x1",
+    "frontierml:lean-simplification-24iso1:2#x0",
+    "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:1#x0",
+    "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:1#x2",
+    "swe-chat-v1:faf8d6a2-6deb-494a-911e-8cbb11fca70a:0#x2",
+    "swe-chat-v1:7d0ed455-8cec-48bb-954a-032a40e36c99:0#x1",
+    "posttrainbench:claude_claude-opus-4-6_10h_run1/gpqamain_Qwen_Qwen3-4B-Base_16829423:1#x0"
+   ]
+  },
+  {
+   "definition": "Technical or design choices the agent or user made, including rejected alternatives and their rationale.",
+   "targeted": "yes",
+   "why": "Decisions are one of the five item kinds in check (a).",
+   "name": "Design and method decisions",
+   "ids": [
+    "frontierml:idm-training-31qken:4#x0",
+    "frontierml:idm-training-5u952c:0#x0",
+    "frontierml:lean-validity-35o6wx:1#x2",
+    "frontierml:llm-diffusion-1dfish:5#x0",
+    "frontierml:svg-generation-vqzt2t:1#x1",
+    "frontierml:svg-generation-vqzt2t:1#x2",
+    "frontierml:video-frame-interpolation-1kj0li:1#x2",
+    "frontierml:lean-simplification-4lro7f:0#x1",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run2/arenahardwriting_google_gemma-3-4b-pt_17133444:0#x2",
+    "posttrainbench:claude_non_api_claude-opus-4-7_10h_run3/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_17130988:0#x1",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:0#x0",
+    "swe-chat-v1:2b3d00ea-c696-4982-bc37-f1eb58f0d91e:2#x2",
+    "swe-chat-v1:4810d459-5b4b-4b78-9518-a0eb00118590:0#x0",
+    "swe-chat-v1:4810d459-5b4b-4b78-9518-a0eb00118590:0#x1",
+    "swe-chat-v1:4810d459-5b4b-4b78-9518-a0eb00118590:0#x2",
+    "swe-chat-v1:7f9449ff-ba3e-470b-a9f8-1ffcb5919227:0#x0",
+    "swe-chat-v1:7f9449ff-ba3e-470b-a9f8-1ffcb5919227:0#x1",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:2#x2",
+    "swe-chat-v1:dfbb4922-3529-4eab-a5dc-3c8d30b7c660:4#x0",
+    "swe-chat-v1:7d0ed455-8cec-48bb-954a-032a40e36c99:0#x0",
+    "swe-chat-v1:1882291a-174a-4f25-8e3b-6a121e0c9bc0:0#x1",
+    "swe-chat-v1:4a364c97-9dde-4a98-a973-26edea2c0e8b:1#x2"
+   ]
+  },
+  {
+   "definition": "Unanswered agent offers, user rejections, and ambiguous user replies about pending actions.",
+   "targeted": "partly",
+   "why": "Check (a) covers commitments and refused permissions, but pending unanswered offers are not specifically targeted.",
+   "name": "Open offers and user responses",
+   "ids": [
+    "swe-chat-v1:379ab089-c458-45de-8bb7-fcd1c607b8c7:0#x2",
+    "swe-chat-v1:65707055-904b-421c-a462-3a5b23a62183:6#x1",
+    "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:0#x0",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:2#x1",
+    "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:4#x2",
+    "swe-chat-v1:faf8d6a2-6deb-494a-911e-8cbb11fca70a:0#x1",
+    "swe-chat-v1:e8709847-bb64-4c05-96eb-3922e7dfa911:0#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/arenahardwriting_HuggingFaceTB_SmolLM3-3B-Base_16861031:2#x1"
+   ]
+  },
+  {
+   "definition": "Earlier plans or unverified hypotheses that were later replaced by newer information.",
+   "targeted": "no",
+   "why": "Their loss is mostly harmless, and none of the checks track superseded history.",
+   "name": "Superseded plans and hypotheses",
+   "ids": [
+    "swe-chat-v1:2ecc42cc-d0d5-4fed-a509-0e48855c077d:0#x1",
+    "swe-chat-v1:d2887769-6c79-4828-b3f3-c2532462dd55:0#x0",
+    "posttrainbench:claude_non_api_claude-sonnet-4-6_10h/bfcl_Qwen_Qwen3-1.7B-Base_16861078:1#x0"
+   ]
+  }
+ ],
+ "unassigned": [
+  "posttrainbench:claude_non_api_max_claude-opus-4-6_10h_run1/gpqamain_google_gemma-3-4b-pt_16907989:0#x2"
+ ],
+ "unknown_ids": [],
+ "route": {
+  "backend": "opus-openrouter",
+  "model": "anthropic/claude-opus-5.5",
+  "transport": "openrouter",
+  "provider_pin": "Anthropic",
+  "reasoning": "low"
+ },
+ "strata": [
+  "frontierml",
+  "posttrainbench",
+  "swe-chat-v1"
+ ]
+}
