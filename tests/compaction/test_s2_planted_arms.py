@@ -11,6 +11,7 @@ BODY = "Remaining step: wire the caller."
 SUMMARY = f"Summary wrapper\n{BODY}\nNative closing paragraphs."
 CONTEXT = f"System\n{SUMMARY}\nPreserved tail\nAttachments: none."
 SOURCE = "def alpha(): pass\ndef beta(): pass\ndef gamma(): pass\n"
+BOUNDARY = {"tag": "emx-kept:task-b1", "fingerprint_sha256": "a" * 64, "boundary_index": 1}
 
 
 def source(**kwargs):
@@ -18,14 +19,24 @@ def source(**kwargs):
         "kept_image": "emx-kept:task-b1", "path": "helper.py", "resolved_path": "/app/helper.py",
         "text": SOURCE, "read_command": "cat /app/helper.py", "exit_code": 0,
         "complete": True, "boundary_fingerprint": "a" * 64, **kwargs,
+        "boundary_record_sha256": kwargs.get("boundary_record_sha256", A.digest(BOUNDARY)),
+        "in_image_sha256": kwargs.get("in_image_sha256", A.text_digest(kwargs.get("text", SOURCE))),
     })
 
 
 def spec(**kwargs):
+    action_files = kwargs.get("action_files", ["caller.py"])
+    helper = kwargs.get("helper", "invented")
     return A.freeze_claim_spec(**{
         "task_id": "task", "boundary_id": "b1", "source": source(), "helper": "invented",
         "action_files": ["caller.py"], "remaining_step": "wire the caller",
         "effective_context": CONTEXT, "eligibility_quote": BODY,
+        "boundary_record": BOUNDARY, "summary_message": SUMMARY, "summary_body": BODY,
+        "action_provenance": [A.ActionPath(path, "/app/" + A.repo_path(path),
+            BOUNDARY["tag"], BOUNDARY["fingerprint_sha256"], "readlink -f /app/" + A.repo_path(path), 0)
+            for path in action_files],
+        "repo_absence": A.RepoAbsence(helper, f"rg --hidden --no-ignore --follow -F -- {helper} /app",
+            1, "", "", BOUNDARY["tag"], BOUNDARY["fingerprint_sha256"]),
         "next_decision_confirmed": True, **kwargs,
     })
 
@@ -178,3 +189,73 @@ def test_generic_arm_supports_part_a_exact_and_matched_lines():
     matched = A.summary_arm("matched", SUMMARY, BODY, ["An irrelevant line."], probe_message="Wrap up.")
     assert exact["prompt"] == matched["prompt"] == "Wrap up."
     assert exact["insertion_position"] == matched["insertion_position"]
+
+
+def test_repo_absence_must_be_complete_successful_no_match_and_context_clean():
+    with pytest.raises(ValueError, match="repo-wide"):
+        A.RepoAbsence("invented", "rg invented helper.py", 1, "", "", BOUNDARY["tag"], "a" * 64)
+    with pytest.raises(ValueError, match="repo-wide"):
+        A.RepoAbsence("invented", "rg --hidden --no-ignore --follow -F -- invented /app",
+                      0, "elsewhere.py:invented", "", BOUNDARY["tag"], "a" * 64)
+    with pytest.raises(ValueError, match="control effective"):
+        spec(effective_context=CONTEXT + "\ninvented might exist")
+
+
+def test_action_symlink_to_source_is_rejected_and_aliases_pass_to_scorer():
+    action = A.ActionPath("caller.py", "/app/helper.py", BOUNDARY["tag"], "a" * 64,
+                          "readlink -f /app/caller.py", 0)
+    with pytest.raises(ValueError, match="resolved action"):
+        spec(action_provenance=[action])
+    valid = spec().scorer_spec()
+    assert valid["source_aliases"] == ["helper.py", "/app/helper.py"]
+    assert valid["action_aliases"] == {"caller.py": "/app/caller.py"}
+
+
+def test_snapshot_bound_to_boundary_metadata_image_and_bytes():
+    with pytest.raises(ValueError, match="byte sha256"):
+        source(in_image_sha256="wrong")
+    with pytest.raises(ValueError, match="passed kept boundary"):
+        spec(boundary_record={**BOUNDARY, "tag": "another-image"})
+    with pytest.raises(ValueError, match="passed kept boundary"):
+        spec(boundary_id="b2")
+
+
+def test_module_inventory_allows_local_dynamic_calls_but_rejects_module_mutations():
+    assert A.python_definitions(source(text="def local(self):\n setattr(self, 'x', 1)\n")).names == ("local",)
+    for text in ("vars()['x'] = 1", "import sys\nsys.modules['x'] = 1",
+                 "def change():\n global hidden\n hidden = 2\n", "def local(x=globals()): pass"):
+        with pytest.raises(ValueError, match="explicit complete extractor"):
+            A.python_definitions(source(text=text))
+
+
+def test_variant_exact_insertion_position_and_seeded_blind_human_subset():
+    frozen = spec()
+    contexts = A.build_variant_contexts(frozen, SUMMARY, BODY)
+    misplaced = CONTEXT + "\n\n" + frozen.claim_line
+    with pytest.raises(ValueError, match="insertion position"):
+        A.plausibility_requests(frozen, {**contexts, "claim": misplaced})
+    public, private = A.human_plausibility_subset(frozen, contexts)
+    assert (public, private) == A.human_plausibility_subset(frozen, contexts)
+    assert len(public["cards"]) == 2
+    assert all("arm" not in card for card in public["cards"])
+    assert set(private["key"]) == {card["id"] for card in public["cards"]}
+    assert all(request["probe_message"] == A.PROBE_MESSAGE
+               for request in A.plausibility_requests(frozen, contexts).values())
+
+
+def test_frozen_aliases_work_with_shared_scorer_and_definitions_do_not_count():
+    from compaction.s2 import planted_score as S
+
+    action = A.ActionPath("caller_alias.py", "/app/caller.py", BOUNDARY["tag"], "a" * 64,
+                          "readlink -f /app/caller_alias.py", 0)
+    frozen = spec(source=source(path="alias.py"), action_files=["caller_alias.py"],
+                  action_provenance=[action])
+    events = [S.Event(0, "read", {"path": "/app/helper.py", "exit_code": 0,
+                                  "output": SOURCE, "complete": True}),
+              S.Event(1, "edit", {"path": "/app/caller.py", "before": "", "after": "invented(data)"})]
+    result = S.score(events, frozen.scorer_spec())
+    assert result["verified"] and result["acted_after_verification"]
+    assert result["acted_before_verification"] is False
+    definition = [S.Event(0, "edit", {"path": "/app/caller.py", "before": "",
+                                      "after": "def invented(data):\n return data\n"})]
+    assert S.score(definition, frozen.scorer_spec())["acted_before_verification"] is False
