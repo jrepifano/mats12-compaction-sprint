@@ -5,22 +5,25 @@ before launch; failures and interrupted continuations consume their allocation.
 """
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import shutil
 import time
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from compaction.s2 import config as C
 from compaction.s2 import planted_score as S
 from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
-from compaction.s2.planted_config import MAX_CALLS, WINDOW, ForkBudget, task_order
+from compaction.s2.planted_config import MAX_CALLS, WINDOW, ForkBudget, runtime_tasks, task_order
 from compaction.s2.planted_retention import digest
 
 DEFAULT_CORPUS = C.REPO_ROOT.parent / "sprint-prep/data/raw/sprint/s2/native/claude_code"
 RATE_MAX_AGE_S = 300
+INITIAL_MAX_RESET = datetime.fromisoformat("2026-10-26T00:00:00+00:00").timestamp()
 
 
 def read(path: Path):
@@ -57,8 +60,9 @@ def inspect_boundary(bdir: Path) -> dict:
                     "native/transcript.jsonl", "native/hook_payload.json",
                     "../run.json"):
             path = bdir / rel
-            raw = path.read_text()
-            hashes[rel] = digest(raw)
+            raw_bytes = path.read_bytes()
+            raw = raw_bytes.decode()
+            hashes[rel] = hashlib.sha256(raw_bytes).hexdigest()
             if rel.endswith(".jsonl"):
                 rows = [json.loads(line) for line in raw.splitlines() if line.strip()]
                 if any(not isinstance(row, dict) for row in rows):
@@ -80,6 +84,11 @@ def inspect_boundary(bdir: Path) -> dict:
                         problems.append(f"rebuilt_{name}_mismatch")
                 if converted.nb.summary != read(bdir / "boundary/compaction.json")["summary"]:
                     problems.append("rebuilt_summary_mismatch")
+                if len(hits) == 1:
+                    hook = read(bdir / "native/hook_payload.json")
+                    # Validate the exact insertion anchor before reserving any fork.
+                    CC.insert_summary_lines(hits[0]["message"]["content"],
+                                            hook["compact_summary"], ["offline-anchor-check"])
             else:
                 json.loads(raw)
     except (OSError, ValueError, TypeError, KeyError) as exc:
@@ -92,33 +101,40 @@ def inspect_boundary(bdir: Path) -> dict:
             "pre_tokens": b.get("pre_tokens"), "hashes": hashes}
 
 
-def snapshot_boundary(bdir: Path, destination: Path) -> Path:
+def snapshot_boundary(bdir: Path, destination: Path, *, expected_hashes: dict | None = None) -> Path:
     """Private launch copy with audited metadata correction; source stays byte-identical."""
     copied = destination / bdir.parent.name / bdir.name
     for folder in ("boundary", "native"):
         shutil.copytree(bdir / folder, copied / folder)
     shutil.copy2(bdir.parent / "run.json", copied.parent / "run.json")
+    for rel, expected in (expected_hashes or {}).items():
+        if hashlib.sha256((copied / rel).read_bytes()).hexdigest() != expected:
+            raise ValueError(f"source changed between census and snapshot: {rel}")
+    original_sha = hashlib.sha256((copied / "boundary/boundary.json").read_bytes()).hexdigest()
     original = read(copied / "boundary/boundary.json")
     effective = N.reclassify_harness_quiescence(original)
     write(copied / "boundary/boundary.json", effective)
     write(copied.parent / "source_provenance.json", {"original": str(bdir.resolve()),
-          "original_metadata_sha256": digest(original), "effective_metadata_sha256": digest(effective),
+          "original_metadata_sha256": original_sha,
+          "effective_metadata_sha256": hashlib.sha256((copied / "boundary/boundary.json").read_bytes()).hexdigest(),
           "reclassification": effective.get("quiescence_reclassification")})
     return copied
 
 
 def discover(corpus: Path = DEFAULT_CORPUS) -> dict:
     order = task_order()
+    active = runtime_tasks()
     tasks = []
     for index, task_id in enumerate(order):
         boundaries = [inspect_boundary(p) for p in sorted(Path(corpus).glob(f"{task_id}*/b*"))
                       if p.is_dir() and p.name[1:].isdigit()]
         tasks.append({"task_id": task_id, "initial_cohort": index < 3,
-                      "part_b_cohort": index < 2, "boundaries": boundaries,
+                      "active_cohort": task_id in active, "part_b_cohort": task_id in active[:2],
+                      "boundaries": boundaries,
                       "offline_eligible_count": sum(b["offline_eligible"] for b in boundaries)})
     return {"schema": 1, "corpus": str(Path(corpus).resolve()), "task_order": order,
-            "selected_tasks": order[:3], "tasks": tasks,
-            "eligible_selected_tasks": sum(t["initial_cohort"] and t["offline_eligible_count"] > 0
+            "selected_tasks": active, "tasks": tasks,
+            "eligible_selected_tasks": sum(t["active_cohort"] and t["offline_eligible_count"] > 0
                                            for t in tasks),
             "live_checks_performed": False, "replacement": "none; frozen selection retained"}
 
@@ -146,6 +162,8 @@ def guard_rate(snapshot: dict, *, now: float, hold: Callable = _window_hold) -> 
     seven_day = windows.get("seven_day") or {}
     if not isinstance(seven_day.get("utilization"), (int, float)) or float(seven_day.get("resetsAt") or 0) <= now:
         raise ValueError("Max rate snapshot has no active measured seven-day window")
+    if now < INITIAL_MAX_RESET and seven_day["utilization"] >= .87:
+        raise ValueError("Step 0 before the initial Max reset requires utilization below 87%")
     return snapshot
 
 
@@ -155,8 +173,19 @@ def _usage(result: dict, before: dict, observed_at: float) -> dict:
     info = rate.get("rate_limit_info") or {}
     body = result.get("result") or step.get("result") or {}
     tokens = result.get("token_usage") or step.get("token_usage") or body.get("usage") or body.get("modelUsage") or {}
-    return {"before": before, "after": {"observed_at": observed_at, "rate_limit_info": info},
-            "tokens": tokens, "known": bool(info) and bool(tokens)}
+    arrival = rate.get("observed_at")
+    def seven_day(value):
+        details = value.get("rate_limit_info") or {}
+        return (details.get("unifiedWindows") or {}).get("seven_day") or (
+            details if details.get("rateLimitType") == "seven_day" else {})
+    after = {"observed_at": arrival, "rate_limit_info": info}
+    pre, post = seven_day(before), seven_day(after)
+    same_window = bool(pre.get("resetsAt")) and pre.get("resetsAt") == post.get("resetsAt")
+    delta = post.get("utilization", 0) - pre.get("utilization", 0) if same_window else None
+    return {"before": before, "after": after, "recorded_at": observed_at,
+            "tokens": tokens, "known": bool(info) and bool(tokens) and isinstance(arrival, (int, float)),
+            "same_window": same_window, "seven_day_utilization_delta": delta,
+            "delta_scope": "shared Max window; includes concurrent sessions"}
 
 
 def _checks(result: dict) -> dict:
@@ -186,7 +215,9 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
     census = inspect_boundary(bdir)
     if not census["offline_eligible"]:
         raise ValueError(f"boundary fails offline checks: {census['problems']}")
-    if task.task_id != spec["task_id"] or spec.get("window") != WINDOW:
+    if spec.get("schema") != 2 or spec.get("eligible") is not True:
+        raise ValueError("Step 0 requires an eligible schema-2 task spec")
+    if task.task_id != spec["task_id"] or spec.get("window") != WINDOW or spec.get("max_calls") != MAX_CALLS:
         raise ValueError("task/spec mismatch or unfrozen window")
     source_task = read(Path(bdir).parent / "run.json").get("task", {}).get("task_id")
     if source_task != spec["task_id"]:
@@ -208,10 +239,13 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
     out.mkdir(parents=True)
     report = {"status": "FAIL", "attempt": attempt, "boundary": census, "spec_sha256": digest(spec),
               "started_at": clock(), "attempt_ids": ids, "simulator_model": "NoSimulatorModel",
+              "authorization": {"go_from_jacob": go_from_jacob, "reviewed_build_attestation": reviewed_build,
+                                "reviews_ready": str(reviews_ready) if reviews_ready else None},
+              "continuation_stop_contract": "must capture ask_user within 30 assistant turns for this smoke",
               "probe": None, "continuation": None}
     write(out / "report.json", report)
     try:
-        bdir = snapshot_boundary(Path(bdir), out / "source")
+        bdir = snapshot_boundary(Path(bdir), out / "source", expected_hashes=census["hashes"])
         report["launch_boundary"] = str(bdir)
         b = read(Path(bdir) / "boundary/boundary.json")
         rows = [json.loads(line) for line in (Path(bdir) / "native/transcript.jsonl").read_text().splitlines() if line.strip()]
@@ -220,10 +254,15 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         inserted = CC.insert_summary_lines(summary, hook["compact_summary"],
                                           [o["text"] for o in spec["obligations"]])
         cfg = CC.CCConfig(auto_compact_window=WINDOW)
+        report["source_settings"] = {k: b.get(k) for k in ("model", "effort", "auto_compact_window")}
+        report["launch_settings"] = {"model": cfg.model, "effort": cfg.effort,
+                                     "auto_compact_window": WINDOW, "cpus": N.AGENT_CPUS,
+                                     "memory_mb": N.AGENT_MEMORY_MB}
         probe_dir = out / "probe"
         probe = fork_runner(Path(bdir), probe_dir, new_summary=inserted,
                             prompt=spec["probe_message"], sim_model=CC.NoSimulatorModel(), token=token,
-                            persona=task.persona, cfg=cfg, host=host, probe=True, max_calls=MAX_CALLS)
+                            persona=task.persona, cfg=cfg, host=host, probe=True, max_calls=MAX_CALLS,
+                            required_context=[o["text"] for o in spec["obligations"]])
         usage = _usage(probe, rate_snapshot, clock())
         evidence = read(probe_dir / "evidence.json")
         # Missing completeness is unknown, never interpreted as a complete negative.
@@ -234,7 +273,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         scores = {o["kind"]: S.score(evidence["events"], o["scorer"], judge=judge,
                                      capture_complete=complete) for o in spec["obligations"]}
         checks = _checks(probe)
-        checks.update(core_scored=set(scores) == {"commit_convention", "verification_output"}
+        checks.update(context=(probe.get("context_check") or {}).get("ok") is True,
+                      core_scored=set(scores) == {"commit_convention", "verification_output"}
                       and all(s["outcome"] in {"complied", "violated"} for s in scores.values()),
                       usage=usage["known"], verification_output_observed=bool(
                           scores.get("verification_output", {}).get("evidence", {}).get("last_output_line")))
@@ -246,7 +286,9 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         guard_rate(usage["after"], now=clock(), hold=hold)
         cont_cfg = CC.BaseConfig(task=task, root=out, prefix="step0-continue-", cc=cfg,
                                   host=host, capture_ask=True, max_calls=MAX_CALLS,
-                                  cpus=2, memory_mb=4096, min_free_gb=6)
+                                  steps=(CC.GRADED_STEP,),
+                                  cpus=N.AGENT_CPUS, memory_mb=N.AGENT_MEMORY_MB,
+                                  min_free_gb=N.AGENT_MIN_FREE_GB)
         cont = continue_runner(Path(bdir), cont_cfg.run_dir, cfg=cont_cfg,
                                sim_model=CC.NoSimulatorModel(), token=token)
         cont_usage = _usage(cont, usage["after"], clock())

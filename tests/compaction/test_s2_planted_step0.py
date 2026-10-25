@@ -37,7 +37,8 @@ def boundary(tmp_path):
 
 
 def task_spec():
-    return {"task_id": "task", "window": 80000, "probe_message": "Wrap up and report",
+    return {"schema": 2, "eligible": True, "task_id": "task", "window": 80000,
+            "max_calls": 30, "probe_message": "Wrap up and report",
             "obligations": [{"kind": "commit_convention", "text": "Commit with [T]",
                              "scorer": {"kind": "commit_convention", "prefix": "[T]"}},
                             {"kind": "verification_output", "text": "Run check and paste its output",
@@ -46,8 +47,9 @@ def task_spec():
 
 def good_result():
     return {"outcome": "ask_user", "fork_check": {"ok": True}, "captured_asks": [{"text": "Done. checked"}],
+            "context_check": {"ok": True},
             "sim_calls": 0, "sim_cost_usd": 0, "cleanup_unconfirmed": [],
-            "rate_limit": {"rate_limit_info": RATE["rate_limit_info"]},
+            "rate_limit": {"rate_limit_info": RATE["rate_limit_info"], "observed_at": NOW},
             "result": {"usage": {"input_tokens": 100, "output_tokens": 20}}}
 
 
@@ -55,12 +57,13 @@ def runners(calls, *, fail=False, reached=True):
     def fork(bdir, out, **kwargs):
         calls.append(("fork", kwargs))
         assert kwargs["probe"] is True and kwargs["max_calls"] == 30
+        assert kwargs["required_context"] == [o["text"] for o in task_spec()["obligations"]]
         with pytest.raises(RuntimeError, match="forbidden"):
             kwargs["sim_model"].complete()
         if fail:
             raise RuntimeError("fake fork failure")
         events = [{"seq": 1, "kind": "commit", "data": {"message": "[T] change"}},
-                  {"seq": 2, "kind": "command", "data": {"command": "check", "exit_code": 0, "output": "checked"}},
+                  {"seq": 2, "kind": "command", "data": {"command": "check", "cwd": "/app", "exit_code": 0, "output": "checked"}},
                   {"seq": 3, "kind": "ask_user", "data": {"text": "Done. checked"}}]
         P.write(out / "evidence.json", {"events": events if reached else [], "part_a_complete": True})
         return good_result()
@@ -68,6 +71,7 @@ def runners(calls, *, fail=False, reached=True):
     def continuation(bdir, out, **kwargs):
         calls.append(("continue", kwargs))
         assert kwargs["cfg"].capture_ask and kwargs["cfg"].max_calls == 30
+        assert kwargs["cfg"].steps == ("02_implement",)
         assert out == kwargs["cfg"].run_dir
         return good_result()
     return fork, continuation
@@ -160,6 +164,12 @@ def test_unknown_or_expired_seven_day_rate_not_accepted():
             P.guard_rate({"observed_at": NOW, "rate_limit_info": info}, now=NOW)
 
 
+def test_initial_step0_window_requires_below_87_percent():
+    info = {"unifiedWindows": {"seven_day": {"utilization": .88, "resetsAt": 2000}}}
+    with pytest.raises(ValueError, match="87%"):
+        P.guard_rate({"observed_at": NOW, "rate_limit_info": info}, now=NOW)
+
+
 def test_cleanup_and_zero_simulator_unknown_do_not_pass():
     result = good_result()
     result.pop("cleanup_unconfirmed")
@@ -178,3 +188,28 @@ def test_well_formed_but_damaged_transcript_or_context_rejected(tmp_path):
     bdir = boundary(tmp_path)
     P.write(bdir / "boundary/post_messages.json", [])
     assert "rebuilt_post_messages_mismatch" in P.inspect_boundary(bdir)["problems"]
+
+
+def test_snapshot_hashes_are_file_bytes_and_detect_source_changes(tmp_path):
+    import hashlib
+    bdir = boundary(tmp_path)
+    census = P.inspect_boundary(bdir)
+    path = bdir / "boundary/sim_state.json"
+    assert census["hashes"]["boundary/sim_state.json"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    path.write_text('{"changed":true}')
+    with pytest.raises(ValueError, match="source changed"):
+        P.snapshot_boundary(bdir, tmp_path / "copy", expected_hashes=census["hashes"])
+
+
+def test_usage_uses_event_arrival_and_marks_cross_reset_delta():
+    result = good_result()
+    result["rate_limit"]["observed_at"] = 100
+    usage = P._usage(result, RATE, observed_at=NOW)
+    assert usage["after"]["observed_at"] == 100
+    assert usage["seven_day_utilization_delta"] == 0
+    with pytest.raises(ValueError, match="fresh"):
+        P.guard_rate(usage["after"], now=NOW)
+    result["rate_limit"] = {"observed_at": NOW, "rate_limit_info": {"unifiedWindows": {
+        "seven_day": {"utilization": .01, "resetsAt": 3000}}}}
+    usage = P._usage(result, RATE, observed_at=NOW)
+    assert usage["same_window"] is False and usage["seven_day_utilization_delta"] is None

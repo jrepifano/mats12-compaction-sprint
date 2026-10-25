@@ -11,6 +11,10 @@ After reviews and an explicit main-session go (never during the build):
 Rate file: {"observed_at": UNIX_SECONDS, "rate_limit_info": RATE_LIMIT_INFO}.
 Use a rate_limit_event from an authorized run no older than five minutes; this
 command never pings Max to bypass the launch gate. A failed attempt consumes budget.
+After the go, the coordinator can obtain a fresh reading with the existing
+scripts/s2_native.py::_max_ping helper (one tiny Max call, no task fork). Use its
+start time as observed_at, conservatively, and preserve the emitted event; never
+refresh an old event's timestamp. That helper is not called by this launcher.
 """
 from __future__ import annotations
 
@@ -33,6 +37,13 @@ def parser():
         d = commands.add_parser(name, help="offline metadata/transcript census; no Docker/model calls")
         d.add_argument("--corpus", type=Path, default=P.DEFAULT_CORPUS)
         d.add_argument("--out", type=Path)
+    e = commands.add_parser("eligibility", help="after go: Docker-only kept-image/fork_check census, zero model calls")
+    e.add_argument("--corpus", type=Path, default=P.DEFAULT_CORPUS)
+    e.add_argument("--out", type=Path, required=True)
+    e.add_argument("--si-root", type=Path, required=True)
+    e.add_argument("--deepswe-dir", type=Path, required=True)
+    e.add_argument("--host", default="ssh://rig")
+    e.add_argument("--go-from-jacob", action="store_true")
     s = commands.add_parser("step0", help="one probe and one guarded continuation; consumes two Part A attempts")
     s.add_argument("boundary", type=Path)
     s.add_argument("--task", required=True)
@@ -59,6 +70,12 @@ def main(argv=None):
         return 0
     if not a.go_from_jacob:
         raise SystemExit("Step 0 held: --go-from-jacob is required")
+    if a.command == "eligibility":
+        from compaction.s2.planted_eligibility import validate_cohort
+        result = validate_cohort(P.discover(a.corpus), a.out, go_from_jacob=True, host=a.host,
+            task_loader=lambda task: IR.load_task(task, si_root=a.si_root, deepswe_dir=a.deepswe_dir))
+        print(json.dumps(result, indent=2))
+        return 0 if result["at_least_two_live_eligible"] and not result["cleanup_stop"] else 1
     if not a.reviewed_build and not a.reviews_ready:
         raise SystemExit("Step 0 held: completed reviews artifact or --reviewed-build required")
     from dotenv import load_dotenv
