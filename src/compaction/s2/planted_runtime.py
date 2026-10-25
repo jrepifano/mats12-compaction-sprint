@@ -44,6 +44,10 @@ def _live_stop_reason(now, deadline, stop_file):
     return None
 
 
+class TaskTerminal(RuntimeError):
+    """A confirmed-safe technical task ending; other tasks may continue."""
+
+
 class GuardedMaxBackend(H.MaxBackend):
     """Pilot-local guard of each actual CLI attempt, including canaries/retries."""
 
@@ -56,6 +60,7 @@ class GuardedMaxBackend(H.MaxBackend):
         self._extra_before_attempt = None
         self.max_window_utilization = .90
         self.pilot_stop_reason = None
+        self.latest_rate = None
         self._pilot_lock = threading.Lock()
 
     def _halt(self, reason):
@@ -77,10 +82,11 @@ class GuardedMaxBackend(H.MaxBackend):
             reason = "paid_route"
         if event.get("type") == "rate_limit_event":
             info = event.get("rate_limit_info") or {}
+            self.latest_rate = {"observed_at": self._clock(), "rate_limit_info": info}
             windows = [*(info.get("unifiedWindows") or {}).items(), (info.get("rateLimitType"), info)]
             if any(isinstance(w, dict) and (w.get("status") in {"rejected", "rate_limited"} or
                    isinstance(w.get("utilization"), (int, float))
-                   and w["utilization"] >= (self.max_window_utilization if name == "seven_day" else .90))
+                   and name == "seven_day" and w["utilization"] >= self.max_window_utilization)
                    for name, w in windows):
                 reason = "max_window_hold"
         if reason:
@@ -106,6 +112,7 @@ class GuardedMaxBackend(H.MaxBackend):
         if reason:
             self._halt(reason)
             raise RuntimeError(f"planted judge stopped before attempt: {reason}")
+        self.latest_rate = None  # never treat an earlier canary/retry as this attempt's after-reading
         finished = threading.Event()
 
         def watch_silent_call():
@@ -151,6 +158,7 @@ def guarded_max_judge(cache_dir, *, before_attempt=None, clock=time.time,
             backend.max_window_utilization = .90
             lock.release()
 
+    judge.latest_rate = lambda: backend.latest_rate
     judge.guarded_attempts = True
     return judge
 
@@ -213,7 +221,7 @@ def desktop_max_reading(*, root: Path, clock=time.time, run=None, recorder=None,
     output = Path(root) / "rate-readings" / f"{int(clock() * 1e6)}.json"
     P.write(output, {"events": events, "reading": observations[-1]})
     if recorder:
-        recorder("max", CC.MODEL, units=1, usd=0, note="planted fresh Max reading")
+        recorder("judge", "claude-max:" + CC.MODEL, units=1, usd=0, note="planted fresh Max reading")
     return observations[-1]
 
 
@@ -284,7 +292,7 @@ class Runtime:
     def _totals(self, tag=PC.SPEND_TAG):
         if "totals" in self.io:
             return self.io["totals"](tag)
-        return IR.tag_totals(tag, ledger=self.spend.ledger, caps_file=self.spend.caps_file)
+        return IR.tag_totals(tag, ledger=self.spend.ledger, caps_file=self.spend.caps_file, stage=self.spend.stage)
 
     def snapshot(self):
         state, attempts = self._state(), self.budget.state()["attempts"]
@@ -294,6 +302,18 @@ class Runtime:
                 "simulator_charged_usd": charged, "simulator_held_usd": held,
                 "forks_a": sum(a["part"] == "A" for a in attempts),
                 "forks_b": sum(a["part"] == "B" for a in attempts), "forks_total": len(attempts)}
+
+    def observe_rate(self, snapshot):
+        """Reuse fresh native/judge stream evidence without issuing a reading call."""
+        if not isinstance(snapshot, dict) or not isinstance(snapshot.get("rate_limit_info"), dict):
+            return False
+        observed = snapshot.get("observed_at")
+        if not isinstance(observed, (int, float)) or not 0 <= self.clock() - observed <= 60:
+            return False
+        if self._rate and self._rate.get("observed_at", 0) > observed:
+            return False
+        self._rate = snapshot
+        return True
 
     def max_reading(self, *, force=False):
         self._authorized()
@@ -330,7 +350,9 @@ class Runtime:
                     before_attempt=lambda metadata: self.guard("opus_actual_attempt"))
             return self._judge(request)
         finally:
-            self._rate = None  # judging consumed Max; next action obtains a fresh event
+            reading = getattr(self._judge, "latest_rate", lambda: None)()
+            self._rate = (reading if reading and
+                0 <= self.clock() - reading.get("observed_at", 0) <= 60 else None)
             self._active_attempt = previous
 
     def _receipt(self, work_id):
@@ -401,7 +423,7 @@ class Runtime:
                         attempt=f"{work_id}-{attempt + 1}",
                         judge=lambda request, identity=f"{work_id}-{attempt + 1}:probe": self.judge(
                             request, attempt_id=identity), budget=self.budget, clock=self.clock,
-                        native_cfg=self._cc_config())
+                        native_cfg=self._cc_config(), rate_provider=lambda: self.max_reading(force=True))
                     reports.append(report)
                     self._rate = None
                     if any((report.get(k) or {}).get("result", {}).get("policy_stop")
@@ -438,10 +460,15 @@ class Runtime:
                 and result.get("cleanup_unconfirmed") in (False, [])
                 and "cleanup_unconfirmed" in result and result.get("sim_calls") == 0
                 and result.get("sim_cost_usd") == 0)
+        global_stop = ("cleanup_unconfirmed" not in result or result["cleanup_unconfirmed"] not in (False, [])
+            or result.get("sim_calls") != 0 or result.get("sim_cost_usd") != 0
+            or result.get("auth_error") or result.get("policy_stop") or result.get("paid_route")
+            or result.get("outcome") in {"run_cap", "time_cap", "auth_error", "paid_route"})
+        safe = safe and not global_stop and result.get("outcome") in (None, "ask_user", "submission", "call_cap", "ok")
         context_ok = (result.get("context_check") or {}).get("ok") is True
         report = {"attempt_id": identity, "safe": safe, "context_ok": context_ok,
                   "usage": P._usage(result, before, self.clock()), "output": str(out), "scores": {}}
-        if score:
+        if score and not global_stop:
             evidence = P.read(out / "evidence.json")
             complete = safe and context_ok and evidence.get("part_a_complete") is True
             report["scores"] = {o["kind"]: S.score(evidence["events"], o["scorer"], judge=self.judge,
@@ -451,8 +478,12 @@ class Runtime:
                 and ("plan" in json.dumps(ev["data"]).lower() or "git log" in ev["data"].get("command", ""))]
         P.write(out / "runtime-report.json", report)
         self.budget.finish(identity, "complete" if safe and context_ok else "technical_failure", artifact=str(out))
+        if global_stop:
+            raise RuntimeError(f"unsafe probe {identity}; sequence halted")
+        if not score and (not safe or not context_ok):
+            raise TaskTerminal(f"baseline technical_failure: {identity}; cleanup confirmed, zero simulator")
         if not safe:
-            raise RuntimeError(f"unsafe/failed probe {identity}; sequence halted")
+            raise RuntimeError(f"failed probe {identity}; sequence halted")
         if not context_ok:
             raise RuntimeError(f"actual resumed context verification failed: {identity}")
         return report
@@ -526,7 +557,7 @@ class Runtime:
         if contingency:
             spend = IR.PilotSpend(tags=(PC.SPEND_TAG, CONTINGENCY_TAG),
                 caps={PC.SPEND_TAG: PC.SIM_CAP_USD, CONTINGENCY_TAG: 6.},
-                ledger=self.spend.ledger, caps_file=self.spend.caps_file)
+                stage=self.spend.stage, ledger=self.spend.ledger, caps_file=self.spend.caps_file)
         run_spend = RunSpend(spend, cap).attach(self.root / "spend" / f"{name}.jsonl")
         return OpenAICompatModel(C.SIM_ROUTE, run_spend)
 
@@ -648,7 +679,8 @@ class Runtime:
             if validation.get("cleanup_unconfirmed"):
                 raise RuntimeError("eligibility cleanup unconfirmed")
             boundaries.append({"task_id": task_id, "boundary": str(bdir),
-                "live_eligible": validation.get("eligible") is True, "validation": validation,
+                "live_eligible": validation.get("eligible") is True and (not contingency or k == 1),
+                "contingency_first_boundary_required": contingency and k != 1, "validation": validation,
                 "k": k, "origin": "planted_base"})
         state = self._state()
         state["boundaries"].extend(boundaries)
@@ -683,7 +715,7 @@ class Runtime:
                     if result["status"] in {"time_cap", "run_cap", "TIME_LIMIT", "SPEND_LIMIT"}:
                         exhausted = True
                         break
-                    if any(b["live_eligible"] for b in result["boundaries"]):
+                    if any(b["live_eligible"] and b.get("k") == 1 for b in result["boundaries"]):
                         break
                     if retry == 0:
                         retry = 1
@@ -767,13 +799,20 @@ class Runtime:
         ids = [f"{identity}-r{i}" for i in range(2)]
         self.budget.reserve_batch([{"attempt_id": key, "part": "A", "bucket": "baseline",
                                     "boundary": row["boundary"]} for key in ids])
-        paths = []
-        for key in ids:
-            self._fork(identity=key, row=row, bdir=bdir, summary=summary,
-                       prompt=spec["probe_message"], score=False)
+        failures = []
+        try:
+            for key in ids:
+                try:
+                    self._fork(identity=key, row=row, bdir=bdir, summary=summary,
+                               prompt=spec["probe_message"], score=False)
+                except TaskTerminal as exc:
+                    failures.append(str(exc))
+        finally:
             # Only hash bytes. No scorer and no parsing of transcript/evidence outputs.
-            paths.extend(sorted(p for p in (self.root / "forks" / key).rglob("*") if p.is_file()))
-        R.seal_probes(out / "sealed-probes.json", paths)
+            paths = sorted(p for key in ids for p in (self.root / "forks" / key).rglob("*") if p.is_file())
+            R.seal_probes(out / "sealed-probes.json", paths)
+        if failures:
+            raise TaskTerminal(f"{'; '.join(failures)}; sealed at {out / 'sealed-probes.json'}")
         return str(out / "sealed-probes.json")
 
     def chains(self, *, work_id, tasks, target_compaction=3, kinds=None):
@@ -785,54 +824,64 @@ class Runtime:
             results = []
             for original in tasks:
                 task_id, retries = original, 0
+                task_status = "target_reached"
                 current = [b for b in self._state()["boundaries"]
                            if b["task_id"] == task_id and b.get("origin") == "planted_base" and b["live_eligible"]]
                 boundary = max(current, key=lambda b: b["k"]) if current else None
-                while True:
-                    if boundary is None:
-                        segment = self._base_segment(task_id, f"{work_id}-{len(results)}-try{retries}", kinds=kinds)
+                try:
+                    while True:
+                        if boundary is None:
+                            segment = self._base_segment(task_id, f"{work_id}-{len(results)}-try{retries}", kinds=kinds)
+                            if segment["status"] in {"run_cap", "time_cap", "TIME_LIMIT", "SPEND_LIMIT"}:
+                                raise RuntimeError("base cap/timeout stop; not restarted")
+                            first = next((b for b in segment["boundaries"] if b.get("k") == 1), None)
+                            if first is None or not first["live_eligible"]:
+                                if retries == 0:
+                                    retries = 1
+                                    continue
+                                state = self.cohort.state()
+                                used = set(state["initial_cohort"]) | {r["new"] for r in state["replacements"]}
+                                replacement = next((t for t in PC.task_order() if t not in used), None)
+                                if replacement is None:
+                                    raise RuntimeError("all seeded task replacements exhausted")
+                                self.cohort.replace_task(task_id, replacement,
+                                    reason="base error or ineligible first compaction after one rerun")
+                                task_id, retries = replacement, 0
+                                continue
+                            boundary = first
+                        state = self._state()
+                        already = state["chains"].get(boundary["boundary"])
+                        if not already:
+                            retention_path = self._retention(boundary)
+                            if not boundary["live_eligible"]:
+                                state = self._state()
+                                state["chains"][boundary["boundary"]] = {"unforkable": True, "retention": str(retention_path)}
+                                self._save(state)
+                                raise TaskTerminal("later boundary unforkable: retention retained; unsafe restore withheld")
+                            seal = self._baseline(boundary, f"{work_id}-{len(results)}-b{boundary['k']}")
+                            state = self._state()
+                            state["chains"][boundary["boundary"]] = {"retention": str(retention_path), "seal": seal}
+                            self._save(state)
+                        if boundary["k"] >= target_compaction:
+                            break
+                        segment = self._base_segment(task_id, f"{work_id}-{len(results)}-next{boundary['k']}",
+                                                     boundary=boundary["boundary"], kinds=kinds)
+                        newer = [b for b in segment["boundaries"] if b["k"] > boundary["k"]]
                         if segment["status"] in {"run_cap", "time_cap", "TIME_LIMIT", "SPEND_LIMIT"}:
                             raise RuntimeError("base cap/timeout stop; not restarted")
-                        first = next((b for b in segment["boundaries"] if b.get("k") == 1), None)
-                        if first is None or not first["live_eligible"]:
-                            if retries == 0:
-                                retries = 1
-                                continue
-                            state = self.cohort.state()
-                            used = set(state["initial_cohort"]) | {r["new"] for r in state["replacements"]}
-                            replacement = next((t for t in PC.task_order() if t not in used), None)
-                            if replacement is None:
-                                raise RuntimeError("all seeded task replacements exhausted")
-                            self.cohort.replace_task(task_id, replacement,
-                                reason="base error or ineligible first compaction after one rerun")
-                            task_id, retries = replacement, 0
-                            continue
-                        boundary = first
-                    state = self._state()
-                    already = state["chains"].get(boundary["boundary"])
-                    if not already:
-                        retention_path = self._retention(boundary)
-                        if not boundary["live_eligible"]:
-                            state = self._state()
-                            state["chains"][boundary["boundary"]] = {"unforkable": True, "retention": str(retention_path)}
-                            self._save(state)
-                            raise RuntimeError("later boundary unforkable: retention retained; unsafe restore withheld")
-                        seal = self._baseline(boundary, f"{work_id}-{len(results)}-b{boundary['k']}")
-                        state = self._state()
-                        state["chains"][boundary["boundary"]] = {"retention": str(retention_path), "seal": seal}
-                        self._save(state)
-                    if boundary["k"] >= target_compaction:
-                        break
-                    segment = self._base_segment(task_id, f"{work_id}-{len(results)}-next{boundary['k']}",
-                                                 boundary=boundary["boundary"], kinds=kinds)
-                    newer = [b for b in segment["boundaries"] if b["k"] > boundary["k"]]
-                    if not newer:
-                        if segment["status"] == "submitted":
-                            break
-                        raise RuntimeError("base continuation ended before another compaction")
-                    boundary = min(newer, key=lambda b: b["k"])
-                results.append({"task_id": task_id, "last_compaction": boundary["k"],
-                                "target_reached": boundary["k"] >= target_compaction})
+                        if not newer:
+                            if segment["status"] == "submitted":
+                                task_status = "submitted"
+                                break
+                            raise TaskTerminal(f"base continuation ended before another compaction: {segment['status']}")
+                        boundary = min(newer, key=lambda b: b["k"])
+                    results.append({"task_id": task_id, "last_compaction": boundary["k"],
+                                    "target_reached": boundary["k"] >= target_compaction, "status": task_status})
+                except TaskTerminal as exc:
+                    results.append({"task_id": task_id, "last_compaction": boundary["k"] if boundary else 0,
+                                    "target_reached": False, "status": "technical_failure", "reason": str(exc)})
+                    receipt["tasks"] = results
+                    P.write(self._receipt(work_id), receipt)
             receipt.update(status="PASS", tasks=results, stop="BEFORE_CARDS", screened_kinds=kinds,
                            retention=self._state()["retention"], baseline_outputs_inspected=False,
                            delivery_policy="Only passing kinds are newly planted. Already-delivered contingency "

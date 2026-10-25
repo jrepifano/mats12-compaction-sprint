@@ -14,6 +14,7 @@ import math
 import os
 import signal
 import socket
+import threading
 import time
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -23,11 +24,18 @@ from pathlib import Path
 from compaction.s2.planted_config import B_CUTOFF, B_DROP_IF_STEP0_AFTER, RESET, task_order
 
 MONDAY_NOON = datetime(2026, 10, 26, 16, tzinfo=UTC)
+RESET_SETTLE_SECONDS = 300
+RATE_RETRY_SECONDS = 600
+MAX_RATE_RETRIES = 6
 TERMINAL = {"HALTED", "STOPPED_BEFORE_CARDS"}
 
 
 class DriverStop(RuntimeError):
     """A planned stop, propagated through runtime cleanup rather than retried."""
+
+
+class RateHold(DriverStop):
+    """A measured rate hold; retryable only before an operation is assigned."""
 
 
 def utc(value: float) -> str:
@@ -79,22 +87,24 @@ def measured_rate(snapshot: dict, now: float) -> dict:
     """Accept the native timestamped rate event, never a relabelled old reading."""
     observed = snapshot.get("observed_at")
     if not isinstance(observed, (int, float)) or not 0 <= now - observed <= 300:
-        raise DriverStop("fresh Max reading required (at most 300 seconds old)")
+        raise RateHold("fresh Max reading required (at most 300 seconds old)")
     info = snapshot.get("rate_limit_info") or {}
     windows = info.get("unifiedWindows") or {info.get("rateLimitType"): info}
     seven = windows.get("seven_day") or {}
     utilization, reset = seven.get("utilization"), seven.get("resetsAt")
     if (not isinstance(utilization, (int, float)) or not math.isfinite(utilization)
-            or not 0 <= utilization <= 1 or not isinstance(reset, (int, float)) or reset <= now):
+            or not 0 <= utilization <= 1 or not isinstance(reset, (int, float))):
         raise DriverStop("Max reading lacks active seven-day utilization/reset")
-    for window in windows.values():
+    if reset <= now:
+        raise RateHold("Max server has not rolled over the seven-day window")
+    for name, window in windows.items():
         if not isinstance(window, dict):
             raise DriverStop("invalid Max window")
         used = window.get("utilization")
-        if isinstance(used, (int, float)) and used >= .90:
-            raise DriverStop("Max 90% hold")
+        if name == "seven_day" and isinstance(used, (int, float)) and used >= .90:
+            raise RateHold("Max 90% weekly hold")
         if window.get("status") in {"rejected", "rate_limited"}:
-            raise DriverStop("Max rate-limit hold")
+            raise RateHold("Max rate-limit hold")
     return {"utilization": utilization, "observed_at": observed, "resetsAt": reset}
 
 
@@ -116,6 +126,7 @@ class Driver:
         self.state = None
         self._part_b = None
         self._previous_handlers = {}
+        self._save_lock = threading.RLock()
 
     def _owner(self, claim: bool):
         current = self.identity_provider(self.checkout)
@@ -145,8 +156,9 @@ class Driver:
                           "created_at": utc(self.clock())}
 
     def _save(self):
-        self.state["updated_at"] = utc(self.clock())
-        atomic_json(self.state_path, self.state)
+        with self._save_lock:
+            self.state["updated_at"] = utc(self.clock())
+            atomic_json(self.state_path, self.state)
 
     def _metrics(self) -> dict:
         snapshot = self.runtime.snapshot()
@@ -156,12 +168,18 @@ class Driver:
                 raise DriverStop(f"missing or invalid budget metric: {key}")
         if snapshot["forks_total"] != snapshot["forks_a"] + snapshot["forks_b"]:
             raise DriverStop("fork counters disagree")
+        # Detailed validation evidence stays in the runtime/eligibility artifacts.
+        # Repeating it at every guard made the durable state grow quadratically.
+        snapshot["boundaries"] = [{k: row[k] for k in
+            ("task_id", "boundary", "live_eligible", "origin", "k") if k in row}
+            for row in snapshot.get("boundaries", [])]
         self.state["metrics"] = snapshot
         return snapshot
 
     def _event(self, message: str, *, result=None):
         entry = {"at": utc(self.clock()), "phase": self.state["phase"], "message": message,
-                 "metrics": self.state.get("metrics"), "max": self.state.get("max")}
+                 "metrics": {k: v for k, v in (self.state.get("metrics") or {}).items()
+                             if k != "boundaries"}, "max": self.state.get("max")}
         if result is not None:
             entry["result"] = result
         self.state["events"].append(entry)
@@ -222,7 +240,9 @@ class Driver:
         self.state["max"] = {"utilization": (windows.get("seven_day") or {}).get("utilization"),
                              "observed_at": raw.get("observed_at")}
         self.state["max"] = measured_rate(raw, self.clock())
-        self._event("launch guard passed" + (f": {action.get('action', 'action')}" if action else ""))
+        self.state["last_guard"] = {"at": utc(self.clock()), "action": action,
+                                    "max": self.state["max"]}
+        self._save()
 
     def _boundaries(self) -> list[dict]:
         metrics = self._metrics()
@@ -248,7 +268,20 @@ class Driver:
         return self._part_b
 
     def _assign(self, phase: str, kwargs: dict):
-        self.before_action({"action": phase})
+        try:
+            self.before_action({"action": phase})
+        except RateHold as exc:
+            # No pending operation or fork has been assigned. A slow server
+            # rollover is safe to poll; an in-operation hold is never replayed.
+            retries = self.state.get("rate_guard_retries", 0)
+            if retries >= MAX_RATE_RETRIES:
+                raise
+            self.state.update(status="WAIT_MAX", rate_guard_retries=retries + 1,
+                              rate_retry_at=self.clock() + RATE_RETRY_SECONDS)
+            self._event(f"rate hold before assignment; retry {retries + 1}/{MAX_RATE_RETRIES}: {exc}")
+            return
+        self.state.pop("rate_retry_at", None)
+        self.state["rate_guard_retries"] = 0
         self.state["sequence"] += 1
         work_id = f"pilot-{self.state['sequence']:04d}-{phase}"
         self.state["pending"] = {"work_id": work_id, "phase": phase, "kwargs": kwargs,
@@ -303,6 +336,7 @@ class Driver:
                 stop_reason = "contingency did not complete"
             else:
                 self.state["contingency_used"] = True
+                self.state["step0_after_contingency"] = True
                 self.state["phase"] = "step0"
         elif phase == "part_b":
             self.state["phase"] = "screen"
@@ -365,11 +399,14 @@ class Driver:
 
     def tick(self):
         self._stop_check()
-        if self.clock() < RESET.timestamp():
+        start_at = RESET.timestamp() + RESET_SETTLE_SECONDS
+        if self.clock() < start_at:
             if self.state["status"] != "WAIT_RESET":
                 self.state["status"] = "WAIT_RESET"
-                self._event("waiting for absolute 2026-10-26T00:00Z reset; no model calls")
-            return min(30, RESET.timestamp() - self.clock())
+                self._event("waiting for 2026-10-26T00:00Z reset plus five-minute rollover margin; no model calls")
+            return min(30, start_at - self.clock())
+        if self.clock() < self.state.get("rate_retry_at", 0):
+            return min(30, self.state["rate_retry_at"] - self.clock())
         self.state["status"] = "RUNNING"
         self._recover()
         if self.state["status"] in TERMINAL:
@@ -384,7 +421,16 @@ class Driver:
                 self.state["phase"] = "contingency"
                 self._save()
             else:
-                self._assign("step0", {"boundaries": boundaries})
+                candidates = boundaries
+                if self.state.get("step0_after_contingency"):
+                    candidates = [row for row in boundaries if row.get("origin") == "planted_base"]
+                    if not candidates:
+                        if self.state.get("step0_passed_at"):
+                            self.state["phase"] = "cohort"
+                            self._event("contingency produced no new boundary; retain prior Step 0 result")
+                            return 0
+                        candidates = boundaries  # an eligible seeded replacement may already exist
+                self._assign("step0", {"boundaries": candidates})
         elif phase == "cohort":
             if len(tasks) >= 2:
                 self.state["phase"] = "part_b"

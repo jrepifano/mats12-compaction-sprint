@@ -1038,3 +1038,121 @@ def test_malformed_ioctl_on_tracked_fd_without_annotation_fails_closed():
     ])
     result = CC.parse_mutation_trace(trace, {'/app/call.py': 'pass\n'})
     assert not result['capture_complete']
+
+
+@pytest.mark.parametrize('operation', [
+    'write(4</app/lib/other.js>, "helper()", 8) = 8',
+    'pwrite64(4</app/lib/other.js>, "helper()", 8, 0) = 8',
+    'copy_file_range(3</tmp/input>, NULL, 4</app/lib/other.js>, NULL, 8, 0) = 8',
+    'ioctl(4</app/lib/other.js>, FICLONE, 3</tmp/input>) = 0',
+    'mmap(NULL, 4096, PROT_READ|PROT_WRITE, MAP_SHARED, 4</app/lib/other.js>, 0) = 0x1000',
+    'rename("/tmp/input", "/app/lib/other.js") = 0',
+    'rename("/app/lib/other.js", "/tmp/moved") = 0',
+])
+def test_tracked_source_mutations_outside_frozen_scope_are_incomplete(operation):
+    result = CC.parse_mutation_trace('101 123.100 ' + operation,
+        {'/app/lib/call.js': 'pass\n'}, tracked_sources=['/app/lib/call.js', '/app/lib/other.js'])
+    assert not result['capture_complete']
+    assert any('tracked source mutation outside observed scope' in issue for issue in result['issues'])
+
+
+def test_untracked_binary_build_output_does_not_expand_scope():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/app/target/obj", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4</app/target/obj>',
+        '101 123.101 write(4</app/target/obj>, "\\xff\\0binary", 8) = 8',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/lib/call.js': 'pass\n'},
+        tracked_sources=['/app/lib/call.js', '/app/lib/other.js'], mutation_markers=['helper'])
+    assert result['capture_complete'], result['issues']
+    assert not result['events']
+
+
+def test_new_source_helper_write_is_emitted_before_later_declared_edit():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/app/new.js", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4</app/new.js>',
+        '101 123.101 write(4</app/new.js>, "helper();", 9) = 9',
+        '101 123.102 openat(AT_FDCWD, "/app/call.js", O_WRONLY|O_TRUNC) = 5</app/call.js>',
+        '101 123.103 write(5</app/call.js>, "helper();", 9) = 9',
+        '101 123.104 openat(AT_FDCWD, "/app/new.js", O_WRONLY|O_TRUNC) = 4</app/new.js>',
+        '101 123.105 write(4</app/new.js>, "pass;", 5) = 5',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/call.js': 'pass;'}, mutation_markers=['helper'])
+    assert result['capture_complete'], result['issues']
+    first = result['events'][0]['data']
+    assert first['path'] == '/app/new.js' and first['after'] == 'helper();'
+    assert first['source'] == 'strace_outside_scope'
+    assert first['command_baseline'] is None  # unknown baseline cannot become a negative
+    assert result['events'][-1]['data']['path'] == '/app/call.js'
+
+
+@pytest.mark.parametrize('path', ['/app/lib/new.js', '/app/target/generated.rs'])
+def test_unknown_new_source_write_fails_closed_even_for_generated_source(path):
+    result = CC.parse_mutation_trace(f'101 123.100 write(4<{path}>, "helper();", 9) = 9',
+                                     {'/app/call.js': 'pass;'}, mutation_markers=['helper'])
+    assert not result['capture_complete']
+    assert any('unknown outside-scope source mutation' in issue for issue in result['issues'])
+
+
+def test_generated_source_without_frozen_helper_does_not_emit_irrelevant_edits():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/app/target/generated.rs", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4</app/target/generated.rs>',
+        '101 123.101 write(4</app/target/generated.rs>, "fn other() {}", 13) = 13',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/call.js': 'pass;'}, mutation_markers=['helper'])
+    assert result['capture_complete'], result['issues']
+    assert not result['events']
+
+
+def test_tracked_inventory_and_markers_are_pinned_in_audit_evidence():
+    audit = CC.ProbeAudit(AuditSandbox(), mutation_paths=['/app/call.py'], mutation_markers=['helper'])
+    guard = audit.source_scope_guard
+    assert guard['paths'] == ['/app/call.py'] and guard['markers'] == ['helper']
+    assert guard['version'] == CC.SOURCE_SCOPE_GUARD_VERSION
+    assert len(guard['sha256']) == 64
+    assert audit.trace_preflight['source_scope_guard'] == guard
+    assert audit.finish([])['source_scope_guard'] == guard
+
+
+def test_stream_rate_limited_status_stops_nonweekly_window():
+    stop = threading.Event()
+    state = {}
+    watch = CC._stream_watch(state, stop, cfg=CC.CCConfig(max_window_utilization=.12))
+    watch(json.dumps({'type': 'rate_limit_event', 'rate_limit_info': {'unifiedWindows': {
+        'five_hour': {'status': 'rate_limited', 'utilization': .3}}}}))
+    assert stop.is_set() and state['policy_stop'] == 'max_window_hold'
+
+
+@pytest.mark.parametrize('operation', [
+    'fallocate(4</app/lib/other.js>, FALLOC_FL_COLLAPSE_RANGE, 0, 4096)',
+    'link("/app/lib/other.js", "/tmp/alias")',
+    'linkat(AT_FDCWD, "/app/lib/other.js", AT_FDCWD, "/tmp/alias", 0)',
+    'linkat(4</app/lib/other.js>, "", AT_FDCWD, "/tmp/alias", AT_EMPTY_PATH)',
+    'symlink("/app/lib/other.js", "/tmp/alias")',
+    'symlinkat("/app/lib/other.js", AT_FDCWD, "/tmp/alias")',
+    'symlink("../../app/lib/other.js", "/tmp/sub/alias")',
+    'symlink("/tmp/source", "/app/lib/other.js")',
+])
+def test_common_metadata_changes_cannot_create_complete_negative(operation):
+    result = CC.parse_mutation_trace('101 123.100 ' + operation + ' = 0',
+        {'/app/call.js': 'pass;'}, tracked_sources=['/app/lib/other.js'], mutation_markers=['helper'])
+    assert not result['capture_complete']
+    assert any('outside observed scope' in issue for issue in result['issues'])
+
+
+@pytest.mark.parametrize('operation', [
+    'link("/app/target/a.o", "/app/target/b.o")',
+    'symlink("a.so", "/app/target/b.so")',
+    'fallocate(4</app/target/a.o>, 0, 0, 4096)',
+])
+def test_unrelated_binary_build_metadata_does_not_poison_source_scope(operation):
+    result = CC.parse_mutation_trace('101 123.100 ' + operation + ' = 0',
+        {'/app/call.js': 'pass;'}, tracked_sources=['/app/lib/other.js'], mutation_markers=['helper'])
+    assert result['capture_complete'], result['issues']
+
+
+def test_failed_source_alias_has_no_mutation():
+    result = CC.parse_mutation_trace(
+        '101 123.100 link("/app/lib/other.js", "/tmp/alias") = -1 EACCES (Permission denied)',
+        {'/app/call.js': 'pass;'}, tracked_sources=['/app/lib/other.js'], mutation_markers=['helper'])
+    assert result['capture_complete'], result['issues']
+    assert {'fallocate', 'link', 'linkat', 'symlink', 'symlinkat'} <= set(CC.TRACE_SYSCALLS.split(','))

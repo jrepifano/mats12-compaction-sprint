@@ -255,3 +255,21 @@ def test_missing_evidence_preserves_raw_probe_result(tmp_path, monkeypatch):
     assert "fixture missing evidence" in result["error"]
     rows = ForkBudget(tmp_path / "output/fork_budget.json").state()["attempts"]
     assert len(rows) == 2 and all(r["status"] == "technical_failure" for r in rows)
+
+
+def test_continuation_refreshes_stale_probe_reading(tmp_path, monkeypatch):
+    original = P._usage
+    def stale_probe(result, before, observed_at):
+        usage = original(result, before, observed_at)
+        usage['after']['observed_at'] = NOW - 301
+        return usage
+    monkeypatch.setattr(P, '_usage', stale_probe)
+    readings = []
+    def fresh():
+        readings.append(True)
+        return RATE
+    report, calls = run(tmp_path, rate_provider=fresh)
+    assert [name for name, _ in calls] == ['fork', 'continue']
+    assert len(readings) == 1
+    assert report['continuation_launch_rate'] == RATE
+    assert report['probe']['usage']['after']['observed_at'] == NOW - 301

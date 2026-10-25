@@ -52,6 +52,7 @@ to resume headless; real arms use CONTINUE_PROMPT in every arm alike.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import re
 import shlex
@@ -650,7 +651,7 @@ def _stream_watch(state: dict, stop: threading.Event,
                     if isinstance(reset, (int, float)) and reset <= time.time():
                         continue
                     utilization = window.get("utilization")
-                    if window.get("status") == "rejected" or (
+                    if window.get("status") in {"rejected", "rate_limited"} or (
                             name == "seven_day" and isinstance(utilization, (int, float))
                             and utilization >= cfg.max_window_utilization):
                         state["policy_stop"] = "max_window_hold"
@@ -1278,7 +1279,7 @@ def insert_in_summary(message: str, body: str, block: str | list[str]) -> str:
 def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model, token: str,
          persona: str, cfg: CCConfig | None = None, host: str | None = "ssh://rig",
          timeout_s: int = 1800, check: bool = True, session_cls=N.NativeSession,
-         probe: bool = False, max_calls: int = 30, mutation_paths=(),
+         probe: bool = False, max_calls: int = 30, mutation_paths=(), mutation_markers=(),
          required_context=(), forbidden_context=()) -> dict:
     """Resume boundary `bdir` (a b<k> dir of a Claude Code run) from its kept image with the
     summary replaced by `new_summary`, as a forked session given `prompt`. Refuses
@@ -1339,7 +1340,8 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                                    + json.dumps(b.get("processes"))[:500])
             install_config(ns.sb, ns.server)  # a new token and server for the fork
             if probe:
-                audit_holder["audit"] = ProbeAudit(ns.sb, mutation_paths=mutation_paths, stop=stop)
+                audit_holder["audit"] = ProbeAudit(ns.sb, mutation_paths=mutation_paths,
+                                                   mutation_markers=mutation_markers, stop=stop)
                 if mutation_paths and not audit_holder["audit"].trace_available:
                     raise RuntimeError("Part B requires successful strace ptrace preflight before the model starts")
                 ns.server.on_audit = audit_holder["audit"].hook
@@ -1598,6 +1600,10 @@ def ordered_evidence(rows: list[dict], *, captured_asks=(), submission: str = ""
 # Every mutation of those files is required; unsupported syscalls fail coverage closed.
 AUDIT_HOOK = "/opt/emx/tool-audit-hook.sh"
 AUDIT_DIR = "/tmp/emx-tool-audit"
+SOURCE_SCOPE_GUARD_VERSION = "git-tracked-source-and-marker-v2"
+AUDIT_SOURCE_SUFFIXES = (".py", ".pyi", ".rs", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
+                         ".java", ".c", ".cc", ".cpp", ".h", ".hpp", ".go", ".rb", ".sh",
+                         ".swift", ".kt", ".cs", ".php", ".lua")
 
 
 def audit_hook_script() -> str:
@@ -1636,7 +1642,8 @@ def _read_files(sb, paths: list[str]) -> dict[str, str | None]:
     return json.loads(r.stdout)
 
 
-def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str = "/app") -> dict:
+def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str = "/app",
+                         tracked_sources=(), mutation_markers=()) -> dict:
     """Replay Linux strace into declared-file mutations, including writes later reverted.
 
     The observer uses TRACE_FLAGS (4 MiB strings; raw read buffers). Open-file descriptions
@@ -1678,6 +1685,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         return parts + [body[start:].strip()]
 
     targets = {posixpath.normpath(path) for path in before}
+    outside_sources = {posixpath.normpath(path) for path in tracked_sources} - targets
+    watched_paths = targets | outside_sources
     files = {posixpath.normpath(path): value.encode() if value is not None else None
              for path, value in before.items()}
     issues, changes = [], []
@@ -1690,7 +1699,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
     for index, raw in enumerate(trace.splitlines()):
         match = re.match(r"(?:(?:\[pid\s+)?(\d+)\]?\s+)?(\d+\.\d+)\s+(.*)", raw)
         if not match:
-            if raw.strip() and not raw.startswith("strace:") and any(path in raw for path in targets):
+            if raw.strip() and not raw.startswith("strace:") and any(path in raw for path in watched_paths):
                 issues.append("unparsed target trace line")
             continue
         pid, _timestamp, line = match.groups()
@@ -1702,8 +1711,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         if line.startswith("<..."):
             prior = pending.pop(pid, None)
             if prior is None or " resumed>" not in line:
-                if any(path in line for path in targets) or re.match(
-                        r"<\.\.\. (?:write|pwrite|rename|unlink|truncate|ftruncate|copy_file_range|sendfile|splice|ioctl)", line):
+                if any(path in line for path in watched_paths) or re.match(
+                        r"<\.\.\. (?:write|pwrite|rename|unlink|truncate|ftruncate|copy_file_range|sendfile|splice|ioctl|fallocate|link|symlink)", line):
                     issues.append("unmatched mutation syscall")
                 continue
             start, prefix = prior
@@ -1746,19 +1755,40 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                 raise ValueError("unknown dirfd")
         return posixpath.normpath(posixpath.join(base, value))
 
+    def outside_source(path):
+        return (bool(mutation_markers) and path not in targets and path.startswith("/app/")
+                and posixpath.splitext(path)[1].lower() in AUDIT_SOURCE_SUFFIXES)
+
     def mutate(path, value, op):
         old = files.get(path)
         files[path] = value
+        if path in outside_sources:
+            issues.append(f"tracked source mutation outside observed scope ({op}): {path}")
+        if outside_source(path):
+            try:
+                if value is None:
+                    raise ValueError("unknown bytes")
+                decoded = value.decode()
+                if any(marker in decoded for marker in mutation_markers):
+                    if old is not None:
+                        old.decode()  # Reject undecodable baselines before adding an event.
+                    changes.append((path, old, value, op, True))
+            except (ValueError, UnicodeError):
+                issues.append(f"unknown outside-scope source mutation ({op}): {path}")
         if path in targets and old != value:
             if old is None or value is None:
                 issues.append(f"unknown mutation contents: {path}")
             else:
-                changes.append((path, old, value, op))
+                changes.append((path, old, value, op, False))
 
     def poison(path, reason):
         files[path] = None
         if path in targets:
             issues.append(f"{reason}: {path}")
+        if path in outside_sources:
+            issues.append(f"tracked source mutation outside observed scope ({reason}): {path}")
+        if outside_source(path):
+            issues.append(f"unknown outside-scope source mutation ({reason}): {path}")
 
     def nonfile_annotation(arg):
         annotation = re.search(r"<([^>]+)>", arg)
@@ -1786,7 +1816,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                 if desc:
                     desc["offset"] = None
                 continue
-            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate", "ioctl") and first and nonfile_annotation(first.group(1)):
+            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate", "ioctl", "fallocate") and first and nonfile_annotation(first.group(1)):
                 continue  # Known pipe/socket/device output cannot mutate the declared files.
             referenced = set(re.findall(r"<(/[^>]+)>", line))
             if desc:
@@ -1806,7 +1836,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     if path:
                         referenced.add(path)
             if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate",
-                      "copy_file_range", "sendfile", "splice", "ioctl"):
+                      "copy_file_range", "sendfile", "splice", "ioctl", "fallocate"):
                 for path in referenced:
                     poison(posixpath.normpath(path), "unfinished mutation syscall")
                 if not referenced:
@@ -1814,12 +1844,13 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
             elif op in ("clone", "clone3", "fork", "vfork", "chdir", "fchdir"):
                 issues.append("unfinished process state syscall")
             elif op in ("open", "openat"):
-                if re.search(r"\bO_(?:WRONLY|RDWR|CREAT|TRUNC)\b", line) or any(path in line for path in targets):
+                if re.search(r"\bO_(?:WRONLY|RDWR|CREAT|TRUNC)\b", line) or any(path in line for path in watched_paths):
                     issues.append("unfinished path mutation syscall")
-            elif op in ("rename", "renameat", "renameat2", "unlink", "unlinkat", "truncate", "creat"):
+            elif op in ("rename", "renameat", "renameat2", "unlink", "unlinkat", "truncate", "creat",
+                        "link", "linkat", "symlink", "symlinkat"):
                 # Paths can be relative or temporary later renamed onto the target.
                 issues.append("unfinished path mutation syscall")
-            elif any(path in line for path in targets):
+            elif any(path in line for path in watched_paths):
                 issues.append("missing target syscall completion")
             continue
         try:
@@ -1842,7 +1873,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                                     args[0] if op == "openat" else "AT_FDCWD")
                 flags = line[:re.search(r"\)\s+=", line).start()]
                 if "O_EXCL" in flags and "O_CREAT" in flags:
-                    files[path] = b""
+                    mutate(path, b"", op)
                 if "O_TRUNC" in flags or op == "creat":
                     mutate(path, b"", op)
                 append = "O_APPEND" in flags
@@ -1913,7 +1944,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                                 poison(desc["path"], "open descriptor across exchange rename")
                     continue
                 mutate(dest, files.get(source), op)
-                if source in targets:
+                if source in targets or source in outside_sources or outside_source(source):
                     mutate(source, b"", op)
                 else:
                     files.pop(source, None)
@@ -1924,6 +1955,31 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
             elif op in ("unlink", "unlinkat"):
                 path = path_arg(pid, args[1], args[0]) if op == "unlinkat" else path_arg(pid, args[0])
                 mutate(path, b"", op)
+            elif op in ("link", "linkat", "symlink", "symlinkat"):
+                # An alias can redirect later writes under an unrelated pathname.
+                # Refuse relevant aliases instead of claiming inode-level tracking.
+                if op == "link":
+                    source, dest = path_arg(pid, args[0]), path_arg(pid, args[1])
+                elif op == "linkat":
+                    source = (fd_path(table, args[0]) if args[1] == '""' and "AT_EMPTY_PATH" in args[-1]
+                              else path_arg(pid, args[1], args[0]))
+                    dest = path_arg(pid, args[3], args[2])
+                else:
+                    dest = path_arg(pid, args[1]) if op == "symlink" else path_arg(pid, args[2], args[1])
+                    target = text(args[0])
+                    source = posixpath.normpath(target if target.startswith("/") else
+                                               posixpath.join(posixpath.dirname(dest), target))
+                if source is None:
+                    issues.append(f"unresolved filesystem alias source: {op}")
+                else:
+                    poison(source, f"unsupported filesystem alias {op}")
+                poison(dest, f"unsupported filesystem alias {op}")
+            elif op == "fallocate":
+                path = fd_path(table, args[0])
+                if path:
+                    poison(path, "unsupported fallocate mutation")
+                elif not nonfile_annotation(args[0]):
+                    issues.append("unresolved fallocate destination")
             elif op in ("truncate", "ftruncate"):
                 path = path_arg(pid, args[0]) if op == "truncate" else table[number(args[0])]["path"]
                 size, old = number(args[1]), files.get(path)
@@ -1976,7 +2032,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     if any(start < order < _order and other_op in {
                         "write", "pwrite64", "writev", "pwritev", "pwritev2", "ioctl", "rename", "renameat",
                         "renameat2", "unlink", "unlinkat", "truncate", "ftruncate", "copy_file_range",
-                        "sendfile", "splice", "open", "openat", "creat"}
+                        "sendfile", "splice", "open", "openat", "creat", "fallocate",
+                        "link", "linkat", "symlink", "symlinkat"}
                            for order, _pid, other_op, _line, _rc in records):
                         raise ValueError("concurrent mutation during atomic clone")
                     if length:
@@ -1989,9 +2046,9 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                 issues.append("io_uring mutation coverage unavailable")
             elif op in ("mmap", "mmap2"):
                 if "PROT_WRITE" in line and "MAP_SHARED" in line:
-                    desc = table.get(number(args[4]))
-                    if desc:
-                        poison(desc["path"], "unsupported shared writable mmap")
+                    path = fd_path(table, args[4])
+                    if path:
+                        poison(path, "unsupported shared writable mmap")
             elif op in ("pwritev", "pwritev2", "copy_file_range", "sendfile", "splice"):
                 output = args[2] if op in ("copy_file_range", "splice") else args[0]
                 annotated = re.search(r"<([^>]+)>", output)
@@ -2002,26 +2059,28 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         except (ValueError, SyntaxError, UnicodeError, KeyError, AttributeError, IndexError):
             # An undecodable unrelated binary/cache write does not poison the declared scope.
             for annotated in re.findall(r"<(/[^>]+)>", line):
-                files[posixpath.normpath(annotated)] = None
-            mentioned = [path for path in targets if path in line]
+                poison(posixpath.normpath(annotated), f"cannot decode {op}")
+            mentioned = [path for path in watched_paths if path in line]
             for path in mentioned:
                 poison(path, f"cannot decode {op}")
-            if op == "ioctl" and not mentioned:
+            if op in ("ioctl", "fallocate") and not mentioned:
                 dest = None
                 with contextlib.suppress(ValueError, AttributeError, IndexError):
                     dest = fd_path(table, args[0])
                 if dest:
-                    poison(dest, "cannot decode ioctl")
+                    poison(dest, f"cannot decode {op}")
                 else:
-                    issues.append("unresolved ioctl destination")
+                    issues.append(f"unresolved {op} destination")
+            if op in ("link", "linkat", "symlink", "symlinkat") and not mentioned:
+                issues.append(f"unresolved filesystem alias paths: {op}")
             if not mentioned and op in ("chdir", "fchdir", "clone", "clone3", "fork", "vfork"):
                 issues.append(f"unknown process state after {op}")
     events = []
-    for path, old, new, op in changes:
+    for path, old, new, op, outside in changes:
         try:
-            events.append({"kind": "edit", "data": {"path": path, "before": old.decode(),
+            events.append({"kind": "edit", "data": {"path": path, "before": old.decode() if old is not None else None,
                            "after": new.decode(), "command_baseline": before.get(path),
-                           "source": "strace", "syscall": op}})
+                           "source": "strace_outside_scope" if outside else "strace", "syscall": op}})
         except UnicodeError:
             issues.append(f"non-UTF8 target contents: {path}")
     after = {}
@@ -2040,7 +2099,7 @@ TRACE_BYTE_LIMIT = 512 * 1024 * 1024  # measured gate; overflow stops, never tru
 TRACE_SYSCALLS = ("open,openat,creat,write,pwrite64,writev,pwritev,pwritev2,read,readv,"
                   "lseek,close,dup,dup2,dup3,fcntl,clone,clone3,fork,vfork,chdir,fchdir,"
                   "rename,renameat,renameat2,unlink,unlinkat,mmap,ftruncate,truncate,"
-                  "copy_file_range,sendfile,splice,ioctl,io_uring_setup")
+                  "copy_file_range,sendfile,splice,ioctl,fallocate,link,linkat,symlink,symlinkat,io_uring_setup")
 TRACE_FLAGS = ["-f", "-q", "-ttt", "-yy", "-x", "-s", str(TRACE_STRING_LIMIT),
                "-e", "trace=" + TRACE_SYSCALLS, "-e", "raw=read,readv"]
 
@@ -2053,16 +2112,39 @@ def trace_command(binary: str, output: str, command: str) -> str:
 class ProbeAudit:
     """Execution-ordered native hook observer; only the declared mutation scope can be complete."""
 
-    def __init__(self, sb, *, mutation_paths=(), stop=None):
+    def __init__(self, sb, *, mutation_paths=(), mutation_markers=(), stop=None):
         self.sb = sb
+        self.mutation_markers = tuple(mutation_markers)
+        if any(not isinstance(marker, str) or not marker for marker in self.mutation_markers):
+            raise ValueError("mutation markers must be nonempty frozen strings")
         self.paths = sorted({str(Path(path) if str(path).startswith("/") else Path("/app") / path)
                              for path in mutation_paths})
+        self.tracked_sources = []
         if self.paths:
             script = "import os,json; print(json.dumps([os.path.realpath(p) for p in " + repr(self.paths) + "]))"
             resolved = sb.exec("python3 -c " + shlex.quote(script), timeout_s=30)
             if resolved.rc:
                 raise SB.SandboxError("cannot canonicalize mutation scope")
             self.paths = json.loads(resolved.stdout)
+            # Exact Git inventory, not a directory heuristic: build outputs and
+            # untracked temporary files must not make ordinary test runs fail.
+            script = ("import json,os,pathlib,subprocess; "
+                      "raw=subprocess.check_output(['git','ls-files','-z'],cwd='/app'); "
+                      "paths=['/app/'+os.fsdecode(p) for p in raw.split(b'\\0') if p and "
+                      f"pathlib.PurePosixPath(os.fsdecode(p)).suffix.lower() in {AUDIT_SOURCE_SUFFIXES!r}]; "
+                      "print(json.dumps(sorted(set(paths)|{os.path.realpath(p) for p in paths})))")
+            inventory = sb.exec("python3 -c " + shlex.quote(script), timeout_s=60, workdir="/app")
+            if inventory.rc:
+                raise SB.SandboxError("cannot inventory tracked production source paths")
+            self.tracked_sources = json.loads(inventory.stdout)
+            if not isinstance(self.tracked_sources, list) or any(
+                    not isinstance(path, str) or not path.startswith("/") for path in self.tracked_sources):
+                raise SB.SandboxError("invalid tracked production source inventory")
+            self.tracked_sources = sorted(set(self.tracked_sources))
+        self.source_scope_guard = {"version": SOURCE_SCOPE_GUARD_VERSION,
+                                   "paths": self.tracked_sources,
+                                   "markers": list(self.mutation_markers),
+                                   "sha256": hashlib.sha256(json.dumps(self.tracked_sources).encode()).hexdigest()}
         self.stop = stop
         self.events: list[dict] = []
         self.pending: dict[str, dict] = {}
@@ -2087,7 +2169,8 @@ class ProbeAudit:
                 self.trace_available = checked.rc == 0
                 self.trace_preflight = {"rc": checked.rc, "stderr": checked.stderr[-2000:],
                                         "binary": self.trace_binary, "flags": TRACE_FLAGS,
-                                        "max_bytes": TRACE_BYTE_LIMIT}
+                                        "max_bytes": TRACE_BYTE_LIMIT,
+                                        "source_scope_guard": self.source_scope_guard}
             else:
                 self.trace_preflight = {"rc": found.rc, "error": "strace unavailable"}
             if not self.trace_available:
@@ -2236,7 +2319,9 @@ class ProbeAudit:
                     elif bytes_read != int(size) or bytes_read > TRACE_BYTE_LIMIT:
                         raise SB.SandboxError("mutation trace changed or exceeded bound while reading")
                     else:
-                        traced = parse_mutation_trace(r.stdout, call["before"], cwd=cwd or "/app")
+                        traced = parse_mutation_trace(r.stdout, call["before"], cwd=cwd or "/app",
+                                                      tracked_sources=self.tracked_sources,
+                                                      mutation_markers=self.mutation_markers)
                         self.issues += traced["issues"]
                         for event in traced["events"]:
                             self.add(event["kind"], tool_call_id=tid, **event["data"])
@@ -2343,6 +2428,7 @@ class ProbeAudit:
                 "capture_complete": bool(self.hooks_seen) and not self.issues,
                 "issues": sorted(set(self.issues)), "pending_tool_ids": pending,
                 "mutation_paths": self.paths, "trace_available": self.trace_available,
+                "source_scope_guard": getattr(self, "source_scope_guard", None),
                 "trace_preflight": getattr(self, "trace_preflight", None)}
 
 

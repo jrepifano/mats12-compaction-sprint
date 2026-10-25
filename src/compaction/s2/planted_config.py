@@ -12,6 +12,7 @@ from pathlib import Path
 from compaction.s2.planted_retention import SEED, order_key
 
 SPEND_TAG = "s2-planted-rule-part-a"
+SPEND_STAGE = "SPRINT-S2-PLANTED"
 SIM_CAP_USD = 25.0
 WINDOW = 80_000
 MAX_CALLS = 30
@@ -31,9 +32,61 @@ def task_order(seed: int = SEED) -> list[str]:
     return sorted(TASKS, key=lambda t: order_key("task", t, seed))
 
 
-def pilot_spend(**kwargs):
+def pilot_budget_paths(checkout: Path | None = None):
+    from compaction.s2 import config as C
+    root = Path(checkout or C.REPO_ROOT).resolve()
+    return root, root / "logs/costs.jsonl", root / "data/raw/sprint/s2/planted/budget_caps.toml"
+
+
+def initialize_pilot_budget(*, checkout: Path | None = None, caps_file: Path | None = None) -> dict:
+    """Freeze the pilot's separately authorized $25 cap without rewriting sprint books.
+
+    Deployment calls this once on the designated desktop. Existing ledgers,
+    reservation state and event logs remain in place. Their open liabilities still
+    count under budget.py; this never expires, cancels or migrates a reservation.
+    """
+    root, ledger, default_caps = pilot_budget_paths(checkout)
+    path = Path(caps_file) if caps_file is not None else default_caps
+    content = ('# Planted pilot only; desktop is its sole launcher and ledger owner.\n'
+               '[sprint]\n' + f'checkout = {json.dumps(str(root))}\n'
+               'core_cap_usd = 25.0\nfull_cap_usd = 25.0\ntopup_recorded = false\n'
+               'transfer_approval_over_usd = 0.0\n\n'
+               f'[stages.{SPEND_STAGE}]\ncap_usd = 25.0\n')
+    with locked(path):
+        if path.exists():
+            if path.read_text() != content:
+                raise ValueError("pilot caps already frozen for a different owner/configuration")
+        else:
+            # A stage switch must not silently forget prior non-reserved pilot
+            # charges. None are expected: the desktop run has not started yet.
+            if ledger.exists():
+                for line in ledger.read_text().splitlines():
+                    row = json.loads(line)
+                    if (SPEND_TAG in str(row.get("note") or "") and row.get("exp") != SPEND_STAGE
+                            and float(row.get("usd") or 0) > 0):
+                        raise ValueError("legacy pilot charges require explicit reconciliation before stage setup")
+            temporary = path.with_suffix(".tmp")
+            with temporary.open("w") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            temporary.replace(path)
+    return {"caps_file": str(path), "ledger": str(ledger), "checkout": str(root),
+            "stage": SPEND_STAGE, "cap_usd": SIM_CAP_USD,
+            "sha256": hashlib.sha256(content.encode()).hexdigest()}
+
+
+def pilot_spend(*, checkout: Path | None = None, ledger=None, caps_file=None, **kwargs):
+    """Explicit pilot books, independent of the ambient shared-sprint caps/env.
+
+    Construction is read-only; initialize_pilot_budget is a separate deployment
+    operation. Missing or wrongly owned caps fail at the first budget read/reserve.
+    """
     from compaction.s2.interact_run import PilotSpend
-    return PilotSpend(tags=(SPEND_TAG,), caps={SPEND_TAG: SIM_CAP_USD}, **kwargs)
+    _, default_ledger, default_caps = pilot_budget_paths(checkout)
+    return PilotSpend(tags=(SPEND_TAG,), caps={SPEND_TAG: SIM_CAP_USD}, stage=SPEND_STAGE,
+                      ledger=Path(ledger) if ledger is not None else default_ledger,
+                      caps_file=Path(caps_file) if caps_file is not None else default_caps, **kwargs)
 
 
 @contextmanager

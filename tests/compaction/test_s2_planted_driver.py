@@ -60,7 +60,8 @@ class Runtime:
         if phase == "screen" and not self.screen_pass:
             result["status"] = "FAIL"
         if phase == "contingency" and self.contingency_add:
-            self.boundaries.extend({"task_id": t, "boundary": f"/corpus/{t}/new/b1", "live_eligible": True}
+            self.boundaries.extend({"task_id": t, "boundary": f"/corpus/{t}/new/b1", "live_eligible": True,
+                                    "origin": "planted_base", "k": 1}
                                    for t in kwargs["missing_tasks"])
         if phase == "screen":
             self.clock.now += self.advance_screen
@@ -95,9 +96,10 @@ def test_waits_absolute_reset_without_ping_then_finishes_before_cards(tmp_path):
     runtime = Runtime(clock)
     state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
     assert state["status"] == "STOPPED_BEFORE_CARDS"
-    assert clock.sleeps == [30, 30, 5]
+    assert sum(clock.sleeps) == 65 + D.RESET_SETTLE_SECONDS
+    assert max(clock.sleeps) <= 30
     assert phases(runtime) == ["step0", "screen", "chains"]
-    assert runtime.calls[0] == ("max_reading", D.RESET.timestamp())
+    assert runtime.calls[0] == ("max_reading", D.RESET.timestamp() + D.RESET_SETTLE_SECONDS)
     assert len(runtime.calls[-1][1]["tasks"]) == 3
     assert "ARMED" in (tmp_path / "logs/s2/planted_run_status.md").read_text()
 
@@ -157,7 +159,7 @@ def test_missing_eligibility_contingency_only_missing_then_step0(tmp_path):
     contingency = next(kwargs for name, kwargs in runtime.calls if name == "contingency")
     assert contingency["missing_tasks"] == runtime.tasks[1:2]
     assert contingency["simulator_cap_usd"] == 6
-    assert contingency["deadline"] == D.RESET + timedelta(hours=3)
+    assert contingency["deadline"] == D.RESET + timedelta(hours=3, seconds=D.RESET_SETTLE_SECONDS)
 
 
 def test_step0_unexpected_failure_never_triggers_contingency(tmp_path):
@@ -551,8 +553,8 @@ def test_actual_runtime_contingency_deadline_reaches_single_task_branch(tmp_path
     state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
     assert state["status"] == "STOPPED_BEFORE_CARDS", state.get("reason")
     assert state["single_task"] and state["expansion_gate"] is False
-    assert sum(action == "step0" for action, _ in observed) == 2
-    assert runtime.snapshot()["forks_a"] == 22  # 4 Step0 + 12 screen + 6 baselines
+    assert sum(action == "step0" for action, _ in observed) == 1
+    assert runtime.snapshot()["forks_a"] == 20  # 2 Step0 + 12 screen + 6 baselines
 
 
 def test_actual_runtime_cap_guard_accepts_final_reserved_scoring(tmp_path, integrated_runtime):
@@ -600,3 +602,61 @@ def test_wrong_recovery_receipt_cannot_advance_phase(tmp_path):
     state = instance.run(install_signals=False)
     assert "another assigned operation" in state["reason"]
     assert not phases(runtime)
+
+
+def test_reset_rollover_lag_retries_before_assigning_any_work(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock)
+    actual = runtime.max_reading
+    seen = []
+    def reading():
+        row = actual()
+        seen.append(clock())
+        if len(seen) == 1:
+            row['rate_limit_info']['unifiedWindows']['seven_day'].update(
+                utilization=.94, resetsAt=D.RESET.timestamp())
+        return row
+    runtime.max_reading = reading
+    state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'STOPPED_BEFORE_CARDS'
+    assert seen[0] == D.RESET.timestamp() + D.RESET_SETTLE_SECONDS
+    assert seen[1] - seen[0] == D.RATE_RETRY_SECONDS
+    assert phases(runtime) == ['step0', 'screen', 'chains']
+    assert state['sequence'] == 3 and len(state['completed']) == 3
+    assert any('retry 1/' in event['message'] for event in state['events'])
+
+
+def test_repeated_guard_does_not_duplicate_boundary_evidence_or_status(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock)
+    runtime.boundaries[0]['validation'] = {'large': 'x' * 100_000}
+    instance = driver(tmp_path, runtime, clock)
+    instance._load()
+    for _ in range(20):
+        instance.before_action({'action': 'fake_guard'})
+    assert instance.state['events'] == []
+    assert not instance.status_path.exists()
+    assert instance.state['last_guard']['action']['action'] == 'fake_guard'
+    assert 'validation' not in instance.state['metrics']['boundaries'][0]
+    assert instance.state_path.stat().st_size < 10_000
+
+
+def test_five_hour_utilization_alone_does_not_trigger_weekly_hold():
+    now = D.RESET.timestamp() + 300
+    reading = {'observed_at': now, 'rate_limit_info': {'unifiedWindows': {
+        'seven_day': {'utilization': .1, 'resetsAt': now + 7*86400},
+        'five_hour': {'utilization': .95, 'resetsAt': now + 3600}}}}
+    assert D.measured_rate(reading, now)['utilization'] == .1
+    reading['rate_limit_info']['unifiedWindows']['five_hour']['status'] = 'rejected'
+    with pytest.raises(D.RateHold, match='rate-limit'):
+        D.measured_rate(reading, now)
+
+
+def test_post_contingency_step0_uses_new_boundary_only(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock, n=1)
+    state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'STOPPED_BEFORE_CARDS'
+    checks = [kwargs for phase, kwargs in runtime.calls if phase == 'step0']
+    assert len(checks) == 2
+    assert all(row['origin'] == 'planted_base' for row in checks[1]['boundaries'])

@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from compaction.deepswe import sandbox as SB
+from compaction.s2 import config as C
 from compaction.s2 import planted_arms as A
 from compaction.s2 import planted_score as S
 from compaction.s2 import planted_step0 as P
@@ -406,6 +407,17 @@ def inspect_sources(bdir: Path, output: Path, *, prefixes: list[str], go=False) 
     return report
 
 
+def mutation_scope(spec: A.ClaimSpec) -> list[str]:
+    """Observe source definitions as well as calls; scientific action targets stay distinct."""
+    return sorted({spec.source.resolved_path, *(item.resolved_path for item in spec.action_provenance)})
+
+
+def valid_scope_guard(guard, spec):
+    return (isinstance(guard, dict) and guard.get('version') == CC.SOURCE_SCOPE_GUARD_VERSION
+            and guard.get('markers') == [spec.helper] and isinstance(guard.get('paths'), list)
+            and guard.get('sha256') == hashlib.sha256(json.dumps(guard['paths']).encode()).hexdigest())
+
+
 def prepare_boundary(bdir: Path, output: Path, *, task_id: str, selection: dict,
                      eligibility: dict, go=False, smoke_runner=None) -> dict:
     """Freeze one measured kept source before experiments. All work is model-free.
@@ -457,7 +469,7 @@ def prepare_boundary(bdir: Path, output: Path, *, task_id: str, selection: dict,
             module_spec.loader.exec_module(smoke)
             smoke_runner = smoke.exercise_suite
         measured = smoke_runner(sb, '/tmp/emx-partb-smoke', test_command=selection['test_command'],
-                                mutation_paths=['/app/' + path for path in spec.action_files])
+                                mutation_paths=mutation_scope(spec), mutation_markers=(spec.helper,))
         durable(output / 'instrumentation.json', measured)
         if not measured.get('ok'):
             raise ValueError('write coverage or trace-volume/slowdown prerequisite failed')
@@ -465,7 +477,8 @@ def prepare_boundary(bdir: Path, output: Path, *, task_id: str, selection: dict,
         report.update(ok=True, image_id=image, boundary=str(copied), spec_sha256=frozen['spec_sha256'],
                       strace_sha256=binary, specification=str(output / 'claim_spec.json'),
                       instrumentation=str(output / 'instrumentation.json'),
-                      instrumentation_sha256=A.digest(measured), parser_versions=PARSER_VERSIONS)
+                      instrumentation_sha256=A.digest(measured), parser_versions=PARSER_VERSIONS,
+                      source_scope_guard=measured['real_test']['evidence']['source_scope_guard'])
     except Exception as exc:  # noqa: BLE001 -- preparation is an explicit gate, not a fork
         report['error'] = f'{type(exc).__name__}: {exc}'
     finally:
@@ -529,9 +542,11 @@ def verify_preparation(spec: A.ClaimSpec, preparation: dict) -> dict:
         captured = capture_source(sb, bdir=Path(spec.boundary_id), path=spec.source.path)
         if captured != spec.source:
             raise ValueError('prepared authoritative source changed')
-        audit = CC.ProbeAudit(sb, mutation_paths=['/app/' + path for path in spec.action_files])
+        audit = CC.ProbeAudit(sb, mutation_paths=mutation_scope(spec), mutation_markers=(spec.helper,))
         if not audit.trace_available or audit.issues:
             raise ValueError('fresh production strace/scope preflight failed: ' + str(audit.issues))
+        if audit.source_scope_guard != preparation.get('source_scope_guard'):
+            raise ValueError('prepared tracked source inventory or marker guard changed')
         result.update(ok=True, image_id=image, strace_sha256=binary, trace_preflight=audit.trace_preflight)
     except Exception as exc:  # noqa: BLE001 -- free preflight refuses launch, no fork consumed
         result['error'] = f'{type(exc).__name__}: {exc}'
@@ -572,6 +587,7 @@ class PartBRuntime:
         self.resource_checker = resource_checker
         self.allowance = PartBAllowance(self.root / 'part_b_allowance.json')
         self.before_action = lambda action: None
+        self._last_rate = None
 
     def recover(self, work_id: str) -> dict | None:
         receipt = self.root / work_id / 'receipt.json'
@@ -583,6 +599,40 @@ class PartBRuntime:
                     'artifact': str(receipt)}
         return value
 
+    def _remember_rate(self, snapshot):
+        """Share an observed event with the desktop cache, without creating a Max call."""
+        rate_fields(snapshot, self.clock())
+        if self._last_rate is None or snapshot['observed_at'] >= self._last_rate['observed_at']:
+            self._last_rate = snapshot
+            owner = getattr(self.rate_provider, '__self__', None)
+            observe = getattr(owner, 'observe_rate', None)
+            if observe is not None:
+                observe(snapshot)
+        return self._last_rate
+
+    def _actual_rate(self, snapshot, *, since=None):
+        """Accept only a fresh actual event; a pre-action cache cannot settle its charge."""
+        if not isinstance(snapshot, dict):
+            return None
+        observed = snapshot.get('observed_at')
+        if not isinstance(observed, (int, float)) or not 0 <= self.clock() - observed <= 60:
+            return None
+        if since is not None and observed < since:
+            return None
+        return self._remember_rate(snapshot)
+
+    def _post_rate(self, snapshot, identity):
+        pending = P.read(self.allowance.path).get('pending') or {}
+        if pending.get('attempt_id') != identity:
+            raise ValueError('Part B post-action allowance identity changed')
+        since = datetime.fromisoformat(pending['assigned_at']).timestamp()
+        actual = self._actual_rate(snapshot, since=since)
+        if actual is not None:
+            return actual
+        if self.clock() > B_CUTOFF.timestamp() or (C.REPO_ROOT / 'logs/s2/planted_run.stop').exists():
+            raise ValueError('Part B stopped before a post-action rate refresh could run')
+        return self._remember_rate(self.rate_provider(force=True))
+
     def _gate(self, action: str, work_id: str, *, attempt_id: str | None = None, force=False):
         now = datetime.fromtimestamp(self.clock(), UTC)
         if now < RESET:
@@ -591,11 +641,13 @@ class PartBRuntime:
             raise ValueError('Part B dropped because Step 0 did not pass before Tuesday noon')
         if now > B_CUTOFF:
             raise ValueError('Part B Tuesday cutoff reached')
+        latest = getattr(self.judge, 'latest_rate', lambda: None)()
+        self._actual_rate(latest)
         self.before_action({'action': action, 'work_id': work_id, 'part': 'B',
                             'attempt_id': attempt_id or work_id})
         snapshot = self.rate_provider(force=force)
-        rate_fields(snapshot, self.clock())
-        return snapshot
+        self._remember_rate(snapshot)
+        return self._last_rate
 
     def _reserve_allowance(self, identity, before):
         utilization, observed, reset = rate_fields(before, self.clock())
@@ -621,7 +673,7 @@ class PartBRuntime:
         if not getattr(self.judge, 'guarded_attempts', False):
             raise ValueError('Part B requires per-attempt guarded Max judge')
         def before_attempt(metadata):
-            current = self._gate('part_b_judge_attempt', identity, attempt_id=fork_id, force=True)
+            current = self._gate('part_b_judge_attempt', identity, attempt_id=fork_id)
             utilization, observed, reset = rate_fields(current, self.clock())
             state = P.read(self.allowance.path)
             if state['window_reset_at'] != reset.isoformat() or state.get('pending', {}).get('attempt_id') != identity:
@@ -633,7 +685,7 @@ class PartBRuntime:
                     {'identity': identity, 'attempt': metadata, 'reading': current}, new=True)
         limit = min(.90, P.read(self.allowance.path)['start_utilization'] + .02)
         answer = self.judge(request, before_attempt=before_attempt, max_window_utilization=limit)
-        after = self.rate_provider(force=True)
+        after = self._post_rate(getattr(self.judge, 'latest_rate', lambda: None)(), identity)
         durable(artifact, {'request': request, 'answer': answer, 'before': before, 'after': after}, new=True)
         self._finish_allowance(identity, 'complete', artifact, after)
         return answer
@@ -655,6 +707,13 @@ class PartBRuntime:
             spec = A.ClaimSpec.from_dict(P.read(folder / 'claim_spec.json'))
             if spec.to_dict()['spec_sha256'] != report['spec_sha256'] or spec.task_id != task:
                 raise ValueError('frozen task spec mismatch')
+            if (measured.get('production_trace_flags') != CC.TRACE_FLAGS
+                    or measured.get('thresholds', {}).get('max_trace_bytes') != CC.TRACE_BYTE_LIMIT
+                    or measured.get('real_test', {}).get('evidence', {}).get('mutation_paths') != mutation_scope(spec)
+                    or not valid_scope_guard(measured.get('real_test', {}).get('evidence', {}).get('source_scope_guard'), spec)):
+                raise ValueError('measured tracing flags, byte bound, or mutation scope guard differ from production')
+            if report.get('source_scope_guard') != measured['real_test']['evidence']['source_scope_guard']:
+                raise ValueError('prepared source guard differs from measured guard')
             prepared[task] = (folder, report, spec)
         return prepared
 
@@ -723,9 +782,9 @@ class PartBRuntime:
                     new_summary=arm['summary'], prompt=spec.probe_message, sim_model=CC.NoSimulatorModel(),
                     token=self.token, persona=task.persona, cfg=CC.CCConfig(auto_compact_window=80_000, max_window_utilization=min(.90, P.read(self.allowance.path)['start_utilization'] + .02),
                         deadline_epoch=B_CUTOFF.timestamp(),
-                        stop_file=str(Path('logs/s2/planted_run.stop').resolve())),
+                        stop_file=str(C.REPO_ROOT / 'logs/s2/planted_run.stop')),
                     host=LOCAL_DOCKER, probe=True, max_calls=30,
-                    mutation_paths=['/app/' + path for path in spec.action_files],
+                    mutation_paths=mutation_scope(spec), mutation_markers=(spec.helper,),
                     required_context=required, forbidden_context=forbidden,
                     timeout_s=max(1, min(1800, int(B_CUTOFF.timestamp() - self.clock()))))
                 evidence = P.read(attempt / 'fork/evidence.json')
@@ -736,7 +795,7 @@ class PartBRuntime:
                             and fork.get('cleanup_unconfirmed') == [] and not fork.get('error')
                             and not fork.get('auth_error') and not fork.get('policy_stop')
                             and fork.get('outcome') in {'ask_user', 'submission', 'call_cap'})
-                after = self.rate_provider(force=True)
+                after = self._post_rate(fork.get('rate_limit'), identity)
                 preliminary = {'assignment': row, 'fork': fork, 'capture_complete': complete,
                                'before': before, 'after': after}
                 durable(attempt / 'result.json', preliminary, new=True)

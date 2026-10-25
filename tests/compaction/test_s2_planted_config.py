@@ -309,3 +309,69 @@ def test_instruction_hash_uses_file_bytes_and_conflicting_rule_blocks(tmp_path):
     spec = S.build_task_spec(task, corpus=tmp_path, instruction_path=instruction)
     assert spec["instruction_sha256"] == hashlib.sha256(instruction.read_bytes()).hexdigest()
     assert spec["conflicts"]["status"] == "unresolved" and not spec["eligible"]
+
+
+def test_isolated_pilot_budget_real_reservations_and_max_rows(tmp_path):
+    from compaction.s2 import interact_run as IR
+    from compaction.s2.model import StageCapReached
+    from emx import spend
+
+    setup = C.initialize_pilot_budget(checkout=tmp_path)
+    ledger = tmp_path / "logs/costs.jsonl"
+    spend.record("judge", "historical-other-pilot", units=1, usd=100, exp="OTHER", ledger=ledger)
+    pilot = C.pilot_spend(checkout=tmp_path)
+    assert pilot.stage == C.SPEND_STAGE and str(pilot.caps_file) == setup["caps_file"]
+    first = pilot.reserve(20, "simulator call")
+    assert IR.tag_totals(C.SPEND_TAG, ledger=ledger, caps_file=pilot.caps_file, stage=pilot.stage) == (0., 20.)
+    pilot.settle(first, 10, resource="gpt-5.5", units=1, note="simulator response")
+    pilot.recorder()("judge", "claude-max", units=1, usd=0, note="Max no bill")
+    pilot.recorder()("judge", "unexpected paid route", units=1, usd=1, note="record all observed charges")
+    assert IR.tag_totals(C.SPEND_TAG, ledger=ledger, caps_file=pilot.caps_file, stage=pilot.stage) == (11., 0.)
+    held = pilot.reserve(14, "remaining allowance")
+    with pytest.raises(StageCapReached):
+        pilot.reserve(.01, "over cap")
+    before = {p.name: p.read_bytes() for p in ledger.parent.iterdir() if p.is_file()}
+    assert C.initialize_pilot_budget(checkout=tmp_path) == setup
+    assert before == {p.name: p.read_bytes() for p in ledger.parent.iterdir() if p.is_file()}
+    pilot.cancel(held, "offline test never sent request")
+
+
+def test_pilot_budget_refuses_wrong_owner_and_does_not_edit_shared_caps(tmp_path):
+    from compaction import budget
+    setup = C.initialize_pilot_budget(checkout=tmp_path)
+    caps = tmp_path / "data/raw/sprint/s2/planted/budget_caps.toml"
+    original = caps.read_bytes()
+    other = C.pilot_spend(checkout=tmp_path / "wrong", caps_file=caps)
+    with pytest.raises(budget.WrongCheckout):
+        other.reserve(1, "refused")
+    with pytest.raises(ValueError, match="different owner"):
+        C.initialize_pilot_budget(checkout=tmp_path / "wrong", caps_file=caps)
+    assert caps.read_bytes() == original and setup["cap_usd"] == 25
+
+
+def test_pilot_budget_does_not_forget_existing_foreign_reservations(tmp_path):
+    from compaction import budget
+    from compaction.s2.model import StageCapReached
+
+    legacy = tmp_path / "shared-caps.toml"
+    legacy.write_text('[sprint]\ncheckout = ' + json.dumps(str(tmp_path)) + '\ncore_cap_usd=100\nfull_cap_usd=100\n'
+                      '[stages.OTHER]\ncap_usd=100\n')
+    ledger = tmp_path / "logs/costs.jsonl"
+    rid = budget.reserve("OTHER", 5, ledger=ledger, caps_file=legacy)
+    original_state = (ledger.parent / "sprint_reservations.json").read_bytes()
+    original_caps = legacy.read_bytes()
+    C.initialize_pilot_budget(checkout=tmp_path)
+    assert (ledger.parent / "sprint_reservations.json").read_bytes() == original_state
+    assert legacy.read_bytes() == original_caps
+    pilot = C.pilot_spend(checkout=tmp_path)
+    with pytest.raises(StageCapReached, match="sprint"):
+        pilot.reserve(21, "foreign hold still counts toward conservative overall cap")
+    assert rid in budget._load_state(ledger.parent / "sprint_reservations.json")
+
+
+def test_stage_setup_refuses_to_forget_legacy_pilot_charges(tmp_path):
+    from emx import spend
+    ledger = tmp_path / "logs/costs.jsonl"
+    spend.record("judge", "old", 1, 2, note=C.SPEND_TAG, exp="SPRINT-S3-Q2", ledger=ledger)
+    with pytest.raises(ValueError, match="legacy pilot charges"):
+        C.initialize_pilot_budget(checkout=tmp_path)

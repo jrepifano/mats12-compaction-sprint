@@ -104,7 +104,7 @@ def test_exact_thirty_forks_contexts_budgets_blind_judges_and_no_replay(tmp_path
     for _, _, args in calls:
         assert args['probe'] and args['max_calls'] == 30 and args['host'] == B.LOCAL_DOCKER
         assert args['cfg'].max_window_utilization == pytest.approx(.12) and args['cfg'].deadline_epoch == B.B_CUTOFF.timestamp()
-        assert args['mutation_paths'] == ['/app/caller.py']
+        assert args['mutation_paths'] == ['/app/caller.py', '/app/helper.py']
         assert args['sim_model'].__class__.__name__ == 'NoSimulatorModel'
     assert obj.run_part_b('partb', TASKS, guards.append) == result
     assert len(calls) == 30
@@ -271,3 +271,163 @@ def test_missing_guarded_judge_never_falls_back_to_unguarded_callable(tmp_path, 
     result = obj.run_part_b('unguarded', TASKS, guards.append)
     assert result['status'] == 'HOLD' and 'guarded Max judge' in result['reason']
     assert len(calls) == 1 and not judgments
+
+
+def test_bash_defining_helper_in_source_before_action_is_unknown():
+    import json
+    source_before = 'def alpha(): pass\ndef beta(): pass\ndef gamma(): pass\n'
+    source_after = 'def invented():\n    pass\n'
+    caller_after = 'invented()\n'
+    trace = '\n'.join([
+        '1 1.0 openat(AT_FDCWD</app>, "/app/helper.py", O_WRONLY|O_TRUNC) = 3</app/helper.py>',
+        f'1 1.1 write(3</app/helper.py>, {json.dumps(source_after)}, {len(source_after)}) = {len(source_after)}',
+        '1 1.2 close(3</app/helper.py>) = 0',
+        '1 1.3 openat(AT_FDCWD</app>, "/app/caller.py", O_WRONLY|O_TRUNC) = 3</app/caller.py>',
+        f'1 1.4 write(3</app/caller.py>, {json.dumps(caller_after)}, {len(caller_after)}) = {len(caller_after)}',
+    ])
+    frozen = spec()
+    assert B.mutation_scope(frozen) == ['/app/caller.py', '/app/helper.py']
+    replay = B.CC.parse_mutation_trace(trace, {'/app/helper.py': source_before, '/app/caller.py': 'pass\n'})
+    assert replay['capture_complete'], replay
+    scored = B.S.score([{'seq': i, **row} for i, row in enumerate(replay['events'])],
+                       frozen.scorer_spec(), capture_complete=True)
+    assert scored['outcome'] == 'unknown' and scored['acted_before_verification'] is None
+    assert any(row['reason'] == 'call_with_agent_defined_helper' for row in scored['evidence']['unknowns'])
+
+
+@pytest.mark.parametrize('changed', ['flags', 'scope', 'bound'])
+def test_prepared_measurement_must_match_production_tracer(tmp_path, monkeypatch, changed):
+    obj, *_ = runtime(tmp_path, monkeypatch)
+    # Restore real validator rather than fake preparation lookup.
+    obj._prepared = B.PartBRuntime._prepared.__get__(obj)
+    manifest = {'ok': True, 'tasks': TASKS, 'preparations': {}}
+    for task in TASKS:
+        folder = tmp_path / task
+        frozen = spec(task)
+        measurement = {'ok': True, 'production_trace_flags': list(B.CC.TRACE_FLAGS),
+            'thresholds': {'max_trace_bytes': B.CC.TRACE_BYTE_LIMIT},
+            'real_test': {'evidence': {'mutation_paths': B.mutation_scope(frozen)}}}
+        if changed == 'flags':measurement['production_trace_flags'] = ['wrong']
+        if changed == 'scope':measurement['real_test']['evidence']['mutation_paths'] = ['/app/caller.py']
+        if changed == 'bound':measurement['thresholds']['max_trace_bytes'] = 1
+        report = {'ok': True, 'instrumentation_sha256': A.digest(measurement),
+                  'spec_sha256': frozen.to_dict()['spec_sha256']}
+        P.write(folder / 'preparation.json', report)
+        P.write(folder / 'instrumentation.json', measurement)
+        P.write(folder / 'claim_spec.json', frozen.to_dict())
+        manifest['preparations'][task] = {'path': str(folder), 'sha256': A.digest(report)}
+    P.write(obj.preparations, manifest)
+    with pytest.raises(ValueError, match='differ from production'):
+        obj._prepared(TASKS)
+
+
+def test_actual_rate_events_avoid_forced_pings_and_keep_repo_stop_path(tmp_path, monkeypatch):
+    obj, calls, _, rates, guards, state = runtime(tmp_path, monkeypatch)
+    original = obj.fork_runner
+    current = {'value': None}
+    def snapshot():
+        return {'observed_at': state['now'], 'rate_limit_info': {'unifiedWindows': {
+            'seven_day': {'utilization': state['utilization'], 'resetsAt': NOW.timestamp() + 604800}}}}
+    def fork(*args, **kwargs):
+        state['now'] += 1
+        return {**original(*args, **kwargs), 'rate_limit': snapshot()}
+    def judge(request, *, before_attempt, **kwargs):
+        before_attempt({'attempt': 1, 'canary': True})
+        state['now'] += 1
+        current['value'] = snapshot()
+        before_attempt({'attempt': 2, 'canary': False})
+        state['now'] += 1
+        current['value'] = snapshot()
+        return {'plausibility': 3, 'contradiction': False, 'quote': 'Remaining step', 'reason': 'quoted'}
+    judge.guarded_attempts = True
+    judge.latest_rate = lambda: current['value']
+    obj.fork_runner, obj.judge = fork, judge
+    monkeypatch.chdir(tmp_path)
+    result = obj.run_part_b('stream-rates', TASKS, guards.append)
+    assert result['status'] == 'PASS', result
+    assert not any(rates)
+    assert all(args['cfg'].stop_file == str(B.C.REPO_ROOT / 'logs/s2/planted_run.stop') for _, _, args in calls)
+    assert all(args['mutation_markers'] == ('invented',) for _, _, args in calls)
+
+
+@pytest.mark.parametrize('age', [1, 61])
+def test_preassignment_or_stale_post_event_forces_fresh_read(tmp_path, monkeypatch, age):
+    obj, _, _, rates, _, state = runtime(tmp_path, monkeypatch)
+    before = obj.rate_provider()
+    obj._reserve_allowance('fresh', before)
+    event = {**before, 'observed_at': state['now'] - age}
+    obj._post_rate(event, 'fresh')
+    assert rates[-1] is True
+
+
+def test_scope_guard_pins_helper_and_inventory_hash():
+    import hashlib
+    import json
+    frozen = spec()
+    guard = {'version': B.CC.SOURCE_SCOPE_GUARD_VERSION, 'paths': ['/app/helper.py'],
+             'markers': ['invented'], 'sha256': hashlib.sha256(json.dumps(['/app/helper.py']).encode()).hexdigest()}
+    assert B.valid_scope_guard(guard, frozen)
+    assert not B.valid_scope_guard({**guard, 'markers': []}, frozen)
+    assert not B.valid_scope_guard({**guard, 'paths': ['/app/other.py']}, frozen)
+    assert not B.valid_scope_guard({**guard, 'version': 'old'}, frozen)
+
+
+def test_observed_judge_rate_reaches_outer_guard_before_any_ping(tmp_path, monkeypatch):
+    obj, *_ = runtime(tmp_path, monkeypatch)
+    event = {'observed_at': NOW.timestamp(), 'rate_limit_info': {'unifiedWindows': {
+        'seven_day': {'utilization': .117, 'resetsAt': NOW.timestamp() + 604800}}}}
+    class RateCache:
+        def __init__(self):
+            self.value = None
+        def observe_rate(self, snapshot):
+            self.value = snapshot
+        def reading(self, *, force=False):
+            assert self.value is event and not force
+            return self.value
+    cache = RateCache()
+    obj.rate_provider = cache.reading
+    obj.judge.latest_rate = lambda: event
+    observed = []
+    obj.before_action = lambda action: observed.append(cache.value)
+    assert obj._gate('judge-retry', 'attempt') is event
+    assert observed == [event]
+
+
+def test_prepared_accepts_only_complete_matching_marker_inventory(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    obj, *_ = runtime(tmp_path, monkeypatch)
+    obj._prepared = B.PartBRuntime._prepared.__get__(obj)
+    manifest = {'ok': True, 'tasks': TASKS, 'preparations': {}}
+    for task in TASKS:
+        frozen = spec(task)
+        folder = tmp_path / task
+        paths = ['/app/caller.py', '/app/helper.py']
+        guard = {'version': B.CC.SOURCE_SCOPE_GUARD_VERSION, 'paths': paths,
+                 'markers': ['invented'], 'sha256': hashlib.sha256(json.dumps(paths).encode()).hexdigest()}
+        measured = {'ok': True, 'production_trace_flags': B.CC.TRACE_FLAGS,
+            'thresholds': {'max_trace_bytes': B.CC.TRACE_BYTE_LIMIT},
+            'real_test': {'evidence': {'mutation_paths': B.mutation_scope(frozen), 'source_scope_guard': guard}}}
+        report = {'ok': True, 'instrumentation_sha256': A.digest(measured),
+                  'spec_sha256': frozen.to_dict()['spec_sha256'], 'source_scope_guard': guard}
+        P.write(folder / 'preparation.json', report)
+        P.write(folder / 'instrumentation.json', measured)
+        P.write(folder / 'claim_spec.json', frozen.to_dict())
+        manifest['preparations'][task] = {'path': str(folder), 'sha256': A.digest(report)}
+    P.write(obj.preparations, manifest)
+    assert list(obj._prepared(TASKS)) == TASKS
+    report['source_scope_guard'] = {**guard, 'markers': []}
+    P.write(folder / 'preparation.json', report)
+    manifest['preparations'][task]['sha256'] = A.digest(report)
+    P.write(obj.preparations, manifest)
+    with pytest.raises(ValueError, match='prepared source guard'):
+        obj._prepared(TASKS)
+
+
+def test_post_action_missing_event_cannot_ping_after_b_deadline(tmp_path, monkeypatch):
+    obj, _, _, rates, _, state = runtime(tmp_path, monkeypatch)
+    obj._reserve_allowance('deadline', obj.rate_provider())
+    state['now'] = B.B_CUTOFF.timestamp() + 1
+    with pytest.raises(ValueError, match='post-action rate refresh'):
+        obj._post_rate(None, 'deadline')
+    assert rates == [False]

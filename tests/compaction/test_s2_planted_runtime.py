@@ -333,7 +333,7 @@ def test_contingency_one_rerun_then_next_seeded_task(runtime, monkeypatch):
         seen.append(task_id)
         if task_id == task:
             return {"status": "cli_error", "boundaries": []}
-        return {"status": "eligible", "boundaries": [{"live_eligible": True}]}
+        return {"status": "eligible", "boundaries": [{"live_eligible": True, "k": 1}]}
     monkeypatch.setattr(runtime, "_base_segment", segment)
     result = runtime.contingency(work_id="fallback", missing_tasks=[task], deadline=NOW+1000)
     assert result["status"] == "PASS"
@@ -598,3 +598,140 @@ def test_judge_stream_rate_limited_status_stops_even_below_utilization(tmp_path)
     assert backend._watch({"type": "rate_limit_event", "rate_limit_info": {
         "isUsingOverage": False, "overageStatus": "rejected", "status": "rate_limited"}})
     assert backend.pilot_stop_reason == "max_window_hold"
+
+
+def test_real_pilot_snapshot_after_desktop_budget_initialization_is_offline(runtime, tmp_path):
+    C.initialize_pilot_budget(checkout=tmp_path)
+    runtime.spend = C.pilot_spend(checkout=tmp_path)
+    runtime.io.pop("totals")
+    runtime.io["rate_reader"] = lambda: pytest.fail("read-only snapshot must not call model")
+    snapshot = runtime.snapshot()
+    assert snapshot["simulator_usd"] == 0 and snapshot["forks_total"] == 0
+
+
+@pytest.mark.parametrize("failure", ["unforkable", "no_compaction", "baseline"])
+def test_chain_task_terminal_preserves_tally_and_continues_other_tasks(runtime, monkeypatch, failure):
+    tasks = C.task_order()[:2]
+    retained, baselines = [], []
+
+    def segment(task, identity, boundary=None, **kw):
+        k = int(boundary[-1]) + 1 if boundary else 1
+        if task == tasks[0] and k == 2 and failure == "no_compaction":
+            return {"status": "transcript_error", "boundaries": []}
+        return {"status": "stop_after", "boundaries": [{"task_id": task,
+            "boundary": f"/{task}/b{k}", "k": k,
+            "live_eligible": not (task == tasks[0] and k == 2 and failure == "unforkable")}]}
+
+    def baseline(row, identity):
+        baselines.append((row["task_id"], row["k"]))
+        if row["task_id"] == tasks[0] and failure == "baseline":
+            raise M.TaskTerminal("safe technical baseline failure; artifacts sealed")
+        return "/seal"
+
+    monkeypatch.setattr(runtime, "_base_segment", segment)
+    monkeypatch.setattr(runtime, "_retention", lambda row: retained.append((row["task_id"], row["k"])) or "/retention")
+    monkeypatch.setattr(runtime, "_baseline", baseline)
+    result = runtime.chains(work_id="task-stop", tasks=tasks)
+    assert result["status"] == "PASS"
+    assert result["tasks"][0]["status"] == "technical_failure"
+    assert result["tasks"][1]["target_reached"] is True
+    assert (tasks[1], 3) in baselines
+    if failure == "unforkable":
+        assert (tasks[0], 2) in retained and (tasks[0], 2) not in baselines
+        assert runtime._state()["chains"][f"/{tasks[0]}/b2"]["unforkable"]
+
+
+def test_safe_failed_baselines_are_counted_and_sealed(runtime, monkeypatch):
+    row = prepare_screen(runtime, monkeypatch)[0]
+    runtime.io["fork"] = lambda b, out, **kw: good_fork(out) | {"outcome": "transcript_error"}
+    runtime.io["judge"] = lambda req: pytest.fail("baseline must remain uninspected")
+    with pytest.raises(M.TaskTerminal, match="sealed"):
+        runtime._baseline(row, "failed-baseline")
+    attempts = runtime.budget.state()["attempts"]
+    assert len(attempts) == 2 and all(a["status"] == "technical_failure" for a in attempts)
+    seal = P.read(runtime.root / "baselines/failed-baseline/sealed-probes.json")
+    assert seal["sealed"] and len(seal["outputs"]) == 4
+
+
+@pytest.mark.parametrize("unsafe", [{"cleanup_unconfirmed": ["container"]}, {"sim_calls": 1},
+    {"sim_cost_usd": .1}, {"auth_error": "subscription mismatch"}, {"paid_route": True},
+    {"policy_stop": "deadline"}, {"outcome": "run_cap"}])
+def test_baseline_safety_failures_remain_global_halts(runtime, monkeypatch, unsafe):
+    row = prepare_screen(runtime, monkeypatch)[0]
+    runtime.io["fork"] = lambda b, out, **kw: good_fork(out) | unsafe
+    with pytest.raises(RuntimeError, match="unsafe probe") as exc:
+        runtime._baseline(row, "unsafe-baseline")
+    assert not isinstance(exc.value, M.TaskTerminal)
+    assert runtime.budget.state()["attempts"][1]["status"] == "assigned"
+    assert P.read(runtime.root / "baselines/unsafe-baseline/sealed-probes.json")["sealed"]
+
+
+def test_contingency_k2_is_not_a_success_and_triggers_one_rerun(runtime, monkeypatch):
+    seen = []
+    def segment(task, identity, **kw):
+        seen.append(task)
+        return {"status": "eligible", "boundaries": [{"live_eligible": True, "k": 2 if len(seen) == 1 else 1}]}
+    monkeypatch.setattr(runtime, "_base_segment", segment)
+    result = runtime.contingency(work_id="fallback-k2", missing_tasks=C.task_order()[:1], deadline=NOW+1000)
+    assert result["status"] == "PASS" and len(seen) == 2 and seen[0] == seen[1]
+
+
+def test_judge_five_hour_ninety_only_stops_when_rejected(tmp_path):
+    backend = guarded_backend(tmp_path)
+    info = rate()["rate_limit_info"] | {"isUsingOverage": False, "overageStatus": "rejected"}
+    info["unifiedWindows"]["five_hour"] = {"utilization": .99, "status": "allowed"}
+    assert not backend._watch({"type": "rate_limit_event", "rate_limit_info": info})
+    assert backend.latest_rate["observed_at"] == NOW
+    info["unifiedWindows"]["five_hour"]["status"] = "rejected"
+    assert backend._watch({"type": "rate_limit_event", "rate_limit_info": info})
+
+
+@pytest.mark.parametrize("age", [0, 61, None])
+def test_judge_reuses_actual_fresh_rate_and_forces_missing_or_stale(runtime, age):
+    reads = []
+    runtime.io["rate_reader"] = lambda: reads.append(1) or rate()
+    judge = lambda req: {"classification": "report"}
+    judge.latest_rate = lambda: None if age is None else rate(.25) | {"observed_at": NOW-age}
+    runtime.io["judge"] = judge
+    runtime.judge({})
+    after = runtime.max_reading()
+    assert len(reads) == (1 if age == 0 else 2)
+    assert after["rate_limit_info"]["unifiedWindows"]["seven_day"]["utilization"] == (.25 if age == 0 else .2)
+
+
+def test_step0_supplies_forced_fresh_rate_callback(runtime):
+    reads = []
+    runtime.io["rate_reader"] = lambda: reads.append(1) or rate()
+    def step0(*a, **kw):
+        kw["rate_provider"]()
+        return {"status": "PASS"}
+    runtime.io["step0"] = step0
+    runtime.step0(work_id="fresh-stepzero", boundaries=boundaries(runtime))
+    assert len(reads) == 2
+
+
+def test_natural_chain_submission_continues_other_tasks_without_extra_baselines(runtime, monkeypatch):
+    tasks = C.task_order()[:2]
+    observed = []
+    def segment(task, identity, boundary=None, **kw):
+        if boundary:
+            return {"status": "submitted", "boundaries": []}
+        return {"status": "stop_after", "boundaries": [{"task_id": task,
+            "boundary": f"/{task}/b1", "live_eligible": True, "k": 1}]}
+    monkeypatch.setattr(runtime, "_base_segment", segment)
+    monkeypatch.setattr(runtime, "_retention", lambda row: "/retention")
+    monkeypatch.setattr(runtime, "_baseline", lambda row, identity: observed.append(row["task_id"]) or "/seal")
+    result = runtime.chains(work_id="natural-finish", tasks=tasks)
+    assert observed == tasks  # two forks at each task's sole real boundary only
+    assert all(t["status"] == "submitted" and not t["target_reached"] and t["last_compaction"] == 1
+               for t in result["tasks"])
+
+
+def test_observe_rate_reuses_fresh_stream_and_never_regresses(runtime):
+    runtime.io["rate_reader"] = lambda: pytest.fail("fresh stream observation must avoid ping")
+    assert runtime.observe_rate(rate(.3))
+    assert not runtime.observe_rate(rate(.2) | {"observed_at": NOW-1})
+    assert not runtime.observe_rate(rate(.2) | {"observed_at": NOW-61})
+    assert not runtime.observe_rate(rate(.2) | {"observed_at": NOW+1})
+    assert not runtime.observe_rate({"observed_at": NOW})
+    assert runtime.max_reading() == rate(.3)

@@ -97,9 +97,9 @@ def exercise(sb, directory: str) -> dict:
 
 
 
-def observed_command(sb, command: str, paths: list[str], identity: str, *, timeout=120) -> dict:
+def observed_command(sb, command: str, paths: list[str], identity: str, *, timeout=120, mutation_markers=()) -> dict:
     """Run the actual production wrapper/observer; report raw trace and complete replay."""
-    audit = CC.ProbeAudit(sb, mutation_paths=paths)
+    audit = CC.ProbeAudit(sb, mutation_paths=paths, mutation_markers=mutation_markers)
     if not audit.trace_available:
         raise RuntimeError('strace prerequisite failed: ' + str(audit.trace_preflight))
     payload = {'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': identity,
@@ -130,7 +130,7 @@ def observed_command(sb, command: str, paths: list[str], identity: str, *, timeo
             'trace_bytes': len(trace.stdout.encode()), 'trace': trace.stdout, 'evidence': evidence}
 
 
-def exercise_suite(sb, directory: str, *, test_command: str, mutation_paths: list[str]) -> dict:
+def exercise_suite(sb, directory: str, *, test_command: str, mutation_paths: list[str], mutation_markers=()) -> dict:
     """Real no-model write coverage and test slowdown gate, using production seccomp/flags.
 
     Engineering thresholds are frozen before measuring: <=512 MiB per command, <=120 s
@@ -200,7 +200,7 @@ def exercise_suite(sb, directory: str, *, test_command: str, mutation_paths: lis
     ordinary = sb.exec(test_command, timeout_s=180)
     baseline_seconds = time.monotonic() - start
     after_ordinary = CC._read_files(sb, mutation_paths)
-    measured = observed_command(sb, test_command, mutation_paths, 'smoke-real-test', timeout=240)
+    measured = observed_command(sb, test_command, mutation_paths, 'smoke-real-test', timeout=240, mutation_markers=mutation_markers)
     after_traced = CC._read_files(sb, mutation_paths)
     traced_seconds = measured['command_seconds'] + measured['post_seconds']
     slowdown = traced_seconds / max(baseline_seconds, .001)
@@ -223,7 +223,7 @@ def exercise_suite(sb, directory: str, *, test_command: str, mutation_paths: lis
     return {'ok': all(row['ok'] for row in results.values()) and measured['ok'],
             'thresholds': thresholds,
             'threshold_revision': {'at': '2026-10-25', 'old_max_trace_bytes': 64 * 1024**2,
-                'reason': 'Coordinator approved 512 MiB after measured 405926100-byte real cargo trace, 15.49 s observer time, and 191 GB free disk; no coverage or scientific inclusion change.'},
+                'reason': 'Codex builder revised engineering bound to 512 MiB after measured 405926100-byte real cargo trace, 15.49 s observer time, and 191 GB free disk; no coverage or scientific inclusion change.'},
             'cases': results, 'real_test': measured, 'model_calls': 0,
             'hook_payload_source': 'synthetic; actual native dispatch remains Step 0 gate',
             'production_trace_flags': CC.TRACE_FLAGS, 'container_profile': 'production defaults, network none'}

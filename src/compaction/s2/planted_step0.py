@@ -213,7 +213,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               budget: ForkBudget | None = None,
               fork_runner: Callable = CC.fork, continue_runner: Callable = CC.continue_from_boundary,
               clock: Callable = time.time, hold: Callable = _window_hold,
-              native_cfg: CC.CCConfig | None = None) -> dict:
+              native_cfg: CC.CCConfig | None = None, rate_provider: Callable | None = None) -> dict:
     """One native probe and one no-simulator continue check; never called during build."""
     if not go_from_jacob:
         raise PermissionError("Step 0 requires the main session's explicit --go-from-jacob")
@@ -292,7 +292,9 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         write(out / "report.json", report)
         if judge is None and judge_factory is not None:
             try:
-                guard_rate(usage["after"], now=clock(), hold=hold)
+                judge_rate = rate_provider() if rate_provider else usage["after"]
+                guard_rate(judge_rate, now=clock(), hold=hold)
+                report["judge_launch_rate"] = judge_rate
             except ValueError as exc:
                 report["withheld"] = {"stage": "report_judge_and_continuation", "reason": str(exc)}
                 raise
@@ -311,7 +313,10 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         write(out / "report.json", report)
         if not checks["cleanup"] or not checks["restore"]:
             raise RuntimeError("unsafe or mismatched probe: continuation withheld")
-        guard_rate(usage["after"], now=clock(), hold=hold)
+        continuation_rate = rate_provider() if rate_provider else usage["after"]
+        guard_rate(continuation_rate, now=clock(), hold=hold)
+        report["continuation_launch_rate"] = continuation_rate
+        write(out / "report.json", report)
         cont_cfg = CC.BaseConfig(task=task, root=out, prefix="step0-continue-", cc=cfg,
                                   host=host, capture_ask=True, max_calls=MAX_CALLS,
                                   steps=(CC.GRADED_STEP,),
@@ -319,7 +324,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                                   min_free_gb=N.AGENT_MIN_FREE_GB)
         cont = continue_runner(Path(bdir), cont_cfg.run_dir, cfg=cont_cfg,
                                sim_model=CC.NoSimulatorModel(), token=token)
-        cont_usage = _usage(cont, usage["after"], clock())
+        cont_usage = _usage(cont, continuation_rate, clock())
         cont_checks = _checks(cont) | {"usage": cont_usage["known"]}
         report["continuation"] = {"result": cont, "usage": cont_usage, "checks": cont_checks}
         budget.finish(ids[1], "complete" if all(cont_checks.values()) else "technical_failure",
