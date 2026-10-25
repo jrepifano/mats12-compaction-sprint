@@ -87,7 +87,8 @@ def boundary_evidence(bdir: Path, *, repo_state: dict | None = None,
     from compaction.s2.native.common import reclassify_harness_quiescence
     b = reclassify_harness_quiescence(b)
     validation = fork_validation or {}
-    return {"boundary": str(bdir), "k": b["boundary_index"], "pre_tokens": b.get("pre_tokens"),
+    return {"boundary": f"{bdir.parent.name}/{bdir.name}", "k": b["boundary_index"],
+            "pre_tokens": b.get("pre_tokens"),
             "summary": rec["summary"], "post_messages": post,
             "repo_state": repo_state or {}, "forkable": b.get("quiescent") is True
             and not b.get("services_running") and not b.get("ineligible_reason")
@@ -101,6 +102,9 @@ def grade(evidence: dict, obligation: dict, judge: Callable[[dict], dict]) -> di
     Only pre-boundary adoption evidence can exclude a boundary. Later first acts are
     reported separately; otherwise a loss could manufacture its own exclusion.
     """
+    if obligation.get("delivered") and obligation.get("adopted") is not None \
+            and type(obligation.get("adoption_before_boundary")) is not bool:
+        raise ValueError("known adoption needs adoption_before_boundary; use adoption_fields")
     row = {"task_id": obligation["task_id"], "obligation_id": obligation["obligation_id"],
            "k": evidence["k"], "boundary": evidence["boundary"],
            "forkable": evidence.get("forkable", False), "text": obligation["text"],
@@ -129,15 +133,26 @@ def grade(evidence: dict, obligation: dict, judge: Callable[[dict], dict]) -> di
         elif isinstance(x, list):
             for v in x:
                 yield from strings(v)
+    def content_strings(x):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k in ("content", "text"):
+                    if isinstance(v, str):
+                        yield v
+                    else:
+                        yield from content_strings(v)
+        elif isinstance(x, list):
+            for v in x:
+                yield from content_strings(v)
     context_texts = [evidence.get("summary", ""),
-                     *strings(evidence.get("post_messages", []))]
+                     *content_strings(evidence.get("post_messages", []))]
     cq, rq = result.get("context_quote", ""), result.get("repo_quote", "")
     errors = []
     if label not in ("kept", "lost", "discharged", "unknown"):
         errors.append("invalid_label")
     if cq and not any(cq in t for t in context_texts):
         errors.append("ungrounded_context_quote")
-    if label == "kept" and not cq:
+    if label == "kept" and (not isinstance(cq, str) or len(cq.strip()) < 8):
         errors.append("kept_without_quote")
     if label == "lost" and result.get("still_binds") is not True:
         errors.append("loss_without_later_binding_act")
@@ -165,7 +180,8 @@ def card_bundle(rows: list[dict], seed: int = SEED) -> tuple[dict, dict]:
     cards, key = [], {}
     for i, r in enumerate(chosen):
         cid = f"card-{i + 1:03d}"
-        cards.append({"id": cid, "obligation": r["text"], "evidence": r["evidence"]})
+        cards.append({"id": cid, "obligation": r["text"],
+                      "evidence": {k: v for k, v in r["evidence"].items() if k != "forkable"}})
         key[cid] = {k: r[k] for k in ("task_id", "obligation_id", "k", "boundary", "label")}
         key[cid]["forkable"] = r.get("forkable", False)
         key[cid]["standing"] = r.get("standing", True)
@@ -213,7 +229,7 @@ window.dispatchEvent(new CustomEvent('planted-card-label',{detail:labels}));}
 document.addEventListener('input',update);update();</script>'''
 
 
-def confirmed_losses(public: dict, private: dict, labels: list[dict]) -> list[dict]:
+def adjudicate_cards(public: dict, private: dict, labels: list[dict]) -> dict:
     if private["public_sha256"] != digest(public):
         raise ValueError("card bundle changed")
     ids = [x["id"] for x in labels]
@@ -223,8 +239,27 @@ def confirmed_losses(public: dict, private: dict, labels: list[dict]) -> list[di
         raise ValueError("incomplete card labels")
     if any(x["label"] == "discharged" and private["key"][x["id"]]["standing"] for x in labels):
         raise ValueError("standing rule cannot be discharged; second look required")
-    return [private["key"][x["id"]] | {"verified": True, "human_reason": x.get("reason", "")}
-            for x in labels if x["label"] == "lost"]
+    rows = [private["key"][x["id"]] | {"verified": True,
+             "judge_label": private["key"][x["id"]]["label"], "human_label": x["label"],
+             "human_reason": x.get("reason", "")} for x in labels]
+    return {"adjudications": rows, "losses": [r for r in rows if r["human_label"] == "lost"
+                                             and r["loss_tally_eligible"]]}
+
+
+def confirmed_losses(public: dict, private: dict, labels: list[dict]) -> list[dict]:
+    """Filtered view; persist adjudicate_cards output to retain every human label."""
+    return adjudicate_cards(public, private, labels)["losses"]
+
+
+def adoption_fields(adoption_result: dict, boundary_seq: int) -> dict:
+    """Join scorer output on one explicit ordered-event clock, never a token clock."""
+    status, event = adoption_result.get("adoption"), adoption_result.get("event")
+    known = status in ("adopted", "not_adopted")
+    if type(boundary_seq) is not int or (known and type(event) is not int):
+        raise ValueError("known adoption and boundary need ordered event positions")
+    return {"adopted": (status == "adopted") if known else None,
+            "adoption_seq": event, "adoption_before_boundary": event < boundary_seq
+            if type(event) is int else None}
 
 
 def repair_candidates(losses: list[dict], seed: int = SEED) -> dict:

@@ -11,7 +11,8 @@ def evidence():
 
 def obligation(**kw):
     return {"task_id": "task", "obligation_id": "commit", "text": "Use [X] for commits.",
-            "standing": True, "delivered": True, "adopted": True, **kw}
+            "standing": True, "delivered": True, "adopted": True,
+            "adoption_before_boundary": True, **kw}
 
 
 def judgment(**kw):
@@ -148,3 +149,45 @@ def test_max_judge_fake_backend_failures_and_json(tmp_path):
             return {key: Resp(key, None, None, "timeout")}
     with pytest.raises(RuntimeError, match="timeout"):
         R.max_judge(tmp_path, backend=Failed())({"system": "s"})
+    class NonObject(Backend):
+        def run(self, requests, *, purpose):
+            key = requests[0].key
+            return {key: Resp(key, None, '[]', None, model=R.MODEL)}
+    with pytest.raises(TypeError, match="JSON object"):
+        R.max_judge(tmp_path, backend=NonObject())({"system": "s"})
+
+
+def test_adoption_adapter_and_quote_metadata_rejected():
+    fields = R.adoption_fields({"adoption": "not_adopted", "event": 5}, boundary_seq=10)
+    assert fields == {"adopted": False, "adoption_seq": 5, "adoption_before_boundary": True}
+    with pytest.raises(ValueError, match="adoption_before_boundary"):
+        R.grade(evidence(), obligation(adoption_before_boundary=None), lambda _: judgment())
+    assert R.grade(evidence(), obligation(), lambda _: judgment(context_quote="user"))[
+        "label"] == "unknown"
+
+
+def test_full_adjudication_retains_overturns_and_filters_nonadopted_loss():
+    rs = rows(3)
+    rs[0]["loss_tally_eligible"] = False
+    public, private = R.card_bundle(rs)
+    labels = [{"id": c["id"], "label": "lost" if c["obligation"] == "rule 0" else "kept"}
+              for c in public["cards"]]
+    result = R.adjudicate_cards(public, private, labels)
+    assert len(result["adjudications"]) == 3 and result["losses"] == []
+
+
+def test_boundary_evidence_requires_context_and_all_live_validation_keys(tmp_path):
+    import json
+    bdir = tmp_path / "task" / "b1"
+    folder = bdir / "boundary"
+    folder.mkdir(parents=True)
+    (folder / "boundary.json").write_text(json.dumps({"boundary_index": 1, "quiescent": True}))
+    (folder / "compaction.json").write_text(json.dumps({"summary": "Task summary"}))
+    (folder / "post_messages.json").write_text(json.dumps([{"role": "user", "content": "Task summary"}]))
+    keys = {"image_present": True, "transcript_intact": True, "fork_check_ok": True}
+    assert R.boundary_evidence(bdir, fork_validation=keys)["forkable"]
+    for key in keys:
+        assert not R.boundary_evidence(bdir, fork_validation={k: v for k, v in keys.items() if k != key})["forkable"]
+    (folder / "post_messages.json").write_text("[]")
+    with pytest.raises(ValueError, match="context"):
+        R.boundary_evidence(bdir)

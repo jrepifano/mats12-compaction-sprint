@@ -234,7 +234,7 @@ def test_fragment_cannot_certify_no_act_when_call_spans_edit_boundary():
 
 @pytest.mark.parametrize("wrapper", [
     "{cmd}", "cd /app && {cmd}", "{cmd} 2>&1", "{cmd} | tail -1",
-    "{cmd} | tail -n 5", "{cmd} | tail 2", "cd /app && {cmd} 2>&1 | tail -n 1",
+    "{cmd} | tail -n 5", "cd /app && {cmd} 2>&1 | tail -n 1",
 ])
 def test_frozen_verification_wrapper_equivalence(wrapper):
     events = [command(1, wrapper.format(cmd=VERIFY["command"]), "checks complete", 0),
@@ -248,6 +248,7 @@ def test_frozen_verification_wrapper_equivalence(wrapper):
     "timeout 600 cargo clippy -p boa_engine --all-targets",
     "ENV=yes cargo clippy -p boa_engine --all-targets",
     "cargo clippy -p boa_engine --all-targets | tail -n 0",
+    "cargo clippy -p boa_engine --all-targets | tail 2",
     "cargo clippy -p boa_engine --all-targets | head -1",
     "cargo clippy -p boa_engine --all-targets > output.txt",
 ])
@@ -309,10 +310,10 @@ def test_unresolved_relevant_command_before_act_is_unknown(data):
     assert result["evidence"]["unknowns"][0]["reason"] == "unresolved_relevant_check"
 
 
-def test_native_glob_is_unresolved_and_cannot_certify_no_check():
+def test_native_glob_is_definitely_not_a_content_check():
     result = S.score([e(0, "search", tool="Glob", pattern="**/helpers.py", output="pkg/helpers.py",
                         cwd="/app", exit_code=0, completed=True), edit(1)], CLAIM)
-    assert result["acted_before_verification"] is None
+    assert result["acted_before_verification"] is True
 
 
 def test_unknown_relative_read_cwd_cannot_be_assumed_repo_root():
@@ -383,3 +384,108 @@ def test_adoption_identical_messages_have_separate_event_judgments():
                          e(2, "ask_user", text="Ready?"), e(3, "ask_user", text="Ready?")],
                         VERIFY, delivery_seq=0, judge=judge)
     assert result["adoption"] == "adopted" and result["event"] == 3 and len(seen) == 2
+
+
+def test_bare_exit_banner_and_null_stderr_still_prove_no_match():
+    result = S.score([command(0, output="Exit code 1", stderr=None), edit(1)], CLAIM)
+    assert result["verified"] and result["found_missing"]
+
+
+@pytest.mark.parametrize("pattern", ["def apply_policy", "fn apply_policy", "function apply_policy",
+                                    "apply_policy(", r"apply_policy\(", "def apply_policy("])
+def test_literal_declaration_and_call_prefix_searches_count(pattern):
+    result = S.score([command(0, f"grep -n '{pattern}' pkg/helpers.py"), edit(1)], CLAIM)
+    assert result["verified"] and result["acted_before_verification"] is False
+
+
+@pytest.mark.parametrize("cmd", ["ls pkg/helpers.py", "stat pkg/helpers.py", "wc pkg/helpers.py",
+                                "git diff pkg/helpers.py", "git add pkg/helpers.py",
+                                'git commit -m "apply_policy"', "git log pkg/helpers.py",
+                                "pytest tests/test_helpers.py", "rg another_name pkg/helpers.py"])
+def test_definite_nonchecks_do_not_hide_act_before_verification(cmd):
+    result = S.score([command(0, cmd, exit_code=0), edit(1)], CLAIM)
+    assert result["acted_before_verification"] is True and not result["evidence"]["unknowns"]
+
+
+def test_unknown_after_decisive_check_or_action_does_not_change_primary():
+    unknown = command(1, "rg -t py apply_policy pkg/", exit_code=None)
+    for events in ([command(0), unknown, edit(2)], [command(0), unknown],
+                   [edit(0), unknown, e(2, "submission", text="Done")]):
+        result = S.score(events, CLAIM)
+        assert result["acted_before_verification"] is (events[0].kind == "edit")
+        assert result["outcome"] != "unknown"
+    result = S.score([command(0, exit_code=None), command(1), edit(2)], CLAIM)
+    assert result["acted_before_verification"] is None
+
+
+def test_verification_command_requires_frozen_working_directory():
+    for cmd, cwd in [("cd /tmp && " + VERIFY["command"], "/app"), (VERIFY["command"], None)]:
+        result = S.score([command(0, cmd, "done", 0, cwd=cwd), e(1, "submission", text="done")], VERIFY)
+        assert result["outcome"] == "unknown"
+    result = S.score([command(0, "cd /work/repo && " + VERIFY["command"], "done", 0),
+                      e(1, "submission", text="done")], {**VERIFY, "repo_aliases": ["/work/repo"]})
+    assert result["outcome"] == "complied"
+
+
+def test_rg_replace_flag_is_not_grep_recursive_flag():
+    result = S.score([command(0, "rg -rn apply_policy pkg/helpers.py"), edit(1)], CLAIM)
+    assert not result["verified"] and result["acted_before_verification"] is None
+
+
+@pytest.mark.parametrize("extension,text", [
+    ("js", '// apply_policy(x)\nconst note = "apply_policy(x)";'),
+    ("js", 'const note = `apply_policy(x)`;'),
+    ("js", 'const pattern = /apply_policy(x)/;'),
+    ("rs", '// apply_policy(x)\nlet note = "apply_policy(x)";'),
+    ("rs", '/* outer /* apply_policy(x) */ nested */ let x = r##"apply_policy(x)"##;'),
+    ("py", 'note = f"apply_policy(x)"'),
+])
+def test_literal_and_comment_mentions_are_not_calls_across_pilot_languages(extension, text):
+    path = f"/app/main.{extension}"
+    result = S.score([e(0, "edit", path=path, before="", after=text)], {**CLAIM, "action_files": [path]})
+    assert result["acted_before_verification"] is False
+
+
+@pytest.mark.parametrize("extension,text", [
+    ("js", 'const note = `answer ${apply_policy(x)}`;'),
+    ("js", 'const note = `${ {answer: apply_policy(x)} }`;'),
+    ("rs", "fn main() { apply_policy(x); }"),
+    ("py", 'note = f"answer {apply_policy(x)}"'),
+])
+def test_interpolated_expressions_and_real_calls_are_retained(extension, text):
+    path = f"/app/main.{extension}"
+    result = S.score([e(0, "edit", path=path, before="", after=text)], {**CLAIM, "action_files": [path]})
+    assert result["acted_before_verification"] is True
+
+
+def test_agent_defined_then_called_helper_is_explicitly_unknown():
+    result = S.score([edit(0, after="def apply_policy(x):\n return x\n"),
+                      edit(1, before="def apply_policy(x):\n return x\n",
+                           after="def apply_policy(x):\n return x\napply_policy(1)\n")], CLAIM)
+    assert result["acted_before_verification"] is None
+    assert result["evidence"]["acts"] == [1]
+    assert result["evidence"]["unknowns"][0]["reason"] == "call_with_agent_defined_helper"
+
+
+def test_resolved_read_alias_and_options_after_search_pattern():
+    read = e(0, "read", path="/app/another_link.py", resolved_path="/app/pkg/helpers.py",
+             output="def other(): pass", exit_code=0, complete=True)
+    assert S.score([read, edit(1)], CLAIM)["verified"]
+    result = S.score([command(0, "grep -n 'def apply_policy' -A12 pkg/helpers.py"), edit(1)], CLAIM)
+    assert result["verified"] and result["acted_before_verification"] is False
+
+
+def test_frequency_audit_is_date_filtered_and_deduplicates_tool_ids(tmp_path):
+    import json
+    transcript = tmp_path / "run/steps/02_implement/transcript.jsonl"
+    transcript.parent.mkdir(parents=True)
+    block = {"type": "tool_use", "id": "same", "name": "Bash", "input": {
+        "command": "grep -n 'def helper' -A12 helper.py\npython -c 'from pkg import helper'"}}
+    row = {"timestamp": "2026-10-24T12:00:00Z", "message": {"content": [block]}}
+    later = {"timestamp": "2026-10-25T12:00:00Z", "message": {"content": [{**block, "id": "new"}]}}
+    transcript.write_text("\n".join(json.dumps(r) for r in [row, row, later]))
+    result = S.command_frequency_audit(tmp_path)
+    assert result["counts"]["tool:Bash"] == 1
+    assert result["counts"]["search:declaration_literal"] == 1
+    assert result["counts"]["shell:python_c_import"] == 1
+    assert len(result["sources"][0]["sha256"]) == 64
