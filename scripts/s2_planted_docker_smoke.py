@@ -3,7 +3,8 @@
 Run only when authorized: uv run python scripts/s2_planted_docker_smoke.py
     --image <already-local-task-image> --out <new-report.json> [--host ssh://rig]
 
-No image pulls, mounts, credentials, network, simulator or agent invocation. One disposable
+No image pulls, credentials, network, simulator or agent invocation. The existing CLI
+volume is mounted read-only, using exactly the production container extras. One disposable
 512 MiB / 1 CPU container, 180 s lifetime. The smoke runs real Linux strace around a synthetic
 edit/revert and tests the emitted observer hooks. Claude's actual hook dispatch remains a
 Step 0 check: synthetic payload acceptance cannot establish the installed CLI's schema.
@@ -27,6 +28,8 @@ def preflight(image: str, host: str | None) -> str:
     with SB.using_host(host):
         inspected = SB._docker(["image", "inspect", image], timeout=30)
         image_id = json.loads(inspected.stdout)[0]["Id"]
+        # Inspect first: docker run must never implicitly create a missing volume.
+        SB._docker(["volume", "inspect", CC.CLI_VOLUME], timeout=30)
         active = SB._docker(["ps", "-q", "--filter", f"label={SB.LABEL_KEY}"], timeout=30)
         ids = active.stdout.decode().split()
         if len(ids) >= 3:
@@ -46,7 +49,7 @@ def preflight(image: str, host: str | None) -> str:
 
 def exercise(sb, directory: str) -> dict:
     """Exercise the exact observer wrapper using real syscalls, with a synthetic hook payload."""
-    for tool in ("python3", "strace", "bash", "git", "curl"):
+    for tool in ("python3", "bash", "git", "curl"):
         if sb.exec("command -v " + tool, timeout_s=15).rc:
             raise RuntimeError(f"required image dependency unavailable: {tool}")
     sb.exec("mkdir -p " + shlex.quote(directory), timeout_s=15)
@@ -97,14 +100,16 @@ def run(image: str, out: Path, host: str | None = None) -> dict:
     if out.exists():
         raise FileExistsError(out)
     report = {"ok": False, "image": image, "host": host, "started_utc": N.utc(),
-              "paid_calls": 0, "agent_calls": 0, "network": "none"}
+              "paid_calls": 0, "agent_calls": 0, "network": "none",
+              "production_container_extras": list(CC.run_args()),
+              "capabilities_seccomp": "production defaults from SB.run_args"}
     inv = SB.Invocation(purpose="planted-audit-smoke", host=host)
     try:
         image_id = preflight(image, host)
         report["image_id"] = image_id
         sb = N.start_task_container(inv, image_id, network="none", cpus=CPUS,
             memory_mb=MEMORY_MB, lifetime_s=LIFETIME_S,
-            extra_args=("--pull", "never", "--entrypoint", ""))
+            extra_args=(*CC.run_args(), "--pull", "never", "--entrypoint", ""))
         report["container"] = sb.name
         report.update(exercise(sb, f"/app/.emx-audit-smoke-{inv.run_id}"))
     except Exception as exc:  # noqa: BLE001 - write failure evidence and always clean up

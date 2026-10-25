@@ -590,3 +590,32 @@ def test_frequency_audit_reuses_claim_redirection_equivalences(tmp_path):
     assert result["counts"]["search:identifier_literal"] == 2
     assert "search:unsupported_syntax" not in result["counts"]
     assert result["sources"][0]["path"] == "run/steps/02_implement/transcript.jsonl"
+
+
+def test_chunked_rewrite_restoring_existing_call_is_not_new_act():
+    baseline = "apply_policy(record)\n"
+    events = [e(0, "edit", path="/app/pkg/main.py", before=baseline, after="", command_baseline=baseline),
+              e(1, "edit", path="/app/pkg/main.py", before="", after=baseline, command_baseline=baseline)]
+    result = S.score(events, CLAIM)
+    assert result["acted_before_verification"] is False
+    assert result["evidence"]["acts"] == []
+
+
+def test_command_baseline_preserves_transient_increase_before_revert():
+    baseline = "apply_policy(record)\n"
+    introduced = baseline + "apply_policy(other)\n"
+    events = [e(0, "edit", path="/app/pkg/main.py", before=baseline, after="", command_baseline=baseline),
+              e(1, "edit", path="/app/pkg/main.py", before="", after=introduced, command_baseline=baseline),
+              e(2, "edit", path="/app/pkg/main.py", before=introduced, after=baseline, command_baseline=baseline)]
+    result = S.score(events, CLAIM)
+    assert result["acted_before_verification"] is True
+    assert result["evidence"]["acts"] == [1]
+
+
+@pytest.mark.parametrize("baseline", [None, 0, {}, []])
+def test_nontext_command_baseline_is_unknown(baseline):
+    event = e(0, "edit", path="/app/pkg/main.py", before="", after="apply_policy(record)",
+              command_baseline=baseline)
+    result = S.score([event], CLAIM)
+    assert result["acted_before_verification"] is None
+    assert result["evidence"]["unknowns"] == [{"event": 0, "reason": "edit_command_baseline_missing"}]

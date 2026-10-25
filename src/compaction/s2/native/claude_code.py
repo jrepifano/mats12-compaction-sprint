@@ -420,6 +420,24 @@ def request_messages(rows: list[dict], i: int) -> list[dict] | None:
     blobs, hashed as sorted compact JSON); None when any part is unrecorded."""
     blobs = {r["hash"]: r["message"] for r in rows[: i + 1]
              if r.get("type") == "api-request-blob" and "hash" in r}
+    # The CLI deduplicates blobs against ordinary transcript messages too. Reconstruct
+    # candidates only when their exact canonical SHA256 equals the requested blob hash.
+    assistant_id, assistant_blocks = None, []
+    for row in rows[:i + 1]:
+        msg = row.get("message")
+        if row.get("type") not in ("user", "assistant") or not isinstance(msg, dict):
+            continue
+        candidates = [msg, {"role": msg.get("role", row["type"]), "content": msg.get("content")}]
+        if row["type"] == "assistant" and isinstance(msg.get("content"), list):
+            mid = msg.get("id")
+            assistant_blocks = (assistant_blocks if mid and mid == assistant_id else []) + msg["content"]
+            assistant_id = mid
+            candidates.append({"role": "assistant", "content": assistant_blocks})
+        else:
+            assistant_id, assistant_blocks = None, []
+        for candidate in candidates:
+            digest = I.sha256(json.dumps(candidate, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
+            blobs.setdefault(digest, candidate)
     built: dict[str, list[dict] | None] = {}
     for r in rows[: i + 1]:
         if r.get("type") != "api-request":
@@ -845,7 +863,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 if cfg.capture_ask:
                     cut = next((i for i, row in enumerate(rows) if resume_b and
                                 row.get("uuid") == resume_b["native_summary_uuid"]), -1)
-                    res["token_usage"] = transcript_usage(rows[cut + 1:])
+                    res["token_usage"] = transcript_usage(resumed_window_rows(rows, resume_rows, CONTINUE_PROMPT, cut=cut))
                     res["rate_limit"] = state.get("rate_limit")
                 mark("step_done", step=step, rc=r.rc, killed=r.killed, failed=bad)
                 if state.get("auth_error") or (bad and "not Max" in bad):
@@ -1302,8 +1320,10 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 full_rows = read_jsonl(transcript_path.read_text(), strict=True) if transcript_path.exists() else []
                 cut = next((i for i, row in enumerate(full_rows)
                             if row.get("uuid") == b["native_summary_uuid"]), -1)
+                window = resumed_window_rows(full_rows, rows, prompt, cut=cut)
                 evidence = audit_holder["audit"].finish(
-                    full_rows[cut + 1:], captured_asks=captured_rows,
+                    window, captured_asks=captured_rows,
+                    terminal_stop=bool(captured_rows) or (state.get("result") or {}).get("subtype") == "error_max_turns",
                     submission=final_text(out_dir / "stream.jsonl")
                     if (out_dir / "stream.jsonl").exists() and
                     (state.get("result") or {}).get("subtype") == "success" else "")
@@ -1313,7 +1333,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                     evidence["issues"].append("resumed summary absent from transcript")
                 context = resumed_context_check(full_rows, b["native_summary_uuid"], new_summary,
                                                 prompt, required=required_context,
-                                                forbidden=forbidden_context)
+                                                forbidden=forbidden_context, source_rows=rows)
                 res["context_check"] = {key: value for key, value in context.items() if key != "surfaces"}
                 N._dump(out_dir / "initial_context.json", context)
                 if (required_context or forbidden_context) and not context["ok"]:
@@ -1322,7 +1342,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 if any(not call.get("ok") for call in ns.server.audit_calls):
                     evidence["part_a_complete"] = evidence["capture_complete"] = False
                     evidence["issues"].append("audit endpoint reported a failure")
-                res["token_usage"] = transcript_usage(full_rows[cut + 1:]) if cut >= 0 else None
+                res["token_usage"] = transcript_usage(window) if cut >= 0 else None
                 rounds = getattr(ns.server.sim, "rounds", [])
                 res.update(probe=True, max_calls=max_calls,
                            call_limit_unit="Claude Code assistant turns (--max-turns)",
@@ -1520,7 +1540,7 @@ def audit_hook_script() -> str:
     """Forward tool hooks, returning the server's structured PreToolUse response to the CLI."""
     return ("#!/bin/sh\n"
             f"umask 077; printf '{N.TOKEN_HEADER}: %s\\n' \"$EMX_SIM_TOKEN\" > {HEADER_DIR}/audit-h\n"
-            f"curl --fail -sS -m 180 -X POST -H @{HEADER_DIR}/audit-h"
+            f"curl --fail -sS -m 165 -X POST -H @{HEADER_DIR}/audit-h"
             f" -H 'content-type: application/json' --data-binary @- {N.AUDIT_URL}\n")
 
 
@@ -1606,8 +1626,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
     for index, raw in enumerate(trace.splitlines()):
         match = re.match(r"(?:(?:\[pid\s+)?(\d+)\]?\s+)?(\d+\.\d+)\s+(.*)", raw)
         if not match:
-            if raw.strip() and not raw.startswith("strace:"):
-                issues.append("unparsed trace line")
+            if raw.strip() and not raw.startswith("strace:") and any(path in raw for path in targets):
+                issues.append("unparsed target trace line")
             continue
         pid, _timestamp, line = match.groups()
         pid = pid or "root"
@@ -1618,7 +1638,9 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         if line.startswith("<..."):
             prior = pending.pop(pid, None)
             if prior is None or " resumed>" not in line:
-                issues.append("unmatched resumed syscall")
+                if any(path in line for path in targets) or re.match(
+                        r"<\.\.\. (?:write|pwrite|rename|unlink|truncate|ftruncate|copy_file_range|sendfile|splice)", line):
+                    issues.append("unmatched mutation syscall")
                 continue
             start, prefix = prior
             line = prefix + line.split(" resumed>", 1)[1]
@@ -1629,12 +1651,12 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         op = line.partition("(")[0]
         result = re.search(r"\)\s+=\s+(-?0x[0-9a-fA-F]+|-?\d+)", line)
         if result is None:
-            issues.append("missing syscall completion")
+            records.append((index, pid, op, line, None))
             continue
         records.append((start if op in ("fork", "vfork", "clone", "clone3") else index,
                         pid, op, line, int(result.group(1), 0)))
-    if pending:
-        issues.append("unfinished syscalls")
+    for pid, (index, line) in pending.items():
+        records.append((index, pid, line.partition("(")[0], line, None))
     tables, directories = {}, {}
 
     def process(pid):
@@ -1675,6 +1697,47 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
     for _order, pid, op, line, rc in sorted(records, key=lambda item: item[0]):
         table = process(pid)
         args = []
+        if rc is None:
+            first = re.match(r"[^()]+\(([^,)]*)", line)
+            desc = None
+            if first:
+                with contextlib.suppress(ValueError, AttributeError):
+                    desc = table.get(number(first.group(1)))
+            if op in ("read", "readv"):
+                # A blocked/killed read cannot mutate bytes. Its eventual offset is unknown;
+                # only a later write through this description can make it relevant.
+                if desc:
+                    desc["offset"] = None
+                continue
+            referenced = set(re.findall(r"<(/[^>]+)>", line))
+            if desc:
+                referenced.add(desc["path"])
+            if op in ("copy_file_range", "sendfile", "splice"):
+                # Incomplete transfers still only threaten the destination, never a read source.
+                referenced = set()
+                with contextlib.suppress(ValueError, AttributeError, IndexError):
+                    partial = re.sub(r"\)\s+=.*$", "", line)
+                    partial_args = args_of(partial + ") = 0")
+                    output = partial_args[2] if op in ("copy_file_range", "splice") else partial_args[0]
+                    annotated = re.search(r"<([^>]+)>", output)
+                    output_desc = table.get(number(output))
+                    path = annotated.group(1) if annotated else output_desc["path"] if output_desc else None
+                    if path:
+                        referenced.add(path)
+            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate",
+                      "copy_file_range", "sendfile", "splice"):
+                for path in referenced:
+                    poison(posixpath.normpath(path), "unfinished mutation syscall")
+                if not referenced:
+                    issues.append("unresolved unfinished mutation syscall")
+            elif op in ("clone", "clone3", "fork", "vfork", "chdir", "fchdir"):
+                issues.append("unfinished process state syscall")
+            elif op in ("rename", "renameat", "renameat2", "unlink", "unlinkat", "truncate", "open", "openat", "creat"):
+                # Paths can be relative or temporary later renamed onto the target.
+                issues.append("unfinished path mutation syscall")
+            elif any(path in line for path in targets):
+                issues.append("missing target syscall completion")
+            continue
         try:
             args = args_of(line)
             if op in ("fork", "vfork", "clone", "clone3"):
@@ -1796,10 +1859,12 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     if desc:
                         poison(desc["path"], "unsupported shared writable mmap")
             elif op in ("pwritev", "pwritev2", "copy_file_range", "sendfile", "splice"):
-                for arg in args:
-                    annotated = re.search(r"<([^>]+)>", arg)
-                    if annotated:
-                        poison(posixpath.normpath(annotated.group(1)), f"unsupported {op}")
+                output = args[2] if op in ("copy_file_range", "splice") else args[0]
+                annotated = re.search(r"<([^>]+)>", output)
+                desc = table.get(number(output))
+                path = posixpath.normpath(annotated.group(1)) if annotated else desc["path"] if desc else None
+                if path:
+                    poison(path, f"unsupported {op}")
         except (ValueError, SyntaxError, UnicodeError, KeyError, AttributeError, IndexError):
             # An undecodable unrelated binary/cache write does not poison the declared scope.
             for annotated in re.findall(r"<(/[^>]+)>", line):
@@ -1813,7 +1878,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
     for path, old, new, op in changes:
         try:
             events.append({"kind": "edit", "data": {"path": path, "before": old.decode(),
-                           "after": new.decode(), "source": "strace", "syscall": op}})
+                           "after": new.decode(), "command_baseline": before.get(path),
+                           "source": "strace", "syscall": op}})
         except UnicodeError:
             issues.append(f"non-UTF8 target contents: {path}")
     after = {}
@@ -1885,6 +1951,7 @@ class ProbeAudit:
         self.hooks_seen = 0
         self.pre_ids: set[str] = set()
         self.post_ids: set[str] = set()
+        self.denied_ids: set[str] = set()
 
     def resolve_path(self, path: str, cwd: str | None) -> str | None:
         if not path or (not path.startswith("/") and not cwd):
@@ -1954,6 +2021,7 @@ class ProbeAudit:
                 self.issues.append("hook missing tool use id")
             if phase == "PreToolUse":
                 if self.stop is not None and self.stop.is_set():
+                    self.denied_ids.add(tid)
                     return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "deny",
                         "permissionDecisionReason": "Probe window ended"}}
@@ -1980,11 +2048,13 @@ class ProbeAudit:
                         self.issues.append("no frozen mutation scope")
                     command = args.get("command", "")
                     final_pwd = "pwd -P > " + shlex.quote(call["final_cwd_path"])
-                    traced = "bash -c " + shlex.quote(
-                        "pwd -P > " + shlex.quote(call["cwd_path"]) + "; trap "
-                        + shlex.quote(final_pwd) + " EXIT; " + command)
+                    body = ("pwd -P > " + shlex.quote(call["cwd_path"]) + "; trap "
+                            + shlex.quote(final_pwd) + " EXIT; " + command)
                     if self.paths and self.trace_available:
-                        traced = trace_command(self.trace_binary, call["trace_path"], traced)
+                        traced = trace_command(self.trace_binary, call["trace_path"],
+                                               "bash -c " + shlex.quote(body))
+                    else:
+                        traced = "(\n" + body + "\n)"
                     wrapped = (traced + "; emx_audit_rc=$?; printf '%s' \"$emx_audit_rc\" > "
                                + shlex.quote(call["rc_path"]) + "; "
                                + "if [ -s " + shlex.quote(call["final_cwd_path"]) + " ]; then "
@@ -2026,9 +2096,11 @@ class ProbeAudit:
                     output = str(response.get("stdout") or "") + str(response.get("stderr") or "")
                 if not artifacts.get(call["final_cwd_path"]):
                     self.issues.append("shell cwd restoration unavailable")
-                completed = (rc is not None and not args.get("run_in_background")
-                             and not response.get("interrupted") and not response.get("timed_out")
-                             and not response.get("backgroundTaskId"))
+                interrupted = (args.get("run_in_background") or response.get("interrupted")
+                               or response.get("timed_out") or response.get("backgroundTaskId"))
+                if not raw_rc.strip() and not artifacts.get(call["cwd_path"]) and not interrupted:
+                    self.issues.append("bash wrapper artifacts absent")
+                completed = rc is not None and not interrupted
                 self.add("command", command=args.get("command", ""), output=str(output),
                          exit_code=rc, completed=completed, cwd=cwd, tool_call_id=tid,
                          raw_response=response, is_error=failed)
@@ -2063,7 +2135,7 @@ class ProbeAudit:
             self._record_commits()
             return {}
 
-    def finish(self, transcript: list[dict], *, captured_asks=(), submission="") -> dict:
+    def finish(self, transcript: list[dict], *, captured_asks=(), submission="", terminal_stop=False) -> dict:
         # Transcript is authoritative for the output bytes as seen by the agent.
         outputs = {}
         result_errors = {}
@@ -2075,7 +2147,13 @@ class ProbeAudit:
                     result_errors[block.get("tool_use_id")] = bool(block.get("is_error"))
                 elif isinstance(block, dict) and block.get("type") == "tool_use":
                     expected_calls[block.get("id")] = block.get("name")
+        terminal_stop = terminal_stop or bool(captured_asks)
+        unexecuted = sorted(tid for tid, name in expected_calls.items() if terminal_stop and tid not in outputs
+                            and not (captured_asks and name in (ASK_TOOL, "ask_user"))
+                            and (tid not in self.pre_ids or tid in getattr(self, "denied_ids", set())))
         for tid, name in expected_calls.items():
+            if tid in unexecuted:
+                continue
             if name in (ASK_TOOL, "ask_user") and captured_asks:
                 continue
             if tid not in self.pre_ids or tid not in self.post_ids:
@@ -2100,10 +2178,11 @@ class ProbeAudit:
             self.issues.append("unfinished tool calls")
         part_a_issues = [issue for issue in self.issues if issue.startswith((
             "commit ", "agent-visible output missing", "unfinished tool",
-            "post hook without", "hook missing", "audit hook error", "native hook coverage missing"))]
+            "post hook without", "hook missing", "audit hook error", "native hook coverage missing",
+            "bash wrapper artifacts absent"))]
         return {"schema_version": 1, "events": self.events,
                 "part_a_complete": bool(self.hooks_seen) and not part_a_issues,
-                "part_a_issues": part_a_issues,
+                "part_a_issues": part_a_issues, "unexecuted_after_stop": unexecuted,
                 "capture_complete": bool(self.hooks_seen) and not self.issues,
                 "issues": sorted(set(self.issues)), "pending_tool_ids": pending,
                 "mutation_paths": self.paths, "trace_available": self.trace_available,
@@ -2206,7 +2285,7 @@ def normalize_native_search(data: dict, *, failed: bool = False) -> dict:
 
 
 def resumed_context_check(rows: list[dict], summary_uuid: str, expected_summary: str,
-                          prompt: str, *, required=(), forbidden=()) -> dict:
+                          prompt: str, *, required=(), forbidden=(), source_rows=()) -> dict:
     """Inspect the first actual resumed API request, never subsequent assistant output.
 
     A transcript summary alone does not prove what the CLI supplied after re-rendering
@@ -2219,11 +2298,19 @@ def resumed_context_check(rows: list[dict], summary_uuid: str, expected_summary:
     observed_summary = _block_text((rows[cut].get("message") or {}).get("content"))
     if observed_summary != expected_summary:
         return {**out, "reason": "resumed summary differs from assigned summary"}
-    end = next((i for i in range(cut + 1, len(rows)) if rows[i].get("type") == "assistant"), len(rows))
-    request_index = next((i for i in range(cut + 1, end) if rows[i].get("type") == "api-request"), None)
+    source_ids = {row.get("uuid") for row in source_rows if row.get("uuid")}
+    prompt_index = next((i for i in range(cut + 1, len(rows)) if rows[i].get("type") == "user"
+                         and rows[i].get("uuid") not in source_ids
+                         and _block_text((rows[i].get("message") or {}).get("content")) == prompt), None)
+    if prompt_index is None:
+        return {**out, "reason": "new probe message absent from resumed transcript"}
+    end = next((i for i in range(prompt_index + 1, len(rows)) if rows[i].get("type") == "assistant"
+                and rows[i].get("uuid") not in source_ids), len(rows))
+    request_index = next((i for i in range(prompt_index + 1, end) if rows[i].get("type") == "api-request"), None)
     if request_index is None:
         return {**out, "reason": "initial resumed request unrecorded"}
-    request = request_messages(rows, request_index)
+    archive = list(source_rows)
+    request = request_messages(archive + rows[:request_index + 1], len(archive) + request_index)
     if request is None:
         return {**out, "reason": "initial resumed request delta incomplete"}
     messages, _info = request_to_messages(request)
@@ -2234,9 +2321,10 @@ def resumed_context_check(rows: list[dict], summary_uuid: str, expected_summary:
     if len(summary_indexes) != 1 or not prompt_indexes:
         return {**out, "reason": "assigned summary or probe absent from initial request"}
     boundary = next((row for row in reversed(rows[:cut]) if row.get("subtype") == "compact_boundary"), {})
-    by_uuid = {row.get("uuid"): i for i, row in enumerate(rows[:cut]) if row.get("uuid")}
-    kept, _sources, _info = to_messages(rows, [by_uuid[uid] for uid in _preserved(boundary)
-                                             if uid in by_uuid])
+    prior = archive + rows[:cut]
+    by_uuid = {row.get("uuid"): i for i, row in enumerate(prior) if row.get("uuid")}
+    kept, _sources, _info = to_messages(prior, [by_uuid[uid] for uid in _preserved(boundary)
+                                              if uid in by_uuid])
     kept_contents = {I.canon(msg) for msg in kept}
     tail, attachments = [], []
     for i, msg in enumerate(messages):
@@ -2294,3 +2382,29 @@ def boundary_replay_integrity(rows: list[dict], summary_uuid: str | None,
         if request is not None and request_messages(rows, request) is None:
             issues.append("incomplete_resumed_request_delta")
     return {"ok": not issues, "issues": sorted(set(issues))}
+
+
+def resumed_window_rows(rows: list[dict], source_rows: list[dict], prompt: str, *, cut=-1) -> list[dict]:
+    """New fork events only: preserved history can occur physically after the summary."""
+    source_ids = {row.get("uuid") for row in source_rows if row.get("uuid")}
+    source_mids = {(row.get("message") or {}).get("id") for row in source_rows
+                   if row.get("type") == "assistant" and (row.get("message") or {}).get("id")}
+    source_tools = {block.get("id") for row in source_rows
+                    for block in (row.get("message") or {}).get("content", [])
+                    if isinstance(block, dict) and block.get("type") == "tool_use"}
+    start = next((i for i in range(cut + 1, len(rows)) if rows[i].get("type") == "user"
+                  and rows[i].get("uuid") not in source_ids
+                  and _block_text((rows[i].get("message") or {}).get("content")) == prompt), cut + 1)
+    result = []
+    for row in rows[start:]:
+        msg = row.get("message") or {}
+        if row.get("uuid") in source_ids or (row.get("type") == "assistant" and msg.get("id") in source_mids):
+            continue
+        content = msg.get("content")
+        if isinstance(content, list):
+            content = [block for block in content if not isinstance(block, dict) or not (
+                block.get("type") == "tool_use" and block.get("id") in source_tools
+                or block.get("type") == "tool_result" and block.get("tool_use_id") in source_tools)]
+            row = {**row, "message": {**msg, "content": content}}
+        result.append(row)
+    return result

@@ -687,11 +687,16 @@ def acted_before_verification(events: Iterable[Event | Mapping], spec: dict, *,
                 unknowns.append({"event": event.seq, "reason": "edit_fragment_needs_full_snapshots"})
             elif not isinstance(d.get("before"), str) or not isinstance(d.get("after"), str):
                 unknowns.append({"event": event.seq, "reason": "edit_content_missing"})
+            elif "command_baseline" in d and not isinstance(d["command_baseline"], str):
+                unknowns.append({"event": event.seq, "reason": "edit_command_baseline_missing"})
             else:
                 if spec["helper"] not in d["after"]:
                     continue  # no added call; unsupported incidental files do not censor
                 language = _language(str(d.get("path", "")))
-                before = _call_count(d["before"], pattern, language=language)
+                # Syscall replay can truncate and restore an existing call in
+                # chunks. Compare every intermediate write to the full file at
+                # command entry, while retaining transient increases/reverts.
+                before = _call_count(d.get("command_baseline", d["before"]), pattern, language=language)
                 after = _call_count(d["after"], pattern, language=language)
                 code = _code_text(d["after"], language)
                 own_definition_seen = own_definition_seen or bool(code and _declaration(code, spec["helper"]))

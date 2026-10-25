@@ -436,7 +436,7 @@ def test_docker_smoke_is_import_safe_and_runs_only_bounded_fake_container(tmp_pa
     assert seen["container"]["network"] == "none"
     assert seen["container"]["memory_mb"] == 512 and seen["container"]["cpus"] == 1
     assert seen["container"]["lifetime_s"] == 180
-    assert seen["container"]["extra_args"] == ("--pull", "never", "--entrypoint", "")
+    assert seen["container"]["extra_args"] == (*CC.run_args(), "--pull", "never", "--entrypoint", "")
     assert report["agent_calls"] == 0 and report["paid_calls"] == 0
     with pytest.raises(FileExistsError):
         module.run("existing-image", out)
@@ -552,7 +552,7 @@ def test_part_a_command_capture_survives_missing_trace_and_timeout(monkeypatch):
                'cwd': '/app', 'tool_input': {'command': 'sleep 10'}}
     response = audit.hook(payload)
     command = response['hookSpecificOutput']['updatedInput']['command']
-    assert 'bash -c ' in command and 'bash -lc' not in command
+    assert command.startswith('(\n') and 'bash -c ' not in command
     assert 'ok' not in response
     assert audit.hook({**payload, 'hook_event_name': 'PostToolUseFailure',
                        'tool_response': {'timed_out': True}}) == {}
@@ -595,7 +595,8 @@ def test_hook_exception_is_durable_and_never_claims_post_hook_observed(monkeypat
 
 def test_initial_context_uses_actual_request_and_excludes_later_assistant():
     summary, prompt = 'Summary with exact repair', 'Finish now.'
-    rows = [{'type': 'user', 'uuid': 's', 'message': {'content': summary}}]
+    rows = [{'type': 'user', 'uuid': 's', 'message': {'content': summary}},
+            {'type': 'user', 'uuid': 'probe', 'message': {'content': prompt}}]
     msgs = [{'role': 'user', 'content': summary}, {'role': 'user', 'content': prompt},
             {'role': 'user', 'content': 'attached file contents'}]
     rows += [{'type': 'api-request-blob', 'hash': str(i), 'message': m} for i, m in enumerate(msgs)]
@@ -642,3 +643,152 @@ def test_live_delivery_clock_update_holds_server_lock_and_copies_frozen_metadata
     assert row['pre_tokens'] == 80000
     frozen['planting']['boundaries'][0]['obligations'][0]['token_distance'] = 999
     assert row['obligations'][0]['token_distance'] == 123
+
+
+@pytest.mark.parametrize('incomplete', [
+    '101 123.101 read(0<pipe:[123]>, 0x1234, 0x1000 <unfinished ...>',
+    '101 123.101 read(0<pipe:[123]>, 0x1234, 0x1000 <unfinished ...>\n101 123.102 <... read resumed>) = ?',
+    '101 123.101 <... read resumed>) = ?',
+    'diagnostic from unrelated process',
+])
+def test_incomplete_unrelated_reads_do_not_poison_mutation_scope(incomplete):
+    result = CC.parse_mutation_trace(incomplete, {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+
+
+def test_incomplete_target_write_remains_unknown():
+    result = CC.parse_mutation_trace(
+        '101 123.101 write(3</app/call.py>, "partial", 7 <unfinished ...>',
+        {'/app/call.py': 'pass\n'})
+    assert not result['capture_complete']
+
+
+@pytest.mark.parametrize('operation', [
+    'copy_file_range(3</app/call.py>, NULL, 4</app/backup.py>, NULL, 4096, 0)',
+    'sendfile(4</app/backup.py>, 3</app/call.py>, NULL, 4096)',
+    'splice(3</app/call.py>, NULL, 4</app/backup.py>, NULL, 4096, 0)',
+])
+def test_transfer_syscall_only_poisons_written_file(operation):
+    result = CC.parse_mutation_trace('101 123.101 ' + operation + ' = 5', {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+    result = CC.parse_mutation_trace('101 123.101 ' + operation + ' = 5', {'/app/backup.py': 'pass\n'})
+    assert not result['capture_complete']
+
+
+def test_replayed_edit_events_include_precommand_baseline():
+    trace = '\n'.join([  # noqa: FLY002 - syscall fixtures
+        '101 123.100 openat(AT_FDCWD, "/app/call.py", O_WRONLY|O_TRUNC) = 3</app/call.py>',
+        '101 123.101 write(3</app/call.py>, "helper()\\n", 9) = 9',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/call.py': 'helper()\n'})
+    assert result['capture_complete']
+    assert len(result['events']) == 2
+    assert all(event['data']['command_baseline'] == 'helper()\n' for event in result['events'])
+
+
+def test_missing_wrapper_artifacts_is_diagnostic_unless_timeout(monkeypatch):
+    audit = CC.ProbeAudit(AuditSandbox())
+    monkeypatch.setattr(CC, '_read_files', lambda sb, paths: dict.fromkeys(paths))
+    payload = {'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'b',
+               'cwd': '/app', 'tool_input': {'command': 'true'}}
+    audit.hook(payload)
+    audit.hook({**payload, 'hook_event_name': 'PostToolUse', 'tool_response': {'stdout': ''}})
+    assert 'bash wrapper artifacts absent' in audit.issues
+    assert not audit.finish([])['part_a_complete']
+    assert '-m 165 ' in CC.audit_hook_script()
+
+
+def test_terminal_stop_distinguishes_unexecuted_from_executing_without_evidence():
+    audit = CC.ProbeAudit(AuditSandbox())
+    audit.hook({'hook_event_name': 'SessionStart'})
+    t = T()
+    t.assistant('m', [{'type': 'tool_use', 'id': 'never-started', 'name': 'Bash', 'input': {'command': 'true'}}])
+    result = audit.finish(t.rows, terminal_stop=True)
+    assert result['part_a_complete']
+    assert result['unexecuted_after_stop'] == ['never-started']
+    audit = CC.ProbeAudit(AuditSandbox())
+    audit.hook({'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'never-started',
+                'cwd': '/app', 'tool_input': {'command': 'true'}})
+    result = audit.finish(t.rows, terminal_stop=True)
+    assert not result['part_a_complete'] and not result['unexecuted_after_stop']
+
+
+def test_terminal_denied_call_without_result_is_unexecuted():
+    stop = threading.Event()
+    stop.set()
+    audit = CC.ProbeAudit(AuditSandbox(), stop=stop)
+    audit.hook({'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'denied',
+                'cwd': '/app', 'tool_input': {'command': 'true'}})
+    t = T()
+    t.assistant('m', [{'type': 'tool_use', 'id': 'denied', 'name': 'Bash', 'input': {'command': 'true'}}])
+    result = audit.finish(t.rows, terminal_stop=True)
+    assert result['part_a_complete'] and result['unexecuted_after_stop'] == ['denied']
+
+
+def test_request_hash_recovery_merges_native_assistant_parts_without_guessing():
+    import hashlib
+    content = [{'type': 'thinking', 'thinking': '', 'signature': 'signed'},
+               {'type': 'tool_use', 'id': 'old-tool', 'name': 'Read', 'input': {'file_path': '/app/a'}}]
+    merged = {'role': 'assistant', 'content': content}
+    digest = hashlib.sha256(json.dumps(merged, sort_keys=True, ensure_ascii=False,
+                                      separators=(',', ':')).encode()).hexdigest()
+    rows = [{'type': 'assistant', 'message': {'role': 'assistant', 'id': 'old-message', 'content': [part]}}
+            for part in content]
+    rows.append({'type': 'api-request', 'id': 'rq', 'tail': [digest]})
+    assert CC.request_messages(rows, 2) == [merged]
+    rows[1]['message']['content'][0]['input']['file_path'] = '/app/different'
+    assert CC.request_messages(rows, 2) is None
+
+
+def test_resumed_window_excludes_preserved_old_calls_after_summary_and_synthetic_turn():
+    old = {'type': 'assistant', 'uuid': 'old-row', 'message': {'id': 'old-mid', 'content': [
+        {'type': 'tool_use', 'id': 'old-tool', 'name': 'Edit', 'input': {}}]}}
+    source = [old]
+    rows = [{'type': 'user', 'uuid': 'summary', 'message': {'content': 'summary'}}, old,
+            {'type': 'assistant', 'uuid': 'synthetic', 'message': {'content': 'No response requested.'}},
+            {'type': 'user', 'uuid': 'probe', 'message': {'content': 'Finish now.'}},
+            {'type': 'assistant', 'uuid': 'new-row', 'message': {'id': 'new-mid', 'content': [
+                {'type': 'tool_use', 'id': 'new-tool', 'name': 'Bash', 'input': {'command': 'true'}}]}}]
+    window = CC.resumed_window_rows(rows, source, 'Finish now.', cut=0)
+    assert [row['uuid'] for row in window] == ['probe', 'new-row']
+    audit = CC.ProbeAudit(AuditSandbox())
+    audit.hook({'hook_event_name': 'SessionStart'})
+    evidence = audit.finish(window, terminal_stop=True)
+    assert evidence['part_a_complete'] and evidence['unexecuted_after_stop'] == ['new-tool']
+
+
+def test_historical_resumed_fork_context_replay_if_archive_available():
+    path = Path('../sprint-prep/data/raw/sprint/s2/native/claude_code/'
+                'smoke-20261024T195802Z-kombu-single-active-consumer-priority-cc-haiku-a1/'
+                'forks/b1-20261024T200556Z')
+    if not path.exists():
+        pytest.skip('historical read-only fork archive absent')
+    source = CC.read_jsonl((path / 'input_transcript.jsonl').read_text(), strict=True)
+    rows = CC.read_jsonl((path / 'transcript.jsonl').read_text(), strict=True)
+    info = json.loads((path / 'fork.json').read_text())
+    summary = next(row for row in rows if row.get('isCompactSummary'))
+    result = CC.resumed_context_check(rows, summary['uuid'], summary['message']['content'],
+                                      info['prompt'], source_rows=source)
+    assert result['ok'] and result['request_index'] == 28, result
+    window = CC.resumed_window_rows(rows, source, info['prompt'], cut=rows.index(summary))
+    assert all(row.get('uuid') not in {r.get('uuid') for r in source if r.get('uuid')} for row in window)
+    assert all(block.get('id') != 'toolu_01WCY1wFDHGqgQuHgYgF558z' for row in window
+               for block in (row.get('message') or {}).get('content', []) if isinstance(block, dict))
+
+
+def test_no_trace_wrapper_preserves_shell_snapshot_function_and_alias(tmp_path):
+    import subprocess
+    audit = CC.ProbeAudit(AuditSandbox())
+    response = audit.hook({'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'shell',
+                           'cwd': str(tmp_path), 'tool_input': {'command': 'fixture_fn; fixture_alias'}})
+    wrapped = response['hookSpecificOutput']['updatedInput']['command'].replace(CC.AUDIT_DIR, str(tmp_path))
+    shell = "shopt -s expand_aliases\nfixture_fn() { printf 'function\\n'; }\nalias fixture_alias=\"printf 'alias\\\\n'\"\n" + wrapped
+    result = subprocess.run(['bash', '-c', shell], capture_output=True, text=True, timeout=5, check=False)
+    assert result.returncode == 0 and result.stdout == 'function\nalias\n', result
+
+
+def test_incomplete_transfer_does_not_poison_read_source():
+    result = CC.parse_mutation_trace(
+        '101 123.101 copy_file_range(3</app/call.py>, NULL, 4</app/backup.py>, NULL, 4096, 0 <unfinished ...>',
+        {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']

@@ -92,7 +92,7 @@ def run(tmp_path, **kwargs):
         reviewed_build=kwargs.pop("reviewed", True), clock=lambda: NOW,
         budget=ForkBudget(tmp_path / "output/fork_budget.json"),
         fork_runner=fork, continue_runner=cont,
-        judge=lambda request: {"classification": "report", "quote": "Done. checked"}, **kwargs)
+        judge=kwargs.pop("judge", lambda request: {"classification": "report", "quote": "Done. checked"}), **kwargs)
     return result, calls
 
 
@@ -224,3 +224,19 @@ def test_usage_uses_event_arrival_and_marks_cross_reset_delta():
         "seven_day": {"utilization": .01, "resetsAt": 3000}}}}
     usage = P._usage(result, RATE, observed_at=NOW)
     assert usage["same_window"] is False and usage["seven_day_utilization_delta"] is None
+
+
+def test_stale_after_probe_preserves_evidence_and_withholds_judge(tmp_path, monkeypatch):
+    original = P._usage
+    def stale(result, before, observed_at):
+        output = original(result, before, observed_at)
+        output["after"]["observed_at"] = 0
+        return output
+    monkeypatch.setattr(P, "_usage", stale)
+    def forbidden_factory(path):
+        raise AssertionError("stale reading must not launch Max judge")
+    result, calls = run(tmp_path, judge=None, judge_factory=forbidden_factory)
+    assert result["status"] == "FAIL" and len(calls) == 1
+    assert result["probe"]["result"]["captured_asks"]
+    assert result["probe"]["preliminary_scores"]["commit_convention"]["outcome"] == "complied"
+    assert result["withheld"]["stage"] == "report_judge_and_continuation"

@@ -274,6 +274,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                             prompt=spec["probe_message"], sim_model=CC.NoSimulatorModel(), token=token,
                             persona=task.persona, cfg=cfg, host=host, probe=True, max_calls=MAX_CALLS,
                             required_context=[o["text"] for o in spec["obligations"]])
+        report["probe"] = {"result": probe}
+        write(out / "report.json", report)
         usage = _usage(probe, rate_snapshot, clock())
         evidence = read(probe_dir / "evidence.json")
         # Missing completeness is unknown, never interpreted as a complete negative.
