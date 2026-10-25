@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from compaction.s2.native import codex as X
 
 TID = "01a16f2e-62ae-7232-b3b6-0fbfc1c60701"
@@ -148,6 +150,26 @@ def test_extract_recitation():
     assert X.extract_recitation("blah\n```text\nline 1\nline 2\n```\n") == "line 1\nline 2"
     assert X.extract_recitation("NO SUMMARY") is None
     assert X.extract_recitation("plain") == "plain"
+
+
+def test_extract_recitation_keeps_code_blocks_inside_the_summary():
+    summary = ("We are working in `/app`.\n- reset clears state:\n    ```js\n    reset()\n    ```\n"
+               "- longer middle section that is the longest piece between fences, by far, yes\n"
+               "```js\nx()\n```\nNext: call ask_user:")
+    got = X.extract_recitation(f"Here it is.\n```text\n{summary}\n```\nDone.")
+    assert got == summary  # the whole outer block, not the longest fragment
+
+
+def test_extract_recitation_unclosed_outer_block_runs_to_the_end():
+    # the reply ends inside the outer block, after one balanced inner pair (vitest 150k b2)
+    reply = "```text\nWe are implementing the plan.\n     ```\n     code\n     ```\n10. last item"
+    assert X.extract_recitation(reply) == (
+        "We are implementing the plan.\n     ```\n     code\n     ```\n10. last item")
+
+
+def test_extract_recitation_unclosed_without_inner_blocks():
+    assert X.extract_recitation("```text\nline 1\nline 2") == "line 1\nline 2"
+    assert X.extract_recitation("```text\nNO SUMMARY") is None
 
 
 def test_invented_tokens_flags_only_unseen_identifiers():
@@ -935,3 +957,122 @@ def test_rerecite_prefers_the_backup_replies_and_refuses_late_own_rows(monkeypat
     (b / "native" / "orig" / "sim_replies.json").write_text(json.dumps(dirty))
     with pytest.raises(RuntimeError):  # its own rows run past sim_calls
         X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+
+
+def _reextract_fixture(monkeypatch, tmp_path, raws):
+    rd, b, rec, _ = _rerecite_fixture(monkeypatch, tmp_path)
+    recs = [X.Recitation(1, f"t{i}", X.extract_recitation(r) if r else None, r, 0, 0.1, 0, None)
+            for i, r in enumerate(raws)]
+    for r in recs:  # what the old longest-fence extraction stored
+        r.text = max((r.raw or "").split("```"), key=len).strip() or None
+    (b / "native" / "recitations.json").write_text(json.dumps([r.to_dict() for r in recs]))
+
+    def no_codex(*a, **k):
+        raise AssertionError("re-extraction must not call Codex")
+
+    monkeypatch.setattr(X.Reciter, "run_until", no_codex)
+    monkeypatch.setattr(X, "codex_version", no_codex)
+    return rd, b, rec
+
+
+def test_reextract_rebuilds_the_summary_from_the_raw_replies(monkeypatch, tmp_path):
+    full = ("We are working in /app.\n    ```js\n    reset()\n    ```\n"
+            "- the longest fragment between the fences, much longer than the rest of it\nNext:")
+    raw = f"```text\n{full}\n```"
+    rd, b, rec = _reextract_fixture(monkeypatch, tmp_path, [raw, raw, raw])
+    rows = X.rerecite_run(rd, log=lambda s: None, reextract=True)
+    assert rows[0]["complete"] and rows[0]["summary_changed"]
+    new = json.loads((b / "boundary" / "record.json").read_text())
+    assert new["summary"] == full and new["id"] == rec["id"]
+    bj = json.loads((b / "boundary" / "boundary.json").read_text())
+    assert bj["recite_agreement"] == [1.0, 1.0, 1.0]
+    assert "re-extracted" in bj["rerecited"]["why"]
+    assert (b / "native" / "orig" / "recitations.json").exists()  # the originals are kept
+    saved = json.loads((b / "native" / "recitations.json").read_text())
+    assert all(r["text"] == full and r["raw"] == raw for r in saved)
+
+
+def test_reextract_refuses_a_clean_recitation_without_raw(monkeypatch, tmp_path):
+    rd, b, _ = _reextract_fixture(monkeypatch, tmp_path, ["```text\nA\n```", ""])
+    before = (b / "boundary" / "record.json").read_text()
+    with pytest.raises(RuntimeError, match="no saved raw"):
+        X.rerecite_run(rd, log=lambda s: None, reextract=True)
+    assert (b / "boundary" / "record.json").read_text() == before  # nothing published
+
+
+@pytest.mark.parametrize("reply", [
+    "```text\nsummary\n```\nAlso:\n```js\nx()\n```",  # a separate block after the recitation
+    "```text\nsummary\n```js\ninner\n```py\nx\n```\n```",  # an opener inside an open inner block
+    "```js\nx()\n```\n```text\nsummary\n```",  # the first block is not the recitation
+    "```text extra\nsummary\n```",  # an info string that is not an outer one
+    "```text\nsummary\n    ```js\n    ends inside an inner block",  # unclosed, inside inner
+    "```text\na\n```\nb\n```",  # an even count of bare fences ending on one: a stray closer
+])
+def test_extract_recitation_fails_closed_on_ambiguous_fences(reply):
+    assert X.extract_recitation(reply) is None
+
+
+def test_extract_recitation_longer_outer_fence_keeps_bare_inner_fences():
+    reply = "````text\nsummary\n```\ncode\n```\nend\n````\n"
+    assert X.extract_recitation(reply) == "summary\n```\ncode\n```\nend"
+
+
+def test_extract_recitation_prose_around_the_block():
+    reply = "Here is the summary:\n```text\nline 1\n  ```py\n  x = 1\n  ```\nline 2\n```\nThanks."
+    assert X.extract_recitation(reply) == "line 1\n  ```py\n  x = 1\n  ```\nline 2"
+
+
+def test_reextract_refuses_when_nothing_reextracts(monkeypatch, tmp_path):
+    bad = "```js\nx()\n```\n```text\nsummary\n```"
+    rd, b, _ = _reextract_fixture(monkeypatch, tmp_path, [bad, bad])
+    before = (b / "boundary" / "record.json").read_text()
+    with pytest.raises(RuntimeError, match="re-extracts cleanly"):
+        X.rerecite_run(rd, log=lambda s: None, reextract=True)
+    assert (b / "boundary" / "record.json").read_text() == before
+
+
+def test_reextract_records_the_operation_and_the_previous_pass(monkeypatch, tmp_path):
+    raw = "```text\nA summary.\n```"
+    rd, _, _ = _reextract_fixture(monkeypatch, tmp_path, [raw, raw, raw])
+    (rd / "rerecite.json").write_text(json.dumps({"status": "complete", "cli": "old"}))
+    X.rerecite_run(rd, log=lambda s: None, reextract=True)
+    meta = json.loads((rd / "rerecite.json").read_text())
+    assert meta["operation"] == "reextract" and "no CLI ran" in meta["cli"]
+    assert meta["previous_completed"] == {"status": "complete", "cli": "old"}
+
+
+def test_extract_recitation_bare_inner_pairs_at_the_outer_level():
+    # helm/vitest/fastapi 80k: the summary's own code blocks use bare col-0 fences
+    reply = "```text\nsummary:\n```\nfunc f()\n```\nnext item\n```\n"
+    assert X.extract_recitation(reply) == "summary:\n```\nfunc f()\n```\nnext item"
+    # unclosed with bare pairs: the pair could as well be a closer plus a stray fence
+    unclosed = "```text\nsummary:\n```\nfunc f()\n```\nnext item, reply ends here"
+    assert X.extract_recitation(unclosed) is None
+
+
+def test_extract_recitation_round2_counterexamples():
+    # a separate bare block after the summary reads like the summary's own code: heuristic
+    absorbed = "```text\nsummary\n```\nAlso:\n```\nunrelated code\n```"
+    assert X.fence_layout(absorbed) == "bare-pairs"
+    # an even count with trailing prose is ambiguous, not "unclosed to the end"
+    assert X.extract_recitation("```text\nsummary\n```\nAlso:\n```\nThanks.") is None
+    # a longer outer fence closes only on its own length; the inner block is content
+    assert X.extract_recitation("````text\nsummary\n```js\ncode\n````\nThanks.") == (
+        "summary\n```js\ncode")
+    assert X.fence_layout("````text\nsummary\n```js\ncode\n````\nThanks.") == "plain"
+    # bare pairs followed by prose after the closer: ambiguous
+    assert X.extract_recitation("```text\na\n```\nb\n```\nc\n```\nThanks.") is None
+
+
+def test_fence_layout_labels():
+    assert X.fence_layout("plain reply") == "unfenced"
+    assert X.fence_layout("```text\nA\n```\nDone.") == "plain"
+    assert X.fence_layout("```js\nx\n```\n```text\nA\n```") == "ambiguous"
+
+
+def test_fence_layout_marks_unclosed_blocks_as_heuristic():
+    # an inner opener that takes the real closer reads as an unclosed outer block (round 3)
+    swallowed = "```text\nsummary\n```js\ncode\n```\nThanks."
+    assert X.fence_layout(swallowed) == "unclosed"
+    assert X.fence_layout("```text\nline 1\nline 2") == "unclosed"
+    assert X.fence_layout("````text\nsummary\n```js\ncode") == "unclosed"

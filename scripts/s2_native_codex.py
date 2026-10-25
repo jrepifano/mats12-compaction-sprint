@@ -932,7 +932,7 @@ def cmd_rerecite(a) -> int:
     (originals under b<k>/native/orig/). Rerun the grading afterwards."""
     rows = []
     for rd in a.run_dirs:
-        rows += X.rerecite_run(Path(rd), repeats=a.repeats)
+        rows += X.rerecite_run(Path(rd), repeats=a.repeats, reextract=a.reextract)
     bad = [r for r in rows if not r["complete"]]
     for r in rows:
         print(json.dumps(r))
@@ -1018,6 +1018,8 @@ def main(argv: list[str] | None = None) -> int:
     rr = sub.add_parser("rerecite")
     rr.add_argument("run_dirs", nargs="+")
     rr.add_argument("--repeats", type=int, default=3)
+    rr.add_argument("--reextract", action="store_true",
+                    help="no Codex call: re-extract each saved recitation from its raw reply")
     rr.set_defaults(fn=cmd_rerecite)
     ls = sub.add_parser("laptop-smoke")
     ls.add_argument("--task", default=SMOKE_TASK)

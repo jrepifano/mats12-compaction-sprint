@@ -558,14 +558,94 @@ RECITE_PROMPT = (
     "correct or add anything, and do not include the user messages that were kept verbatim "
     "next to it. Do not run any tools. If there is no such summary, reply NO SUMMARY.")
 RECITE_OVERRIDES = {"model_auto_compact_token_limit": 10_000_000}
-_FENCE = re.compile(r"```(?:text|markdown|md)?\n(.*?)\n?```", re.DOTALL)
+_FENCE_LINE = re.compile(r"^( *)(`{3,})(.*)$")
+_OUTER_INFO = {"", "text", "markdown", "md"}
+
+
+def _outer_block(lines: list[str]) -> tuple[list[str] | None, str]:
+    """The lines inside the reply's outer fence and how they were found: "plain" (a closer
+    found), "bare-pairs" or "unclosed" (the two heuristics below); (None, "ambiguous") when
+    the layout can't be read. "unclosed" runs to the end of the reply: right when the reply
+    stopped inside the block, wrong when an inner block took the real closer and prose
+    follows it (no syntax tells these apart). The opener is the first fence line (info string empty, text, markdown or md).
+
+    An opener of 4+ backticks closes only on a bare fence at least as long at its indent, so
+    every shorter fence is content: one such closer, with no fence after it.
+
+    A 3-backtick opener: a fence with an info string or indented deeper opens an inner block,
+    closed by the next bare fence at least as long as its opener. Bare fences left at the
+    opener's level ("candidates") are either the summary's own code blocks (real summaries
+    put them at column 0) or the outer closer, which no syntax tells apart, so their count
+    decides: one, it closes the outer block (prose may follow, fences may not); odd and more,
+    the last one closes it and must be the reply's last non-blank line, and the rest pair up
+    ("bare-pairs": a separate block after the summary would read the same); zero, the block
+    is unclosed and runs to the end; even and nonzero, ambiguous. Ambiguous too: a first fence of another
+    language, an opener inside an open inner block, a reply ending inside an inner block."""
+    fences = [(i, _FENCE_LINE.match(line)) for i, line in enumerate(lines)]
+    fences = [(i, m) for i, m in fences if m]
+    i0, m0 = fences[0]
+    indent, ticks = len(m0.group(1)), len(m0.group(2))
+    if m0.group(3).strip().lower() not in _OUTER_INFO:
+        return None, "ambiguous"  # the first block is not the recitation
+    last = max(i for i, line in enumerate(lines) if line.strip())
+    if ticks > 3:
+        closers = [i for i, m in fences[1:] if not m.group(3).strip()
+                   and len(m.group(2)) >= ticks and len(m.group(1)) <= indent]
+        if not closers:
+            return lines[i0 + 1:], "unclosed"
+        if len(closers) > 1 or any(i > closers[0] for i, _ in fences):
+            return None, "ambiguous"
+        return lines[i0 + 1:closers[0]], "plain"
+    inner, candidates = 0, []  # inner: the open inner block's backtick count (0: none)
+    for i, m in fences[1:]:
+        info, n, ind = m.group(3).strip(), len(m.group(2)), len(m.group(1))
+        if inner:
+            if info:
+                return None, "ambiguous"  # an opener inside an open inner block
+            if n >= inner:
+                inner = 0
+        elif info or ind > indent:
+            inner = n
+        else:
+            candidates.append(i)
+    if inner:
+        return None, "ambiguous"  # the reply ends inside an inner block
+    if len(candidates) == 1:  # the closer: prose may follow it, fences may not
+        if any(i > candidates[0] for i, _ in fences):
+            return None, "ambiguous"
+        return lines[i0 + 1:candidates[0]], "plain"
+    if len(candidates) % 2:
+        if candidates[-1] != last:
+            return None, "ambiguous"  # text after a closer that took the pairing heuristic
+        return lines[i0 + 1:candidates[-1]], "bare-pairs"
+    if candidates:
+        return None, "ambiguous"
+    return lines[i0 + 1:], "unclosed"
+
+
+def fence_layout(text: str) -> str:
+    """How `extract_recitation` read a reply: "unfenced", "plain", "bare-pairs" or
+    "unclosed" (the heuristics in `_outer_block`), or "ambiguous"."""
+    lines = (text or "").splitlines()
+    if not any(_FENCE_LINE.match(line) for line in lines):
+        return "unfenced"
+    return _outer_block(lines)[1]
 
 
 def extract_recitation(text: str) -> str | None:
-    """The fenced recitation (the longest fence), else the whole reply; None for an empty
-    reply or the NO SUMMARY sentinel, fenced or not."""
-    m = _FENCE.findall(text or "")
-    t = (max(m, key=len) if m else (text or "")).strip()
+    """The recitation inside the reply's outer fence (`_outer_block`), else the whole reply
+    when it has no fence; None for an empty or ambiguous reply or the NO SUMMARY sentinel,
+    fenced or not. Taking the longest piece between fences instead cut summaries that hold
+    code blocks to one fragment (25 Oct)."""
+    lines = (text or "").splitlines()
+    if any(_FENCE_LINE.match(line) for line in lines):
+        block, _ = _outer_block(lines)
+        if block is None:
+            return None
+        t = "\n".join(block)
+    else:
+        t = text or ""
+    t = t.strip()
     if not t or t.upper().startswith("NO SUMMARY"):
         return None
     return t
@@ -1513,7 +1593,8 @@ def capture(ns, payload: dict, *, rd: Path, rj: dict, keep, cfg: BaseConfig, ste
              "hook_phases": phases,
              "recite_agreement": agreement, "recite_invented_tokens": invented[:50],
              "recite_plaintext_bound": chosen.plaintext_bound,
-             "recite_tool_calls": [r.tool_calls for r in recs], "secret_scan": "clean"}
+             "recite_tool_calls": [r.tool_calls for r in recs],
+             "recite_fence_layouts": [fence_layout(r.raw) for r in recs], "secret_scan": "clean"}
     bdir = N.write_boundary(rd, k, nb, run_json=rj, snap=snap, sim_export=server.export(),
                             sim_rows=list(server.rows), step=step or "",
                             step_instruction=cfg.task.steps.get(step or "", ""),
@@ -1925,7 +2006,7 @@ def _backup(b: Path) -> None:
 
 
 def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = None,
-                 log: Callable[[str], None] = print) -> list[dict]:
+                 log: Callable[[str], None] = print, reextract: bool = False) -> list[dict]:
     """Top every boundary of a finished run up to `repeats` valid recitations from its saved
     rollout (b<k>/native/rollout.jsonl: the session up to that `compacted` line; the saved
     encrypted compaction state is resumed, the compactor is not rerun), re-pick the
@@ -1939,11 +2020,16 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
     last. An interrupted publication is rolled back from the backup on the next call, and
     <run>/rerecite.json says whether the last pass completed. Refuses unless the `codex` on
     PATH is CLI_VERSION and matches the boundaries' cli_version. Returns one row per
-    boundary (`complete`: reached `repeats` valid)."""
+    boundary (`complete`: reached `repeats` valid).
+
+    `reextract`: no Codex call; each saved recitation's text is extracted again from its own
+    saved `raw` reply with the current `extract_recitation` (the 25 Oct fence fix), and the
+    majority and boundary files are re-derived as above. Refuses if a recitation that ran
+    cleanly (rc 0, no tools) has no saved raw."""
     from compaction.s2 import compact as K
     from compaction.s2 import interact_run as IR
     rd = Path(run_dir)
-    ver = codex_version()
+    ver = CLI_VERSION if reextract else codex_version()
     if ver != CLI_VERSION:
         raise RuntimeError(f"codex on PATH is {ver!r}, not {CLI_VERSION}")
     found = []
@@ -1965,8 +2051,13 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
         if pending:
             _rollback(b)  # an interrupted publication: back to the originals
         bdirs.append((k, b))
-    _write_atomic(rd / "rerecite.json", {"status": "in_progress", "utc": utc()})
-    reciter = Reciter(rd, auth_path or Path.home() / ".codex" / "auth.json")
+    previous = None  # the last completed pass, kept as provenance
+    with contextlib.suppress(OSError, ValueError):
+        old = json.loads((rd / "rerecite.json").read_text())
+        previous = old.get("previous_completed") if old.get("status") == "in_progress" else old
+    _write_atomic(rd / "rerecite.json", {"status": "in_progress", "utc": utc(),
+                                         "previous_completed": previous})
+    reciter = None if reextract else Reciter(rd, auth_path or Path.home() / ".codex" / "auth.json")
     staged, rows, summaries = [], [], {}
     try:
         for k, b in bdirs:  # phase 1: recite and derive, no writes to the boundary
@@ -1979,12 +2070,21 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
                                                          "plaintext_bound")})
                     for r in json.loads((b / "native" / "recitations.json").read_text())]
             before = sum(r.valid for r in have)
-            recs = reciter.run_until(lines, want, repeats, label=f"_rerecite_k{k}",
-                                     have=have, retries=3)
+            if reextract:
+                for r in have:
+                    if r.rc == 0 and not r.tool_calls and not r.raw:
+                        raise RuntimeError(f"{b}: recitation {r.thread_id} has no saved raw")
+                    r.text = extract_recitation(r.raw or "")
+                recs = have
+            else:
+                recs = reciter.run_until(lines, want, repeats, label=f"_rerecite_k{k}",
+                                         have=have, retries=3)
             good = [r for r in recs if r.valid]
             row = {"boundary": str(b), "valid_before": before, "valid_after": len(good),
                    "complete": len(good) >= repeats}
             if not good:
+                if reextract:  # never leave the old fragment in place silently
+                    raise RuntimeError(f"{b}: no recitation re-extracts cleanly")
                 row["skipped"] = "no valid recitation"
                 rows.append(row)
                 log(json.dumps(row))
@@ -2022,7 +2122,7 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
             keys = ("summary_chars", "summary_index", "kept_indices", "post_tokens",
                     "post_tokens_est", "recite_tries", "recite_valid", "recite_used",
                     "recite_mean_agreement", "recite_agreement", "recite_invented_tokens",
-                    "recite_plaintext_bound", "recite_tool_calls")
+                    "recite_plaintext_bound", "recite_tool_calls", "recite_fence_layouts")
             first = b / "native" / "orig" / "boundary.json"  # the capture's own values
             src_bj = json.loads(first.read_text()) if first.exists() else bj
             original = (bj.get("rerecited") or {}).get("original") \
@@ -2036,9 +2136,12 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
                           texts[used], history_text(lines, at - 1))[:50],
                       recite_plaintext_bound=chosen.plaintext_bound,
                       recite_tool_calls=[r.tool_calls for r in recs],
+                      recite_fence_layouts=[fence_layout(r.raw) for r in recs],
                       rerecited={"utc": utc(), "valid_before": before,
                                  "valid_after": len(good), "cli": f"codex-cli {ver}",
-                                 "why": "parallel recitations shared one CODEX_HOME",
+                                 "why": ("re-extracted from the saved raw replies (fence "
+                                         "fix, 25 Oct)") if reextract
+                                 else "parallel recitations shared one CODEX_HOME",
                                  "original": original})
             files = {"pre_messages": nb.pre_messages, "post_messages": nb.post_messages,
                      "record": record, "compaction": comp,
@@ -2058,8 +2161,13 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
             _write_atomic(bp, bj)  # complete again
             (b / "boundary" / "boundary.json.rerecite-pending").unlink()
     finally:
-        reciter.close()
+        if reciter is not None:
+            reciter.close()
     _write_atomic(rd / "rerecite.json", {
         "status": "complete" if all(r["complete"] for r in rows) else "incomplete",
-        "utc": utc(), "repeats": repeats, "cli": f"codex-cli {ver}", "boundaries": rows})
+        "operation": "reextract" if reextract else "rerecite",
+        "utc": utc(), "repeats": repeats,
+        "cli": (f"codex-cli {ver} (the capture's; no CLI ran)" if reextract
+                else f"codex-cli {ver}"),
+        "boundaries": rows, "previous_completed": previous})
     return rows
