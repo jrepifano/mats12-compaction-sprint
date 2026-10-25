@@ -1,0 +1,215 @@
+<title>Compaction Chain Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column of numbered cards per section; each card is item, then evidence, then the answer row. */
+:root {
+  --bg: #f5f6f4; --panel: #ffffff; --ink: #1d2422; --muted: #5d6864; --rule: #d9dedb;
+  --accent: #0f6b5c; --accent-soft: #e2f0ec; --warn: #9a5b00; --quote: #fbf7e9;
+  --f-display: "IBM Plex Serif", Georgia, serif;
+  --f-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #131816; --panel: #1b211f; --ink: #e3e8e5; --muted: #9aa6a1; --rule: #2e3734;
+  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #131816; --panel: #1b211f; --ink: #e3e8e5; --muted: #9aa6a1; --rule: #2e3734;
+  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
+.wrap { max-width: 860px; margin: 0 auto; padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font: 600 1.7rem/1.2 var(--f-display); margin: 0 0 6px; text-wrap: balance; }
+h2 { font: 600 1.25rem/1.3 var(--f-display); margin: 40px 0 6px; text-wrap: balance; }
+.lede, .how { color: var(--muted); max-width: 65ch; margin: 0 0 10px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--rule); padding-block: 10px; display: flex; gap: 14px; flex-wrap: wrap;
+  align-items: center; font-variant-numeric: tabular-nums; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.pill { font: 500 12px/1 var(--f-mono); letter-spacing: .04em; padding: 6px 9px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent); }
+.pill.warn { background: transparent; color: var(--warn); border: 1px solid var(--warn); }
+.cards { display: flex; flex-direction: column; gap: 22px; margin-top: 14px; }
+.card { background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 18px; min-width: 0; }
+.card.done { border-color: var(--accent); }
+.head { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; margin-bottom: 8px; }
+.num { font: 500 13px var(--f-mono); color: var(--muted); }
+.tag { font: 500 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  border: 1px solid var(--rule); border-radius: 4px; padding: 4px 6px; }
+.item { font-weight: 600; margin: 4px 0; }
+blockquote { margin: 6px 0 12px; padding: 8px 12px; background: var(--quote); border-left: 3px solid var(--warn);
+  font: 13px/1.5 var(--f-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+details { margin: 8px 0; border-top: 1px solid var(--rule); padding-top: 8px; }
+summary { cursor: pointer; font-weight: 500; color: var(--accent); }
+summary:focus-visible, button:focus-visible, textarea:focus-visible, input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.msgs { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.msg, .sum { font: 12.5px/1.5 var(--f-mono); white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 10px; max-height: 420px; overflow: auto; }
+.q { font-weight: 600; margin: 14px 0 8px; }
+.choices { display: flex; gap: 8px; flex-wrap: wrap; }
+.choices label { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--rule); border-radius: 6px;
+  padding: 7px 12px; cursor: pointer; background: var(--panel); }
+.choices input { accent-color: var(--accent); }
+.choices label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+textarea { width: 100%; box-sizing: border-box; margin-top: 10px; min-height: 58px; font: 14px/1.4 var(--f-body);
+  color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; resize: vertical; }
+.save { font: 12px var(--f-mono); color: var(--muted); margin-top: 6px; min-height: 1em; }
+.fallback textarea { min-height: 140px; font: 12px/1.4 var(--f-mono); }
+button.more { color: var(--accent); background: transparent; border: 1px solid var(--rule); font-size: 12px; padding: 4px 8px; margin-top: 6px; }
+button { font: 500 14px var(--f-body); color: var(--panel); background: var(--accent); border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <h1>Compaction chain check</h1>
+  <p class="lede">Real SWE-chat sessions that compacted three or more times. Each card is one item from the session history: a rule, permission, decision, commitment or state of the task. Answer the question on each card and add a note whenever something is off or unclear. Answers save as you go.</p>
+  <div class="bar" id="bar"><span class="pill" id="prog">0 answered</span><span class="pill warn" id="store" hidden>Not saving: copy the summary at the bottom</span></div>
+
+  <h2>Section 1: what the agent sees after compaction k</h2>
+  <p class="how">The item, its quote and the messages around it come from the history before compaction 1. Below them is everything the agent had of that history after compaction k: summary k, and any messages kept beside it. Is the item missing or misstated there? Long messages open in full with "Show the whole message".</p>
+  <div class="cards" id="s-lost"></div>
+
+  <h2>Section 2: still current at compaction j?</h2>
+  <p class="how">The item comes from earlier in the session. The messages shown are from the stretch just before compaction j. Was the item superseded, carried out or no longer relevant by compaction j?</p>
+  <div class="cards" id="s-nc"></div>
+
+  <h2>Summary</h2>
+  <p class="how">If answers stop saving, copy this and paste it into the chat.</p>
+  <div class="fallback"><textarea id="fallback" readonly></textarea>
+  <p><button id="copy" type="button">Copy summary</button> <span class="save" id="copied"></span></p></div>
+</div>
+
+<script>
+const DATA = __DATA__;
+const CHOICES = {
+  lost: [["lost", "Lost (missing)"], ["misstated", "Misstated"], ["kept", "Kept"], ["cant_tell", "Can't tell"]],
+  nc: [["yes", "Yes, no longer current"], ["no", "No, still current"], ["cant_tell", "Can't tell"]],
+};
+const state = {};
+let db = null, ok = false;
+
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+function msgs(list, title, open) {
+  const d = el("details"); if (open) d.open = true;
+  d.append(el("summary", null, title));
+  const box = el("div", "msgs");
+  if (!list.length) box.append(el("div", "msg", "(none)"));
+  for (const m of list) box.append(msgEl(m));
+  d.append(box); return d;
+}
+
+function msgEl(m) {
+  // the whole message is on the page; long ones show a preview and the rest behind a toggle
+  const p = m.preview || 1800;
+  if (!m.text || m.text.length <= p + 200) return el("div", "msg", m.text || "");
+  const box = el("div", "msg");
+  const more = `Show the whole message (${(m.text.length - p).toLocaleString()} more characters)`;
+  const rest = el("span", null, m.text.slice(p)); rest.hidden = true;
+  const b = el("button", "more", more); b.type = "button";
+  b.addEventListener("click", () => { rest.hidden = !rest.hidden; b.textContent = rest.hidden ? more : "Show less"; });
+  box.append(el("span", null, m.text.slice(0, p)), rest, el("br"), b); return box;
+}
+
+function card(c, n, sec) {
+  const box = el("div", "card"); box.id = c.id;
+  const h = el("div", "head");
+  h.append(el("span", "num", `${sec === "lost" ? "1" : "2"}.${n}`), el("span", "tag", c.type || "item"),
+           el("span", "tag", (sec === "lost" ? "compaction " : "compaction ") + c.k));
+  box.append(h, el("div", "item", c.text || ""), el("blockquote", null, c.quote || ""));
+  box.append(msgs(c.context, sec === "lost" ? "History around the item (before compaction 1)" : `Messages before compaction ${c.k}`, sec !== "lost"));
+  if (sec === "lost") {
+    const d = el("details"); d.open = true;
+    d.append(el("summary", null, `Summary ${c.k} (what the agent got)`), el("div", "sum", c.summary || "(empty)"));
+    box.append(d, msgs(c.kept, `Messages kept beside summary ${c.k}`, false));
+  }
+  box.append(el("div", "q", sec === "lost"
+    ? `Is this item missing or misstated in what the agent sees after compaction ${c.k}?`
+    : `Was this item superseded or no longer relevant by compaction ${c.k}?`));
+  const ch = el("div", "choices");
+  for (const [v, label] of CHOICES[sec === "lost" ? "lost" : "nc"]) {
+    const l = el("label"); const i = el("input"); i.type = "radio"; i.name = "ch-" + c.id; i.id = `ch-${c.id}-${v}`; i.value = v;
+    i.addEventListener("change", () => save(c.id, sec, { choice: v }));
+    l.append(i, el("span", null, label)); ch.append(l);
+  }
+  const t = el("textarea"); t.id = "note-" + c.id; t.placeholder = "Note (optional): what's off, or why you're unsure";
+  t.addEventListener("input", () => noteInput(c.id, sec, t.value));
+  t.addEventListener("blur", () => flush(c.id));
+  box.append(ch, t, el("div", "save", "")); box.querySelector(".save").id = "sv-" + c.id;
+  return box;
+}
+
+const dirty = {}, timers = {};
+function noteInput(id, sec, value) {
+  // local state and the copyable summary update at once; only the store write waits
+  state[id] = { ...(state[id] || { card: id, section: sec }), note: value };
+  dirty[id] = true; refreshSummary();
+  document.getElementById("sv-" + id).textContent = "saving...";
+  clearTimeout(timers[id]); timers[id] = setTimeout(() => flush(id), 600);
+}
+function flush(id) {
+  if (!dirty[id]) return;
+  clearTimeout(timers[id]); delete timers[id];
+  save(id, state[id].section, {});
+}
+document.addEventListener("visibilitychange", () => { if (document.hidden) Object.keys(dirty).forEach(flush); });
+window.addEventListener("pagehide", () => Object.keys(dirty).forEach(flush));
+
+async function save(id, sec, patch) {
+  state[id] = { ...(state[id] || { card: id, section: sec }), ...patch };
+  render(); refreshSummary();
+  const sent = state[id].note;
+  const sv = document.getElementById("sv-" + id);
+  if (!db) { sv.textContent = "not saved (copy the summary)"; return; }
+  try {
+    await db.collection("labels").doc(id).set({ ...state[id], draw: DATA.draw, utc: new Date().toISOString() });
+    if (state[id].note === sent) delete dirty[id];
+    sv.textContent = dirty[id] ? "saving..." : "saved";
+  } catch (e) { sv.textContent = "not saved: " + (e && e.message || e); document.getElementById("store").hidden = false; }
+}
+
+function render() {
+  const all = [...DATA.sections.lost, ...DATA.sections.not_current];
+  const done = all.filter(c => state[c.id] && state[c.id].choice).length;
+  document.getElementById("prog").textContent = `${done} of ${all.length} answered`;
+  for (const c of all) {
+    const box = document.getElementById(c.id); if (!box) continue;
+    box.classList.toggle("done", !!(state[c.id] && state[c.id].choice));
+  }
+}
+
+function apply(id, body) {
+  // a stored answer never overwrites a note still being typed or saved
+  const keepNote = dirty[id] && state[id] ? state[id].note : undefined;
+  state[id] = { ...body, ...(keepNote !== undefined ? { note: keepNote } : {}) };
+  if (body.choice) { const i = document.getElementById(`ch-${id}-${body.choice}`); if (i) i.checked = true; }
+  const t = document.getElementById("note-" + id);
+  if (t && !dirty[id] && document.activeElement !== t && typeof body.note === "string") t.value = body.note;
+}
+
+function refreshSummary() {
+  const rows = Object.values(state).filter(s => s.choice || s.note).map(s => ({ card: s.card, choice: s.choice || null, note: s.note || "" }));
+  document.getElementById("fallback").value = JSON.stringify({ draw: DATA.draw, labels: rows });
+}
+
+function init() {
+  DATA.sections.lost.forEach((c, i) => document.getElementById("s-lost").append(card(c, i + 1, "lost")));
+  DATA.sections.not_current.forEach((c, i) => document.getElementById("s-nc").append(card(c, i + 1, "nc")));
+  render(); refreshSummary();
+  document.getElementById("copy").addEventListener("click", () => {
+    const t = document.getElementById("fallback");
+    navigator.clipboard.writeText(t.value).then(() => { document.getElementById("copied").textContent = "copied"; },
+      () => { t.select(); document.getElementById("copied").textContent = "selected: press copy"; });
+  });
+  (async () => {
+    try { db = window.claude ? await window.claude.use("db") : null; } catch (e) { db = null; }
+    if (!db) { document.getElementById("store").hidden = false; return; }
+    db.collection("labels").onSnapshot(snap => {
+      for (const d of snap.docs) { const b = d.data(); if (b && b.draw === DATA.draw) apply(d.id, b); }
+      render(); refreshSummary();
+    }, () => { document.getElementById("store").hidden = false; });
+  })();
+}
+init();
+</script>
