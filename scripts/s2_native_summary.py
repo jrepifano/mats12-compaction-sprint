@@ -38,8 +38,9 @@ CODE_CHECKS = {
     ("vitest-duration-sharding-agy-flash-a1", 1): "ledger 5/6 implemented at b1; b1-q32 not "
         "(recording on the success path only), maintainer re-raised it in r13",
     ("vitest-duration-sharding-agy-flash-a1", 2): "ledger 22/22 implemented at b2",
+    ("testem-bail-on-test-failure-agy-flash-a2", 1): "sample: b1-q27 implemented at b1",
     ("testem-bail-on-test-failure-agy-flash-a2", 2): "sample of 8 (3 inherited + 5 new, seed "
-        "20261025): 7 implemented; b1-q17 partly, maintainer re-raised it in r21",
+        "20261025; 7 checked at b2): 6 implemented; b1-q17 partly, maintainer re-raised it in r21",
 }
 
 
@@ -217,7 +218,15 @@ NOTES = {
         "**Notes:**\n"
         "- `pre_tokens` is the triggering call's request size (input + cache read).\n"
         "- boa a1 and testem a1 ended `infra_error` after their boundaries (rig ssh drops at the "
-        "secret screen); their graded boundaries stand.\n"
+        "secret screen); their graded boundaries stand. helm a1 ended the same way before any "
+        "boundary (not listed).\n"
+        "- **kombu a1: `time_cap` with 0 compactions** (not listed). Its context peaked at 136,575 "
+        "tokens; agy then sat idle about 1 h 45 m (\"root agent idle; waiting up to 1h59m44s for "
+        "1 background task(s)\") until the 7,184 s turn cap. The background-task rule only acts "
+        "once the trigger has fired, so it never engaged below 150k.\n"
+        "- **helm a2: `boundary_error` after 3 boundaries.** The 4th capture failed in our "
+        "converter (`agy.normalize_call`: an `ask_user` call whose `Arguments` was not a dict); "
+        "b1-b3 stand. Its b4 kept image is an orphan.\n"
         "- Provenance as for Claude Code."),
 }
 

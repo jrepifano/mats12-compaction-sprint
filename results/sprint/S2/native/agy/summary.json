@@ -1,0 +1,1521 @@
+[
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a1",
+  "run_key": "boa-hierarchical-evaluation-cancellation-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "infra_error",
+  "sim_usd": 4.4728,
+  "b": 1,
+  "pre_tokens": 150404,
+  "post_tokens": null,
+  "summary_chars": 9229,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 0,
+   "lost": 0,
+   "grades": {},
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 16,
+   "lost": 2,
+   "recoverable": {
+    "not_recoverable": 1,
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/boa-hierarchical-evaluation-cancellation-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "feaadc55e3b19e823edc3b424fff4efbb7510cffe11166c57d9d9fad4252aed7",
+   "result.json": "79d2999153e3879273487b4be4cb626f36723145b7667a4475ac71e9faf92935",
+   "b/run.json": "e7872433cd5234da477439a483398d60b0449f67a219cc7bd5a6023dc20f49e7",
+   "boundary.json": "eeb516973d9126a1f52181e71a84ae84e1b08a436a62d31ba42fffc2a56fa002",
+   "compaction.json": "2e7a1f5eafb34e4902e8f207d6f6029a3c5ab5ccaa00d676a2a2d20b09147c27",
+   "requirements.json": "c5d43b6601e259236b20c4710cde3dcc6fcb6d1e477bfe30c77e594afee9b547",
+   "grades.json": "0e956ec1017be8c7dd3af1d170f60f5582f2f5d9a38901b4a27a5f57a72d6a18",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "9977480dd9c1917bb827bc950776289041e3f8a2f8ef4b60f5e6a7f6f110753b"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a1",
+  "run_key": "boa-hierarchical-evaluation-cancellation-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "infra_error",
+  "sim_usd": 4.4728,
+  "b": 2,
+  "pre_tokens": 150187,
+  "post_tokens": null,
+  "summary_chars": 10395,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 15,
+   "lost": 1,
+   "grades": {
+    "kept": 14,
+    "dropped": 1
+   },
+   "new": 1,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 16,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/agy/_audit/boa-hierarchical-evaluation-cancellation-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "feaadc55e3b19e823edc3b424fff4efbb7510cffe11166c57d9d9fad4252aed7",
+   "result.json": "79d2999153e3879273487b4be4cb626f36723145b7667a4475ac71e9faf92935",
+   "b/run.json": "9d9f680d1d6a3d59c2ae1da8b2a8eb4527c2aca3b766d2742d00d803ddb771c9",
+   "boundary.json": "4d95d80badfdd960ca2dc64fd7f6e0ad1031a56c47f7ce398a66d6f8c2afd294",
+   "compaction.json": "73aef3a208545ab8ce09054a1047ee824ecbbbff28b22f0732370ae22d2ed1dc",
+   "requirements.json": "292597558e3f82a94d1a66b0d6dd1535d2ecce8d5df4b979c7773227328ff5f1",
+   "grades.json": "ff24b9f9462876c4a0ff9489d84b3fd630e97b34bd4816ec4af4731d34a102b9",
+   "ledger.json": "89132b299bf62481ca9d95362020dc38ad00b2061d4086660c8682baf500bee5",
+   "lossaudit_rows": "0d92f10343d7e15fa3b31796682e1ab491b9f3345459edafb4899f58cebecd0d"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 0.3708,
+  "b": 1,
+  "pre_tokens": 150036,
+  "post_tokens": null,
+  "summary_chars": 9898,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 0,
+   "lost": 0,
+   "grades": {},
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 18,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/boa-hierarchical-evaluation-cancellation-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "744fd8ae",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T01:19:29Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:53:41Z",
+     "component": "requirements",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:57:09Z",
+     "component": "lossaudit",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "7cabbe5043148978264d10d317a15739e7d811ba92086e0de9508e234d00482f",
+   "result.json": "7a569f6ce054e1ca3952969fe89eb9fc1ae1081823543d159b7d53927ef1b014",
+   "b/run.json": "a17d5c841e42630db827d0fde3c775a250059f32fed35eadcad6d07895c07309",
+   "boundary.json": "a085108689a710135e1f1898cb68e44b3e8faeae3fca9c5d1c6869e7af13db3a",
+   "compaction.json": "3e9870e4313382d5d2b0a05fde74072d930f7c41809ca144ef02690d2341105e",
+   "requirements.json": "219f2db58c25c9beee7664219ea40ec19fd1a35738fb368e03bcfcd7bc1f217c",
+   "grades.json": "0e956ec1017be8c7dd3af1d170f60f5582f2f5d9a38901b4a27a5f57a72d6a18",
+   "ledger.json": "d66c3cdd7291bcc922f5895715c22fd78a64aa25a0599eed2e6f2a3f440d275f",
+   "lossaudit_rows": "d5cd989c72a72d05157afea67e6cd1ba06425f47d8087e02e39e7e4ced42280d"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 0.3708,
+  "b": 2,
+  "pre_tokens": 151224,
+  "post_tokens": null,
+  "summary_chars": 7520,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 3,
+   "lost": 0,
+   "grades": {
+    "kept": 3
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 22,
+   "lost": 3,
+   "recoverable": {
+    "not_recoverable": 3
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/boa-hierarchical-evaluation-cancellation-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "744fd8ae",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T01:19:29Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:53:41Z",
+     "component": "requirements",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:57:09Z",
+     "component": "lossaudit",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "7cabbe5043148978264d10d317a15739e7d811ba92086e0de9508e234d00482f",
+   "result.json": "7a569f6ce054e1ca3952969fe89eb9fc1ae1081823543d159b7d53927ef1b014",
+   "b/run.json": "6191bba4003e1cd6f6763cd50e8ce522b02cbc33dd8aec2ed391b47311f8e29e",
+   "boundary.json": "d53a2e44c90c77a4e01980fac7aed1eb17ef016de3c6bde57a208561dea60f7a",
+   "compaction.json": "25c5bb6bd75ce9d99aff2c12f701d54d5e9ed65557f27eb2d7e82d6aed20d845",
+   "requirements.json": "5d1bff2c20b561c9bea6688aa43cb938c732de59e0edd692513305c2e4373105",
+   "grades.json": "2b4cef7c8a51cac7a4571f51857688aea2a4662f31804968415614b6fd224604",
+   "ledger.json": "d242e6fc862bff33d62a6bacdd79275cee981666fd1f37ea0463495f4942332d",
+   "lossaudit_rows": "817a413f7ad918da309668794b7e585c95ca28b03994664ba98c801019a48fd9"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 0.3708,
+  "b": 3,
+  "pre_tokens": 150237,
+  "post_tokens": null,
+  "summary_chars": 12142,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 10,
+   "lost": 1,
+   "grades": {
+    "kept": 9,
+    "dropped": 1
+   },
+   "new": 1,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 13,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/agy/_audit/boa-hierarchical-evaluation-cancellation-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "744fd8ae",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T01:19:29Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:53:41Z",
+     "component": "requirements",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:57:09Z",
+     "component": "lossaudit",
+     "git_head": "23b578c855d3d877617775c5ef39443f560331e3",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:52:53Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "7cabbe5043148978264d10d317a15739e7d811ba92086e0de9508e234d00482f",
+   "result.json": "7a569f6ce054e1ca3952969fe89eb9fc1ae1081823543d159b7d53927ef1b014",
+   "b/run.json": "da95e9a28e0f68b5b6e032902a3d7a6063dc002f1269193b9d1136a3ca0cf28c",
+   "boundary.json": "1d2e111ecbb71887966a8233fe8bd4cc658d61426fb334ff962f2972b4d435b4",
+   "compaction.json": "53d319134da938ff02fdafbc02a0cbfd18f3221ad18acf522e0047c570411d06",
+   "requirements.json": "49115666a58719e224a79036cb3336acdfc1e6ac57d328a1022c7b21529fdeac",
+   "grades.json": "a9f37bd5a4dd1fffa454437e6e3bbc461faab8d7d56d80d4aff645d2c5741372",
+   "ledger.json": "579b8f264859abec46bb3954f694e2ed73f3a913930c3e11c8dfad4a25323621",
+   "lossaudit_rows": "37373f8c264beb5aa79a96dfd6466615dfd6426747c16e3e0bacfb6118fba786"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 2.635,
+  "b": 1,
+  "pre_tokens": 150033,
+  "post_tokens": null,
+  "summary_chars": 12352,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 0,
+   "lost": 0,
+   "grades": {},
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 16,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/agy/_audit/fastapi-implicit-head-options-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "341bab236a36c098eedf2f0599aea1373dd44c752e5d5a0a9b249b11fa9affb4",
+   "result.json": "678d9a9a54e7ae4ec532b0314f52f4b653070039164eb38f476f31c1284bc0ea",
+   "b/run.json": "435e78945120fb36da090fb476452ebd33d02b64898d81ea84649dd14813863c",
+   "boundary.json": "0559b44df505b9bb6ae198e05edccdc37fe321936b8cdd34cbb0812b6df7c34b",
+   "compaction.json": "5c1a957100936d1cabbc20304179ecb123897dcb18ed66fc81cfce56f3177fc9",
+   "requirements.json": "8b7665b43ccece1527c9422baaf648abe895ef747a08ac97cc9907b79674913a",
+   "grades.json": "0e956ec1017be8c7dd3af1d170f60f5582f2f5d9a38901b4a27a5f57a72d6a18",
+   "ledger.json": "d66c3cdd7291bcc922f5895715c22fd78a64aa25a0599eed2e6f2a3f440d275f",
+   "lossaudit_rows": "7eac0b26e8f40cb740ef3b3f1d9300e368c5d42546c202b0e8f48549a5a8f87d"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 2.635,
+  "b": 2,
+  "pre_tokens": 150301,
+  "post_tokens": null,
+  "summary_chars": 10066,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 3,
+   "lost": 0,
+   "grades": {
+    "kept": 3
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 12,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/fastapi-implicit-head-options-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "341bab236a36c098eedf2f0599aea1373dd44c752e5d5a0a9b249b11fa9affb4",
+   "result.json": "678d9a9a54e7ae4ec532b0314f52f4b653070039164eb38f476f31c1284bc0ea",
+   "b/run.json": "4bb4c676b71d919cd96c96b3d61989421bb0dc48b04fb3ecd100265a1aa9c8c1",
+   "boundary.json": "a77c03f12b2096bad6e375138d8c290e474559a324de4147e385f6a394c0788b",
+   "compaction.json": "780775e112e498f277c75d29ea59c26c2313c4d3734165c9c22abc2fd93d0eff",
+   "requirements.json": "b20fa67a61f85e2a98a509e9d73eefe49aa695d1b02ca29269739f73a6c888f8",
+   "grades.json": "2b4cef7c8a51cac7a4571f51857688aea2a4662f31804968415614b6fd224604",
+   "ledger.json": "d242e6fc862bff33d62a6bacdd79275cee981666fd1f37ea0463495f4942332d",
+   "lossaudit_rows": "9c16cf56e83a8dda04419cb1a8e89f26e65ac7f62151333b09a4b390131359c2"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 2.635,
+  "b": 3,
+  "pre_tokens": 150343,
+  "post_tokens": null,
+  "summary_chars": 7623,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 13,
+   "lost": 3,
+   "grades": {
+    "kept": 10,
+    "dropped": 3
+   },
+   "new": 3,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 22,
+   "lost": 4,
+   "recoverable": {
+    "not_recoverable": 2,
+    "unresolved": 2
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/fastapi-implicit-head-options-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "341bab236a36c098eedf2f0599aea1373dd44c752e5d5a0a9b249b11fa9affb4",
+   "result.json": "678d9a9a54e7ae4ec532b0314f52f4b653070039164eb38f476f31c1284bc0ea",
+   "b/run.json": "468c1e7394160f40ee5a4b1f210bfe4862ac65a8b74378bdc3de4a3852723e1b",
+   "boundary.json": "3b779ceb8ca938233a7ab5be5cea98e62ca7e58e35ab2f01a4afab5b132a15ac",
+   "compaction.json": "3c67e213de2777b09cb3935b42d90d452aae10796a8d4dae93319b5fd7072e39",
+   "requirements.json": "fe2fb4e0e9f914ea6e389a160a0dd0855393a4d30839faf33f6cb00f1f9f0da9",
+   "grades.json": "8b85298f593a89e164487dca66532316ee727b7aa0d26fc36f7e2b615e71fda2",
+   "ledger.json": "55daa4a62f3227bd4a3a6db6d2ac882b9ad775d1a80fe4fd39ca851965ba6424",
+   "lossaudit_rows": "184b6c55ed85580403996d6687ea9c0f110ad6c54f6e8ec1566f7dc1654ec8da"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 2.635,
+  "b": 4,
+  "pre_tokens": 150000,
+  "post_tokens": null,
+  "summary_chars": 13200,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 18,
+   "lost": 4,
+   "grades": {
+    "kept": 14,
+    "dropped": 4
+   },
+   "new": 1,
+   "inherited": 3,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 14,
+   "lost": 1,
+   "recoverable": {
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/fastapi-implicit-head-options-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "341bab236a36c098eedf2f0599aea1373dd44c752e5d5a0a9b249b11fa9affb4",
+   "result.json": "678d9a9a54e7ae4ec532b0314f52f4b653070039164eb38f476f31c1284bc0ea",
+   "b/run.json": "6a29bd51807cadc1f3a9cac3c6ccaa44516a1c38838eae03ab4a87663abec036",
+   "boundary.json": "d30ef8fb45bbc3f78d86ae3f61adc931a053970fa74fd17b5aa859c82459cfb4",
+   "compaction.json": "bb493fead64ee50791e2231eafc64a77a7e25465159b87869ca9bb1982f288e9",
+   "requirements.json": "a007031b2497b3c361b52da4116e4697b5c0828b93119bf13864c473d4d99f12",
+   "grades.json": "1cf291623df9cb4c6a1769ee8cca1df89c706b8012cc098bb263ac4191bcf4a9",
+   "ledger.json": "ca81a744d1d342e840d16c4d31fb1f066c7516cc2ba70f28085471a0479a8d88",
+   "lossaudit_rows": "f9dfc3e5e318e801b35b4a52c68686a116aa1593c9e1b6e4812767316e468cfa"
+  }
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a2",
+  "run_key": "helm-array-merge-strategies-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "boundary_error",
+  "sim_usd": 0.3619,
+  "b": 1,
+  "pre_tokens": 151517,
+  "post_tokens": null,
+  "summary_chars": 8738,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 2,
+   "lost": 0,
+   "grades": {
+    "kept": 2
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 12,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/agy/_audit/helm-array-merge-strategies-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "2100b031",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T00:30:41Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:23:06Z",
+     "component": "requirements",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:25:57Z",
+     "component": "lossaudit",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "e4e2381f22d20b00284b361aa9637718de7747b38f65375be372d09ed919be16",
+   "result.json": "cee8a8f5b13c88e570e76635c1db1b3031af460b5841bae484d56133c7b413b5",
+   "b/run.json": "28d39a8bfbbe9948316cc0c088a021ddfa90c1ff4816e754eb240f8e58c36291",
+   "boundary.json": "39673040e655f6e0bd252d66438948ff647905f256fe7057261d239da585a38c",
+   "compaction.json": "9c19813d369faf51f2d7b212e36b59992092769a975bb795116238f663284b8b",
+   "requirements.json": "5754695873706443bccc517e625a1d6f470d029042d3438d2b3f282676986066",
+   "grades.json": "593fc0c77e787ab0242a148da697a420efcb2a6e7c0538ab68548f153c2ca201",
+   "ledger.json": "d66c3cdd7291bcc922f5895715c22fd78a64aa25a0599eed2e6f2a3f440d275f",
+   "lossaudit_rows": "f7522f0e4287fe96850cfe67ba3f49dec251143766c527a7c8c3ab620d098ecc"
+  }
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a2",
+  "run_key": "helm-array-merge-strategies-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "boundary_error",
+  "sim_usd": 0.3619,
+  "b": 2,
+  "pre_tokens": 150125,
+  "post_tokens": null,
+  "summary_chars": 12314,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 3,
+   "lost": 0,
+   "grades": {
+    "kept": 3
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 13,
+   "lost": 1,
+   "recoverable": {
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/helm-array-merge-strategies-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "2100b031",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T00:30:41Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:23:06Z",
+     "component": "requirements",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:25:57Z",
+     "component": "lossaudit",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "e4e2381f22d20b00284b361aa9637718de7747b38f65375be372d09ed919be16",
+   "result.json": "cee8a8f5b13c88e570e76635c1db1b3031af460b5841bae484d56133c7b413b5",
+   "b/run.json": "f292c21d128ed05a3b4ff1da52331e5ec483987e6e73dbb285c48224c2c8260f",
+   "boundary.json": "d8fbbbd6d84e6af3d3baac757215a751569394d1fee203c21a9c062827585248",
+   "compaction.json": "a8e91d3f13df3f4078952375b5017eea89ae746aedc5a020815654927932f239",
+   "requirements.json": "fba421fbe1a796ae4501e8840bfb095605340d126b62f8a8bd7587dc0e52d93f",
+   "grades.json": "30550e3f560750167ba708ffeaf6b92290c702e8690b75d7c741e931c08a7298",
+   "ledger.json": "d242e6fc862bff33d62a6bacdd79275cee981666fd1f37ea0463495f4942332d",
+   "lossaudit_rows": "b3800dffdca5c429fc10726a8c22ca0823dbceec9d6b5de1b2e5b7d97f0ad49e"
+  }
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a2",
+  "run_key": "helm-array-merge-strategies-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "boundary_error",
+  "sim_usd": 0.3619,
+  "b": 3,
+  "pre_tokens": 150391,
+  "post_tokens": null,
+  "summary_chars": 9056,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 3,
+   "lost": 0,
+   "grades": {
+    "kept": 3
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 18,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/agy/_audit/helm-array-merge-strategies-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "2100b031",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "2e11d6a77333abf1",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "4499311c9d199f8c",
+     "common.py": "7e1e0a14ac1ce9c1",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "54ed63a975a34ea7",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-25T00:30:41Z"
+   },
+   "audit_code": [
+    {
+     "utc": "2026-10-25T02:23:06Z",
+     "component": "requirements",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     }
+    },
+    {
+     "utc": "2026-10-25T02:25:57Z",
+     "component": "lossaudit",
+     "git_head": "e721a598d03ab1f1e7d9aa61aa45af17bfbd390b",
+     "loaded": {
+      "compaction.s2.native.audit": {
+       "sha256_around_import": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      },
+      "compaction.s2.interact_reqs": {
+       "sha256_around_import": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748",
+       "preloaded": false,
+       "imported_utc": "2026-10-25T02:22:27Z"
+      }
+     },
+     "on_disk": {
+      "compaction.s2.native.audit": "2e11d6a77333abf1a7e19c2aed8bdf4ce3bfa5227ed10336b134416f43f734e3",
+      "compaction.s2.interact_reqs": "630de59df936d31a1970b0b4e1136d5db96860ad2f47e66d90e9f5371f173748"
+     },
+     "scripts_before": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "scripts_after": {
+      "scripts/s2_lossaudit.py": "e570db755f0439bbf014d710b523ed10862cbc1c051d893906a1235916cdd0cf",
+      "src/compaction/s2/lossaudit.py": "48cd519bd696fea23dde8e5c1953c466b84a01c77d14a6c4ab7893334699ec32"
+     },
+     "changed_during_run": false
+    }
+   ]
+  },
+  "hashes": {
+   "run.json": "e4e2381f22d20b00284b361aa9637718de7747b38f65375be372d09ed919be16",
+   "result.json": "cee8a8f5b13c88e570e76635c1db1b3031af460b5841bae484d56133c7b413b5",
+   "b/run.json": "6abb60cfc94ddc3f264481ff72d66fcdd19d9d7e90a1a174b01c80eddc6ea25a",
+   "boundary.json": "95712b88b436ee919f1fabe5882c9880a9d03c7c395fbc408e7a82d542cd9742",
+   "compaction.json": "626f6701405bb9af6cff1cee019eed94ca489d96be99ae5c01e57fc028d9c9b0",
+   "requirements.json": "942e007992dfc7404f8149dfa57054c02a6b146dc1b8c3467a7852bb84d6eccb",
+   "grades.json": "30550e3f560750167ba708ffeaf6b92290c702e8690b75d7c741e931c08a7298",
+   "ledger.json": "eeb22336f0baa0e23d295fb8e19fbad526a0251a9cc729893bdd00f6f4e086a2",
+   "lossaudit_rows": "756653b7c98f1b15f9fe81e4d45b84c3eaab4215bbe1a76072e51e04ef9f57fb"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a1",
+  "run_key": "testem-bail-on-test-failure-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "infra_error",
+  "sim_usd": 1.3291,
+  "b": 1,
+  "pre_tokens": 150054,
+  "post_tokens": null,
+  "summary_chars": 8075,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 14,
+   "lost": 2,
+   "grades": {
+    "kept": 12,
+    "dropped": 1,
+    "misstated": 1
+   },
+   "new": 2,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 20,
+   "lost": 3,
+   "recoverable": {
+    "not_recoverable": 3
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/testem-bail-on-test-failure-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "ef07bf83171aaedc13ebc96b51261d4b9d829d134a515d597bd5382f7cec7e59",
+   "result.json": "68ddab503eb484bebddc32d00e9c2d0a0ecf51e538a1750c4b9d9855d2c8b1e5",
+   "b/run.json": "529a155e6ed4f89388fc13aaf3d6ddee9de7ea1fb51f38d3afffc08b1829badb",
+   "boundary.json": "d2e268c5ec63a31377145a92e4814ac52b0a0cc9058852830993407d0478d456",
+   "compaction.json": "c31d8ebe6b9094880ad6fefc90d07d9761ac7bffffe66ce730400530e7a4193c",
+   "requirements.json": "b3b61a32bfc6c589adc97f02497a7720398c2ee7d4020130db665cbea18133e9",
+   "grades.json": "4239eb3117ae752e23fb94162095d67a685cfd88543c6bc6e4bb4b7891648e1a",
+   "ledger.json": "d1b3454bec8353c15cb01571fc5659a1277ea2ce00e47808cc9d00d3042f7651",
+   "lossaudit_rows": "2b0b04da9bc2e2d2fb9261b1ab9c8f8778f253b32a2e36db5aa07bcca7a6042e"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a1",
+  "run_key": "testem-bail-on-test-failure-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "infra_error",
+  "sim_usd": 1.3291,
+  "b": 2,
+  "pre_tokens": 150782,
+  "post_tokens": null,
+  "summary_chars": 8840,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 30,
+   "lost": 4,
+   "grades": {
+    "kept": 26,
+    "dropped": 3,
+    "misstated": 1
+   },
+   "new": 2,
+   "inherited": 2,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 23,
+   "lost": 3,
+   "recoverable": {
+    "not_recoverable": 2,
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/testem-bail-on-test-failure-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "ef07bf83171aaedc13ebc96b51261d4b9d829d134a515d597bd5382f7cec7e59",
+   "result.json": "68ddab503eb484bebddc32d00e9c2d0a0ecf51e538a1750c4b9d9855d2c8b1e5",
+   "b/run.json": "6852fc38fcdfd0ec56f60cab9f4b0b4203c33ef372f84966d4a0aa26444797ce",
+   "boundary.json": "384f39a7e7edef316fe3153c473ff41923e99b620eab3a08072e856a5bccbb34",
+   "compaction.json": "397189f7255091bbd9e1824540cefb7549618cff2e7196bfe7cb5fd1f9a7d38b",
+   "requirements.json": "77d8aff80dcfe33f790e5f7fb8beff5d6f70627a3287ad1d00cd2bcaf68cfc7f",
+   "grades.json": "42d3ff7e86551a8d9cfb04e45f8c0d0c49611500b13db2749e59b3064ae7f2e1",
+   "ledger.json": "01dc94c631b606a23511de7feb2a39e89fbfe4c3618155084e30860041a17f1b",
+   "lossaudit_rows": "b3cb350380d208cbe1eb9d50c403e464fe7b50ac018b9efb38298e7d1e30090c"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a2",
+  "run_key": "testem-bail-on-test-failure-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 3.1443,
+  "b": 1,
+  "pre_tokens": 151095,
+  "post_tokens": null,
+  "summary_chars": 10393,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 28,
+   "lost": 4,
+   "grades": {
+    "kept": 24,
+    "dropped": 4
+   },
+   "new": 4,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 24,
+   "lost": 3,
+   "recoverable": {
+    "unresolved": 2,
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/testem-bail-on-test-failure-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": "sample: b1-q27 implemented at b1",
+  "provenance": {
+   "run_code": {
+    "git_head": "8302459b",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "0280b4b6b28de03d",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:47:36Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "36b8789107d7a9f3ee567076cc4f0873c0161cd577b6fe8d1b202a5e6a13e1ad",
+   "result.json": "79a050e64d2d5686417a9b1ceb4fc7f5d63d9eef69e7965923d4c201f5ab8b81",
+   "b/run.json": "74ef3c98c701ecd4ec8d7114d21bf56644fdc7e80fa61b15b75f55bd69f1215f",
+   "boundary.json": "96a2d2d89641d0e694f71b2d5946a7011004a392581b6f06e3c5d56b46dc7337",
+   "compaction.json": "31d4767270fcdf5d8312c3174c49f43f5bdfb31035c728473f05a9df6684b4ee",
+   "requirements.json": "900e86e8c5a1a94cb88b368f25fe0e39da782d0a31818dc97217ff87962c3bd0",
+   "grades.json": "c0c7d450065eda701d90c3fd77d6416daf557b773a57f5223f14698285eca352",
+   "ledger.json": "94c9e101adbbdae7c364514458bc720020b5bc0118d5f0d13f0d67d3798208c3",
+   "lossaudit_rows": "35f24368ad28fcb4ecbcc54fc695722f2ef8a4c93457728e209fce846479c727"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a2",
+  "run_key": "testem-bail-on-test-failure-agy-flash-a2",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "submitted",
+  "sim_usd": 3.1443,
+  "b": 2,
+  "pre_tokens": 150597,
+  "post_tokens": null,
+  "summary_chars": 8179,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 46,
+   "lost": 17,
+   "grades": {
+    "kept": 29,
+    "dropped": 17
+   },
+   "new": 14,
+   "inherited": 3,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 24,
+   "lost": 3,
+   "recoverable": {
+    "not_recoverable": 3
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/testem-bail-on-test-failure-agy-flash-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": "sample of 8 (3 inherited + 5 new, seed 20261025; 7 checked at b2): 6 implemented; b1-q17 partly, maintainer re-raised it in r21",
+  "provenance": {
+   "run_code": {
+    "git_head": "8302459b",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "0280b4b6b28de03d",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:47:36Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "36b8789107d7a9f3ee567076cc4f0873c0161cd577b6fe8d1b202a5e6a13e1ad",
+   "result.json": "79a050e64d2d5686417a9b1ceb4fc7f5d63d9eef69e7965923d4c201f5ab8b81",
+   "b/run.json": "d1a5bf4ab4b67f25dc8e2a9acb1b9b6ca7e0a51d57fb22d4cb1ee5dfeebe890c",
+   "boundary.json": "9c4f166f6a2eb66d583fa1b68c452938bdbe798da1cf9d694c89d56ad46ad940",
+   "compaction.json": "54c478adf4bb9d36cf894a381abf23d8ea86d72e00763fb8a5e8370bc7ce3a32",
+   "requirements.json": "862ff5c4f5355fa65c1382d76e546eaf8c7ced937dc46c2e35524bf6b4c94df1",
+   "grades.json": "a378926a97d2441975bb8b3698390e8026a99cb41134ec95dc5c71e644a1a0ad",
+   "ledger.json": "fe9f7a0928030da54c1d83a2a54762ab1ab11359743ddcc538ece70b09cc5618",
+   "lossaudit_rows": "758466a84164441dd3acd357daf09c62b00dd55ae41ac38d68c9bc76d3bd3525"
+  }
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "run_key": "vitest-duration-sharding-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "run_cap",
+  "sim_usd": 5.0256,
+  "b": 1,
+  "pre_tokens": 151065,
+  "post_tokens": null,
+  "summary_chars": 8487,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 35,
+   "lost": 6,
+   "grades": {
+    "kept": 29,
+    "dropped": 5,
+    "misstated": 1
+   },
+   "new": 6,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 29,
+   "lost": 5,
+   "recoverable": {
+    "not_recoverable": 5
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/vitest-duration-sharding-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": "ledger 5/6 implemented at b1; b1-q32 not (recording on the success path only), maintainer re-raised it in r13",
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "6f4c3a84e765731c6436c62ea860bb3c1f651aa7f0622f911fc568ea91a06041",
+   "result.json": "3dbc4a1017b83f9d8810f9c27090591b4b109b5bc06cf7d926c49d429335f45a",
+   "b/run.json": "62f352f0b0dad0397fe149f48160b10d5522d980bede6d815ded4507a8469ccc",
+   "boundary.json": "71311eccbc49eb8a6d27fc0f0070025d3ce097db70945b8585a9229c57e2e334",
+   "compaction.json": "634ff3a1eabc436bb9380b087155a9252188728cd66a7ad418a0c9847663a12a",
+   "requirements.json": "9d5a5ec61620ba98862e70093d572ea9caa60c448fd4e9eff9545dcf70fa31b5",
+   "grades.json": "11f791ea83498380aae9c55d3036f90a5c586dd6cc59799b642917e3b3b2ca29",
+   "ledger.json": "4885c3b3a05ec07540b26c51ee4786621aeb2d0ad098a19261d35cc40f681f6b",
+   "lossaudit_rows": "0627ef473a49d0e85896d3d796d48cc9943dfc8986164d2cc37c2d366f2a48f9"
+  }
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "run_key": "vitest-duration-sharding-agy-flash-a1",
+  "model": "gemini-3.8-flash-low",
+  "trigger": 150000,
+  "end": "run_cap",
+  "sim_usd": 5.0256,
+  "b": 2,
+  "pre_tokens": 150577,
+  "post_tokens": null,
+  "summary_chars": 9228,
+  "kept_messages": 0,
+  "post_source": "checkpoint",
+  "quiescent": false,
+  "req": {
+   "items": 50,
+   "lost": 22,
+   "grades": {
+    "kept": 28,
+    "dropped": 22
+   },
+   "new": 17,
+   "inherited": 5,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 26,
+   "lost": 3,
+   "recoverable": {
+    "not_recoverable": 3
+   },
+   "source": "data/raw/sprint/s2/native/agy/_audit/vitest-duration-sharding-agy-flash-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": "ledger 22/22 implemented at b2",
+  "provenance": {
+   "run_code": {
+    "git_head": "a0b8fd10",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "324e5cc7f236120b",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:20:54Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "6f4c3a84e765731c6436c62ea860bb3c1f651aa7f0622f911fc568ea91a06041",
+   "result.json": "3dbc4a1017b83f9d8810f9c27090591b4b109b5bc06cf7d926c49d429335f45a",
+   "b/run.json": "86313e334618bf41b89cb5e9afc3304ddb75993d08362d021e37ffce40f71449",
+   "boundary.json": "61702e8b68a6d950ef4b1b302a361a1f5d5a9293cb0140ddeaf3e8b4791fd65d",
+   "compaction.json": "fd4e4c3de54b05c1b6878972631fac6a5cf0cd0b594aa7173b05b61bd6b93b68",
+   "requirements.json": "562d6a443fa055a1687f7b7d2628c491f30b4b21699af26f54139d602a5d7dfe",
+   "grades.json": "a25e6ac510ad3f67c36534b1da512f4bc1cf59b917ead16dcba5787d839a52be",
+   "ledger.json": "981147844d5486d9b222170c761b43cbcb8231184e464c9bee300ae23b900894",
+   "lossaudit_rows": "db7cf094ff6b84290b700efe82d2c62fd1004255133f334acd8d2eebd90c8430"
+  }
+ }
+]
