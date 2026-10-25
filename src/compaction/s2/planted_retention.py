@@ -75,7 +75,8 @@ def order_key(namespace: str, value: str, seed: int = SEED) -> str:
     return hashlib.sha256(f"{seed}:{namespace}:{value}".encode()).hexdigest()
 
 
-def boundary_evidence(bdir: Path, *, repo_state: dict | None = None) -> dict:
+def boundary_evidence(bdir: Path, *, repo_state: dict | None = None,
+                      fork_validation: dict | None = None) -> dict:
     """Read frozen input only, never forks/. Missing effective context is an error."""
     bdir = Path(bdir)
     b = json.loads((bdir / "boundary/boundary.json").read_text())
@@ -83,28 +84,41 @@ def boundary_evidence(bdir: Path, *, repo_state: dict | None = None) -> dict:
     post = json.loads((bdir / "boundary/post_messages.json").read_text())
     if not post or not rec.get("summary"):
         raise ValueError("missing effective resumed context")
+    from compaction.s2.native.common import reclassify_harness_quiescence
+    b = reclassify_harness_quiescence(b)
+    validation = fork_validation or {}
     return {"boundary": str(bdir), "k": b["boundary_index"], "pre_tokens": b.get("pre_tokens"),
             "summary": rec["summary"], "post_messages": post,
             "repo_state": repo_state or {}, "forkable": b.get("quiescent") is True
-            and not b.get("services_running") and not b.get("ineligible_reason")}
+            and not b.get("services_running") and not b.get("ineligible_reason")
+            and all(validation.get(k) is True for k in
+                    ("image_present", "transcript_intact", "fork_check_ok"))}
 
 
 def grade(evidence: dict, obligation: dict, judge: Callable[[dict], dict]) -> dict:
-    """Only delivered/adopted rules enter loss tallies. Unknown is never a loss."""
+    """Always grade delivered rules, without exposing adoption/outcomes to the judge.
+
+    Only pre-boundary adoption evidence can exclude a boundary. Later first acts are
+    reported separately; otherwise a loss could manufacture its own exclusion.
+    """
     row = {"task_id": obligation["task_id"], "obligation_id": obligation["obligation_id"],
            "k": evidence["k"], "boundary": evidence["boundary"],
            "forkable": evidence.get("forkable", False), "text": obligation["text"],
+           "standing": obligation.get("standing", True),
+           "adoption": {k: obligation.get(k) for k in
+                        ("adopted", "adoption_seq", "adoption_before_boundary")},
+           "loss_tally_eligible": not (obligation.get("adopted") is False
+                                        and obligation.get("adoption_before_boundary") is True),
            "evidence_sha256": digest(evidence), "prompt_sha256": digest(PROMPT),
            "model": MODEL, "evidence": evidence}
     if not obligation.get("delivered"):
         return row | {"label": "not_delivered"}
-    if obligation.get("adopted") is not True:
-        return row | {"label": "not_adopted" if obligation.get("adopted") is False
-                      else "adoption_unknown"}
-    request = {"system": PROMPT, "obligation": obligation, "evidence": evidence}
+    request = {"system": PROMPT,
+               "obligation": {k: obligation[k] for k in
+                              ("obligation_id", "kind", "standing", "text") if k in obligation},
+               "evidence": evidence}
     result = judge(request)
     label = result.get("label")
-    context = json.dumps(evidence.get("post_messages", []), ensure_ascii=False)
     # Match the raw message strings too: JSON escapes newlines and quotes.
     def strings(x):
         if isinstance(x, str):
@@ -115,7 +129,7 @@ def grade(evidence: dict, obligation: dict, judge: Callable[[dict], dict]) -> di
         elif isinstance(x, list):
             for v in x:
                 yield from strings(v)
-    context_texts = [context, evidence.get("summary", ""),
+    context_texts = [evidence.get("summary", ""),
                      *strings(evidence.get("post_messages", []))]
     cq, rq = result.get("context_quote", ""), result.get("repo_quote", "")
     errors = []
@@ -141,20 +155,27 @@ def grade(evidence: dict, obligation: dict, judge: Callable[[dict], dict]) -> di
 
 def card_bundle(rows: list[dict], seed: int = SEED) -> tuple[dict, dict]:
     """All losses plus ceil(kept/3), at least 8 when available; mix blind by hash."""
-    lost = [r for r in rows if r["label"] == "lost"]
+    lost = [r for r in rows if r["label"] in ("lost", "unknown", "discharged")]
+    def identity(r):
+        return f'{r["task_id"]}:{r["obligation_id"]}:{r["k"]}'
     kept = sorted((r for r in rows if r["label"] == "kept"),
-                  key=lambda r: order_key("audit", digest(r), seed))
+                  key=lambda r: order_key("audit", identity(r), seed))
     n = min(len(kept), max(8, math.ceil(len(kept) / 3)))
-    chosen = sorted(lost + kept[:n], key=lambda r: order_key("cards", digest(r), seed))
+    chosen = sorted(lost + kept[:n], key=lambda r: order_key("cards", identity(r), seed))
     cards, key = [], {}
     for i, r in enumerate(chosen):
         cid = f"card-{i + 1:03d}"
         cards.append({"id": cid, "obligation": r["text"], "evidence": r["evidence"]})
         key[cid] = {k: r[k] for k in ("task_id", "obligation_id", "k", "boundary", "label")}
         key[cid]["forkable"] = r.get("forkable", False)
+        key[cid]["standing"] = r.get("standing", True)
+        key[cid]["loss_tally_eligible"] = r.get("loss_tally_eligible", True)
     public = {"schema": 1, "cards": cards}
     private = {"seed": seed, "public_sha256": digest(public), "key": key,
-               "lost_count": len(lost), "kept_available": len(kept), "kept_audited": n,
+               "lost_count": sum(r["label"] == "lost" for r in lost),
+               "unknown_count": sum(r["label"] == "unknown" for r in lost),
+               "discharged_count": sum(r["label"] == "discharged" for r in lost),
+               "kept_available": len(kept), "kept_audited": n,
                "audit_shortfall": max(0, 8 - len(kept))}
     return public, private
 
@@ -200,6 +221,8 @@ def confirmed_losses(public: dict, private: dict, labels: list[dict]) -> list[di
         raise ValueError("every blind card needs exactly one label")
     if any(x.get("label") not in ("kept", "lost", "discharged", "unknown") for x in labels):
         raise ValueError("incomplete card labels")
+    if any(x["label"] == "discharged" and private["key"][x["id"]]["standing"] for x in labels):
+        raise ValueError("standing rule cannot be discharged; second look required")
     return [private["key"][x["id"]] | {"verified": True, "human_reason": x.get("reason", "")}
             for x in labels if x["label"] == "lost"]
 
@@ -211,7 +234,7 @@ def repair_candidates(losses: list[dict], seed: int = SEED) -> dict:
     """
     earliest = {}
     for r in sorted(losses, key=lambda r: (r["k"], r["boundary"], r["obligation_id"])):
-        if r.get("verified"):
+        if r.get("verified") and r.get("loss_tally_eligible", True):
             earliest.setdefault((r["task_id"], r["obligation_id"]), r)
     groups = {}
     dropped, selected = [], []
@@ -221,7 +244,7 @@ def repair_candidates(losses: list[dict], seed: int = SEED) -> dict:
         else:
             groups.setdefault(r["boundary"], []).append(r)
     for b in sorted(groups, key=lambda b: (min(r["k"] for r in groups[b]),
-                                         order_key("repair-boundary", b, seed))):
+                                         order_key("repair-boundary", groups[b][0]["task_id"], seed))):
         rs = sorted(groups[b], key=lambda r: order_key("obligation", r["obligation_id"], seed))
         if len(selected) < 3:
             selected.append(rs.pop(0))
@@ -251,3 +274,37 @@ def freeze_assignment(path: Path, assignment: dict) -> str:
         if path.read_text() != content:
             raise ValueError("repair assignment already frozen") from None
     return digest(assignment)
+
+
+def seal_probes(path: Path, outputs: list[Path]) -> dict:
+    """Manifest the sealed outputs; the supported reader cannot open them before freeze."""
+    sealed = {"sealed": True, "outputs": [
+        {"path": str(p), "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in outputs]}
+    freeze_assignment(path, sealed)
+    return sealed
+
+
+def freeze_repair_assignment(path: Path, assignment: dict, *, seal_path: Path) -> str:
+    seal = json.loads(Path(seal_path).read_text())
+    if seal.get("sealed") is not True or Path(str(seal_path) + ".opened").exists():
+        raise ValueError("probe outcomes already opened")
+    for row in seal["outputs"]:
+        if hashlib.sha256(Path(row["path"]).read_bytes()).hexdigest() != row["sha256"]:
+            raise ValueError("sealed probe output changed")
+    return freeze_assignment(path, assignment | {"probe_seal_sha256": digest(seal)})
+
+
+def open_probe_results(seal_path: Path, assignment_path: Path) -> list[dict]:
+    seal = json.loads(Path(seal_path).read_text())
+    assignment = json.loads(Path(assignment_path).read_text())
+    if assignment.get("probe_seal_sha256") != digest(seal):
+        raise ValueError("repair assignment must be frozen against these sealed probes")
+    out = []
+    for row in seal["outputs"]:
+        raw = Path(row["path"]).read_bytes()
+        if hashlib.sha256(raw).hexdigest() != row["sha256"]:
+            raise ValueError("sealed probe changed")
+        out.append(json.loads(raw))
+    # Receipt prevents a later changed assignment masquerading as pre-outcome.
+    freeze_assignment(Path(str(seal_path) + ".opened"), {"assignment_sha256": digest(assignment)})
+    return out

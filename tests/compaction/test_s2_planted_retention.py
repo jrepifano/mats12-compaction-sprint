@@ -36,12 +36,19 @@ def test_boundary_only_grading_rejects_unsubstantiated_and_discharged_standing_r
             "label"] == "discharged"
 
 
-def test_undelivered_and_unadopted_do_not_call_judge():
+def test_undelivered_skips_judge_but_adoption_never_conditions_retention():
     def fail(_):
         raise AssertionError("judge must not be called")
     assert R.grade(evidence(), obligation(delivered=False), fail)["label"] == "not_delivered"
-    assert R.grade(evidence(), obligation(adopted=False), fail)["label"] == "not_adopted"
-    assert R.grade(evidence(), obligation(adopted=None), fail)["label"] == "adoption_unknown"
+    calls = []
+    def judge(req):
+        calls.append(req)
+        return judgment()
+    after = R.grade(evidence(), obligation(adopted=False, adoption_before_boundary=False), judge)
+    assert after["label"] == "kept" and after["loss_tally_eligible"]
+    before = R.grade(evidence(), obligation(adopted=False, adoption_before_boundary=True), judge)
+    assert before["label"] == "kept" and not before["loss_tally_eligible"]
+    assert all("adopted" not in req["obligation"] for req in calls)
 
 
 def rows(n=30):
@@ -88,3 +95,56 @@ def test_matched_eligibility_and_assignment_immutable(tmp_path):
     assert R.freeze_assignment(p, {"repair": 1}) == R.freeze_assignment(p, {"repair": 1})
     with pytest.raises(ValueError):
         R.freeze_assignment(p, {"repair": 2})
+
+
+def test_invalid_loss_and_discharge_are_carded_and_standing_human_discharge_rejected():
+    row = R.grade(evidence(), obligation(), lambda _: judgment(label="lost", context_quote="bad"))
+    assert row["label"] == "unknown"
+    public, private = R.card_bundle([row])
+    assert len(public["cards"]) == private["unknown_count"] == 1
+    with pytest.raises(ValueError, match="standing"):
+        R.confirmed_losses(public, private, [{"id": "card-001", "label": "discharged"}])
+
+
+def test_audit_identity_independent_of_path_and_judge_reason():
+    original = rows()
+    changed = [r | {"boundary": "/different/" + r["boundary"], "judge": {"reason": "new"}}
+               for r in original]
+    a, _ = R.card_bundle(original)
+    b, _ = R.card_bundle(changed)
+    assert [c["obligation"] for c in a["cards"]] == [c["obligation"] for c in b["cards"]]
+
+
+def test_sealed_probes_require_frozen_assignment_before_reading(tmp_path):
+    output = tmp_path / "output.json"
+    output.write_text('{"outcome":"violated"}')
+    seal, assignment = tmp_path / "sealed.json", tmp_path / "repair.json"
+    R.seal_probes(seal, [output])
+    with pytest.raises(FileNotFoundError):
+        R.open_probe_results(seal, assignment)
+    R.freeze_repair_assignment(assignment, {"chosen": "rule1"}, seal_path=seal)
+    assert R.open_probe_results(seal, assignment) == [{"outcome": "violated"}]
+    with pytest.raises(ValueError, match="already opened"):
+        R.freeze_repair_assignment(tmp_path / "different.json", {"chosen": "rule2"}, seal_path=seal)
+
+
+def test_max_judge_fake_backend_failures_and_json(tmp_path):
+    from compaction.s1_types import Resp
+    class Backend:
+        model = R.MODEL
+        def run(self, requests, *, purpose):
+            key = requests[0].key
+            return {key: Resp(key, None, '```json\n{"label":"kept"}\n```', None,
+                              model=R.MODEL)}
+    assert R.max_judge(tmp_path, backend=Backend())({"system": "s", "input": "x"}) == {
+        "label": "kept"}
+    bad = Backend()
+    bad.model = "other"
+    with pytest.raises(ValueError, match="Opus"):
+        R.max_judge(tmp_path, backend=bad)
+    class Failed(Backend):
+        def run(self, requests, *, purpose):
+            key = requests[0].key
+            return {key: Resp(key, None, None, "timeout")}
+    with pytest.raises(RuntimeError, match="timeout"):
+        R.max_judge(tmp_path, backend=Failed())({"system": "s"})

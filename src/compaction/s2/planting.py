@@ -11,6 +11,8 @@ from __future__ import annotations
 import copy
 from dataclasses import asdict, dataclass, field
 
+UNCHANGED = object()
+
 NO_RESTATEMENT = (
     "\n\nSome earlier maintainer replies may contain fixed task obligations appended by "
     "the harness. Do not repeat or paraphrase those obligations in later replies. "
@@ -43,6 +45,7 @@ class PlantingSchedule:
     entries: list[PlantingEntry | dict] = field(default_factory=list)
     stage: str | None = None
     cumulative_tokens: int | None = None
+    token_high_water: int | None = None
     reply_count: int = 0
     stage_reply_counts: dict[str, int] = field(default_factory=dict)
     compaction_index: int = 0
@@ -59,15 +62,24 @@ class PlantingSchedule:
         if set(self.deliveries) - set(ids):
             raise ValueError("delivery record names an unknown obligation")
 
-    def set_context(self, *, stage: str | None = None,
-                    cumulative_tokens: int | None = None) -> None:
-        self.stage = stage
+    def set_context(self, *, stage=UNCHANGED, cumulative_tokens=UNCHANGED) -> None:
+        """Omitted measurements preserve context; explicit None clears the current reading.
+
+        The high-water mark persists across missing readings, preventing a silently reset
+        clock. Live runners should record unknown distances instead of inventing a clock.
+        """
+        if stage is not UNCHANGED:
+            self.stage = stage
+        if cumulative_tokens is UNCHANGED:
+            return
         if cumulative_tokens is not None:
             if type(cumulative_tokens) is not int or cumulative_tokens < 0:
                 raise ValueError("cumulative_tokens must be a nonnegative integer")
-            if self.cumulative_tokens is not None and cumulative_tokens < self.cumulative_tokens:
+            high = self.token_high_water if self.token_high_water is not None else self.cumulative_tokens
+            if high is not None and cumulative_tokens < high:
                 raise ValueError("cumulative token clock cannot move backwards")
-        # A missing measurement must not reuse a stale token position.
+            self.token_high_water = cumulative_tokens
+        # An explicitly missing measurement must not reuse a stale token position.
         self.cumulative_tokens = cumulative_tokens
 
     def _due(self, entry: PlantingEntry) -> bool:

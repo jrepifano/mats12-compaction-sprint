@@ -109,7 +109,7 @@ def test_old_exports_restore_without_planting_or_new_log_keys():
     s.ask("Question?")
     old = s.export()
     for key in ("planting", "io", "ask_log"):
-        old.pop(key)
+        old.pop(key, None)
     restored = UserSim.restore(old, "Persona", FixedModel(), lambda *_: (0, "", ""))
     assert restored.planting is None
     assert restored.ask("Question?") == "A maintainer reply."
@@ -137,3 +137,29 @@ def test_duplicate_ids_and_nonmonotonic_boundary_refused():
         p.record_compaction(1, pre_tokens=100)
     with pytest.raises(ValueError, match="backwards"):
         p.set_context(cumulative_tokens=99)
+
+
+def test_omitted_context_fields_preserve_clock_and_stage_high_water_survives_missing():
+    s = sim([{"obligation_id": "x", "text": "Rule.",
+              "trigger": {"reply_index": 1, "stage": "02_implement"}}])
+    s.set_delivery_context(stage="02_implement", cumulative_tokens=100)
+    s.set_delivery_context(stage="02_implement")
+    s.set_delivery_context(cumulative_tokens=120)
+    assert s.ask("Question?").endswith("Rule.")
+    assert s.planting.deliveries["x"]["cumulative_tokens"] == 120
+    s.set_delivery_context(cumulative_tokens=None)
+    with pytest.raises(ValueError, match="backwards"):
+        s.set_delivery_context(cumulative_tokens=119)
+    restored = UserSim.restore(s.export(), "Persona", FixedModel(), lambda *_: (0, "", ""))
+    with pytest.raises(ValueError, match="backwards"):
+        restored.set_delivery_context(cumulative_tokens=119)
+
+
+def test_legacy_export_and_io_shape_unchanged_but_empty_schedule_changes_prompt():
+    legacy = UserSim("Persona", FixedModel(), lambda *_: (0, "", ""))
+    legacy.ask("Question?")
+    assert set(legacy.export()) == {"upstream", "config", "persona_sha256", "state"}
+    assert all(row["kind"] != "reply" for row in legacy.io)
+    scheduled = sim([])
+    assert scheduled.system_prompt != legacy.system_prompt
+    assert NO_RESTATEMENT in scheduled.system_prompt
