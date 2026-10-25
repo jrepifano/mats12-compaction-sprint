@@ -1041,6 +1041,8 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--go-from-jacob", action="store_true")
     f.set_defaults(fn=cmd_fork)
     a = ap.parse_args(argv)
+    from compaction.s2.native import common as N
+    N.install_transport_retry()  # retries only a failed docker ssh dial, within each timeout
     return a.fn(a)
 
 

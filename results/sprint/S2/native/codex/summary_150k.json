@@ -1,0 +1,154 @@
+[
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a3",
+  "end": "submitted",
+  "sim": 1.277773,
+  "peak": {
+   "peak_tokens": 95181,
+   "peak_call": 129,
+   "calls": 129
+  },
+  "b": null
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 2.845117,
+  "peak": {
+   "peak_tokens": 125035,
+   "peak_call": 146,
+   "calls": 146
+  },
+  "b": null
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a5",
+  "end": "submitted",
+  "sim": 1.751537,
+  "peak": {
+   "peak_tokens": 128728,
+   "peak_call": 155,
+   "calls": 155
+  },
+  "b": null
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a6",
+  "end": "submitted",
+  "sim": 3.718154,
+  "peak": {
+   "peak_tokens": 147494,
+   "peak_call": 217,
+   "calls": 259
+  },
+  "b": "b1",
+  "pre_tokens": 147824,
+  "sim_calls": 13,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "la_items": 28,
+  "la_lost": 3,
+  "la_recoverable": {
+   "not_recoverable": 3
+  },
+  "req_items": 25,
+  "req_lost": 5,
+  "req_new": 5,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a3",
+  "end": "run_cap",
+  "sim": 5.241349,
+  "peak": {
+   "peak_tokens": 149394,
+   "peak_call": 210,
+   "calls": 313
+  },
+  "b": "b1",
+  "pre_tokens": 149616,
+  "sim_calls": 15,
+  "recite": [
+   0.794,
+   0.98,
+   0.794
+  ],
+  "la_items": 27,
+  "la_lost": 1,
+  "la_recoverable": {
+   "unresolved": 1
+  },
+  "req_items": 18,
+  "req_lost": 1,
+  "req_new": 1,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a4",
+  "end": "run_cap",
+  "sim": 4.805125,
+  "peak": {
+   "peak_tokens": 149843,
+   "peak_call": 254,
+   "calls": 668
+  },
+  "b": "b1",
+  "pre_tokens": 150229,
+  "sim_calls": 9,
+  "recite": [
+   0.974,
+   0.993,
+   0.98
+  ],
+  "la_items": 26,
+  "la_lost": 1,
+  "la_recoverable": {
+   "not_recoverable": 1
+  },
+  "req_items": 18,
+  "req_lost": 0,
+  "req_new": 0,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a4",
+  "end": "run_cap",
+  "sim": 4.805125,
+  "peak": {
+   "peak_tokens": 149843,
+   "peak_call": 254,
+   "calls": 668
+  },
+  "b": "b2",
+  "pre_tokens": 150191,
+  "sim_calls": 26,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "la_items": 43,
+  "la_lost": 21,
+  "la_recoverable": {
+   "not_recoverable": 21
+  },
+  "req_items": 44,
+  "req_lost": 35,
+  "req_new": 34,
+  "req_inh": 0,
+  "req_unk": 1
+ }
+]
