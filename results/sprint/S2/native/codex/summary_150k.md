@@ -1,3 +1,5 @@
+> **CORRECTION PENDING (25 Oct, ~02:30Z).** `codex.extract_recitation` truncated summaries that contain code blocks, so 8 of 14 graded Codex boundaries were graded on partial summaries and their loss counts are overstated. Affected here: boa b1 and vitest b2. Not affected: helm b1 and vitest b1. The code checks still hold for the items that stay dropped. Re-extraction and a regrade are under way; don't cite the affected rows until then.
+
 # Codex native arm, 150k trigger: summary (24–25 Oct 2026)
 
 **Model: gpt-6-luna, our choice, not Codex's default.** The brief specified it, and the arm's
