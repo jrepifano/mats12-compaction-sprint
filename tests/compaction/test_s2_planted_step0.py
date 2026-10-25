@@ -240,3 +240,18 @@ def test_stale_after_probe_preserves_evidence_and_withholds_judge(tmp_path, monk
     assert result["probe"]["result"]["captured_asks"]
     assert result["probe"]["preliminary_scores"]["commit_convention"]["outcome"] == "complied"
     assert result["withheld"]["stage"] == "report_judge_and_continuation"
+
+
+def test_missing_evidence_preserves_raw_probe_result(tmp_path, monkeypatch):
+    original = P.read
+    def missing(path):
+        if path.name == "evidence.json":
+            raise FileNotFoundError("fixture missing evidence")
+        return original(path)
+    monkeypatch.setattr(P, "read", missing)
+    result, calls = run(tmp_path)
+    assert result["status"] == "FAIL" and len(calls) == 1
+    assert result["probe"]["result"]["captured_asks"]
+    assert "fixture missing evidence" in result["error"]
+    rows = ForkBudget(tmp_path / "output/fork_budget.json").state()["attempts"]
+    assert len(rows) == 2 and all(r["status"] == "technical_failure" for r in rows)

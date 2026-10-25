@@ -863,7 +863,12 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 if cfg.capture_ask:
                     cut = next((i for i, row in enumerate(rows) if resume_b and
                                 row.get("uuid") == resume_b["native_summary_uuid"]), -1)
-                    res["token_usage"] = transcript_usage(resumed_window_rows(rows, resume_rows, CONTINUE_PROMPT, cut=cut))
+                    window_info = {}
+                    usage_rows = resumed_window_rows(rows, resume_rows, CONTINUE_PROMPT,
+                                                      cut=cut, metadata=window_info)
+                    res["token_usage"] = transcript_usage(usage_rows)
+                    res["token_usage_window"] = window_info
+                    res["token_usage_anchored_to_prompt"] = window_info["anchored_to_prompt"]
                     res["rate_limit"] = state.get("rate_limit")
                 mark("step_done", step=step, rc=r.rc, killed=r.killed, failed=bad)
                 if state.get("auth_error") or (bad and "not Max" in bad):
@@ -1694,6 +1699,11 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         if path in targets:
             issues.append(f"{reason}: {path}")
 
+    def nonfile_annotation(arg):
+        annotation = re.search(r"<([^>]+)>", arg)
+        return bool(annotation and annotation.group(1).startswith(
+            ("pipe:", "socket:", "anon_inode:", "/dev/")))
+
     for _order, pid, op, line, rc in sorted(records, key=lambda item: item[0]):
         table = process(pid)
         args = []
@@ -1709,6 +1719,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                 if desc:
                     desc["offset"] = None
                 continue
+            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate") and first and nonfile_annotation(first.group(1)):
+                continue  # Known pipe/socket/device output cannot mutate the declared files.
             referenced = set(re.findall(r"<(/[^>]+)>", line))
             if desc:
                 referenced.add(desc["path"])
@@ -1719,6 +1731,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     partial = re.sub(r"\)\s+=.*$", "", line)
                     partial_args = args_of(partial + ") = 0")
                     output = partial_args[2] if op in ("copy_file_range", "splice") else partial_args[0]
+                    if nonfile_annotation(output):
+                        continue
                     annotated = re.search(r"<([^>]+)>", output)
                     output_desc = table.get(number(output))
                     path = annotated.group(1) if annotated else output_desc["path"] if output_desc else None
@@ -1732,7 +1746,10 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     issues.append("unresolved unfinished mutation syscall")
             elif op in ("clone", "clone3", "fork", "vfork", "chdir", "fchdir"):
                 issues.append("unfinished process state syscall")
-            elif op in ("rename", "renameat", "renameat2", "unlink", "unlinkat", "truncate", "open", "openat", "creat"):
+            elif op in ("open", "openat"):
+                if re.search(r"\bO_(?:WRONLY|RDWR|CREAT|TRUNC)\b", line) or any(path in line for path in targets):
+                    issues.append("unfinished path mutation syscall")
+            elif op in ("rename", "renameat", "renameat2", "unlink", "unlinkat", "truncate", "creat"):
                 # Paths can be relative or temporary later renamed onto the target.
                 issues.append("unfinished path mutation syscall")
             elif any(path in line for path in targets):
@@ -2148,9 +2165,10 @@ class ProbeAudit:
                 elif isinstance(block, dict) and block.get("type") == "tool_use":
                     expected_calls[block.get("id")] = block.get("name")
         terminal_stop = terminal_stop or bool(captured_asks)
-        unexecuted = sorted(tid for tid, name in expected_calls.items() if terminal_stop and tid not in outputs
-                            and not (captured_asks and name in (ASK_TOOL, "ask_user"))
-                            and (tid not in self.pre_ids or tid in getattr(self, "denied_ids", set())))
+        denied = getattr(self, "denied_ids", set())
+        unexecuted = sorted(tid for tid, name in expected_calls.items()
+                            if not (captured_asks and name in (ASK_TOOL, "ask_user"))
+                            and (tid in denied or terminal_stop and tid not in outputs and tid not in self.pre_ids))
         for tid, name in expected_calls.items():
             if tid in unexecuted:
                 continue
@@ -2161,6 +2179,8 @@ class ProbeAudit:
         for event in self.events:
             if event["kind"] in ("command", "read", "search"):
                 tid = event["data"].get("tool_call_id")
+                if tid in unexecuted:
+                    continue
                 if tid in outputs:
                     event["data"]["output"] = outputs[tid]
                     if event["kind"] == "search":
@@ -2384,7 +2404,8 @@ def boundary_replay_integrity(rows: list[dict], summary_uuid: str | None,
     return {"ok": not issues, "issues": sorted(set(issues))}
 
 
-def resumed_window_rows(rows: list[dict], source_rows: list[dict], prompt: str, *, cut=-1) -> list[dict]:
+def resumed_window_rows(rows: list[dict], source_rows: list[dict], prompt: str, *, cut=-1,
+                        metadata: dict | None = None) -> list[dict]:
     """New fork events only: preserved history can occur physically after the summary."""
     source_ids = {row.get("uuid") for row in source_rows if row.get("uuid")}
     source_mids = {(row.get("message") or {}).get("id") for row in source_rows
@@ -2394,7 +2415,11 @@ def resumed_window_rows(rows: list[dict], source_rows: list[dict], prompt: str, 
                     if isinstance(block, dict) and block.get("type") == "tool_use"}
     start = next((i for i in range(cut + 1, len(rows)) if rows[i].get("type") == "user"
                   and rows[i].get("uuid") not in source_ids
-                  and _block_text((rows[i].get("message") or {}).get("content")) == prompt), cut + 1)
+                  and _block_text((rows[i].get("message") or {}).get("content")) == prompt), None)
+    if metadata is not None:
+        metadata.update(anchored_to_prompt=start is not None,
+                        start_index=start if start is not None else cut + 1)
+    start = start if start is not None else cut + 1
     result = []
     for row in rows[start:]:
         msg = row.get("message") or {}

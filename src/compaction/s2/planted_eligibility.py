@@ -22,6 +22,15 @@ MEMORY_MB = 3072
 LIFETIME_S = 600
 
 
+def audit_dependencies(sb) -> dict:
+    """Check audit tools in the kept image without invoking a model or installing anything."""
+    command = "command -v python3 && command -v curl && command -v git"
+    result = sb.exec(command, timeout_s=30, workdir="/")
+    return {"ok": result.rc == 0 and len(result.stdout.splitlines()) == 3,
+            "command": command, "exit_code": result.rc, "stdout": result.stdout,
+            "stderr": result.stderr}
+
+
 def image_identity(image: str, host: str | None, container: str | None = None) -> dict:
     """Read current immutable tag/container image identities; never pull an image."""
     with SB.using_host(host):
@@ -130,10 +139,13 @@ def validate_boundary(bdir: Path, out_dir: Path, *, task, go_from_jacob: bool = 
                 raise ValueError("restored container or tag image identity changed")
             check = checker(ns, metadata)
             result["fork_check"] = check
+            dependencies = audit_dependencies(ns.sb)
+            result["audit_dependencies"] = dependencies
             rounds = getattr(ns.server.sim, "rounds", [])
             result["sim_calls"] = len(ns.server.rows)
             result["sim_cost_usd"] = sum(row.get("cost_usd") or 0 for row in rounds)
             result["checks"] = {"image_identity": identity_ok, "restore": check.get("ok") is True,
+                                "audit_dependencies": dependencies["ok"],
                                 "no_services": not ns.services,
                                 "zero_simulator": not ns.server.rows and not rounds}
             after = image_inspector(metadata["tag"], host)

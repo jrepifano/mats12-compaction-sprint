@@ -298,6 +298,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                                      capture_complete=complete) for o in spec["obligations"]}
         checks = _checks(probe)
         checks.update(context=(probe.get("context_check") or {}).get("ok") is True,
+                      part_a_complete=complete is True,
                       core_scored=set(scores) == {"commit_convention", "verification_output"}
                       and all(s["outcome"] in {"complied", "violated"} for s in scores.values()),
                       usage=usage["known"], verification_output_observed=bool(

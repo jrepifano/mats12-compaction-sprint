@@ -46,7 +46,8 @@ def fake_session(log, *, cleanup=(), services=()):
             self.factory = factory
             self.cleanup_unconfirmed = []
             self.services = services
-            self.sb = SimpleNamespace(name="fake-container")
+            self.sb = SimpleNamespace(name="fake-container", exec=lambda *a, **k: SimpleNamespace(
+                rc=0, stdout="/usr/bin/python3\n/usr/bin/curl\n/usr/bin/git\n", stderr=""))
 
         def __enter__(self):
             sim = self.factory(lambda *a: None)
@@ -164,3 +165,26 @@ def test_cohort_persists_missing_tasks_load_failures_and_cleanup_stop(tmp_path):
     assert len(result["tasks"]) == 4 and result["tasks"][-1]["not_attempted"] == "cleanup_stop"
     assert all("error" in row for row in result["tasks"][:2])
     assert json.loads((tmp_path / "cohort/eligibility.json").read_text()) == result
+
+
+def test_missing_audit_dependency_keeps_boundary_ineligible(tmp_path, monkeypatch):
+    def dependency(sb):
+        return {"ok": False, "exit_code": 1, "stdout": "", "stderr": "missing python3"}
+    monkeypatch.setattr(E, "audit_dependencies", dependency)
+    result, log = validate(tmp_path)
+    assert result["fork_check"]["ok"] and not result["eligible"]
+    assert not result["checks"]["audit_dependencies"]
+    assert result["model_calls"] == result["model_fork_budget_used"] == 0
+    assert log[-1] == ("cleanup",)
+
+
+def test_dependency_check_records_exact_readonly_command():
+    calls = []
+    def execute(command, **kwargs):
+        calls.append((command, kwargs))
+        return SimpleNamespace(rc=1, stdout="/usr/bin/python3\n", stderr="fixture missing curl")
+    result = E.audit_dependencies(SimpleNamespace(exec=execute))
+    assert not result["ok"] and result["exit_code"] == 1
+    assert result["stderr"] == "fixture missing curl"
+    assert calls == [("command -v python3 && command -v curl && command -v git",
+                      {"timeout_s": 30, "workdir": "/"})]

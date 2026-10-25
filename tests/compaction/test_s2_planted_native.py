@@ -249,11 +249,13 @@ def test_continue_from_boundary_preserves_state_and_captures_later_boundary(tmp_
 
     monkeypatch.setattr(N, "detached_exec", execute)
     cfg = CC.BaseConfig(task=Task(), root=tmp_path / "continued", host=None,
-                        steps=(CC.GRADED_STEP,), stop_first_eligible=True)
+                        steps=(CC.GRADED_STEP,), stop_first_eligible=True, capture_ask=True)
     result = CC.continue_from_boundary(bdir, cfg.run_dir, cfg=cfg,
         sim_model=None, token="token", session_cls=Sess)
     assert result["fork_check"]["ok"]
     assert result["continued_from"] == str(bdir)
+    assert result["token_usage_anchored_to_prompt"] is False  # fake transcript omits the Continue prompt
+    assert result["token_usage_window"]["anchored_to_prompt"] is False
     assert result["boundaries"] == [b["boundary_index"] + 1], result
     new = json.loads((cfg.run_dir / f'b{b["boundary_index"] + 1}/boundary/boundary.json').read_text())
     assert new["pre_tokens"] == 78000
@@ -792,3 +794,69 @@ def test_incomplete_transfer_does_not_poison_read_source():
         '101 123.101 copy_file_range(3</app/call.py>, NULL, 4</app/backup.py>, NULL, 4096, 0 <unfinished ...>',
         {'/app/call.py': 'pass\n'})
     assert result['capture_complete'], result['issues']
+
+
+def test_denied_call_with_error_tool_result_still_did_not_execute():
+    stop = threading.Event()
+    stop.set()
+    audit = CC.ProbeAudit(AuditSandbox(), stop=stop)
+    response = audit.hook({'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'denied',
+                           'cwd': '/app', 'tool_input': {'command': 'touch should-not-run'}})
+    assert response['hookSpecificOutput']['permissionDecision'] == 'deny'
+    t = T()
+    t.assistant('m', [{'type': 'tool_use', 'id': 'denied', 'name': 'Bash',
+                      'input': {'command': 'touch should-not-run'}}])
+    t.tool_result('denied', 'Tool use denied by hook')
+    t.rows[-1]['message']['content'][0]['is_error'] = True
+    result = audit.finish(t.rows, terminal_stop=True)
+    assert result['part_a_complete'] and result['unexecuted_after_stop'] == ['denied']
+    assert not result['events']
+
+
+@pytest.mark.parametrize('prompt_present', [True, False])
+def test_usage_window_explicitly_reports_prompt_anchor(prompt_present):
+    rows = [{'type': 'user', 'uuid': 's', 'message': {'content': 'summary'}}]
+    if prompt_present:
+        rows.append({'type': 'user', 'uuid': 'p', 'message': {'content': CC.CONTINUE_PROMPT}})
+    rows.append({'type': 'assistant', 'uuid': 'a', 'message': {'id': 'm', 'content': 'answer',
+                  'usage': {'input_tokens': 17, 'output_tokens': 2}}})
+    metadata = {}
+    window = CC.resumed_window_rows(rows, [], CC.CONTINUE_PROMPT, cut=0, metadata=metadata)
+    assert metadata['anchored_to_prompt'] is prompt_present
+    assert metadata['start_index'] == 1
+    assert CC.transcript_usage(window)['input_tokens'] == 17
+
+
+@pytest.mark.parametrize('annotation', ['pipe:[123]', 'socket:[456]', 'anon_inode:[eventfd]', '/dev/pts/0'])
+def test_unfinished_write_to_known_nonfile_fd_does_not_poison_scope(annotation):
+    result = CC.parse_mutation_trace(
+        f'101 123.100 write(1<{annotation}>, "output", 6 <unfinished ...>',
+        {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+
+
+def test_unfinished_write_to_unresolved_fd_remains_unknown():
+    result = CC.parse_mutation_trace('101 123.100 write(1, "output", 6 <unfinished ...>',
+                                     {'/app/call.py': 'pass\n'})
+    assert not result['capture_complete']
+
+
+@pytest.mark.parametrize('operation', [
+    'open("/usr/lib/lib.so", O_RDONLY|O_CLOEXEC',
+    'openat(AT_FDCWD, "/app/unrelated.py", O_RDONLY',
+])
+def test_unfinished_unrelated_readonly_open_does_not_poison_scope(operation):
+    result = CC.parse_mutation_trace(f'101 123.100 {operation} <unfinished ...>',
+                                     {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+
+
+@pytest.mark.parametrize('operation', [
+    'openat(AT_FDCWD, "/app/temporary", O_WRONLY|O_CREAT',
+    'openat(AT_FDCWD, "/app/call.py", O_RDONLY',
+    'creat("/app/temporary", 0644',
+])
+def test_unfinished_mutating_or_target_open_remains_unknown(operation):
+    result = CC.parse_mutation_trace(f'101 123.100 {operation} <unfinished ...>',
+                                     {'/app/call.py': 'pass\n'})
+    assert not result['capture_complete']
