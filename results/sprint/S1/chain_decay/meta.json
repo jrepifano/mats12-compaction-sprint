@@ -1,0 +1,653 @@
+{
+ "design": {
+  "seed": "s1-chain-decay:20261024",
+  "n_sessions": 54,
+  "min_k": 3,
+  "k_cap": 8,
+  "pool_size": 54,
+  "strata": {
+   "claude-code | claude-opus-4-5-20251101": {
+    "pool": 9,
+    "sample": 9,
+    "weight": 1.0
+   },
+   "claude-code | claude-opus-4-6": {
+    "pool": 38,
+    "sample": 38,
+    "weight": 1.0
+   },
+   "claude-code | claude-sonnet-4-5-20250929": {
+    "pool": 4,
+    "sample": 4,
+    "weight": 1.0
+   },
+   "claude-code | claude-sonnet-4-6": {
+    "pool": 2,
+    "sample": 2,
+    "weight": 1.0
+   },
+   "opencode | gpt-5.3-codex": {
+    "pool": 1,
+    "sample": 1,
+    "weight": 1.0
+   }
+  },
+  "draw": [
+   {
+    "group": "swe-chat-v1:09d37cdf-ce90-4059-92c4-172893b1259f",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:09d37cdf-ce90-4059-92c4-172893b1259f:0",
+     "swe-chat-v1:09d37cdf-ce90-4059-92c4-172893b1259f:1",
+     "swe-chat-v1:09d37cdf-ce90-4059-92c4-172893b1259f:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:0c275b1b-9732-433e-9e70-9b7bfdb578a3",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:0c275b1b-9732-433e-9e70-9b7bfdb578a3:0",
+     "swe-chat-v1:0c275b1b-9732-433e-9e70-9b7bfdb578a3:1",
+     "swe-chat-v1:0c275b1b-9732-433e-9e70-9b7bfdb578a3:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:0cf3db51-1c73-43bb-8d05-dc02739514a5",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-22-0cf3db51-1c73-43bb-8d05-dc02739514a5:0",
+     "swe-chat-v1:2026-01-22-0cf3db51-1c73-43bb-8d05-dc02739514a5:1",
+     "swe-chat-v1:2026-01-22-0cf3db51-1c73-43bb-8d05-dc02739514a5:2",
+     "swe-chat-v1:2026-01-22-0cf3db51-1c73-43bb-8d05-dc02739514a5:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:0",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:1",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:2",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:3",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:4",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:5",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:6",
+     "swe-chat-v1:112658aa-8e2f-43a4-9f8b-a690dfce9b04:7"
+    ],
+    "n_total": 8
+   },
+   {
+    "group": "swe-chat-v1:14138feb-bf4b-4209-96de-bd5941cf98ff",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:14138feb-bf4b-4209-96de-bd5941cf98ff:0",
+     "swe-chat-v1:14138feb-bf4b-4209-96de-bd5941cf98ff:1",
+     "swe-chat-v1:14138feb-bf4b-4209-96de-bd5941cf98ff:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:0",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:1",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:2",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:3",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:4",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:5",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:6",
+     "swe-chat-v1:15ffa5d1-c7f7-44fe-a777-0648f3b4c3ed:7"
+    ],
+    "n_total": 22
+   },
+   {
+    "group": "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:0",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:1",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:2",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:3",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:4",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:5",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:6",
+     "swe-chat-v1:1a289c77-a9da-491d-954a-2df7f0dd6a17:7"
+    ],
+    "n_total": 8
+   },
+   {
+    "group": "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a:0",
+     "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a:1",
+     "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a:2",
+     "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a:3",
+     "swe-chat-v1:1cb7ed5c-2524-4ba4-97d6-a1359143d74a:4"
+    ],
+    "n_total": 5
+   },
+   {
+    "group": "swe-chat-v1:1e3d6988-e6c2-4e7b-92a5-47e46e390af3",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:1e3d6988-e6c2-4e7b-92a5-47e46e390af3:0",
+     "swe-chat-v1:1e3d6988-e6c2-4e7b-92a5-47e46e390af3:1",
+     "swe-chat-v1:1e3d6988-e6c2-4e7b-92a5-47e46e390af3:2",
+     "swe-chat-v1:1e3d6988-e6c2-4e7b-92a5-47e46e390af3:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:0",
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:1",
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:2",
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:3",
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:4",
+     "swe-chat-v1:23d52eea-9d87-4c09-8282-30c876cd2180:5"
+    ],
+    "n_total": 6
+   },
+   {
+    "group": "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:0",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:1",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:2",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:3",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:4",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:5",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:6",
+     "swe-chat-v1:261278d3-25c3-4789-93e7-bfcc23c40cd5:7"
+    ],
+    "n_total": 9
+   },
+   {
+    "group": "swe-chat-v1:26cd749e-9e51-4592-a2f3-e0a2736c7380",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:26cd749e-9e51-4592-a2f3-e0a2736c7380:0",
+     "swe-chat-v1:26cd749e-9e51-4592-a2f3-e0a2736c7380:1",
+     "swe-chat-v1:26cd749e-9e51-4592-a2f3-e0a2736c7380:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:2a55af89-4e4f-4460-b18f-42a07287ae76",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:2a55af89-4e4f-4460-b18f-42a07287ae76:0",
+     "swe-chat-v1:2a55af89-4e4f-4460-b18f-42a07287ae76:1",
+     "swe-chat-v1:2a55af89-4e4f-4460-b18f-42a07287ae76:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:2aeee101-92bd-4b51-a063-4f47cd58f907",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:2aeee101-92bd-4b51-a063-4f47cd58f907:0",
+     "swe-chat-v1:2aeee101-92bd-4b51-a063-4f47cd58f907:1",
+     "swe-chat-v1:2aeee101-92bd-4b51-a063-4f47cd58f907:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:2c3b9c50-a062-4c8e-bad6-eeae7fa14bcd",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:2c3b9c50-a062-4c8e-bad6-eeae7fa14bcd:0",
+     "swe-chat-v1:2c3b9c50-a062-4c8e-bad6-eeae7fa14bcd:1",
+     "swe-chat-v1:2c3b9c50-a062-4c8e-bad6-eeae7fa14bcd:2",
+     "swe-chat-v1:2c3b9c50-a062-4c8e-bad6-eeae7fa14bcd:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:2d389bae-1365-4122-9ff2-46fd02f68c8d",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:2d389bae-1365-4122-9ff2-46fd02f68c8d:0",
+     "swe-chat-v1:2d389bae-1365-4122-9ff2-46fd02f68c8d:1",
+     "swe-chat-v1:2d389bae-1365-4122-9ff2-46fd02f68c8d:2",
+     "swe-chat-v1:2d389bae-1365-4122-9ff2-46fd02f68c8d:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:37fdbb4b-905a-4e19-97f6-f11a5166268d",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:37fdbb4b-905a-4e19-97f6-f11a5166268d:0",
+     "swe-chat-v1:37fdbb4b-905a-4e19-97f6-f11a5166268d:1",
+     "swe-chat-v1:37fdbb4b-905a-4e19-97f6-f11a5166268d:2",
+     "swe-chat-v1:37fdbb4b-905a-4e19-97f6-f11a5166268d:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:3cbc097a-5068-4ad2-b5fe-a51587bac925",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:3cbc097a-5068-4ad2-b5fe-a51587bac925:0",
+     "swe-chat-v1:3cbc097a-5068-4ad2-b5fe-a51587bac925:1",
+     "swe-chat-v1:3cbc097a-5068-4ad2-b5fe-a51587bac925:2",
+     "swe-chat-v1:3cbc097a-5068-4ad2-b5fe-a51587bac925:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:0",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:1",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:2",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:3",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:4",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:5",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:6",
+     "swe-chat-v1:40b04cfc-1072-495b-8c66-db339475e18c:7"
+    ],
+    "n_total": 8
+   },
+   {
+    "group": "swe-chat-v1:43070e29-1466-4519-8601-05ecddad8408",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:43070e29-1466-4519-8601-05ecddad8408:0",
+     "swe-chat-v1:43070e29-1466-4519-8601-05ecddad8408:1",
+     "swe-chat-v1:43070e29-1466-4519-8601-05ecddad8408:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:4b3ddf27-d7f7-4773-b4f2-b94b999c661d",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:4b3ddf27-d7f7-4773-b4f2-b94b999c661d:0",
+     "swe-chat-v1:4b3ddf27-d7f7-4773-b4f2-b94b999c661d:1",
+     "swe-chat-v1:4b3ddf27-d7f7-4773-b4f2-b94b999c661d:2",
+     "swe-chat-v1:4b3ddf27-d7f7-4773-b4f2-b94b999c661d:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:515dde7d-7200-4c4e-afe5-678e91d56910",
+    "stratum": "claude-code | claude-sonnet-4-5-20250929",
+    "rids": [
+     "swe-chat-v1:515dde7d-7200-4c4e-afe5-678e91d56910:0",
+     "swe-chat-v1:515dde7d-7200-4c4e-afe5-678e91d56910:1",
+     "swe-chat-v1:515dde7d-7200-4c4e-afe5-678e91d56910:2",
+     "swe-chat-v1:515dde7d-7200-4c4e-afe5-678e91d56910:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:52518bed-3ae7-49cb-834f-c2d1d9231e9e",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:52518bed-3ae7-49cb-834f-c2d1d9231e9e:0",
+     "swe-chat-v1:52518bed-3ae7-49cb-834f-c2d1d9231e9e:1",
+     "swe-chat-v1:52518bed-3ae7-49cb-834f-c2d1d9231e9e:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:56be90d2-a216-4475-9617-ff47f0050dd5",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:56be90d2-a216-4475-9617-ff47f0050dd5:0",
+     "swe-chat-v1:56be90d2-a216-4475-9617-ff47f0050dd5:1",
+     "swe-chat-v1:56be90d2-a216-4475-9617-ff47f0050dd5:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:5dfd6189-dead-49c2-bf77-84247314695e",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:5dfd6189-dead-49c2-bf77-84247314695e:0",
+     "swe-chat-v1:5dfd6189-dead-49c2-bf77-84247314695e:1",
+     "swe-chat-v1:5dfd6189-dead-49c2-bf77-84247314695e:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:70d782f7-b303-4e48-9512-6bec16c37abd",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-28-70d782f7-b303-4e48-9512-6bec16c37abd:0",
+     "swe-chat-v1:2026-01-28-70d782f7-b303-4e48-9512-6bec16c37abd:1",
+     "swe-chat-v1:2026-01-28-70d782f7-b303-4e48-9512-6bec16c37abd:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e",
+    "stratum": "claude-code | claude-sonnet-4-6",
+    "rids": [
+     "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:0",
+     "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:1",
+     "swe-chat-v1:71a6aa1d-05cc-4efb-ae8e-f29a1ad70e9e:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:722db7c9-9d3f-42ea-ae53-305196c88c01",
+    "stratum": "claude-code | claude-sonnet-4-6",
+    "rids": [
+     "swe-chat-v1:722db7c9-9d3f-42ea-ae53-305196c88c01:0",
+     "swe-chat-v1:722db7c9-9d3f-42ea-ae53-305196c88c01:1",
+     "swe-chat-v1:722db7c9-9d3f-42ea-ae53-305196c88c01:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:78f3bb53-ec49-4bcf-8af8-bcf8e3518ac7",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:78f3bb53-ec49-4bcf-8af8-bcf8e3518ac7:0",
+     "swe-chat-v1:78f3bb53-ec49-4bcf-8af8-bcf8e3518ac7:1",
+     "swe-chat-v1:78f3bb53-ec49-4bcf-8af8-bcf8e3518ac7:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:79e9becd-0b83-42f1-8cb1-33375d080476",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-23-79e9becd-0b83-42f1-8cb1-33375d080476:0",
+     "swe-chat-v1:2026-01-23-79e9becd-0b83-42f1-8cb1-33375d080476:1",
+     "swe-chat-v1:2026-01-23-79e9becd-0b83-42f1-8cb1-33375d080476:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:7f78a542-6201-447a-8277-213165356894",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-27-7f78a542-6201-447a-8277-213165356894:0",
+     "swe-chat-v1:2026-01-27-7f78a542-6201-447a-8277-213165356894:1",
+     "swe-chat-v1:2026-01-27-7f78a542-6201-447a-8277-213165356894:2",
+     "swe-chat-v1:2026-01-27-7f78a542-6201-447a-8277-213165356894:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:80373e1d-df82-43b5-b329-48bc6d3fca34",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:80373e1d-df82-43b5-b329-48bc6d3fca34:0",
+     "swe-chat-v1:80373e1d-df82-43b5-b329-48bc6d3fca34:1",
+     "swe-chat-v1:80373e1d-df82-43b5-b329-48bc6d3fca34:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:8545cce9-c1ca-4df8-b094-6d5229398a80",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:8545cce9-c1ca-4df8-b094-6d5229398a80:0",
+     "swe-chat-v1:8545cce9-c1ca-4df8-b094-6d5229398a80:1",
+     "swe-chat-v1:8545cce9-c1ca-4df8-b094-6d5229398a80:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942",
+    "stratum": "claude-code | claude-sonnet-4-5-20250929",
+    "rids": [
+     "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:0",
+     "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:1",
+     "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:2",
+     "swe-chat-v1:89c66565-2227-4ece-a594-8ee853b05942:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:8dab6c26-fc6b-4cc5-8263-6150b598af24",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:8dab6c26-fc6b-4cc5-8263-6150b598af24:0",
+     "swe-chat-v1:8dab6c26-fc6b-4cc5-8263-6150b598af24:1",
+     "swe-chat-v1:8dab6c26-fc6b-4cc5-8263-6150b598af24:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:0",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:1",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:2",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:3",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:4",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:5",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:6",
+     "swe-chat-v1:94aabe90-9b2d-48e7-be8c-6bf820a0b6a9:7"
+    ],
+    "n_total": 16
+   },
+   {
+    "group": "swe-chat-v1:9a3e3528-2bae-44a9-ba1d-45ac4c351d00",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:9a3e3528-2bae-44a9-ba1d-45ac4c351d00:0",
+     "swe-chat-v1:9a3e3528-2bae-44a9-ba1d-45ac4c351d00:1",
+     "swe-chat-v1:9a3e3528-2bae-44a9-ba1d-45ac4c351d00:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c:0",
+     "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c:1",
+     "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c:2",
+     "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c:3",
+     "swe-chat-v1:a0c1bbf0-0456-4a9e-80bb-96670da0449c:4"
+    ],
+    "n_total": 5
+   },
+   {
+    "group": "swe-chat-v1:a318ad73-17a2-4575-845d-8952a1e5958b",
+    "stratum": "claude-code | claude-sonnet-4-5-20250929",
+    "rids": [
+     "swe-chat-v1:a318ad73-17a2-4575-845d-8952a1e5958b:0",
+     "swe-chat-v1:a318ad73-17a2-4575-845d-8952a1e5958b:1",
+     "swe-chat-v1:a318ad73-17a2-4575-845d-8952a1e5958b:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:a8195759-16e2-4fdb-b3a2-1b6910718336",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:a8195759-16e2-4fdb-b3a2-1b6910718336:0",
+     "swe-chat-v1:a8195759-16e2-4fdb-b3a2-1b6910718336:1",
+     "swe-chat-v1:a8195759-16e2-4fdb-b3a2-1b6910718336:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:0",
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:1",
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:2",
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:3",
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:4",
+     "swe-chat-v1:af03813b-aac6-4f96-8512-ae01cc818643:5"
+    ],
+    "n_total": 6
+   },
+   {
+    "group": "swe-chat-v1:b3342ff7-4bc3-4c55-b570-ff9cc1373790",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:b3342ff7-4bc3-4c55-b570-ff9cc1373790:0",
+     "swe-chat-v1:b3342ff7-4bc3-4c55-b570-ff9cc1373790:1",
+     "swe-chat-v1:b3342ff7-4bc3-4c55-b570-ff9cc1373790:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:c35cf82b-0486-4d17-94d7-7fa36376faff",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-22-c35cf82b-0486-4d17-94d7-7fa36376faff:0",
+     "swe-chat-v1:2026-01-22-c35cf82b-0486-4d17-94d7-7fa36376faff:1",
+     "swe-chat-v1:2026-01-22-c35cf82b-0486-4d17-94d7-7fa36376faff:2",
+     "swe-chat-v1:2026-01-22-c35cf82b-0486-4d17-94d7-7fa36376faff:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:c551cf96-b121-495b-b191-6ca6784fe2e1",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:c551cf96-b121-495b-b191-6ca6784fe2e1:0",
+     "swe-chat-v1:c551cf96-b121-495b-b191-6ca6784fe2e1:1",
+     "swe-chat-v1:c551cf96-b121-495b-b191-6ca6784fe2e1:2",
+     "swe-chat-v1:c551cf96-b121-495b-b191-6ca6784fe2e1:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e:0",
+     "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e:1",
+     "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e:2",
+     "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e:3",
+     "swe-chat-v1:c8328e0a-366a-46e9-a1b2-518e0d53294e:4"
+    ],
+    "n_total": 5
+   },
+   {
+    "group": "swe-chat-v1:cd4e00d9-1abc-4fe4-93f4-963cf98cc67c",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:cd4e00d9-1abc-4fe4-93f4-963cf98cc67c:0",
+     "swe-chat-v1:cd4e00d9-1abc-4fe4-93f4-963cf98cc67c:1",
+     "swe-chat-v1:cd4e00d9-1abc-4fe4-93f4-963cf98cc67c:2",
+     "swe-chat-v1:cd4e00d9-1abc-4fe4-93f4-963cf98cc67c:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9",
+    "stratum": "claude-code | claude-sonnet-4-5-20250929",
+    "rids": [
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:0",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:1",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:2",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:3",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:4",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:5",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:6",
+     "swe-chat-v1:cea2bb46-757a-470c-8561-c787f4a0fad9:7"
+    ],
+    "n_total": 8
+   },
+   {
+    "group": "swe-chat-v1:d619f206-15aa-4199-8ec9-4a7a779d4aa1",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:d619f206-15aa-4199-8ec9-4a7a779d4aa1:0",
+     "swe-chat-v1:d619f206-15aa-4199-8ec9-4a7a779d4aa1:1",
+     "swe-chat-v1:d619f206-15aa-4199-8ec9-4a7a779d4aa1:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:d6e9f817-4050-46b6-b27b-5d8dea60eb38",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:d6e9f817-4050-46b6-b27b-5d8dea60eb38:0",
+     "swe-chat-v1:d6e9f817-4050-46b6-b27b-5d8dea60eb38:1",
+     "swe-chat-v1:d6e9f817-4050-46b6-b27b-5d8dea60eb38:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:e21259de-5cf3-4ae3-89ee-4f13081f4f3a",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:e21259de-5cf3-4ae3-89ee-4f13081f4f3a:0",
+     "swe-chat-v1:e21259de-5cf3-4ae3-89ee-4f13081f4f3a:1",
+     "swe-chat-v1:e21259de-5cf3-4ae3-89ee-4f13081f4f3a:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:e2df973f-328f-4c61-abb6-d89bdee9eaeb",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:e2df973f-328f-4c61-abb6-d89bdee9eaeb:0",
+     "swe-chat-v1:e2df973f-328f-4c61-abb6-d89bdee9eaeb:1",
+     "swe-chat-v1:e2df973f-328f-4c61-abb6-d89bdee9eaeb:2",
+     "swe-chat-v1:e2df973f-328f-4c61-abb6-d89bdee9eaeb:3"
+    ],
+    "n_total": 4
+   },
+   {
+    "group": "swe-chat-v1:eb4bcc15-3ff5-4d73-bac5-9bc1d786b2bb",
+    "stratum": "claude-code | claude-opus-4-5-20251101",
+    "rids": [
+     "swe-chat-v1:2026-01-20-eb4bcc15-3ff5-4d73-bac5-9bc1d786b2bb:0",
+     "swe-chat-v1:2026-01-20-eb4bcc15-3ff5-4d73-bac5-9bc1d786b2bb:1",
+     "swe-chat-v1:2026-01-20-eb4bcc15-3ff5-4d73-bac5-9bc1d786b2bb:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:fd38e13a-eeaa-496f-acc7-03d27ce1b1e7",
+    "stratum": "claude-code | claude-opus-4-6",
+    "rids": [
+     "swe-chat-v1:fd38e13a-eeaa-496f-acc7-03d27ce1b1e7:0",
+     "swe-chat-v1:fd38e13a-eeaa-496f-acc7-03d27ce1b1e7:1",
+     "swe-chat-v1:fd38e13a-eeaa-496f-acc7-03d27ce1b1e7:2"
+    ],
+    "n_total": 3
+   },
+   {
+    "group": "swe-chat-v1:ses_336ebe11bffePlPIwBobiYzDoC",
+    "stratum": "opencode | gpt-5.3-codex",
+    "rids": [
+     "swe-chat-v1:ses_336ebe11bffePlPIwBobiYzDoC:1",
+     "swe-chat-v1:ses_336ebe11bffePlPIwBobiYzDoC:2",
+     "swe-chat-v1:ses_336ebe11bffePlPIwBobiYzDoC:4"
+    ],
+    "n_total": 3
+   }
+  ]
+ },
+ "status": "stopped",
+ "started_utc": "2026-10-25T06:06:45Z",
+ "usage": {
+  "notional_usd": 4.0819,
+  "n_sent": 26,
+  "n_cached": 8,
+  "n_runs": 2,
+  "cap_usd": 30.0,
+  "window_start": 0.88,
+  "window_stop": 0.89,
+  "window_now": 0.89
+ },
+ "stop": "weekly window at 0.89 (stop at 0.89)",
+ "stopped_utc": "2026-10-25T06:10:02Z"
+}
