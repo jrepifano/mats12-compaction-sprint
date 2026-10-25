@@ -42,6 +42,21 @@ Brief: `logs/s2/briefs/native-arms.md`. Built 24 Oct 2026 by sub-agent native-ar
 - agy's `pre_tokens` is the triggering call's request size; agy's post-compaction "Continue." turn adds notices not in post_messages.
 - Snapshots don't carry processes (as the pi arm); runtime state of services is not validated for forks.
 - Codex arm: built by native-codex on the same `common.py`.
+- **Audit code can postdate a run's recorded code.** A run's `code` (result.json) is frozen at launch, but the audit code is loaded later:
+  - **Older launchers** imported `audit` at start.
+  - **Launchers at 64f52b3d and 4e0740e9** import `audit` at their first audit.
+  - **All launchers before this change** import `interact_reqs` inside their first requirements call.
+  - **Launchers from this change on** import both modules at the start of their first `_audits` call.
+  - **The lossaudit subprocess** loads its files fresh on every run.
+
+  A commit landing between launch and audit can therefore reach a launched run's audits. 630683c8 (the per-reply split fallback) was such a commit; astra l3-r2 #4 had accepted this as a limitation.
+
+  **From the commit after 4e0740e9**, each audit component appends a row to `_audit/<rk>/audit_code.jsonl` (astra auditcode r1–r3). These are disk observations, not hashes of the executed bytes. The row holds:
+  - git HEAD;
+  - per module, `sha256_around_import`: the file hashed just before and after the process imported it, recorded only when the two agree (`preloaded`, with no hash, when something imported it earlier); plus its file now;
+  - for lossaudit, its two files just before the subprocess started and after it exited, with `changed_during_run` True/False from those endpoints (None when a hash is unreadable).
+
+  **Runs audited before that commit have no such record.** Which audit code they ran is uncertain: the HEAD at their audit time isn't enough, since a module stays cached from a process's first audit and a commit's time isn't when the checkout changed.
 
 ## Commands
 

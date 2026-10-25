@@ -36,6 +36,7 @@ import argparse
 import json
 import os
 import sys
+import threading
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -424,6 +425,88 @@ def _outputs(rd: Path, ad: Path, comp: str) -> dict[str, str]:
     return {str(f.resolve()): hashlib.sha256(f.read_bytes()).hexdigest() for f in sorted(files)}
 
 
+AUDIT_MODULES = ("compaction.s2.native.audit", "compaction.s2.interact_reqs")
+AUDIT_SCRIPTS = ("scripts/s2_lossaudit.py", "src/compaction/s2/lossaudit.py")  # a subprocess
+_LOADED: dict[str, dict] = {}  # module -> what this process imported (see _load_audit_modules)
+_LOADED_LOCK = threading.Lock()
+
+
+def _sha_file(path) -> str | None:
+    import hashlib
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except (OSError, TypeError):
+        return None
+
+
+def _utc_now() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _load_audit_modules() -> None:
+    """Import the audit modules once per process (under a lock: batch workers audit
+    concurrently) and record a disk observation around each import (main session, 24 Oct: a
+    run's `code` is frozen at launch, but these modules load at its first audit). The file is
+    hashed just before and just after the import; `sha256_around_import` is that hash when the
+    two agree, else None. It is not a hash of the executed bytes: a change and revert inside
+    the import would go unseen. A module something else imported earlier is `preloaded`, with
+    no hash (its loaded code is unknown)."""
+    import importlib
+    import importlib.util
+    import sys
+    with _LOADED_LOCK:
+        for name in AUDIT_MODULES:
+            if name in _LOADED:
+                continue
+            pre = name in sys.modules
+            spec = None if pre else importlib.util.find_spec(name)
+            before = _sha_file(getattr(spec, "origin", None)) if spec else None
+            m = importlib.import_module(name)
+            after = None if pre else _sha_file(getattr(m, "__file__", None))
+            _LOADED[name] = {"sha256_around_import": before if before and before == after
+                             else None, "preloaded": pre, "imported_utc": _utc_now()}
+
+
+def _scripts_sha() -> dict:
+    return {f: _sha_file(C.REPO_ROOT / f) for f in AUDIT_SCRIPTS}
+
+
+def _audit_code(ad: Path, comp: str, scripts_before: dict | None = None) -> None:
+    """Append to <ad>/audit_code.jsonl disk observations around a component: git HEAD now;
+    per audit module,
+    its `_LOADED` record and its file's sha256 now; for lossaudit, the subprocess's files just
+    before it started and after it exited, and `changed_during_run`: True when the two
+    endpoint observations differ, False when they match (a change and revert in between would
+    not show), None when either hash is unreadable. Never raises: provenance it can't read is
+    recorded as None, or as `error`."""
+    import subprocess
+    import sys
+    row: dict = {"utc": _utc_now(), "component": comp}
+    try:
+        try:
+            head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=C.REPO_ROOT,
+                                  capture_output=True, text=True, check=False,
+                                  timeout=30).stdout.strip() or None
+        except (OSError, subprocess.SubprocessError):
+            head = None
+        row.update(git_head=head, loaded={n: _LOADED.get(n) for n in AUDIT_MODULES},
+                   on_disk={n: _sha_file(getattr(sys.modules.get(n), "__file__", None))
+                            for n in AUDIT_MODULES})
+        if scripts_before is not None:
+            after = _scripts_sha()
+            known = all(scripts_before.values()) and all(after.values())
+            row.update(scripts_before=scripts_before, scripts_after=after,
+                       changed_during_run=(after != scripts_before) if known else None)
+    except Exception as e:  # noqa: BLE001 - provenance never fails an audit
+        row["error"] = f"{type(e).__name__}: {e}"[:300]
+    try:
+        ad.mkdir(parents=True, exist_ok=True)
+        with open(ad / "audit_code.jsonl", "a") as f:
+            f.write(json.dumps(row) + "\n")
+    except OSError:
+        pass
+
+
 def _component_ok(au: dict, comp: str) -> bool:
     if comp == "requirements":
         return "requirements" in au
@@ -441,6 +524,7 @@ def _audits(root: Path, rd: Path, rk: str, host: str | None, la_lock, *, hold=No
     a resumed queue entry repeats nothing that finished before a crash once its record was
     written; a crash between a backend finishing and its record repeats that component (the
     requirement split and eligibility are kept per boundary; grading and lossaudit rerun)."""
+    _load_audit_modules()
     from compaction.s2.native import audit as AU
     out: dict = {}
     ad = root / "_audit" / rk
@@ -476,10 +560,12 @@ def _audits(root: Path, rd: Path, rk: str, host: str | None, la_lock, *, hold=No
             out["requirements"] = AU.requirements(rd, _backend_factory)
         except Exception as e:  # noqa: BLE001
             out["requirements_error"] = f"{type(e).__name__}: {e}"[:500]
+        _audit_code(ad, "requirements")
         record("requirements", ("requirements",))
     if "lossaudit" in only and not done("lossaudit"):
         with la_lock:
             if not held("lossaudit"):
+                before = _scripts_sha()
                 try:
                     AU.stage_lossaudit([rd], ad / "staging")
                     out["lossaudit_rc"] = AU.run_lossaudit(ad / "staging", ad / "lossaudit",
@@ -487,6 +573,7 @@ def _audits(root: Path, rd: Path, rk: str, host: str | None, la_lock, *, hold=No
                     out["lossaudit"] = AU.lossaudit_counts(ad / "lossaudit", rk)
                 except Exception as e:  # noqa: BLE001
                     out["lossaudit_error"] = f"{type(e).__name__}: {e}"[:500]
+                _audit_code(ad, "lossaudit", scripts_before=before)
                 record("lossaudit", ("lossaudit", "lossaudit_rc"))
     return out
 

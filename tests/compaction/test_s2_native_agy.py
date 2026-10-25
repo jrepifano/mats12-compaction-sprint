@@ -658,3 +658,114 @@ def test_audit_counts_sum_the_by_reply_provenance():
     c = S._audit_counts(au)
     assert (c["items"], c["items_by_reply"], c["lost_by_reply"]) == (7, 2, 1)
     assert S._audit_counts({})["items_by_reply"] is None
+
+
+def test_each_audit_component_records_the_code_that_ran(tmp_path, monkeypatch):
+    import sys
+    import threading
+    S = _s2n()
+    _audit_stubs(monkeypatch, S)
+    rd, _ = _queued_run(tmp_path, S)
+    S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())
+    rows = [json.loads(x) for x in (tmp_path / "_audit" / "kombu-agy-a1" / "audit_code.jsonl")
+            .read_text().splitlines()]
+    assert [r["component"] for r in rows] == ["requirements", "lossaudit"]
+    r = rows[0]
+    assert r["git_head"] and len(r["git_head"]) == 40
+    for name in S.AUDIT_MODULES:  # imported earlier by this test session: loaded code unknown
+        assert r["loaded"][name]["preloaded"] is True
+        assert r["loaded"][name]["sha256_around_import"] is None
+        assert r["on_disk"][name] == S._sha_file(sys.modules[name].__file__)
+    la = rows[1]
+    assert la["scripts_before"] == la["scripts_after"] and la["changed_during_run"] is False
+
+
+def _forget(monkeypatch, name):
+    """Drop a module so the next import is fresh; sys.modules and the parent package's
+    attribute are both restored after the test."""
+    import importlib
+    import sys
+    parent, _, child = name.rpartition(".")
+    pkg = importlib.import_module(parent)
+    if hasattr(pkg, child):
+        monkeypatch.setattr(pkg, child, getattr(pkg, child))
+    monkeypatch.delitem(sys.modules, name, raising=False)
+
+
+def test_a_fresh_import_is_hashed_at_import(monkeypatch):
+    import sys
+    S = _s2n()
+    name = S.AUDIT_MODULES[1]
+    _forget(monkeypatch, name)
+    S._load_audit_modules()
+    rec = S._LOADED[name]
+    assert rec["preloaded"] is False
+    assert rec["sha256_around_import"] == S._sha_file(sys.modules[name].__file__)
+
+
+def test_a_file_changing_during_its_import_gets_no_hash(monkeypatch):
+    S = _s2n()
+    name = S.AUDIT_MODULES[1]
+    _forget(monkeypatch, name)
+    shas = iter(["a" * 64, "b" * 64])  # before and after the import differ
+    monkeypatch.setattr(S, "_sha_file", lambda p: next(shas))
+    S._LOADED[S.AUDIT_MODULES[0]] = {}  # only the deleted module is imported here
+    S._load_audit_modules()
+    assert S._LOADED[name]["sha256_around_import"] is None
+
+
+def test_concurrent_first_audits_record_one_import(monkeypatch):
+    import threading
+    S = _s2n()
+    for n in S.AUDIT_MODULES:
+        _forget(monkeypatch, n)
+    ts = [threading.Thread(target=S._load_audit_modules) for _ in range(8)]
+    for x in ts:
+        x.start()
+    for x in ts:
+        x.join()
+    assert all(S._LOADED[n]["preloaded"] is False for n in S.AUDIT_MODULES)
+
+
+def test_unreadable_lossaudit_files_leave_the_change_unknown(tmp_path, monkeypatch):
+    S = _s2n()
+    monkeypatch.setattr(S, "_scripts_sha", lambda: {"x": None})
+    S._audit_code(tmp_path, "lossaudit", scripts_before={"x": None})
+    (row,) = [json.loads(x) for x in (tmp_path / "audit_code.jsonl").read_text().splitlines()]
+    assert row["changed_during_run"] is None
+
+
+def test_provenance_failures_never_fail_an_audit(tmp_path, monkeypatch):
+    import subprocess
+    import threading
+    S = _s2n()
+    calls = _audit_stubs(monkeypatch, S)
+    rd, _ = _queued_run(tmp_path, S)
+    from compaction.s2.native import audit as AU
+
+    def boom(rd, bf):
+        calls["requirements"] += 1
+        raise RuntimeError("backend down")
+
+    def no_git(*a, **k):
+        raise FileNotFoundError("git")
+
+    def edit_during(st, out, docker_host=None):  # a commit lands while lossaudit runs
+        calls["lossaudit"] += 1
+        monkeypatch.setattr(S, "_scripts_sha", lambda: {"x": "changed"})
+        Path(out).mkdir(parents=True, exist_ok=True)
+        (Path(out) / "losses.jsonl").write_text("")
+        return 0
+
+    monkeypatch.setattr(AU, "requirements", boom)
+    monkeypatch.setattr(AU, "run_lossaudit", edit_during)
+    monkeypatch.setattr(subprocess, "run", no_git)
+    au = S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())
+    assert "requirements_error" in au and au["lossaudit_rc"] == 0
+    rows = [json.loads(x) for x in (tmp_path / "_audit" / "kombu-agy-a1" / "audit_code.jsonl")
+            .read_text().splitlines()]
+    assert [r["component"] for r in rows] == ["requirements", "lossaudit"]
+    assert all(r["git_head"] is None for r in rows) and rows[1]["changed_during_run"] is True
+    S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())  # lossaudit reused
+    n = len((tmp_path / "_audit" / "kombu-agy-a1" / "audit_code.jsonl").read_text().splitlines())
+    assert n == 3  # only the rerun requirements component wrote a row
