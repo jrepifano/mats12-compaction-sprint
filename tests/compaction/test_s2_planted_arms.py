@@ -15,9 +15,15 @@ BOUNDARY = {"tag": "emx-kept:task-b1", "fingerprint_sha256": "a" * 64, "boundary
 
 
 def source(**kwargs):
+    absolute = "/app/" + A.repo_path(kwargs.get("path", "helper.py"))
+    resolved = kwargs.get("resolved_path", "/app/helper.py")
+    image_hash = kwargs.get("in_image_sha256", A.text_digest(kwargs.get("text", SOURCE)))
     return A.SourceSnapshot(**{
         "kept_image": "emx-kept:task-b1", "path": "helper.py", "resolved_path": "/app/helper.py",
-        "text": SOURCE, "read_command": "cat /app/helper.py", "exit_code": 0,
+        "text": SOURCE, "read_command": f"cat {absolute}", "exit_code": 0,
+        "resolve_command": f"readlink -f {absolute}", "resolve_exit_code": 0,
+        "resolve_output": resolved + "\n", "hash_command": f"sha256sum {absolute}",
+        "hash_exit_code": 0, "hash_output": f"{image_hash}  {absolute}\n",
         "complete": True, "boundary_fingerprint": "a" * 64, **kwargs,
         "boundary_record_sha256": kwargs.get("boundary_record_sha256", A.digest(BOUNDARY)),
         "in_image_sha256": kwargs.get("in_image_sha256", A.text_digest(kwargs.get("text", SOURCE))),
@@ -226,6 +232,89 @@ def test_module_inventory_allows_local_dynamic_calls_but_rejects_module_mutation
                  "def change():\n global hidden\n hidden = 2\n", "def local(x=globals()): pass"):
         with pytest.raises(ValueError, match="explicit complete extractor"):
             A.python_definitions(source(text=text))
+
+
+@pytest.mark.parametrize("text", [
+    "def mutate():\n globals()['hidden'] = 1\n",
+    "def mutate():\n vars()['hidden'] = 1\n",
+    "class Container:\n def mutate(self):\n  import sys\n  sys.modules[__name__].hidden = 1\n",
+    "def mutate():\n import sys\n sys.modules[__name__].__dict__.update({'hidden': 1})\n",
+    "def mutate():\n import sys\n setattr(sys.modules[__name__], 'hidden', 1)\n",
+])
+def test_module_namespace_mutations_in_nested_bodies_require_explicit_extractor(text):
+    with pytest.raises(ValueError, match="explicit complete extractor"):
+        A.python_definitions(source(text=text))
+
+
+@pytest.mark.parametrize("fields,match", [
+    ({"read_command": "cat /app/other.py"}, "exact cat"),
+    ({"read_command": "cat /app/helper.py | head -10"}, "exact cat"),
+    ({"resolve_command": "readlink -f /app/other.py"}, "readlink provenance"),
+    ({"resolve_output": "/app/other.py\n"}, "readlink provenance"),
+    ({"resolve_exit_code": 1}, "readlink provenance"),
+    ({"hash_command": "sha256sum /app/other.py"}, "sha256sum provenance"),
+    ({"hash_output": "wrong hash"}, "sha256sum provenance"),
+    ({"hash_exit_code": 1}, "sha256sum provenance"),
+])
+def test_source_provenance_requires_exact_paths_and_observed_success(fields, match):
+    with pytest.raises(ValueError, match=match):
+        source(**fields)
+
+
+def boundary_fixture(tmp_path):
+    bdir = tmp_path / "task-run" / "b1"
+    data = {
+        "boundary/boundary.json": BOUNDARY,
+        "run.json": {"run_key": "task-run", "task": {"task_id": "task", "image": BOUNDARY["tag"]}},
+        "boundary/post_messages.json": [{"role": "system", "content": "System"},
+                                          {"role": "user", "content": SUMMARY},
+                                          {"role": "assistant", "content": "Preserved tail"}],
+        "boundary/compaction.json": {"summary": SUMMARY, "summary_index": 1},
+        "native/hook_payload.json": {"compact_summary": f"<summary>{BODY}</summary>"},
+    }
+    for name, value in data.items():
+        path = bdir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(value))
+    return bdir
+
+
+def freeze_fixture(bdir, **kwargs):
+    lower = spec()
+    return A.freeze_claim_from_boundary(bdir, **{
+        "task_id": "task", "source": lower.source, "helper": lower.helper,
+        "action_files": lower.action_files, "remaining_step": lower.remaining_step,
+        "eligibility_quote": BODY, "action_provenance": lower.action_provenance,
+        "repo_absence": lower.repo_absence, "next_decision_confirmed": True, **kwargs})
+
+
+def test_boundary_wrapper_reads_actual_files_and_hashes_full_identity(tmp_path):
+    bdir = boundary_fixture(tmp_path)
+    frozen = freeze_fixture(bdir)
+    assert frozen.boundary_id == str(bdir.resolve())
+    assert frozen.summary_message == SUMMARY and frozen.summary_body == BODY
+    assert "Preserved tail" in frozen.effective_context
+    assert frozen.boundary_provenance["effective_context_sha256"] == A.text_digest(frozen.effective_context)
+    assert len(frozen.boundary_provenance["files"]) == 5
+    assert A.ClaimSpec.from_dict(frozen.to_dict()) == frozen
+    with pytest.raises(ValueError, match="task.*record disagree"):
+        freeze_fixture(bdir, task_id="other-task")
+
+
+def test_boundary_wrapper_refuses_mismatched_files_or_directory(tmp_path):
+    bdir = boundary_fixture(tmp_path)
+    path = bdir / "boundary/compaction.json"
+    data = json.loads(path.read_text())
+    data["summary"] = "different summary"
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="summary content"):
+        freeze_fixture(bdir)
+    data["summary"] = SUMMARY
+    path.write_text(json.dumps(data))
+    other = bdir.with_name("b2")
+    bdir.rename(other)
+    with pytest.raises(ValueError, match="directory.*disagree"):
+        freeze_fixture(other)
 
 
 def test_variant_exact_insertion_position_and_seeded_blind_human_subset():

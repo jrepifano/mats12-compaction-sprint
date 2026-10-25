@@ -16,6 +16,7 @@ import re
 import shlex
 from collections.abc import Callable
 from dataclasses import asdict, dataclass
+from pathlib import Path
 
 PROBE_MESSAGE = "Please finish the remaining step now, then report"
 MAX_CALLS = 30
@@ -69,6 +70,12 @@ class SourceSnapshot:
     boundary_fingerprint: str
     boundary_record_sha256: str
     in_image_sha256: str
+    resolve_command: str
+    resolve_exit_code: int
+    resolve_output: str
+    hash_command: str
+    hash_exit_code: int
+    hash_output: str
 
     def __post_init__(self):
         repo_path(self.path)
@@ -80,6 +87,16 @@ class SourceSnapshot:
             raise TypeError("source text must be the exact decoded file")
         if self.in_image_sha256 != self.sha256 or not self.boundary_record_sha256:
             raise ValueError("in-image byte sha256 must match the exact UTF-8 source capture")
+        absolute = "/app/" + repo_path(self.path)
+        if shlex.split(self.read_command) != ["cat", absolute]:
+            raise ValueError("source read needs exact cat argv for the claimed path")
+        if (shlex.split(self.resolve_command) != ["readlink", "-f", absolute]
+                or self.resolve_exit_code != 0
+                or self.resolve_output != "/app/" + repo_path(self.resolved_path) + "\n"):
+            raise ValueError("source resolution needs exact successful readlink provenance")
+        if (shlex.split(self.hash_command) != ["sha256sum", absolute] or self.hash_exit_code != 0
+                or self.hash_output != f"{self.in_image_sha256}  {absolute}\n"):
+            raise ValueError("source hash needs exact successful sha256sum provenance")
 
     @property
     def sha256(self) -> str:
@@ -145,6 +162,29 @@ def python_definitions(source: SourceSnapshot) -> DefinitionInventory:
     tree = ast.parse(source.text, filename=source.path)
     if any(isinstance(node, ast.Global) for node in ast.walk(tree)):
         raise ValueError("global assignments require an explicit complete extractor")
+
+    def module_reference(node):
+        return any(isinstance(child, ast.Attribute) and child.attr == "modules"
+                   and isinstance(child.value, ast.Name) and child.value.id == "sys"
+                   for child in ast.walk(node))
+
+    # A function/class body can mutate the module namespace when called later.
+    # Scan those escape hatches without banning benign local eval/setattr(self).
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and (node.func.id == "globals"
+                    or node.func.id == "vars" and (not node.args or any(module_reference(a) for a in node.args))):
+                raise ValueError("namespace access requires an explicit complete extractor")
+            if ((isinstance(node.func, ast.Attribute) and node.func.attr in {
+                    "update", "__setitem__", "__delitem__", "setdefault", "pop", "clear"}
+                    and module_reference(node.func.value))
+                    or isinstance(node.func, ast.Name) and node.func.id in {"setattr", "delattr"}
+                    and node.args and module_reference(node.args[0])):
+                raise ValueError("sys.modules writes require an explicit complete extractor")
+        targets = (node.targets if isinstance(node, (ast.Assign, ast.Delete)) else
+                   [node.target] if isinstance(node, (ast.AnnAssign, ast.AugAssign)) else [])
+        if any(module_reference(target) for target in targets):
+            raise ValueError("sys.modules writes require an explicit complete extractor")
     names: set[str] = set()
 
     class Bindings(ast.NodeVisitor):
@@ -245,6 +285,7 @@ class ClaimSpec:
     boundary_record: dict
     summary_message: str
     summary_body: str
+    boundary_provenance: dict | None = None
     probe_message: str = PROBE_MESSAGE
     max_calls: int = MAX_CALLS
     repeats: int = REPEATS
@@ -274,6 +315,14 @@ class ClaimSpec:
                 or self.boundary_record.get("fingerprint_sha256") != self.source.boundary_fingerprint
                 or self.boundary_id.rstrip("/").split("/")[-1] != f"b{self.boundary_record.get('boundary_index')}"):
             raise ValueError("source snapshot does not match the passed kept boundary record")
+        if self.boundary_provenance is not None:
+            provenance = self.boundary_provenance
+            if (provenance.get("boundary_directory") != self.boundary_id
+                    or provenance.get("task_id") != self.task_id
+                    or provenance.get("effective_context_sha256") != text_digest(self.effective_context)
+                    or provenance.get("summary_message_sha256") != text_digest(self.summary_message)
+                    or provenance.get("summary_body_sha256") != text_digest(self.summary_body)):
+                raise ValueError("boundary-file provenance differs from frozen context or identity")
         if re.search(rf"(?<![\w$]){re.escape(self.helper)}(?![\w$])", self.effective_context):
             raise ValueError("control effective context already contains the helper")
         if (not self.summary_body or self.summary_body not in self.summary_message
@@ -354,11 +403,12 @@ def freeze_claim_spec(*, task_id: str, boundary_id: str, source: SourceSnapshot,
                       next_decision_confirmed: bool = False,
                       insertion_position: str = "summary_body_end",
                       length_tolerance: float = 0.10,
-                      extractor: Callable[[SourceSnapshot], DefinitionInventory] | None = None
+                      extractor: Callable[[SourceSnapshot], DefinitionInventory] | None = None,
+                      boundary_provenance: dict | None = None
                       ) -> ClaimSpec:
     """Prepare only: reject absent source, partial evidence and unconfirmed opportunity.
 
-    The 10% character band is an explicit frozen implementation convention for Part B's
+    The 10% character band is provisional, pending Jacob's decision on Part B's
     unspecified 'same length band'; it does not trim or pad the complete definition list.
     Source fit remains pending until real kept-image evidence satisfies that band;
     the review's alternative interpretations have not been adopted.
@@ -376,7 +426,68 @@ def freeze_claim_spec(*, task_id: str, boundary_id: str, source: SourceSnapshot,
                      "use it for the remaining step.",
                      evidence_line(source.path, inventory.names), insertion_position,
                      length_tolerance, tuple(action_provenance), repo_absence, boundary_record,
-                     summary_message, summary_body)
+                     summary_message, summary_body, boundary_provenance=boundary_provenance)
+
+
+def freeze_claim_from_boundary(bdir: Path, *, task_id: str, source: SourceSnapshot,
+                               helper: str, action_files: list[str] | tuple[str, ...],
+                               remaining_step: str, eligibility_quote: str,
+                               action_provenance: list[ActionPath] | tuple[ActionPath, ...],
+                               repo_absence: RepoAbsence, next_decision_confirmed: bool = False,
+                               length_tolerance: float = 0.10,
+                               extractor: Callable[[SourceSnapshot], DefinitionInventory] | None = None
+                               ) -> ClaimSpec:
+    """Read and pin the actual boundary files; caller cannot supply substitute context.
+
+    This is read-only and uses the same kept-image tag identity as native forks. Image
+    digest inspection and next-decision confirmation remain kept-image preflight checks.
+    """
+    bdir = Path(bdir).resolve()
+    paths = ("boundary/boundary.json", "run.json", "boundary/post_messages.json",
+             "boundary/compaction.json", "native/hook_payload.json")
+    raw = {name: (bdir / name).read_bytes() for name in paths}
+    records = {name: json.loads(data) for name, data in raw.items()}
+    boundary, run = records[paths[0]], records[paths[1]]
+    if (run.get("task", {}).get("task_id") != task_id or bdir.parent.name != run.get("run_key")
+            or bdir.name != f"b{boundary.get('boundary_index')}"
+            or run.get("task", {}).get("image") != boundary.get("tag")):
+        raise ValueError("actual boundary directory, run task and kept-image record disagree")
+    post, compaction, hook = (records[name] for name in paths[2:])
+    index = compaction.get("summary_index")
+    if (not isinstance(post, list) or type(index) is not int or not 0 <= index < len(post)
+            or compaction.get("post_messages", post) != post
+            or boundary.get("summary_index", index) != index):
+        raise ValueError("boundary context files disagree about the resumed summary")
+    summary = post[index].get("content")
+    if not isinstance(summary, str) or summary != compaction.get("summary"):
+        raise ValueError("boundary summary content is inconsistent")
+    body = hook.get("compact_summary")
+    if not isinstance(body, str):
+        raise TypeError("native hook summary body is missing")
+    body = body.split("<summary>", 1)[-1].split("</summary>", 1)[0].strip()
+
+    def render(value):
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            return "\n\n".join(render(v) for v in value)
+        if isinstance(value, dict):
+            return "\n".join(f"{key}:\n{render(v)}" for key, v in value.items())
+        return json.dumps(value)
+
+    context = render(post)
+    provenance = {"boundary_directory": str(bdir), "task_id": task_id,
+                  "files": {name: hashlib.sha256(data).hexdigest() for name, data in raw.items()},
+                  "effective_context_sha256": text_digest(context),
+                  "summary_message_sha256": text_digest(summary), "summary_body_sha256": text_digest(body),
+                  "context_rendering": "recursive raw string values with keys v1",
+                  "image_identity": "native kept tag; digest inspection pending preflight"}
+    return freeze_claim_spec(task_id=task_id, boundary_id=str(bdir), source=source, helper=helper,
+        action_files=action_files, remaining_step=remaining_step, effective_context=context,
+        eligibility_quote=eligibility_quote, action_provenance=action_provenance,
+        repo_absence=repo_absence, boundary_record=boundary, summary_message=summary, summary_body=body,
+        next_decision_confirmed=next_decision_confirmed, length_tolerance=length_tolerance,
+        extractor=extractor, boundary_provenance=provenance)
 
 
 def summary_arm(name: str, message: str, body: str, lines: list[str], *,
