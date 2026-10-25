@@ -187,7 +187,7 @@ def cli_env(cfg: CCConfig, egress: N.Egress, server: N.SimServer, token: str) ->
 
 
 def cli_command(cfg: CCConfig, *, session_id: str | None = None, resume: str | None = None,
-                fork: bool = False, prompt: str | None = None) -> str:
+                fork: bool = False, prompt: str | None = None, max_calls: int | None = None) -> str:
     """The in-container command line (no secrets in it). The prompt comes on stdin unless
     `prompt` is given (forks)."""
     parts = [CLI, "-p", "--verbose", "--output-format", "stream-json", "--model", cfg.model,
@@ -201,6 +201,10 @@ def cli_command(cfg: CCConfig, *, session_id: str | None = None, resume: str | N
         parts += ["--resume", resume]
     if fork:
         parts.append("--fork-session")
+    if max_calls is not None:
+        if max_calls < 1:
+            raise ValueError("max_calls must be positive")
+        parts += ["--max-turns", str(max_calls)]
     if prompt is not None:
         parts.append(prompt)
     return "unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN; cd /app && " + shlex.join(parts)
@@ -570,6 +574,10 @@ class BaseConfig:
     cpus: float = N.AGENT_CPUS
     memory_mb: int = N.AGENT_MEMORY_MB
     min_free_gb: float = N.AGENT_MIN_FREE_GB
+    planting: Any = None
+    stop_first_eligible: bool = False
+    capture_ask: bool = False  # Step 0 continuation smoke: no simulator calls
+    max_calls: int = 30
 
     @property
     def run_key(self) -> str:
@@ -648,7 +656,7 @@ def _step_ok(r: N.StreamResult, state: dict) -> str | None:
 
 def run_base(cfg: BaseConfig, *, sim_model, token: str,
              eligible: Callable[[Path, dict], bool] | None = None,
-             session_cls=N.NativeSession) -> dict:
+             session_cls=N.NativeSession, resume_boundary: Path | None = None) -> dict:
     """One task in Claude Code (module docstring). Writes the run dir like the pi arm's
     run_base; returns result.json's content. Ends: "submitted" (every step finished cleanly),
     "eligible", "stop_after", "run_cap", "time_cap", "cli_error", "auth_error",
@@ -657,6 +665,18 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
     from compaction.s2 import interact_run as IR
     t0 = time.monotonic()
     task = cfg.task
+    resume_b = resume_export = None
+    resume_rows = []
+    if resume_boundary is not None:
+        resume_boundary = Path(resume_boundary)
+        resume_b = json.loads((resume_boundary / "boundary/boundary.json").read_text())
+        resume_export = json.loads((resume_boundary / "boundary/sim_state.json").read_text())
+        resume_rows = read_jsonl((resume_boundary / "native/transcript.jsonl").read_text())
+        si = next(i for i, row in enumerate(resume_rows)
+                  if row.get("uuid") == resume_b["native_summary_uuid"])
+        resume_rows = resume_rows[:si + 1]
+        if cfg.steps != (resume_b.get("stage") or GRADED_STEP,):
+            raise ValueError("continuation must resume exactly the kept workflow step")
     rd = IR._fresh_dir(cfg.run_dir)
     rj = N.native_run_json(run_key=cfg.run_key, task_dict=task.to_dict(),
                            persona_sha256=I.sha256(task.persona), arm=ARM, model=cfg.cc.model,
@@ -666,6 +686,9 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                                   "steps": list(cfg.steps), "step_timeout_s": cfg.step_timeout_s,
                                   "stop_after": cfg.stop_after, "cpus": cfg.cpus,
                                   "memory_mb": cfg.memory_mb})
+    if resume_b:
+        rj.update(continued_from=str(resume_boundary),
+                  previous_boundary_index=resume_b["boundary_index"])
     IR._dump(rd / "run.json", rj)
     chains = {GRADED_STEP: (rd, SS.KeepStore(rd, cfg.run_key, host=cfg.host))}
     plan_root = rd / PLAN_DIR
@@ -676,6 +699,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
     end_reason: dict = {}
     cur: dict = {"step": None, "session_id": None, "quit": threading.Event()}
     seen: dict = {}
+    if resume_b:
+        seen[("_k", str(rd))] = int(resume_b["boundary_index"])
     pending: list[threading.Thread] = []
 
     def mark(ev: str, **kw) -> None:
@@ -714,10 +739,17 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                        seen=seen, pending=pending, quit_=cur["quit"])
 
     def sim_factory(runner):
-        return I.UserSim(task.persona, sim_model, runner, purpose=f"sim:{cfg.run_key}")
+        if resume_export is not None:
+            return I.UserSim.restore(resume_export, task.persona,
+                                     NoSimulatorModel() if cfg.capture_ask else sim_model, runner,
+                                     purpose=f"sim:{cfg.run_key}")
+        return I.UserSim(task.persona, NoSimulatorModel() if cfg.capture_ask else sim_model,
+                         runner, purpose=f"sim:{cfg.run_key}",
+                         planting=cfg.planting)
 
     ensure_cli_volume(cfg.host, task.info.image)
-    ns = session_cls(ARM, task.info.image, sim_factory, host=cfg.host, extra_args=run_args(),
+    ns = session_cls(ARM, resume_b["tag"] if resume_b else task.info.image, sim_factory,
+                     host=cfg.host, extra_args=run_args(), setup_git=not bool(resume_b),
                      cpus=cfg.cpus, memory_mb=cfg.memory_mb, min_free_gb=cfg.min_free_gb,
                      on_boundary=on_boundary, on_cap=on_cap, before_close=drain)
     ns._cc_token = token  # for the secret scan; never written anywhere
@@ -725,8 +757,19 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
     try:
         with ns:
             ns_holder["ns"] = ns
+            if cfg.capture_ask:
+                def captured(row):
+                    end_reason.setdefault("end", "ask_user")
+                    stop.set()
+                    stop_cli(ns.sb)
+                ns.server.capture_ask = captured
             res["container"] = ns.sb.name
             res["network"] = ns.egress.network
+            if resume_b:
+                res["fork_check"] = fork_check(ns, resume_b)
+                if not res["fork_check"]["ok"] or resume_b.get("ineligible_reason"):
+                    raise ForkMismatch(json.dumps(res["fork_check"]))
+                res["continued_from"] = str(resume_boundary)
             install_config(ns.sb, ns.server)
             res["egress_check"] = N.egress_check(ns.sb, ns.egress,
                                                  "https://api.anthropic.com/v1/messages")
@@ -742,13 +785,23 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 cur.update(step=step, session_id=sid, quit=threading.Event())
                 ns.server.step = step
                 state: dict = {}
+                prior_compactions = len(compact_rows(resume_rows)) if resume_b else 0
+                if resume_b:
+                    edited = edited_transcript(resume_rows, resume_b["native_summary_uuid"],
+                                               _block_text(resume_rows[-1]["message"]["content"]),
+                                               sid)
+                    ns.sb.put_file(("".join(json.dumps(x) + "\n" for x in edited)).encode(),
+                                   f"{PROJECT}/{sid}.jsonl")
+                    seen[sid] = prior_compactions
                 sd = rd / "steps" / step
                 # detached in the container: a dropped ssh transport costs a reconnect
-                r = N.detached_exec(ns.sb, cli_command(cfg.cc, session_id=sid),
+                r = N.detached_exec(ns.sb, cli_command(cfg.cc, session_id=None if resume_b else sid,
+                                                       resume=sid if resume_b else None,
+                                                       max_calls=cfg.max_calls if cfg.capture_ask else None),
                                     name=f"{step}-{sid[:8]}",
                                     timeout_s=cfg.step_timeout_s.get(step, 5400),
                                     log_path=sd / "stream.jsonl", env=env,
-                                    stdin=task.steps[step].encode(), stop=stop,
+                                    stdin=(CONTINUE_PROMPT if resume_b else task.steps[step]).encode(), stop=stop,
                                     on_line=_stream_watch(state, stop))
                 res.setdefault("reconnects", {})[step] = getattr(r, "reconnects", 0)
                 if r.killed in ("container_gone", "output_lost"):  # infrastructure first
@@ -770,7 +823,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 (sd / "transcript.jsonl").write_text(
                     "".join(json.dumps(x, ensure_ascii=False) + "\n" for x in rows))
                 n_comp = max(len(compact_rows(rows)), len(state.get("compactions") or []))
-                observed += n_comp
+                observed += max(0, n_comp - prior_compactions)
                 if seen.get(sid, 0) < n_comp:  # this session compacted without a capture
                     end_reason.setdefault("end", "boundary_missing")
                 bad = _step_ok(r, state)
@@ -781,6 +834,11 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                                       "compactions": state.get("compactions", []),
                                       "n_compactions": len(compact_rows(rows)),
                                       "rate_limit": state.get("rate_limit"), "failed": bad}
+                if cfg.capture_ask:
+                    cut = next((i for i, row in enumerate(rows) if resume_b and
+                                row.get("uuid") == resume_b["native_summary_uuid"]), -1)
+                    res["token_usage"] = transcript_usage(rows[cut + 1:])
+                    res["rate_limit"] = state.get("rate_limit")
                 mark("step_done", step=step, rc=r.rc, killed=r.killed, failed=bad)
                 if state.get("auth_error") or (bad and "not Max" in bad):
                     raise AuthError(state.get("auth_error") or bad)
@@ -805,6 +863,11 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                     "infra_killed", "infra_error"):
                 end_reason["end"] = "boundary_missing"
                 res["error"] = f"{observed} compactions, {captured} boundaries captured"
+            if cfg.capture_ask:
+                res["captured_asks"] = list(ns.server.captured_asks)
+                res["sim_calls"] = len(ns.server.rows)
+                if ns.server.rows or getattr(ns.server.sim, "rounds", []):
+                    raise RuntimeError("continuation smoke invoked the simulator")
             res["end"] = end_reason.get("end") or "submitted"
             res["compactions_observed"] = observed
             res["egress_events"] = ns.egress.events()
@@ -883,11 +946,15 @@ def capture(ns: N.NativeSession, payload: dict, *, rd: Path, rj: dict, keep: SS.
             snap = N.snapshot(sb, keep, k)
             times["snapshot_s"] = round(snap["snapshot_s"], 1)
             # the simulator inside the same interval (the agent is blocked in its hook anyway)
+            if step == GRADED_STEP and hasattr(server.sim, "record_compaction"):
+                server.sim.record_compaction(k, pre_tokens=payload.get("pre_tokens"))
             frozen = {"sim_export": server.export(),
                       "sim_rows": [dict(r) for r in server.rows],
                       "sim_probe": IR.sim_probe(server.sim)}
         finally:
             N.signal_pids(sb, sorted(stopped), "CONT")
+        frozen["harness_exempted_processes"] = list(
+            getattr(sb, "harness_exempted_processes", {}).values())
         snap["processes"] = [_redact(f"{p} {v}", server.token) for p, v in sorted(stopped.items())]
         snap["stopped_processes"] = []
         frozen.update(hook_utc=N.utc(), times=times, quiescent=not stopped,
@@ -999,12 +1066,28 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
                  "auto_compact_window": cfg.cc.auto_compact_window, "model": cfg.cc.model,
                  "effort": cfg.cc.effort, "tool_result_unwrapped": True,
                  "secret_scan": frozen["scan"], "quiescent": frozen["quiescent"],
+                 "harness_exempted_processes": frozen.get("harness_exempted_processes", []),
                  "capture_times": frozen["times"], "hook_utc": frozen["hook_utc"],
                  "post_source": conv.nb.info.get("post_source"), "graded_chain": graded,
                  # the hook carries the model's raw output (<analysis> + <summary>); the
                  # message holds the <summary> body inside Claude Code's wrapper
                  "hook_summary_in_message": bool(hook_summary) and _summary_body(
                      hook_summary) in conv.nb.summary}
+        frozen["sim_export"] = annotate_delivery_distances(rows, want, frozen["sim_export"], k)
+        live_planting = getattr(ns.server.sim, "planting", None)
+        if live_planting is not None:
+            estimated = next((item for item in frozen["sim_export"].get("planting", {}).get("boundaries", [])
+                              if item.get("compaction_index") == k), None)
+            if estimated:
+                for item in live_planting.boundaries:
+                    if item.get("compaction_index") == k:
+                        item.update(estimated)
+        for source in (frozen["sim_export"].get("planting"),
+                       getattr(getattr(ns.server.sim, "planting", None), "__dict__", None)):
+            if source:
+                for delivery_boundary in source.get("boundaries", []):
+                    if delivery_boundary.get("compaction_index") == k:
+                        delivery_boundary["pre_tokens"] = conv.nb.pre_tokens
         gate = eligible
         services = sorted(getattr(ns, "services", ()) or ())
         extra["services_running"] = services
@@ -1018,6 +1101,8 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
             if eligible is not None:
                 def gate(b, f):
                     return False
+        if cfg.stop_first_eligible and gate is None:
+            gate = lambda _dir, fields: not why and bool(fields.get("tag"))
         bdir = N.write_boundary(rd, k, conv.nb, run_json=rj, snap=snap,
                                 sim_export=frozen["sim_export"], sim_rows=frozen["sim_rows"],
                                 step=step or "", step_instruction=instr, fingerprint=fp,
@@ -1027,7 +1112,7 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
         res.setdefault("compactions", []).append(N.compaction_meta(bdir, step))
         mark("boundary_saved", k=k, step=step, pre_tokens=conv.nb.pre_tokens)
         fields = json.loads((bdir / "boundary" / "boundary.json").read_text())
-        if fields.get("eligible"):
+        if fields.get("eligible") and graded:
             end_reason.setdefault("end", "eligible")
         elif graded and cfg.stop_after and len(res["boundaries"]) >= cfg.stop_after:
             end_reason.setdefault("end", "stop_after")
@@ -1095,22 +1180,27 @@ def fork_check(ns: N.NativeSession, b: dict) -> dict:
     return out
 
 
-def insert_in_summary(message: str, body: str, block: str) -> str:
+def insert_in_summary(message: str, body: str, block: str | list[str]) -> str:
     """`block` inserted right after the summary body inside Claude Code's summary message,
     before its closing paragraphs (a line appended after those reads as outside the summary:
     smoke 2's fork, 24 Oct). `body` is the hook payload's <summary> text."""
+    if isinstance(block, list):
+        block = "\n".join(block)
+    if not block:
+        return message
     b = _summary_body(body, limit=None)
-    tail = b[-300:]
+    tail = b
     at = message.rfind(tail) if b else -1
     if at < 0:
         raise ValueError("summary body not found in the summary message")
     end = at + len(tail)
-    return message[:end] + "\n\n" + block.strip() + message[end:]
+    return message[:end] + "\n\n" + block + message[end:]
 
 
 def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model, token: str,
          persona: str, cfg: CCConfig | None = None, host: str | None = "ssh://rig",
-         timeout_s: int = 1800, check: bool = True, session_cls=N.NativeSession) -> dict:
+         timeout_s: int = 1800, check: bool = True, session_cls=N.NativeSession,
+         probe: bool = False, max_calls: int = 30, mutation_paths=()) -> dict:
     """Resume boundary `bdir` (a b<k> dir of a Claude Code run) from its kept image with the
     summary replaced by `new_summary`, as a forked session given `prompt`. Refuses
     (ForkMismatch) when the restored workspace or simulator differ from the boundary's, unless
@@ -1138,10 +1228,12 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                  "started_utc": N.utc()}
 
     def sim_factory(runner):
-        return I.UserSim.restore(exported, persona, sim_model, runner, purpose="sim:fork")
+        return I.UserSim.restore(exported, persona, NoSimulatorModel() if probe else sim_model,
+                                 runner, purpose="sim:fork")
 
     stop = threading.Event()
     why: dict = {}
+    audit_holder: dict = {}
 
     def on_cap(e: BaseException) -> None:
         why.setdefault("end", "run_cap")
@@ -1149,10 +1241,18 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
 
     ns = session_cls(ARM, b["tag"], sim_factory, host=host, setup_git=False,
                      extra_args=run_args(),
-                     on_boundary=lambda p: {"ok": True, "ignored": "fork"}, on_cap=on_cap)
+                     on_boundary=lambda p: audit_holder["audit"].hook(p)
+                     if probe and p.get("hook_event_name") != "PostCompact"
+                     else {"ok": True, "ignored": "fork"}, on_cap=on_cap)
     try:
         with ns:
             ns.server.step = b.get("stage") or GRADED_STEP
+            if probe:
+                def captured(row):
+                    why.setdefault("end", "ask_user")
+                    stop.set()
+                    stop_cli(ns.sb)
+                ns.server.capture_ask = captured
             res["fork_check"] = fork_check(ns, b)  # the pi arm's check (astra r1 #7)
             if not res["fork_check"]["ok"] and check:
                 raise ForkMismatch(json.dumps(res["fork_check"]))
@@ -1161,11 +1261,15 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 raise ForkMismatch(f"not a fork source: {b['ineligible_reason']} "
                                    + json.dumps(b.get("processes"))[:500])
             install_config(ns.sb, ns.server)  # a new token and server for the fork
+            if probe:
+                audit_holder["audit"] = ProbeAudit(ns.sb, mutation_paths=mutation_paths, stop=stop)
+                install_audit_hooks(ns.sb)
             ns.sb.put_file(body.encode(), f"{PROJECT}/{new_sid}.jsonl")
             state: dict = {}
             env = cli_env(cfg, ns.egress, ns.server, token)
             r = N.detached_exec(ns.sb, cli_command(cfg, resume=new_sid, fork=True,
-                                                   prompt=prompt),
+                                                   prompt=prompt,
+                                                   max_calls=max_calls if probe else None),
                                 name=f"fork-{new_sid[:8]}", timeout_s=timeout_s,
                                 log_path=out_dir / "stream.jsonl", env=env, stop=stop,
                                 on_line=_stream_watch(state, stop))
@@ -1173,8 +1277,13 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 stop_cli(ns.sb)
             sid = (state.get("init") or {}).get("session_id")
             if sid:
-                (out_dir / "transcript.jsonl").write_text(
-                    ns.sb.exec(f"cat {PROJECT}/{sid}.jsonl", timeout_s=120, workdir="/").stdout)
+                if probe:
+                    raw = "".join(json.dumps(row) + "\n" for row in
+                                  read_transcript(ns.sb, f"{PROJECT}/{sid}.jsonl"))
+                else:
+                    raw = ns.sb.exec(f"cat {PROJECT}/{sid}.jsonl", timeout_s=120,
+                                     workdir="/").stdout
+                (out_dir / "transcript.jsonl").write_text(raw)
             # a fork's only stops are the cap and the auth watch: neither is a completion
             # (astra r3 #2)
             bad = (state.get("auth_error") or why.get("end")
@@ -1183,6 +1292,38 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                        result=state.get("result"), forked_session=sid,
                        sim_rows=ns.server.rows, auth_error=state.get("auth_error"),
                        run_key=rj.get("run_key"), outcome=bad or "ok")
+            if probe:
+                captured_rows = list(ns.server.captured_asks)
+                transcript_path = out_dir / "transcript.jsonl"
+                full_rows = read_jsonl(transcript_path.read_text()) if transcript_path.exists() else []
+                cut = next((i for i, row in enumerate(full_rows)
+                            if row.get("uuid") == b["native_summary_uuid"]), -1)
+                evidence = audit_holder["audit"].finish(
+                    full_rows[cut + 1:], captured_asks=captured_rows,
+                    submission=final_text(out_dir / "stream.jsonl")
+                    if (out_dir / "stream.jsonl").exists() and
+                    (state.get("result") or {}).get("subtype") == "success" else "")
+                if cut < 0:
+                    evidence["capture_complete"] = False
+                    evidence["part_a_complete"] = False
+                    evidence["issues"].append("resumed summary absent from transcript")
+                res["token_usage"] = transcript_usage(full_rows[cut + 1:]) if cut >= 0 else None
+                rounds = getattr(ns.server.sim, "rounds", [])
+                res.update(probe=True, max_calls=max_calls, captured_asks=captured_rows,
+                           sim_calls=len(ns.server.rows), sim_cost_usd=sum(
+                               x.get("cost_usd") or 0.0 for x in rounds),
+                           rate_limit=state.get("rate_limit"),
+                           evidence_complete=evidence["capture_complete"])
+                if ns.server.rows or rounds:
+                    raise RuntimeError("probe unexpectedly invoked the simulator")
+                if why.get("end") == "ask_user":
+                    res["outcome"] = "ask_user"
+                elif (state.get("result") or {}).get("subtype") == "error_max_turns":
+                    res["outcome"] = "call_cap"
+                elif not bad:
+                    res["outcome"] = "submission"
+                N._dump(out_dir / "events.json", evidence["events"])
+                N._dump(out_dir / "evidence.json", evidence)
     finally:
         res["cleanup_unconfirmed"] = ns.cleanup_unconfirmed
         res["ended_utc"] = N.utc()
@@ -1198,3 +1339,603 @@ def final_text(stream_path: Path) -> str:
             if ev.get("type") == "result":
                 return str(ev.get("result") or "")
     return ""
+
+
+class NoSimulatorModel:
+    """Probe guard: even an accidental UserSim.ask cannot incur a model charge."""
+
+    def complete(self, *args, **kwargs):
+        raise RuntimeError("model calls are forbidden in a decision probe")
+
+
+def insert_summary_lines(message: str, body: str, lines: list[str]) -> str:
+    """Insert exact lines at the frozen end-of-summary-body position (v1)."""
+    if any(not isinstance(line, str) or "\n" in line or "\r" in line for line in lines):
+        raise ValueError("summary insertion requires a list of individual text lines")
+    return insert_in_summary(message, body, lines)
+
+
+def verify_effective_context(summary: str, preserved_tail: Any, attachments: Any,
+                             probe_message: str, *, required=(), forbidden=()) -> dict:
+    """Exact-text screen over every supplied resumed-context surface, with per-surface hits.
+
+    The caller must provide the actual rendered context; a missing surface is an error,
+    whereas an explicitly empty list is valid. Repo recoverability is intentionally separate.
+    """
+    surfaces = {"summary": summary, "preserved_tail": preserved_tail,
+                "attachments": attachments, "probe_message": probe_message}
+    if any(value is None for value in surfaces.values()):
+        raise ValueError("all resumed-context surfaces must be supplied")
+    rendered = {key: value if isinstance(value, str) else json.dumps(value, ensure_ascii=False)
+                for key, value in surfaces.items()}
+    required, forbidden = list(required), list(forbidden)
+    if any(not text for text in [*required, *forbidden]):
+        raise ValueError("empty rule text is not a context check")
+    hits = {text: [key for key, value in rendered.items() if text in value]
+            for text in [*required, *forbidden]}
+    missing = [text for text in required if not hits[text]]
+    leaked = [text for text in forbidden if hits[text]]
+    return {"ok": not missing and not leaked, "missing": missing, "leaked": leaked,
+            "hits": hits, "surface_sha256": {key: I.sha256(value)
+                                              for key, value in rendered.items()}}
+
+
+def continue_from_boundary(bdir: Path, out_dir: Path, *, cfg: BaseConfig,
+                           sim_model, token: str, eligible=None,
+                           session_cls=N.NativeSession) -> dict:
+    """Continue a base chain from its kept simulator and image, with future capture enabled.
+
+    This is a new output segment. Original boundary numbering is retained and the source
+    image/transcript never changes. Base continuations are not decision-probe forks.
+    """
+    from dataclasses import replace
+    out_dir = Path(out_dir)
+    if out_dir.name != cfg.run_key:
+        raise ValueError(f"out_dir basename must equal cfg.run_key ({cfg.run_key})")
+    return run_base(replace(cfg, root=out_dir.parent), sim_model=sim_model, token=token,
+                    eligible=eligible, session_cls=session_cls, resume_boundary=Path(bdir))
+
+
+def ordered_evidence(rows: list[dict], *, captured_asks=(), submission: str = "",
+                     audit_events: list[dict] | None = None) -> dict:
+    """Normalize native tool evidence for the shared scorers, never invent missing evidence.
+
+    A native transcript alone cannot witness shell edits reverted within one call. Any
+    Bash use therefore marks mutation coverage incomplete unless an audited event stream is
+    provided. Part B must use capture_complete, not mistake absent edits for no action.
+    """
+    events: list[dict] = []
+    pending: dict[str, dict] = {}
+    issues: list[str] = []
+    ask_texts: set[str] = set()
+
+    def add(kind, **data):
+        events.append({"seq": len(events), "kind": kind, "data": data})
+
+    for row in rows:
+        content = (row.get("message") or {}).get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                name, args = block.get("name", ""), block.get("input") or {}
+                pending[block.get("id", "")] = {"name": name, "args": args}
+                if name in (ASK_TOOL, "ask_user"):
+                    text = args.get("question") or ""
+                    ask_texts.add(text)
+                    add("ask_user", text=text, tool_call_id=block.get("id"))
+                elif name == "Bash" and audit_events is None:
+                    issues.append("Bash mutation coverage needs intra-call audit")
+            elif block.get("type") == "tool_result":
+                tid = block.get("tool_use_id", "")
+                call = pending.pop(tid, None)
+                if call is None:
+                    issues.append(f"unmatched tool result {tid}")
+                    continue
+                name, args = call["name"], call["args"]
+                output = _block_text(block.get("content"))
+                raw = row.get("toolUseResult") or {}
+                raw = raw if isinstance(raw, dict) else {}
+                rc = raw.get("exitCode", raw.get("exit_code"))
+                # Claude Code's success boolean is insufficient to recover a Bash exit code.
+                if name == "Bash":
+                    add("command", command=args.get("command", ""), output=output,
+                        exit_code=rc, completed=rc is not None and not args.get("run_in_background")
+                        and not raw.get("interrupted") and not raw.get("timed_out"),
+                        cwd=row.get("cwd"), tool_call_id=tid,
+                        is_error=bool(block.get("is_error")))
+                elif name == "Read":
+                    data = raw.get("file") or {}
+                    start, count, total = data.get("startLine"), data.get("numLines"), data.get("totalLines")
+                    add("read", path=args.get("file_path", ""), output=output,
+                        start_line=start,
+                        end_line=start + count - 1 if isinstance(start, int) and isinstance(count, int) else None,
+                        complete=start == 1 and count == total and isinstance(total, int),
+                        forced=bool(raw.get("harness_forced", False)), cwd=row.get("cwd"),
+                        exit_code=1 if block.get("is_error") else 0, tool_call_id=tid)
+                elif name == "Grep":
+                    add("search", pattern=args.get("pattern", ""), path=args.get("path"),
+                        glob=args.get("glob"), output_mode=args.get("output_mode", "files_with_matches"),
+                        output=output, exit_code=1 if block.get("is_error") else 0,
+                        completed=not block.get("is_error"), cwd=row.get("cwd"), tool_call_id=tid)
+                elif name in ("Edit", "Write") and not block.get("is_error"):
+                    if name == "Write":
+                        before = raw.get("originalFile")
+                        if before is None:
+                            issues.append("Write missing before snapshot")
+                        add("edit", path=args.get("file_path", ""), before=before,
+                            after=args.get("content", ""), tool_call_id=tid)
+                    else:
+                        add("edit", path=args.get("file_path", ""),
+                            before=args.get("old_string", ""), after=args.get("new_string", ""),
+                            fragment=True, tool_call_id=tid)
+    if any(call["name"] not in (ASK_TOOL, "ask_user") for call in pending.values()):
+        issues.append("unfinished tool calls")
+    for row in captured_asks:
+        text = row.get("text", row.get("question", ""))
+        if text not in ask_texts:
+            add("ask_user", text=text, source="terminal_capture")
+    if submission and not captured_asks:
+        add("submission", text=submission)
+    if audit_events is not None:
+        # Hook events have actual execution order, whereas tool-use rows precede execution.
+        events = [{"seq": i, "kind": row["kind"], "data": dict(row["data"])}
+                  for i, row in enumerate(audit_events)]
+    return {"schema_version": 1, "events": events,
+            "capture_complete": not issues, "issues": sorted(set(issues)),
+            "pending_tool_ids": sorted(pending)}
+
+
+# The audit is scoped to the frozen call-site files, supplied by the Part B task spec.
+# Every mutation of those files is required; unsupported syscalls fail coverage closed.
+AUDIT_HOOK = "/opt/emx/tool-audit-hook.sh"
+AUDIT_DIR = "/tmp/emx-tool-audit"
+
+
+def audit_hook_script() -> str:
+    """Forward tool hooks, returning the server's structured PreToolUse response to the CLI."""
+    return ("#!/bin/sh\n"
+            f"umask 077; printf '{N.TOKEN_HEADER}: %s\\n' \"$EMX_SIM_TOKEN\" > {HEADER_DIR}/audit-h\n"
+            f"curl --fail -sS -m 180 -X POST -H @{HEADER_DIR}/audit-h"
+            f" -H 'content-type: application/json' --data-binary @- {N.BOUNDARY_URL}\n")
+
+
+def install_audit_hooks(sb: SB.Sandbox) -> None:
+    config = settings()
+    for name in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+        config["hooks"][name] = [{"matcher": ".*", "hooks": [
+            {"type": "command", "command": AUDIT_HOOK, "timeout": 180}]}]
+    sb.put_file(json.dumps(config).encode(), SETTINGS)
+    sb.put_file(audit_hook_script().encode(), AUDIT_HOOK)
+    r = sb.exec(f"chmod 755 {AUDIT_HOOK} && mkdir -p {AUDIT_DIR}", timeout_s=30, workdir="/")
+    if r.rc:
+        raise SB.SandboxError("cannot install audit hooks")
+
+
+def _read_files(sb, paths: list[str]) -> dict[str, str | None]:
+    """Read declared evidence paths, with explicit unknowns for non-text or oversized files."""
+    script = ("import json,pathlib; out={}\n"
+              f"for name in {paths!r}:\n"
+              " p=pathlib.Path(name)\n"
+              " try:\n"
+              "  out[name]=p.read_text() if p.stat().st_size <= 4*1024*1024 else None\n"
+              " except FileNotFoundError: out[name]=''\n"
+              " except (OSError,UnicodeError): out[name]=None\n"
+              "print(json.dumps(out))\n")
+    r = sb.exec("python3 -c " + shlex.quote(script), timeout_s=60, workdir="/app")
+    if r.rc:
+        raise SB.SandboxError("cannot read mutation audit paths")
+    return json.loads(r.stdout)
+
+
+def parse_mutation_trace(trace: str, before: dict[str, str | None]) -> dict:
+    """Replay successful strace writes, including write/revert inside a single command.
+
+    strace must use -f -ttt -yy -s 0. Only declared paths are scored. Temporary files are
+    followed through rename. An unhandled write mechanism or incomplete trace is a coverage
+    failure; a zero-edit output alone is never treated as proof of no mutation.
+    """
+    import ast
+    import re
+    files = dict(before)
+    targets = set(before)
+    fds: dict[tuple[str, int], tuple[str, int | None, bool]] = {}
+    pending: dict[str, str] = {}
+    events, issues = [], []
+    if not trace.strip():
+        issues.append("empty mutation trace")
+    if any(value is None for value in before.values()):
+        issues.append("unreadable audit baseline")
+
+    def change(path, value, source):
+        old = files.get(path)
+        files[path] = value
+        observed_source = path in targets or (path.startswith("/app/") and not path.startswith("/app/.git/"))
+        if observed_source and old != value:
+            if old is None or value is None:
+                issues.append(f"unknown mutation contents: {path}")
+            else:
+                events.append({"kind": "edit", "data": {"path": path, "before": old,
+                              "after": value, "source": "strace", "syscall": source}})
+
+    for raw in trace.splitlines():
+        # -f output is PID timestamp syscall(...); tolerate bracketed PID formatting too.
+        m = re.match(r"(?:\[pid\s+)?(\d+)\]?\s+(\d+\.\d+)\s+(.*)", raw)
+        if not m:
+            if raw.strip() and not raw.startswith("strace:"):
+                issues.append("unparsed trace line")
+            continue
+        pid, timestamp, line = m.groups()
+        if "<unfinished ...>" in line:
+            pending[pid] = line.split("<unfinished ...>", 1)[0]
+            continue
+        if line.startswith("<..."):
+            prior = pending.pop(pid, None)
+            if prior is None or " resumed>" not in line:
+                issues.append("unmatched resumed syscall")
+                continue
+            line = prior + line.split(" resumed>", 1)[1]
+        if line.startswith(("+++", "---")):
+            continue
+        if "= -1 " in line:
+            continue
+        op = line.partition("(")[0]
+        result = re.search(r"\)\s+=\s+(-?\d+)", line)
+        if result is None:
+            issues.append("missing syscall completion")
+            continue
+        rc = int(result.group(1))
+        try:
+            if op in ("open", "openat"):
+                fm = re.search(r'=\s+(\d+)<([^>]+)>', line)
+                if fm is None:
+                    continue
+                fd, path = int(fm.group(1)), fm.group(2)
+                flags = line[:result.start()]
+                append = "O_APPEND" in flags
+                if "O_CREAT" in flags and "O_EXCL" in flags:
+                    files[path] = ""
+                if "O_TRUNC" in flags:
+                    change(path, "", op)
+                elif "O_CREAT" in flags and path not in files:
+                    # New temporary paths are initially empty, verified by O_EXCL when used.
+                    files[path] = "" if "O_EXCL" in flags else None
+                fds[(pid, fd)] = (path, len((files.get(path) or "").encode()) if append else 0,
+                                  append)
+            elif op in ("write", "pwrite64"):
+                wm = re.match(r'(?:pwrite64|write)\((\d+)<([^>]+)>,\s*("(?:[^"\\]|\\.)*"),\s*(\d+)(?:,\s*(\d+))?\s*\)', line)
+                if wm is None:
+                    # Binary/vector representations cannot be silently interpreted as no edit.
+                    if any(path in line for path in targets):
+                        issues.append("unparsed target write")
+                    continue
+                fd, path, literal, count, explicit = wm.groups()
+                fd = int(fd)
+                # Decode C escapes into bytes, then UTF-8. Non-UTF8 code is out of scope.
+                value = ast.literal_eval(literal)
+                payload = value.encode("latin1") if all(ord(c) < 256 for c in value) else value.encode()
+                payload = payload[:rc]
+                known = fds.get((pid, fd))
+                pos = int(explicit) if explicit is not None else (known[1] if known else None)
+                old = files.get(path)
+                if known and known[2]:
+                    pos = len(old.encode()) if old is not None else None
+                if old is not None and pos is not None:
+                    encoded = old.encode()
+                    new = (encoded[:pos] + b'\0' * max(0, pos - len(encoded)) + payload
+                           + encoded[pos + len(payload):]).decode()
+                    change(path, new, op)
+                    if explicit is None:
+                        fds[(pid, fd)] = (path, pos + rc, bool(known and known[2]))
+                elif path in targets or (path.startswith("/app/") and not path.startswith("/app/.git/")):
+                    issues.append(f"unknown source write offset or contents: {path}")
+            elif op == "lseek":
+                lm = re.match(r'lseek\((\d+)<([^>]+)>', line)
+                if lm:
+                    key = (pid, int(lm.group(1)))
+                    previous = fds.get(key)
+                    fds[key] = (lm.group(2), rc, bool(previous and previous[2]))
+            elif op in ("rename", "renameat", "renameat2"):
+                quoted = re.findall(r'"(?:[^"\\]|\\.)*"', line)
+                if len(quoted) >= 2:
+                    src, dst = (ast.literal_eval(q) for q in quoted[:2])
+                    src = src if src.startswith("/") else "/app/" + src
+                    dst = dst if dst.startswith("/") else "/app/" + dst
+                    change(dst, files.get(src), op)
+                    if src in targets:
+                        change(src, "", op)
+            elif op in ("unlink", "unlinkat"):
+                quoted = re.findall(r'"(?:[^"\\]|\\.)*"', line)
+                if quoted:
+                    path = ast.literal_eval(quoted[0])
+                    path = path if path.startswith("/") else "/app/" + path
+                    change(path, "", op)
+            elif op == "close":
+                fd = re.match(r"close\((\d+)", line)
+                if fd:
+                    fds.pop((pid, int(fd.group(1))), None)
+            elif op == "io_uring_setup":
+                issues.append("io_uring mutation coverage unavailable")
+            elif op in ("writev", "pwritev", "pwritev2", "ftruncate", "truncate",
+                        "copy_file_range", "sendfile", "splice", "mmap"):
+                if any(path in line for path in targets) or "/app/" in line:
+                    issues.append(f"unsupported target mutation syscall: {op}")
+        except (ValueError, SyntaxError, UnicodeError):
+            issues.append(f"cannot decode {op}")
+    if pending:
+        issues.append("unfinished syscalls")
+    return {"events": events, "after": {path: files.get(path) for path in targets},
+            "capture_complete": not issues, "issues": sorted(set(issues))}
+
+
+class ProbeAudit:
+    """Execution-ordered native hook observer; only the declared mutation scope can be complete."""
+
+    def __init__(self, sb, *, mutation_paths=(), stop=None):
+        self.sb = sb
+        self.paths = sorted({str(Path(path) if str(path).startswith("/") else Path("/app") / path)
+                             for path in mutation_paths})
+        if self.paths:
+            script = "import os,json; print(json.dumps([os.path.realpath(p) for p in " + repr(self.paths) + "]))"
+            resolved = sb.exec("python3 -c " + shlex.quote(script), timeout_s=30)
+            if resolved.rc:
+                raise SB.SandboxError("cannot canonicalize mutation scope")
+            self.paths = json.loads(resolved.stdout)
+        self.stop = stop
+        self.events: list[dict] = []
+        self.pending: dict[str, dict] = {}
+        self.issues: list[str] = []
+        self.lock = threading.RLock()
+        self.commits = self._commits()
+        self.trace_available = sb.exec("command -v strace", timeout_s=30).rc == 0
+        self.hooks_seen = 0
+
+    def add(self, kind, **data):
+        with self.lock:
+            self.events.append({"seq": len(self.events), "kind": kind, "data": data})
+
+    def _commits(self):
+        r = self.sb.exec("git reflog --all --format='%H%x00%gD'", timeout_s=60)
+        if r.rc:
+            self.issues.append("commit reflog unavailable")
+            return set()
+        return {line.split("\0", 1)[0] for line in r.stdout.splitlines()
+                if "\0" in line and not line.split("\0", 1)[1].startswith("refs/stash")}
+
+    def _record_commits(self):
+        current = self._commits()
+        for sha in sorted(current - self.commits):
+            # These are commits seen in real refs, not synthetic WIP stash objects.
+            r = self.sb.exec(f"git show -s --format=%B {shlex.quote(sha)}", timeout_s=30)
+            if r.rc:
+                self.issues.append(f"commit subject unavailable: {sha}")
+            else:
+                self.add("commit", sha=sha, message=r.stdout.rstrip("\n"), stash=False)
+        self.commits |= current
+
+    def hook(self, payload: dict) -> dict:
+        with self.lock:
+            self.hooks_seen += 1
+            name = payload.get("tool_name", "")
+            args = payload.get("tool_input") or {}
+            tid = str(payload.get("tool_use_id") or "")
+            phase = payload.get("hook_event_name")
+            if not tid:
+                self.issues.append("hook missing tool use id")
+            if phase == "PreToolUse":
+                if self.stop is not None and self.stop.is_set():
+                    return {"ok": True, "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                        "permissionDecisionReason": "Probe window ended"}}
+                if name in ("Bash", "Edit", "Write") and any(
+                        row["name"] in ("Bash", "Edit", "Write") for row in self.pending.values()):
+                    self.issues.append("overlapping mutation tools")
+                before = _read_files(self.sb, self.paths) if self.paths else {}
+                edit_path = args.get("file_path")
+                if name in ("Edit", "Write") and edit_path and edit_path not in before:
+                    before.update(_read_files(self.sb, [edit_path]))
+                safe_id = I.sha256(tid)[:20]
+                call = {"name": name, "args": args, "before": before,
+                        "trace_path": f"{AUDIT_DIR}/{safe_id}.trace",
+                        "rc_path": f"{AUDIT_DIR}/{safe_id}.rc",
+                        "cwd_path": f"{AUDIT_DIR}/{safe_id}.cwd",
+                        "final_cwd_path": f"{AUDIT_DIR}/{safe_id}.final-cwd",
+                        "cwd": payload.get("cwd")}
+                self.pending[tid] = call
+                if name == "Bash":
+                    if not self.paths:
+                        self.issues.append("no frozen mutation scope")
+                    command = args.get("command", "")
+                    final_pwd = "pwd -P > " + shlex.quote(call["final_cwd_path"])
+                    traced = "bash -lc " + shlex.quote(
+                        "pwd -P > " + shlex.quote(call["cwd_path"]) + "; trap "
+                        + shlex.quote(final_pwd) + " EXIT; " + command)
+                    if not self.trace_available:
+                        self.issues.append("strace unavailable")
+                    else:
+                        traced = ("strace -f -q -ttt -yy -x -s 0 -o "
+                                  + shlex.quote(call["trace_path"])
+                                  + " -e trace=open,openat,write,pwrite64,writev,pwritev,pwritev2,"
+                                  "lseek,close,rename,renameat,renameat2,unlink,unlinkat,mmap,"
+                                  "ftruncate,truncate,copy_file_range,sendfile,splice,io_uring_setup "
+                                  + traced)
+                    wrapped = (traced + "; emx_audit_rc=$?; printf '%s' \"$emx_audit_rc\" > "
+                               + shlex.quote(call["rc_path"]) + "; "
+                               + "if [ -s " + shlex.quote(call["final_cwd_path"]) + " ]; then "
+                               + "cd -- \"$(cat " + shlex.quote(call["final_cwd_path"]) + ")\"; fi; "
+                               + "sh -c 'exit \"$1\"' emx-audit \"$emx_audit_rc\"")
+                    return {"ok": True, "hookSpecificOutput": {
+                        "hookEventName": "PreToolUse", "permissionDecision": "allow",
+                        "updatedInput": {**args, "command": wrapped}}}
+                return {"ok": True}
+            call = self.pending.pop(tid, None)
+            if call is None:
+                self.issues.append(f"post hook without pre hook: {tid}")
+                return {"ok": True}
+            name, args = call["name"], call["args"]
+            response = payload.get("tool_response") or {}
+            response = response if isinstance(response, dict) else {"output": str(response)}
+            failed = phase == "PostToolUseFailure"
+            if name == "Bash":
+                if self.trace_available:
+                    r = self.sb.exec("cat " + shlex.quote(call["trace_path"]), timeout_s=60)
+                    if r.rc or not r.stdout.strip():
+                        self.issues.append("mutation trace missing")
+                    else:
+                        traced = parse_mutation_trace(r.stdout, call["before"])
+                        self.issues += traced["issues"]
+                        for event in traced["events"]:
+                            self.add(event["kind"], tool_call_id=tid, **event["data"])
+                        after = _read_files(self.sb, self.paths)
+                        if traced["after"] != after:
+                            self.issues.append("trace replay differs from actual files")
+                rr = self.sb.exec("cat " + shlex.quote(call["rc_path"]), timeout_s=30)
+                rc = int(rr.stdout) if rr.rc == 0 and rr.stdout.strip().isdigit() else None
+                if rc is None:
+                    self.issues.append("command exit code unavailable")
+                output = response.get("output")
+                if output is None:
+                    # Keep stream components too: transcript reconciliation replaces this
+                    # with the exact tool result that the agent saw, including truncation.
+                    output = str(response.get("stdout") or "") + str(response.get("stderr") or "")
+                cwd_result = self.sb.exec("cat " + shlex.quote(call["cwd_path"]), timeout_s=30)
+                cwd = cwd_result.stdout.strip() if cwd_result.rc == 0 else None
+                final_cwd = self.sb.exec("cat " + shlex.quote(call["final_cwd_path"]), timeout_s=30)
+                if final_cwd.rc:
+                    self.issues.append("shell cwd restoration unavailable")
+                completed = (rc is not None and not args.get("run_in_background")
+                             and not response.get("interrupted") and not response.get("timed_out")
+                             and not response.get("backgroundTaskId"))
+                self.add("command", command=args.get("command", ""), output=str(output),
+                         exit_code=rc, completed=completed, cwd=cwd, tool_call_id=tid,
+                         raw_response=response, is_error=failed)
+            elif name in ("Edit", "Write"):
+                after = _read_files(self.sb, list(call["before"]))
+                for path, original in call["before"].items():
+                    if original != after[path]:
+                        self.add("edit", path=path, before=original, after=after[path],
+                                 tool_call_id=tid, source="tool_snapshot")
+                        if original is None or after[path] is None:
+                            self.issues.append("unknown edited file contents")
+            elif name == "Grep":
+                self.add("search", pattern=args.get("pattern", ""), path=args.get("path"),
+                         glob=args.get("glob"), output_mode=args.get("output_mode", "files_with_matches"),
+                         output=str(response.get("content", response.get("output", ""))),
+                         exit_code=1 if failed else 0, completed=not failed,
+                         cwd=call.get("cwd"), tool_call_id=tid, raw_response=response)
+            elif name == "Read":
+                data = response.get("file") or {}
+                start = data.get("startLine")
+                count, total = data.get("numLines"), data.get("totalLines")
+                end = start + count - 1 if isinstance(start, int) and isinstance(count, int) else None
+                self.add("read", path=args.get("file_path", ""), output=data.get("content", ""),
+                         start_line=start, end_line=end, complete=start == 1 and count == total
+                         and isinstance(total, int), forced=False,
+                         exit_code=1 if failed else 0, cwd=call.get("cwd"), tool_call_id=tid)
+            elif name not in (ASK_TOOL, "ask_user", "Grep", "Glob", "TodoWrite", "TaskCreate",
+                              "TaskUpdate", "TaskList", "TaskGet"):
+                self.issues.append(f"unobserved tool mutation semantics: {name}")
+            self._record_commits()
+            return {"ok": True}
+
+    def finish(self, transcript: list[dict], *, captured_asks=(), submission="") -> dict:
+        # Transcript is authoritative for the output bytes as seen by the agent.
+        outputs = {}
+        for row in transcript:
+            for block in (row.get("message") or {}).get("content", []):
+                if isinstance(block, dict) and block.get("type") == "tool_result":
+                    outputs[block.get("tool_use_id")] = _block_text(block.get("content"))
+        for event in self.events:
+            if event["kind"] in ("command", "read", "search"):
+                tid = event["data"].get("tool_call_id")
+                if tid in outputs:
+                    event["data"]["output"] = outputs[tid]
+                else:
+                    self.issues.append(f"agent-visible output missing for {tid}")
+        for row in captured_asks:
+            self.add("ask_user", text=row.get("text", ""), source="terminal_capture")
+        if submission and not captured_asks:
+            self.add("submission", text=submission)
+        pending = [tid for tid, row in self.pending.items()
+                   if row["name"] not in (ASK_TOOL, "ask_user")]
+        if pending:
+            self.issues.append("unfinished tool calls")
+        part_a_issues = [issue for issue in self.issues if issue.startswith((
+            "commit ", "agent-visible output missing", "unfinished tool", "command exit code",
+            "post hook without", "hook missing", "mutation trace missing", "shell cwd restoration"))]
+        return {"schema_version": 1, "events": self.events,
+                "part_a_complete": bool(self.hooks_seen) and not part_a_issues,
+                "part_a_issues": part_a_issues,
+                "capture_complete": bool(self.hooks_seen) and not self.issues,
+                "issues": sorted(set(self.issues)), "pending_tool_ids": pending,
+                "mutation_paths": self.paths, "trace_available": self.trace_available}
+
+
+def annotate_delivery_distances(rows: list[dict], boundary_in_session: int,
+                                sim_export: dict, boundary_index: int) -> dict:
+    """Attach a labelled byte-based token estimate since each actual delivery.
+
+    This counts newly recorded conversational messages after the delivered reply and before
+    this compaction. It excludes API request copies, metadata and synthetic summary messages,
+    so it never subtracts context sizes across compactions. Four UTF-8 bytes per estimated
+    token is an explicit approximation, separate from the measured pre_tokens trigger.
+    """
+    import math
+    exported = json.loads(json.dumps(sim_export))
+    planting = exported.get("planting")
+    if not planting:
+        return exported
+    compactions = compact_rows(rows)
+    end = compactions[boundary_in_session - 1]
+    boundaries = planting.get("boundaries", [])
+    boundary = next((row for row in boundaries if row.get("compaction_index") == boundary_index), None)
+    if boundary is None:
+        return exported
+    call_names = {}
+    candidates = []
+    for index, row in enumerate(rows[:end]):
+        blocks = (row.get("message") or {}).get("content")
+        for block in blocks if isinstance(blocks, list) else []:
+            if block.get("type") == "tool_use":
+                call_names[block.get("id")] = block.get("name")
+            elif block.get("type") == "tool_result" and call_names.get(
+                    block.get("tool_use_id")) in (ASK_TOOL, "ask_user"):
+                candidates.append((index, unwrap_ask(_block_text(block.get("content")))))
+    asks = {row.get("call_index"): row.get("reply") for row in exported.get("ask_log", [])}
+    for rule in boundary.get("obligations", []):
+        reply = asks.get(rule.get("delivery_call_index"))
+        at = next((index for index, text in candidates if reply and reply == text), None)
+        if at is None:
+            continue
+        seen_ids = set()
+        messages = []
+        for row in rows[at + 1:end]:
+            if not _is_msg(row) or row.get("isCompactSummary"):
+                continue
+            uid = row.get("uuid")
+            if uid is not None and uid in seen_ids:
+                continue
+            seen_ids.add(uid)
+            messages.append(row["message"])
+        nbytes = len(json.dumps(messages, ensure_ascii=False, separators=(",", ":")).encode())
+        rule.update(token_distance=math.ceil(nbytes / 4),
+                    token_distance_source="transcript_message_utf8_bytes_div4_estimate",
+                    token_distance_bytes=nbytes, token_distance_bytes_per_token=4,
+                    delivery_transcript_index=at)
+    return exported
+
+
+def transcript_usage(rows: list[dict]) -> dict | None:
+    """Sum actual usage once per new assistant response (latest streamed block wins)."""
+    responses = {}
+    for row in rows:
+        message = row.get("message") or {}
+        if row.get("type") == "assistant" and message.get("id") and isinstance(message.get("usage"), dict):
+            responses[message["id"]] = message["usage"]
+    if not responses:
+        return None
+    keys = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+    return {"source": "native_transcript_response_usage", "responses": len(responses),
+            **{key: sum(value.get(key) or 0 for value in responses.values()) for key in keys}}

@@ -607,6 +607,46 @@ def _tree(procs: dict[int, tuple[int, str, str]], roots: set[int]) -> set[int]:
     return out
 
 
+def is_harness_log_follower(argv: str) -> bool:
+    """Only detached_exec's exact read-only follower argv; no shell, arbitrary path or flags."""
+    return isinstance(argv, str) and re.fullmatch(
+        r"(?:timeout -k 5 300 )?tail -c \+[1-9][0-9]* -F "
+        r"/opt/emx/steps/[A-Za-z0-9][A-Za-z0-9_.-]*/out", argv) is not None
+
+
+def reclassify_harness_quiescence(fields: dict) -> dict:
+    """Return a revised copy of old metadata, never change the source boundary.
+
+    This repairs only the known follower false positive. Transcript integrity, image
+    presence, entrypoint services and fork_check remain independent eligibility gates.
+    """
+    out = copy.deepcopy(fields)
+    processes = fields.get("processes")
+    if (fields.get("ineligible_reason") != "not_quiescent" or not processes
+            or not isinstance(processes, list)):
+        return out
+    exempt = []
+    for process in processes:
+        if not isinstance(process, str):
+            return out
+        pieces = process.split(None, 3)
+        if (len(pieces) != 4 or not pieces[0].isdigit() or not pieces[1].isdigit()
+                or not is_harness_log_follower(pieces[3])):
+            return out
+        exempt.append(process)
+    out.update(quiescent=True, harness_exempted_processes=exempt,
+               quiescence_reclassification={"version": 1, "original_quiescent":
+                   fields.get("quiescent"), "original_ineligible_reason": "not_quiescent",
+                   "rule": "exact detached_exec read-only log follower argv"})
+    # Services do not affect process quiescence, but still prohibit a fork.
+    if fields.get("services_running"):
+        out["ineligible_reason"] = "services_unvalidated"
+    else:
+        out.pop("ineligible_reason", None)
+    out["eligible"] = None  # only the quiescence gate was rerun
+    return out
+
+
 def classify(procs: dict[int, tuple[int, str, str]], token: str, cli: str,
              hook: str, services: set[int] | frozenset[int] = frozenset()) -> dict[str, list[int]]:
     """Split a container's processes at a hook-blocked boundary: `infra` = PID 1 and its sleep,
@@ -630,9 +670,11 @@ def classify(procs: dict[int, tuple[int, str, str]], token: str, cli: str,
         infra |= anc(c)
     infra |= _tree(procs, hooks) | _tree(procs, mine)
     infra |= _tree(procs, {p for p in services if p in procs})
+    followers = {p for p, (_, _, argv) in procs.items() if is_harness_log_follower(argv)}
+    infra |= followers
     strays = [p for p, (_, st, _) in sorted(procs.items())
               if p not in infra and not st.startswith("Z")]
-    return {"infra": sorted(infra), "strays": strays}
+    return {"infra": sorted(infra), "strays": strays, "harness_followers": sorted(followers)}
 
 
 def signal_pids(sb: SB.Sandbox, pids: list[int], sig: str) -> None:
@@ -655,10 +697,16 @@ def freeze(sb: SB.Sandbox, cli: str, hook: str,
     Returns {pid: "ppid stat args"} of the stopped processes; raises if it can't stabilise.
     The caller must `signal_pids(..., "CONT")` them in a finally."""
     stopped: dict[int, str] = {}
+    sb.harness_exempted_processes = {}
     try:
         for _ in range(FREEZE_ROUNDS):
             procs, tok = ps_table(sb)
-            strays = classify(procs, tok, cli, hook, services)["strays"]
+            classified = classify(procs, tok, cli, hook, services)
+            strays = classified["strays"]
+            exempted = getattr(sb, "harness_exempted_processes", {})
+            for pid in classified["harness_followers"]:
+                exempted[pid] = f"{pid} {procs[pid][0]} {procs[pid][1]} {procs[pid][2]}"
+            sb.harness_exempted_processes = exempted
             for p in strays:
                 stopped.setdefault(p, f"{procs[p][0]} {procs[p][1]} {procs[p][2]}")
             live = [p for p in strays if not procs[p][1].startswith("T")]
@@ -880,6 +928,10 @@ def snapshot(sb: SB.Sandbox, keep: SS.KeepStore, k: int) -> dict:
 # ------------------------------------------------------------------------------------------
 
 
+class ProbeCaptured(RuntimeError):
+    """A terminal probe ask: captured without consulting or changing the simulator."""
+
+
 class SimServer:
     """The released `ask_user` MCP tool (FastMCP "simulated-user", streamable HTTP at /mcp; the
     same name, docstring and `question: str` signature as upstream server.py), answered by this
@@ -898,12 +950,15 @@ class SimServer:
                  token: str | None = None,
                  on_boundary: Callable[[dict], dict] | None = None,
                  on_cap: Callable[[BaseException], None] | None = None,
-                 on_ask: Callable[[dict], None] | None = None):
+                 on_ask: Callable[[dict], None] | None = None,
+                 capture_ask: Callable[[dict], None] | None = None):
         self.sim = sim
         self.bind = bind or tailscale_ip()
         self.port = port or free_port(self.bind)
         self.token = token or secrets.token_urlsafe(24)
         self.on_boundary, self.on_cap, self.on_ask = on_boundary, on_cap, on_ask
+        self.capture_ask = capture_ask
+        self.captured_asks: list[dict] = []
         self.step = "01_plan"
         self.rows: list[dict] = []
         self.boundary_calls: list[dict] = []
@@ -916,6 +971,13 @@ class SimServer:
     def ask(self, question: str) -> str:
         from compaction.s2.model import RunCapReached
         with self._lock:
+            if self.capture_ask is not None:
+                row = {"kind": "ask_user", "text": question, "step": self.step, "utc": utc()}
+                self.captured_asks.append(row)
+                self.capture_ask(row)
+                raise ProbeCaptured("probe window ended at ask_user")
+            if hasattr(self.sim, "set_delivery_context"):
+                self.sim.set_delivery_context(stage=self.step)
             if self.cap_error:
                 raise RuntimeError(f"simulator stopped: {self.cap_error}")
             try:
