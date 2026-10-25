@@ -53,6 +53,7 @@ SMOKE_TASK = "kombu-single-active-consumer-priority"
 def _env() -> None:
     from dotenv import load_dotenv
     load_dotenv(C.REPO_ROOT / ".env", override=False)
+    N.install_transport_retry()  # main session, 24 Oct
 
 
 def _stamp() -> str:
@@ -77,6 +78,7 @@ def _paid(a) -> None:
 
 
 def cmd_egress_check(a) -> int:
+    N.install_transport_retry()
     task = IR.load_task(a.task)
 
     class _NoSim:

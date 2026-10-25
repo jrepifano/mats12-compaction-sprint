@@ -378,6 +378,77 @@ def stream_exec(sb: SB.Sandbox, cmd: str, *, timeout_s: int, log_path: Path,
                         rc in (124, 137) and secs >= timeout_s - 1)
 
 
+# Docker-over-ssh transport failures (main session, 24 Oct: OpenSSH's PerSourcePenalties
+# dropped the laptop's connections, and one drop at a fail-closed harness exec ended a 1-2 h
+# run). Only the signature of every drop seen tonight is retried: the CLI's error names the
+# `_ping` request (API negotiation) and its ssh helper exited 255. The CLI pings before its
+# first operation request and reports the error of the request that failed, so an error naming
+# `_ping` means the failure came before an operation was sent; that is inferred from the CLI's
+# behaviour (docker 29.9.2), not guaranteed by it (astra transport r2). A generic "error during
+# connect" can follow a request the daemon received (r1 #1), so anything without the `_ping`
+# signature is never retried, nor is any result docker or the command itself returned.
+TRANSPORT_BACKOFF_S = (10, 30, 90)
+_PING_FAIL = re.compile(r'error during connect: (?:Get|Head) "?https?://[^\s"]*/_ping"?: ')
+TRANSPORT_RETRIES: list[dict] = []  # every retry of this process, also printed
+MIN_ATTEMPT_S = 5.0  # no retry with less than this left of the call's own timeout
+
+
+def transport_failed(rc: int, stderr: str) -> bool:
+    return rc != 0 and bool(_PING_FAIL.search(stderr)) and "exit status 255" in stderr
+
+
+def retry_transport(run: Callable[[float], tuple], what: str, budget_s: float, sleep=None):
+    """`run(timeout_s)` -> (result, rc, stderr), retried after each wait of
+    TRANSPORT_BACKOFF_S while its failure is a failed docker dial (`transport_failed`), all
+    within `budget_s`, the call's own timeout: no wait is begun that would leave less than
+    MIN_ATTEMPT_S, the remainder is computed again after the wait (an oversleep can eat it),
+    no attempt starts with less than MIN_ATTEMPT_S left, and each gets exactly what is left
+    (astra transport r1 #2, r2), so a caller's deadline arithmetic still holds. Each retry is logged (TRANSPORT_RETRIES and a printed
+    `transport_retry` line). Returns the last result."""
+    end = time.monotonic() + budget_s
+    res, rc, err = run(budget_s)
+    for n, wait in enumerate(TRANSPORT_BACKOFF_S, 1):
+        if not transport_failed(rc, err):
+            break
+        left = end - time.monotonic() - wait
+        if left < MIN_ATTEMPT_S:
+            break
+        row = {"event": "transport_retry", "what": what[:120], "retry": n, "wait_s": wait,
+               "left_s": round(left, 1), "rc": rc, "stderr": err.strip()[-200:],
+               "utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+        TRANSPORT_RETRIES.append(row)
+        print(json.dumps(row), flush=True)
+        (sleep or time.sleep)(wait)
+        left = end - time.monotonic()
+        if left < MIN_ATTEMPT_S:
+            break
+        res, rc, err = run(left)
+    return res
+
+
+_ORIG_DOCKER = SB._docker
+
+
+def _docker_with_retry(args: list[str], timeout: float, check: bool = True,
+                       input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
+    def once(t: float):
+        p = _ORIG_DOCKER(args, t, check=False, input_bytes=input_bytes)
+        return p, p.returncode, p.stderr.decode(errors="replace")
+
+    p = retry_transport(once, "docker " + " ".join(args[:2]), timeout)
+    if check and p.returncode != 0:
+        raise SB.SandboxError(f"docker {args[0]} rc={p.returncode}: "
+                              f"{p.stderr.decode()[-2000:]}")
+    return p
+
+
+def install_transport_retry() -> None:
+    """Route every docker call of `compaction.deepswe.sandbox` in this process (harness execs,
+    commits, listings, cleanup) through `retry_transport`, within each call's own timeout.
+    Called by the native launchers (scripts/s2_native.py); idempotent."""
+    SB._docker = _docker_with_retry
+
+
 def exec_env(sb: SB.Sandbox, cmd: str, env: dict[str, str], *, timeout_s: int = 300,
              workdir: str = "/") -> SB.ExecResult:
     """`Sandbox.exec` with `env` passed as `docker exec -e NAME` (values only in the client's
@@ -386,8 +457,13 @@ def exec_env(sb: SB.Sandbox, cmd: str, env: dict[str, str], *, timeout_s: int = 
                            sb.name, "timeout", "-k", "5", str(int(timeout_s)), "bash", "-lc",
                            cmd], sb.host)
     t0 = time.monotonic()
-    p = subprocess.run(argv, capture_output=True, timeout=timeout_s + SB.CLIENT_GRACE_S,
-                       env={**os.environ, **env}, check=False)
+
+    def once(t: float):
+        p = subprocess.run(argv, capture_output=True, timeout=t, env={**os.environ, **env},
+                           check=False)
+        return p, p.returncode, p.stderr.decode(errors="replace")
+
+    p = retry_transport(once, f"exec_env {sb.name}", timeout_s + SB.CLIENT_GRACE_S)
     return SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
                          p.stderr.decode(errors="replace"), time.monotonic() - t0)
 

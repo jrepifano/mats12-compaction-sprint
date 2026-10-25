@@ -9,11 +9,21 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from compaction import s1_judge as J
 from compaction.s2 import interact_run as IR
 from compaction.s2 import lossaudit as LA
 from compaction.s2.native import agy as A
 from compaction.s2.native import common as N
+
+
+@pytest.fixture(autouse=True)
+def _keep_sandbox_docker():
+    """`S.main` installs the transport retry into sandbox._docker; undo it after each test."""
+    orig = N.SB._docker
+    yield
+    N.SB._docker = orig
 
 
 def ui(n: int, text: str) -> dict:
@@ -769,3 +779,39 @@ def test_provenance_failures_never_fail_an_audit(tmp_path, monkeypatch):
     S._audits(tmp_path, rd, "kombu-agy-a1", None, threading.Lock())  # lossaudit reused
     n = len((tmp_path / "_audit" / "kombu-agy-a1" / "audit_code.jsonl").read_text().splitlines())
     assert n == 3  # only the rerun requirements component wrote a row
+
+
+def test_the_screen_stays_fail_closed_after_transport_retries(monkeypatch):
+    import subprocess as sp
+
+    import compaction.s2.native.common as C2
+
+    class SB1:
+        name, host, log = "c", None, []
+
+    dial = ('error during connect: Get "http://docker.example.com/_ping": command [ssh -- rig '
+            'docker system dial-stdio] has exited with exit status 255, make sure ... '
+            'stderr=Connection closed by 1.2.3.4 port 22')
+    calls = []
+
+    def answer(out, err, rc):
+        def run(*a, **k):
+            calls.append(1)
+            return sp.CompletedProcess([], rc, out, err)
+        return run
+
+    monkeypatch.setattr(C2.time, "sleep", lambda s: None)
+    monkeypatch.setattr(C2.subprocess, "run", answer(b"", dial.encode(), 1))
+    with pytest.raises(A.SB.SandboxError):
+        A.screen(SB1(), ["/x"], "tok")  # every try failed to dial: still a refusal
+    assert len(calls) == 1 + len(C2.TRANSPORT_BACKOFF_S)
+    calls.clear()
+    monkeypatch.setattr(C2.subprocess, "run", answer(b"SCREEN_HIT\n/x\n", b"", 0))
+    with pytest.raises(A.SecretFound):
+        A.screen(SB1(), ["/x"], "tok")  # a hit (rc 0) is never retried
+    assert len(calls) == 1
+    calls.clear()
+    monkeypatch.setattr(C2.subprocess, "run", answer(b"", b"", 1))
+    with pytest.raises(A.SB.SandboxError):
+        A.screen(SB1(), ["/x"], "tok")  # a missing verdict is never retried
+    assert len(calls) == 1

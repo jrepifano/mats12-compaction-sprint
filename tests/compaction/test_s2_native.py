@@ -25,6 +25,15 @@ from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
 from compaction.s2.native import egress_proxy as EP
 
+
+@pytest.fixture(autouse=True)
+def _keep_sandbox_docker():
+    """`S.main` installs the transport retry into sandbox._docker; undo it after each test."""
+    orig = N.SB._docker
+    yield
+    N.SB._docker = orig
+
+
 # ------------------------------------------------------------------------------------------
 # A synthetic Claude Code transcript (the row shapes of logs/s2/native_harness_feasibility.md)
 # ------------------------------------------------------------------------------------------
@@ -1104,3 +1113,92 @@ def test_output_lost_ends_a_claude_code_run_as_infra(tmp_path, monkeypatch):
     cfg = CC.BaseConfig(task=Task(), root=tmp_path, host=None)
     res = CC.run_base(cfg, sim_model=None, token="tok", session_cls=FakeSession)
     assert res["end"] == "infra_killed" and "output_lost" in res["error"]
+
+
+DIAL_FAIL = ('error during connect: Get "http://docker.example.com/_ping": command [ssh -o '
+             'ConnectTimeout=30 -T -- rig docker system dial-stdio] has exited with exit status '
+             '255, make sure the URL is valid, and Docker 18.09 or later is installed on the '
+             'remote host: stderr=Connection closed by 100.64.0.2 port 22')
+
+
+def test_only_a_failed_docker_dial_counts_as_transport():
+    assert N.transport_failed(1, DIAL_FAIL)
+    assert N.transport_failed(1, DIAL_FAIL.replace("Connection closed by 100.64.0.2 port 22",
+                                                   "kex_exchange_identification: read: reset"))
+    assert not N.transport_failed(0, DIAL_FAIL)
+    # after a request was sent (no _ping): the daemon may have acted, never retried
+    sent = DIAL_FAIL.replace('Get "http://docker.example.com/_ping"',
+                             'Post "http://docker.example.com/v1.47/commit?container=c1"')
+    assert not N.transport_failed(1, sent)
+    assert not N.transport_failed(1, DIAL_FAIL.replace("exit status 255", "exit status 1"))
+    assert not N.transport_failed(255, "Connection to rig closed by remote host.\n")
+    assert not N.transport_failed(1, "SCREEN_HIT /app/x\n")  # a verdict
+    assert not N.transport_failed(1, "Error response from daemon: No such container: c")
+
+
+def test_transport_retries_back_off_log_and_stop(capsys):
+    waits, results = [], iter([("a", 1, DIAL_FAIL), ("b", 1, DIAL_FAIL), ("c", 0, "")])
+    n0 = len(N.TRANSPORT_RETRIES)
+    got = N.retry_transport(lambda t: next(results), "docker exec c1", 600, sleep=waits.append)
+    assert got == "c" and waits == [10, 30] and len(N.TRANSPORT_RETRIES) - n0 == 2
+    assert '"event": "transport_retry"' in capsys.readouterr().out
+    waits.clear()
+    always = lambda t: ("x", 1, DIAL_FAIL)
+    assert N.retry_transport(always, "docker rm", 600, sleep=waits.append) == "x"
+    assert waits == list(N.TRANSPORT_BACKOFF_S)  # then the caller's own failure handling
+
+
+def test_transport_retries_stay_inside_the_calls_timeout(monkeypatch):
+    clock = {"t": 0.0}
+    monkeypatch.setattr(N.time, "monotonic", lambda: clock["t"])
+    budgets, waits = [], []
+
+    def run(t):
+        budgets.append(t)
+        clock["t"] += 2.0  # a failed dial takes 2 s
+        return "x", 1, DIAL_FAIL
+
+    def sleep(w):
+        waits.append(w)
+        clock["t"] += w
+
+    N.retry_transport(run, "docker exec c1", 60, sleep=sleep)
+    assert waits == [10, 30]  # 90 more would overrun the 60 s call
+    assert budgets == [60, 48, 16]  # each attempt gets exactly what is left
+    assert clock["t"] <= 60
+
+    # an oversleep: no attempt starts once less than MIN_ATTEMPT_S is left
+    clock["t"], budgets[:], waits[:] = 0.0, [], []
+
+    def oversleep(w):
+        waits.append(w)
+        clock["t"] += w + 15
+
+    N.retry_transport(run, "docker exec c1", 20, sleep=oversleep)
+    assert waits == [10] and budgets == [20]  # woke at 27 s of a 20 s budget: stop
+
+
+def test_installed_docker_retry_keeps_check_semantics(monkeypatch):
+    import subprocess as sp
+    seq = iter([sp.CompletedProcess([], 1, b"", DIAL_FAIL.encode()),
+                sp.CompletedProcess([], 1, b"", b"real failure")])
+    monkeypatch.setattr(N, "_ORIG_DOCKER", lambda a, t, check=False, input_bytes=None: next(seq))
+    monkeypatch.setattr(N.time, "sleep", lambda s: None)
+    monkeypatch.setattr(N.SB, "_docker", N.SB._docker)
+    N.install_transport_retry()
+    with pytest.raises(N.SB.SandboxError, match="real failure"):
+        N.SB._docker(["rm", "-f", "c1"], timeout=60)  # retried once, then the real failure
+    seq = iter([sp.CompletedProcess([], 1, b"", DIAL_FAIL.encode())])
+    with pytest.raises(N.SB.SandboxError, match="_ping"):
+        N.SB._docker(["rm", "-f", "c1"], timeout=5)  # no room for a 10 s wait: not retried
+
+
+def test_exec_env_retries_a_failed_dial(monkeypatch):
+    import subprocess as sp
+    seq = iter([sp.CompletedProcess([], 1, b"", DIAL_FAIL.encode()),
+                sp.CompletedProcess([], 0, b"SCREEN_CLEAN\n", b"")])
+    monkeypatch.setattr(N.subprocess, "run", lambda *a, **k: next(seq))
+    monkeypatch.setattr(N.time, "sleep", lambda s: None)
+    sb = N.SB.Sandbox(name="c1", image="i", purpose="p")
+    r = N.exec_env(sb, "echo", {"A": "1"})
+    assert r.rc == 0 and r.stdout == "SCREEN_CLEAN\n"
