@@ -706,7 +706,8 @@ def cmd_batch(a) -> int:
         s["req_rows"] = reqs
         for key, field_ in (("req_lost", "lost"), ("req_new", "lost_new"),
                             ("req_inherited", "lost_inherited"),
-                            ("req_unknown", "lost_unknown")):
+                            ("req_unknown", "lost_unknown"),
+                            ("req_by_reply", "lost_by_reply")):
             s[key] = (sum(r.get(field_) or 0 for r in reqs) if reqs is not None else None)
         with lock:
             summaries.append(s)
@@ -714,7 +715,8 @@ def cmd_batch(a) -> int:
         say(f"{task}: end={s['end']} compactions={s['compactions']} items={s['items']} "
             f"lost={s['lost']} new={s['new']} inherited={s['inherited']} "
             f"unmatched={s['unmatched']} | reqs: lost={s['req_lost']} new={s['req_new']} "
-            f"inherited={s['req_inherited']} unknown={s['req_unknown']} | "
+            f"inherited={s['req_inherited']} unknown={s['req_unknown']} "
+            f"by_reply={s['req_by_reply']} | "
             f"first_pre_tokens={s['first_pre_tokens']} peak_02="
             f"{(s['peaks'].get('02_implement') or {}).get('peak_tokens')}@"
             f"{(s['peaks'].get('02_implement') or {}).get('peak_call')}"
