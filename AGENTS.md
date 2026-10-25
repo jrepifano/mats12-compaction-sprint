@@ -431,6 +431,16 @@ These lived only in Claude's per-user memory, which Codex can't see. They apply 
   - New pod code passes `ssh_known_hosts_opts()`.
 - Fetch, verify locally, then terminate, as separate commands. Never fetch and terminate in one compound command.
 
+## Figures (Jacob, 2026-10-25)
+
+Every chart made for Jacob, a slide, a doc or a report follows these rules. Cite this section in any figure brief you give a sub-agent.
+- **Style:** seaborn, with `sns.set_theme(style="whitegrid")`.
+- **Colours:** seaborn's default palette (`sns.color_palette()`, "deep": #4C72B0, #DD8452, #55A868, #C44E52, ...). Give each bar category its own colour, never shades of one colour. Keep a condition's colour the same across all charts and diagrams in a set.
+- **Chart type:** vertical bar charts by default. Show 95% intervals as error bars where a count supports one (Wilson for proportions). Use no horizontal dot-and-whisker plots unless asked.
+- **Labels:** the title states the claim, with its number. Axes and categories are in plain words, never internal codes (P<NN>, run keys, arm codes). Ids may appear only in a source footnote.
+- **Numbers:** every plotted number comes from a committed file, read by the script, never typed by hand.
+- **Outputs:** write PNG and SVG, plus a README in the figure folder giving each chart's title, the exact numbers plotted and the source file and field. After rendering, open each PNG and check that the labels are legible and nothing overlaps.
+
 ## Research taste (Neel's stated priorities)
 
 - Pragmatic interpretability: judge methods by proxy tasks on the critical path to safety, not by intrinsic metrics.
