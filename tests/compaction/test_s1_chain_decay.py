@@ -461,3 +461,15 @@ def test_meter_charges_the_bound_when_the_backend_raises():
     with pytest.raises(RuntimeError):
         m.run(_reqs(3), purpose="p")
     assert m.spent == 1.5 and m.charged_at_bound == 1.5
+
+
+def test_markdown_keeps_uncensored_rows_when_censoring_empties_a_step(ran):
+    _, res, _ = ran
+    st = res["states"][0]
+    scans = {st.chain["group"]: {**st.scans, 3: {"ok": False, "error": "timeout"}}}
+    again = CD.annotate([dict(r) for r in res["rows"]], scans)
+    s = CD.summarize(again, {})
+    md = CD.summary_md(s)
+    assert "| 3 | " in md  # uncensored k = 3 still shown
+    ri = s["reintroduction"]
+    assert ri["n_not_scan_covered"] == ri["n_items"] - ri["n_covered_to_final"] > 0

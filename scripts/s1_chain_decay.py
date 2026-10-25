@@ -913,23 +913,22 @@ def summarize(rows: list[dict], design: Mapping, coverage: Mapping | None = None
 
 
 def reintroduction(rows: list[dict]) -> dict:
-    by: dict[tuple, dict] = {}
+    """Per cohort-1 item, at its final usable compaction: stated again, or shown no longer
+    current, by then. Items whose scans up to that compaction did not all answer are counted
+    as unknown, not as "no" (astra r3 #4)."""
+    final: dict[tuple, dict] = {}
     for r in rows:
-        if r["cohort"] == 1 and r["usable"] and r.get("scan_covered", True):
-            by[(r["group"], r["chain_item"])] = (
-                r
-                if r["k"] >= by.get((r["group"], r["chain_item"]), {"k": 0})["k"]
-                else by[(r["group"], r["chain_item"])]
-            )
-    last = list(by.values())
-    n = len(last)
-    n_unknown = len({(r["group"], r["chain_item"]) for r in rows if r["cohort"] == 1
-                     and r["usable"] and not r.get("scan_covered", True)} - set(by))  # fmt: skip
+        key = (r["group"], r["chain_item"])
+        if r["cohort"] == 1 and r["usable"] and r["k"] >= final.get(key, {"k": 0})["k"]:
+            final[key] = r
+    covered = [r for r in final.values() if r.get("scan_covered", True)]
+    n = len(covered)
     return {
-        "n_items": n,
-        "n_not_scan_covered": n_unknown,
-        "reintroduced_share": sum(r["reintroduced_by_k"] for r in last) / n if n else None,
-        "not_current_share": sum(r["not_current_by_k"] for r in last) / n if n else None,
+        "n_items": len(final),
+        "n_covered_to_final": n,
+        "n_not_scan_covered": len(final) - n,
+        "reintroduced_share": sum(r["reintroduced_by_k"] for r in covered) / n if n else None,
+        "not_current_share": sum(r["not_current_by_k"] for r in covered) / n if n else None,
     }
 
 
@@ -992,9 +991,13 @@ def summary_md(s: Mapping) -> str:
         ),
         "|---|---|---|---|",
     ]
-    for k, v in c1["lost_by_k"].items():
+    ks = sorted(set(c1["lost_by_k"]) | set(c1["lost_by_k_uncensored"]))  # astra r3 #5
+    for k in ks:
         u = c1["lost_by_k_uncensored"].get(k, {}).get("all")
-        out.append(f"| {k} | {_pct(u)} | {_pct(v['all'])} | {_pct(v['not_reintroduced'])} |")
+        v = c1["lost_by_k"].get(k, {})
+        out.append(
+            f"| {k} | {_pct(u)} | {_pct(v.get('all'))} | {_pct(v.get('not_reintroduced'))} |"
+        )
     note = (
         "Not lost = Experiment 1's complement of lost (it includes dropped items available "
         "another way)."
@@ -1005,12 +1008,14 @@ def summary_md(s: Mapping) -> str:
     )
     out += ["", "## Step transitions (cohort 1)", "", note, "", head, "|---|---|---|---|---|---|"]
     tu = c1["transitions_uncensored"]
-    rows_t = list(c1["transitions"]["per_step"].items()) + [("pooled", c1["transitions"]["pooled"])]
+    steps = sorted(set(c1["transitions"]["per_step"]) | set(tu["per_step"]))
+    rows_t = [(st, c1["transitions"]["per_step"].get(st, {})) for st in steps]
+    rows_t.append(("pooled", c1["transitions"]["pooled"]))
     for st, v in rows_t:
         w = tu["pooled"] if st == "pooled" else tu["per_step"].get(st, {})
         out.append(
-            f"| {st} | {_pct(v['not_lost_to_lost'])} | {_pct(v['lost_to_not_lost'])} | "
-            f"{_pct(v['lost_to_not_lost_not_restated'])} | {_pct(w.get('not_lost_to_lost'))} | "
+            f"| {st} | {_pct(v.get('not_lost_to_lost'))} | {_pct(v.get('lost_to_not_lost'))} | "
+            f"{_pct(v.get('lost_to_not_lost_not_restated'))} | {_pct(w.get('not_lost_to_lost'))} | "
             f"{_pct(w.get('lost_to_not_lost'))} |"
         )
     fl = c1["first_loss"]
@@ -1039,9 +1044,10 @@ def summary_md(s: Mapping) -> str:
     out += [
         "",
         (
-            f"Reintroduced (stated again by user or agent) by the chain's last compaction: "
-            f"{ri['reintroduced_share']}; shown no longer current: {ri['not_current_share']} "
-            f"(of {ri['n_items']} cohort-1 items)."
+            f"Reintroduced (stated again by user or agent) by each item's last observed "
+            f"compaction: {ri['reintroduced_share']}; shown no longer current: "
+            f"{ri['not_current_share']} (of {ri['n_covered_to_final']} cohort-1 items with every "
+            f"scan answered; {ri['n_not_scan_covered']} unknown)."
         ),
         "",
         "## Ten seeded kept→lost examples",

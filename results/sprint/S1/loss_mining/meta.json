@@ -73,12 +73,44 @@
    "n_items": 197,
    "n_label_errors": 3,
    "finished_utc": "2026-10-25T15:16:51Z"
+  },
+  "private": {
+   "strata": [
+    "jacob",
+    "s2-pi-chain"
+   ],
+   "route": {
+    "backend": "opus-max",
+    "model": "claude-opus-5-5",
+    "transport": "claude-p (Max plan)",
+    "provider_pin": null,
+    "reasoning": "medium"
+   },
+   "status": "complete",
+   "started_utc": "2026-10-25T17:33:00Z",
+   "usage": {
+    "notional_usd": 7.7246,
+    "n_sent": 82,
+    "n_cached": 0,
+    "n_runs": 41,
+    "usage_unknown": 0,
+    "charged_at_bound_usd": 0.0,
+    "cap_usd": 25.0,
+    "window_start": 0.93,
+    "window_stop": 0.96,
+    "window_now": 0.93
+   },
+   "n_items": 86,
+   "n_label_errors": 0,
+   "finished_utc": "2026-10-25T17:43:52Z"
   }
  },
- "status": "partial: frontierml, posttrainbench, swe-chat-v1; clustering incomplete",
+ "status": "complete",
  "strata_labelled": [
   "frontierml",
+  "jacob",
   "posttrainbench",
+  "s2-pi-chain",
   "swe-chat-v1"
  ]
 }

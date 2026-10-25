@@ -750,9 +750,20 @@ def _split(r: Mapping) -> str:
 
 def summary_md(s: Mapping) -> str:
     o = s["overall"]
+    warn = []
+    if not s.get("clustering_complete"):
+        n_un = len(s.get("unassigned") or [])
+        warn = [
+            (
+                f"**Clustering incomplete:** {n_un} labelled item(s) unassigned (shown as "
+                "group 'unassigned'), or ids repeated or unknown; see groups.json."
+            ),
+            "",
+        ]
     out = [
         "# Loss mining: what gets lost that we don't check for",
         "",
+        *warn,
         (
             f"{s['n_labelled']} of {s['n_items']} sampled lost items labelled by Opus 5.5. "
             f"Overall: consequential {_pct(o['consequential'])}; recoverable from the repo "
@@ -932,6 +943,11 @@ def cmd_run(a) -> None:
     CD.write_hashes(OUT, ROW_FILES)
     say(f"done: {len(labels)} new labels, {len(rows)} in all; {be.state()}")
     cmd_summary(a)
+    if not clusters.get("complete"):  # astra r3 #3: written, but not a success
+        say(f"INCOMPLETE clustering: {len(clusters.get('unassigned') or [])} unassigned, "
+            f"{clusters.get('repeated_ids')} repeated, {len(clusters.get('unknown_ids') or [])} "
+            "unknown ids")  # fmt: skip
+        raise SystemExit(4)
 
 
 def routes_by_stratum(rows: list[dict]) -> dict:
