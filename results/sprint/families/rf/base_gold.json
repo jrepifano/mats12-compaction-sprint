@@ -1,0 +1,1909 @@
+{
+ "tasks": {
+  "rf_task-69391d8d1ce51c407be1e531": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 80,
+     "n_failed": 15,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 90.5
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 11.3
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 0,
+    "n_failed": 12,
+    "rc": 0,
+    "seconds": 64.8
+   },
+   "coverage": {
+    "relevant_listed": 31,
+    "relevant_exact_in_lists": 31,
+    "relevant_exact_in_f2p": 31
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T221143Z",
+   "discovery_generation": "20261024T193440Z",
+   "reflattened_from": "sha256:cc6d57a8e895f9db3529a457ea25d1eba4c7251962ef8164d82491e379bc7e76",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 80,
+      "f2p_passed": 80,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 80,
+     "n_failed": 15,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 850.1,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 80,
+      "f2p_passed": 0,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 12,
+     "f2p_not_passed": 80,
+     "p2p_not_passed": 0,
+     "seconds": 310.0,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 80,
+   "n_p2p": 0,
+   "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e531-v1",
+   "image_id": "sha256:00e0d5a72b80aca941096f11836b15bad326efbc5081874e5475160e25ab1d96",
+   "harness_ok": true,
+   "at": "2026-10-24T22:34:51Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69391d8d1ce51c407be1e533": {
+   "generation": "20261025T012302Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 159.1
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 18,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 21.0
+    }
+   },
+   "path_source": "login",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 0,
+    "n_failed": 1,
+    "rc": 0,
+    "seconds": 45.0,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 4,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "restart_check": {
+    "ready_first": "READY=0",
+    "rc_first": "0",
+    "image_id": "sha256:62a6bed8c771b0cd54ced35d34b0c7dea9e67f5f797062deed677ae235c5d96a",
+    "rc_restart": 0,
+    "gold_reward": 1,
+    "ok": true
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 18,
+      "f2p_passed": 18,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 18,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 91.9,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 18,
+      "f2p_passed": 0,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 1,
+     "f2p_not_passed": 18,
+     "p2p_not_passed": 0,
+     "seconds": 25.2,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 18,
+   "n_p2p": 0,
+   "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e533-v1",
+   "image_id": "sha256:26f0181ae839abffa9e04c2e124b06d55f7f78326be5f7867d662ecbf54e81d7",
+   "harness_ok": true,
+   "at": "2026-10-25T01:33:34Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-694b4b99829f00e24fd11885": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 120,
+     "n_failed": 14,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 110.6
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 48.8
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 84,
+    "n_failed": 13,
+    "rc": 255,
+    "seconds": 120.6
+   },
+   "coverage": {
+    "relevant_listed": 35,
+    "relevant_exact_in_lists": 35,
+    "relevant_exact_in_f2p": 35
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T221143Z",
+   "discovery_generation": "20261024T194428Z",
+   "reflattened_from": "sha256:0539409b3b0ad6c267539b483d6d16c82ef3160279b74f27e060b22dc5dd1cbb",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 36,
+      "f2p_passed": 36,
+      "p2p_total": 84,
+      "p2p_passed": 84,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 120,
+     "n_failed": 14,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 517.4,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 36,
+      "f2p_passed": 0,
+      "p2p_total": 84,
+      "p2p_passed": 84,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 84,
+     "n_failed": 13,
+     "f2p_not_passed": 36,
+     "p2p_not_passed": 0,
+     "seconds": 164.5,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 36,
+   "n_p2p": 84,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11885-v1",
+   "image_id": "sha256:33ae46cfd8c5cc93da36107a4f7cd9c0f8fa32843724b7df3cfdc72dcfcff2e6",
+   "harness_ok": true,
+   "at": "2026-10-24T22:28:06Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-694b4b99829f00e24fd11889": {
+   "generation": "20261024T224303Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 735,
+     "n_failed": 53,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 1077.8
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 1000.4
+    }
+   },
+   "path_source": "env",
+   "runner": "go-relevant",
+   "runner_reason": "0/14 relevant tests seen with the upstream runner; go-relevant: 14 seen, 14 passed",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 9,
+    "n_failed": 5,
+    "rc": 0,
+    "seconds": 153.9,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 14,
+    "relevant_exact_in_lists": 14,
+    "relevant_exact_in_f2p": 5
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 5,
+      "f2p_passed": 5,
+      "p2p_total": 9,
+      "p2p_passed": 9,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 14,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 1168.7,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 5,
+      "f2p_passed": 0,
+      "p2p_total": 9,
+      "p2p_passed": 9,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 9,
+     "n_failed": 5,
+     "f2p_not_passed": 5,
+     "p2p_not_passed": 0,
+     "seconds": 128.4,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 5,
+   "n_p2p": 9,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11889-v1",
+   "image_id": "sha256:e48de4369072315b87119e73c7aeb545376dd7d328db6992d597d360b317c4c0",
+   "harness_ok": true,
+   "at": "2026-10-24T23:58:15Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-694b4b99829f00e24fd11891": {
+   "generation": "20261025T012302Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 28,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 437.1
+    }
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 8,
+    "n_failed": 12,
+    "rc": 0,
+    "seconds": 22.6,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 28,
+    "relevant_exact_in_lists": 28,
+    "relevant_exact_in_f2p": 20
+   },
+   "restart_check": {
+    "ready_first": "READY=0",
+    "rc_first": "0",
+    "image_id": "sha256:c0ad0f9225742227ae8c43e64da03accba98c4361ffb67ee34f04100fb32e323",
+    "rc_restart": 0,
+    "gold_reward": 1,
+    "ok": true
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 20,
+      "f2p_passed": 20,
+      "p2p_total": 8,
+      "p2p_passed": 8,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 28,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 50.4,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 20,
+      "f2p_passed": 0,
+      "p2p_total": 8,
+      "p2p_passed": 8,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 8,
+     "n_failed": 12,
+     "f2p_not_passed": 20,
+     "p2p_not_passed": 0,
+     "seconds": 161.6,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 20,
+   "n_p2p": 8,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11891-v1",
+   "image_id": "sha256:56f9a0ff43a19065530191b62fd67b525965e758cde9ef337916212503afc2d1",
+   "harness_ok": true,
+   "at": "2026-10-25T01:44:03Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-694b4b99829f00e24fd118a1": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 38,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 31.9
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 1228,
+     "n_failed": 4,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 30.2
+    }
+   },
+   "path_source": "login",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 1209,
+    "n_failed": 23,
+    "rc": 0,
+    "seconds": 90.3
+   },
+   "coverage": {
+    "relevant_listed": 38,
+    "relevant_exact_in_lists": 38,
+    "relevant_exact_in_f2p": 19
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T222806Z",
+   "discovery_generation": "20261024T194428Z",
+   "reflattened_from": "sha256:b5f6b3223c15b4460e7350acb8d78d653385486cafd25492ba7f808bf7e9803d",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 19,
+      "f2p_passed": 19,
+      "p2p_total": 1209,
+      "p2p_passed": 1209,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 1228,
+     "n_failed": 4,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 577.4,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 19,
+      "f2p_passed": 0,
+      "p2p_total": 1209,
+      "p2p_passed": 1209,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 1209,
+     "n_failed": 23,
+     "f2p_not_passed": 19,
+     "p2p_not_passed": 0,
+     "seconds": 94.8,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 19,
+   "n_p2p": 1209,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd118a1-v1",
+   "image_id": "sha256:5b102410e269a8a23b7ec57c840b3a56aececbe9169195c0aac6671165731e85",
+   "harness_ok": true,
+   "at": "2026-10-24T22:40:33Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b40c": {
+   "generation": "20261024T224303Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 371,
+     "n_failed": 33,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 841.5
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 711.5
+    }
+   },
+   "path_source": "env",
+   "runner": "go-relevant",
+   "runner_reason": "1/13 relevant tests seen with the upstream runner; go-relevant: 12 seen, 1 passed",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 0,
+    "n_failed": 0,
+    "rc": 0,
+    "seconds": 150.1,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 13,
+    "relevant_exact_in_lists": 1,
+    "relevant_exact_in_f2p": 1
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 1,
+      "f2p_passed": 1,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 1,
+     "n_failed": 12,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 1022.8,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 1,
+      "f2p_passed": 0,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "f2p_not_passed": 1,
+     "p2p_not_passed": 0,
+     "seconds": 165.2,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 1,
+   "n_p2p": 0,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b40c-v1",
+   "image_id": "sha256:0f03e3df468f5f3eddb75b9ef82b8352df709fd0bf7ea6b2c6b4d064072df471",
+   "harness_ok": true,
+   "at": "2026-10-24T23:46:12Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b428": {
+   "generation": "20261025T012302Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 48,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 438.4
+    }
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 17,
+    "n_failed": 15,
+    "rc": 0,
+    "seconds": 54.8,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 48,
+    "relevant_exact_in_lists": 48,
+    "relevant_exact_in_f2p": 31
+   },
+   "restart_check": {
+    "ready_first": "READY=0",
+    "rc_first": "0",
+    "image_id": "sha256:915e78565726fd0e49d2ddfd8895591cf63d0ba2a9746cfc681847c506692971",
+    "rc_restart": 0,
+    "gold_reward": 1,
+    "ok": true
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 31,
+      "f2p_passed": 31,
+      "p2p_total": 17,
+      "p2p_passed": 17,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 48,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 274.3,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 31,
+      "f2p_passed": 0,
+      "p2p_total": 17,
+      "p2p_passed": 17,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 17,
+     "n_failed": 15,
+     "f2p_not_passed": 31,
+     "p2p_not_passed": 0,
+     "seconds": 45.7,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 31,
+   "n_p2p": 17,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b428-v1",
+   "image_id": "sha256:e24a676936fa30865a2166600776a5f0d506ed7222e4a23a8ae2a8714562e796",
+   "harness_ok": true,
+   "at": "2026-10-25T01:45:54Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b434": {
+   "generation": "20261025T000732Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 15538,
+     "n_failed": 60,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 1073.5
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 15536,
+     "n_failed": 63,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 522.8
+    }
+   },
+   "path_source": "login",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 15517,
+    "n_failed": 64,
+    "rc": 0,
+    "seconds": 761.9,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 18,
+    "relevant_exact_in_lists": 18,
+    "relevant_exact_in_f2p": 18
+   },
+   "done": true,
+   "pass": false,
+   "n_f2p": null,
+   "n_p2p": null,
+   "reason": "base record run invalid (status ok, rc 0)",
+   "oom_events": [
+    {
+     "label": "gold-rec-env",
+     "memory_mb": 16384,
+     "rc": 0,
+     "oom_kills": 1,
+     "container_gone": false,
+     "at": "2026-10-25T00:26:27Z"
+    },
+    {
+     "label": "base-rec",
+     "memory_mb": 16384,
+     "rc": 0,
+     "oom_kills": 1,
+     "container_gone": false,
+     "at": "2026-10-25T00:47:52Z"
+    }
+   ],
+   "n_oom": 2
+  },
+  "rf_task-696719205599a51110d4b436": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 1421,
+     "n_failed": 6,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 185.6
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 44.2
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 567,
+    "n_failed": 6,
+    "rc": 0,
+    "seconds": 174.3
+   },
+   "coverage": {
+    "relevant_listed": 24,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T224303Z",
+   "discovery_generation": "20261024T195209Z",
+   "reflattened_from": "sha256:025312b31fff7309ebfe49e7ad534409c67c48b66382ed7a56ea52a6f9e8df4f",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 854,
+      "f2p_passed": 854,
+      "p2p_total": 567,
+      "p2p_passed": 567,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 1421,
+     "n_failed": 6,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 324.4,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 854,
+      "f2p_passed": 0,
+      "p2p_total": 567,
+      "p2p_passed": 567,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 567,
+     "n_failed": 6,
+     "f2p_not_passed": 854,
+     "p2p_not_passed": 0,
+     "seconds": 578.0,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 854,
+   "n_p2p": 567,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b436-v1",
+   "image_id": "sha256:d96d022ba0b415f80dbeaf544daae4cad9926109386d44cb15997441029cd5d3",
+   "harness_ok": true,
+   "at": "2026-10-24T23:01:17Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b440": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 4374,
+     "n_failed": 12,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 255.5
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 39.7
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 4350,
+    "n_failed": 12,
+    "rc": 0,
+    "seconds": 194.3
+   },
+   "coverage": {
+    "relevant_listed": 16,
+    "relevant_exact_in_lists": 16,
+    "relevant_exact_in_f2p": 16
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T230117Z",
+   "discovery_generation": "20261024T195550Z",
+   "reflattened_from": "sha256:cbfae156393b15bf3331617d95c818e3fffeb51b9ebdc72afb2a28a9ffe4414d",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 24,
+      "f2p_passed": 24,
+      "p2p_total": 4320,
+      "p2p_passed": 4320,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 4374,
+     "n_failed": 12,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 337.7,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 24,
+      "f2p_passed": 0,
+      "p2p_total": 4320,
+      "p2p_passed": 4320,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 4350,
+     "n_failed": 12,
+     "f2p_not_passed": 24,
+     "p2p_not_passed": 0,
+     "seconds": 2396.2,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 24,
+   "n_p2p": 4320,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b440-v1",
+   "image_id": "sha256:34c94e5be6c86e639aacf2745a4b50cdc7b29b4dff33aed99935ef797a401ff1",
+   "harness_ok": true,
+   "at": "2026-10-24T23:49:56Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b441": {
+   "generation": "20261025T020229Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 4362,
+     "n_failed": 12,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 167.7
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 19.1
+    }
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 3633,
+    "n_failed": 7,
+    "rc": 0,
+    "seconds": 158.0,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 19,
+    "relevant_exact_in_lists": 19,
+    "relevant_exact_in_f2p": 15
+   },
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 729,
+      "f2p_passed": 699,
+      "p2p_total": 3633,
+      "p2p_passed": 3633,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 4362,
+     "n_failed": 12,
+     "f2p_not_passed": 30,
+     "p2p_not_passed": 0,
+     "seconds": 172.2,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 729,
+      "f2p_passed": 0,
+      "p2p_total": 3633,
+      "p2p_passed": 3633,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 3633,
+     "n_failed": 7,
+     "f2p_not_passed": 729,
+     "p2p_not_passed": 0,
+     "seconds": 161.6,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": {
+    "gold": {
+     "reward": 1,
+     "f2p_total": 699,
+     "f2p_passed": 699,
+     "p2p_total": 3633,
+     "p2p_passed": 3633,
+     "status": "ok"
+    },
+    "base": {
+     "reward": 0,
+     "f2p_total": 699,
+     "f2p_passed": 0,
+     "p2p_total": 3633,
+     "p2p_passed": 3633,
+     "status": "ok"
+    }
+   },
+   "n_flaky_dropped": 30,
+   "n_f2p": 699,
+   "n_p2p": 3633,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b441-v1",
+   "image_id": "sha256:3c3cf63920f0259069d4fddb84b42c638d78580db812f6ac7b6a414a563a9007",
+   "harness_ok": true,
+   "at": "2026-10-25T02:14:53Z",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b446": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 913,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 103.7
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 12.1
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 0,
+    "n_failed": 0,
+    "rc": 0,
+    "seconds": 49.0
+   },
+   "coverage": {
+    "relevant_listed": 17,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T234612Z",
+   "discovery_generation": "20261024T201006Z",
+   "reflattened_from": "sha256:35420ea2062551d9e702c925ecc47b2ded0e4489645ac97dd96b6dfd290758ec",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 913,
+      "f2p_passed": 913,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 913,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 910.0,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 913,
+      "f2p_passed": 0,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "f2p_not_passed": 913,
+     "p2p_not_passed": 0,
+     "seconds": 82.0,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 913,
+   "n_p2p": 0,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b446-v1",
+   "image_id": "sha256:0e8b3c6b7eb172385ffff79c076eb2bc093fb39833bf5c9e31f95519d09a6e6b",
+   "harness_ok": true,
+   "at": "2026-10-25T00:04:42Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b447": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 126,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 29.6
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 10.9
+    }
+   },
+   "path_source": "env",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 0,
+    "n_failed": 0,
+    "rc": 0,
+    "seconds": 31.0
+   },
+   "coverage": {
+    "relevant_listed": 38,
+    "relevant_exact_in_lists": 38,
+    "relevant_exact_in_f2p": 38
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T234956Z",
+   "discovery_generation": "20261024T201205Z",
+   "reflattened_from": "sha256:29d9e932a4fd7f47be36594cf8a3edc0215e9c01a51e6e3c57bb32b78524cd5f",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 120,
+      "f2p_passed": 120,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 126,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 77.0,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 120,
+      "f2p_passed": 0,
+      "p2p_total": 0,
+      "p2p_passed": 0,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "f2p_not_passed": 120,
+     "p2p_not_passed": 0,
+     "seconds": 358.0,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 120,
+   "n_p2p": 0,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b447-v1",
+   "image_id": "sha256:73b9bb13f1960f9158f76e576e7cf7e098ee02b4236296bebff64fe9aa7e8900",
+   "harness_ok": true,
+   "at": "2026-10-24T23:59:21Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b451": {
+   "generation": "20261024T235815Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 1256,
+     "n_failed": 1,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 299.9
+    },
+    "gold-rec-login": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 164.7
+    }
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "runner_reason": null,
+   "base_rec": {
+    "status": "no_results",
+    "n_passed": 0,
+    "n_failed": 0,
+    "rc": 0,
+    "seconds": 2473.1,
+    "failure_evidence": null
+   },
+   "coverage": {
+    "relevant_listed": 27,
+    "relevant_exact_in_lists": 27,
+    "relevant_exact_in_f2p": 27
+   },
+   "done": true,
+   "pass": false,
+   "n_f2p": null,
+   "n_p2p": null,
+   "reason": "base record run invalid (status no_results, rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b455": {
+   "generation": "20261025T012302Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 257.9
+    },
+    "gold-rec-login": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 112.4
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b458": {
+   "generation": "20261025T013334Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 386.0
+    },
+    "gold-rec-login": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 109.6
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-696719205599a51110d4b476": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 43.1
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 22,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 52.9
+    }
+   },
+   "path_source": "login",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 4,
+    "n_failed": 18,
+    "rc": 0,
+    "seconds": 33.2
+   },
+   "coverage": {
+    "relevant_listed": 20,
+    "relevant_exact_in_lists": 20,
+    "relevant_exact_in_f2p": 18
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261024T235921Z",
+   "discovery_generation": "20261024T201453Z",
+   "reflattened_from": "sha256:d780fdd380dabe868b0ba79ba23a9bba2b9579969ccd35199e483ff23a096654",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 18,
+      "f2p_passed": 18,
+      "p2p_total": 4,
+      "p2p_passed": 4,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 22,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 266.8,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 18,
+      "f2p_passed": 0,
+      "p2p_total": 4,
+      "p2p_passed": 4,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 4,
+     "n_failed": 18,
+     "f2p_not_passed": 18,
+     "p2p_not_passed": 0,
+     "seconds": 127.3,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 18,
+   "n_p2p": 4,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b476-v1",
+   "image_id": "sha256:4b9a5e273a6ef20923cd03c962039457b9e183450173fe3e1163872a9ffa9d75",
+   "harness_ok": true,
+   "at": "2026-10-25T00:07:07Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98812f": {
+   "generation": "20261025T013418Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 649.4
+    },
+    "gold-rec-login": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 49.0
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69b7c2a04b6f8ff9ed988137": {
+   "generation": "20261025T014403Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 47.2
+    },
+    "gold-rec-login": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 28.7
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98813b": {
+   "generation": "20261025T014540Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 82.3
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 40.6
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=ok/rc 0, gold-rec-login=ok/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98813d": {
+   "generation": "20261025T014554Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 58.0
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 48.2
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=ok/rc 0, gold-rec-login=ok/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69d196f015a150488265afb7": {
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "ok",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 53.5
+    },
+    "gold-rec-login": {
+     "status": "ok",
+     "n_passed": 186,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 26.0
+    }
+   },
+   "path_source": "login",
+   "base_rec": {
+    "status": "ok",
+    "n_passed": 154,
+    "n_failed": 32,
+    "rc": 0,
+    "seconds": 87.0
+   },
+   "coverage": {
+    "relevant_listed": 42,
+    "relevant_exact_in_lists": 42,
+    "relevant_exact_in_f2p": 32
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "generation": "20261025T000442Z",
+   "discovery_generation": "20261024T201517Z",
+   "reflattened_from": "sha256:f8d113715143889d3a73dfaa64f925aa4142dc4ec5fc0be849848d362f11c6e0",
+   "done": true,
+   "pass": true,
+   "reason": "ok",
+   "graded": {
+    "gold": {
+     "reward_obj": {
+      "reward": 1,
+      "f2p_total": 32,
+      "f2p_passed": 32,
+      "p2p_total": 154,
+      "p2p_passed": 154,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 186,
+     "n_failed": 0,
+     "f2p_not_passed": 0,
+     "p2p_not_passed": 0,
+     "seconds": 74.1,
+     "timed_out": false,
+     "rc": 0
+    },
+    "base": {
+     "reward_obj": {
+      "reward": 0,
+      "f2p_total": 32,
+      "f2p_passed": 0,
+      "p2p_total": 154,
+      "p2p_passed": 154,
+      "status": "ok"
+     },
+     "parse_error": null,
+     "status": "ok",
+     "n_passed": 154,
+     "n_failed": 32,
+     "f2p_not_passed": 32,
+     "p2p_not_passed": 0,
+     "seconds": 36.3,
+     "timed_out": false,
+     "rc": 0
+    }
+   },
+   "rescored_after_flaky_drop": null,
+   "n_flaky_dropped": 0,
+   "n_f2p": 32,
+   "n_p2p": 154,
+   "image": "emx-tasks/swe-interact-rf:69d196f015a150488265afb7-v1",
+   "image_id": "sha256:0b207c54883187b77400ff29f1f8cd97ca1b18c649b1d7d45f321478b6656df1",
+   "harness_ok": true,
+   "at": "2026-10-25T00:07:32Z",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69d196f015a150488265afb9": {
+   "generation": "20261025T011134Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 438.5
+    },
+    "gold-rec-login": {
+     "status": "no_results",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 15.8
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  },
+  "rf_task-69d196f015a150488265afc1": {
+   "generation": "20261025T014646Z",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "task_toml_resources": {
+    "cpus": 16,
+    "memory_mb": 16384,
+    "storage_mb": 20480
+   },
+   "path_trials": {
+    "gold-rec-env": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 187.2
+    },
+    "gold-rec-login": {
+     "status": "build_failed",
+     "n_passed": 0,
+     "n_failed": 0,
+     "rc": 0,
+     "timed_out": false,
+     "seconds": 138.9
+    }
+   },
+   "done": true,
+   "pass": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "oom_events": [],
+   "n_oom": 0
+  }
+ },
+ "updated_at": "2026-10-25T02:14:53Z"
+}

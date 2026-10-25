@@ -1,0 +1,16 @@
+{
+ "task_id": "rf_task-696719205599a51110d4b40c",
+ "path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+ "f2p": [
+  "github.com/trufflesecurity/trufflehog/v3/pkg/engine/TestEngine_DuplicatSecrets"
+ ],
+ "p2p": [],
+ "flaky": [],
+ "generation": "20261024T224303Z",
+ "derived_at": "2026-10-24T23:26:24Z",
+ "runner": "go-relevant",
+ "from_runs": [
+  "gold-rec-relevant",
+  "base-rec"
+ ]
+}

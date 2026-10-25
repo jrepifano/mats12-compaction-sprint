@@ -1,0 +1,1004 @@
+{
+ "tasks": {
+  "rf_task-69391d8d1ce51c407be1e531": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_trufflesecurity_trufflehog_69391d8d1ce51c407be1e531_1.0@sha256:53ded8a7c81c92abf3403686725fff8db21e8ececf626ca594b0cff6ae4ab328",
+   "image_id": "sha256:53ded8a7c81c92abf3403686725fff8db21e8ececf626ca594b0cff6ae4ab328",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.22.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "CGO_ENABLED=0",
+     "GO111MODULE=on"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/trufflesecurity_trufflehog_770459eb5786980174ffa1089af8b8b581dde1c4/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:12:13Z"
+  },
+  "rf_task-69391d8d1ce51c407be1e533": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_simple-login_app_69391d8d1ce51c407be1e533_1.0@sha256:312f4320950e218babc8cab47a2c3617582d3c0fcc44859e1e95536539a712f5",
+   "image_id": "sha256:312f4320950e218babc8cab47a2c3617582d3c0fcc44859e1e95536539a712f5",
+   "env_path": "/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin",
+   "login_path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin",
+     "LANG=C.UTF-8",
+     "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+     "PYTHON_VERSION=3.10.19",
+     "PYTHON_SHA256=c8f4a596572201d81dd7df91f70e177e19a70f1d489968b54b5fbbf29a97c076",
+     "PYTHONDONTWRITEBYTECODE=1",
+     "PYTHONUNBUFFERED=1",
+     "REPO_URL=https://github.com/simple-login/app.git",
+     "COMMIT_SHA=1ecc5eb89bfe2d1b3d3da4f16572e43f4a44b0c2",
+     "RE2_INCLUDES=/usr/include",
+     "RE2_LIBRARY=/usr/lib/x86_64-linux-gnu/libre2.so"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": [
+     "/entrypoint.sh"
+    ],
+    "WorkingDir": "/code",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/simple-login_app_1ecc5eb89bfe2d1b3d3da4f16572e43f4a44b0c2/run_tests.sh"
+    }
+   },
+   "mount_path": "/code",
+   "facts": {
+    "LOGIN_PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/local/bin/python3 Python 3.10.19",
+    "PY[/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/root/.local/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:23:08Z"
+  },
+  "rf_task-694b4b99829f00e24fd11885": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_trufflesecurity_trufflehog_694b4b99829f00e24fd11885_1.0@sha256:29535eb72b8f6883a83ff50107bf812b5bf1092162ca7a22f7c3d63553f42b5f",
+   "image_id": "sha256:29535eb72b8f6883a83ff50107bf812b5bf1092162ca7a22f7c3d63553f42b5f",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.22.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "CGO_ENABLED=0",
+     "GO111MODULE=on"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/trufflesecurity_trufflehog_770459eb5786980174ffa1089af8b8b581dde1c4/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:12:09Z"
+  },
+  "rf_task-694b4b99829f00e24fd11889": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_trufflesecurity_trufflehog_694b4b99829f00e24fd11889_1.0@sha256:68f800df9360a8b9aac766a3f2345a70899f127fa4d7c0b78961c7ca72ea48f4",
+   "image_id": "sha256:68f800df9360a8b9aac766a3f2345a70899f127fa4d7c0b78961c7ca72ea48f4",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.22.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "CGO_ENABLED=0"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/trufflesecurity_trufflehog_024b219dfbb18442d71da5c1bdfcdc93920e41d0/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.9.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.9.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:43:27Z"
+  },
+  "rf_task-694b4b99829f00e24fd11891": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_Automattic_wp-calypso_694b4b99829f00e24fd11891_1.0@sha256:0dd613c90d6bcfc266fb8f266d350d5e6236872425bf86d022c1847b28a5d6d3",
+   "image_id": "sha256:0dd613c90d6bcfc266fb8f266d350d5e6236872425bf86d022c1847b28a5d6d3",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "NODE_VERSION=22.9.0",
+     "YARN_VERSION=1.22.22",
+     "PLAYWRIGHT_SKIP_DOWNLOAD=true",
+     "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1",
+     "SKIP_TSC=false",
+     "NODE_OPTIONS=--max-old-space-size=8192",
+     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true",
+     "PUPPETEER_SKIP_DOWNLOAD=true",
+     "ELECTRON_SKIP_BINARY_DOWNLOAD=1",
+     "HUSKY=0",
+     "CI=true"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": [
+     "docker-entrypoint.sh"
+    ],
+    "WorkingDir": "/calypso",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/Automattic_wp-calypso_9de628b877916c6ee3ec071efc962137ff72c723/run_tests.sh"
+    }
+   },
+   "mount_path": "/calypso",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.9.2",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.9.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:23:09Z"
+  },
+  "rf_task-694b4b99829f00e24fd118a1": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_secdev_scapy_694b4b99829f00e24fd118a1_1.0@sha256:63f1a9702fc2eb7ea14c3396b9ee8b51c3b039cb2fe31f6c806c76b7ed15a91f",
+   "image_id": "sha256:63f1a9702fc2eb7ea14c3396b9ee8b51c3b039cb2fe31f6c806c76b7ed15a91f",
+   "env_path": "/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "LANG=C.UTF-8",
+     "GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568",
+     "PYTHON_VERSION=3.8.20",
+     "PYTHONUNBUFFERED=1",
+     "PYTHONDONTWRITEBYTECODE=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/secdev_scapy_e5d70f3de1544c8ef68611566609d2071d8c8907/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/local/bin/python3 Python 3.8.20",
+    "PY[/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "bash: line 8: /usr/bin/python3: No such file or directory"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:28:23Z"
+  },
+  "rf_task-696719205599a51110d4b40c": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_trufflesecurity_trufflehog_696719205599a51110d4b40c_1.0@sha256:c6fcd6e39177b9bd30fe550676e838918544f3ba53b02fb488c3f78f29041e1a",
+   "image_id": "sha256:c6fcd6e39177b9bd30fe550676e838918544f3ba53b02fb488c3f78f29041e1a",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.21.13",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "CGO_ENABLED=0",
+     "GOFLAGS=-count=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/trufflesecurity_trufflehog_4106ce7bf05c9ac8b118f902ebf9c4505003b808/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.9.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.9.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:43:22Z"
+  },
+  "rf_task-696719205599a51110d4b428": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_Automattic_wp-calypso_696719205599a51110d4b428_1.0@sha256:9eb49e43f425eb3544035b46e3e20911fec86477337602f470d0c7db87b63c4b",
+   "image_id": "sha256:9eb49e43f425eb3544035b46e3e20911fec86477337602f470d0c7db87b63c4b",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "NODE_VERSION=22.9.0",
+     "YARN_VERSION=1.22.22",
+     "PLAYWRIGHT_SKIP_DOWNLOAD=true",
+     "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1",
+     "SKIP_TSC=false",
+     "NODE_OPTIONS=--max-old-space-size=8192",
+     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true",
+     "PUPPETEER_SKIP_DOWNLOAD=true",
+     "ELECTRON_SKIP_BINARY_DOWNLOAD=1",
+     "HUSKY=0",
+     "CI=true"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": [
+     "docker-entrypoint.sh"
+    ],
+    "WorkingDir": "/calypso",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/Automattic_wp-calypso_9de628b877916c6ee3ec071efc962137ff72c723/run_tests.sh"
+    }
+   },
+   "mount_path": "/calypso",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.9.2",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.9.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:23:10Z"
+  },
+  "rf_task-696719205599a51110d4b434": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_Automattic_wp-calypso_696719205599a51110d4b434_1.0@sha256:6b1f28b1fae730c0d00b2acdb6f68a32b270468fbbb4ec4581db62e0d3b0c887",
+   "image_id": "sha256:6b1f28b1fae730c0d00b2acdb6f68a32b270468fbbb4ec4581db62e0d3b0c887",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "NODE_VERSION=22.9.0",
+     "YARN_VERSION=1.22.22",
+     "NODE_OPTIONS=--max-old-space-size=8192",
+     "PLAYWRIGHT_SKIP_DOWNLOAD=true",
+     "SKIP_TSC=true",
+     "NODE_ENV=test",
+     "TZ=UTC",
+     "CI=true"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": [
+     "docker-entrypoint.sh"
+    ],
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/Automattic_wp-calypso_a780a305afaff1696ac46f2276d77b3f3ff9049d/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T21:04:41Z"
+  },
+  "rf_task-696719205599a51110d4b436": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b436_1.0@sha256:8a8ff0dfe3c9c5430f3b876fd167a4239e0760e8ceabb3c2525af50d4df0a442",
+   "image_id": "sha256:8a8ff0dfe3c9c5430f3b876fd167a4239e0760e8ceabb3c2525af50d4df0a442",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.23.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "GOPROXY=https://proxy.golang.org,direct",
+     "GOMAXPROCS=2"
+    ],
+    "Cmd": [
+     "go",
+     "test",
+     "-v",
+     "./..."
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/src",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_f24c43fab5719efb2126e0086bb3e1f5fb38a78e/run_tests.sh"
+    }
+   },
+   "mount_path": "/src",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T22:41:02Z"
+  },
+  "rf_task-696719205599a51110d4b440": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b440_1.0@sha256:dcfaf371b974cd5aae002b020364cab0c532facca8874561f064a933f2e5a884",
+   "image_id": "sha256:dcfaf371b974cd5aae002b020364cab0c532facca8874561f064a933f2e5a884",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.22.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "GOMAXPROCS=2",
+     "CGO_ENABLED=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/go/src/go.k6.io/k6",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_95b1a5aef8553b98cbbee92972aa665412d03d55/run_tests.sh"
+    }
+   },
+   "mount_path": "/go/src/go.k6.io/k6",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T23:01:41Z"
+  },
+  "rf_task-696719205599a51110d4b441": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b441_1.0@sha256:9da4905045175cce58a722e8e0b4e74f1bdf9beb1d615f0a7cb088aff0b94fbf",
+   "image_id": "sha256:9da4905045175cce58a722e8e0b4e74f1bdf9beb1d615f0a7cb088aff0b94fbf",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.22.12",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go",
+     "GOMAXPROCS=2",
+     "CGO_ENABLED=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/go/src/go.k6.io/k6",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_95b1a5aef8553b98cbbee92972aa665412d03d55/run_tests.sh"
+    }
+   },
+   "mount_path": "/go/src/go.k6.io/k6",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T02:02:36Z"
+  },
+  "rf_task-696719205599a51110d4b446": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b446_1.0@sha256:de3821109167af1d24a8ce3207b14a6840ee11aea0909c838c471fd9b2c372b5",
+   "image_id": "sha256:de3821109167af1d24a8ce3207b14a6840ee11aea0909c838c471fd9b2c372b5",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.20.14",
+     "GOPATH=/go",
+     "GOFLAGS=-mod=vendor",
+     "GOMAXPROCS=2",
+     "CGO_ENABLED=1"
+    ],
+    "Cmd": [
+     "tail",
+     "-f",
+     "/dev/null"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_37cd20b4b3ee440561cde0c16716bb4c6048955b/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.14",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.14"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T23:46:34Z"
+  },
+  "rf_task-696719205599a51110d4b447": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b447_1.0@sha256:d96b70a7d83752867ee2107f03661cdf9756e2064cf13de8da92315aa8b55fab",
+   "image_id": "sha256:d96b70a7d83752867ee2107f03661cdf9756e2064cf13de8da92315aa8b55fab",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.20.14",
+     "GOPATH=/go",
+     "GOFLAGS=-mod=vendor",
+     "GOMAXPROCS=2",
+     "CGO_ENABLED=1"
+    ],
+    "Cmd": [
+     "tail",
+     "-f",
+     "/dev/null"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_37cd20b4b3ee440561cde0c16716bb4c6048955b/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.14",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.14"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T23:50:28Z"
+  },
+  "rf_task-696719205599a51110d4b451": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_k6_696719205599a51110d4b451_1.0@sha256:42e37519e7da73102977e7eb16dc098626e53152496af3a00e1523ba75b2459d",
+   "image_id": "sha256:42e37519e7da73102977e7eb16dc098626e53152496af3a00e1523ba75b2459d",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.19.13",
+     "GOPATH=/go",
+     "GOMAXPROCS=2",
+     "CGO_ENABLED=1"
+    ],
+    "Cmd": [
+     "bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/workspace",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_k6_c2648ac2f02fbc65f8e4a5e286e759d59583b8ea/run_tests.sh"
+    }
+   },
+   "mount_path": "/workspace",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.9.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.9.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T23:58:37Z"
+  },
+  "rf_task-696719205599a51110d4b455": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_grafana_696719205599a51110d4b455_1.0@sha256:3fe50147daa3cbe3e56dd7879fa1b7625c129d6f89bca4ab9d07c5040d6ef9c4",
+   "image_id": "sha256:3fe50147daa3cbe3e56dd7879fa1b7625c129d6f89bca4ab9d07c5040d6ef9c4",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.25.3",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/grafana",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_grafana_bd932277660942f2965f38134dfddfcb78a68ad4/run_tests.sh"
+    }
+   },
+   "mount_path": "/grafana",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:23:13Z"
+  },
+  "rf_task-696719205599a51110d4b458": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_grafana_696719205599a51110d4b458_1.0@sha256:37b680f37a81bbc93d8c300b71ce298e460f3673179097d21253606a53c7d933",
+   "image_id": "sha256:37b680f37a81bbc93d8c300b71ce298e460f3673179097d21253606a53c7d933",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.25.3",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/grafana",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_grafana_bd932277660942f2965f38134dfddfcb78a68ad4/run_tests.sh"
+    }
+   },
+   "mount_path": "/grafana",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:33:46Z"
+  },
+  "rf_task-696719205599a51110d4b476": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_secdev_scapy_696719205599a51110d4b476_1.0@sha256:2c24cd3859df6183dad56286f8e40068b8abf1fad791631213a2f4266ac0c807",
+   "image_id": "sha256:2c24cd3859df6183dad56286f8e40068b8abf1fad791631213a2f4266ac0c807",
+   "env_path": "/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "LANG=C.UTF-8",
+     "GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568",
+     "PYTHON_VERSION=3.8.20",
+     "DEBIAN_FRONTEND=noninteractive",
+     "PYTHONDONTWRITEBYTECODE=1",
+     "PYTHONUNBUFFERED=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/secdev_scapy_4bd304de08c29fa1ec347ec2a5154acf651510f9/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/local/bin/python3 Python 3.8.20",
+    "PY[/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "bash: line 8: /usr/bin/python3: No such file or directory"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-24T23:59:33Z"
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98812f": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_OISF_suricata_69b7c2a04b6f8ff9ed98812f_1.0@sha256:c546c5879339a820bf6ddf165e22fcfa1d146e0115a7b96487961b9c8e0161a3",
+   "image_id": "sha256:c546c5879339a820bf6ddf165e22fcfa1d146e0115a7b96487961b9c8e0161a3",
+   "env_path": "/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "DEBIAN_FRONTEND=noninteractive"
+    ],
+    "Cmd": null,
+    "Entrypoint": [
+     "/bin/bash"
+    ],
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "org.opencontainers.image.ref.name": "ubuntu",
+     "org.opencontainers.image.version": "22.04",
+     "run_tests_script_file_path": "/app/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "PY[/opt/venv/bin:/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.10.12"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:37:25Z"
+  },
+  "rf_task-69b7c2a04b6f8ff9ed988137": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_OISF_suricata_69b7c2a04b6f8ff9ed988137_1.0@sha256:543b0599b340194f6676b07058db8a279ced51c2161d8b6997c0332072fb499e",
+   "image_id": "sha256:543b0599b340194f6676b07058db8a279ced51c2161d8b6997c0332072fb499e",
+   "env_path": "/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "DEBIAN_FRONTEND=noninteractive",
+     "RUSTUP_HOME=/usr/local/rustup",
+     "CARGO_HOME=/usr/local/cargo"
+    ],
+    "Cmd": null,
+    "Entrypoint": [
+     "/bin/bash"
+    ],
+    "WorkingDir": "/app/suricata",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "org.opencontainers.image.ref.name": "ubuntu",
+     "org.opencontainers.image.version": "20.04",
+     "run_tests_script_file_path": "/app/run_tests.sh"
+    }
+   },
+   "mount_path": "/app/suricata",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "1",
+    "PY[/root/.local/bin:/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "PY[/opt/venv/bin:/usr/local/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.8.10"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:44:28Z"
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98813b": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_netdata_netdata_69b7c2a04b6f8ff9ed98813b_1.0@sha256:f0f262c96c031204c1a0f2b313ec74629dce84aa32aa2e1e4fdf068fccf2a0b4",
+   "image_id": "sha256:f0f262c96c031204c1a0f2b313ec74629dce84aa32aa2e1e4fdf068fccf2a0b4",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "DEBIAN_FRONTEND=noninteractive",
+     "DISABLE_TELEMETRY=1"
+    ],
+    "Cmd": null,
+    "Entrypoint": [
+     "/bin/bash"
+    ],
+    "WorkingDir": "/opt/netdata.git",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "org.opencontainers.image.ref.name": "ubuntu",
+     "org.opencontainers.image.version": "22.04",
+     "run_tests_script_file_path": "/app/run_tests.sh"
+    }
+   },
+   "mount_path": "/opt/netdata.git",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.10.12"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:45:59Z"
+  },
+  "rf_task-69b7c2a04b6f8ff9ed98813d": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_netdata_netdata_69b7c2a04b6f8ff9ed98813d_1.0@sha256:6193ba7e853950a21a0f1335e189973972cad879656d2f42f41192939583b8a9",
+   "image_id": "sha256:6193ba7e853950a21a0f1335e189973972cad879656d2f42f41192939583b8a9",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "DEBIAN_FRONTEND=noninteractive",
+     "DISABLE_TELEMETRY=1"
+    ],
+    "Cmd": null,
+    "Entrypoint": [
+     "/bin/bash"
+    ],
+    "WorkingDir": "/opt/netdata.git",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "org.opencontainers.image.ref.name": "ubuntu",
+     "org.opencontainers.image.version": "22.04",
+     "run_tests_script_file_path": "/app/run_tests.sh"
+    }
+   },
+   "mount_path": "/opt/netdata.git",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.10.12"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:45:59Z"
+  },
+  "rf_task-69d196f015a150488265afb7": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_secdev_scapy_69d196f015a150488265afb7_1.0@sha256:fbe2d0aef1129b37a45dc6e8ce85e715f150c1c45a0575d30d0364499d5ea6f9",
+   "image_id": "sha256:fbe2d0aef1129b37a45dc6e8ce85e715f150c1c45a0575d30d0364499d5ea6f9",
+   "env_path": "/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "LANG=C.UTF-8",
+     "GPG_KEY=E3FF2839C048B25C084DEBE9B26995E310250568",
+     "PYTHON_VERSION=3.8.20",
+     "DEBIAN_FRONTEND=noninteractive",
+     "PYTHONDONTWRITEBYTECODE=1",
+     "PYTHONUNBUFFERED=1"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/app",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/secdev_scapy_4bd304de08c29fa1ec347ec2a5154acf651510f9/run_tests.sh"
+    }
+   },
+   "mount_path": "/app",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/local/bin/python3 Python 3.8.20",
+    "PY[/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "bash: line 8: /usr/bin/python3: No such file or directory"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T00:04:50Z"
+  },
+  "rf_task-69d196f015a150488265afb9": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_grafana_grafana_69d196f015a150488265afb9_1.0@sha256:d3ee2ebe83987d2d1f2036d3bc46df2419e4974ea2aae98ea32c553e74ff1e88",
+   "image_id": "sha256:d3ee2ebe83987d2d1f2036d3bc46df2419e4974ea2aae98ea32c553e74ff1e88",
+   "env_path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "GOLANG_VERSION=1.25.3",
+     "GOTOOLCHAIN=local",
+     "GOPATH=/go"
+    ],
+    "Cmd": [
+     "/bin/bash"
+    ],
+    "Entrypoint": null,
+    "WorkingDir": "/grafana",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "run_tests_script_file_path": "/home/ubuntu/repo_agent/coder_env_agent/grafana_grafana_bd932277660942f2965f38134dfddfcb78a68ad4/run_tests.sh"
+    }
+   },
+   "mount_path": "/grafana",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/usr/bin/python3 Python 3.11.2",
+    "PY[/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.11.2"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:11:42Z"
+  },
+  "rf_task-69d196f015a150488265afc1": {
+   "upstream_image": "ghcr.io/scaleapi/swe-atlas:swe_atlas_RF_MariaDB_server_69d196f015a150488265afc1_1.0@sha256:2d91b0ab5cefe39ef357005ee8d7cf526d2d4440dd7c658816ce7f6c3745e3c6",
+   "image_id": "sha256:2d91b0ab5cefe39ef357005ee8d7cf526d2d4440dd7c658816ce7f6c3745e3c6",
+   "env_path": "/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "login_path": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+   "config": {
+    "Env": [
+     "PATH=/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+     "DEBIAN_FRONTEND=noninteractive",
+     "TZ=UTC"
+    ],
+    "Cmd": null,
+    "Entrypoint": [
+     "/bin/bash"
+    ],
+    "WorkingDir": "/app/source",
+    "User": null,
+    "ExposedPorts": null,
+    "Volumes": null,
+    "Labels": {
+     "org.opencontainers.image.ref.name": "ubuntu",
+     "org.opencontainers.image.version": "22.04",
+     "run_tests_script_file_path": "/app/run_tests.sh"
+    }
+   },
+   "mount_path": "/app/source",
+   "facts": {
+    "LOGIN_PATH": "/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "REPO_GIT": "yes",
+    "REPO_COMMITS": "1",
+    "REPO_STATUS_LINES": "0",
+    "PY[/root/.local/bin:/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "PY[/opt/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin]": "/opt/venv/bin/python3 Python 3.12.13",
+    "USR_PY": "Python 3.10.12"
+   },
+   "probe_rc": 0,
+   "at": "2026-10-25T01:49:44Z"
+  }
+ },
+ "updated_at": "2026-10-25T02:02:36Z"
+}

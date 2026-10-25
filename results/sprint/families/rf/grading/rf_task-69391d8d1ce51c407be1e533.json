@@ -1,0 +1,33 @@
+{
+ "task_id": "rf_task-69391d8d1ce51c407be1e533",
+ "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+ "f2p": [
+  "tests/test_custom_domain_utils.py::test_can_create_custom_domain",
+  "tests/test_custom_domain_utils.py::test_can_create_custom_domain_validates_if_parent_is_validated",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used_domain_of_existing_mailbox",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used_domain_of_user_email",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used_existing_domain",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used_invalid_domain",
+  "tests/test_custom_domain_utils.py::test_can_domain_be_used_sl_domain",
+  "tests/test_custom_domain_utils.py::test_can_sanitize_domain_correct_domain",
+  "tests/test_custom_domain_utils.py::test_can_sanitize_domain_empty",
+  "tests/test_custom_domain_utils.py::test_can_sanitize_domain_starting_with_http",
+  "tests/test_custom_domain_utils.py::test_can_sanitize_domain_starting_with_https",
+  "tests/test_custom_domain_utils.py::test_creates_custom_domain_with_partner_id",
+  "tests/test_custom_domain_utils.py::test_delete_custom_domain_already_pending",
+  "tests/test_custom_domain_utils.py::test_delete_custom_domain_creates_job",
+  "tests/test_custom_domain_utils.py::test_delete_custom_domain_returns_none",
+  "tests/test_custom_domain_utils.py::test_delete_custom_domain_sets_pending_deletion",
+  "tests/test_custom_domain_utils.py::test_is_valid_domain"
+ ],
+ "p2p": [],
+ "flaky": [],
+ "generation": "20261025T012302Z",
+ "derived_at": "2026-10-25T01:30:43Z",
+ "runner": "upstream",
+ "from_runs": [
+  "gold-rec-login",
+  "base-rec"
+ ]
+}

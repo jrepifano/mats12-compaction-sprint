@@ -1,0 +1,30 @@
+{
+ "task_id": "rf_task-694b4b99829f00e24fd11889",
+ "path": "/opt/venv/bin:/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+ "f2p": [
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestARHandlerFilesProcessedOnlyOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestARHandlerPanicDoesNotIncrementFilesProcessed",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestArchiveHandlerFilesProcessedOnlyOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestRPMHandlerFilesProcessedOnlyOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestRPMHandlerPanicDoesNotIncrementFilesProcessed"
+ ],
+ "p2p": [
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestARHandlerFilesProcessedOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestARHandlerPanicRecoveryWithError",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestARHandlerPanicRecoveryWithString",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestArchiveHandlerPanicRecoveryWithError",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestArchiveHandlerPanicRecoveryWithString",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestDefaultHandlerFilesProcessedOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestRPMHandlerFilesProcessedOnSuccess",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestRPMHandlerPanicRecoveryWithError",
+  "github.com/trufflesecurity/trufflehog/v3/pkg/handlers/TestRPMHandlerPanicRecoveryWithString"
+ ],
+ "flaky": [],
+ "generation": "20261024T224303Z",
+ "derived_at": "2026-10-24T23:36:38Z",
+ "runner": "go-relevant",
+ "from_runs": [
+  "gold-rec-relevant",
+  "base-rec"
+ ]
+}

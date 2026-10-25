@@ -1,0 +1,851 @@
+{
+ "tasks": [
+  {
+   "task_id": "rf_task-69391d8d1ce51c407be1e531",
+   "repo": "trufflesecurity_trufflehog",
+   "language": "Go",
+   "mount_path": "/workspace",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 80,
+   "n_p2p": 0,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 80,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 31,
+    "relevant_exact_in_lists": 31,
+    "relevant_exact_in_f2p": 31
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e531-v1",
+   "image_id": "sha256:00e0d5a72b80aca941096f11836b15bad326efbc5081874e5475160e25ab1d96",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 310.0,
+    "gold-grade": 850.1
+   }
+  },
+  {
+   "task_id": "rf_task-69391d8d1ce51c407be1e533",
+   "repo": "simple-login_app",
+   "language": "Python",
+   "mount_path": "/code",
+   "pass": true,
+   "usable_now": true,
+   "reason": "ok",
+   "n_f2p": 18,
+   "n_p2p": 0,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 18,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 4,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "path_source": "login",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e533-v1",
+   "image_id": "sha256:26f0181ae839abffa9e04c2e124b06d55f7f78326be5f7867d662ecbf54e81d7",
+   "preservation_rules": 1,
+   "seconds": {
+    "base-grade": 25.2,
+    "base-rec": 45.0,
+    "gold-grade": 91.9,
+    "gold-rec-env": 159.1,
+    "gold-rec-login": 21.0,
+    "gold-restart": 37.7
+   }
+  },
+  {
+   "task_id": "rf_task-694b4b99829f00e24fd11885",
+   "repo": "trufflesecurity_trufflehog",
+   "language": "Go",
+   "mount_path": "/workspace",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 36,
+   "n_p2p": 84,
+   "f2p_failed_on_base": 1,
+   "f2p_missing_on_base": 35,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 35,
+    "relevant_exact_in_lists": 35,
+    "relevant_exact_in_f2p": 35
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11885-v1",
+   "image_id": "sha256:33ae46cfd8c5cc93da36107a4f7cd9c0f8fa32843724b7df3cfdc72dcfcff2e6",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 164.5,
+    "gold-grade": 517.4
+   }
+  },
+  {
+   "task_id": "rf_task-694b4b99829f00e24fd11889",
+   "repo": "trufflesecurity_trufflehog",
+   "language": "Go",
+   "mount_path": "/app",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 5,
+   "n_p2p": 9,
+   "f2p_failed_on_base": 5,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 14,
+    "relevant_exact_in_lists": 14,
+    "relevant_exact_in_f2p": 5
+   },
+   "path_source": "env",
+   "runner": "go-relevant",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11889-v1",
+   "image_id": "sha256:e48de4369072315b87119e73c7aeb545376dd7d328db6992d597d360b317c4c0",
+   "preservation_rules": 1,
+   "seconds": {
+    "base-grade": 128.4,
+    "base-rec": 153.9,
+    "gold-grade": 1168.7,
+    "gold-rec-env": 1077.8,
+    "gold-rec-login": 1000.4,
+    "gold-rec-relevant": 284.1
+   }
+  },
+  {
+   "task_id": "rf_task-694b4b99829f00e24fd11891",
+   "repo": "Automattic_wp-calypso",
+   "language": "JavaScript",
+   "mount_path": "/calypso",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 20,
+   "n_p2p": 8,
+   "f2p_failed_on_base": 12,
+   "f2p_missing_on_base": 8,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 28,
+    "relevant_exact_in_lists": 28,
+    "relevant_exact_in_f2p": 20
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11891-v1",
+   "image_id": "sha256:56f9a0ff43a19065530191b62fd67b525965e758cde9ef337916212503afc2d1",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 161.6,
+    "base-rec": 22.6,
+    "gold-grade": 50.4,
+    "gold-rec-env": 437.1,
+    "gold-restart": 251.3
+   }
+  },
+  {
+   "task_id": "rf_task-694b4b99829f00e24fd118a1",
+   "repo": "secdev_scapy",
+   "language": "Python",
+   "mount_path": "/app",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 19,
+   "n_p2p": 1209,
+   "f2p_failed_on_base": 19,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 38,
+    "relevant_exact_in_lists": 38,
+    "relevant_exact_in_f2p": 19
+   },
+   "path_source": "login",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd118a1-v1",
+   "image_id": "sha256:5b102410e269a8a23b7ec57c840b3a56aececbe9169195c0aac6671165731e85",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 94.8,
+    "gold-grade": 577.4
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b40c",
+   "repo": "trufflesecurity_trufflehog",
+   "language": "Go",
+   "mount_path": "/app",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 1,
+   "n_p2p": 0,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 1,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 13,
+    "relevant_exact_in_lists": 1,
+    "relevant_exact_in_f2p": 1
+   },
+   "path_source": "env",
+   "runner": "go-relevant",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b40c-v1",
+   "image_id": "sha256:0f03e3df468f5f3eddb75b9ef82b8352df709fd0bf7ea6b2c6b4d064072df471",
+   "preservation_rules": 1,
+   "seconds": {
+    "base-grade": 165.2,
+    "base-rec": 150.1,
+    "gold-grade": 1022.8,
+    "gold-rec-env": 841.5,
+    "gold-rec-login": 711.5,
+    "gold-rec-relevant": 731.2
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b428",
+   "repo": "Automattic_wp-calypso",
+   "language": "TypeScript",
+   "mount_path": "/calypso",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 31,
+   "n_p2p": 17,
+   "f2p_failed_on_base": 15,
+   "f2p_missing_on_base": 16,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 48,
+    "relevant_exact_in_lists": 48,
+    "relevant_exact_in_f2p": 31
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b428-v1",
+   "image_id": "sha256:e24a676936fa30865a2166600776a5f0d506ed7222e4a23a8ae2a8714562e796",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 45.7,
+    "base-rec": 54.8,
+    "gold-grade": 274.3,
+    "gold-rec-env": 438.4,
+    "gold-restart": 58.1
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b434",
+   "repo": "Automattic_wp-calypso",
+   "language": "TypeScript",
+   "mount_path": "/workspace",
+   "pass": false,
+   "usable_now": false,
+   "reason": "base record run invalid (status ok, rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": {
+    "relevant_listed": 18,
+    "relevant_exact_in_lists": 18,
+    "relevant_exact_in_f2p": 18
+   },
+   "path_source": "login",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 2,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 1,
+   "seconds": {
+    "base-rec": 761.9,
+    "gold-rec-env": 1073.5,
+    "gold-rec-login": 522.8
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b436",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/src",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 854,
+   "n_p2p": 567,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 854,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 24,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b436-v1",
+   "image_id": "sha256:d96d022ba0b415f80dbeaf544daae4cad9926109386d44cb15997441029cd5d3",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 578.0,
+    "gold-grade": 324.4
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b440",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/go/src/go.k6.io/k6",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 24,
+   "n_p2p": 4320,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 24,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 16,
+    "relevant_exact_in_lists": 16,
+    "relevant_exact_in_f2p": 16
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b440-v1",
+   "image_id": "sha256:34c94e5be6c86e639aacf2745a4b50cdc7b29b4dff33aed99935ef797a401ff1",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 2396.2,
+    "gold-grade": 337.7
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b441",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/go/src/go.k6.io/k6",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 699,
+   "n_p2p": 3633,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 699,
+   "n_flaky_dropped": 30,
+   "coverage": {
+    "relevant_listed": 19,
+    "relevant_exact_in_lists": 19,
+    "relevant_exact_in_f2p": 15
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b441-v1",
+   "image_id": "sha256:3c3cf63920f0259069d4fddb84b42c638d78580db812f6ac7b6a414a563a9007",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 161.6,
+    "base-rec": 158.0,
+    "gold-grade": 172.2,
+    "gold-rec-env": 167.7,
+    "gold-rec-login": 19.1
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b446",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/workspace",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 913,
+   "n_p2p": 0,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 913,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 17,
+    "relevant_exact_in_lists": 0,
+    "relevant_exact_in_f2p": 0
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b446-v1",
+   "image_id": "sha256:0e8b3c6b7eb172385ffff79c076eb2bc093fb39833bf5c9e31f95519d09a6e6b",
+   "preservation_rules": 2,
+   "seconds": {
+    "base-grade": 82.0,
+    "gold-grade": 910.0
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b447",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/workspace",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 120,
+   "n_p2p": 0,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 120,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 38,
+    "relevant_exact_in_lists": 38,
+    "relevant_exact_in_f2p": 38
+   },
+   "path_source": "env",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b447-v1",
+   "image_id": "sha256:73b9bb13f1960f9158f76e576e7cf7e098ee02b4236296bebff64fe9aa7e8900",
+   "preservation_rules": 2,
+   "seconds": {
+    "base-grade": 358.0,
+    "gold-grade": 77.0
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b451",
+   "repo": "grafana_k6",
+   "language": "Go",
+   "mount_path": "/workspace",
+   "pass": false,
+   "usable_now": false,
+   "reason": "base record run invalid (status no_results, rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": {
+    "relevant_listed": 27,
+    "relevant_exact_in_lists": 27,
+    "relevant_exact_in_f2p": 27
+   },
+   "path_source": "env",
+   "runner": "upstream",
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b451-v1",
+   "image_id": "sha256:29aa0eae7104ffb01042a95690f6e5ce95569fd3ddeac7ed10c071b637f8f8fe",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-rec": 2473.1,
+    "gold-rec-env": 299.9,
+    "gold-rec-login": 164.7
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b455",
+   "repo": "grafana_grafana",
+   "language": "Go",
+   "mount_path": "/grafana",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 0,
+   "seconds": {
+    "gold-rec-env": 257.9,
+    "gold-rec-login": 112.4,
+    "gold-rec-relevant": 145.7
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b458",
+   "repo": "grafana_grafana",
+   "language": "Go",
+   "mount_path": "/grafana",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 0,
+   "seconds": {
+    "gold-rec-env": 386.0,
+    "gold-rec-login": 109.6,
+    "gold-rec-relevant": 26.1
+   }
+  },
+  {
+   "task_id": "rf_task-696719205599a51110d4b476",
+   "repo": "secdev_scapy",
+   "language": "Python",
+   "mount_path": "/app",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 18,
+   "n_p2p": 4,
+   "f2p_failed_on_base": 18,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 20,
+    "relevant_exact_in_lists": 20,
+    "relevant_exact_in_f2p": 18
+   },
+   "path_source": "login",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b476-v1",
+   "image_id": "sha256:4b9a5e273a6ef20923cd03c962039457b9e183450173fe3e1163872a9ffa9d75",
+   "preservation_rules": 0,
+   "seconds": {
+    "base-grade": 127.3,
+    "gold-grade": 266.8
+   }
+  },
+  {
+   "task_id": "rf_task-69b7c2a04b6f8ff9ed98812f",
+   "repo": "OISF_suricata",
+   "language": "C",
+   "mount_path": "/app",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 2,
+   "seconds": {
+    "gold-rec-env": 649.4,
+    "gold-rec-login": 49.0
+   }
+  },
+  {
+   "task_id": "rf_task-69b7c2a04b6f8ff9ed988137",
+   "repo": "OISF_suricata",
+   "language": "C",
+   "mount_path": "/app/suricata",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 1,
+   "seconds": {
+    "gold-rec-env": 47.2,
+    "gold-rec-login": 28.7
+   }
+  },
+  {
+   "task_id": "rf_task-69b7c2a04b6f8ff9ed98813b",
+   "repo": "netdata_netdata",
+   "language": "C",
+   "mount_path": "/opt/netdata.git",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=ok/rc 0, gold-rec-login=ok/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 3,
+   "seconds": {
+    "gold-rec-env": 82.3,
+    "gold-rec-login": 40.6
+   }
+  },
+  {
+   "task_id": "rf_task-69b7c2a04b6f8ff9ed98813d",
+   "repo": "netdata_netdata",
+   "language": "C",
+   "mount_path": "/opt/netdata.git",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=ok/rc 0, gold-rec-login=ok/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 0,
+   "seconds": {
+    "gold-rec-env": 58.0,
+    "gold-rec-login": 48.2
+   }
+  },
+  {
+   "task_id": "rf_task-69d196f015a150488265afb7",
+   "repo": "secdev_scapy",
+   "language": "Python",
+   "mount_path": "/app",
+   "pass": true,
+   "usable_now": false,
+   "reason": "ok",
+   "n_f2p": 32,
+   "n_p2p": 154,
+   "f2p_failed_on_base": 32,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": 0,
+   "coverage": {
+    "relevant_listed": 42,
+    "relevant_exact_in_lists": 42,
+    "relevant_exact_in_f2p": 32
+   },
+   "path_source": "login",
+   "runner": null,
+   "resources": {
+    "cpus": 4,
+    "memory_mb": 8192
+   },
+   "n_oom": 0,
+   "harness_ok": true,
+   "image": "emx-tasks/swe-interact-rf:69d196f015a150488265afb7-v1",
+   "image_id": "sha256:0b207c54883187b77400ff29f1f8cd97ca1b18c649b1d7d45f321478b6656df1",
+   "preservation_rules": 1,
+   "seconds": {
+    "base-grade": 36.3,
+    "gold-grade": 74.1
+   }
+  },
+  {
+   "task_id": "rf_task-69d196f015a150488265afb9",
+   "repo": "grafana_grafana",
+   "language": "TypeScript",
+   "mount_path": "/grafana",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=no_results/rc 0, gold-rec-login=no_results/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 2,
+   "seconds": {
+    "gold-rec-env": 438.5,
+    "gold-rec-login": 15.8
+   }
+  },
+  {
+   "task_id": "rf_task-69d196f015a150488265afc1",
+   "repo": "MariaDB_server",
+   "language": "C++",
+   "mount_path": "/app/source",
+   "pass": false,
+   "usable_now": false,
+   "reason": "no valid reference run passed any test (statuses: gold-rec-env=build_failed/rc 0, gold-rec-login=build_failed/rc 0)",
+   "n_f2p": null,
+   "n_p2p": null,
+   "f2p_failed_on_base": 0,
+   "f2p_missing_on_base": 0,
+   "n_flaky_dropped": null,
+   "coverage": null,
+   "path_source": null,
+   "runner": null,
+   "resources": {
+    "cpus": 8,
+    "memory_mb": 16384
+   },
+   "n_oom": 0,
+   "harness_ok": null,
+   "image": null,
+   "image_id": null,
+   "preservation_rules": 2,
+   "seconds": {
+    "gold-rec-env": 187.2,
+    "gold-rec-login": 138.9
+   }
+  }
+ ],
+ "n_tasks": 25,
+ "n_base_gold_pass": 15,
+ "n_oom": 2,
+ "at": "2026-10-25T02:14:54Z"
+}

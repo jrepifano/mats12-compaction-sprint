@@ -1,0 +1,38 @@
+{
+ "task_id": "rf_task-696719205599a51110d4b476",
+ "path": "/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+ "f2p": [
+  "AV_PAIR class with correct field names per MS-NLMP spec",
+  "NTLMSSP packet with MS-NLMP specification field names",
+  "OpcDaAlter_Context_Resp field name fix (portSpec instead of portSPec)",
+  "OpcDaAlter_context",
+  "OpcDaAlter_contextLE",
+  "OpcDaBind_ack field name fix (pad2 instead of pda2)",
+  "OpcDaFault has authentication field",
+  "OpcDaPing",
+  "OpcDaReject uses stubData field name",
+  "OpcDaRequest",
+  "OpcDaRequest has uuid and stubData fields",
+  "OpcDaRequestLE",
+  "OpcDaResponse",
+  "OpcDaResponseLE",
+  "PDU dispatch: Big-endian header dispatches to BE PDU class",
+  "PDU dispatch: OpcDaBind_nakLE dispatched for LE packets with pduType 13",
+  "PDU dispatch: OpcDaFackLE dispatched for LE packets with pduType 9",
+  "RequestStubData class replaces RequestSubData"
+ ],
+ "p2p": [
+  "LenStringPacket has data field",
+  "OpcDaAlter_Context_Resp",
+  "OpcDaAlter_Context_RespLE",
+  "ResultElement has reason field"
+ ],
+ "flaky": [],
+ "generation": "20261024T235921Z",
+ "derived_at": "2026-10-25T00:00:32Z",
+ "runner": "upstream",
+ "from_runs": [
+  "gold-rec-login",
+  "base-rec"
+ ]
+}
