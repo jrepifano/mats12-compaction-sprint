@@ -109,6 +109,20 @@ class ForkBudget:
             state = self._read()
             if bucket in [r["bucket"] for r in state["released"]]:
                 raise ValueError("allocation already released")
+            if bucket == "recheck":
+                screen = [r for r in state["attempts"] if r["part"] == "A" and r["bucket"] == "screen"]
+                if len(screen) != 12 or any(r["status"] not in {"complete", "technical_failure"} for r in screen):
+                    raise ValueError("release requires all twelve assigned screen attempts finished")
+            else:
+                identities = outcome.get("attempt_ids")
+                by_id = {r["attempt_id"]: r for r in state["attempts"]}
+                if (not isinstance(identities, list) or len(identities) != 2 or len(set(identities)) != 2
+                        or any(identity not in by_id or by_id[identity]["status"] != "complete"
+                               or by_id[identity]["part"] != "A"
+                               or (by_id[identity]["bucket"] not in {"step0", "step0_extra"}
+                                   and by_id[identity].get("borrowed_for") != "step0_extra")
+                               for identity in identities)):
+                    raise ValueError("PASS report must name two completed Step 0 budget attempts")
             state["released"].append({"bucket": bucket, "reason": reason,
                                        "evidence": evidence, "outcome": outcome,
                                        "released_utc": datetime.now(UTC).isoformat()})
@@ -211,31 +225,69 @@ def part_b_guard(*, step0_passed_at: datetime, now: datetime,
 
 
 class PartBAllowance(ForkBudget):
-    """Durable two-point Max allowance; restarting never accepts a new baseline."""
+    """Durable allowance with one in-flight fork. A pending/crashed fork blocks
+    overlapping starts until finish records its fresh post-fork utilization reading.
+    """
 
     def __init__(self, path: Path | None = None):
         super().__init__(path or central_budget_path().with_name("part_b_allowance.json"))
 
-    def guard(self, *, step0_passed_at: datetime, now: datetime, reading_at: datetime,
+    def guard(self, *, attempt_id: str, step0_passed_at: datetime, now: datetime, reading_at: datetime,
               current_utilization: float, expected_fork_utilization: float,
               window_reset_at: datetime, chains_started: bool = False) -> dict:
         with locked(self.path):
             state = json.loads(self.path.read_text()) if self.path.exists() else None
+            if not attempt_id or state and (state.get("pending") or any(
+                    r["attempt_id"] == attempt_id for r in state.get("finished", []))):
+                raise ValueError("Part B requires a unique attempt and no pending in-flight fork")
             if state and state["window_reset_at"] != window_reset_at.isoformat():
                 raise ValueError("Part B Max window changed; allowance cannot reset silently")
+            if state and (current_utilization < state.get("last_utilization", state["start_utilization"])
+                          or reading_at < datetime.fromisoformat(state.get("last_reading_at", state["start_reading_at"]))):
+                raise ValueError("Part B reading cannot precede its last completed fork")
             start = state["start_utilization"] if state else current_utilization
+            expected_fork_utilization = max(expected_fork_utilization,
+                                             state.get("observed_fork_floor", 0) if state else 0)
             part_b_guard(step0_passed_at=step0_passed_at, now=now, reading_at=reading_at,
                          start_utilization=start, current_utilization=current_utilization,
                          expected_fork_utilization=expected_fork_utilization,
                          chains_started=chains_started)
             if state is None:
                 state = {"start_utilization": start, "start_reading_at": reading_at.isoformat(),
-                         "window_reset_at": window_reset_at.isoformat(), "checks": []}
+                         "window_reset_at": window_reset_at.isoformat(), "checks": [], "finished": []}
             state["checks"].append({"at": now.isoformat(), "reading_at": reading_at.isoformat(),
                                     "utilization": current_utilization,
                                     "expected_fork_utilization": expected_fork_utilization})
+            state["pending"] = {"attempt_id": attempt_id, "assigned_at": now.isoformat(),
+                                "utilization": current_utilization,
+                                "expected_fork_utilization": expected_fork_utilization}
             self._write(state)
             return state
+
+    def finish(self, attempt_id: str, status: str, *, artifact: str, current_utilization: float,
+               reading_at: datetime, now: datetime):
+        if status not in {"complete", "technical_failure"} or not artifact:
+            raise ValueError("Part B finish needs a terminal status and artifact")
+        with locked(self.path):
+            if not self.path.exists():
+                raise ValueError("unknown Part B allowance")
+            state = json.loads(self.path.read_text())
+            pending = state.get("pending")
+            if not pending or pending["attempt_id"] != attempt_id:
+                raise ValueError("unknown or already finished Part B attempt")
+            if (not 0 <= (now - reading_at).total_seconds() <= 300
+                    or reading_at < datetime.fromisoformat(pending["assigned_at"])
+                    or not pending["utilization"] <= current_utilization <= 1):
+                raise ValueError("Part B finish needs a fresh monotonic post-fork reading")
+            state["finished"].append({**pending, "status": status, "artifact": artifact,
+                                      "finished_at": now.isoformat(), "reading_at": reading_at.isoformat(),
+                                      "final_utilization": current_utilization})
+            state["last_utilization"] = current_utilization
+            state["last_reading_at"] = reading_at.isoformat()
+            state["observed_fork_floor"] = max(state.get("observed_fork_floor", 0),
+                                                current_utilization - pending["utilization"])
+            state["pending"] = None
+            self._write(state)
 
 
 def part_b_tasks(active_tasks: list[str]) -> list[str]:
@@ -243,3 +295,54 @@ def part_b_tasks(active_tasks: list[str]) -> list[str]:
     if len(active_tasks) != len(set(active_tasks)) or any(t not in TASKS for t in active_tasks):
         raise ValueError("active cohort must contain unique tasks from the frozen population")
     return [t for t in task_order() if t in active_tasks][:2]
+
+
+class ActiveCohort(ForkBudget):
+    """Frozen initial assignment plus append-only replacement history, independent
+    of immutable task specs. Reading absent state returns the initial cohort; the
+    first replacement durably freezes it and appends the replacement under a lock.
+    """
+
+    def __init__(self, path: Path | None = None):
+        super().__init__(path or central_budget_path().with_name("active_cohort.json"))
+
+    def _read(self):
+        state = json.loads(self.path.read_text()) if self.path.exists() else {
+            "schema": 1, "seed": SEED, "initial_cohort": task_order()[:3], "replacements": []}
+        if state["seed"] != SEED or state["initial_cohort"] != task_order()[:3]:
+            raise ValueError("frozen initial cohort changed")
+        active, used = list(state["initial_cohort"]), set(state["initial_cohort"])
+        for row in state["replacements"]:
+            next_task = next((t for t in task_order() if t not in used), None)
+            if (row["old"] not in active or row["new"] != next_task
+                    or row["before_sha256"] != hashlib.sha256(json.dumps(active).encode()).hexdigest()):
+                raise ValueError("cohort replacement history is inconsistent")
+            active[active.index(row["old"])] = row["new"]
+            active.sort(key=task_order().index)
+            used.add(row["new"])
+        return {**state, "active_cohort": active}
+
+    def replace_task(self, old: str, new: str, *, reason: str) -> dict:
+        if not reason.strip():
+            raise ValueError("replacement reason required")
+        with locked(self.path):
+            state = self._read()
+            active = state.pop("active_cohort")
+            used = set(state["initial_cohort"]) | {r["new"] for r in state["replacements"]}
+            next_task = next((t for t in task_order() if t not in used), None)
+            if old not in active or new != next_task:
+                raise ValueError("replacement must use the next unused task in seeded order")
+            state["replacements"].append({"old": old, "new": new, "reason": reason,
+                "at": datetime.now(UTC).isoformat(),
+                "before_sha256": hashlib.sha256(json.dumps(active).encode()).hexdigest()})
+            self._write(state)
+            return self._read()
+
+
+def runtime_tasks(path: Path | None = None) -> list[str]:
+    """Current cohort; task-spec initial_cohort/part_b_cohort flags are historical only."""
+    return ActiveCohort(path).state()["active_cohort"]
+
+
+def runtime_part_b_tasks(path: Path | None = None) -> list[str]:
+    return part_b_tasks(runtime_tasks(path))

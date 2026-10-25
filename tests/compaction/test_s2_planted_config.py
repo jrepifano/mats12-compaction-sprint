@@ -37,11 +37,19 @@ def reserve_optional(budget, bucket, count):
                                  for i in range(count)])
 
 
+def finish_screen(budget):
+    for i in range(12):
+        identity = f"screen:{i}"
+        budget.reserve(identity, part="A", bucket="screen")
+        budget.finish(identity, "complete", artifact=f"screen/{i}.json")
+
+
 def test_optional_never_spends_baseline_or_repair_and_no_refund(tmp_path):
     b = C.ForkBudget(tmp_path / "forks.json")
     with pytest.raises(ValueError, match="released"):
         reserve_optional(b, "deletion", 6)
     evidence = release_evidence(tmp_path)
+    finish_screen(b)
     b.release("recheck", reason="first sensitivity screen passed", evidence=evidence)
     # Lower-priority reread cannot grab the slots reserved by drop order.
     with pytest.raises(ValueError, match="share"):
@@ -161,6 +169,9 @@ def test_release_requires_pinned_successful_screen(tmp_path):
     proof = release_evidence(tmp_path)
     with pytest.raises(ValueError, match="fingerprint"):
         budget.release("recheck", reason="finished", evidence={**proof, "sha256": "wrong"})
+    with pytest.raises(ValueError, match="twelve.*finished"):
+        budget.release("recheck", reason="passed", evidence=proof)
+    finish_screen(budget)
     budget.release("recheck", reason="passed", evidence=proof)
     assert budget.state()["released"][0]["outcome"]["passes"] is True
 
@@ -168,23 +179,87 @@ def test_release_requires_pinned_successful_screen(tmp_path):
 def test_part_b_freshness_projected_cost_and_durable_baseline(tmp_path):
     path = tmp_path / "allowance.json"
     now = C.RESET + timedelta(hours=2)
-    kw = {"step0_passed_at": C.RESET, "now": now, "reading_at": now,
+    kw = {"attempt_id": "smoke-1", "step0_passed_at": C.RESET, "now": now, "reading_at": now,
           "current_utilization": .1, "expected_fork_utilization": .003,
           "window_reset_at": C.RESET + timedelta(days=7)}
     C.PartBAllowance(path).guard(**kw)
     restarted = C.PartBAllowance(path)
+    with pytest.raises(ValueError, match="pending in-flight"):
+        restarted.guard(**(kw | {"attempt_id": "overlap"}))
+    restarted.finish("smoke-1", "complete", artifact="smoke.json", current_utilization=.101,
+                     now=now, reading_at=now)
+    kw["attempt_id"] = "next"
     with pytest.raises(ValueError, match="two-point"):
         restarted.guard(**(kw | {"current_utilization": .119}))
     with pytest.raises(ValueError, match="fresh"):
-        restarted.guard(**(kw | {"reading_at": now - timedelta(seconds=301)}))
+        restarted.guard(**(kw | {"now": now + timedelta(seconds=301),
+                                 "current_utilization": .105}))
     with pytest.raises(ValueError, match="window changed"):
         restarted.guard(**(kw | {"window_reset_at": C.RESET + timedelta(days=14)}))
     assert json.loads(path.read_text())["start_utilization"] == .1
+    accepted = restarted.guard(**(kw | {"current_utilization": .105}))
+    assert accepted["pending"]["attempt_id"] == "next"
+    assert accepted["start_utilization"] == .1
 
 
 def test_replacement_recomputes_first_two_part_b_tasks():
     order = C.task_order()
     assert C.part_b_tasks(order[1:4]) == order[1:3]
+
+
+def test_active_cohort_keeps_initial_assignment_and_appends_replacements(tmp_path):
+    path = tmp_path / "cohort.json"
+    order = C.task_order()
+    assert C.runtime_tasks(path) == order[:3]
+    cohort = C.ActiveCohort(path)
+    first = cohort.replace_task(order[0], order[3], reason="rerun remained unforkable")
+    assert first["initial_cohort"] == order[:3]
+    assert C.runtime_tasks(path) == order[1:4]
+    assert C.runtime_part_b_tasks(path) == order[1:3]
+    second = cohort.replace_task(order[1], order[4], reason="rerun errored before compaction 1")
+    assert second["replacements"][:1] == first["replacements"]
+    assert second["initial_cohort"] == order[:3]
+    with pytest.raises(ValueError, match="next unused"):
+        cohort.replace_task(order[2], order[0], reason="try used task again")
+
+
+def test_extras_release_requires_pass_and_completed_named_attempts(tmp_path):
+    budget = C.ForkBudget(tmp_path / "budget.json")
+    ids = ["step0:probe", "step0:continue"]
+    failed = release_evidence(tmp_path, {"status": "FAIL", "attempt_ids": ids})
+    with pytest.raises(ValueError, match="passed Step 0"):
+        budget.release("step0_extra", reason="done", evidence=failed)
+    passed = release_evidence(tmp_path, {"status": "PASS", "attempt_ids": ids})
+    with pytest.raises(ValueError, match="two completed"):
+        budget.release("step0_extra", reason="done", evidence=passed)
+    budget.reserve_batch([{"attempt_id": identity, "part": "A", "bucket": "step0"} for identity in ids])
+    budget.finish(ids[0], "complete", artifact="probe.json")
+    with pytest.raises(ValueError, match="two completed"):
+        budget.release("step0_extra", reason="done", evidence=passed)
+    budget.finish(ids[1], "complete", artifact="continue.json")
+    budget.release("step0_extra", reason="done", evidence=passed)
+    assert budget.state()["released"][0]["bucket"] == "step0_extra"
+
+
+def test_optional_small_remainders_keep_whole_comparisons():
+    assert C.optional_allocation(8) == {"deletion": 6, "kept_restatement": 2, "reread": 0}
+    assert C.optional_allocation(7) == {"deletion": 6, "kept_restatement": 0, "reread": 0}
+
+
+def test_part_b_finish_requires_fresh_post_fork_reading_and_preserves_failed_slot(tmp_path):
+    allowance = C.PartBAllowance(tmp_path / "allowance.json")
+    now = C.RESET + timedelta(hours=2)
+    args = {"attempt_id": "one", "step0_passed_at": C.RESET, "now": now, "reading_at": now,
+            "current_utilization": .1, "expected_fork_utilization": .002,
+            "window_reset_at": C.RESET + timedelta(days=7)}
+    allowance.guard(**args)
+    with pytest.raises(ValueError, match="fresh monotonic"):
+        allowance.finish("one", "technical_failure", artifact="failed.json", current_utilization=.102,
+                         now=now, reading_at=now - timedelta(seconds=1))
+    allowance.finish("one", "technical_failure", artifact="failed.json", current_utilization=.102,
+                     now=now, reading_at=now)
+    with pytest.raises(ValueError, match="unique attempt"):
+        allowance.guard(**(args | {"current_utilization": .102}))
 
 
 def test_empty_sources_never_pass_and_boundary_recovery_deduplicates(tmp_path):
