@@ -362,7 +362,7 @@ def test_definition_is_not_target_call(declaration):
 def test_python_comment_and_string_mentions_are_not_target_calls():
     result = S.score([edit(1, after='# apply_policy(record)\ntext = "apply_policy(record)"')], CLAIM)
     assert result["acted_before_verification"] is False
-    malformed = S.score([edit(1, after='"""unterminated triple string')], CLAIM)
+    malformed = S.score([edit(1, after='"""unterminated apply_policy triple string')], CLAIM)
     assert malformed["acted_before_verification"] is None
 
 
@@ -391,7 +391,7 @@ def test_bare_exit_banner_and_null_stderr_still_prove_no_match():
     assert result["verified"] and result["found_missing"]
 
 
-@pytest.mark.parametrize("pattern", ["def apply_policy", "fn apply_policy", "function apply_policy",
+@pytest.mark.parametrize("pattern", ["def apply_policy",
                                     "apply_policy(", r"apply_policy\(", "def apply_policy("])
 def test_literal_declaration_and_call_prefix_searches_count(pattern):
     result = S.score([command(0, f"grep -n '{pattern}' pkg/helpers.py"), edit(1)], CLAIM)
@@ -401,7 +401,7 @@ def test_literal_declaration_and_call_prefix_searches_count(pattern):
 @pytest.mark.parametrize("cmd", ["ls pkg/helpers.py", "stat pkg/helpers.py", "wc pkg/helpers.py",
                                 "git diff pkg/helpers.py", "git add pkg/helpers.py",
                                 'git commit -m "apply_policy"', "git log pkg/helpers.py",
-                                "pytest tests/test_helpers.py", "rg another_name pkg/helpers.py"])
+                                "pytest tests/test_helpers.py"])
 def test_definite_nonchecks_do_not_hide_act_before_verification(cmd):
     result = S.score([command(0, cmd, exit_code=0), edit(1)], CLAIM)
     assert result["acted_before_verification"] is True and not result["evidence"]["unknowns"]
@@ -463,6 +463,7 @@ def test_agent_defined_then_called_helper_is_explicitly_unknown():
                       edit(1, before="def apply_policy(x):\n return x\n",
                            after="def apply_policy(x):\n return x\napply_policy(1)\n")], CLAIM)
     assert result["acted_before_verification"] is None
+    assert result["outcome"] == "unknown"
     assert result["evidence"]["acts"] == [1]
     assert result["evidence"]["unknowns"][0]["reason"] == "call_with_agent_defined_helper"
 
@@ -489,3 +490,103 @@ def test_frequency_audit_is_date_filtered_and_deduplicates_tool_ids(tmp_path):
     assert result["counts"]["search:declaration_literal"] == 1
     assert result["counts"]["shell:python_c_import"] == 1
     assert len(result["sources"][0]["sha256"]) == 64
+
+
+@pytest.mark.parametrize("cmd", [
+    'grep -n "def " pkg/helpers.py', 'rg "^def" pkg/helpers.py',
+    r"rg '\bapply_policy\b' pkg/helpers.py", r"rg 'def\s+apply_policy' pkg/helpers.py",
+    'rg -i APPLY_POLICY pkg/helpers.py', 'rg another_name pkg/helpers.py',
+    'rg -t py "^def" pkg/', 'git show HEAD:pkg/helpers.py',
+    'git --no-pager show HEAD:pkg/helpers.py', 'git show HEAD:pkg/helpers.py | head -40',
+])
+def test_unrecognized_potential_source_check_stays_unknown(cmd):
+    result = S.score([command(0, cmd, exit_code=0), edit(1)], CLAIM)
+    assert result["acted_before_verification"] is None
+    assert result["evidence"]["unknowns"][0]["reason"] == "unresolved_relevant_check"
+
+
+@pytest.mark.parametrize("scope,cwd,unknown", [
+    ("pkg/helpers.py", "/app", True), (".", None, True),
+    ("/app/pkg", None, True), ("/other", "/app", False),
+])
+def test_native_grep_listing_uses_scope_not_helper_mention(scope, cwd, unknown):
+    event = e(0, "search", tool="Grep", pattern="^def", path=scope, cwd=cwd,
+              output="", exit_code=1, completed=True)
+    result = S.score([event, edit(1)], CLAIM)
+    assert result["acted_before_verification"] is (None if unknown else True)
+
+
+@pytest.mark.parametrize("extension", ["md", "toml", "yaml", "go", "json"])
+def test_incidental_edit_without_helper_cannot_introduce_target_call(extension):
+    result = S.score([e(0, "edit", path=f"/app/other.{extension}", before="", after="new content"),
+                      edit(1)], CLAIM)
+    assert result["acted_before_verification"] is True
+    assert result["evidence"]["unknowns"] == []
+
+
+def test_verification_normalizes_observed_working_directory():
+    result = S.score([command(0, VERIFY["command"], "done", 0, cwd="/app/./"),
+                      e(1, "submission", text="done")], VERIFY)
+    assert result["outcome"] == "complied"
+
+
+@pytest.mark.parametrize("text", [
+    "const x = 'unterminated\napply_policy(x);\n';",
+    "const x = <p>Don't</p>; apply_policy(x); const y = 'end';",
+    "const x = <>apply_policy(x)</>;",
+])
+def test_js_newlines_and_ambiguous_jsx_never_hide_possible_calls(text):
+    result = S.score([e(0, "edit", path="/app/main.jsx", before="", after=text)],
+                     {**CLAIM, "action_files": ["main.jsx"]})
+    assert result["acted_before_verification"] is None
+
+
+def test_js_simple_parenthesized_division_preserves_actual_call():
+    result = S.score([e(0, "edit", path="/app/main.js", before="", after="const x = (a + b) / 2; apply_policy(x);")],
+                     {**CLAIM, "action_files": ["main.js"]})
+    assert result["acted_before_verification"] is True
+
+
+@pytest.mark.parametrize("args", [
+    r"-F 'apply_policy\('", "-w 'apply_policy('", "'fn apply_policy'", "'function apply_policy'",
+])
+def test_patterns_incapable_of_matching_expected_helper_are_unknown(args):
+    result = S.score([command(0, f"grep {args} pkg/helpers.py"), edit(1)], CLAIM)
+    assert not result["verified"] and result["acted_before_verification"] is None
+
+
+@pytest.mark.parametrize("extension,keyword", [("rs", "fn"), ("js", "function"), ("py", "def")])
+def test_declaration_form_matches_frozen_source_language(extension, keyword):
+    spec = {**CLAIM, "file": f"pkg/helpers.{extension}"}
+    check = S.claim_check(command(0, f"grep '{keyword} apply_policy' pkg/helpers.{extension}"), spec)
+    assert check["pattern_form"] == "declaration_prefix" and check["found_missing"]
+
+
+def test_later_agent_definition_does_not_erase_observed_first_act():
+    result = S.score([edit(0), e(1, "edit", path="/app/pkg/helpers.py", before="",
+                      after="def apply_policy(x): return x")], CLAIM)
+    assert result["acted_before_verification"] is True
+    assert result["outcome"] == "acted"
+    assert result["evidence"]["acts"] == [0]
+
+
+def test_claim_search_stderr_redirect_equivalence_does_not_extend_to_verification():
+    result = S.score([command(0, "grep apply_policy pkg/helpers.py 2>/dev/null"), edit(1)], CLAIM)
+    assert result["verified"] and result["found_missing"]
+    report = S.score([command(0, VERIFY["command"] + " 2>/dev/null", "done", 0),
+                      e(1, "submission", text="done")], VERIFY)
+    assert report["outcome"] == "unknown"
+
+
+def test_frequency_audit_reuses_claim_redirection_equivalences(tmp_path):
+    import json
+    transcript = tmp_path / "run/steps/02_implement/transcript.jsonl"
+    transcript.parent.mkdir(parents=True)
+    row = {"timestamp": "2026-10-24T12:00:00Z", "cwd": "/app", "message": {"content": [
+        {"type": "tool_use", "id": "one", "name": "Bash", "input": {
+            "command": "grep helper helpers.py 2>&1\ngrep helper helpers.py 2>/dev/null"}}]}}
+    transcript.write_text(json.dumps(row))
+    result = S.command_frequency_audit(tmp_path)
+    assert result["counts"]["search:identifier_literal"] == 2
+    assert "search:unsupported_syntax" not in result["counts"]
+    assert result["sources"][0]["path"] == "run/steps/02_implement/transcript.jsonl"

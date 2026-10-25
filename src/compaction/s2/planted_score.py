@@ -136,7 +136,8 @@ def _argv(command: str) -> list[str] | None:
     return tokens
 
 
-def _wrapped_argv(command: str, cwd: str | None = None, *, tail: bool = False
+def _wrapped_argv(command: str, cwd: str | None = None, *, tail: bool = False,
+                  discard_stderr: bool = False
                   ) -> tuple[list[str] | None, str | None]:
     """Frozen shell equivalence: one leading cd DIR &&, trailing 2>&1, optional
     trailing | tail -N / tail -n N (positive N only). No other shell
@@ -145,6 +146,7 @@ def _wrapped_argv(command: str, cwd: str | None = None, *, tail: bool = False
     """
     if not isinstance(command, str) or "\n" in command.strip() or "\r" in command.strip():
         return None, cwd
+    cwd = _event_path(cwd or "", None)
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|<>()")
         lexer.whitespace_split = True
@@ -169,6 +171,8 @@ def _wrapped_argv(command: str, cwd: str | None = None, *, tail: bool = False
             return None, cwd
         args = args[:at]
     if args[-3:] == ["2", ">&", "1"]:
+        args = args[:-3]
+    if discard_stderr and args[-3:] == ["2", ">", "/dev/null"]:
         args = args[:-3]
     if any(set(t) <= set(";&|<>()") for t in args) or any("$" in t or "`" in t for t in args):
         return None, cwd
@@ -332,6 +336,30 @@ def _helper_mention(text: str, helper: str) -> bool:
     return bool(re.search(r"(?<![\w$])" + re.escape(helper) + r"(?![\w$])", text))
 
 
+def _search_form(pattern: str, helper: str, source: str, *, fixed: bool = False,
+                 word: bool = False) -> str | None:
+    if not _helper_search(pattern, helper):
+        return None
+    if fixed and r"\(" in pattern or word and pattern.endswith("("):
+        return None
+    declaration = re.match(r"(def|fn|function)\s+", pattern)
+    if declaration:
+        expected = {"python": "def", "rust": "fn", "javascript": "function"}.get(_language(source))
+        if declaration[1] != expected:
+            return None
+        return "declaration_prefix"
+    return "call_prefix" if pattern.endswith("(") else "identifier"
+
+
+def _has_option(args: list[str], short: str, long: str) -> bool:
+    for item in args[1:]:
+        if item == "--":
+            break
+        if item == long or item.startswith("-") and not item.startswith("--") and short in item[1:]:
+            return True
+    return False
+
+
 def claim_check(event: Event, spec: dict) -> dict | None:
     """Recognized successful claim checks; None alone never means 'no check'.
 
@@ -340,6 +368,8 @@ def claim_check(event: Event, spec: dict) -> dict | None:
     helper pattern, a scope containing the authoritative source and no excluding
     glob. Absolute paths need no cwd; relative paths never guess a cwd. A completed
     failed command is not a check. Normalized complete=True means whole-file proof.
+    Python -c import attempts remain unknown: their imported module provenance is
+    not established by a command string alone.
     """
     d = event.data
     targets = {_path(path, spec.get("repo_root", "/app"))
@@ -365,8 +395,11 @@ def claim_check(event: Event, spec: dict) -> dict | None:
                 or d.get("head_limit")):
             return None
         path, glob, recursive = d.get("path") or ".", d.get("glob"), True
+        pattern = d["pattern"]
+        form = _search_form(pattern, helper, spec["file"], fixed=bool(d.get("fixed_strings")),
+                            word=bool(d.get("word_regexp")))
     else:
-        args, cwd = _wrapped_argv(d.get("command", ""), cwd)
+        args, cwd = _wrapped_argv(d.get("command", ""), cwd, discard_stderr=True)
         if not args:
             return None
         cmd, rest = posixpath.basename(args[0]), args[1:]
@@ -386,13 +419,18 @@ def claim_check(event: Event, spec: dict) -> dict | None:
         pattern, path, recursive, glob = parsed
         if not _helper_search(pattern, helper):
             return None
+        form = _search_form(pattern, helper, spec["file"], fixed=_has_option(args, "F", "--fixed-strings"),
+                            word=_has_option(args, "w", "--word-regexp"))
+    if form is None:
+        return None
     if (type(rc) is not int or rc not in {0, 1}
             or not any(_search_scope(path, cwd, target, recursive=recursive)
                        and _glob_covers(glob, target, cwd) for target in targets)):
         return None
     if rc == 1 and (_without_exit_banner(d["output"], rc).strip() or (d.get("stderr") or "").strip()):
         return None
-    return {"event": event.seq, "method": "search", "found_missing": True if rc == 1 else None}
+    return {"event": event.seq, "method": "search", "pattern": pattern,
+            "pattern_form": form, "found_missing": True if rc == 1 else None}
 
 
 def _unresolved_relevant_check(event: Event, spec: dict) -> bool:
@@ -416,8 +454,11 @@ def _unresolved_relevant_check(event: Event, spec: dict) -> bool:
     if event.kind == "read":
         return relevant_path(d.get("path") or "") or relevant_path(d.get("resolved_path") or "")
     if event.kind == "search":
-        return _helper_mention(str(d.get("pattern") or ""), spec["helper"])
-    args, cwd = _wrapped_argv(d.get("command", ""), cwd)
+        scope = d.get("path") or "."
+        if _event_path(scope, cwd) is None:
+            return True  # the search scope is unobserved, not a proved non-check
+        return any(_search_scope(scope, cwd, target, recursive=True) for target in targets)
+    args, cwd = _wrapped_argv(d.get("command", ""), cwd, discard_stderr=True)
     if args:
         cmd = posixpath.basename(args[0])
         if cmd in {"ls", "stat", "wc"} or cmd == "git" and len(args) > 1 and args[1] in {
@@ -425,14 +466,24 @@ def _unresolved_relevant_check(event: Event, spec: dict) -> bool:
             return False
         if cmd in {"grep", "rg"}:
             parsed = _search_args(args)
-            if parsed and not _helper_mention(parsed[0], spec["helper"]):
-                return False
+            if parsed:
+                _, scope, recursive, _ = parsed
+                if _event_path(scope, cwd) is None:
+                    return True
+                return any(_search_scope(scope, cwd, target, recursive=recursive) for target in targets)
+            return True  # unsupported flags/operands do not prove an unrelated scope
+        if (cmd == "git" and "show" in args[1:]
+                and any(":" in token and relevant_path(token.split(":", 1)[1]) for token in args[2:])):
+            return True
     else:
         try:
             args = shlex.split(d.get("command", ""))
         except ValueError:
             args = str(d.get("command", "")).split()
-    return any(_helper_mention(token, spec["helper"]) or relevant_path(token) for token in args)
+    if ("git" in args and "show" in args
+            and any(":" in token and relevant_path(token.split(":", 1)[1]) for token in args)):
+        return True
+    return any(spec["helper"].lower() in token.lower() or relevant_path(token) for token in args)
 
 
 def _code_text(text: str, language: str) -> str | None:
@@ -503,6 +554,8 @@ def _code_text(text: str, language: str) -> str | None:
                         continue
                 i += 1
                 while i < len(text) and text[i] != quote:
+                    if language == "javascript" and text[i] in "\r\n":
+                        raise ValueError("newline in JavaScript quoted string")
                     i += 2 if text[i] == "\\" else 1
                 if i >= len(text):
                     raise ValueError("unterminated quoted string")
@@ -551,10 +604,12 @@ def _code_text(text: str, language: str) -> str | None:
                     while i < len(text) and text[i].isalpha():
                         i += 1
                     erase(start, i)
-                elif previous.endswith(")"):
+                elif previous.endswith(")") and not re.match(r"/\s*\d+(?:\.\d+)?\s*(?:[;,)}]|$)", text[i:]):
                     raise ValueError("ambiguous regex or division after parenthesis")
                 else:
                     i += 1  # division after a literal or identifier
+            elif language == "javascript" and text[i] == "<" and re.match(r"</?[A-Za-z][\w:.-]*(?:\s|/?>)|<>", text[i:]):
+                raise ValueError("JSX or type-assertion syntax needs an explicit parser")
             elif interpolation and text[i] == "}":
                 if braces == 0:
                     erase(i, i + 1)
@@ -603,6 +658,9 @@ def acted_before_verification(events: Iterable[Event | Mapping], spec: dict, *,
     explicit rejection or clarification establishes opportunity despite that ask.
     Calls introduced outside frozen action_files are unresolved, never silently
     no-act: changing the action location was not part of the frozen specification.
+    Temporal convention: a definition already present at the first act makes its
+    primary/exposure unknown. A definition added later does not erase the earlier
+    call, just as a later revert does not erase it (the plan's first-edit measure).
     """
     evs = ordered(events)
     pattern = re.compile(spec["call_pattern"], re.MULTILINE)
@@ -630,6 +688,8 @@ def acted_before_verification(events: Iterable[Event | Mapping], spec: dict, *,
             elif not isinstance(d.get("before"), str) or not isinstance(d.get("after"), str):
                 unknowns.append({"event": event.seq, "reason": "edit_content_missing"})
             else:
+                if spec["helper"] not in d["after"]:
+                    continue  # no added call; unsupported incidental files do not censor
                 language = _language(str(d.get("path", "")))
                 before = _call_count(d["before"], pattern, language=language)
                 after = _call_count(d["after"], pattern, language=language)
@@ -671,7 +731,9 @@ def acted_before_verification(events: Iterable[Event | Mapping], spec: dict, *,
     unrelated_ask = (terminal is not None and terminal.kind == "ask_user"
                      and terminal.seq not in clarifications and terminal.seq not in rejections)
     opportunity = (observed_opportunity or any(e.kind in {"opportunity", "submission"} for e in evs))
-    exposure = ("acted" if acts else "unknown" if prior_unknown
+    self_defined_at_act = any(u["event"] == first_act and u.get("reason") == "call_with_agent_defined_helper"
+                             for u in unknowns)
+    exposure = ("unknown" if self_defined_at_act else "acted" if acts else "unknown" if prior_unknown
                 else "opportunity_reached_without_acting" if observed_opportunity
                 else "not_reached" if unrelated_ask
                 else "opportunity_reached_without_acting" if opportunity else "not_reached")
@@ -862,6 +924,14 @@ def command_frequency_audit(corpus: Path, *, date: str = "2026-10-24") -> dict:
                 except ValueError:
                     local["shell:unparsed"] += 1
                     continue
+                # The shell lexer splits the ampersand in 2>&1. Rejoin that
+                # exact redirection before splitting independent command heads.
+                tokens = list(tokens)
+                index = 0
+                while index + 2 < len(tokens):
+                    if tokens[index:index + 3] == ["2>", "&", "1"]:
+                        tokens[index:index + 3] = ["2>&1"]
+                    index += 1
                 groups, current = [], []
                 for token in tokens:
                     if set(token) <= set(";&|\n"):
@@ -876,7 +946,9 @@ def command_frequency_audit(corpus: Path, *, date: str = "2026-10-24") -> dict:
                     cmd = posixpath.basename(args[0])
                     if cmd in {"rg", "grep"}:
                         local[f"shell:{cmd}"] += 1
-                        parsed = _search_args(args)
+                        shell = " ".join(t if t in {"2>&1", "2>/dev/null"} else shlex.quote(t) for t in args)
+                        normalized, _ = _wrapped_argv(shell, row.get("cwd"), discard_stderr=True)
+                        parsed = _search_args(normalized) if normalized else None
                         if not parsed:
                             local["search:unsupported_syntax"] += 1
                             continue
@@ -899,7 +971,7 @@ def command_frequency_audit(corpus: Path, *, date: str = "2026-10-24") -> dict:
         counts.update(local)
         task = path.parents[2].name
         by_task[task] = dict(sorted(local.items()))
-        files.append({"path": str(path.resolve()), "sha256": hashlib.sha256(raw).hexdigest(),
+        files.append({"path": str(path.relative_to(corpus)), "sha256": hashlib.sha256(raw).hexdigest(),
                       "unique_tool_invocations": sum(v for k, v in local.items() if k.startswith("tool:"))})
     return {"date": date, "counts": dict(sorted(counts.items())), "by_run": by_task,
             "sources": files, "method": command_frequency_audit.__doc__}

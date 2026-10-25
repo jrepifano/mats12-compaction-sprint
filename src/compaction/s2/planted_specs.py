@@ -242,7 +242,7 @@ def build_task_spec(task_id: str, *, corpus: Path, instruction: str | None = Non
     cohort = active_cohort if active_cohort is not None else order[:3]
     return {"schema": 2, "task_id": task_id, "seed": SEED, "task_order": order,
             "initial_cohort": i < 3, "part_b_cohort": task_id in part_b_tasks(cohort),
-            "part_b_cohort_note": "derived from active_cohort; regenerate after Appendix D replacement",
+            "part_b_cohort_note": "initial assignment only; replacements use planted_config.runtime_part_b_tasks",
             "active_cohort": cohort, "assignment_index": i,
             "window": WINDOW, "max_calls": MAX_CALLS, "probe_message": PROBE,
             "obligations": obligations,

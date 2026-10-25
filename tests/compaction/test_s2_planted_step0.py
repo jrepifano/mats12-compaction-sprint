@@ -12,6 +12,11 @@ RATE = {"observed_at": NOW, "rate_limit_info": {"unifiedWindows": {
     "seven_day": {"utilization": .3, "resetsAt": 2000}}}}
 
 
+@pytest.fixture(autouse=True)
+def fake_active_cohort(monkeypatch):
+    monkeypatch.setattr(P, "runtime_tasks", lambda: ["task"])
+
+
 def boundary(tmp_path):
     bdir = tmp_path / "source" / "task" / "b1"
     P.write(bdir / "boundary/boundary.json", {"quiescent": True, "tag": "image:test",
@@ -168,6 +173,12 @@ def test_initial_step0_window_requires_below_87_percent():
     info = {"unifiedWindows": {"seven_day": {"utilization": .88, "resetsAt": 2000}}}
     with pytest.raises(ValueError, match="87%"):
         P.guard_rate({"observed_at": NOW, "rate_limit_info": info}, now=NOW)
+
+
+def test_step0_refuses_task_outside_active_cohort(tmp_path, monkeypatch):
+    monkeypatch.setattr(P, "runtime_tasks", lambda: ["other-task"])
+    with pytest.raises(ValueError, match="active seeded cohort"):
+        run(tmp_path)
 
 
 def test_cleanup_and_zero_simulator_unknown_do_not_pass():

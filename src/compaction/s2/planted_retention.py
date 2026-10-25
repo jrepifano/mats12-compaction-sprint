@@ -241,6 +241,7 @@ def adjudicate_cards(public: dict, private: dict, labels: list[dict]) -> dict:
         raise ValueError("standing rule cannot be discharged; second look required")
     rows = [private["key"][x["id"]] | {"verified": True,
              "judge_label": private["key"][x["id"]]["label"], "human_label": x["label"],
+             "label": x["label"],
              "human_reason": x.get("reason", "")} for x in labels]
     return {"adjudications": rows, "losses": [r for r in rows if r["human_label"] == "lost"
                                              and r["loss_tally_eligible"]]}

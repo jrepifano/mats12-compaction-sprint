@@ -18,7 +18,15 @@ from compaction.s2 import config as C
 from compaction.s2 import planted_score as S
 from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
-from compaction.s2.planted_config import MAX_CALLS, WINDOW, ForkBudget, runtime_tasks, task_order
+from compaction.s2.planted_config import (
+    MAX_CALLS,
+    WINDOW,
+    ActiveCohort,
+    ForkBudget,
+    part_b_tasks,
+    runtime_tasks,
+    task_order,
+)
 from compaction.s2.planted_retention import digest
 
 DEFAULT_CORPUS = C.REPO_ROOT.parent / "sprint-prep/data/raw/sprint/s2/native/claude_code"
@@ -123,20 +131,21 @@ def snapshot_boundary(bdir: Path, destination: Path, *, expected_hashes: dict | 
 
 def discover(corpus: Path = DEFAULT_CORPUS) -> dict:
     order = task_order()
-    active = runtime_tasks()
+    cohort = ActiveCohort().state()
+    active = cohort["active_cohort"]
     tasks = []
     for index, task_id in enumerate(order):
         boundaries = [inspect_boundary(p) for p in sorted(Path(corpus).glob(f"{task_id}*/b*"))
                       if p.is_dir() and p.name[1:].isdigit()]
         tasks.append({"task_id": task_id, "initial_cohort": index < 3,
-                      "active_cohort": task_id in active, "part_b_cohort": task_id in active[:2],
+                      "active_cohort": task_id in active, "part_b_cohort": task_id in part_b_tasks(active),
                       "boundaries": boundaries,
                       "offline_eligible_count": sum(b["offline_eligible"] for b in boundaries)})
     return {"schema": 1, "corpus": str(Path(corpus).resolve()), "task_order": order,
             "selected_tasks": active, "tasks": tasks,
             "eligible_selected_tasks": sum(t["active_cohort"] and t["offline_eligible_count"] > 0
                                            for t in tasks),
-            "live_checks_performed": False, "replacement": "none; frozen selection retained"}
+            "live_checks_performed": False, "replacements": cohort["replacements"]}
 
 
 def _window_hold(rate: dict, now: float):
@@ -217,6 +226,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         raise ValueError(f"boundary fails offline checks: {census['problems']}")
     if spec.get("schema") != 2 or spec.get("eligible") is not True:
         raise ValueError("Step 0 requires an eligible schema-2 task spec")
+    if spec["task_id"] not in runtime_tasks():
+        raise ValueError("Step 0 task must belong to the active seeded cohort")
     if task.task_id != spec["task_id"] or spec.get("window") != WINDOW or spec.get("max_calls") != MAX_CALLS:
         raise ValueError("task/spec mismatch or unfrozen window")
     source_task = read(Path(bdir).parent / "run.json").get("task", {}).get("task_id")
