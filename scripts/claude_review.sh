@@ -3,8 +3,8 @@
 # Usage: scripts/claude_review.sh <prompt_file> <output_md> [effort] [seconds]
 # The counterpart of scripts/codex_review.sh, with the same arguments, for work a Codex session
 # ran: the reviewer comes from the other model family (AGENTS.md, "Agents and tools", 2026-10-11).
-# Model: Claude Fable 5.1 (alias `fable`, the most capable widely released Claude model as of
-# 2026-10); override with CLAUDE_REVIEW_MODEL. effort defaults to medium (low|medium|high|xhigh|max).
+# Model: Claude Opus 5.5 (`claude-opus-5-5`, the frontier Claude model; Jacob, 2026-10-25; it was
+# Fable 5.1 until then); override with CLAUDE_REVIEW_MODEL. effort defaults to medium (low|medium|high|xhigh|max).
 # Runs from the repo root the script lives in. The review text goes to <output_md>; the CLI's JSON
 # result (usage and cost included) and stderr go to <output_md>.log.
 #
@@ -24,7 +24,7 @@ prompt="$1"
 out="$2"
 effort="${3:-medium}"
 limit="${4:-1200}"
-model="${CLAUDE_REVIEW_MODEL:-fable}"
+model="${CLAUDE_REVIEW_MODEL:-claude-opus-5-5}"
 mkdir -p "$(dirname "$out")"
 raw="$out.json.tmp"
 full="$out.prompt.tmp"

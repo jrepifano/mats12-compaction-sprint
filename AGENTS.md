@@ -14,7 +14,7 @@ Both tools read this one file. Codex reads `AGENTS.md` natively, and Claude Code
   - for reviews.
   
   Codex agents may spawn sub-agents for this work as Claude agents do.
-- **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Fable 5.1, with Read, Grep and Glob only and no shell, so set `CLAUDE_REVIEW_DIFF=<base>..HEAD` and the script saves the diff for it to read). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
+- **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Opus 5.5 since 2026-10-25, Fable 5.1 before; with Read, Grep and Glob only and no shell, so set `CLAUDE_REVIEW_DIFF=<base>..HEAD` and the script saves the diff for it to read). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
 - **Commit attribution:** end commit messages and PR bodies with the co-author line your own tool's attribution guidance gives. Codex sessions, which get none, use `Co-Authored-By: Codex CLI (gpt-6-astra)` (Jacob, 2026-10-11).
 - **Skills** live in `.agents/skills/<name>/SKILL.md`, which Codex discovers. `.claude/skills/<name>/SKILL.md` is a symlink to the same file, for Claude Code. Edit the file under `.agents/`.
 
