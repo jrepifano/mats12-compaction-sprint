@@ -87,7 +87,12 @@ def test_collect_grades_in_play_rules_per_source_and_caches(D, tmp_path, monkeyp
     D.collect(be, cache=tmp_path / "cache")
     assert len(be.seen) == n  # every answer cached
     md = D.markdown(dict(out, table=D.table(out["rows"]), created_utc="t", grader="stub"))
-    assert "| live | 1 | all |" in md
+    assert "| live | 1 | all |" in md and "split by reply |" in md
+    assert t[("live", 1, "maintainer")]["by_reply"] == 0  # the fixture's items: one call
+    by = [dict(x, extraction="by_reply") if x["origin"] == "maintainer" else x
+          for x in out["rows"]]
+    assert {(x["source"], x["k"], x["origin"]): x["by_reply"] for x in D.table(by)}[
+        ("live", 1, "all")] == 1
     # two series, never one trend line: the live row, and the replays on pi's summaries
     own, k1 = md.split("## k=1 only: summarizers compared on identical history")
     assert "| live |" in own and "| cc_prompt |" not in own and "| cc_prompt | 1 |" in k1

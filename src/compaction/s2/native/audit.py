@@ -45,8 +45,12 @@ def requirements(run_dir: Path, backend_factory: Callable[[], Any]) -> list[dict
         rq = json.loads((b / "requirements.json").read_text())
         live = grades.get("live") or {}
         f = json.loads((b / "boundary.json").read_text())
+        items = RQ.gradable_v2(rq)
         rows.append({"k": RQ.boundary_index(bdir), "pre_tokens": f.get("pre_tokens"),
-                     "items": len(RQ.gradable_v2(rq)),
+                     "items": len(items),
+                     # provenance: items split one reply at a time, and their losses
+                     "items_by_reply": sum(RQ.extraction_of(it) == "by_reply" for it in items),
+                     "lost_by_reply": (led.get("by_reply") or {}).get("live", 0),
                      "grades": dict(Counter(live.values())),
                      "lost": sum(g in ("dropped", "misstated") for g in live.values()),
                      **{f"lost_{s}": n for s, n in (led["counts"].get("live") or {}).items()}})

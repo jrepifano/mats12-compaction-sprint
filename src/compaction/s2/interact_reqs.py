@@ -251,7 +251,8 @@ def _carried(bdir: Path, k: int) -> list[dict]:
     return out
 
 
-def split_request(bdir: Path, task: str, replies: list[dict], earlier: list[dict]) -> T.Req:
+def split_request(bdir: Path, task: str, replies: list[dict], earlier: list[dict],
+                  part: str = "") -> T.Req:
     p = load_prompt(SPLIT_PROMPT, PROMPT_DIR)
     rl = "\n".join(json.dumps({"reply_id": r["reply_id"], "question": r.get("question") or "",
                                "reply": r.get("reply") or ""}, ensure_ascii=False)
@@ -260,8 +261,56 @@ def split_request(bdir: Path, task: str, replies: list[dict], earlier: list[dict
                    for e in earlier if e.get("duplicate_of") is None and e.get("valid"))
     user = _fill(p.sections["user"], task=task, earlier=el or "(none)", replies=rl)
     rid = f"interact:{Path(bdir).parent.name}:b{boundary_index(bdir)}"
-    return T.Req(key=f"split|{rid}", system=p.system, user=user, schema=SPLIT_SCHEMA,
+    return T.Req(key=f"split|{rid}{part}", system=p.system, user=user, schema=SPLIT_SCHEMA,
                  max_output_tokens=SPLIT_MAX_OUT, rid=rid, source="deepswe", private=True)
+
+
+def _split_problem(r) -> str | None:
+    """Why a split response can't be used (None: it can)."""
+    if r is None:
+        return "no response"
+    if r.error:
+        return str(r.error)
+    if not isinstance(r.data, dict):
+        return f"data is {type(r.data).__name__}, not an object"
+    if not isinstance(r.data.get("requirements"), list):
+        return "data has no requirements list"
+    return None
+
+
+EXTRACTIONS = ("whole", "by_reply")  # how a boundary's items were split (provenance)
+
+
+def extraction_of(it: dict) -> str:
+    """An item's extraction: "whole" for items split before the stamp existed."""
+    return it.get("extraction") or "whole"
+
+
+def split_by_reply(bdir: Path, task: str, new: list[dict], carried: list[dict], *,
+                   backend) -> tuple[list[dict], str | None]:
+    """The fallback after a failed whole-segment split (native-codex, 25 Oct: Haiku ran into
+    its output cap on one 8-reply segment, twice): one call per reply, in order. Each call
+    sees the earlier boundaries' items and this boundary's items so far, under the req_ids
+    they will get, so a repeat across replies links as in a single call; a chunk's local ids
+    are prefixed with its reply's position. Inputs the single call handles never reach this."""
+    k = boundary_index(bdir)
+    drafted: list[dict] = []
+    model = None
+    for i, reply in enumerate(new, 1):
+        so_far = [{"req_id": f"b{k}-q{n}", "text": d["text"], "valid": True,
+                   "duplicate_of": None} for n, d in enumerate(drafted, 1)]
+        req = split_request(bdir, task, [reply], [*carried, *so_far], part=f"|r{i}")
+        r = backend.run([req], purpose=SPLIT_PURPOSE).get(req.key)
+        if (why := _split_problem(r)) is not None:
+            raise RuntimeError(f"{bdir}: split failed on reply {reply.get('reply_id')} alone: "
+                               f"{why}")
+        model = r.model
+        mine = {d["local_id"] for d in r.data["requirements"]}
+        for d in r.data["requirements"]:
+            same = d.get("same_as")
+            drafted.append(dict(d, local_id=f"r{i}.{d['local_id']}",
+                                same_as=f"r{i}.{same}" if same in mine else same))
+    return drafted, model
 
 
 def _group_duplicates(items: list[dict], links: dict[str, str]) -> None:
@@ -304,17 +353,26 @@ def split(bdir: Path, *, backend, fields: dict | None = None, task: str | None =
                  "boundary_index": k, "tail_start_index": tail, "previous_sim_calls": prev,
                  "n_new_replies": len(new), "error": None, "items": []}
     drafted: list[dict] = []
+    extraction = "whole"
     if new:
         req = split_request(bdir, task, new, carried)
         r = backend.run([req], purpose=SPLIT_PURPOSE).get(req.key)
-        if r is None or r.error or not isinstance(r.data, dict):
-            raise RuntimeError(f"{bdir}: split failed: {r.error if r else 'no response'}")
-        out["model"] = r.model
-        drafted = r.data["requirements"]
+        why = _split_problem(r)
+        if why is None:
+            out["model"] = r.model
+            drafted = r.data["requirements"]
+        elif len(new) > 1:
+            out["whole_split_error"] = why[:500]
+            drafted, out["model"] = split_by_reply(bdir, task, new, carried, backend=backend)
+            out["split_by_reply"] = len(new)
+            extraction = "by_reply"
+        else:
+            raise RuntimeError(f"{bdir}: split failed: {why}")
     items: list[dict] = []
-    for it in carried:  # recomputed for this boundary below
+    for it in carried:  # recomputed for this boundary below; their extraction stays theirs
         src = by_id.get(it["source_reply_id"]) or {}
-        items.append(dict(it, source_pre_index=src.get("pre_index")))
+        items.append(dict(it, source_pre_index=src.get("pre_index"),
+                          extraction=extraction_of(it)))
     links: dict[str, str] = {}
     local: dict[str, str] = {}
     new_ids = {r["reply_id"] for r in new}
@@ -340,7 +398,7 @@ def split(bdir: Path, *, backend, fields: dict | None = None, task: str | None =
             "invalid_reason": None if valid else (
                 "unknown_reply" if src is None else "quote_not_in_reply"),
             "fresh": False, "in_tail": False, "first_boundary": None,
-            "boundary": k,
+            "boundary": k, "extraction": extraction,
         })
         if d.get("same_as"):
             links[rid] = d["same_as"]
@@ -361,6 +419,7 @@ def split(bdir: Path, *, backend, fields: dict | None = None, task: str | None =
         it["fresh"] = bool(it.get("valid") and this_segment and pi is not None and pi < tail
                            and it.get("grounded") and it.get("duplicate_of") is None)
     out["items"] = items
+    out["extraction"] = {e: sum(extraction_of(it) == e for it in items) for e in EXTRACTIONS}
     S.write_json(b / "requirements.json", out)
     return out
 
@@ -1135,10 +1194,13 @@ def loss_ledger(bdir: Path) -> dict:
             status = ("new" if verbatim or pl in (None, "kept") else
                       "inherited" if pl in ("dropped", "misstated") else "unknown")
             rows[rid] = {"grade": g, "status": status, "verbatim_here": verbatim,
-                         "previous_live": pl}
+                         "previous_live": pl, "extraction": extraction_of(it)}
         out["sources"][src] = rows
         out["counts"][src] = {s: sum(r["status"] == s for r in rows.values())
                               for s in ("new", "inherited", "unknown")}
+        # losses among items split one reply at a time, so a pooled table can show them apart
+        out.setdefault("by_reply", {})[src] = sum(r["extraction"] == "by_reply"
+                                                  for r in rows.values())
     S.write_json(v2_dir(bdir) / "ledger.json", out)
     return out
 
@@ -1954,7 +2016,8 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
              "inherited": ((ledger.get(src) or {}).get(it["req_id"]) or {}).get(
                  "status") == "inherited",
              "draft": prev.get("draft"), "act_spec": prev.get("act_spec"), "disposition": None,
-             **({"edit": edit, "edit_sha256": S.canon_sha(edit)} if edit else {})}
+             **({"edit": edit, "edit_sha256": S.canon_sha(edit)} if edit else {}),
+             **({} if it.get("origin") == "lossaudit" else {"extraction": extraction_of(it)})}
         checks["retention"] = (check_retention_la(it) if it.get("origin") == "lossaudit"
                                else check_retention(src, it, detail))
         if it.get("origin") == "lossaudit":

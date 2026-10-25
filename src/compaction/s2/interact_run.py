@@ -2236,7 +2236,7 @@ def funnel(root: Path) -> dict:
     Check-6 exclusions (excluded:reference) carry the Haiku-written act scorer and the
     reference solution's lines it matched, so a bad scorer is visible (main session, 24 Oct).
     Writes <root>/funnel.json and <root>/funnel.md; reads no continuation output."""
-    rows, counts, typed = [], {}, []
+    rows, counts, typed, by_reply = [], {}, [], {}
     files = [(cj, cj.parent.parent, "v1") for cj in
              sorted(Path(root).glob("*/b*/boundary/candidates.json"))]
     files += [(cj, cj.parent.parent.parent, "v2") for cj in
@@ -2247,6 +2247,9 @@ def funnel(root: Path) -> dict:
             d = c.get("disposition") or "none"
             counts.setdefault(screen, {})
             counts[screen][d] = counts[screen].get(d, 0) + 1
+            if c.get("extraction") == "by_reply":
+                by_reply.setdefault(screen, {})
+                by_reply[screen][d] = by_reply[screen].get(d, 0) + 1
             v = (((c.get("checks") or {}).get("opus") or {}).get("evidence") or {}).get("verdict")
             if v and not d.startswith("excluded:"):
                 typed.append({"run": bdir.parent.name, "boundary": bdir.name,
@@ -2261,6 +2264,7 @@ def funnel(root: Path) -> dict:
             if why == "source:mixed_chain":  # Jacob, 24 Oct: k>1 forks from the run's own
                 rows.append({"screen": screen, "run": bdir.parent.name, "boundary": bdir.name,
                              "cand_id": c["cand_id"], "source_policy": c.get("source_policy"),
+                             "extraction": c.get("extraction"),
                              "requirement": c.get("text"), "reason": d,
                              "check_reason": "a replay at k>1 mixes methods in the chain",
                              "evidence": None})
@@ -2269,6 +2273,7 @@ def funnel(root: Path) -> dict:
             row = {"screen": screen, "run": bdir.parent.name, "boundary": bdir.name,
                    "cand_id": c["cand_id"],
                    "source_policy": c.get("source_policy"), "requirement": c.get("text"),
+                   "extraction": c.get("extraction"),
                    "reason": d, "check_reason": chk.get("reason"),
                    "evidence": chk.get("evidence")}
             if v:
@@ -2281,7 +2286,9 @@ def funnel(root: Path) -> dict:
             rows.append(row)
     opus = opus_summary(root)
     out = {"created_utc": utc(), "counts": counts, "excluded": rows, "opus": opus,
-           "passed_opus": typed}
+           "passed_opus": typed,
+           # of those counts, candidates whose item was split one reply at a time
+           "by_reply": by_reply}
     _dump(Path(root) / "funnel.json", out)
     lines = ["# Candidate funnel", "", "| screen | disposition | n |", "|---|---|---|",
              *[f"| {sc} | {k} | {v} |" for sc, per in sorted(counts.items())

@@ -234,7 +234,8 @@ def collect(backend, root: Path | None = None, cache: Path = CACHE_DIR,
         types = {x["id"]: x for x in cl.get("items") or []}
         maint_rules = [{"id": rid, "origin": "maintainer", "rule": it["text"],
                         "quote": it["quote"], "reason": types.get(rid, {}).get("reason"),
-                        "introduced_k": introduced[rid]}
+                        "introduced_k": introduced[rid],
+                        "extraction": RQ.extraction_of(it)}
                        for rid, it in items.items()
                        if types.get(rid, {}).get("process_rule") == "yes"]
         out["runs"][run] = {"boundaries": ks, "task_rules": task_rules,
@@ -260,6 +261,7 @@ def collect(backend, root: Path | None = None, cache: Path = CACHE_DIR,
                     out["rows"].append({
                         "run": run, "k": k, "source": src, "id": r["id"], "origin": r["origin"],
                         "introduced_k": r.get("introduced_k", ks[0]),
+                        "extraction": r.get("extraction"),
                         "series": SERIES.get(src, "cross_summarizer_k1"),
                         "retention": x.get("retention"), "closest_quote": x.get("closest_quote"),
                         "reason": x.get("reason"),
@@ -293,6 +295,7 @@ def table(rows: list[dict]) -> list[dict]:
             kp = sum(r["retention"] in ("kept", "paraphrased") for r in sel)
             out.append({"source": src, "series": SERIES.get(src, "cross_summarizer_k1"),
                         "k": k, "origin": origin, "n": n,
+                        "by_reply": sum(r.get("extraction") == "by_reply" for r in sel),
                         "missing": sum(not r["retention"] for r in sel),
                         "runs": len({r["run"] for r in sel}),
                         "kept": kept, "kept_share": round(kept / n, 3),
@@ -316,10 +319,11 @@ def markdown(doc: Mapping) -> str:
             continue
         lines += [f"## {SERIES_LABEL[series]}", "",
                   ("| source | k | origin | runs | n | missing | kept | 95% CI | kept or "
-                   "paraphrased | 95% CI |"), "|---|---|---|---|---|---|---|---|---|---|"]
+                   "paraphrased | 95% CI | split by reply |"),
+                  "|---|---|---|---|---|---|---|---|---|---|---|"]
         lines += [f"| {t['source']} | {t['k']} | {t['origin']} | {t['runs']} | {t['n']} | "
                   f"{t['missing']} | {t['kept_share']} | {t['kept_ci']} | {t['kept_or_paraphrased_share']} | "
-                  f"{t['kept_or_paraphrased_ci']} |" for t in rows]
+                  f"{t['kept_or_paraphrased_ci']} | {t.get('by_reply', 0)} |" for t in rows]
         lines.append("")
     return "\n".join(lines) + "\n"
 

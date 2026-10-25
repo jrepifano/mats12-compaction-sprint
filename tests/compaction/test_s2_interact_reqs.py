@@ -1748,3 +1748,101 @@ def test_the_real_script_reads_the_workspace_and_fails_closed(tmp_path):
     f = R.parse_authority(subprocess.run(["bash", "-c", _script_in(repo, tmp_path)],
                                          capture_output=True, text=True, check=False).stdout)
     assert f["diff"] is None and f["diff_error"] == "index_copy"
+
+
+# --- split: one call per reply after a failed whole-segment call (native-codex, 25 Oct)
+
+def _by_reply_order():
+    """SPLIT_B1's items for the 02_implement replies (r2, r3, r4), in reply order."""
+    keep = [d for d in SPLIT_B1 if d["reply_id"] != "r1"]
+    return sorted(keep, key=lambda d: ["r2", "r3", "r4"].index(d["reply_id"]))
+
+
+def test_a_failed_whole_split_falls_back_to_one_call_per_reply(run):
+    whole = _by_reply_order()
+    single = R.split(run / "b1", backend=StubBackend(lambda req: {"requirements": whole}),
+                     task=TASK)
+
+    def answer(req):
+        if "|r" not in req.key:
+            return None  # the whole segment: the output cap, as in native-codex's kombu b1
+        block = re.search(r"<replies>\n(.*?)\n</replies>", req.user, re.DOTALL).group(1)
+        rid = re.search(r'"reply_id": "(r\d)"', block).group(1)
+        mine = [dict(d) for d in whole if d["reply_id"] == rid]
+        for d in mine:  # a repeat of an earlier reply's item names its req_id, as it's listed
+            if d.get("same_as") == "n1":
+                assert '"req_id": "b1-q1"' in req.user
+                d["same_as"] = "b1-q1"
+        return {"requirements": mine}
+
+    class Failing(StubBackend):
+        def run(self, reqs, *, purpose):
+            out = {}
+            for r in reqs:
+                self.seen.append(r)
+                data = self.answer(r)
+                out[r.key] = T.Resp(r.key, data, json.dumps(data), None if data else
+                                    "output cap: 64000 tokens", model="stub-haiku")
+            return out
+
+    be = Failing(answer)
+    chunked = R.split(run / "b1", backend=be, task=TASK)
+    assert chunked["split_by_reply"] == 3 and "64000" in chunked["whole_split_error"]
+    assert [r.key.split("|")[2:] for r in be.seen] == [[], ["r1"], ["r2"], ["r3"]]
+    keys = ("req_id", "text", "quote", "duplicate_of", "fresh", "valid", "position",
+            "source_reply_id", "in_tail")
+    assert [{x: it[x] for x in keys} for it in chunked["items"]] == \
+        [{x: it[x] for x in keys} for it in single["items"]]
+    # a split that works in one call is unchanged: no fallback field, one request
+    assert "split_by_reply" not in single
+    # provenance (astra split-fallback r1 #1): every item says how it was split
+    assert {it["extraction"] for it in single["items"]} == {"whole"}
+    assert {it["extraction"] for it in chunked["items"]} == {"by_reply"}
+    assert chunked["extraction"] == {"whole": 0, "by_reply": len(chunked["items"])}
+
+
+def test_a_split_that_fails_on_one_reply_still_fails(run):
+    def answer(req):
+        return None
+
+    class Failing(StubBackend):
+        def run(self, reqs, *, purpose):
+            return {r.key: T.Resp(r.key, None, "", "output cap", model="m") for r in reqs}
+    with pytest.raises(RuntimeError, match="split failed on reply r2 alone"):
+        R.split(run / "b1", backend=Failing(answer), task=TASK)
+
+
+
+def test_by_reply_items_keep_their_stamp_into_later_boundaries_and_ledgers(run, monkeypatch):
+    def answer(req):
+        k = int(re.search(r":b(\d+)", req.key).group(1))
+        if k == 1 and "|r" not in req.key:
+            return {}  # no requirements list: a validation failure, not a backend error
+        if k == 1:
+            block = re.search(r"<replies>\n(.*?)\n</replies>", req.user, re.DOTALL).group(1)
+            rid = re.search(r'"reply_id": "(r\d)"', block).group(1)
+            return {"requirements": [dict(d, same_as=None) for d in _by_reply_order()
+                                     if d["reply_id"] == rid]}
+        return {"requirements": SPLIT_B2}
+    b1 = R.split(run / "b1", backend=StubBackend(answer), task=TASK)
+    assert b1["whole_split_error"] == "data has no requirements list"  # r1 #2: the real cause
+    b2 = R.split(run / "b2", backend=StubBackend(answer), task=TASK)
+    by = {it["req_id"]: it["extraction"] for it in b2["items"]}
+    assert all(v == "by_reply" for r, v in by.items() if r.startswith("b1-"))
+    assert all(v == "whole" for r, v in by.items() if r.startswith("b2-"))
+    # the ledger rows carry it, and each source counts its by_reply losses
+    R.grade_sources_v2(run / "b1", ["live"], grader=_grader({"live": {
+        it["req_id"]: "dropped" for it in b1["items"]}}))
+    led = R.loss_ledger(run / "b1")
+    assert {r["extraction"] for r in led["sources"]["live"].values()} == {"by_reply"}
+    assert led["by_reply"]["live"] == len(led["sources"]["live"]) > 0
+    # the native audit's summary rows report them apart
+    from compaction.s2 import session as SS
+    from compaction.s2.native import audit as AU
+    (run / "b1" / "boundary" / "eligibility.json").write_text("{}")
+    monkeypatch.setattr(SS, "boundary_dirs", lambda rd: [run / "b1"])
+    monkeypatch.setattr(R, "grade_sources_v2", lambda bdir, sources, backend=None: json.loads(
+        (bdir / "boundary" / "fork_v2" / "grades.json").read_text()))
+    rows = AU.requirements(run, lambda: None)
+    assert rows[0]["items_by_reply"] == rows[0]["items"] > 0
+    assert rows[0]["lost_by_reply"] == led["by_reply"]["live"]

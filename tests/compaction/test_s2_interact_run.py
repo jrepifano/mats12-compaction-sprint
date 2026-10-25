@@ -1599,3 +1599,18 @@ def test_a_pending_edit_leaves_the_candidate_unresolved(tmp_path, monkeypatch):
             c["edit_sha256"] = SC.canon_sha(edit)
     p.write_text(json.dumps(doc))
     assert not IR.pending_edit(bdir, a)
+
+
+
+def test_the_funnel_counts_candidates_split_by_reply_apart(tmp_path):
+    d = tmp_path / "t-deepseek-a1" / "b1" / "boundary" / "fork_v2"
+    d.mkdir(parents=True)
+    (d / "candidates.json").write_text(json.dumps({"candidates": [
+        {"cand_id": "live.b1-q1", "disposition": "excluded:retention", "extraction": "by_reply",
+         "checks": {"retention": {"reason": "kept"}}},
+        {"cand_id": "live.b1-q2", "disposition": "excluded:retention", "extraction": "whole",
+         "checks": {"retention": {"reason": "kept"}}}]}))
+    out = IR.funnel(tmp_path)
+    assert out["counts"]["v2"]["excluded:retention"] == 2
+    assert out["by_reply"] == {"v2": {"excluded:retention": 1}}
+    assert [r["extraction"] for r in out["excluded"]] == ["by_reply", "whole"]
