@@ -1846,3 +1846,59 @@ def test_by_reply_items_keep_their_stamp_into_later_boundaries_and_ledgers(run, 
     rows = AU.requirements(run, lambda: None)
     assert rows[0]["items_by_reply"] == rows[0]["items"] > 0
     assert rows[0]["lost_by_reply"] == led["by_reply"]["live"]
+
+
+def _causal_bdir(tmp_path, rows, bj=None):
+    import json as _json
+    b = tmp_path / "run" / "b1" / "boundary"
+    b.mkdir(parents=True)
+    (b / "sim_replies.json").write_text(_json.dumps(rows))
+    if bj is not None:
+        (b / "boundary.json").write_text(_json.dumps(bj))
+    return b.parent
+
+
+def test_check_replies_causal_refuses_replies_after_the_capture(tmp_path):
+    import pytest
+
+    from compaction.s2 import interact_reqs as RQ
+    rows = [{"reply_id": "r1", "call_index": 1, "utc": "2026-10-24T10:00:00Z"},
+            {"reply_id": "r2", "call_index": 2, "utc": "2026-10-24T10:05:00Z"}]
+    ok = _causal_bdir(tmp_path / "a", rows, {"sim_calls": 2, "written_utc": "2026-10-24T10:06:00Z"})
+    assert RQ.check_replies_causal(ok) == rows
+    late_idx = _causal_bdir(tmp_path / "b", rows, {"sim_calls": 1})
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.check_replies_causal(late_idx)
+    late_utc = _causal_bdir(tmp_path / "c", rows,
+                            {"sim_calls": 2, "written_utc": "2026-10-24T10:01:00Z"})
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.check_replies_causal(late_utc)
+    no_count = _causal_bdir(tmp_path / "d", rows, {"written_utc": "2026-10-24T10:06:00Z"})
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.check_replies_causal(no_count)
+    live = _causal_bdir(tmp_path / "e", rows)  # mid-capture: no boundary.json yet
+    assert RQ.check_replies_causal(live) == rows
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.check_replies_causal(live, {"sim_calls": 1})
+
+
+def test_split_and_ledger_refuse_a_boundary_with_future_replies(tmp_path):
+    import pytest
+
+    from compaction.s2 import interact_reqs as RQ
+    rows = [{"reply_id": "r9", "call_index": 9, "step": "02_implement", "reply": "x"}]
+    bdir = _causal_bdir(tmp_path, rows, {"sim_calls": 3, "boundary_index": 1})
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.split(bdir, backend=None)
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.loss_ledger(bdir)
+
+
+def test_check_replies_causal_refuses_a_pending_rerecite(tmp_path):
+    import pytest
+
+    from compaction.s2 import interact_reqs as RQ
+    bdir = _causal_bdir(tmp_path, [{"reply_id": "r1", "call_index": 1}])
+    (bdir / "boundary" / "boundary.json.rerecite-pending").write_text("{}")
+    with pytest.raises(RQ.FutureRepliesError):
+        RQ.check_replies_causal(bdir)

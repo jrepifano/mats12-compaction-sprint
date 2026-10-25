@@ -896,3 +896,42 @@ def test_rerecite_refuses_a_missing_version_before_any_write(monkeypatch, tmp_pa
         X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
     after = {p: p.read_bytes() for p in b.rglob("*") if p.is_file()}
     assert before == after and not (rd / "rerecite.json").exists()
+
+
+def test_rerecite_keeps_each_boundarys_own_replies(monkeypatch, tmp_path):
+    rd, b, _rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    own = [{"reply_id": "r1", "call_index": 1, "step": "02_implement", "question": "Q?",
+            "reply": "the answer", "pre_index": 7}]
+    (b / "boundary" / "sim_replies.json").write_text(json.dumps(own))
+    bj = json.loads((b / "boundary" / "boundary.json").read_text())
+    bj["sim_calls"] = 1
+    (b / "boundary" / "boundary.json").write_text(json.dumps(bj))
+    later = own + [{"reply_id": "r2", "call_index": 2, "step": "02_implement",
+                    "question": "Q2?", "reply": "from the future"}]
+    (rd / "sim" / "replies.json").write_text(json.dumps(later))  # the run-wide list
+    X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    got = json.loads((b / "boundary" / "sim_replies.json").read_text())
+    assert [r["reply_id"] for r in got] == ["r1"]  # never a reply after the capture
+    assert all(r["call_index"] <= 1 for r in got)
+
+
+def test_rerecite_prefers_the_backup_replies_and_refuses_late_own_rows(monkeypatch, tmp_path):
+    import pytest
+    rd, b, _rec, auth = _rerecite_fixture(monkeypatch, tmp_path)
+    bj = json.loads((b / "boundary" / "boundary.json").read_text())
+    bj["sim_calls"] = 1
+    (b / "boundary" / "boundary.json").write_text(json.dumps(bj))
+    clean = [{"reply_id": "r1", "call_index": 1, "step": "02_implement", "question": "Q?",
+              "reply": "the answer", "pre_index": 3, "pre_index_mismatch": 9}]
+    dirty = clean + [{"reply_id": "r2", "call_index": 2, "step": "02_implement",
+                      "question": "Q2?", "reply": "later"}]
+    X._backup(b)
+    (b / "native" / "orig" / "sim_replies.json").write_text(json.dumps(clean))
+    (b / "boundary" / "sim_replies.json").write_text(json.dumps(dirty))  # contaminated
+    X.rerecite_run(rd, auth_path=auth, log=lambda s: None)
+    got = json.loads((b / "boundary" / "sim_replies.json").read_text())
+    assert [r["reply_id"] for r in got] == ["r1"]  # the backup, not the contaminated file
+    assert "pre_index_mismatch" not in got[0] or got[0]["pre_index_mismatch"] != 9
+    (b / "native" / "orig" / "sim_replies.json").write_text(json.dumps(dirty))
+    with pytest.raises(RuntimeError):  # its own rows run past sim_calls
+        X.rerecite_run(rd, auth_path=auth, log=lambda s: None)

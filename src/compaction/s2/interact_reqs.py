@@ -337,8 +337,46 @@ def _group_duplicates(items: list[dict], links: dict[str, str]) -> None:
             it["duplicate_of"] = None if it is canon else canon["req_id"]
 
 
+class FutureRepliesError(ValueError):
+    """A boundary's sim_replies.json holds a reply from after its capture."""
+
+
+def check_replies_causal(bdir: Path, fields: dict | None = None) -> list[dict]:
+    """Refuse a boundary whose sim_replies.json holds a reply the agent could not have had at
+    capture: a call_index beyond boundary.json `sim_calls` (the simulator's count at capture),
+    or a reply `utc` after the boundary's `written_utc` when both are recorded. Raises
+    FutureRepliesError; returns the rows when they are causal. (24 Oct: a re-derivation wrote
+    the run-wide reply list into native boundaries and the split read replies from the future.)
+    Before boundary.json exists (the live capture path), `fields["sim_calls"]` is used when
+    given; otherwise the rows are the replies received so far and are causal by construction.
+    """
+    b = Path(bdir) / "boundary"
+    if (b / "boundary.json.rerecite-pending").exists():
+        raise FutureRepliesError(f"{bdir}: a re-recitation is being published; not a "
+                                 "consistent boundary")
+    rows = _read(b / "sim_replies.json")
+    if not (b / "boundary.json").exists():
+        f = dict(fields or {})
+        if f.get("sim_calls") is None:
+            return rows  # mid-capture: nothing after "now" can be in the file yet
+    else:
+        f = _read(b / "boundary.json")
+    n = f.get("sim_calls")
+    if n is None:
+        raise FutureRepliesError(f"{bdir}: boundary.json has no sim_calls; can't check replies")
+    late = [r.get("reply_id") for r in rows if int(r.get("call_index") or 0) > int(n)]
+    w = f.get("written_utc")
+    if w:
+        late += [r.get("reply_id") for r in rows if r.get("utc") and r["utc"] > w]
+    if late:
+        raise FutureRepliesError(f"{bdir}: sim_replies.json holds replies after the capture "
+                                 f"(sim_calls={n}): {sorted(set(late))}")
+    return rows
+
+
 def split(bdir: Path, *, backend, fields: dict | None = None, task: str | None = None) -> dict:
     """Write and return `boundary/requirements.json` (module docstring)."""
+    check_replies_causal(bdir, fields)
     b = Path(bdir) / "boundary"
     bf = boundary_fields(bdir, fields)
     k, tail, prev = bf["boundary_index"], bf["tail_start_index"], bf["previous_sim_calls"]
@@ -434,6 +472,7 @@ def eligibility(bdir: Path, *, min_fresh: int = MIN_FRESH, fields: dict | None =
     n_inherited, n_ungrounded} plus the boundary index and min_fresh. Counts are over valid,
     canonical (non-duplicate) items: n_in_tail and n_ungrounded among this segment's, and
     n_inherited the items whose source reply came before the previous boundary."""
+    check_replies_causal(bdir, fields)
     rq = _read(Path(bdir) / "boundary" / "requirements.json")
     prev = rq.get("previous_sim_calls")
     canon = [it for it in rq["items"] if it.get("valid") and it.get("duplicate_of") is None]
@@ -1146,6 +1185,7 @@ def gradable_v2(rq: dict) -> list[dict]:
 def grade_sources_v2(bdir: Path, sources: Iterable[str] = GRADE_SOURCES, *, backend=None,
                      grader: Grader | None = None) -> dict:
     """Grade every source on `gradable_v2` (fork_v2/grades.json, grades_detail.json)."""
+    check_replies_causal(bdir)
     b = Path(bdir) / "boundary"
     rq = _read(b / "requirements.json")
     items = gradable_v2(rq)
@@ -1171,6 +1211,7 @@ def loss_ledger(bdir: Path) -> dict:
     misstated here, marked NEW (the previous live summary still carried it, or it was disclosed
     since: verbatim in this boundary's input) or INHERITED (the previous boundary's live
     summary already lacked it), with counts."""
+    check_replies_causal(bdir)
     k = boundary_index(bdir)
     grades = _read(v2_dir(bdir) / "grades.json")
     replies = {r["reply_id"]: r for r in _read(Path(bdir) / "boundary" / "sim_replies.json")}
@@ -1971,6 +2012,7 @@ def screen_v2(bdir: Path, *, backend, grep_runner: GrepRunner | None = None,
     earlier boundaries and against this boundary's accepted candidates (r1 #7). An edit made
     on a card (fork_v2/edits.json) replaces the candidate's repair text or act and reruns
     every gate on it (r1 #2)."""
+    check_replies_causal(bdir)
     if full and authority_runner is None:
         raise ValueError("a full screen needs authority_runner")
     b = Path(bdir) / "boundary"

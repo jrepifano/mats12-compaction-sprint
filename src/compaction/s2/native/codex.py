@@ -2005,8 +2005,17 @@ def rerecite_run(run_dir: Path, *, repeats: int = 3, auth_path: Path | None = No
             comp = json.loads((b / "boundary" / "compaction.json").read_text())
             comp.update(summary=nb.summary, post_messages=nb.post_messages,
                         summary_index=nb.summary_index, kept_indices=nb.kept_indices)
-            replies = json.loads((rd / "sim" / "replies.json").read_text()) \
-                if (rd / "sim" / "replies.json").exists() else []
+            # this boundary's own replies as captured (never the run-wide list, which holds
+            # replies from after the capture; 24 Oct): the backup if one exists, re-indexed
+            own = b / "native" / "orig" / "sim_replies.json"
+            own = own if own.exists() else b / "boundary" / "sim_replies.json"
+            replies = [{k: v for k, v in r.items() if k not in ("pre_index",
+                                                                "pre_index_mismatch")}
+                       for r in json.loads(own.read_text())]
+            n_cap = bj.get("sim_calls")
+            if n_cap is not None and any(int(r.get("call_index") or 0) > int(n_cap)
+                                         for r in replies):
+                raise RuntimeError(f"{b}: its own sim_replies hold replies after the capture")
             at = compaction_lines(lines)[want - 1]
             agree = [round(item_overlap(texts[i], texts[j]), 3)
                      for i in range(len(texts)) for j in range(i + 1, len(texts))]
