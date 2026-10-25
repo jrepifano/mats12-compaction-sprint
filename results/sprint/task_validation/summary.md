@@ -1,6 +1,6 @@
 # Task image validation
 
-Generated 2026-10-25T00:40:39Z by `scripts/validate_task_images.py summary` (scanner c06cd3d118db-s8i8t5). Brief: `logs/s2/briefs/task-image-validation.md`.
+Generated 2026-10-25T02:39:49Z by `scripts/validate_task_images.py summary` (scanner c06cd3d118db-s8i8t5). Brief: `logs/s2/briefs/task-image-validation.md`.
 
 `verdict` = what an agent in the container can reach: LEAK if the probe or a code-confirmed red-team find says so, CLEAN only if the probe is CLEAN and the red-team ran and found nothing, else ERROR. `layers` = solution text in the image's layer tarballs, git objects inside layers decoded. `hidden tests` = the verifier's added test lines found in the container.
 
@@ -9,8 +9,8 @@ Generated 2026-10-25T00:40:39Z by `scripts/validate_task_images.py summary` (sca
 - **deepswe**: verdict CLEAN 40; probe CLEAN 40; layers CLEAN 40; redteam CLEAN 40; hidden_tests CLEAN 40
 - **pro**: verdict LEAK 25; probe LEAK 25; layers None 25; redteam None 25; hidden_tests CLEAN 4, ERROR 1, LEAK 20
 - **pro_rebuilt**: verdict CLEAN 24; probe CLEAN 24; layers CLEAN 24; redteam CLEAN 24; hidden_tests CLEAN 24
-- **rf**: verdict ERROR 22, LEAK 3; probe CLEAN 23, LEAK 2; layers ERROR 9, LEAK 16; redteam None 25; hidden_tests CLEAN 25
-- **rf_rebuilt**: verdict ERROR 16; probe None 16; layers None 16; redteam None 16; hidden_tests None 16
+- **rf**: verdict ERROR 22, LEAK 3; probe CLEAN 23, LEAK 2; layers LEAK 25; redteam None 25; hidden_tests CLEAN 25
+- **rf_rebuilt**: verdict CLEAN 15, ERROR 1; probe CLEAN 15, None 1; layers CLEAN 15, None 1; redteam CLEAN 15, None 1; hidden_tests CLEAN 15, None 1
 
 ## Per image
 
@@ -106,14 +106,14 @@ Generated 2026-10-25T00:40:39Z by `scripts/validate_task_images.py summary` (sca
 | pro_rebuilt/instance_qutebrowser__qutebrowser-deeb15d6f009b3ca0c3bd503a7cef07462bd16b4-v363c8a7e5ccdf6968fc7ab84a2053ac78036691d | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 5 single-needle hit(s) for review |
 | pro_rebuilt/instance_qutebrowser__qutebrowser-fea33d607fde83cf505b228238cf365936437a63-v9f8e9d96c85c85a605e382f1510bd08563afc566 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
 | rf/task-69391d8d1ce51c407be1e531 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 2 layer blobs/sha256/4cf1b353d11 file(s) hold 2+ distinct solution needles, e.g. workspace/pkg/writers/buffer_writer/bufferwriter.go (['I6', 'I8', 'S4']); red-team not run; 6 single-needle hit(s) for review |
-| rf/task-69391d8d1ce51c407be1e533 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 14 layer blobs/sha256/dac19ab144e git object(s) hold 2+ distinct solution needles, e.g. code/.git/objects:0911a748d1185047d077d6a75d196085517b7710 (['S2', 'S5']); red-team not run |
+| rf/task-69391d8d1ce51c407be1e533 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 14 layer blobs/sha256/dac19ab144e git object(s) hold 2+ distinct solution needles, e.g. code/.git/objects:0911a748d1185047d077d6a75d196085517b7710 (['S2', 'S5']); red-team not run; entrypoint probe not run on this image id |
 | rf/task-694b4b99829f00e24fd11885 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 2 layer blobs/sha256/4cf1b353d11 file(s) hold 2+ distinct solution needles, e.g. workspace/pkg/detectors/github/v1/github_old.go (['I1', 'I4', 'S1', 'S2', 'S4', 'S5', 'S7']); red-team not run; 16 single-needle hit(s) for review |
 | rf/task-694b4b99829f00e24fd11889 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 9 layer blobs/sha256/10d94a2c19c git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:204fd080833a6fbfe556aba5ec7924931ce93d5e (['S2', 'S5']); red-team not run; 6 single-needle hit(s) for review |
-| rf/task-694b4b99829f00e24fd11891 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 4 layer blobs/sha256/4561c09f07d file(s) hold 2+ distinct solution needles, e.g. calypso/client/my-sites/plugins/categories/index.tsx (['S3', 'S8']); red-team not run; 68 single-needle hit(s) for review |
+| rf/task-694b4b99829f00e24fd11891 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 4 layer blobs/sha256/4561c09f07d file(s) hold 2+ distinct solution needles, e.g. calypso/client/my-sites/plugins/categories/index.tsx (['S3', 'S8']); red-team not run; entrypoint probe not run on this image id; 68 single-needle hit(s) for review |
 | rf/task-694b4b99829f00e24fd118a1 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 3 layer blobs/sha256/450b20c8112 file(s) hold 2+ distinct solution needles, e.g. app/scapy/base_classes.py (['S1', 'S6']); red-team not run |
 | rf/task-696719205599a51110d4b40c | ERROR | CLEAN | LEAK | None (None) | CLEAN | 2 layer blobs/sha256/79dae46873f file(s) hold 2+ distinct solution needles, e.g. app/main.go (['S1', 'S4', 'S7']); red-team not run; 6 single-needle hit(s) for review |
-| rf/task-696719205599a51110d4b428 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 13 layer blobs/sha256/4561c09f07d git object(s) hold 2+ distinct solution needles, e.g. calypso/.git/objects:08ceeef314ef743572753ed78fdf489fff52f4f2 (['S1', 'S2']); red-team not run; 41 single-needle hit(s) for review |
-| rf/task-696719205599a51110d4b434 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 24 layer blobs/sha256/ae2d4856aab git object(s) hold 2+ distinct solution needles, e.g. workspace/.git/objects:093b14d8ac627cdffe98926ba5e1b39e34824584 (['S2', 'S4']); red-team not run; 40 single-needle hit(s) for review |
+| rf/task-696719205599a51110d4b428 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 13 layer blobs/sha256/4561c09f07d git object(s) hold 2+ distinct solution needles, e.g. calypso/.git/objects:08ceeef314ef743572753ed78fdf489fff52f4f2 (['S1', 'S2']); red-team not run; entrypoint probe not run on this image id; 41 single-needle hit(s) for review |
+| rf/task-696719205599a51110d4b434 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 24 layer blobs/sha256/ae2d4856aab git object(s) hold 2+ distinct solution needles, e.g. workspace/.git/objects:093b14d8ac627cdffe98926ba5e1b39e34824584 (['S2', 'S4']); red-team not run; entrypoint probe not run on this image id; 40 single-needle hit(s) for review |
 | rf/task-696719205599a51110d4b436 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 21 layer blobs/sha256/7545af7e719 git object(s) hold 2+ distinct solution needles, e.g. src/.git/objects:0c378a8bbb40c6280a50766664c84d0551ff375e (['I1', 'S1', 'S6']); red-team not run |
 | rf/task-696719205599a51110d4b440 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 13 layer blobs/sha256/c61835cfa2d git object(s) hold 2+ distinct solution needles, e.g. go/src/go.k6.io/k6/.git/objects:022d8c0d79ef552fa40abf3cb927ec8c04ad1eae (['I1', 'S1', 'S8']); red-team not run; 2 single-needle hit(s) for review |
 | rf/task-696719205599a51110d4b441 | LEAK | LEAK | LEAK | None (None) | CLEAN | 3 file(s) hold 2+ distinct solution needles, e.g. /root/.cache/go-build/60/604d17fdb4c709a8aef08730ec54adb31fc575de1a01a3e423c8d0648d67eef9-d (['I4', 'I5', 'I6', 'I7']); 3 archive(s) hold 2+ distinct solution needles, e.g. /root/.cache/go-build/60/604d17fdb4c709a8aef08730ec54adb31fc575de1a01a3e423c8d0648d67eef9-d!_go_.o (['I4', 'I6', 'I7']); 3 layer blobs/sha256/c61835cfa2d file(s) hold 2+ distinc |
@@ -121,31 +121,31 @@ Generated 2026-10-25T00:40:39Z by `scripts/validate_task_images.py summary` (sca
 | rf/task-696719205599a51110d4b447 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 34 layer blobs/sha256/b4286bcf0ae git object(s) hold 2+ distinct solution needles, e.g. workspace/.git/objects:08eb52017eaa9ae4fb03939e4549c60c785204ff (['I1', 'S1', 'S5', 'S6', 'S8']); red-team not run |
 | rf/task-696719205599a51110d4b451 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 129 layer blobs/sha256/5091fffe4e3 git object(s) hold 2+ distinct solution needles, e.g. workspace/.git/objects:05476c21443b1a17c623e2a74aa8bde26d3afbfe (['I2', 'I5', 'I8']); red-team not run |
 | rf/task-696719205599a51110d4b455 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 17 layer blobs/sha256/8afa4eee2cc git object(s) hold 2+ distinct solution needles, e.g. grafana/.git/objects:0ccabfa9b28c7e3a993a6e19f69e246e1d865070 (['I7', 'S1', 'S7']); red-team not run; 132 single-needle hit(s) for review |
-| rf/task-696719205599a51110d4b458 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/8afa4eee2ccd3e1ff (git objects grafana/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; red-team not run; 132 single-needle hit(s) for review |
-| rf/task-696719205599a51110d4b476 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/55186128ddbfb8c6b (git objects app/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; red-team not run |
-| rf/task-69b7c2a04b6f8ff9ed98812f | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/106444c5a19ca2f62 (git objects app/.git/objects): needles ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; red-team not run; 8 single-needle hit(s) for review |
-| rf/task-69b7c2a04b6f8ff9ed988137 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/8a72aa9b7b438dd8f (raw): needles ['I2', 'I3', 'S4']; red-team not run; 72 single-needle hit(s) for review |
-| rf/task-69b7c2a04b6f8ff9ed98813b | LEAK | CLEAN | ERROR | None (None) | CLEAN | manual: prebuilt /opt/netdata-build (2026-02-19) was compiled from a tree that already has this task's refactor: its build.ninja/.ninja_deps/.ninja_log reference all 10 files the gold patch creates (src/database/rrd-algorithm.c/.h, rrdhost-collection.c/.h, rrdhost-labels.c/.h, rrdhost-slots.c/.h, rrdset-type.c/.h; 5 refs per .c), none of which exist in the source tree; object files and /usr/sbin/n |
-| rf/task-69b7c2a04b6f8ff9ed98813d | LEAK | LEAK | ERROR | None (None) | CLEAN | 5 file(s) hold 2+ distinct solution needles, e.g. /opt/netdata-build/CMakeFiles/netdata.dir/src/database/rrdhost-system-info.c.o (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1']); layer blobs/sha256/27bca2a21a380d3f7 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; 9 single-needle hit(s) for review |
-| rf/task-69d196f015a150488265afb7 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/55186128ddbfb8c6b (git objects app/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; red-team not run |
-| rf/task-69d196f015a150488265afb9 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/8afa4eee2ccd3e1ff (raw): needles ['S1', 'S5']; red-team not run; 134 single-needle hit(s) for review |
-| rf/task-69d196f015a150488265afc1 | ERROR | CLEAN | ERROR | None (None) | CLEAN | layer blobs/sha256/d6b90f9be3acdf7e6 (git objects app/source/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']; red-team not run; 3 single-needle hit(s) for review |
-| rf_rebuilt/task-69391d8d1ce51c407be1e531 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-69391d8d1ce51c407be1e533 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-694b4b99829f00e24fd11885 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-694b4b99829f00e24fd11889 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-694b4b99829f00e24fd11891 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-694b4b99829f00e24fd118a1 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b40c | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b428 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b436 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b440 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b441 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b446 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b447 | ERROR | None | None | None (None) | None | not run |
+| rf/task-696719205599a51110d4b458 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 9 layer blobs/sha256/8afa4eee2cc git object(s) hold 2+ distinct solution needles, e.g. grafana/.git/objects:141e9e5ad822b7f02ff0a9be8593f113d7d94074 (['I1', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S6']); red-team not run; 132 single-needle hit(s) for review |
+| rf/task-696719205599a51110d4b476 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 5 layer blobs/sha256/55186128ddb git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:469a199ee34da0258cd97f6d406142f1bacaa58f (['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']); red-team not run |
+| rf/task-69b7c2a04b6f8ff9ed98812f | ERROR | CLEAN | LEAK | None (None) | CLEAN | 8 layer blobs/sha256/106444c5a19 git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:10ff59349bb97362d4260d19c7c406a8a1f40f9f (['S4', 'S8']); red-team not run; entrypoint probe not run on this image id; 8 single-needle hit(s) for review |
+| rf/task-69b7c2a04b6f8ff9ed988137 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 1 layer blobs/sha256/8a72aa9b7b4 git object(s) hold 2+ distinct solution needles, e.g. app/suricata/.git/objects:fe98764f4e7b677c4f11f7df0b9ef3f666b26b64 (['I1', 'I2', 'I3']); red-team not run; entrypoint probe not run on this image id; 72 single-needle hit(s) for review |
+| rf/task-69b7c2a04b6f8ff9ed98813b | LEAK | CLEAN | LEAK | None (None) | CLEAN | manual: prebuilt /opt/netdata-build (2026-02-19) was compiled from a tree that already has this task's refactor: its build.ninja/.ninja_deps/.ninja_log reference all 10 files the gold patch creates (src/database/rrd-algorithm.c/.h, rrdhost-collection.c/.h, rrdhost-labels.c/.h, rrdhost-slots.c/.h, rrdset-type.c/.h; 5 refs per .c), none of which exist in the source tree; object files and /usr/sbin/n |
+| rf/task-69b7c2a04b6f8ff9ed98813d | LEAK | LEAK | LEAK | None (None) | CLEAN | 5 file(s) hold 2+ distinct solution needles, e.g. /opt/netdata-build/CMakeFiles/netdata.dir/src/database/rrdhost-system-info.c.o (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1']); 5 layer blobs/sha256/27bca2a21a3 file(s) hold 2+ distinct solution needles, e.g. opt/netdata.git/src/daemon/analytics.c (['I6', 'I7', 'S3']); 9 single-needle hit(s) for review |
+| rf/task-69d196f015a150488265afb7 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 32 layer blobs/sha256/55186128ddb git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:01782f11f639c82b6272685cd94e2e80802b203b (['S1', 'S8']); red-team not run |
+| rf/task-69d196f015a150488265afb9 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 1 layer blobs/sha256/8afa4eee2cc file(s) hold 2+ distinct solution needles, e.g. grafana/public/app/features/apiserver/client.ts (['S1', 'S5']); red-team not run; 134 single-needle hit(s) for review |
+| rf/task-69d196f015a150488265afc1 | ERROR | CLEAN | LEAK | None (None) | CLEAN | 327 layer blobs/sha256/d6b90f9be3a git object(s) hold 2+ distinct solution needles, e.g. app/source/.git/objects:00ac0223a3c6adf390b989e907f9c78f3bb67e53 (['I1', 'I2', 'I4', 'I5', 'S5']); red-team not run; entrypoint probe not run on this image id; 3 single-needle hit(s) for review |
+| rf_rebuilt/task-69391d8d1ce51c407be1e531 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 6 single-needle hit(s) for review |
+| rf_rebuilt/task-69391d8d1ce51c407be1e533 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
+| rf_rebuilt/task-694b4b99829f00e24fd11885 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 24 single-needle hit(s) for review |
+| rf_rebuilt/task-694b4b99829f00e24fd11889 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 6 single-needle hit(s) for review |
+| rf_rebuilt/task-694b4b99829f00e24fd11891 | CLEAN | CLEAN | CLEAN | CLEAN (11) | CLEAN | 68 single-needle hit(s) for review |
+| rf_rebuilt/task-694b4b99829f00e24fd118a1 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
+| rf_rebuilt/task-696719205599a51110d4b40c | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 6 single-needle hit(s) for review |
+| rf_rebuilt/task-696719205599a51110d4b428 | CLEAN | CLEAN | CLEAN | CLEAN (11) | CLEAN | 41 single-needle hit(s) for review |
+| rf_rebuilt/task-696719205599a51110d4b436 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
+| rf_rebuilt/task-696719205599a51110d4b440 | CLEAN | CLEAN | CLEAN | CLEAN (12) | CLEAN | 2 single-needle hit(s) for review |
+| rf_rebuilt/task-696719205599a51110d4b441 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN | 5 single-needle hit(s) for review |
+| rf_rebuilt/task-696719205599a51110d4b446 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
+| rf_rebuilt/task-696719205599a51110d4b447 | CLEAN | CLEAN | CLEAN | CLEAN (11) | CLEAN |  |
 | rf_rebuilt/task-696719205599a51110d4b451 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-696719205599a51110d4b476 | ERROR | None | None | None (None) | None | not run |
-| rf_rebuilt/task-69d196f015a150488265afb7 | ERROR | None | None | None (None) | None | not run |
+| rf_rebuilt/task-696719205599a51110d4b476 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
+| rf_rebuilt/task-69d196f015a150488265afb7 | CLEAN | CLEAN | CLEAN | CLEAN (10) | CLEAN |  |
 
 ## What CLEAN means, and its limits
 
@@ -321,3 +321,11 @@ A location holding one needle is not a verdict (a generic line or a stock name c
   - S1 in 4 file(s), e.g. `/opt/netdata-build/.ninja_deps`
 - **rf/task-69d196f015a150488265afb9**: 134 (S 0, I 2, T 0)
 - **rf/task-69d196f015a150488265afc1**: 3 (S 0, I 0, T 0)
+- **rf_rebuilt/task-69391d8d1ce51c407be1e531**: 6 (S 0, I 0, T 0)
+- **rf_rebuilt/task-694b4b99829f00e24fd11885**: 24 (S 0, I 18, T 0)
+- **rf_rebuilt/task-694b4b99829f00e24fd11889**: 6 (S 0, I 0, T 0)
+- **rf_rebuilt/task-694b4b99829f00e24fd11891**: 68 (S 0, I 28, T 0)
+- **rf_rebuilt/task-696719205599a51110d4b40c**: 6 (S 0, I 0, T 0)
+- **rf_rebuilt/task-696719205599a51110d4b428**: 41 (S 0, I 0, T 0)
+- **rf_rebuilt/task-696719205599a51110d4b440**: 2 (S 0, I 2, T 0)
+- **rf_rebuilt/task-696719205599a51110d4b441**: 5 (S 0, I 5, T 0)

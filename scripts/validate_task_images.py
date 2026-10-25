@@ -1638,6 +1638,66 @@ def reassess_one(task: dict, log=print) -> dict:
     return rec
 
 
+def entryprobe_one(task: dict, log=print) -> dict:
+    """For an image whose ENTRYPOINT runs setup: start the container the way an agent gets it
+    (the image's own entrypoint, command `sleep`, no network), wait for setup to finish (the
+    wrapper's /tmp/emx_entrypoint_rc marker, or 20 min), then run the same probe inside it, so
+    files the setup writes are scanned too. Recorded as entryprobe.json; must be CLEAN."""
+    d, _ = out_paths(task)
+    rec = load_rec(task) or {}
+    iid = rec.get("image_id")
+    ep = (rec.get("image_meta") or {}).get("entrypoint")
+    res: dict = {"image_id": iid, "entrypoint": ep, "started": now()}
+    if not ep:
+        res.update(verdict="SKIP", finished=now())
+        write_rec(sub_path(task, "entryprobe"), res)
+        return res
+    name = container_name("ep", task)
+    out, rc, left = "", None, None
+    with _SLOT:
+        wait_for_rig(log)
+        try:
+            a = ["run", "--rm", "-d", "--name", name, "--label", LABEL, "--network", "none",
+                 "--memory", MEM_LIMIT, "--cpus", CPU_LIMIT, "--user", "0",
+                 "--platform", "linux/amd64", iid, "sleep", str(PROBE_TIMEOUT_S + 1800)]
+            r = subprocess.run(docker(*a), capture_output=True, text=True, timeout=300,
+                               check=False)
+            if r.returncode != 0:
+                raise RuntimeError(f"start: {r.stderr[-300:]}")
+            t0 = time.monotonic()
+            marker = ""
+            while time.monotonic() - t0 < 1260:
+                q = docker_q("exec", name, "cat", "/tmp/emx_entrypoint_rc")
+                if q.returncode == 0 and q.stdout.strip():
+                    marker = q.stdout.strip()
+                    break
+                time.sleep(15)
+            res["setup_marker"] = marker or None
+            res["setup_s"] = round(time.monotonic() - t0, 1)
+            r = subprocess.run(docker("exec", "-i", name, "timeout", "-k", "10",
+                                      str(PROBE_TIMEOUT_S), "bash", "-s"),
+                               input=build_probe(task), capture_output=True, text=True,
+                               errors="replace", timeout=PROBE_TIMEOUT_S + 120, check=False)
+            out, rc = r.stdout, r.returncode
+        except Exception as e:  # noqa: BLE001
+            res.setdefault("errors", []).append(f"{type(e).__name__}: {e}")
+        finally:
+            left = rm_container(name)
+    (d / "entryprobe.out").write_text(out)
+    a = finalize_probe(out, task, {**rec, "rc": rc, "container_left": left})
+    if not res.get("setup_marker"):
+        a["errors"].append("setup completion marker not seen")
+        if a["verdict"] == "CLEAN":
+            a["verdict"] = "ERROR"
+    a["errors"] = res.pop("errors", []) + a["errors"]
+    if a["errors"] and a["verdict"] == "CLEAN":
+        a["verdict"] = "ERROR"
+    res.update({k: a[k] for k in ("verdict", "reasons", "errors", "notes", "needles",
+                                  "review_hits", "n_weak_hits")}, rc=rc, finished=now())
+    write_rec(sub_path(task, "entryprobe"), res)
+    return res
+
+
 # ------------------------------------------------------------------------------------------
 # Layer 2: image layer tarballs (run on the rig)
 # ------------------------------------------------------------------------------------------
@@ -2400,8 +2460,9 @@ def unreviewed(key: str, rec: dict, reviews: list[dict]) -> list[dict]:
     for w in rec.get("review_hits", []):
         text = (w["needle"] if w["needle"] in ("GAP", "LOWNEEDLES", "STRAYREF")
                 else needles.get(w["needle"]))
-        if not any(r.get("text") == text and (r.get("where") == "*" or r.get("where", "\0")
-                                              in f"{w['what']} {w['location']}") for r in mine):
+        here = f"{w['what']} {w['location']} {w.get('path', '')}"
+        if not any(r.get("text") == text and (r.get("where") == "*" or r.get("where", "\0") in here)
+                   for r in mine):
             out.append(w)
     return out
 
@@ -2482,6 +2543,17 @@ def summarize() -> dict:
                 elif np_rec.get("verdict") == "REVIEW" and not cleared:
                     v, why = "ERROR", [(f"{np_rec.get('n_refs')} reference(s) to gold-only "
                                         "paths await review")]
+            ep_rec = load_sub(t, "entryprobe") or {}
+            if (rec.get("image_meta") or {}).get("entrypoint") and v != "LEAK":
+                if not ep_rec or ep_rec.get("image_id") != rec.get("image_id"):
+                    v, why = "ERROR", why + ["entrypoint probe not run on this image id"]
+                elif ep_rec.get("verdict") == "LEAK":
+                    v, why = "LEAK", [f"after setup: {r}" for r in ep_rec.get("reasons", [])]
+                elif ep_rec.get("verdict") != "CLEAN":
+                    v, why = "ERROR", why + [f"entrypoint probe {ep_rec.get('verdict')}"]
+                elif unreviewed(key, {**rec, "review_hits": ep_rec.get("review_hits", [])},
+                                reviews):
+                    v, why = "ERROR", why + ["entrypoint probe review items await review"]
             manual = manual_leaks(key, rec.get("image_id"))
             if manual:
                 v, why = "LEAK", [f"manual: {m['reason']}" for m in manual]
@@ -2505,6 +2577,7 @@ def summarize() -> dict:
                 "redteam_calls": rt.get("tool_calls"), "redteam_errors": rt.get("errors", []),
                 "redteam_model": rt.get("model"),
                 "newpaths": np_rec.get("verdict"), "newpaths_refs": np_rec.get("n_refs"),
+                "entryprobe": ep_rec.get("verdict"),
                 "notes": rec.get("notes", []),
                 "n_weak_hits": rec.get("n_weak_hits", 0), "weak_hits": rec.get("weak_hits", []),
                 "n_review_hits": len(rec.get("review_hits", [])),
@@ -2632,7 +2705,7 @@ def _fanout(fn, key: str, tasks, jobs, skip_done=None) -> None:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for c in ("list", "probe", "reassess", "layers", "redteam", "newpaths"):
+    for c in ("list", "probe", "reassess", "layers", "redteam", "newpaths", "entryprobe"):
         p = sub.add_parser(c)
         p.add_argument("--family", required=True, choices=FAMILIES)
         p.add_argument("--tasks")
@@ -2692,6 +2765,8 @@ def main(argv: list[str] | None = None) -> int:
         _fanout(layers_one, "layers", tasks, 1, done("layers"))
     elif a.cmd == "newpaths":
         _fanout(newpaths_one, "newpaths", tasks, jobs)
+    elif a.cmd == "entryprobe":
+        _fanout(entryprobe_one, "entryprobe", tasks, jobs)
     elif a.cmd == "redteam":
         from compaction import claude_headless as CH
         CH.check_auth()

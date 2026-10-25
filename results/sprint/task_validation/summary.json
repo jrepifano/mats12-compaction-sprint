@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-25T00:40:39Z",
+ "generated": "2026-10-25T02:39:49Z",
  "scanner": "c06cd3d118db-s8i8t5",
  "schema": {
   "key": "<family>/<task>",
@@ -83,8 +83,7 @@
     "LEAK": 2
    },
    "layers": {
-    "LEAK": 16,
-    "ERROR": 9
+    "LEAK": 25
    },
    "newpaths": {
     "CLEAN": 6,
@@ -100,22 +99,29 @@
   },
   "rf_rebuilt": {
    "verdict": {
-    "ERROR": 16
+    "CLEAN": 15,
+    "ERROR": 1
    },
    "probe": {
-    "None": 16
+    "CLEAN": 15,
+    "None": 1
    },
    "layers": {
-    "None": 16
+    "CLEAN": 15,
+    "None": 1
    },
    "newpaths": {
-    "None": 16
+    "CLEAN": 3,
+    "SKIP": 12,
+    "None": 1
    },
    "redteam": {
-    "None": 16
+    "CLEAN": 15,
+    "None": 1
    },
    "hidden_tests": {
-    "None": 16
+    "CLEAN": 15,
+    "None": 1
    }
   }
  },
@@ -147,6 +153,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "65 undecodable archive(s) in toolchain or dependency test fixtures",
     "8242 nested fixture member(s) not decoded (raw bytes searched), e.g. /root/go/pkg/mod/cache/download/github.com/docker/cli/@v/v29.2.1+incompatible.zip!github.com/docker/cli@v29.2.1+incompatible/e2e/context/testdata/test-dockerconfig-tls.tar (tar: ReadError)"
@@ -190,6 +197,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -233,6 +241,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -276,6 +285,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "22 undecodable archive(s) in toolchain or dependency test fixtures",
     "3 nested fixture member(s) not decoded (raw bytes searched), e.g. /root/.cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/flate2-1.1.9.crate!flate2-1.1.9/tests/corrupt-gz-file.bin! (gzip: error)"
@@ -319,6 +329,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -363,6 +374,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -461,6 +473,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "2 archive(s) not decoded and awaiting review, e.g. /root/.local/share/pnpm/store/v10/files/3d/3d7e1debb833dd6ffcb849c1e7ff6e34d1cb57324f629b645c100a8a5c4a14986825561faeef1c561275aa727735f1539bbe88f8d8c211f80da2c73f3ee553 (tar: ReadError)",
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -522,6 +535,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -565,6 +579,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -618,6 +633,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "2 archive(s) not decoded and awaiting review, e.g. /root/.local/share/pnpm/store/v10/files/3d/3d7e1debb833dd6ffcb849c1e7ff6e34d1cb57324f629b645c100a8a5c4a14986825561faeef1c561275aa727735f1539bbe88f8d8c211f80da2c73f3ee553 (tar: ReadError)",
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -679,6 +695,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -722,6 +739,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -829,6 +847,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -882,6 +901,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -925,6 +945,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -1194,6 +1215,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "38 archive(s) not decoded and awaiting review, e.g. /app/internal/chart/v3/loader/testdata/frobnitz-1.2.3.tgz!frobnitz/charts/mariner-4.3.2.tgz!!mariner/charts/albatross-0.1.0.tgz! (nesting too deep)",
     "28 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -1543,6 +1565,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2316,6 +2339,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2359,6 +2383,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2402,6 +2427,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2445,6 +2471,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2488,6 +2515,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2531,6 +2559,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2574,6 +2603,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2617,6 +2647,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2660,6 +2691,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2703,6 +2735,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2746,6 +2779,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2789,6 +2823,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "28 undecodable archive(s) in toolchain or dependency test fixtures",
     "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /root/go/pkg/mod/cache/download/github.com/klauspost/compress/@v/v1.17.11.zip!github.com/klauspost/compress@v1.17.11/gzip/testdata/issue6550.gz! (gzip: error)"
@@ -2832,6 +2867,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2875,6 +2911,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2918,6 +2955,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -2961,6 +2999,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -3004,6 +3043,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -3047,6 +3087,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "2 archive(s) not decoded and awaiting review, e.g. /root/.npm/_cacache/content-v2/sha512/ba/37/aa6dc780060c0c6711099e4d870d8d83967519fbda0471bd4acd355f6078a8d1413a746ef59fad1df03d88e2a36f95e5abad7a668e9b7bbd9785d4b9cc65!package/headers.js (tar: ReadError)",
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -3108,6 +3149,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "/app/.git/modules/tests/toml-test: 21 commit(s) outside HEAD, 0 unreachable commit(s)",
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -3152,6 +3194,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -5920,6 +5963,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -5963,6 +6007,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "/app/.git/modules/crates/wasmi/benches/rust: 38 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git/modules/crates/wast/tests/spec: 35 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -6009,6 +6054,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "/app/.git/modules/site/themes/hello-friend: 38 commit(s) outside HEAD, 0 unreachable commit(s)",
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -6062,6 +6108,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 16238 commit(s) outside HEAD, 0 unreachable commit(s)",
     "2 archive(s) not decoded and awaiting review, e.g. /test/units/modules/network/f5/fixtures/MyApp-0.1.0-0001.noarch.rpm (no decoder for rpm)"
@@ -9157,6 +9204,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 17030 commit(s) outside HEAD, 0 unreachable commit(s)",
     "2 archive(s) not decoded and awaiting review, e.g. /test/units/modules/network/f5/fixtures/MyApp-0.1.0-0001.noarch.rpm (no decoder for rpm)"
@@ -10127,6 +10175,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 17338 commit(s) outside HEAD, 0 unreachable commit(s)",
     "2 archive(s) not decoded and awaiting review, e.g. /test/units/modules/network/f5/fixtures/MyApp-0.1.0-0001.noarch.rpm (no decoder for rpm)"
@@ -12983,6 +13032,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 1782 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -13901,6 +13951,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 21134 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -16893,6 +16944,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "needles from lockfile hunks not counted as evidence: ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S8']",
     "/app/.git: 1527 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -17152,6 +17204,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "needles from lockfile hunks not counted as evidence: ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'S3', 'S4', 'S8']",
     "/app/.git: 3041 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -19073,6 +19126,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 2247 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -21937,6 +21991,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "needles from lockfile hunks not counted as evidence: ['I1', 'I3', 'I8', 'S5']",
     "/app/.git: 553 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -23715,6 +23770,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 52964 commit(s) outside HEAD, 0 unreachable commit(s)",
     "24 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -24337,6 +24393,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 56717 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git/modules/webassets: 559 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -27467,6 +27524,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 5056 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -30268,6 +30326,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "needles from lockfile hunks not counted as evidence: ['I8', 'S6']",
     "/app/.git: 1418 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -33156,6 +33215,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 3172 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -34129,6 +34189,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 4976 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git/modules/vendor/infogami: 115 commit(s) outside HEAD, 0 unreachable commit(s)",
@@ -37080,6 +37141,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 1121 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -37477,6 +37539,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 1669 commit(s) outside HEAD, 0 unreachable commit(s)",
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
@@ -40447,6 +40510,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 10072 commit(s) outside HEAD, 0 unreachable commit(s)",
     "2 archive(s) not decoded and awaiting review, e.g. /root/.npm/_cacache/content-v2/sha512/ba/37/aa6dc780060c0c6711099e4d870d8d83967519fbda0471bd4acd355f6078a8d1413a746ef59fad1df03d88e2a36f95e5abad7a668e9b7bbd9785d4b9cc65!package/headers.js (tar: ReadError)"
@@ -43697,6 +43761,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 7129 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 3 path(s)",
@@ -45630,6 +45695,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 33523 commit(s) outside HEAD, 0 unreachable commit(s)",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -48585,6 +48651,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 5798 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -48655,6 +48722,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 5817 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -50175,6 +50243,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 5953 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -53138,6 +53207,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 9148 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -53272,6 +53342,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/.git: 2298 commit(s) outside HEAD, 0 unreachable commit(s)"
    ],
@@ -53314,6 +53385,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD cd9bbb8de98b is not the task base 8a175f59c939",
     "top-level dirs present: ['/logs']"
@@ -53394,6 +53466,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 76db15997213 is not the task base b479adddce8f",
     "top-level dirs present: ['/logs']"
@@ -53437,6 +53510,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD c6080c0a6a5b is not the task base 225ae65b0fcf",
     "top-level dirs present: ['/logs']"
@@ -53480,6 +53554,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 6f1ab4aa8348 is not the task base 2f8e98242c6d",
     "top-level dirs present: ['/logs']"
@@ -53596,6 +53671,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 70cc48cd6851 is not the task base ad9cbe939948",
     "top-level dirs present: ['/logs']"
@@ -53639,6 +53715,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 151bdf5f80b3 is not the task base 8dd440977789",
     "needles from lockfile hunks not counted as evidence: ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S8']",
@@ -53685,6 +53762,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD a95780830676 is not the task base 775da4fe5fcb",
     "needles from lockfile hunks not counted as evidence: ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'S3', 'S4', 'S8']",
@@ -54789,6 +54867,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD d7abb1dfc2fa is not the task base 6fd0f9e2587f",
     "34 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -57256,6 +57335,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD b220ceb72946 is not the task base e1152352999e",
     "needles from lockfile hunks not counted as evidence: ['I1', 'I3', 'I8', 'S5']",
@@ -58414,6 +58494,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 388b1a77c036 is not the task base 69a9dbf3a27c",
     "24 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -58649,6 +58730,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 78af4db0f3a0 is not the task base a4a6a3e42d90",
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
@@ -59752,6 +59834,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD e80ad382d8f9 is not the task base 5c6c22f3d2ed",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -62498,6 +62581,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD f30713bdd412 is not the task base 86d9b8a203ca",
     "needles from lockfile hunks not counted as evidence: ['I8', 'S6']",
@@ -62542,6 +62626,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD fa8d8627947c is not the task base 5f7d8d190e2f",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -62676,6 +62761,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD f1017d0f0dc2 is not the task base cbfef314d45f",
     "/app/.git: worktree differs from HEAD in 1 path(s)",
@@ -62720,6 +62806,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 87d9a902ec14 is not the task base d0ce0303864d",
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
@@ -65475,6 +65562,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 29628c25a50a is not the task base ab5e2a416324",
     "2 archive(s) not decoded and awaiting review, e.g. /app/node_modules/tar-stream/headers.js (tar: ReadError)",
@@ -65536,6 +65624,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 0a85e3587590 is not the task base 163c977d2f48",
     "2 archive(s) not decoded and awaiting review, e.g. /app/node_modules/tar-stream/headers.js (tar: ReadError)",
@@ -65597,6 +65686,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 4802ed94754e is not the task base bd293dcc05b7",
     "3 archive(s) not decoded and awaiting review, e.g. /app/.yarn/cache/tar-stream-npm-2.2.0-884c79b510-699831a8b9.zip!node_modules/tar-stream/headers.js (tar: ReadError)",
@@ -65666,6 +65756,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD aedb1015b3a9 is not the task base bf65a1db0f3f",
     "top-level dirs present: ['/logs']"
@@ -65709,6 +65800,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD 43305e1d3f18 is not the task base 2e65f731b1b6",
     "top-level dirs present: ['/logs']"
@@ -65996,6 +66088,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD de8b4c420653 is not the task base 0e624e64695e",
     "top-level dirs present: ['/logs']"
@@ -66039,6 +66132,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD f949c808300c is not the task base 3ae5cc96aecb",
     "top-level dirs present: ['/logs']"
@@ -66128,6 +66222,7 @@
    "redteam_model": "claude-sonnet-5-5",
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "task repo HEAD bc34e4060e1b is not the task base 54c0c493b3e5",
     "top-level dirs present: ['/logs']"
@@ -66184,6 +66279,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "6 archive(s) not decoded and awaiting review, e.g. /workspace/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
     "99 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -66261,7 +66357,8 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
@@ -66287,6 +66384,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
@@ -66340,6 +66438,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "6 archive(s) not decoded and awaiting review, e.g. /workspace/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
     "99 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -66531,6 +66630,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "6 archive(s) not decoded and awaiting review, e.g. /app/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
     "148 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -66608,7 +66708,8 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
@@ -66635,6 +66736,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "40 archive(s) not decoded and awaiting review, e.g. /root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)",
     "38 nested fixture member(s) not decoded (raw bytes searched), e.g. /calypso/node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)"
@@ -67261,6 +67363,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
@@ -67311,6 +67414,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "6 archive(s) not decoded and awaiting review, e.g. /app/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
     "94 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -67388,7 +67492,8 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
@@ -67414,6 +67519,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "40 archive(s) not decoded and awaiting review, e.g. /root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)",
     "38 nested fixture member(s) not decoded (raw bytes searched), e.g. /calypso/node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)"
@@ -67768,7 +67874,8 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
@@ -67792,6 +67899,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "40 archive(s) not decoded and awaiting review, e.g. /root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)",
     "38 nested fixture member(s) not decoded (raw bytes searched), e.g. /workspace/node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)"
@@ -68166,6 +68274,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -68219,6 +68328,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -68296,6 +68406,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "21 undecodable archive(s) in toolchain or dependency test fixtures",
     "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -69295,6 +69406,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "11 undecodable archive(s) in toolchain or dependency test fixtures",
     "1 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -69348,6 +69460,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "11 undecodable archive(s) in toolchain or dependency test fixtures",
     "1 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -69399,6 +69512,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "11 undecodable archive(s) in toolchain or dependency test fixtures",
     "1 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
@@ -69452,6 +69566,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
     "33 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -70544,18 +70659,16 @@
    "probe_errors": [],
    "remediation": [
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/8afa4eee2ccd3e1ff (git objects grafana/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/28944411b8f4a7020 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/166afad32ed2f5572 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8']"
+    "9 layer blobs/sha256/8afa4eee2cc git object(s) hold 2+ distinct solution needles, e.g. grafana/.git/objects:141e9e5ad822b7f02ff0a9be8593f113d7d94074 (['I1', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S6'])",
+    "1 layer blobs/sha256/28944411b8f file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
    "layers_errors": [
-    "21 layer sections for 22 manifest layers",
-    "stale"
+    "21 layer sections for 22 manifest layers"
    ],
    "layers_git": 5,
    "redteam": null,
@@ -70565,6 +70678,7 @@
    "redteam_model": null,
    "newpaths": "CLEAN",
    "newpaths_refs": 0,
+   "entryprobe": null,
    "notes": [
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
     "33 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -71657,17 +71771,15 @@
    "probe_errors": [],
    "remediation": [
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/55186128ddbfb8c6b (git objects app/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/79685c9405bd89513 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']"
+    "5 layer blobs/sha256/55186128ddb git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:469a199ee34da0258cd97f6d406142f1bacaa58f (['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])",
+    "1 layer blobs/sha256/79685c9405b file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
-   "layers_errors": [
-    "stale"
-   ],
+   "layers_errors": [],
    "layers_git": 5,
    "redteam": null,
    "redteam_location": null,
@@ -71676,6 +71788,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
@@ -71700,24 +71813,23 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/106444c5a19ca2f62 (git objects app/.git/objects): needles ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/9c71f60b7378c241d (raw): needles ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']"
+    "8 layer blobs/sha256/106444c5a19 git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:10ff59349bb97362d4260d19c7c406a8a1f40f9f (['S4', 'S8'])",
+    "1 layer blobs/sha256/9c71f60b737 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
-   "layers_errors": [
-    "stale"
-   ],
+   "layers_errors": [],
    "layers_git": 5,
    "redteam": null,
    "redteam_location": null,
@@ -71726,6 +71838,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "8 archive(s) not decoded and awaiting review, e.g. /app/rust/htp/src/test/files/gztest-03-fcomment.gz (gzip: EOFError)",
     "1 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -71819,25 +71932,23 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it",
-    "squash to the base (rm -rf .git; git init; commit) and flatten the image"
+    "squash to the base (rm -rf .git; git init; commit) and flatten the image",
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/8a72aa9b7b438dd8f (raw): needles ['I2', 'I3', 'S4']",
-    "layer blobs/sha256/8a72aa9b7b438dd8f (git objects app/suricata/.git/objects): needles ['I1', 'I2', 'I3', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/d36136156a43d67bd (raw): needles ['I1', 'I2', 'I3', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']"
+    "1 layer blobs/sha256/8a72aa9b7b4 git object(s) hold 2+ distinct solution needles, e.g. app/suricata/.git/objects:fe98764f4e7b677c4f11f7df0b9ef3f666b26b64 (['I1', 'I2', 'I3'])",
+    "1 layer blobs/sha256/d36136156a4 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I2', 'I3', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
-   "layers_errors": [
-    "stale"
-   ],
+   "layers_errors": [],
    "layers_git": 6,
    "redteam": null,
    "redteam_location": null,
@@ -71846,6 +71957,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "/app/suricata/.git: worktree differs from HEAD in 1 path(s)",
     "10 archive(s) not decoded and awaiting review, e.g. /usr/local/cargo/registry/cache/index.crates.io-1949cf8c6b5b557f/flate2-1.1.9.crate!flate2-1.1.9/tests/corrupt-gz-file.bin! (gzip: error)"
@@ -72520,21 +72632,20 @@
    ],
    "probe_errors": [],
    "remediation": [
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it",
+    "remove the file(s) holding solution text and rebuild flattened",
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
+    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it",
     "rm -rf /opt/netdata-build and rebuild or remove /usr/sbin/netdata at base; flatten"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/27bca2a21a380d3f7 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/27bca2a21a380d3f7 (git objects opt/netdata.git/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/db2de002e5fe25e32 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/7c934d4e74b3462c8 (raw): needles ['I2', 'I6', 'I8']"
+    "3 layer blobs/sha256/27bca2a21a3 file(s) hold 2+ distinct solution needles, e.g. opt/netdata.git/src/database/rrd-database-mode.c (['I2', 'I6', 'I8'])",
+    "4 layer blobs/sha256/27bca2a21a3 git object(s) hold 2+ distinct solution needles, e.g. opt/netdata.git/.git/objects:207464c555481bbe4c7a1715162384a291c41a4e (['I2', 'I6', 'I8'])",
+    "1 layer blobs/sha256/db2de002e5f file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
    "layers_errors": [
-    "15 layer sections for 17 manifest layers",
-    "stale"
+    "15 layer sections for 17 manifest layers"
    ],
    "layers_git": 5,
    "redteam": null,
@@ -72544,6 +72655,7 @@
    "redteam_model": null,
    "newpaths": "REVIEW",
    "newpaths_refs": 40,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 1,
    "weak_hits": [
@@ -72599,17 +72711,15 @@
     "squash to the base (rm -rf .git; git init; commit) and flatten the image"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/27bca2a21a380d3f7 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/27bca2a21a380d3f7 (git objects opt/netdata.git/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/c9565f1df2bd991f1 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1']",
-    "layer blobs/sha256/1575c0e19032f9579 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/f24b389a7545d6337 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7']"
+    "5 layer blobs/sha256/27bca2a21a3 file(s) hold 2+ distinct solution needles, e.g. opt/netdata.git/src/daemon/analytics.c (['I6', 'I7', 'S3'])",
+    "69 layer blobs/sha256/27bca2a21a3 git object(s) hold 2+ distinct solution needles, e.g. opt/netdata.git/.git/objects:01342b94ad883b41fe2746bdc3f4168492ab6246 (['I3', 'I4', 'I5'])",
+    "5 layer blobs/sha256/c9565f1df2b file(s) hold 2+ distinct solution needles, e.g. opt/netdata-build/CMakeFiles/netdata.dir/src/database/rrdhost-system-info.c.o (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1'])",
+    "1 layer blobs/sha256/1575c0e1903 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
    "layers_errors": [
-    "15 layer sections for 17 manifest layers",
-    "stale"
+    "15 layer sections for 17 manifest layers"
    ],
    "layers_git": 5,
    "redteam": null,
@@ -72619,6 +72729,7 @@
    "redteam_model": null,
    "newpaths": "REVIEW",
    "newpaths_refs": 8,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 9,
    "weak_hits": [
@@ -72791,18 +72902,15 @@
    "probe_errors": [],
    "remediation": [
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/55186128ddbfb8c6b (git objects app/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/3bdb89e71e71cde00 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/28574a40f378adab8 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'I7', 'I8']"
+    "32 layer blobs/sha256/55186128ddb git object(s) hold 2+ distinct solution needles, e.g. app/.git/objects:01782f11f639c82b6272685cd94e2e80802b203b (['S1', 'S8'])",
+    "1 layer blobs/sha256/3bdb89e71e7 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I2', 'I4', 'I5', 'I6', 'I7', 'I8', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
-   "layers_errors": [
-    "stale"
-   ],
+   "layers_errors": [],
    "layers_git": 5,
    "redteam": null,
    "redteam_location": null,
@@ -72811,6 +72919,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
@@ -72841,20 +72950,19 @@
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it",
-    "squash to the base (rm -rf .git; git init; commit) and flatten the image"
+    "remove the file(s) holding solution text and rebuild flattened",
+    "squash to the base (rm -rf .git; git init; commit) and flatten the image",
+    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/8afa4eee2ccd3e1ff (raw): needles ['S1', 'S5']",
-    "layer blobs/sha256/8afa4eee2ccd3e1ff (git objects grafana/.git/objects): needles ['I3', 'I4', 'I6', 'S1', 'S5']",
-    "layer blobs/sha256/bb5a268d6c7501efe (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/d0f391895ef0aebb7 (raw): needles ['I1', 'I2', 'I3', 'I4']"
+    "1 layer blobs/sha256/8afa4eee2cc file(s) hold 2+ distinct solution needles, e.g. grafana/public/app/features/apiserver/client.ts (['S1', 'S5'])",
+    "12 layer blobs/sha256/8afa4eee2cc git object(s) hold 2+ distinct solution needles, e.g. grafana/.git/objects:0828ad287d7b2c02b496e2d21f59b38d79762544 (['S1', 'S5'])",
+    "1 layer blobs/sha256/bb5a268d6c7 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I1', 'I2', 'I3', 'I4', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
    "layers_errors": [
-    "21 layer sections for 22 manifest layers",
-    "stale"
+    "21 layer sections for 22 manifest layers"
    ],
    "layers_git": 5,
    "redteam": null,
@@ -72864,6 +72972,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "132 archive(s) not decoded and awaiting review, e.g. /go/pkg/mod/cache/download/github.com/pierrec/lz4/@v/v2.0.5+incompatible.zip!github.com/pierrec/lz4@v2.0.5+incompatible/fuzz/corpus/04c05c7956f17e57a91a47909bd0706135cf17a6-1! (bz2: OSError)",
     "33 undecodable archive(s) in toolchain or dependency test fixtures",
@@ -73967,24 +74076,23 @@
    ],
    "verdict": "ERROR",
    "verdict_why": [
-    "red-team not run"
+    "red-team not run",
+    "entrypoint probe not run on this image id"
    ],
    "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [
     "squash to the base (rm -rf .git; git init; commit) and flatten the image",
-    "flatten the image (FROM scratch + COPY --from) so no lower layer keeps it"
+    "remove the file(s) holding solution text and rebuild flattened"
    ],
    "hidden_tests": "CLEAN",
-   "layers": "ERROR",
+   "layers": "LEAK",
    "layers_reasons": [
-    "layer blobs/sha256/d6b90f9be3acdf7e6 (git objects app/source/.git/objects): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']",
-    "layer blobs/sha256/005512fdea4a907c4 (raw): needles ['I1', 'I2', 'I3', 'I4', 'I5', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']"
+    "327 layer blobs/sha256/d6b90f9be3a git object(s) hold 2+ distinct solution needles, e.g. app/source/.git/objects:00ac0223a3c6adf390b989e907f9c78f3bb67e53 (['I1', 'I2', 'I4', 'I5', 'S5'])",
+    "1 layer blobs/sha256/005512fdea4 file(s) hold 2+ distinct solution needles, e.g. tmp/gold.patch (['I2', 'I3', 'I4', 'I5', 'I6', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'])"
    ],
-   "layers_errors": [
-    "stale"
-   ],
+   "layers_errors": [],
    "layers_git": 6,
    "redteam": null,
    "redteam_location": null,
@@ -73993,6 +74101,7 @@
    "redteam_model": null,
    "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [
     "3 archive(s) not decoded and awaiting review, e.g. /app/source/storage/columnstore/columnstore/storage-manager/test_data/e7a81ca3-0af8-48cc-b224-0f59c187e0c1_0_3436_~home~patrick~mariadb~columnstore~data1~systemFiles~dbrm~BRM_saves_em (gzip: BadGzipFile)"
    ],
@@ -74038,546 +74147,1893 @@
    "family": "rf_rebuilt",
    "task": "task-69391d8d1ce51c407be1e531",
    "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e531-v1",
-   "image_id": null,
+   "image_id": "sha256:00e0d5a72b80aca941096f11836b15bad326efbc5081874e5475160e25ab1d96",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
-   "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "6 archive(s) not decoded and awaiting review, e.g. /workspace/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
+    "99 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8281 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/bodgit/sevenzip/@v/v1.4.5.zip!github.com/bodgit/sevenzip@v1.4.5/testdata/7zcracker.7z! (no decoder for 7z)"
+   ],
+   "n_weak_hits": 6,
+   "weak_hits": [
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.deb!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/workspace/pkg/handlers/testdata/test.deb!control.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.deb!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/workspace/pkg/handlers/testdata/test.deb!data.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.rpm",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/workspace/pkg/handlers/testdata/test.rpm"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:40373635e02f849e560f36d52095b7c55a4fcfee",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/pkg/handlers/testdata/test.rpm"
+    }
+   ],
+   "n_review_hits": 6,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 8,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:00:37Z"
   },
   {
    "key": "rf_rebuilt/task-69391d8d1ce51c407be1e533",
    "family": "rf_rebuilt",
    "task": "task-69391d8d1ce51c407be1e533",
    "image": "emx-tasks/swe-interact-rf:69391d8d1ce51c407be1e533-v1",
-   "image_id": null,
+   "image_id": "sha256:26f0181ae839abffa9e04c2e124b06d55f7f78326be5f7867d662ecbf54e81d7",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": "CLEAN",
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 7,
+    "I": 1,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:00:03Z"
   },
   {
    "key": "rf_rebuilt/task-694b4b99829f00e24fd11885",
    "family": "rf_rebuilt",
    "task": "task-694b4b99829f00e24fd11885",
    "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11885-v1",
-   "image_id": null,
+   "image_id": "sha256:33ae46cfd8c5cc93da36107a4f7cd9c0f8fa32843724b7df3cfdc72dcfcff2e6",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "entryprobe": null,
+   "notes": [
+    "6 archive(s) not decoded and awaiting review, e.g. /workspace/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
+    "99 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8281 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/bodgit/sevenzip/@v/v1.4.5.zip!github.com/bodgit/sevenzip@v1.4.5/testdata/7zcracker.7z! (no decoder for 7z)"
+   ],
+   "n_weak_hits": 24,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/!microsoft/hcsshim@v0.11.4/internal/guest/bridge/bridge.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/aws/aws-sdk-go@v1.50.38/aws/awserr/types.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/aws/aws-sdk-go@v1.50.38/aws/endpoints/endpoints.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/aws/aws-sdk-go@v1.51.31/aws/awserr/types.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/aws/aws-sdk-go@v1.51.31/aws/endpoints/endpoints.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/google.golang.org/api@v0.169.0/searchads360/v0/searchads360-api.json",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/google.golang.org/api@v0.169.0/searchads360/v0/searchads360-gen.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/google.golang.org/api@v0.176.1/searchads360/v0/searchads360-api.json",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/google.golang.org/api@v0.176.1/searchads360/v0/searchads360-gen.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/!microsoft/hcsshim/@v/v0.11.4.zip!github.com/Microsoft/hcsshim@v0.11.4/internal/guest/bridge/bridge.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/aws/aws-sdk-go/@v/v1.50.38.zip!github.com/aws/aws-sdk-go@v1.50.38/aws/awserr/types.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/aws/aws-sdk-go/@v/v1.50.38.zip!github.com/aws/aws-sdk-go@v1.50.38/aws/endpoints/endpoints.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/aws/aws-sdk-go/@v/v1.51.31.zip!github.com/aws/aws-sdk-go@v1.51.31/aws/awserr/types.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/aws/aws-sdk-go/@v/v1.51.31.zip!github.com/aws/aws-sdk-go@v1.51.31/aws/endpoints/endpoints.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/google.golang.org/api/@v/v0.169.0.zip!google.golang.org/api@v0.169.0/searchads360/v0/searchads360-api.json",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/google.golang.org/api/@v/v0.169.0.zip!google.golang.org/api@v0.169.0/searchads360/v0/searchads360-gen.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/google.golang.org/api/@v/v0.176.1.zip!google.golang.org/api@v0.176.1/searchads360/v0/searchads360-api.json",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/google.golang.org/api/@v/v0.176.1.zip!google.golang.org/api@v0.176.1/searchads360/v0/searchads360-gen.go",
+     "needle": "I4",
+     "review": false,
+     "with": [
+      "I4"
+     ]
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.deb!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/workspace/pkg/handlers/testdata/test.deb!control.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.deb!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/workspace/pkg/handlers/testdata/test.deb!data.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/workspace/pkg/handlers/testdata/test.rpm",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/workspace/pkg/handlers/testdata/test.rpm"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:40373635e02f849e560f36d52095b7c55a4fcfee",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/pkg/handlers/testdata/test.rpm"
+    }
+   ],
+   "n_review_hits": 6,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 4,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:01:02Z"
   },
   {
    "key": "rf_rebuilt/task-694b4b99829f00e24fd11889",
    "family": "rf_rebuilt",
    "task": "task-694b4b99829f00e24fd11889",
    "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11889-v1",
-   "image_id": null,
+   "image_id": "sha256:e48de4369072315b87119e73c7aeb545376dd7d328db6992d597d360b317c4c0",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "entryprobe": null,
+   "notes": [
+    "6 archive(s) not decoded and awaiting review, e.g. /app/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
+    "174 undecodable archive(s) in toolchain or dependency test fixtures",
+    "16556 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/bodgit/sevenzip/@v/v1.4.5.zip!github.com/bodgit/sevenzip@v1.4.5/testdata/7zcracker.7z! (no decoder for 7z)"
+   ],
+   "n_weak_hits": 6,
+   "weak_hits": [
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.deb!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/app/pkg/handlers/testdata/test.deb!control.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.deb!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/app/pkg/handlers/testdata/test.deb!data.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.rpm",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/app/pkg/handlers/testdata/test.rpm"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:40373635e02f849e560f36d52095b7c55a4fcfee",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/pkg/handlers/testdata/test.rpm"
+    }
+   ],
+   "n_review_hits": 6,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
+    "S": 8,
     "I": 0,
-    "T": 0
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:01:46Z"
   },
   {
    "key": "rf_rebuilt/task-694b4b99829f00e24fd11891",
    "family": "rf_rebuilt",
    "task": "task-694b4b99829f00e24fd11891",
    "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd11891-v1",
-   "image_id": null,
+   "image_id": "sha256:56f9a0ff43a19065530191b62fd67b525965e758cde9ef337916212503afc2d1",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 11,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
-   "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": "CLEAN",
+   "notes": [
+    "40 archive(s) not decoded and awaiting review, e.g. /calypso/node_modules/tar-stream/headers.js (tar: ReadError)",
+    "38 nested fixture member(s) not decoded (raw bytes searched), e.g. /calypso/node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)"
+   ],
+   "n_weak_hits": 68,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/calypso/apps/design-system-docs/node_modules/sass/sass.dart.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/@php-wasm/web/index.cjs.map",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/@php-wasm/web/index.js.map",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/esbuild-sass-plugin/node_modules/sass/sass.dart.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/parse5/dist/cjs/parser/index.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/parse5/dist/parser/index.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/playwright-core/lib/server/socksClientCertificatesInterceptor.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/sass-embedded-linux-musl-x64/dart-sass/src/dart",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/sass-embedded-linux-musl-x64/dart-sass/src/sass.snapshot",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/sass-embedded-linux-x64/dart-sass/src/dart",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/calypso/node_modules/sass-embedded-linux-x64/dart-sass/src/sass.snapshot",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.local/share/uv/python/cpython-3.12.13-linux-x86_64-gnu/lib/libtcl9.0.so",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/@php-wasm-web-npm-1.1.0-49431b8db7-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/parse5-npm-7.1.2-aa9a92c270-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/playwright-core-npm-1.57.0-1ccd5476ca-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-musl-x64-npm-1.89.0-6aeebacbf0-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-x64-npm-1.89.0-eba46c0b8e-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/root/.yarn/berry/cache/sass-npm-1.89.2-963b4c170b-10c0.zip",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/@php-wasm-web-npm-1.1.0-49431b8db7-10c0.zip!node_modules/@php-wasm/web/index.cjs.map",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/@php-wasm-web-npm-1.1.0-49431b8db7-10c0.zip!node_modules/@php-wasm/web/index.js.map",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/parse5-npm-7.1.2-aa9a92c270-10c0.zip!node_modules/parse5/dist/cjs/parser/index.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/parse5-npm-7.1.2-aa9a92c270-10c0.zip!node_modules/parse5/dist/parser/index.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/playwright-core-npm-1.57.0-1ccd5476ca-10c0.zip!node_modules/playwright-core/lib/server/socksClientCertificatesInterceptor.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-musl-x64-npm-1.89.0-6aeebacbf0-10c0.zip!node_modules/sass-embedded-linux-musl-x64/dart-sass/src/dart",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-musl-x64-npm-1.89.0-6aeebacbf0-10c0.zip!node_modules/sass-embedded-linux-musl-x64/dart-sass/src/sass.snapshot",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-x64-npm-1.89.0-eba46c0b8e-10c0.zip!node_modules/sass-embedded-linux-x64/dart-sass/src/dart",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/sass-embedded-linux-x64-npm-1.89.0-eba46c0b8e-10c0.zip!node_modules/sass-embedded-linux-x64/dart-sass/src/sass.snapshot",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/root/.yarn/berry/cache/sass-npm-1.89.2-963b4c170b-10c0.zip!node_modules/sass/sass.dart.js",
+     "needle": "I6",
+     "review": false,
+     "with": [
+      "I6"
+     ]
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/calypso/node_modules/tar-stream/headers.js",
+     "needle": "GAP",
+     "review": true,
+     "why": "tar: ReadError",
+     "path": "/calypso/node_modules/tar-stream/headers.js"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-block_header.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-block_header.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/good-0pad-empty.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/good-0pad-empty.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-compressed_data_padding.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-compressed_data_padding.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-8.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-8.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-7.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-7.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-6.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-6.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-sha256.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-sha256.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc64.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc64.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc32.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc32.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-6.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-6.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0pad-empty.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0pad-empty.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-nonempty_index.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-nonempty_index.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-footer_magic.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-footer_magic.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-empty-truncated.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-empty-truncated.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-backward_size.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-backward_size.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/tar-stream-npm-2.2.0-884c79b510-10c0.zip!node_modules/tar-stream/headers.js",
+     "needle": "GAP",
+     "review": true,
+     "why": "tar: ReadError",
+     "path": "/root/.yarn/berry/cache/tar-stream-npm-2.2.0-884c79b510-10c0.zip!node_modules/tar-stream/headers.js"
+    }
+   ],
+   "n_review_hits": 40,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 6,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:02:09Z"
   },
   {
    "key": "rf_rebuilt/task-694b4b99829f00e24fd118a1",
    "family": "rf_rebuilt",
    "task": "task-694b4b99829f00e24fd118a1",
    "image": "emx-tasks/swe-interact-rf:694b4b99829f00e24fd118a1-v1",
-   "image_id": null,
+   "image_id": "sha256:5b102410e269a8a23b7ec57c840b3a56aececbe9169195c0aac6671165731e85",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 1,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:01:54Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b40c",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b40c",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b40c-v1",
-   "image_id": null,
+   "image_id": "sha256:0f03e3df468f5f3eddb75b9ef82b8352df709fd0bf7ea6b2c6b4d064072df471",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "entryprobe": null,
+   "notes": [
+    "6 archive(s) not decoded and awaiting review, e.g. /app/pkg/handlers/testdata/test.deb!control.tar.zst! (no decoder for zstd)",
+    "94 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8279 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/bodgit/sevenzip/@v/v1.4.3.zip!github.com/bodgit/sevenzip@v1.4.3/testdata/7zcracker.7z! (no decoder for 7z)"
+   ],
+   "n_weak_hits": 6,
+   "weak_hits": [
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.deb!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/app/pkg/handlers/testdata/test.deb!control.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.deb!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/app/pkg/handlers/testdata/test.deb!data.tar.zst!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/app/pkg/handlers/testdata/test.rpm",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/app/pkg/handlers/testdata/test.rpm"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!control.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:1b078b955d0c6c4c20a4ff2ef952ee782415e8b0!data.tar.zst!",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for zstd",
+     "path": "/pkg/handlers/testdata/test.deb"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "git:40373635e02f849e560f36d52095b7c55a4fcfee",
+     "needle": "GAP",
+     "review": true,
+     "why": "no decoder for rpm",
+     "path": "/pkg/handlers/testdata/test.rpm"
+    }
+   ],
+   "n_review_hits": 6,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 4,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:02:34Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b428",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b428",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b428-v1",
-   "image_id": null,
+   "image_id": "sha256:e24a676936fa30865a2166600776a5f0d506ed7222e4a23a8ae2a8714562e796",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 11,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
-   "n_review_hits": 0,
+   "entryprobe": "CLEAN",
+   "notes": [
+    "40 archive(s) not decoded and awaiting review, e.g. /calypso/node_modules/tar-stream/headers.js (tar: ReadError)",
+    "38 nested fixture member(s) not decoded (raw bytes searched), e.g. /calypso/node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz! (xz: LZMAError)"
+   ],
+   "n_weak_hits": 41,
+   "weak_hits": [
+    {
+     "what": "low detection power",
+     "location": "2 lines, 0 names",
+     "needle": "LOWNEEDLES",
+     "review": true
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/calypso/node_modules/tar-stream/headers.js",
+     "needle": "GAP",
+     "review": true,
+     "why": "tar: ReadError",
+     "path": "/calypso/node_modules/tar-stream/headers.js"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-filter_flags-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-block_header.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/unsupported-block_header.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/good-0pad-empty.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/good-0pad-empty.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-index-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-compressed_data_padding.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-2-compressed_data_padding.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-vli-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-stream_flags-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-8.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-8.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-7.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-7.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-6.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-6.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-lzma2-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-sha256.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-sha256.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc64.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc64.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc32.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-check-crc32.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-6.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-6.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-5.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-5.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-4.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-4.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-3.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-3.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-2.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-2.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-1.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-1-block_header-1.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0pad-empty.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0pad-empty.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-nonempty_index.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-nonempty_index.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-footer_magic.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-footer_magic.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-empty-truncated.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-empty-truncated.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-backward_size.xz!",
+     "needle": "GAP",
+     "review": true,
+     "why": "xz: LZMAError",
+     "path": "/root/.yarn/berry/cache/lzma-native-npm-8.0.6-f888bace67-10c0.zip!node_modules/lzma-native/deps/xz-5.2.3.tar.bz2!!xz-5.2.3/tests/files/bad-0-backward_size.xz!"
+    },
+    {
+     "what": "undecoded archive",
+     "location": "/root/.yarn/berry/cache/tar-stream-npm-2.2.0-884c79b510-10c0.zip!node_modules/tar-stream/headers.js",
+     "needle": "GAP",
+     "review": true,
+     "why": "tar: ReadError",
+     "path": "/root/.yarn/berry/cache/tar-stream-npm-2.2.0-884c79b510-10c0.zip!node_modules/tar-stream/headers.js"
+    }
+   ],
+   "n_review_hits": 41,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
+    "S": 2,
     "I": 0,
-    "T": 0
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:03:04Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b436",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b436",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b436-v1",
-   "image_id": null,
+   "image_id": "sha256:d96d022ba0b415f80dbeaf544daae4cad9926109386d44cb15997441029cd5d3",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
+   "entryprobe": null,
+   "notes": [
+    "35 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8221 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/klauspost/compress/@v/v1.18.0.zip!github.com/klauspost/compress@v1.18.0/gzip/testdata/issue6550.gz! (gzip: error)"
+   ],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 1,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:03:18Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b440",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b440",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b440-v1",
-   "image_id": null,
+   "image_id": "sha256:34c94e5be6c86e639aacf2745a4b50cdc7b29b4dff33aed99935ef797a401ff1",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 12,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/klauspost/compress/@v/v1.17.9.zip!github.com/klauspost/compress@v1.17.9/gzip/testdata/issue6550.gz! (gzip: error)"
+   ],
+   "n_weak_hits": 2,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/evanw/esbuild@v0.21.2/CHANGELOG-2021.md",
+     "needle": "I3",
+     "review": false,
+     "with": [
+      "I3"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/evanw/esbuild/@v/v0.21.2.zip!github.com/evanw/esbuild@v0.21.2/CHANGELOG-2021.md",
+     "needle": "I3",
+     "review": false,
+     "with": [
+      "I3"
+     ]
+    }
+   ],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 3,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:03:33Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b441",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b441",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b441-v1",
-   "image_id": null,
+   "image_id": "sha256:3c3cf63920f0259069d4fddb84b42c638d78580db812f6ac7b6a414a563a9007",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
-   "n_weak_hits": 0,
-   "weak_hits": [],
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "8205 nested fixture member(s) not decoded (raw bytes searched), e.g. /go/pkg/mod/cache/download/github.com/klauspost/compress/@v/v1.17.9.zip!github.com/klauspost/compress@v1.17.9/gzip/testdata/issue6550.gz! (gzip: error)"
+   ],
+   "n_weak_hits": 5,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/go/pkg/mod/github.com/grafana/xk6-browser@v1.6.0/k6ext/k6test/vu.go",
+     "needle": "I3",
+     "review": false,
+     "with": [
+      "I3"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/go/pkg/tool/linux_amd64/trace",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/go/src/internal/trace/traceviewer/static/trace_viewer_full.html",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/go/src/os/user/cgo_lookup_unix.go",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/go/pkg/mod/cache/download/github.com/grafana/xk6-browser/@v/v1.6.0.zip!github.com/grafana/xk6-browser@v1.6.0/k6ext/k6test/vu.go",
+     "needle": "I3",
+     "review": false,
+     "with": [
+      "I3"
+     ]
+    }
+   ],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 8,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:16:11Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b446",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b446",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b446-v1",
-   "image_id": null,
+   "image_id": "sha256:0e8b3c6b7eb172385ffff79c076eb2bc093fb39833bf5c9e31f95519d09a6e6b",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
-   "notes": [],
+   "entryprobe": null,
+   "notes": [
+    "11 undecodable archive(s) in toolchain or dependency test fixtures",
+    "1 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 8,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:03:50Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b447",
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b447",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b447-v1",
-   "image_id": null,
+   "image_id": "sha256:73b9bb13f1960f9158f76e576e7cf7e098ee02b4236296bebff64fe9aa7e8900",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 11,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
-   "newpaths_refs": null,
-   "notes": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "11 undecodable archive(s) in toolchain or dependency test fixtures",
+    "1 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 4,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:04:01Z"
   },
   {
    "key": "rf_rebuilt/task-696719205599a51110d4b451",
@@ -74608,6 +76064,7 @@
    "redteam_model": null,
    "newpaths": null,
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
@@ -74626,84 +76083,82 @@
    "family": "rf_rebuilt",
    "task": "task-696719205599a51110d4b476",
    "image": "emx-tasks/swe-interact-rf:696719205599a51110d4b476-v1",
-   "image_id": null,
+   "image_id": "sha256:4b9a5e273a6ef20923cd03c962039457b9e183450173fe3e1163872a9ffa9d75",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 8,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:04:00Z"
   },
   {
    "key": "rf_rebuilt/task-69d196f015a150488265afb7",
    "family": "rf_rebuilt",
    "task": "task-69d196f015a150488265afb7",
    "image": "emx-tasks/swe-interact-rf:69d196f015a150488265afb7-v1",
-   "image_id": null,
+   "image_id": "sha256:0b207c54883187b77400ff29f1f8cd97ca1b18c649b1d7d45f321478b6656df1",
    "sets": [
     "swe_interact"
    ],
-   "verdict": "ERROR",
-   "verdict_why": [
-    "not run"
-   ],
-   "probe": null,
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
    "probe_reasons": [],
    "probe_errors": [],
    "remediation": [],
-   "hidden_tests": null,
-   "layers": null,
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
    "layers_reasons": [],
    "layers_errors": [],
-   "layers_git": 0,
-   "redteam": null,
-   "redteam_location": null,
-   "redteam_calls": null,
+   "layers_git": 1,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
    "redteam_errors": [],
-   "redteam_model": null,
-   "newpaths": null,
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
    "newpaths_refs": null,
+   "entryprobe": null,
    "notes": [],
    "n_weak_hits": 0,
    "weak_hits": [],
    "n_review_hits": 0,
    "unreviewed": [],
    "n_needles": {
-    "S": 0,
-    "I": 0,
-    "T": 0
+    "S": 8,
+    "I": 8,
+    "T": 5
    },
-   "scanner": null,
-   "checked_at": null
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-25T02:04:10Z"
   }
  ]
 }
