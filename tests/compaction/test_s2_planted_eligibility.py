@@ -144,3 +144,23 @@ def test_local_resource_guard_refuses_oversubscription_without_starting_containe
     monkeypatch.setattr(E.SB, "_docker", docker)
     with pytest.raises(ValueError, match="3 containers"):
         E.resource_guard(None)
+
+
+def test_cohort_persists_missing_tasks_load_failures_and_cleanup_stop(tmp_path):
+    census = {"selected_tasks": ["missing", "load-fails", "bad-cleanup", "not-started"], "tasks": [
+        {"task_id": task, "boundaries": [{"boundary": f"/{task}/b1", "offline_eligible": True}]}
+        for task in ("load-fails", "bad-cleanup", "not-started")]}
+    calls = []
+    def loader(task):
+        if task == "load-fails":
+            raise ValueError("fixture unavailable")
+        return SimpleNamespace(task_id=task)
+    def validator(bdir, out, **kwargs):
+        calls.append(kwargs["task"].task_id)
+        return {"eligible": False, "cleanup_unconfirmed": ["still running"]}
+    result = E.validate_cohort(census, tmp_path / "cohort", task_loader=loader,
+                               go_from_jacob=True, validator=validator)
+    assert calls == ["bad-cleanup"] and result["cleanup_stop"]
+    assert len(result["tasks"]) == 4 and result["tasks"][-1]["not_attempted"] == "cleanup_stop"
+    assert all("error" in row for row in result["tasks"][:2])
+    assert json.loads((tmp_path / "cohort/eligibility.json").read_text()) == result

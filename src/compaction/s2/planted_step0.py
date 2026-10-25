@@ -278,8 +278,19 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         evidence = read(probe_dir / "evidence.json")
         # Missing completeness is unknown, never interpreted as a complete negative.
         complete = evidence.get("part_a_complete", evidence.get("capture_complete", False))
+        # Preserve captured evidence and deterministic results even if a fresh Max
+        # reading is unavailable for the report judge or subsequent continuation.
+        report["probe"] = {"result": probe, "usage": usage, "checks": _checks(probe),
+            "preliminary_scores": {o["kind"]: S.score(evidence["events"], o["scorer"], judge=None,
+                                                     capture_complete=complete)
+                                   for o in spec["obligations"]}}
+        write(out / "report.json", report)
         if judge is None and judge_factory is not None:
-            guard_rate(usage["after"], now=clock(), hold=hold)
+            try:
+                guard_rate(usage["after"], now=clock(), hold=hold)
+            except ValueError as exc:
+                report["withheld"] = {"stage": "report_judge_and_continuation", "reason": str(exc)}
+                raise
             judge = judge_factory(out / "judgments")
         scores = {o["kind"]: S.score(evidence["events"], o["scorer"], judge=judge,
                                      capture_complete=complete) for o in spec["obligations"]}

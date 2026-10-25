@@ -13,6 +13,32 @@ from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
 
 
+def test_audit_http_route_returns_exact_hook_schema_without_simulator():
+    import urllib.error
+    import urllib.request
+    pytest.importorskip("fastmcp")
+    expected = {"hookSpecificOutput": {"hookEventName": "PreToolUse",
+                                      "permissionDecision": "allow",
+                                      "updatedInput": {"command": "true"}}}
+    sim = StubSim()
+    server = N.SimServer(sim, bind="127.0.0.1")
+    server.on_audit = lambda payload: expected
+    server.start()
+    try:
+        url = f"http://127.0.0.1:{server.port}" + N.AUDIT_PATH
+        data = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash"}).encode()
+        request = urllib.request.Request(url, data, {"Content-Type": "application/json"})
+        with pytest.raises(urllib.error.HTTPError) as denied:
+            urllib.request.urlopen(request, timeout=5)
+        assert denied.value.code == 403
+        request.add_header(N.TOKEN_HEADER, server.token)
+        with urllib.request.urlopen(request, timeout=5) as response:
+            assert json.load(response) == expected
+        assert server.rows == [] and len(server.audit_calls) == 1
+    finally:
+        assert server.stop() == []
+
+
 @pytest.fixture(autouse=True)
 def no_docker(monkeypatch):
     def forbidden(*args, **kwargs):

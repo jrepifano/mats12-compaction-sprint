@@ -88,7 +88,7 @@ def validate_boundary(bdir: Path, out_dir: Path, *, task, go_from_jacob: bool = 
         original_task = P.read(bdir.parent / "run.json").get("task", {}).get("task_id")
         if original_task != task.task_id:
             raise ValueError("boundary belongs to a different task")
-        copied = P.snapshot_boundary(bdir, out_dir / "source")
+        copied = P.snapshot_boundary(bdir, out_dir / "source", expected_hashes=census["hashes"])
         # Reject source movement during the private copy before contacting Docker.
         if P.inspect_boundary(bdir)["hashes"] != census["hashes"]:
             raise ValueError("source boundary changed during snapshot")
@@ -171,13 +171,29 @@ def validate_cohort(census: dict, out_dir: Path, *, task_loader: Callable,
         raise ValueError("selected tasks must be unique")
     rows, stop = [], False
     for task_id in selected:
-        entry = next(t for t in census["tasks"] if t["task_id"] == task_id)
         row = {"task_id": task_id, "eligible": False, "boundaries": []}
+        rows.append(row)
+        if stop:
+            row["not_attempted"] = "cleanup_stop"
+            continue
+        entry = next((t for t in census["tasks"] if t["task_id"] == task_id), None)
+        if entry is None:
+            row["error"] = "selected task missing from census"
+            continue
+        try:
+            task = task_loader(task_id)
+        except Exception as exc:  # noqa: BLE001 -- retain every assigned task in the report
+            row["error"] = f"task load: {type(exc).__name__}: {exc}"
+            continue
         for index, boundary in enumerate(entry["boundaries"]):
             if stop or not boundary.get("offline_eligible"):
                 continue
-            result = validator(Path(boundary["boundary"]), out_dir / task_id / f"candidate-{index}",
-                               task=task_loader(task_id), go_from_jacob=True, host=host, **kwargs)
+            try:
+                result = validator(Path(boundary["boundary"]), out_dir / task_id / f"candidate-{index}",
+                                   task=task, go_from_jacob=True, host=host, **kwargs)
+            except Exception as exc:  # noqa: BLE001 -- unknown cleanup prevents more launches
+                result = {"eligible": False, "error": f"{type(exc).__name__}: {exc}",
+                          "cleanup_unconfirmed": ["validator raised without a cleanup result"]}
             row["boundaries"].append(result)
             if result.get("cleanup_unconfirmed"):
                 stop = True
@@ -185,7 +201,6 @@ def validate_cohort(census: dict, out_dir: Path, *, task_loader: Callable,
             if result.get("eligible"):
                 row["eligible"] = True
                 break
-        rows.append(row)
     count = sum(row["eligible"] for row in rows)
     report = {"selected_tasks": selected, "tasks": rows, "eligible_selected_tasks": count,
               "at_least_two_live_eligible": count >= 2, "cleanup_stop": stop,
