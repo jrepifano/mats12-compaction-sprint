@@ -18,14 +18,22 @@ import statistics
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.patches import Patch
 
 import sprint_figs as sf
-from sprint_figs import BLUE, GRAY, INK, MUTED, wilson
+from sprint_figs import INK, MUTED, PAL, wilson
 
 ROOT = sf.ROOT
 OUT = ROOT / "docs" / "sprint" / "figs" / "native"
 sf.OUT = OUT  # finish() saves here
-AMBER, RED = "#d98a1c", "#c2412d"
+# Fixed colour per harness across every native chart. Codex 80k shares Codex's colour, lighter and hatched.
+H_CC, H_CX, H_AGY = PAL[0], PAL[1], PAL[2]
+H_CX80 = tuple(0.55 * c + 0.45 for c in H_CX)  # 45% towards white
+HCOL = {"cc": H_CC, "cx150": H_CX, "cx80": H_CX80, "agy": H_AGY}
+HHATCH = {"cx80": "//"}
+# Stacked-category colours (consistent): implemented / partly / not; clean / leak / not checked.
+C_YES, C_PART, C_NO, C_UNK = PAL[2], PAL[1], PAL[3], PAL[7]
 N = "results/sprint/S2/native/"
 CC = sf.load(N + "claude_code/summary.json")
 AGY = sf.load(N + "agy/summary.json")
@@ -95,11 +103,11 @@ def rate_chart(name, title_fn, fn, unit, ylab, sources, notes, claim_fn):
         rows.append(rate_row(key, tot[1], tot[0], nb, unit))
     fig, ax = plt.subplots(figsize=(10.5, 6.6))
     fig.subplots_adjust(left=0.09, right=0.98, top=0.80, bottom=0.30)
-    colors = [BLUE, BLUE, GRAY, BLUE]
-    for r, c in zip(rows, colors):
-        r["color"] = c
+    for r, k in zip(rows, ORDER):
+        r["color"], r["hatch"] = HCOL[k], HHATCH.get(k)
     sf.bars(ax, rows, ymax=max(r["hi"] for r in rows) * 100 * 1.25)
     ax.set_ylabel(ylab)
+    ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))  # whole-percent ticks only
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}%"))
     title = title_fn(rows)
     fin(fig, name, title, notes[0], sources)
@@ -226,7 +234,7 @@ def c03():
     for x, (lab, a, p, nn, _, _) in zip(xs, cc):
         n = a + p + nn
         bottom = 0
-        for v, col in ((a, BLUE), (p, AMBER), (nn, RED)):
+        for v, col in ((a, C_YES), (p, C_PART), (nn, C_NO)):
             if v:
                 ax.bar(x, v / n * 100, bottom=bottom, width=0.62, color=col, zorder=2)
                 if v / n > 0.07:
@@ -238,9 +246,9 @@ def c03():
     ax.set_ylim(0, 112)
     ax.set_ylabel("share of lost requirements checked")
     ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f"{v:.0f}%" if v <= 100 else ""))
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
-    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (BLUE, AMBER, RED)],
+    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (C_YES, C_PART, C_NO)],
               labels=["already implemented in the code", "partly / probably implemented", "not implemented"],
               loc="upper center", bbox_to_anchor=(0.5, -0.27), ncol=3, frameon=False, fontsize=10.5)
     title = (f"Most requirements a summary dropped were already in the code "
@@ -270,7 +278,8 @@ def c04():
         assert lost == new + inh + unk, key
         lo, hi = wilson(inh, lost)
         rows.append({"label": LAB[key], "value": inh / lost, "lo": lo, "hi": hi, "k": inh, "n": lost,
-                     "n_text": f"{inh}/{lost} lost\nalready lost before", "color": BLUE})
+                     "n_text": f"{inh}/{lost} lost\nalready lost before",
+                     "color": HCOL[key], "hatch": HHATCH.get(key)})
     fig, ax = plt.subplots(figsize=(10.5, 6.6))
     fig.subplots_adjust(left=0.09, right=0.98, top=0.80, bottom=0.30)
     sf.bars(ax, rows, ymax=max(r["hi"] for r in rows) * 100 * 1.25)
@@ -296,12 +305,14 @@ def c04():
 def c05():
     m150 = tcell(TXT150, r"model_auto_compact_token_limit = (\d+)")
     m80 = tcell(TXT80, r"model_auto_compact_token_limit = (\d+)")
-    groups = []
+    groups, gcol = [], []
     for t in sorted({r["trigger"] for r in CC}):
         groups.append((f"Claude Code\nwindow {t//1000}k", [r["pre_tokens"] for r in CC if r["trigger"] == t], t))
+        gcol.append(H_CC)
     groups.append(("Codex\n150k", [r["pre_tokens"] for r in CX150 if r.get("pre_tokens")], m150))
     groups.append(("Codex\n80k induced", [r["pre_tokens"] for r in CX80 if r.get("pre_tokens")], m80))
     groups.append(("Antigravity\n150k (forced)", [r["pre_tokens"] for r in AGY], AGY[0]["trigger"]))
+    gcol += [H_CX, H_CX80, H_AGY]
     assert all(r["trigger"] == AGY[0]["trigger"] for r in AGY)
     fig, ax = plt.subplots(figsize=(11, 6.8))
     fig.subplots_adjust(left=0.09, right=0.98, top=0.80, bottom=0.26)
@@ -309,7 +320,7 @@ def c05():
     for x, (lab, pts, cfg) in enumerate(groups):
         k = len(pts)
         xs = [x + (i - (k - 1) / 2) * min(0.7 / max(k, 1), 0.07) for i in range(k)]
-        ax.scatter(xs, [p / 1000 for p in pts], s=34, color=BLUE, zorder=3)
+        ax.scatter(xs, [p / 1000 for p in pts], s=34, color=gcol[x], edgecolor=INK, linewidth=0.5, zorder=3)
         ax.hlines(cfg / 1000, x - 0.4, x + 0.4, color=INK, lw=2, zorder=4)
         med = statistics.median(pts)
         gap = cfg - med
@@ -319,7 +330,7 @@ def c05():
     ax.set_xticklabels([f"{g[0]}\nn={len(g[1])}" for g in groups], fontsize=11)
     ax.set_ylim(0, 190)
     ax.set_ylabel("context tokens when compaction fired (k)")
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
     cc_gap = [g[4] - g[5] for g in lines if g[0].startswith("Claude")]
     title = (f"Claude Code fires a median {min(cc_gap)/1000:.0f}-{max(cc_gap)/1000:.0f}k tokens below its set "
@@ -359,7 +370,7 @@ def c06():
         c = stats[key]
         n = sum(c.values())
         b = 0
-        for lab, col in (("submitted", BLUE), ("run_cap", AMBER), ("error", GRAY)):
+        for lab, col in (("submitted", PAL[4]), ("run_cap", PAL[5]), ("error", PAL[7])):
             if c[lab]:
                 ax.bar(x, c[lab], bottom=b, width=0.62, color=col, zorder=2)
                 ax.text(x, b + c[lab] / 2, str(c[lab]), ha="center", va="center", color="white", fontsize=12)
@@ -367,9 +378,9 @@ def c06():
     ax.set_xticks(range(len(ORDER)))
     ax.set_xticklabels([f"{LAB[k]}\nn={sum(stats[k].values())} runs" for k in ORDER], fontsize=11)
     ax.set_ylabel("runs")
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
-    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (BLUE, AMBER, GRAY)],
+    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (PAL[4], PAL[5], PAL[7])],
               labels=["submitted", "stopped at our simulator-cost cap", "infrastructure or capture error"],
               loc="upper center", bbox_to_anchor=(0.5, -0.27), ncol=3, frameon=False, fontsize=10.5)
     title = "How the runs ended (completion status only, not a task score): too few runs to rank harnesses"
@@ -417,7 +428,7 @@ def c07():
     for x, (fam, lab) in enumerate(names):
         c = res[fam]
         b = 0
-        for k, col in (("CLEAN", BLUE), ("LEAK", RED), ("UNCHECKED", GRAY)):
+        for k, col in (("CLEAN", C_YES), ("LEAK", C_NO), ("UNCHECKED", C_UNK)):
             if c[k]:
                 ax.bar(x, c[k], bottom=b, width=0.62, color=col, zorder=2)
                 if c[k] > 2:
@@ -426,9 +437,9 @@ def c07():
     ax.set_xticks(range(len(names)))
     ax.set_xticklabels([f"{l}\nn={sum(res[f].values())}" for f, l in names], fontsize=11)
     ax.set_ylabel("task images")
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
-    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (BLUE, RED, GRAY)],
+    ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, color=c) for c in (C_YES, C_NO, C_UNK)],
               labels=["clean", "solution reachable (leak)", "not fully checked"],
               loc="upper center", bbox_to_anchor=(0.5, -0.27), ncol=3, frameon=False, fontsize=10.5)
     title = "Released Pro and refactoring images leak their solutions; rebuilt images are clean"

@@ -14,7 +14,8 @@ Every number is read from a result file at run time; nothing is typed in. Charts
 7. Hand labels per check: the table in docs/sprint/progress.md.
 
 Writes PNG and SVG to docs/sprint/figs/ plus docs/sprint/figs/README.md (claim, source, numbers).
-Style follows docs/pitch/fig_*.py: matplotlib, top/right spines off, footer text, dpi 200.
+Style follows AGENTS.md "Figures": seaborn whitegrid, default (deep) palette with one colour per
+bar category, vertical bars with 95% error bars, footer text, dpi 200.
 Run: uv run python scripts/sprint_figs.py
 """
 
@@ -30,26 +31,17 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "sprint" / "figs"
-plt.rcParams.update(
-    {
-        "font.size": 12,
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "figure.facecolor": "#fcfcfb",
-        "axes.facecolor": "#fcfcfb",
-        "savefig.facecolor": "#fcfcfb",
-        "text.color": "#0b0b0b",
-        "axes.labelcolor": "#52514e",
-        "xtick.color": "#0b0b0b",
-        "ytick.color": "#52514e",
-        "axes.edgecolor": "#8a8984",
-        "svg.fonttype": "none",
-    }
+sns.set_theme(
+    style="whitegrid",
+    rc={"font.size": 12, "svg.fonttype": "none", "axes.spines.top": False,
+        "axes.spines.right": False},
 )
-BLUE, GRAY, INK, MUTED = "#2a78d6", "#a8a7a1", "#0b0b0b", "#52514e"
+PAL = sns.color_palette()  # seaborn "deep": one colour per bar category
+INK, MUTED = "#0b0b0b", "#52514e"
 MODEL = {"deepseek": "DeepSeek", "claude-haiku-5-5": "Claude Haiku 5.5"}  # display names only
 LOST = ("dropped", "misstated")  # a requirement grade that counts as lost (interact_reqs.GRADES)
 
@@ -79,13 +71,18 @@ def close(a, b, tol=1e-3):
     return abs(a - b) <= tol
 
 
-def bars(ax, rows, pct=True, color=BLUE, ymax=None, value_fmt=None):
+def bars(ax, rows, pct=True, ymax=None, value_fmt=None):
     """rows: dicts with label, value, lo/hi (or None), n_text, color (optional), top (optional)."""
     xs = range(len(rows))
     scale = 100 if pct else 1
     vals = [r["value"] * scale for r in rows]
-    cols = [r.get("color", color) for r in rows]
-    ax.bar(xs, vals, width=0.62, color=cols, zorder=2)
+    cols = [r.get("color", PAL[i % len(PAL)]) for i, r in enumerate(rows)]
+    ax.bar(xs, vals, width=0.62, color=cols, zorder=2, hatch=None)
+    for patch, r in zip(ax.patches[-len(rows):], rows):
+        if r.get("hatch"):
+            patch.set_hatch(r["hatch"])
+            patch.set_edgecolor(INK)
+            patch.set_linewidth(0)
     for x, r, v in zip(xs, rows, vals):
         top = v
         if r.get("lo") is not None:
@@ -119,7 +116,7 @@ def bars(ax, rows, pct=True, color=BLUE, ymax=None, value_fmt=None):
         fontsize=11,
         linespacing=1.15,
     )
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
     if ymax is not None:
         ax.set_ylim(0, ymax)
@@ -199,7 +196,6 @@ def chart_loss_by_source():
                 value=k / n,
                 lo=None,
                 hi=None,
-                color=GRAY,
                 n_text=f"n = {n:,} items",
                 num=f"{k:,}/{n:,} = {100 * k / n:.1f}% (no interval computed)",
             )
@@ -213,9 +209,9 @@ def chart_loss_by_source():
         r["num"] += f"; corrected x {r['prec']:.2f} = {100 * r['corr']:.1f}%"
     fig, ax = plt.subplots(figsize=(10, 6.4))
     w, xs = 0.36, list(range(len(rows)))
-    ax.bar([x - w / 2 for x in xs], [100 * r["value"] for r in rows], width=w, color=GRAY, zorder=2,
+    ax.bar([x - w / 2 for x in xs], [100 * r["value"] for r in rows], width=w, color=PAL[0], zorder=2,
            label="Judge's raw rate")
-    ax.bar([x + w / 2 for x in xs], [100 * r["corr"] for r in rows], width=w, color=BLUE, zorder=2,
+    ax.bar([x + w / 2 for x in xs], [100 * r["corr"] for r in rows], width=w, color=PAL[1], zorder=2,
            label="Corrected for the judge's precision")
     for x, r in zip(xs, rows):
         top = 100 * r["value"]
@@ -233,7 +229,7 @@ def chart_loss_by_source():
     ax.set_xticks(xs)
     ax.set_xticklabels([r["label"] + "\n" * (depth - r["label"].count("\n") + 2) + r["n_text"]
                         for r in rows], fontsize=11, linespacing=1.15)
-    ax.grid(axis="y", color="#e4e3df", lw=0.8, zorder=0)
+    ax.grid(axis="x", visible=False)
     ax.tick_params(axis="x", length=0)
     ax.set_ylim(0, 30)
     ax.legend(frameon=False, loc="upper right", fontsize=10.5)
@@ -243,10 +239,10 @@ def chart_loss_by_source():
     title = f"Summaries lose about {100 * lo_c:.0f}–{100 * hi_c:.0f}% of actionable items (judge-corrected)"
     foot = (
         "Share of actionable items (rules, permissions, decisions, commitments, task state) that the "
-        "summary dropped or misstated and the agent can't get back another way. Gray: as called by the "
-        f"LLM judge ({judge}) after its second look. Blue: that rate times the judge's hand-checked "
+        "summary dropped or misstated and the agent can't get back another way. Blue: as called by the "
+        f"LLM judge ({judge}) after its second look. Orange: that rate times the judge's hand-checked "
         f"precision ({swp['k']}/{swp['n']} on SWE-chat; {e1['n_hits']}/{e1['n']} pooled, assumed for "
-        "the other sources). The correction ignores the judge's misses (recall unmeasured), so blue is "
+        "the other sources). The correction ignores the judge's misses (recall unmeasured), so orange is "
         f"not a bound in either direction. SWE-chat: 95% session-bootstrap interval on the raw rate, "
         f"weighted to all {n_all} eligible compactions; other sources as sampled, no interval."
     )
@@ -382,13 +378,17 @@ def chart_judge():
             }
         )
     right = []
-    for key, lab in (("haiku", "Haiku 5.5\n(the judge used)"), ("sonnet", "Sonnet 5.5")):
+    for key, lab, col in (
+        ("haiku", "Haiku 5.5\n(the judge used)", PAL[3]),
+        ("sonnet", "Sonnet 5.5", PAL[4]),
+    ):
         p = jc["overall"][key]["precision_lost"]
         lo, hi = wilson(p["k"], p["n"])
         assert close(lo, p["wilson95"][0]) and close(hi, p["wilson95"][1])
         right.append(
             {
                 "label": lab,
+                "color": col,
                 "value": p["k"] / p["n"],
                 "lo": lo,
                 "hi": hi,
@@ -625,7 +625,6 @@ def chart_interact():
                 "lo": None,
                 "hi": None,
                 "top": top,
-                "color": GRAY if arm == "live" else BLUE,
                 "n_text": f"n = {n_req}",
                 "num": f"{lost[arm]}/{n_req} lost, {unclear[arm]} unclear; sessions with a loss: "
                 f"{len(tasks_with_loss[arm])}",
@@ -636,7 +635,7 @@ def chart_interact():
     fig, ax = plt.subplots(figsize=(11, 6.4))
     bars(ax, rows, pct=False, ymax=max(lost.values()) + 2.5)
     ax.set_ylabel(f"Requirements lost (of {n_req})")
-    ax.axvline(0.5, color="#d6d5d0", lw=1)
+    ax.axvline(0.5, color="#b0afa9", lw=1)
     ax.annotate(
         "written in the run", (0, ax.get_ylim()[1]), ha="center", va="top", fontsize=10, color=MUTED
     )
@@ -800,8 +799,8 @@ def write_readme():
             "only\" rule. The script reads them as named and records each file's sha256 above."
         ),
         (
-            "- **Style:** `docs/pitch/make_figs.py` does not exist; the conventions of "
-            "`docs/pitch/fig_*.py` were followed instead."
+            "- **Style:** AGENTS.md \"Figures\" (25 Oct): seaborn whitegrid, default palette, one colour "
+            "per bar category, vertical bars with 95% error bars."
         ),
         "",
     ]
