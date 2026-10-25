@@ -63,6 +63,8 @@ ASK_USER_DOC = "Ask the user a question and get their response."
 MCP_URL = "http://user-server:8000/mcp"  # what the task's instruction.md and task.toml name
 BOUNDARY_PATH = "/emx/boundary"
 BOUNDARY_URL = "http://user-server:8000" + BOUNDARY_PATH
+AUDIT_PATH = "/emx/audit"
+AUDIT_URL = "http://user-server:8000" + AUDIT_PATH
 TOKEN_HEADER = "X-Emx-Token"
 TOKEN_QUERY = "emx_token"
 PROXY_URL = "http://egress:3128"
@@ -608,42 +610,58 @@ def _tree(procs: dict[int, tuple[int, str, str]], roots: set[int]) -> set[int]:
 
 
 def is_harness_log_follower(argv: str) -> bool:
-    """Only detached_exec's exact read-only follower argv; no shell, arbitrary path or flags."""
+    """Recognize the argv shape only; exemption additionally requires follower pairing."""
     return isinstance(argv, str) and re.fullmatch(
-        r"(?:timeout -k 5 300 )?tail -c \+[1-9][0-9]* -F "
+        rf"(?:timeout -k 5 {FOLLOW_CHUNK_S} )?tail -c \+[1-9][0-9]* -F "
         r"/opt/emx/steps/[A-Za-z0-9][A-Za-z0-9_.-]*/out", argv) is not None
 
 
-def reclassify_harness_quiescence(fields: dict) -> dict:
-    """Return a revised copy of old metadata, never change the source boundary.
+def harness_follower_pairs(procs: dict[int, tuple[int, str, str]]) -> set[int]:
+    """Exempt only a docker-exec timeout (ppid 0) plus its exactly matching child tail."""
+    prefix = f"timeout -k 5 {FOLLOW_CHUNK_S} "
+    paired = set()
+    for parent, (ppid, _state, argv) in procs.items():
+        if ppid != 0 or not argv.startswith(prefix) or not is_harness_log_follower(argv):
+            continue
+        children = {pid for pid, (pp, _st, child) in procs.items()
+                    if pp == parent and child == argv[len(prefix):]}
+        if children:
+            paired.add(parent)
+            paired.update(children)
+    return paired
 
-    This repairs only the known follower false positive. Transcript integrity, image
-    presence, entrypoint services and fork_check remain independent eligibility gates.
+
+def reclassify_harness_quiescence(fields: dict) -> dict:
+    """Return a revised copy only for complete, matching docker-exec follower pairs.
+
+    Transcript integrity, image presence, entrypoint services and fork_check remain separate
+    gates. The original metadata is untouched.
     """
     out = copy.deepcopy(fields)
     processes = fields.get("processes")
     if (fields.get("ineligible_reason") != "not_quiescent" or not processes
             or not isinstance(processes, list)):
         return out
-    exempt = []
+    procs = {}
     for process in processes:
         if not isinstance(process, str):
             return out
         pieces = process.split(None, 3)
         if (len(pieces) != 4 or not pieces[0].isdigit() or not pieces[1].isdigit()
-                or not is_harness_log_follower(pieces[3])):
+                or int(pieces[0]) in procs):
             return out
-        exempt.append(process)
-    out.update(quiescent=True, harness_exempted_processes=exempt,
-               quiescence_reclassification={"version": 1, "original_quiescent":
+        procs[int(pieces[0])] = (int(pieces[1]), pieces[2], pieces[3])
+    if harness_follower_pairs(procs) != set(procs):
+        return out
+    out.update(quiescent=True, harness_exempted_processes=list(processes),
+               quiescence_reclassification={"version": 2, "original_quiescent":
                    fields.get("quiescent"), "original_ineligible_reason": "not_quiescent",
-                   "rule": "exact detached_exec read-only log follower argv"})
-    # Services do not affect process quiescence, but still prohibit a fork.
+                   "rule": "ppid-0 detached_exec timeout and exactly matching child tail"})
     if fields.get("services_running"):
         out["ineligible_reason"] = "services_unvalidated"
     else:
         out.pop("ineligible_reason", None)
-    out["eligible"] = None  # only the quiescence gate was rerun
+    out["eligible"] = None
     return out
 
 
@@ -670,7 +688,7 @@ def classify(procs: dict[int, tuple[int, str, str]], token: str, cli: str,
         infra |= anc(c)
     infra |= _tree(procs, hooks) | _tree(procs, mine)
     infra |= _tree(procs, {p for p in services if p in procs})
-    followers = {p for p, (_, _, argv) in procs.items() if is_harness_log_follower(argv)}
+    followers = harness_follower_pairs(procs)
     infra |= followers
     strays = [p for p, (_, st, _) in sorted(procs.items())
               if p not in infra and not st.startswith("Z")]
@@ -958,6 +976,8 @@ class SimServer:
         self.token = token or secrets.token_urlsafe(24)
         self.on_boundary, self.on_cap, self.on_ask = on_boundary, on_cap, on_ask
         self.capture_ask = capture_ask
+        self.on_audit: Callable[[dict], dict] | None = None
+        self.audit_calls: list[dict] = []
         self.captured_asks: list[dict] = []
         self.step = "01_plan"
         self.rows: list[dict] = []
@@ -972,6 +992,8 @@ class SimServer:
         from compaction.s2.model import RunCapReached
         with self._lock:
             if self.capture_ask is not None:
+                if self.captured_asks:
+                    raise ProbeCaptured("probe already ended at its first ask_user")
                 row = {"kind": "ask_user", "text": question, "step": self.step, "utc": utc()}
                 self.captured_asks.append(row)
                 self.capture_ask(row)
@@ -1010,6 +1032,21 @@ class SimServer:
             rec["seconds"] = round(time.monotonic() - t0, 1)
             self.boundary_calls.append(rec)
 
+    def audit(self, payload: dict) -> dict:
+        """Return only a native hook response; errors stop the harness rather than fail open."""
+        rec = {"utc": utc(), "phase": payload.get("hook_event_name")}
+        try:
+            if self.on_audit is None:
+                raise RuntimeError("native audit handler missing")
+            out = self.on_audit(payload)
+            rec["ok"] = not (out.get("continue") is False)
+            return out
+        except Exception as exc:  # noqa: BLE001 - recorded and converted to a stop instruction
+            rec.update(ok=False, error=f"{type(exc).__name__}: {exc}")
+            return {"continue": False, "stopReason": "native audit failed"}
+        finally:
+            self.audit_calls.append(rec)
+
     def export(self) -> dict:
         with self._lock:
             return copy.deepcopy(self.sim.export())
@@ -1043,6 +1080,17 @@ class SimServer:
                 payload = {"raw": (await request.body()).decode(errors="replace")[:20000]}
             out = await anyio.to_thread.run_sync(server.boundary, payload)
             return JSONResponse(out, status_code=200 if out.get("ok") else 500)
+
+        @mcp.custom_route(AUDIT_PATH, methods=["POST"])
+        async def audit(request: Request):
+            try:
+                payload = await request.json()
+                out = await anyio.to_thread.run_sync(server.audit, payload)
+            except Exception as exc:  # noqa: BLE001 - hook failures must stop, not allow a tool
+                server.audit_calls.append({"utc": utc(), "ok": False, "error": type(exc).__name__})
+                out = {"continue": False, "stopReason": f"audit transport error: {type(exc).__name__}"}
+            # The body is exactly Claude Code's hook schema, with no transport 'ok' field.
+            return JSONResponse(out)
 
         app = mcp.http_app(path="/mcp", middleware=[_token_middleware(self.token)])
         return app

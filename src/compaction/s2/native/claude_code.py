@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import re
 import shlex
 import threading
 import time
@@ -81,7 +82,7 @@ HOOK_OUT = "/opt/emx/hook-last.json"
 PROJECT = f"{CONFIG_DIR}/projects/-app"
 MODEL = "claude-haiku-5-5"
 EFFORT = "high"
-DISALLOWED = "WebSearch,WebFetch"
+DISALLOWED = "WebSearch,WebFetch,Task,Agent"
 POLICY = "claude-code-native"
 ASK_TOOL = "mcp__user-server__ask_user"
 TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"
@@ -231,12 +232,18 @@ def stop_cli(sb: SB.Sandbox) -> None:
 # ------------------------------------------------------------------------------------------
 
 
-def read_jsonl(text: str) -> list[dict]:
+def read_jsonl(text: str, *, strict: bool = False) -> list[dict]:
     rows = []
     for line in text.splitlines():
         if line.strip():
-            with contextlib.suppress(ValueError):
-                rows.append(json.loads(line))
+            if strict:
+                value = json.loads(line)
+                if not isinstance(value, dict):
+                    raise ValueError("native transcript rows must be objects")
+                rows.append(value)
+            else:
+                with contextlib.suppress(ValueError):
+                    rows.append(json.loads(line))
     return rows
 
 
@@ -612,7 +619,7 @@ def _stream_watch(state: dict, stop: threading.Event) -> Callable[[str], None]:
                                                       "session_id", "modelUsage", "usage")}
             state["result"]["text"] = str(ev.get("result") or "")[:500]
         elif ev.get("type") == "rate_limit_event":
-            state["rate_limit"] = ev
+            state["rate_limit"] = {**ev, "observed_at": time.time()}
         elif ev.get("type") == "system" and ev.get("subtype") == "compact_boundary":
             state.setdefault("compactions", []).append(ev.get("compact_metadata"))
     return on_line
@@ -671,7 +678,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
         resume_boundary = Path(resume_boundary)
         resume_b = json.loads((resume_boundary / "boundary/boundary.json").read_text())
         resume_export = json.loads((resume_boundary / "boundary/sim_state.json").read_text())
-        resume_rows = read_jsonl((resume_boundary / "native/transcript.jsonl").read_text())
+        resume_rows = read_jsonl((resume_boundary / "native/transcript.jsonl").read_text(), strict=True)
         si = next(i for i, row in enumerate(resume_rows)
                   if row.get("uuid") == resume_b["native_summary_uuid"])
         resume_rows = resume_rows[:si + 1]
@@ -814,7 +821,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 if alive:
                     res["capture_workers_alive"] = alive
                 try:
-                    rows = read_transcript(ns.sb, f"{PROJECT}/{sid}.jsonl")
+                    rows = read_transcript(ns.sb, f"{PROJECT}/{sid}.jsonl", strict=cfg.capture_ask)
                 except SB.SandboxError as e:
                     # missing evidence: the run can't count as complete (astra r2 #4)
                     res.setdefault("transcript_errors", []).append(f"{step}: {e}")
@@ -829,7 +836,8 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 bad = _step_ok(r, state)
                 res["steps"][step] = {"session_id": sid, "rc": r.rc, "seconds": r.seconds,
                                       "killed": r.killed, "timed_out": r.timed_out,
-                                      "api_calls": api_calls(rows), "init": state.get("init"),
+                                      "api_calls": max(0, api_calls(rows) - api_calls(resume_rows)) if resume_b else api_calls(rows),
+                                      "init": state.get("init"),
                                       "result": state.get("result"),
                                       "compactions": state.get("compactions", []),
                                       "n_compactions": len(compact_rows(rows)),
@@ -985,13 +993,13 @@ def _redact(line: str, token: str) -> str:
     return line.replace(token, "<redacted>") if token else line
 
 
-def read_transcript(sb, path: str) -> list[dict]:
+def read_transcript(sb, path: str, *, strict: bool = False) -> list[dict]:
     """The transcript, or SandboxError: an unreadable transcript is missing evidence, never an
     empty one (astra r2 #4)."""
     r = sb.exec(f"cat {shlex.quote(path)}", timeout_s=120, workdir="/")
     if r.rc != 0:
         raise SB.SandboxError(f"cannot read {path}: rc={r.rc} {r.stderr[-200:]}")
-    return read_jsonl(r.stdout)
+    return read_jsonl(r.stdout, strict=strict)
 
 
 def _read_until(sb, path: str, ready: Callable[[list[dict]], bool], wait_s: float,
@@ -1074,20 +1082,9 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
                  "hook_summary_in_message": bool(hook_summary) and _summary_body(
                      hook_summary) in conv.nb.summary}
         frozen["sim_export"] = annotate_delivery_distances(rows, want, frozen["sim_export"], k)
-        live_planting = getattr(ns.server.sim, "planting", None)
-        if live_planting is not None:
-            estimated = next((item for item in frozen["sim_export"].get("planting", {}).get("boundaries", [])
-                              if item.get("compaction_index") == k), None)
-            if estimated:
-                for item in live_planting.boundaries:
-                    if item.get("compaction_index") == k:
-                        item.update(estimated)
-        for source in (frozen["sim_export"].get("planting"),
-                       getattr(getattr(ns.server.sim, "planting", None), "__dict__", None)):
-            if source:
-                for delivery_boundary in source.get("boundaries", []):
-                    if delivery_boundary.get("compaction_index") == k:
-                        delivery_boundary["pre_tokens"] = conv.nb.pre_tokens
+        update_delivery_boundary(ns.server, frozen["sim_export"], k, conv.nb.pre_tokens)
+        integrity = boundary_replay_integrity(rows, conv.summary_uuid, hook_summary)
+        extra["capture_integrity"] = integrity
         gate = eligible
         services = sorted(getattr(ns, "services", ()) or ())
         extra["services_running"] = services
@@ -1101,8 +1098,13 @@ def _finish(*, ns, payload, k, want, snap, fp, frozen, rd, rj, cfg, step, eligib
             if eligible is not None:
                 def gate(b, f):
                     return False
-        if cfg.stop_first_eligible and gate is None:
-            gate = lambda _dir, fields: not why and bool(fields.get("tag"))
+        if cfg.stop_first_eligible:
+            requested_gate = gate
+            def gate(directory, fields):
+                return (not why and integrity["ok"] and bool(fields.get("tag"))
+                        and (requested_gate is None or requested_gate(directory, fields)))
+            if not integrity["ok"] and not why:
+                extra["ineligible_reason"] = "invalid_transcript"
         bdir = N.write_boundary(rd, k, conv.nb, run_json=rj, snap=snap,
                                 sim_export=frozen["sim_export"], sim_rows=frozen["sim_rows"],
                                 step=step or "", step_instruction=instr, fingerprint=fp,
@@ -1200,7 +1202,8 @@ def insert_in_summary(message: str, body: str, block: str | list[str]) -> str:
 def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model, token: str,
          persona: str, cfg: CCConfig | None = None, host: str | None = "ssh://rig",
          timeout_s: int = 1800, check: bool = True, session_cls=N.NativeSession,
-         probe: bool = False, max_calls: int = 30, mutation_paths=()) -> dict:
+         probe: bool = False, max_calls: int = 30, mutation_paths=(),
+         required_context=(), forbidden_context=()) -> dict:
     """Resume boundary `bdir` (a b<k> dir of a Claude Code run) from its kept image with the
     summary replaced by `new_summary`, as a forked session given `prompt`. Refuses
     (ForkMismatch) when the restored workspace or simulator differ from the boundary's, unless
@@ -1208,7 +1211,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
     input_transcript.jsonl}; returns fork.json."""
     bdir, out_dir = Path(bdir), Path(out_dir)
     b = json.loads((bdir / "boundary" / "boundary.json").read_text())
-    rows = read_jsonl((bdir / "native" / "transcript.jsonl").read_text())
+    rows = read_jsonl((bdir / "native" / "transcript.jsonl").read_text(), strict=probe)
     exported = json.loads((bdir / "boundary" / "sim_state.json").read_text())
     rj = json.loads((bdir.parent / "run.json").read_text())
     cfg = cfg or CCConfig(model=b.get("model") or MODEL, effort=b.get("effort"),
@@ -1241,9 +1244,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
 
     ns = session_cls(ARM, b["tag"], sim_factory, host=host, setup_git=False,
                      extra_args=run_args(),
-                     on_boundary=lambda p: audit_holder["audit"].hook(p)
-                     if probe and p.get("hook_event_name") != "PostCompact"
-                     else {"ok": True, "ignored": "fork"}, on_cap=on_cap)
+                     on_boundary=lambda p: {"ok": True, "ignored": "fork"}, on_cap=on_cap)
     try:
         with ns:
             ns.server.step = b.get("stage") or GRADED_STEP
@@ -1263,6 +1264,9 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             install_config(ns.sb, ns.server)  # a new token and server for the fork
             if probe:
                 audit_holder["audit"] = ProbeAudit(ns.sb, mutation_paths=mutation_paths, stop=stop)
+                if mutation_paths and not audit_holder["audit"].trace_available:
+                    raise RuntimeError("Part B requires successful strace ptrace preflight before the model starts")
+                ns.server.on_audit = audit_holder["audit"].hook
                 install_audit_hooks(ns.sb)
             ns.sb.put_file(body.encode(), f"{PROJECT}/{new_sid}.jsonl")
             state: dict = {}
@@ -1279,7 +1283,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             if sid:
                 if probe:
                     raw = "".join(json.dumps(row) + "\n" for row in
-                                  read_transcript(ns.sb, f"{PROJECT}/{sid}.jsonl"))
+                                  read_transcript(ns.sb, f"{PROJECT}/{sid}.jsonl", strict=True))
                 else:
                     raw = ns.sb.exec(f"cat {PROJECT}/{sid}.jsonl", timeout_s=120,
                                      workdir="/").stdout
@@ -1295,7 +1299,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             if probe:
                 captured_rows = list(ns.server.captured_asks)
                 transcript_path = out_dir / "transcript.jsonl"
-                full_rows = read_jsonl(transcript_path.read_text()) if transcript_path.exists() else []
+                full_rows = read_jsonl(transcript_path.read_text(), strict=True) if transcript_path.exists() else []
                 cut = next((i for i, row in enumerate(full_rows)
                             if row.get("uuid") == b["native_summary_uuid"]), -1)
                 evidence = audit_holder["audit"].finish(
@@ -1307,9 +1311,22 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                     evidence["capture_complete"] = False
                     evidence["part_a_complete"] = False
                     evidence["issues"].append("resumed summary absent from transcript")
+                context = resumed_context_check(full_rows, b["native_summary_uuid"], new_summary,
+                                                prompt, required=required_context,
+                                                forbidden=forbidden_context)
+                res["context_check"] = {key: value for key, value in context.items() if key != "surfaces"}
+                N._dump(out_dir / "initial_context.json", context)
+                if (required_context or forbidden_context) and not context["ok"]:
+                    evidence["part_a_complete"] = evidence["capture_complete"] = False
+                    evidence["issues"].append("effective resumed context verification failed")
+                if any(not call.get("ok") for call in ns.server.audit_calls):
+                    evidence["part_a_complete"] = evidence["capture_complete"] = False
+                    evidence["issues"].append("audit endpoint reported a failure")
                 res["token_usage"] = transcript_usage(full_rows[cut + 1:]) if cut >= 0 else None
                 rounds = getattr(ns.server.sim, "rounds", [])
-                res.update(probe=True, max_calls=max_calls, captured_asks=captured_rows,
+                res.update(probe=True, max_calls=max_calls,
+                           call_limit_unit="Claude Code assistant turns (--max-turns)",
+                           captured_asks=captured_rows,
                            sim_calls=len(ns.server.rows), sim_cost_usd=sum(
                                x.get("cost_usd") or 0.0 for x in rounds),
                            rate_limit=state.get("rate_limit"),
@@ -1455,11 +1472,12 @@ def ordered_evidence(rows: list[dict], *, captured_asks=(), submission: str = ""
                         complete=start == 1 and count == total and isinstance(total, int),
                         forced=bool(raw.get("harness_forced", False)), cwd=row.get("cwd"),
                         exit_code=1 if block.get("is_error") else 0, tool_call_id=tid)
-                elif name == "Grep":
-                    add("search", pattern=args.get("pattern", ""), path=args.get("path"),
+                elif name in ("Grep", "Glob"):
+                    add("search", tool=name, arguments=args, pattern=args.get("pattern", ""), path=args.get("path"),
                         glob=args.get("glob"), output_mode=args.get("output_mode", "files_with_matches"),
                         output=output, exit_code=1 if block.get("is_error") else 0,
-                        completed=not block.get("is_error"), cwd=row.get("cwd"), tool_call_id=tid)
+                        completed=not block.get("is_error"), cwd=row.get("cwd"), tool_call_id=tid,
+                        **search_filters(args, raw))
                 elif name in ("Edit", "Write") and not block.get("is_error"):
                     if name == "Write":
                         before = raw.get("originalFile")
@@ -1471,6 +1489,10 @@ def ordered_evidence(rows: list[dict], *, captured_asks=(), submission: str = ""
                         add("edit", path=args.get("file_path", ""),
                             before=args.get("old_string", ""), after=args.get("new_string", ""),
                             fragment=True, tool_call_id=tid)
+    for event in events:
+        if event["kind"] == "search":
+            event["data"] = normalize_native_search(event["data"],
+                                                     failed=not event["data"].get("completed"))
     if any(call["name"] not in (ASK_TOOL, "ask_user") for call in pending.values()):
         issues.append("unfinished tool calls")
     for row in captured_asks:
@@ -1499,12 +1521,12 @@ def audit_hook_script() -> str:
     return ("#!/bin/sh\n"
             f"umask 077; printf '{N.TOKEN_HEADER}: %s\\n' \"$EMX_SIM_TOKEN\" > {HEADER_DIR}/audit-h\n"
             f"curl --fail -sS -m 180 -X POST -H @{HEADER_DIR}/audit-h"
-            f" -H 'content-type: application/json' --data-binary @- {N.BOUNDARY_URL}\n")
+            f" -H 'content-type: application/json' --data-binary @- {N.AUDIT_URL}\n")
 
 
 def install_audit_hooks(sb: SB.Sandbox) -> None:
     config = settings()
-    for name in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+    for name in ("SessionStart", "PreToolUse", "PostToolUse", "PostToolUseFailure"):
         config["hooks"][name] = [{"matcher": ".*", "hooks": [
             {"type": "command", "command": AUDIT_HOOK, "timeout": 180}]}]
     sb.put_file(json.dumps(config).encode(), SETTINGS)
@@ -1530,144 +1552,293 @@ def _read_files(sb, paths: list[str]) -> dict[str, str | None]:
     return json.loads(r.stdout)
 
 
-def parse_mutation_trace(trace: str, before: dict[str, str | None]) -> dict:
-    """Replay successful strace writes, including write/revert inside a single command.
+def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str = "/app") -> dict:
+    """Replay Linux strace into declared-file mutations, including writes later reverted.
 
-    strace must use -f -ttt -yy -s 0. Only declared paths are scored. Temporary files are
-    followed through rename. An unhandled write mechanism or incomplete trace is a coverage
-    failure; a zero-edit output alone is never treated as proof of no mutation.
+    The observer uses TRACE_FLAGS (4 MiB strings; raw read buffers). Open-file descriptions
+    are shared across dup/fork, descriptor tables follow CLONE_FILES and cwd follows
+    CLONE_FS. Unrelated caches/binaries never enter scoring. Temporary files are tracked as
+    bytes and matter only when renamed onto a declared path. Unsupported target mutation,
+    truncated write strings and uncertain offsets fail coverage closed.
     """
     import ast
-    import re
-    files = dict(before)
-    targets = set(before)
-    fds: dict[tuple[str, int], tuple[str, int | None, bool]] = {}
-    pending: dict[str, str] = {}
-    events, issues = [], []
+    import posixpath
+
+    def cbytes(literal):
+        return ast.literal_eval("b" + literal)
+
+    def text(literal):
+        return cbytes(literal).decode("utf-8")
+
+    def number(value):
+        return int(re.match(r"(?:0x[0-9a-fA-F]+|[0-9]+)", value.strip()).group(), 0)
+
+    def args_of(line):
+        body = line[line.index("(") + 1:re.search(r"\)\s+=", line).start()]
+        parts, start, depth, quote, escape = [], 0, 0, False, False
+        for index, char in enumerate(body):
+            if escape:
+                escape = False
+            elif char == "\\" and quote:
+                escape = True
+            elif char == '"':
+                quote = not quote
+            elif not quote:
+                if char in "([{":
+                    depth += 1
+                elif char in ")]}":
+                    depth -= 1
+                elif char == "," and depth == 0:
+                    parts.append(body[start:index].strip())
+                    start = index + 1
+        return parts + [body[start:].strip()]
+
+    targets = {posixpath.normpath(path) for path in before}
+    files = {posixpath.normpath(path): value.encode() if value is not None else None
+             for path, value in before.items()}
+    issues, changes = [], []
     if not trace.strip():
         issues.append("empty mutation trace")
     if any(value is None for value in before.values()):
         issues.append("unreadable audit baseline")
-
-    def change(path, value, source):
-        old = files.get(path)
-        files[path] = value
-        observed_source = path in targets or (path.startswith("/app/") and not path.startswith("/app/.git/"))
-        if observed_source and old != value:
-            if old is None or value is None:
-                issues.append(f"unknown mutation contents: {path}")
-            else:
-                events.append({"kind": "edit", "data": {"path": path, "before": old,
-                              "after": value, "source": "strace", "syscall": source}})
-
-    for raw in trace.splitlines():
-        # -f output is PID timestamp syscall(...); tolerate bracketed PID formatting too.
-        m = re.match(r"(?:\[pid\s+)?(\d+)\]?\s+(\d+\.\d+)\s+(.*)", raw)
-        if not m:
+    pending, records = {}, []
+    # Join unfinished calls first; clone's descriptor snapshot belongs at invocation time.
+    for index, raw in enumerate(trace.splitlines()):
+        match = re.match(r"(?:(?:\[pid\s+)?(\d+)\]?\s+)?(\d+\.\d+)\s+(.*)", raw)
+        if not match:
             if raw.strip() and not raw.startswith("strace:"):
                 issues.append("unparsed trace line")
             continue
-        pid, timestamp, line = m.groups()
+        pid, _timestamp, line = match.groups()
+        pid = pid or "root"
+        start = index
         if "<unfinished ...>" in line:
-            pending[pid] = line.split("<unfinished ...>", 1)[0]
+            pending[pid] = (index, line.split("<unfinished ...>", 1)[0])
             continue
         if line.startswith("<..."):
             prior = pending.pop(pid, None)
             if prior is None or " resumed>" not in line:
                 issues.append("unmatched resumed syscall")
                 continue
-            line = prior + line.split(" resumed>", 1)[1]
+            start, prefix = prior
+            line = prefix + line.split(" resumed>", 1)[1]
         if line.startswith(("+++", "---")):
             continue
-        if "= -1 " in line:
+        if re.search(r"\)\s+=\s+-1\b", line):
             continue
         op = line.partition("(")[0]
-        result = re.search(r"\)\s+=\s+(-?\d+)", line)
+        result = re.search(r"\)\s+=\s+(-?0x[0-9a-fA-F]+|-?\d+)", line)
         if result is None:
             issues.append("missing syscall completion")
             continue
-        rc = int(result.group(1))
-        try:
-            if op in ("open", "openat"):
-                fm = re.search(r'=\s+(\d+)<([^>]+)>', line)
-                if fm is None:
-                    continue
-                fd, path = int(fm.group(1)), fm.group(2)
-                flags = line[:result.start()]
-                append = "O_APPEND" in flags
-                if "O_CREAT" in flags and "O_EXCL" in flags:
-                    files[path] = ""
-                if "O_TRUNC" in flags:
-                    change(path, "", op)
-                elif "O_CREAT" in flags and path not in files:
-                    # New temporary paths are initially empty, verified by O_EXCL when used.
-                    files[path] = "" if "O_EXCL" in flags else None
-                fds[(pid, fd)] = (path, len((files.get(path) or "").encode()) if append else 0,
-                                  append)
-            elif op in ("write", "pwrite64"):
-                wm = re.match(r'(?:pwrite64|write)\((\d+)<([^>]+)>,\s*("(?:[^"\\]|\\.)*"),\s*(\d+)(?:,\s*(\d+))?\s*\)', line)
-                if wm is None:
-                    # Binary/vector representations cannot be silently interpreted as no edit.
-                    if any(path in line for path in targets):
-                        issues.append("unparsed target write")
-                    continue
-                fd, path, literal, count, explicit = wm.groups()
-                fd = int(fd)
-                # Decode C escapes into bytes, then UTF-8. Non-UTF8 code is out of scope.
-                value = ast.literal_eval(literal)
-                payload = value.encode("latin1") if all(ord(c) < 256 for c in value) else value.encode()
-                payload = payload[:rc]
-                known = fds.get((pid, fd))
-                pos = int(explicit) if explicit is not None else (known[1] if known else None)
-                old = files.get(path)
-                if known and known[2]:
-                    pos = len(old.encode()) if old is not None else None
-                if old is not None and pos is not None:
-                    encoded = old.encode()
-                    new = (encoded[:pos] + b'\0' * max(0, pos - len(encoded)) + payload
-                           + encoded[pos + len(payload):]).decode()
-                    change(path, new, op)
-                    if explicit is None:
-                        fds[(pid, fd)] = (path, pos + rc, bool(known and known[2]))
-                elif path in targets or (path.startswith("/app/") and not path.startswith("/app/.git/")):
-                    issues.append(f"unknown source write offset or contents: {path}")
-            elif op == "lseek":
-                lm = re.match(r'lseek\((\d+)<([^>]+)>', line)
-                if lm:
-                    key = (pid, int(lm.group(1)))
-                    previous = fds.get(key)
-                    fds[key] = (lm.group(2), rc, bool(previous and previous[2]))
-            elif op in ("rename", "renameat", "renameat2"):
-                quoted = re.findall(r'"(?:[^"\\]|\\.)*"', line)
-                if len(quoted) >= 2:
-                    src, dst = (ast.literal_eval(q) for q in quoted[:2])
-                    src = src if src.startswith("/") else "/app/" + src
-                    dst = dst if dst.startswith("/") else "/app/" + dst
-                    change(dst, files.get(src), op)
-                    if src in targets:
-                        change(src, "", op)
-            elif op in ("unlink", "unlinkat"):
-                quoted = re.findall(r'"(?:[^"\\]|\\.)*"', line)
-                if quoted:
-                    path = ast.literal_eval(quoted[0])
-                    path = path if path.startswith("/") else "/app/" + path
-                    change(path, "", op)
-            elif op == "close":
-                fd = re.match(r"close\((\d+)", line)
-                if fd:
-                    fds.pop((pid, int(fd.group(1))), None)
-            elif op == "io_uring_setup":
-                issues.append("io_uring mutation coverage unavailable")
-            elif op in ("writev", "pwritev", "pwritev2", "ftruncate", "truncate",
-                        "copy_file_range", "sendfile", "splice", "mmap"):
-                if any(path in line for path in targets) or "/app/" in line:
-                    issues.append(f"unsupported target mutation syscall: {op}")
-        except (ValueError, SyntaxError, UnicodeError):
-            issues.append(f"cannot decode {op}")
+        records.append((start if op in ("fork", "vfork", "clone", "clone3") else index,
+                        pid, op, line, int(result.group(1), 0)))
     if pending:
         issues.append("unfinished syscalls")
-    return {"events": events, "after": {path: files.get(path) for path in targets},
-            "capture_complete": not issues, "issues": sorted(set(issues))}
+    tables, directories = {}, {}
+
+    def process(pid):
+        tables.setdefault(pid, {})
+        directories.setdefault(pid, {"cwd": posixpath.normpath(cwd)})
+        return tables[pid]
+
+    def path_arg(pid, arg, directory="AT_FDCWD"):
+        match = re.match(r'"(?:[^"\\]|\\.)*"', arg)
+        if match is None:
+            raise ValueError("missing path argument")
+        value = text(match.group())
+        if value.startswith("/"):
+            return posixpath.normpath(value)
+        base = directories[pid]["cwd"]
+        if not directory.startswith("AT_FDCWD"):
+            desc = process(pid).get(number(directory))
+            annotated = re.search(r"<([^>]+)>", directory)
+            base = annotated.group(1) if annotated else desc["path"] if desc else None
+            if base is None:
+                raise ValueError("unknown dirfd")
+        return posixpath.normpath(posixpath.join(base, value))
+
+    def mutate(path, value, op):
+        old = files.get(path)
+        files[path] = value
+        if path in targets and old != value:
+            if old is None or value is None:
+                issues.append(f"unknown mutation contents: {path}")
+            else:
+                changes.append((path, old, value, op))
+
+    def poison(path, reason):
+        files[path] = None
+        if path in targets:
+            issues.append(f"{reason}: {path}")
+
+    for _order, pid, op, line, rc in sorted(records, key=lambda item: item[0]):
+        table = process(pid)
+        args = []
+        try:
+            args = args_of(line)
+            if op in ("fork", "vfork", "clone", "clone3"):
+                child = str(rc)
+                tables[child] = table if "CLONE_FILES" in line else dict(table)
+                directories[child] = directories[pid] if "CLONE_FS" in line else dict(directories[pid])
+            elif op in ("chdir", "fchdir"):
+                if op == "chdir":
+                    directories[pid]["cwd"] = path_arg(pid, args[0])
+                else:
+                    directories[pid]["cwd"] = table[number(args[0])]["path"]
+            elif op in ("open", "openat", "creat"):
+                annotated = re.search(r"=\s+\d+<([^>]+)>", line)
+                if annotated:
+                    path = posixpath.normpath(annotated.group(1))
+                else:
+                    path = path_arg(pid, args[1] if op == "openat" else args[0],
+                                    args[0] if op == "openat" else "AT_FDCWD")
+                flags = line[:re.search(r"\)\s+=", line).start()]
+                if "O_EXCL" in flags and "O_CREAT" in flags:
+                    files[path] = b""
+                if "O_TRUNC" in flags or op == "creat":
+                    mutate(path, b"", op)
+                append = "O_APPEND" in flags
+                table[rc] = {"path": path, "offset": 0, "append": append}
+            elif op in ("dup", "dup2", "dup3") or (
+                    op == "fcntl" and len(args) > 1 and args[1].startswith("F_DUPFD")):
+                old = table.get(number(args[0]))
+                if old is not None:
+                    table[rc] = old
+                else:
+                    table.pop(rc, None)
+            elif op == "fcntl" and len(args) > 1 and args[1] == "F_SETFL":
+                if number(args[0]) in table:
+                    table[number(args[0])]["append"] = "O_APPEND" in line
+            elif op in ("read", "readv"):
+                desc = table.get(number(args[0]))
+                if desc and desc["offset"] is not None:
+                    desc["offset"] += rc
+            elif op == "lseek":
+                desc = table.get(number(args[0]))
+                if desc:
+                    desc["offset"] = rc
+            elif op in ("write", "pwrite64", "writev"):
+                fd = number(args[0])
+                desc = table.get(fd)
+                annotated = re.search(r"<([^>]+)>", args[0])
+                path = posixpath.normpath(annotated.group(1)) if annotated else desc["path"] if desc else None
+                if path is None:
+                    continue
+                if desc is not None and desc["path"] != path:
+                    desc = None
+                if op == "writev":
+                    literals = re.findall(r'iov_base=("(?:[^"\\]|\\.)*")\s*,\s*iov_len=\d+', args[1])
+                    if "..." in re.sub(r'"(?:[^"\\]|\\.)*"', '""', args[1]) or not literals:
+                        raise ValueError("truncated vector write")
+                    payload = b"".join(cbytes(literal) for literal in literals)[:rc]
+                else:
+                    if not re.fullmatch(r'"(?:[^"\\]|\\.)*"', args[1]):
+                        poison(path, "truncated or unparsed write")
+                        continue
+                    payload = cbytes(args[1])[:rc]
+                if len(payload) != rc:
+                    poison(path, "truncated write bytes")
+                    continue
+                position = number(args[3]) if op == "pwrite64" else desc["offset"] if desc else None
+                old = files.get(path)
+                if desc and desc["append"]:
+                    position = len(old) if old is not None else None
+                if old is None or position is None or position + len(payload) > TRACE_STRING_LIMIT:
+                    poison(path, "unknown write offset or content")
+                else:
+                    new = old[:position] + b"\0" * max(0, position - len(old)) + payload + old[position + len(payload):]
+                    mutate(path, new, op)
+                if desc and op != "pwrite64":
+                    desc["offset"] = position + rc if position is not None else None
+            elif op in ("rename", "renameat", "renameat2"):
+                if op == "rename":
+                    source, dest = path_arg(pid, args[0]), path_arg(pid, args[1])
+                else:
+                    source, dest = path_arg(pid, args[1], args[0]), path_arg(pid, args[3], args[2])
+                if op == "renameat2" and "RENAME_EXCHANGE" in args[-1]:
+                    old_source, old_dest = files.get(source), files.get(dest)
+                    mutate(source, old_dest, op)
+                    mutate(dest, old_source, op)
+                    for handles in tables.values():
+                        for desc in handles.values():
+                            if desc["path"] in (source, dest):
+                                poison(desc["path"], "open descriptor across exchange rename")
+                    continue
+                mutate(dest, files.get(source), op)
+                if source in targets:
+                    mutate(source, b"", op)
+                else:
+                    files.pop(source, None)
+                for handles in tables.values():
+                    for desc in handles.values():
+                        if desc["path"] == source:
+                            desc["path"] = dest
+            elif op in ("unlink", "unlinkat"):
+                path = path_arg(pid, args[1], args[0]) if op == "unlinkat" else path_arg(pid, args[0])
+                mutate(path, b"", op)
+            elif op in ("truncate", "ftruncate"):
+                path = path_arg(pid, args[0]) if op == "truncate" else table[number(args[0])]["path"]
+                size, old = number(args[1]), files.get(path)
+                if size == 0:
+                    mutate(path, b"", op)
+                elif old is not None and size <= TRACE_STRING_LIMIT:
+                    mutate(path, old[:size] + b"\0" * max(0, size - len(old)), op)
+                else:
+                    poison(path, "unknown truncate contents")
+            elif op == "close":
+                table.pop(number(args[0]), None)
+            elif op == "io_uring_setup":
+                issues.append("io_uring mutation coverage unavailable")
+            elif op in ("mmap", "mmap2"):
+                if "PROT_WRITE" in line and "MAP_SHARED" in line:
+                    desc = table.get(number(args[4]))
+                    if desc:
+                        poison(desc["path"], "unsupported shared writable mmap")
+            elif op in ("pwritev", "pwritev2", "copy_file_range", "sendfile", "splice"):
+                for arg in args:
+                    annotated = re.search(r"<([^>]+)>", arg)
+                    if annotated:
+                        poison(posixpath.normpath(annotated.group(1)), f"unsupported {op}")
+        except (ValueError, SyntaxError, UnicodeError, KeyError, AttributeError, IndexError):
+            # An undecodable unrelated binary/cache write does not poison the declared scope.
+            for annotated in re.findall(r"<(/[^>]+)>", line):
+                files[posixpath.normpath(annotated)] = None
+            mentioned = [path for path in targets if path in line]
+            for path in mentioned:
+                poison(path, f"cannot decode {op}")
+            if not mentioned and op in ("chdir", "fchdir", "clone", "clone3", "fork", "vfork"):
+                issues.append(f"unknown process state after {op}")
+    events = []
+    for path, old, new, op in changes:
+        try:
+            events.append({"kind": "edit", "data": {"path": path, "before": old.decode(),
+                           "after": new.decode(), "source": "strace", "syscall": op}})
+        except UnicodeError:
+            issues.append(f"non-UTF8 target contents: {path}")
+    after = {}
+    for path in targets:
+        try:
+            after[path] = files[path].decode() if files.get(path) is not None else None
+        except UnicodeError:
+            after[path] = None
+            issues.append(f"non-UTF8 target contents: {path}")
+    return {"events": events, "after": after, "capture_complete": not issues,
+            "issues": sorted(set(issues))}
+
+
+TRACE_STRING_LIMIT = 4 * 1024 * 1024
+TRACE_SYSCALLS = ("open,openat,creat,write,pwrite64,writev,pwritev,pwritev2,read,readv,"
+                  "lseek,close,dup,dup2,dup3,fcntl,clone,clone3,fork,vfork,chdir,fchdir,"
+                  "rename,renameat,renameat2,unlink,unlinkat,mmap,ftruncate,truncate,"
+                  "copy_file_range,sendfile,splice,io_uring_setup")
+TRACE_FLAGS = ["-f", "-q", "-ttt", "-yy", "-x", "-s", str(TRACE_STRING_LIMIT),
+               "-e", "trace=" + TRACE_SYSCALLS, "-e", "raw=read,readv"]
+
+
+def trace_command(binary: str, output: str, command: str) -> str:
+    """Identical flags for availability preflight and the observed command."""
+    return shlex.join([binary, *TRACE_FLAGS, "-o", output]) + " " + command
 
 
 class ProbeAudit:
@@ -1688,9 +1859,40 @@ class ProbeAudit:
         self.pending: dict[str, dict] = {}
         self.issues: list[str] = []
         self.lock = threading.RLock()
-        self.commits = self._commits()
-        self.trace_available = sb.exec("command -v strace", timeout_s=30).rc == 0
+        # Include every pre-window reachable/reflog ancestor: checking out an old commit is
+        # not creation of a new commit, even when that old hash had no reflog entry yet.
+        known = sb.exec("git rev-list --all --reflog", timeout_s=60)
+        self.commits = set(known.stdout.splitlines()) if known.rc == 0 else set()
+        if known.rc:
+            self.issues.append("commit baseline unavailable")
+        self.commits |= self._commits()
+        self.trace_binary = None
+        self.trace_preflight = {"skipped": not bool(self.paths)}
+        self.trace_available = False
+        if self.paths:
+            found = sb.exec(f"if [ -x {CLI_DIR}/strace ]; then printf '%s' {CLI_DIR}/strace; "
+                            "else command -v strace; fi", timeout_s=30)
+            if found.rc == 0 and found.stdout.strip():
+                self.trace_binary = found.stdout.strip()
+                checked = sb.exec(trace_command(self.trace_binary, "/dev/null", "true"), timeout_s=30)
+                self.trace_available = checked.rc == 0
+                self.trace_preflight = {"rc": checked.rc, "stderr": checked.stderr[-2000:],
+                                        "binary": self.trace_binary, "flags": TRACE_FLAGS}
+            else:
+                self.trace_preflight = {"rc": found.rc, "error": "strace unavailable"}
+            if not self.trace_available:
+                self.issues.append("strace preflight unavailable")
         self.hooks_seen = 0
+        self.pre_ids: set[str] = set()
+        self.post_ids: set[str] = set()
+
+    def resolve_path(self, path: str, cwd: str | None) -> str | None:
+        if not path or (not path.startswith("/") and not cwd):
+            return None
+        script = "import os; print(os.path.realpath(" + repr(path) + "))"
+        result = self.sb.exec("python3 -c " + shlex.quote(script), timeout_s=30,
+                              workdir=cwd or "/app")
+        return result.stdout.strip() if result.rc == 0 else None
 
     def add(self, kind, **data):
         with self.lock:
@@ -1706,7 +1908,14 @@ class ProbeAudit:
 
     def _record_commits(self):
         current = self._commits()
-        for sha in sorted(current - self.commits):
+        new = current - self.commits
+        head = self.sb.exec("git reflog show HEAD --format=%H", timeout_s=30)
+        ordered = list(dict.fromkeys(reversed(head.stdout.splitlines()))) if head.rc == 0 else []
+        ordered = [sha for sha in ordered if sha in new]
+        if set(ordered) != new:
+            self.issues.append("commit ordering unavailable outside HEAD reflog")
+            ordered += sorted(new - set(ordered))
+        for sha in ordered:
             # These are commits seen in real refs, not synthetic WIP stash objects.
             r = self.sb.exec(f"git show -s --format=%B {shlex.quote(sha)}", timeout_s=30)
             if r.rc:
@@ -1716,8 +1925,27 @@ class ProbeAudit:
         self.commits |= current
 
     def hook(self, payload: dict) -> dict:
+        """A hook exception is durable missing evidence and an immediate stop instruction."""
+        with self.lock:
+            try:
+                result = self._hook(payload)
+                phase, tid = payload.get("hook_event_name"), str(payload.get("tool_use_id") or "")
+                if phase == "PreToolUse":
+                    self.pre_ids.add(tid)
+                elif phase in ("PostToolUse", "PostToolUseFailure"):
+                    self.post_ids.add(tid)
+                return result
+            except Exception as exc:  # noqa: BLE001 - fail closed and preserve the failure
+                self.issues.append(f"audit hook error: {type(exc).__name__}: {exc}")
+                if self.stop is not None:
+                    self.stop.set()
+                return {"continue": False, "stopReason": "native audit evidence collection failed"}
+
+    def _hook(self, payload: dict) -> dict:
         with self.lock:
             self.hooks_seen += 1
+            if payload.get("hook_event_name") == "SessionStart":
+                return {}
             name = payload.get("tool_name", "")
             args = payload.get("tool_input") or {}
             tid = str(payload.get("tool_use_id") or "")
@@ -1726,7 +1954,7 @@ class ProbeAudit:
                 self.issues.append("hook missing tool use id")
             if phase == "PreToolUse":
                 if self.stop is not None and self.stop.is_set():
-                    return {"ok": True, "hookSpecificOutput": {
+                    return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "deny",
                         "permissionDecisionReason": "Probe window ended"}}
                 if name in ("Bash", "Edit", "Write") and any(
@@ -1745,65 +1973,58 @@ class ProbeAudit:
                         "cwd": payload.get("cwd")}
                 self.pending[tid] = call
                 if name == "Bash":
+                    if re.search(r"\bgit\s+(?:reflog\s+(?:expire|delete)|gc|prune)\b",
+                                 args.get("command", "")):
+                        self.issues.append("commit history may be erased within command")
                     if not self.paths:
                         self.issues.append("no frozen mutation scope")
                     command = args.get("command", "")
                     final_pwd = "pwd -P > " + shlex.quote(call["final_cwd_path"])
-                    traced = "bash -lc " + shlex.quote(
+                    traced = "bash -c " + shlex.quote(
                         "pwd -P > " + shlex.quote(call["cwd_path"]) + "; trap "
                         + shlex.quote(final_pwd) + " EXIT; " + command)
-                    if not self.trace_available:
-                        self.issues.append("strace unavailable")
-                    else:
-                        traced = ("strace -f -q -ttt -yy -x -s 0 -o "
-                                  + shlex.quote(call["trace_path"])
-                                  + " -e trace=open,openat,write,pwrite64,writev,pwritev,pwritev2,"
-                                  "lseek,close,rename,renameat,renameat2,unlink,unlinkat,mmap,"
-                                  "ftruncate,truncate,copy_file_range,sendfile,splice,io_uring_setup "
-                                  + traced)
+                    if self.paths and self.trace_available:
+                        traced = trace_command(self.trace_binary, call["trace_path"], traced)
                     wrapped = (traced + "; emx_audit_rc=$?; printf '%s' \"$emx_audit_rc\" > "
                                + shlex.quote(call["rc_path"]) + "; "
                                + "if [ -s " + shlex.quote(call["final_cwd_path"]) + " ]; then "
                                + "cd -- \"$(cat " + shlex.quote(call["final_cwd_path"]) + ")\"; fi; "
                                + "sh -c 'exit \"$1\"' emx-audit \"$emx_audit_rc\"")
-                    return {"ok": True, "hookSpecificOutput": {
+                    return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "allow",
                         "updatedInput": {**args, "command": wrapped}}}
-                return {"ok": True}
+                return {}
             call = self.pending.pop(tid, None)
             if call is None:
                 self.issues.append(f"post hook without pre hook: {tid}")
-                return {"ok": True}
+                return {}
             name, args = call["name"], call["args"]
             response = payload.get("tool_response") or {}
             response = response if isinstance(response, dict) else {"output": str(response)}
             failed = phase == "PostToolUseFailure"
             if name == "Bash":
-                if self.trace_available:
+                artifacts = _read_files(self.sb, [call["rc_path"], call["cwd_path"], call["final_cwd_path"]])
+                raw_rc = artifacts.get(call["rc_path"]) or ""
+                rc = int(raw_rc) if raw_rc.strip().isdigit() else None
+                cwd = (artifacts.get(call["cwd_path"]) or call.get("cwd") or "").strip() or None
+                if self.paths and self.trace_available:
                     r = self.sb.exec("cat " + shlex.quote(call["trace_path"]), timeout_s=60)
                     if r.rc or not r.stdout.strip():
                         self.issues.append("mutation trace missing")
                     else:
-                        traced = parse_mutation_trace(r.stdout, call["before"])
+                        traced = parse_mutation_trace(r.stdout, call["before"], cwd=cwd or "/app")
                         self.issues += traced["issues"]
                         for event in traced["events"]:
                             self.add(event["kind"], tool_call_id=tid, **event["data"])
                         after = _read_files(self.sb, self.paths)
                         if traced["after"] != after:
                             self.issues.append("trace replay differs from actual files")
-                rr = self.sb.exec("cat " + shlex.quote(call["rc_path"]), timeout_s=30)
-                rc = int(rr.stdout) if rr.rc == 0 and rr.stdout.strip().isdigit() else None
-                if rc is None:
-                    self.issues.append("command exit code unavailable")
                 output = response.get("output")
                 if output is None:
                     # Keep stream components too: transcript reconciliation replaces this
                     # with the exact tool result that the agent saw, including truncation.
                     output = str(response.get("stdout") or "") + str(response.get("stderr") or "")
-                cwd_result = self.sb.exec("cat " + shlex.quote(call["cwd_path"]), timeout_s=30)
-                cwd = cwd_result.stdout.strip() if cwd_result.rc == 0 else None
-                final_cwd = self.sb.exec("cat " + shlex.quote(call["final_cwd_path"]), timeout_s=30)
-                if final_cwd.rc:
+                if not artifacts.get(call["final_cwd_path"]):
                     self.issues.append("shell cwd restoration unavailable")
                 completed = (rc is not None and not args.get("run_in_background")
                              and not response.get("interrupted") and not response.get("timed_out")
@@ -1819,12 +2040,13 @@ class ProbeAudit:
                                  tool_call_id=tid, source="tool_snapshot")
                         if original is None or after[path] is None:
                             self.issues.append("unknown edited file contents")
-            elif name == "Grep":
-                self.add("search", pattern=args.get("pattern", ""), path=args.get("path"),
+            elif name in ("Grep", "Glob"):
+                self.add("search", tool=name, arguments=args, pattern=args.get("pattern", ""), path=args.get("path"),
                          glob=args.get("glob"), output_mode=args.get("output_mode", "files_with_matches"),
                          output=str(response.get("content", response.get("output", ""))),
                          exit_code=1 if failed else 0, completed=not failed,
-                         cwd=call.get("cwd"), tool_call_id=tid, raw_response=response)
+                         cwd=call.get("cwd"), tool_call_id=tid, raw_response=response,
+                         **search_filters(args, response))
             elif name == "Read":
                 data = response.get("file") or {}
                 start = data.get("startLine")
@@ -1833,25 +2055,39 @@ class ProbeAudit:
                 self.add("read", path=args.get("file_path", ""), output=data.get("content", ""),
                          start_line=start, end_line=end, complete=start == 1 and count == total
                          and isinstance(total, int), forced=False,
-                         exit_code=1 if failed else 0, cwd=call.get("cwd"), tool_call_id=tid)
+                         exit_code=1 if failed else 0, cwd=call.get("cwd"), tool_call_id=tid,
+                         resolved_path=self.resolve_path(args.get("file_path", ""), call.get("cwd")))
             elif name not in (ASK_TOOL, "ask_user", "Grep", "Glob", "TodoWrite", "TaskCreate",
                               "TaskUpdate", "TaskList", "TaskGet"):
                 self.issues.append(f"unobserved tool mutation semantics: {name}")
             self._record_commits()
-            return {"ok": True}
+            return {}
 
     def finish(self, transcript: list[dict], *, captured_asks=(), submission="") -> dict:
         # Transcript is authoritative for the output bytes as seen by the agent.
         outputs = {}
+        result_errors = {}
+        expected_calls = {}
         for row in transcript:
             for block in (row.get("message") or {}).get("content", []):
                 if isinstance(block, dict) and block.get("type") == "tool_result":
                     outputs[block.get("tool_use_id")] = _block_text(block.get("content"))
+                    result_errors[block.get("tool_use_id")] = bool(block.get("is_error"))
+                elif isinstance(block, dict) and block.get("type") == "tool_use":
+                    expected_calls[block.get("id")] = block.get("name")
+        for tid, name in expected_calls.items():
+            if name in (ASK_TOOL, "ask_user") and captured_asks:
+                continue
+            if tid not in self.pre_ids or tid not in self.post_ids:
+                self.issues.append(f"native hook coverage missing for {tid}")
         for event in self.events:
             if event["kind"] in ("command", "read", "search"):
                 tid = event["data"].get("tool_call_id")
                 if tid in outputs:
                     event["data"]["output"] = outputs[tid]
+                    if event["kind"] == "search":
+                        event["data"] = normalize_native_search(event["data"],
+                            failed=result_errors.get(tid, False) or not event["data"].get("completed"))
                 else:
                     self.issues.append(f"agent-visible output missing for {tid}")
         for row in captured_asks:
@@ -1863,14 +2099,15 @@ class ProbeAudit:
         if pending:
             self.issues.append("unfinished tool calls")
         part_a_issues = [issue for issue in self.issues if issue.startswith((
-            "commit ", "agent-visible output missing", "unfinished tool", "command exit code",
-            "post hook without", "hook missing", "mutation trace missing", "shell cwd restoration"))]
+            "commit ", "agent-visible output missing", "unfinished tool",
+            "post hook without", "hook missing", "audit hook error", "native hook coverage missing"))]
         return {"schema_version": 1, "events": self.events,
                 "part_a_complete": bool(self.hooks_seen) and not part_a_issues,
                 "part_a_issues": part_a_issues,
                 "capture_complete": bool(self.hooks_seen) and not self.issues,
                 "issues": sorted(set(self.issues)), "pending_tool_ids": pending,
-                "mutation_paths": self.paths, "trace_available": self.trace_available}
+                "mutation_paths": self.paths, "trace_available": self.trace_available,
+                "trace_preflight": getattr(self, "trace_preflight", None)}
 
 
 def annotate_delivery_distances(rows: list[dict], boundary_in_session: int,
@@ -1939,3 +2176,121 @@ def transcript_usage(rows: list[dict]) -> dict | None:
     keys = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
     return {"source": "native_transcript_response_usage", "responses": len(responses),
             **{key: sum(value.get(key) or 0 for value in responses.values()) for key in keys}}
+
+
+def search_filters(args: dict, response: dict) -> dict:
+    """Preserve native search restrictions instead of assuming an unfiltered repo search."""
+    return {"type": args.get("type"), "head_limit": args.get("head_limit"),
+            "offset": args.get("offset"), "ignore_case": args.get("-i", False),
+            "multiline": args.get("multiline", False),
+            "truncated": bool(args.get("head_limit") or args.get("offset")
+                              or response.get("truncated")),
+            "num_files": response.get("numFiles"), "num_matches": response.get("numMatches")}
+
+
+def normalize_native_search(data: dict, *, failed: bool = False) -> dict:
+    """Normalize only native Grep's exact successful no-match messages; retain raw evidence."""
+    out = dict(data)
+    out.setdefault("output_mode", "files_with_matches")
+    if out.get("tool") != "Grep":
+        return out
+    if failed:
+        out["completed"] = False
+        return out
+    raw = out.get("output")
+    if out.get("completed") and isinstance(raw, str) and raw.strip() in (
+            "No files found", "No matches found"):
+        out.update(raw_output=raw, output="", exit_code=1,
+                   exit_code_source="native_success_no_match_message")
+    return out
+
+
+def resumed_context_check(rows: list[dict], summary_uuid: str, expected_summary: str,
+                          prompt: str, *, required=(), forbidden=()) -> dict:
+    """Inspect the first actual resumed API request, never subsequent assistant output.
+
+    A transcript summary alone does not prove what the CLI supplied after re-rendering
+    attachments. Missing delta blobs/request evidence therefore fails this check closed.
+    """
+    cut = next((i for i, row in enumerate(rows) if row.get("uuid") == summary_uuid), None)
+    out = {"ok": False, "source": "first_resumed_api_request", "surfaces": None}
+    if cut is None:
+        return {**out, "reason": "resumed summary absent"}
+    observed_summary = _block_text((rows[cut].get("message") or {}).get("content"))
+    if observed_summary != expected_summary:
+        return {**out, "reason": "resumed summary differs from assigned summary"}
+    end = next((i for i in range(cut + 1, len(rows)) if rows[i].get("type") == "assistant"), len(rows))
+    request_index = next((i for i in range(cut + 1, end) if rows[i].get("type") == "api-request"), None)
+    if request_index is None:
+        return {**out, "reason": "initial resumed request unrecorded"}
+    request = request_messages(rows, request_index)
+    if request is None:
+        return {**out, "reason": "initial resumed request delta incomplete"}
+    messages, _info = request_to_messages(request)
+    summary_indexes = [i for i, msg in enumerate(messages) if msg.get("role") == "user"
+                       and _block_text(msg.get("content")) == expected_summary]
+    prompt_indexes = [i for i, msg in enumerate(messages) if msg.get("role") == "user"
+                      and _block_text(msg.get("content")) == prompt]
+    if len(summary_indexes) != 1 or not prompt_indexes:
+        return {**out, "reason": "assigned summary or probe absent from initial request"}
+    boundary = next((row for row in reversed(rows[:cut]) if row.get("subtype") == "compact_boundary"), {})
+    by_uuid = {row.get("uuid"): i for i, row in enumerate(rows[:cut]) if row.get("uuid")}
+    kept, _sources, _info = to_messages(rows, [by_uuid[uid] for uid in _preserved(boundary)
+                                             if uid in by_uuid])
+    kept_contents = {I.canon(msg) for msg in kept}
+    tail, attachments = [], []
+    for i, msg in enumerate(messages):
+        if i in summary_indexes or i in prompt_indexes:
+            continue
+        (tail if I.canon(msg) in kept_contents else attachments).append(msg)
+    system = system_prompt(rows, request_index + 1)
+    if system != SYSTEM_PLACEHOLDER:
+        attachments.append({"role": "system", "content": system})
+    surfaces = {"summary": observed_summary, "preserved_tail": tail,
+                "attachments": attachments, "probe_message": prompt}
+    checked = verify_effective_context(**surfaces, required=required, forbidden=forbidden)
+    return {**checked, "source": "first_resumed_api_request", "request_index": request_index,
+            "surfaces": surfaces, "assigned_summary_sha256": I.sha256(expected_summary)}
+
+
+def update_delivery_boundary(server, exported: dict, k: int, pre_tokens: int | None) -> None:
+    """Update the frozen clock and its live counterpart under the simulator's ask lock."""
+    estimated = next((item for item in exported.get("planting", {}).get("boundaries", [])
+                      if item.get("compaction_index") == k), None)
+    if estimated is None:
+        return
+    estimated["pre_tokens"] = pre_tokens
+    with server._lock:
+        live = getattr(server.sim, "planting", None)
+        if live is not None:
+            for item in live.boundaries:
+                if item.get("compaction_index") == k:
+                    item.update(json.loads(json.dumps(estimated)))
+
+
+def boundary_replay_integrity(rows: list[dict], summary_uuid: str | None,
+                              hook_summary: str) -> dict:
+    """Known transcript damage disqualifies an early-stop boundary before consuming a chain."""
+    issues = []
+    ids = [row["uuid"] for row in rows if row.get("uuid")]
+    if len(ids) != len(set(ids)):
+        issues.append("duplicate_transcript_uuid")
+    if any(row.get("parentUuid") and row["parentUuid"] not in ids for row in rows):
+        issues.append("broken_transcript_parent_link")
+    if any(uid not in ids for row in rows for uid in _preserved(row)):
+        issues.append("missing_preserved_message")
+    hits = [i for i, row in enumerate(rows) if row.get("uuid") == summary_uuid]
+    if not summary_uuid or len(hits) != 1:
+        issues.append("summary_missing_or_ambiguous")
+    else:
+        content = (rows[hits[0]].get("message") or {}).get("content")
+        try:
+            if not isinstance(content, str) or not hook_summary:
+                raise ValueError("summary text unavailable")
+            insert_summary_lines(content, hook_summary, ["offline-anchor-check"])
+        except ValueError:
+            issues.append("hook_summary_mismatch")
+        request = first_request_after(rows, hits[0])
+        if request is not None and request_messages(rows, request) is None:
+            issues.append("incomplete_resumed_request_delta")
+    return {"ok": not issues, "issues": sorted(set(issues))}
