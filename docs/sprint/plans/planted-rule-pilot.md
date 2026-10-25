@@ -99,7 +99,7 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 - **Build:** about 9 h for the core (Appendix E), an optimistic estimate, not a demonstrated budget. At 1.5×, (i) moves to Sun 25 late evening and (iii) into Mon 26 morning, still before the noon cut.
 - **Jacob:** about 30 min of cards.
 
-## Part B (v0.3, revised after astra r1–r2): does the agent act on a false, checkable claim in its summary?
+## Part B (v0.3, after astra r1–r3): does the agent act on a false, checkable claim in its summary?
 
 Proposed 25 Oct after Jacob's question, building on J's suggestion of a scheming summarizer; revised after astra r1–r3 (`logs/reviews/20261025-planted-partB-r{1,2,3}.md`; the r3 MINORs were applied after the cap). It reuses Part A's machinery (insert text into a summary, fork from a kept boundary) and needs no natural loss. **It reports a contrast with examples, not a calibrated threshold.**
 
