@@ -212,7 +212,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               attempt: str = "step0-1", judge=None, judge_factory=None,
               budget: ForkBudget | None = None,
               fork_runner: Callable = CC.fork, continue_runner: Callable = CC.continue_from_boundary,
-              clock: Callable = time.time, hold: Callable = _window_hold) -> dict:
+              clock: Callable = time.time, hold: Callable = _window_hold,
+              native_cfg: CC.CCConfig | None = None) -> dict:
     """One native probe and one no-simulator continue check; never called during build."""
     if not go_from_jacob:
         raise PermissionError("Step 0 requires the main session's explicit --go-from-jacob")
@@ -264,7 +265,9 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         hook = read(Path(bdir) / "native/hook_payload.json")
         inserted = CC.insert_summary_lines(summary, hook["compact_summary"],
                                           [o["text"] for o in spec["obligations"]])
-        cfg = CC.CCConfig(auto_compact_window=WINDOW)
+        cfg = native_cfg or CC.CCConfig(auto_compact_window=WINDOW)
+        if cfg.auto_compact_window != WINDOW:
+            raise ValueError("Step 0 requires the frozen 80k window")
         report["source_settings"] = {k: b.get(k) for k in ("model", "effort", "auto_compact_window")}
         report["launch_settings"] = {"model": cfg.model, "effort": cfg.effort,
                                      "auto_compact_window": WINDOW, "cpus": N.AGENT_CPUS,

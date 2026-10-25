@@ -860,3 +860,181 @@ def test_unfinished_mutating_or_target_open_remains_unknown(operation):
     result = CC.parse_mutation_trace(f'101 123.100 {operation} <unfinished ...>',
                                      {'/app/call.py': 'pass\n'})
     assert not result['capture_complete']
+
+
+def test_reflink_copy_then_revert_preserves_transient_helper_call():
+    trace = '\n'.join([  # noqa: FLY002 -- syscall order is the test contract
+        '101 123.100 openat(AT_FDCWD, "/tmp/replacement.py", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 3</tmp/replacement.py>',
+        '101 123.101 write(3</tmp/replacement.py>, "helper()\\n", 9) = 9',
+        '101 123.102 close(3</tmp/replacement.py>) = 0',
+        '102 123.103 openat(AT_FDCWD, "/tmp/replacement.py", O_RDONLY) = 3</tmp/replacement.py>',
+        '102 123.104 openat(AT_FDCWD, "/app/call.py", O_WRONLY|O_TRUNC) = 4</app/call.py>',
+        '102 123.105 ioctl(4</app/call.py>, BTRFS_IOC_CLONE or FICLONE, 3</tmp/replacement.py>) = 0',
+        '102 123.106 close(4</app/call.py>) = 0',
+        '101 123.107 openat(AT_FDCWD, "/app/call.py", O_WRONLY|O_TRUNC) = 3</app/call.py>',
+        '101 123.108 write(3</app/call.py>, "pass\\n", 5) = 5',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/call.py': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/call.py'] == 'pass\n'
+    edits = [event['data'] for event in result['events']]
+    assert any(row['after'] == 'helper()\n' and 'FICLONE' in row['syscall'] for row in edits)
+    assert all(row['command_baseline'] == 'pass\n' for row in edits)
+    assert 'ioctl' in CC.TRACE_SYSCALLS.split(',')
+
+
+@pytest.mark.parametrize('clone_request', ['FICLONE', 'BTRFS_IOC_CLONE', '0x40049409'])
+def test_full_clone_preserves_destination_tail_and_descriptor_offset(clone_request):
+    trace = '\n'.join([
+        '101 123.100 openat(AT_FDCWD, "/app/source", O_RDONLY) = 3</app/source>',
+        '101 123.101 openat(AT_FDCWD, "/app/dest", O_RDWR) = 4</app/dest>',
+        '101 123.102 lseek(4</app/dest>, 2, SEEK_SET) = 2',
+        f'101 123.103 ioctl(4</app/dest>, {clone_request}, 3</app/source>) = 0',
+        '101 123.104 write(4</app/dest>, "!", 1) = 1',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/source': 'x' * 4096, '/app/dest': 'y' * 8192})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/dest'] == 'xx!' + 'x' * 4093 + 'y' * 4096
+
+
+@pytest.mark.parametrize('clone_request', ['FICLONERANGE', 'BTRFS_IOC_CLONE_RANGE', '0x4020940d'])
+def test_range_clone_reads_source_slice_and_preserves_destination(clone_request):
+    trace = ('101 123.100 ioctl(4</app/dest>, ' + clone_request
+             + ', {src_fd=3</app/source>, src_offset=4096, src_length=4096, dest_offset=4096}) = 0')
+    result = CC.parse_mutation_trace(trace, {'/app/source': 'a' * 4096 + 'b' * 4096,
+                                           '/app/dest': 'z' * 12288})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/dest'] == 'z' * 4096 + 'b' * 4096 + 'z' * 4096
+
+
+def test_range_clone_zero_length_means_source_eof_and_can_extend_with_hole():
+    result = CC.parse_mutation_trace(
+        '101 123.100 ioctl(4</app/dest>, FICLONERANGE, '
+        '{src_fd=3</app/source>, src_offset=4096, src_length=0, dest_offset=4096}) = 0',
+        {'/app/source': 'a' * 4096 + 'helper()\n', '/app/dest': ''})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/dest'] == '\0' * 4096 + 'helper()\n'
+
+
+def test_clone_uses_inherited_duplicated_descriptors_without_annotations():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/app/source", O_RDONLY) = 3</app/source>',
+        '101 123.101 openat(AT_FDCWD, "/app/dest", O_WRONLY|O_TRUNC) = 4</app/dest>',
+        '101 123.102 dup(3</app/source>) = 5</app/source>',
+        '101 123.103 clone(child_stack=NULL, flags=SIGCHLD) = 102',
+        '102 123.104 ioctl(4, FICLONE, 5) = 0',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/source': 'helper()\n', '/app/dest': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/dest'] == 'helper()\n'
+
+
+@pytest.mark.parametrize('clone', [
+    'ioctl(4</app/dest>, FICLONE, 3</app/unknown>) = 0',
+    'ioctl(4</app/dest>, FICLONERANGE, 0x7ffe0000) = 0',
+    'ioctl(4</app/dest>, 0x123456, 0) = 0',
+    'ioctl(4</app/dest>, FICLONE, 3</app/source> <unfinished ...>',
+])
+def test_unknown_clone_contents_remain_unknown_after_revert(clone):
+    trace = '\n'.join([
+        '101 123.100 ' + clone,
+        '102 123.101 openat(AT_FDCWD, "/app/dest", O_WRONLY|O_TRUNC) = 4</app/dest>',
+        '102 123.102 write(4</app/dest>, "pass\\n", 5) = 5',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/dest': 'pass\n'})
+    assert not result['capture_complete']
+    assert result['after']['/app/dest'] == 'pass\n'
+
+
+def test_failed_clone_does_not_mutate_or_poison_capture():
+    result = CC.parse_mutation_trace(
+        '101 123.100 ioctl(4</app/dest>, FICLONE, 3</app/unknown>) = -1 EOPNOTSUPP (Operation not supported)',
+        {'/app/dest': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+    assert not result['events']
+
+
+def test_clone_only_invalidates_destination_not_known_read_source():
+    result = CC.parse_mutation_trace(
+        '101 123.100 ioctl(4</app/untracked>, FICLONE, 3</app/source>) = 0',
+        {'/app/source': 'helper()\n'})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/source'] == 'helper()\n'
+
+
+def test_clone_into_temporary_then_rename_is_captured():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/tmp/replacement", O_WRONLY|O_CREAT|O_TRUNC, 0666) = 4</tmp/replacement>',
+        '101 123.101 ioctl(4</tmp/replacement>, FICLONE, 3</app/source>) = 0',
+        '101 123.102 rename("/tmp/replacement", "/app/dest") = 0',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/source': 'helper()\n', '/app/dest': 'pass\n'})
+    assert result['capture_complete'], result['issues']
+    assert result['after']['/app/dest'] == 'helper()\n'
+
+
+def test_clone_overlapping_another_write_has_unknown_ordering():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 ioctl(4</app/dest>, FICLONE, 3</app/source> <unfinished ...>',
+        '102 123.101 openat(AT_FDCWD, "/app/source", O_WRONLY|O_TRUNC) = 3</app/source>',
+        '102 123.102 write(3</app/source>, "helper()\\n", 9) = 9',
+        '101 123.103 <... ioctl resumed>) = 0',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/source': 'pass\n', '/app/dest': 'pass\n'})
+    assert not result['capture_complete']
+    assert any('ordering' in issue for issue in result['issues'])
+
+
+@pytest.mark.parametrize('reported_size', [str(CC.TRACE_BYTE_LIMIT + 1), '', 'not a size', '0'])
+def test_trace_size_gate_stops_before_host_transfer(monkeypatch, reported_size):
+    class SizedAuditSandbox(AuditSandbox):
+        def exec(self, command, **kwargs):
+            if command.startswith('wc -c < '):
+                self.commands.append(command)
+                return SimpleNamespace(stdout=reported_size, stderr='', rc=0)
+            if command.startswith(('cat ', 'head -c ')):
+                pytest.fail('oversized or unmeasured trace must never be transferred')
+            return super().exec(command, **kwargs)
+
+    stop = threading.Event()
+    sb = SizedAuditSandbox()
+    audit = CC.ProbeAudit(sb, mutation_paths=['/app/call.py'], stop=stop)
+    monkeypatch.setattr(CC, '_read_files', lambda sb, paths: dict.fromkeys(paths, 'pass\n'))
+    payload = {'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'large',
+               'cwd': '/app', 'tool_input': {'command': 'cargo test'}}
+    audit.hook(payload)
+    response = audit.hook({**payload, 'hook_event_name': 'PostToolUse', 'tool_response': {}})
+    assert response['continue'] is False and stop.is_set()
+    assert any('512 MiB' in issue for issue in audit.issues)
+    assert audit.trace_preflight['max_bytes'] == CC.TRACE_BYTE_LIMIT
+
+
+def test_trace_growth_during_bounded_read_stops_without_parsing(monkeypatch):
+    class GrowingAuditSandbox(AuditSandbox):
+        def exec(self, command, **kwargs):
+            if command.startswith('wc -c < '):
+                return SimpleNamespace(stdout='3\n', stderr='', rc=0)
+            if command.startswith('head -c '):
+                assert str(CC.TRACE_BYTE_LIMIT + 1) in command
+                return SimpleNamespace(stdout='grew', stderr='', rc=0)
+            return super().exec(command, **kwargs)
+
+    stop = threading.Event()
+    audit = CC.ProbeAudit(GrowingAuditSandbox(), mutation_paths=['/app/call.py'], stop=stop)
+    monkeypatch.setattr(CC, '_read_files', lambda sb, paths: dict.fromkeys(paths, 'pass\n'))
+    monkeypatch.setattr(CC, 'parse_mutation_trace', lambda *a, **kw: pytest.fail('changed trace cannot be scored'))
+    payload = {'hook_event_name': 'PreToolUse', 'tool_name': 'Bash', 'tool_use_id': 'growth',
+               'cwd': '/app', 'tool_input': {'command': 'background tool'}}
+    audit.hook(payload)
+    response = audit.hook({**payload, 'hook_event_name': 'PostToolUse', 'tool_response': {}})
+    assert response['continue'] is False and stop.is_set()
+    assert any('changed or exceeded' in issue for issue in audit.issues)
+
+
+def test_malformed_ioctl_on_tracked_fd_without_annotation_fails_closed():
+    trace = '\n'.join([  # noqa: FLY002
+        '101 123.100 openat(AT_FDCWD, "/app/call.py", O_RDWR) = 4</app/call.py>',
+        '101 123.101 ioctl(4) = 0',
+    ])
+    result = CC.parse_mutation_trace(trace, {'/app/call.py': 'pass\n'})
+    assert not result['capture_complete']

@@ -43,7 +43,9 @@ import secrets
 import shlex
 import socket
 import subprocess
+import sys
 import tarfile
+import tempfile
 import threading
 import time
 import uuid
@@ -174,6 +176,7 @@ class Egress:
     lifetime_s: int = 8 * 3600
     network: str = ""
     proxy: str = ""
+    sim_socket: str | None = None  # local Linux host socket, mounted only into the sidecar
 
     def __post_init__(self) -> None:
         if self.allow is None:
@@ -189,10 +192,13 @@ class Egress:
 
     def proxy_run_args(self, image: str) -> list[str]:
         """The sidecar's `docker run` argv (pure)."""
+        transport = (["--mount", f"type=bind,src={Path(self.sim_socket).parent},dst=/run/emx-sim,readonly",
+                      "-e", f"UNIX_FORWARD={FORWARD_PORT}=/run/emx-sim/{Path(self.sim_socket).name}"]
+                     if self.sim_socket else ["-e", f"FORWARD={FORWARD_PORT}={self.sim_host}:{self.sim_port}"])
         return ["run", "-d", "--rm", "--name", self.proxy, *self.labels(),
                 "--network", "bridge", "--memory", "128m", "--cpus", "0.5",
                 "-e", f"ALLOW={','.join(self.allow or ())}",
-                "-e", f"FORWARD={FORWARD_PORT}={self.sim_host}:{self.sim_port}",
+                *transport,
                 image, "timeout", "-k", "5", str(int(self.lifetime_s)),
                 "python3", "-u", "/egress_proxy.py"]
 
@@ -966,13 +972,15 @@ class SimServer:
 
     def __init__(self, sim: I.UserSim, *, bind: str | None = None, port: int = 0,
                  token: str | None = None,
+                 unix_socket: str | None = None,
                  on_boundary: Callable[[dict], dict] | None = None,
                  on_cap: Callable[[BaseException], None] | None = None,
                  on_ask: Callable[[dict], None] | None = None,
                  capture_ask: Callable[[dict], None] | None = None):
         self.sim = sim
-        self.bind = bind or tailscale_ip()
-        self.port = port or free_port(self.bind)
+        self.unix_socket = unix_socket
+        self.bind = bind or ("127.0.0.1" if unix_socket else tailscale_ip())
+        self.port = 0 if unix_socket else port or free_port(self.bind)
         self.token = token or secrets.token_urlsafe(24)
         self.on_boundary, self.on_cap, self.on_ask = on_boundary, on_cap, on_ask
         self.capture_ask = capture_ask
@@ -1097,7 +1105,7 @@ class SimServer:
 
     def start(self, timeout_s: float = 30) -> SimServer:
         import uvicorn
-        cfg = uvicorn.Config(self.app(), host=self.bind, port=self.port, log_level="warning",
+        cfg = uvicorn.Config(self.app(), host=self.bind, port=self.port, uds=self.unix_socket, log_level="warning",
                              timeout_keep_alive=3600, lifespan="on")
         self._server = uvicorn.Server(cfg)
         self._thread = threading.Thread(target=self._server.run, daemon=True,
@@ -1311,7 +1319,14 @@ def native_run_json(*, run_key: str, task_dict: dict, persona_sha256: str, arm: 
 
 
 def available_gb(host: str | None) -> float | None:
-    """MemAvailable on the docker host in GB (ssh://<target> hosts only; None otherwise)."""
+    """MemAvailable on the Docker host in GB, including the local Linux daemon."""
+    if (host is None or host.startswith("unix://")) and Path("/proc/meminfo").exists():
+        try:
+            for line in Path("/proc/meminfo").read_text().splitlines():
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) / 1024 / 1024
+        except (OSError, ValueError, IndexError):
+            return None
     if not host or not host.startswith("ssh://"):
         return None
     cmd = "awk '/MemAvailable/ {print $2}' /proc/meminfo"
@@ -1386,6 +1401,7 @@ class NativeSession:
         if self.min_free_gb:
             wait_for_memory(self.host, self.min_free_gb)
         self.inv = SB.Invocation(purpose=purpose(self.arm), host=self.host)
+        self._sim_socket_dir = None
         try:
             holder: dict = {}
 
@@ -1393,11 +1409,16 @@ class NativeSession:
                 return holder["run"](cmd, t)
 
             sim = self.sim_factory(runner)
-            self.server = SimServer(sim, on_boundary=self._boundary, on_cap=self.on_cap)
+            socket_path = None
+            if sys.platform.startswith("linux") and (self.host is None or self.host.startswith("unix://")):
+                self._sim_socket_dir = tempfile.TemporaryDirectory(prefix="emx-native-sim-")
+                socket_path = str(Path(self._sim_socket_dir.name) / "server.sock")
+            self.server = SimServer(sim, on_boundary=self._boundary, on_cap=self.on_cap,
+                                    unix_socket=socket_path)
             self.server.start()
             self.egress = Egress(self.arm, self.server.bind, self.server.port, host=self.host,
                                  run_id=self.inv.run_id, allow=self.allow,
-                                 lifetime_s=self.lifetime_s + 600)
+                                 lifetime_s=self.lifetime_s + 600, sim_socket=socket_path)
             net = self.egress.up()
             self.sb = start_task_container(self.inv, self.image, network=net,
                                            extra_args=self.extra_args,
@@ -1435,7 +1456,9 @@ class NativeSession:
         steps = [("before_close", lambda: self.before_close() if self.before_close else []),
                  ("containers", lambda: self.inv.cleanup() if self.inv else []),
                  ("egress", lambda: self.egress.down() if self.egress else []),
-                 ("server", lambda: self.server.stop() if self.server else [])]
+                 ("server", lambda: self.server.stop() if self.server else []),
+                 ("sim_socket", lambda: self._sim_socket_dir.cleanup()
+                  if getattr(self, "_sim_socket_dir", None) else [])]
         for name, fn in steps:  # each one runs whatever the others did
             try:
                 bad += list(fn() or [])

@@ -170,6 +170,9 @@ class CCConfig:
     model: str = MODEL
     effort: str | None = EFFORT
     auto_compact_window: int | None = None  # None: the CLI default (Haiku 5.5: 1M context)
+    max_window_utilization: float | None = None  # planted unattended runner: 0.90
+    deadline_epoch: float | None = None
+    stop_file: str | None = None
 
     def threshold(self) -> dict:
         return {"kind": "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "window": self.auto_compact_window,
@@ -617,7 +620,8 @@ class AuthError(RuntimeError):
     pass
 
 
-def _stream_watch(state: dict, stop: threading.Event) -> Callable[[str], None]:
+def _stream_watch(state: dict, stop: threading.Event,
+                  cfg: CCConfig | None = None) -> Callable[[str], None]:
     """Per stream-json line: refuse anything but Max billing (init's apiKeySource must be
     "none"), and note the result and rate-limit events."""
     def on_line(line: str) -> None:
@@ -638,9 +642,55 @@ def _stream_watch(state: dict, stop: threading.Event) -> Callable[[str], None]:
             state["result"]["text"] = str(ev.get("result") or "")[:500]
         elif ev.get("type") == "rate_limit_event":
             state["rate_limit"] = {**ev, "observed_at": time.time()}
+            if cfg and cfg.max_window_utilization is not None:
+                info = ev.get("rate_limit_info") or {}
+                windows = info.get("unifiedWindows") or {info.get("rateLimitType"): info}
+                for name, window in windows.items():
+                    reset = window.get("resetsAt")
+                    if isinstance(reset, (int, float)) and reset <= time.time():
+                        continue
+                    utilization = window.get("utilization")
+                    if window.get("status") == "rejected" or (
+                            name == "seven_day" and isinstance(utilization, (int, float))
+                            and utilization >= cfg.max_window_utilization):
+                        state["policy_stop"] = "max_window_hold"
+                        stop.set()
         elif ev.get("type") == "system" and ev.get("subtype") == "compact_boundary":
             state.setdefault("compactions", []).append(ev.get("compact_metadata"))
     return on_line
+
+
+def guarded_exec(sb, *, cfg: CCConfig, state: dict, stop: threading.Event, **kwargs):
+    """Stop an active native call on deadline/operator stop, including silent tool execution."""
+    finished = threading.Event()
+
+    def reason():
+        if cfg.stop_file and Path(cfg.stop_file).exists():
+            return "operator_stop"
+        if cfg.deadline_epoch is not None and time.time() >= cfg.deadline_epoch:
+            return "deadline"
+        return None
+
+    def monitor():
+        while not finished.wait(.25):
+            why = reason()
+            if why:
+                state["policy_stop"] = why
+                stop.set()
+                return
+
+    why = reason()
+    if why:
+        state["policy_stop"] = why
+        stop.set()
+        raise RuntimeError(f"native call withheld: {why}")
+    thread = threading.Thread(target=monitor, daemon=True)
+    thread.start()
+    try:
+        return N.detached_exec(sb, stop=stop, on_line=_stream_watch(state, stop, cfg), **kwargs)
+    finally:
+        finished.set()
+        thread.join(timeout=2)
 
 
 HEADER_DIR = "/run/emx-x"  # tmpfs: the hook's header file (never in a commit)
@@ -820,14 +870,17 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                     seen[sid] = prior_compactions
                 sd = rd / "steps" / step
                 # detached in the container: a dropped ssh transport costs a reconnect
-                r = N.detached_exec(ns.sb, cli_command(cfg.cc, session_id=None if resume_b else sid,
+                r = guarded_exec(ns.sb, cmd=cli_command(cfg.cc, session_id=None if resume_b else sid,
                                                        resume=sid if resume_b else None,
                                                        max_calls=cfg.max_calls if cfg.capture_ask else None),
                                     name=f"{step}-{sid[:8]}",
                                     timeout_s=cfg.step_timeout_s.get(step, 5400),
                                     log_path=sd / "stream.jsonl", env=env,
                                     stdin=(CONTINUE_PROMPT if resume_b else task.steps[step]).encode(), stop=stop,
-                                    on_line=_stream_watch(state, stop))
+                                    cfg=cfg.cc, state=state)
+                if state.get("policy_stop"):
+                    end_reason["end"] = state["policy_stop"]
+                    res["policy_stop"] = state["policy_stop"]
                 res.setdefault("reconnects", {})[step] = getattr(r, "reconnects", 0)
                 if r.killed in ("container_gone", "output_lost"):  # infrastructure first
                     end_reason.setdefault("end", "infra_killed")
@@ -1294,12 +1347,16 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             ns.sb.put_file(body.encode(), f"{PROJECT}/{new_sid}.jsonl")
             state: dict = {}
             env = cli_env(cfg, ns.egress, ns.server, token)
-            r = N.detached_exec(ns.sb, cli_command(cfg, resume=new_sid, fork=True,
+            r = guarded_exec(ns.sb, cmd=cli_command(cfg, resume=new_sid, fork=True,
                                                    prompt=prompt,
                                                    max_calls=max_calls if probe else None),
                                 name=f"fork-{new_sid[:8]}", timeout_s=timeout_s,
                                 log_path=out_dir / "stream.jsonl", env=env, stop=stop,
-                                on_line=_stream_watch(state, stop))
+                                cfg=cfg, state=state)
+            if state.get("policy_stop"):
+                why["end"] = state["policy_stop"]
+                res["policy_stop"] = state["policy_stop"]
+                res["error"] = state["policy_stop"]
             if r.killed:
                 stop_cli(ns.sb)
             sid = (state.get("init") or {}).get("session_id")
@@ -1358,7 +1415,9 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                            evidence_complete=evidence["capture_complete"])
                 if ns.server.rows or rounds:
                     raise RuntimeError("probe unexpectedly invoked the simulator")
-                if why.get("end") == "ask_user":
+                if state.get("policy_stop"):
+                    res["outcome"] = state["policy_stop"]
+                elif why.get("end") == "ask_user":
                     res["outcome"] = "ask_user"
                 elif (state.get("result") or {}).get("subtype") == "error_max_turns":
                     res["outcome"] = "call_cap"
@@ -1626,7 +1685,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         issues.append("empty mutation trace")
     if any(value is None for value in before.values()):
         issues.append("unreadable audit baseline")
-    pending, records = {}, []
+    pending, records, ioctl_starts = {}, [], {}
     # Join unfinished calls first; clone's descriptor snapshot belongs at invocation time.
     for index, raw in enumerate(trace.splitlines()):
         match = re.match(r"(?:(?:\[pid\s+)?(\d+)\]?\s+)?(\d+\.\d+)\s+(.*)", raw)
@@ -1644,7 +1703,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
             prior = pending.pop(pid, None)
             if prior is None or " resumed>" not in line:
                 if any(path in line for path in targets) or re.match(
-                        r"<\.\.\. (?:write|pwrite|rename|unlink|truncate|ftruncate|copy_file_range|sendfile|splice)", line):
+                        r"<\.\.\. (?:write|pwrite|rename|unlink|truncate|ftruncate|copy_file_range|sendfile|splice|ioctl)", line):
                     issues.append("unmatched mutation syscall")
                 continue
             start, prefix = prior
@@ -1654,6 +1713,8 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         if re.search(r"\)\s+=\s+-1\b", line):
             continue
         op = line.partition("(")[0]
+        if op == "ioctl":
+            ioctl_starts[index] = start
         result = re.search(r"\)\s+=\s+(-?0x[0-9a-fA-F]+|-?\d+)", line)
         if result is None:
             records.append((index, pid, op, line, None))
@@ -1704,6 +1765,12 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
         return bool(annotation and annotation.group(1).startswith(
             ("pipe:", "socket:", "anon_inode:", "/dev/")))
 
+    def fd_path(table, arg):
+        annotated = re.search(r"<([^>]+)>", arg)
+        desc = table.get(number(arg))
+        path = annotated.group(1) if annotated else desc["path"] if desc else None
+        return posixpath.normpath(path) if path and path.startswith("/") else None
+
     for _order, pid, op, line, rc in sorted(records, key=lambda item: item[0]):
         table = process(pid)
         args = []
@@ -1719,12 +1786,12 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                 if desc:
                     desc["offset"] = None
                 continue
-            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate") and first and nonfile_annotation(first.group(1)):
+            if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate", "ioctl") and first and nonfile_annotation(first.group(1)):
                 continue  # Known pipe/socket/device output cannot mutate the declared files.
             referenced = set(re.findall(r"<(/[^>]+)>", line))
             if desc:
                 referenced.add(desc["path"])
-            if op in ("copy_file_range", "sendfile", "splice"):
+            if op in ("copy_file_range", "sendfile", "splice", "ioctl"):
                 # Incomplete transfers still only threaten the destination, never a read source.
                 referenced = set()
                 with contextlib.suppress(ValueError, AttributeError, IndexError):
@@ -1739,7 +1806,7 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     if path:
                         referenced.add(path)
             if op in ("write", "pwrite64", "writev", "pwritev", "pwritev2", "ftruncate",
-                      "copy_file_range", "sendfile", "splice"):
+                      "copy_file_range", "sendfile", "splice", "ioctl"):
                 for path in referenced:
                     poison(posixpath.normpath(path), "unfinished mutation syscall")
                 if not referenced:
@@ -1868,6 +1935,56 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
                     poison(path, "unknown truncate contents")
             elif op == "close":
                 table.pop(number(args[0]), None)
+            elif op == "ioctl":
+                # Linux fs/ioctl.c dispatches FICLONE as range (src=0,len=0,dst=0).
+                # Both clone requests remap bytes without changing fd offsets or
+                # truncating a longer destination. See Linux v6.11 fs/ioctl.c and
+                # fs/remap_range.c; src_length=0 means source EOF, not zero bytes.
+                if nonfile_annotation(args[0]):
+                    continue
+                dest = fd_path(table, args[0])
+                request = args[1]
+                whole = bool(re.search(r"\b(?:FICLONE|BTRFS_IOC_CLONE)\b", request)) or request == "0x40049409"
+                ranged = bool(re.search(r"\b(?:FICLONERANGE|BTRFS_IOC_CLONE_RANGE)\b", request)) or request == "0x4020940d"
+                if request in {"FIONREAD", "FIGETBSZ", "FS_IOC_GETFLAGS", "FS_IOC_GETVERSION",
+                               "FS_IOC_FSGETXATTR", "FS_IOC_FIEMAP", "FIDEDUPERANGE"}:
+                    continue  # Queries, or deduplication of bytes already equal.
+                if dest is None:
+                    issues.append("unresolved ioctl destination")
+                    continue
+                if not (whole or ranged) or rc != 0:
+                    poison(dest, "unsupported ioctl mutation semantics")
+                    continue
+                try:
+                    if whole:
+                        source, source_offset, length, destination_offset = fd_path(table, args[2]), 0, 0, 0
+                    else:
+                        fields = re.fullmatch(
+                            r"\{src_fd=(.+?), src_offset=(\d+), src_length=(\d+), dest_offset=(\d+)\}", args[2])
+                        if fields is None:
+                            raise ValueError("unparsed clone range")
+                        source = fd_path(table, fields[1])
+                        source_offset, length, destination_offset = map(int, fields.groups()[1:])
+                    old, copied = files.get(dest), files.get(source)
+                    if old is None or copied is None:
+                        raise ValueError("unknown clone source or destination")
+                    length = length or len(copied) - source_offset
+                    if (source_offset > len(copied) or source_offset + length > len(copied)
+                            or length < 0 or destination_offset + length > TRACE_STRING_LIMIT):
+                        raise ValueError("clone range outside captured bytes")
+                    start = ioctl_starts.get(_order, _order)
+                    if any(start < order < _order and other_op in {
+                        "write", "pwrite64", "writev", "pwritev", "pwritev2", "ioctl", "rename", "renameat",
+                        "renameat2", "unlink", "unlinkat", "truncate", "ftruncate", "copy_file_range",
+                        "sendfile", "splice", "open", "openat", "creat"}
+                           for order, _pid, other_op, _line, _rc in records):
+                        raise ValueError("concurrent mutation during atomic clone")
+                    if length:
+                        payload = copied[source_offset:source_offset + length]
+                        mutate(dest, old[:destination_offset] + b"\0" * max(0, destination_offset - len(old))
+                               + payload + old[destination_offset + length:], request)
+                except (ValueError, AttributeError, IndexError):
+                    poison(dest, "unknown clone contents or ordering")
             elif op == "io_uring_setup":
                 issues.append("io_uring mutation coverage unavailable")
             elif op in ("mmap", "mmap2"):
@@ -1889,6 +2006,14 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
             mentioned = [path for path in targets if path in line]
             for path in mentioned:
                 poison(path, f"cannot decode {op}")
+            if op == "ioctl" and not mentioned:
+                dest = None
+                with contextlib.suppress(ValueError, AttributeError, IndexError):
+                    dest = fd_path(table, args[0])
+                if dest:
+                    poison(dest, "cannot decode ioctl")
+                else:
+                    issues.append("unresolved ioctl destination")
             if not mentioned and op in ("chdir", "fchdir", "clone", "clone3", "fork", "vfork"):
                 issues.append(f"unknown process state after {op}")
     events = []
@@ -1911,10 +2036,11 @@ def parse_mutation_trace(trace: str, before: dict[str, str | None], *, cwd: str 
 
 
 TRACE_STRING_LIMIT = 4 * 1024 * 1024
+TRACE_BYTE_LIMIT = 512 * 1024 * 1024  # measured gate; overflow stops, never truncates evidence
 TRACE_SYSCALLS = ("open,openat,creat,write,pwrite64,writev,pwritev,pwritev2,read,readv,"
                   "lseek,close,dup,dup2,dup3,fcntl,clone,clone3,fork,vfork,chdir,fchdir,"
                   "rename,renameat,renameat2,unlink,unlinkat,mmap,ftruncate,truncate,"
-                  "copy_file_range,sendfile,splice,io_uring_setup")
+                  "copy_file_range,sendfile,splice,ioctl,io_uring_setup")
 TRACE_FLAGS = ["-f", "-q", "-ttt", "-yy", "-x", "-s", str(TRACE_STRING_LIMIT),
                "-e", "trace=" + TRACE_SYSCALLS, "-e", "raw=read,readv"]
 
@@ -1960,7 +2086,8 @@ class ProbeAudit:
                 checked = sb.exec(trace_command(self.trace_binary, "/dev/null", "true"), timeout_s=30)
                 self.trace_available = checked.rc == 0
                 self.trace_preflight = {"rc": checked.rc, "stderr": checked.stderr[-2000:],
-                                        "binary": self.trace_binary, "flags": TRACE_FLAGS}
+                                        "binary": self.trace_binary, "flags": TRACE_FLAGS,
+                                        "max_bytes": TRACE_BYTE_LIMIT}
             else:
                 self.trace_preflight = {"rc": found.rc, "error": "strace unavailable"}
             if not self.trace_available:
@@ -2095,9 +2222,19 @@ class ProbeAudit:
                 rc = int(raw_rc) if raw_rc.strip().isdigit() else None
                 cwd = (artifacts.get(call["cwd_path"]) or call.get("cwd") or "").strip() or None
                 if self.paths and self.trace_available:
-                    r = self.sb.exec("cat " + shlex.quote(call["trace_path"]), timeout_s=60)
+                    path = shlex.quote(call["trace_path"])
+                    measured = self.sb.exec("wc -c < " + path, timeout_s=30)
+                    size = measured.stdout.strip()
+                    if measured.rc or not size.isdigit() or not 0 < int(size) <= TRACE_BYTE_LIMIT:
+                        raise SB.SandboxError("mutation trace missing or exceeds 512 MiB evidence bound")
+                    # Bound the transfer too: background children could append after wc.
+                    # Any changed/oversized stream stops rather than scoring a prefix.
+                    r = self.sb.exec(f"head -c {TRACE_BYTE_LIMIT + 1} -- " + path, timeout_s=60)
+                    bytes_read = len(r.stdout.encode())
                     if r.rc or not r.stdout.strip():
                         self.issues.append("mutation trace missing")
+                    elif bytes_read != int(size) or bytes_read > TRACE_BYTE_LIMIT:
+                        raise SB.SandboxError("mutation trace changed or exceeded bound while reading")
                     else:
                         traced = parse_mutation_trace(r.stdout, call["before"], cwd=cwd or "/app")
                         self.issues += traced["issues"]
