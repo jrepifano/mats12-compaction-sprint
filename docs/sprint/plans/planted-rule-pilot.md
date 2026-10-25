@@ -11,7 +11,7 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 | **Core** | Two obligation kinds that score robustly: a **commit convention** and a **verification-output line**. Plus capture at `ask_user` and usable chains. The report field and the required test edit are optional extensions (Appendix A). |
 | **Setting** | 3 SWE-Interact tasks, Claude Code (Haiku 5.5 on Max) with readable summaries, at an 80k window. A pi (DeepSeek) fallback is a separate claim, never pooled. |
 | **Readout** | Decision probes forked off the base session at each compaction. Per obligation: complied / violated / not reached, as shares of every assigned continuation. |
-| **Gate to expand** | 2/2 versus 0/2 for restoration against matched text on a verified loss, in two tasks. This is a conservative gate with low power (below), so graded effects are reported as signs of life. |
+| **Gate to expand** | 2/2 versus 0/2 for restoration against matched text on a verified loss, in two tasks. This is a conservative gate with low power (below), so it stays the strong result, not the decision rule. Go for more runs: at least 1 verified loss, and restoration's complied share above matched text's where repaired. |
 | **Caps** | $25 simulator (GPT-5.5). 60 forks in all, Step 0 and rechecks included; the core needs 56. Agents and judges on Max. |
 
 ## The order, with dates (ET)
@@ -43,8 +43,9 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
   - The base session never sees a probe.
   - At compaction 1, the late obligation is not delivered yet, so its probe outcome there is the no-rule default rate.
   - Probe outputs are sealed until that boundary's repair assignment is frozen.
-- **Retention.** Opus 5.5 on Max grades each delivered obligation, from boundary evidence only, as kept or lost in the effective resumed context: the summary, the preserved tail and the attachments. Recoverability (git log, plan file) is flagged, not excluded.
+- **Retention.** Opus 5.5 on Max grades each delivered obligation, from boundary evidence only, as kept, lost or discharged in the effective resumed context: the summary, the preserved tail and the attachments. Recoverability (git log, plan file) is flagged, not excluded.
   - Jacob confirms every loss on a card. A seeded third of "kept" judgments (at least 8) is mixed blind into the same card set.
+  - **Discharged vs lost.** A dropped obligation is a true loss only if it still binds a later act. One fully satisfied before the boundary, with nothing left to do (a one-shot test edit already in the diff), is discharged. It's reported separately, never in loss tallies or repair candidates. The grader checks this against the repo state at the boundary. The two core kinds are standing rules, so they can't be discharged.
 - **Repair** (frozen rules in Appendix B): exact restoration versus length-matched irrelevant text, 2 repeats each, from the first verified-lost boundary of an obligation. At most 1 repair per boundary and 3 in all.
 
 **The sensitivity screen** is coarse. Per kind, the complied share is computed over all 6 assigned continuations per version, with not-reached counted as not complied. It is shown per boundary and pooled.
@@ -52,14 +53,14 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 - At 6 continuations per version, 50 points is a difference of three successes. It screens out a dead assay; it doesn't validate a sensitive one.
 - A kind that passes only after a redesign, on reused boundaries, is exploratory.
 
-**Power of the gate.** At true compliance of 0.8 with restoration and 0.2 with matched text, one case gives 2/2 versus 0/2 about 41% of the time (0.8² × 0.8²). Two independent tasks both pass it about 17% of the time. With at most 3 repairs and scarce losses, not expanding is the expected outcome. Graded descriptive effects are the signs of life: the complied share with exact restoration minus matched, per case and averaged within task, then across tasks.
+**Power of the gate.** At true compliance of 0.8 with restoration and 0.2 with matched text, one case gives 2/2 versus 0/2 about 41% of the time (0.8² × 0.8²). Two independent tasks both pass it about 17% of the time. With at most 3 repairs and scarce losses, the gate is not expected to pass, so the go decision uses the go rule in the Summary. Graded descriptive effects are the signs of life: the complied share with exact restoration minus matched, per case and averaged within task, then across tasks.
 
 ## What a positive and a null result would show
 
 - **Positive** (the gate, or graded effects pointing the same way): at this induced pressure, Claude Code's compaction can drop an obligation the maintainer gave mid-session, and putting it back changes the act at the next decision.
   - **Competing explanation: salience, not loss.** Restoration may help by making the rule salient, even when it was recoverable from the git log or a file. The core design can't separate the two for the repaired rule.
   - A positive doesn't show that compaction caused any base-session failure, or that losses are common in real use; Experiment 1 carries that.
-- **No verified losses:** the trajectories (task × obligation × compaction: kept, lost, not delivered, not adopted, unforkable) are reported with exposure counts, with no pooled bound. The kept audit shows whether misses hide among the "kept" judgments.
+- **No verified losses:** the trajectories (task × obligation × compaction: kept, lost, discharged, not delivered, not adopted, unforkable) are reported with exposure counts, with no pooled bound. The kept audit shows whether misses hide among the "kept" judgments.
 - **Losses, but no contrast, or mostly not reached:** little to read at 2 repeats; nothing about harm.
 - **A kind fails the screen:** its behavioural results mean nothing.
 - **A verified kept→lost change after k = 1** is needed for an accumulation claim. Losses only at k = 1 show loss at a compaction.
@@ -85,7 +86,7 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 3. Zero verified losses after 3 tasks × 3 compactions: stop and report the trajectories.
 4. $25 or 60 forks used: stop and report what exists.
 5. The Max window reaches 90% (the existing audit hold): pause. pi only if days remain, reported separately.
-6. The gate isn't passed by Tue 27, 6 PM: no expansion.
+6. The go rule isn't met by its deadline (no verified loss, or restoration not ahead of matched text): no more runs.
 
 ## Cost and time
 
