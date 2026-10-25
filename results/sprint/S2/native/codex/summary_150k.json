@@ -9,6 +9,7 @@
    "peak_call": 129,
    "calls": 129
   },
+  "grading_dir": null,
   "b": null
  },
  {
@@ -21,6 +22,7 @@
    "peak_call": 146,
    "calls": 146
   },
+  "grading_dir": null,
   "b": null
  },
  {
@@ -33,6 +35,7 @@
    "peak_call": 155,
    "calls": 155
   },
+  "grading_dir": null,
   "b": null
  },
  {
@@ -45,22 +48,31 @@
    "peak_call": 217,
    "calls": 259
   },
+  "grading_dir": "data/raw/sprint/s2/native/codex/lossaudit_v2/boa-hierarchical-evaluation-cancellation-codex-luna-a6",
   "b": "b1",
   "pre_tokens": 147824,
   "sim_calls": 13,
   "recite": [
+   0.994,
    1.0,
-   1.0,
-   1.0
+   0.994
   ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "unclosed"
+  ],
+  "summary_chars": 9940,
+  "reextracted": true,
   "la_items": 28,
-  "la_lost": 3,
+  "la_lost": 1,
   "la_recoverable": {
-   "not_recoverable": 3
+   "not recoverable": 1
   },
   "req_items": 25,
-  "req_lost": 5,
-  "req_new": 5,
+  "req_lost": 3,
+  "req_new": 3,
   "req_inh": 0,
   "req_unk": 0
  },
@@ -74,6 +86,7 @@
    "peak_call": 210,
    "calls": 313
   },
+  "grading_dir": "data/raw/sprint/s2/native/codex/lossaudit_v2/helm-array-merge-strategies-codex-luna-a3",
   "b": "b1",
   "pre_tokens": 149616,
   "sim_calls": 15,
@@ -82,6 +95,14 @@
    0.98,
    0.794
   ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 6343,
+  "reextracted": false,
   "la_items": 27,
   "la_lost": 1,
   "la_recoverable": {
@@ -103,6 +124,7 @@
    "peak_call": 254,
    "calls": 668
   },
+  "grading_dir": "data/raw/sprint/s2/native/codex/lossaudit_v2/vitest-duration-sharding-codex-luna-a4",
   "b": "b1",
   "pre_tokens": 150229,
   "sim_calls": 9,
@@ -111,10 +133,18 @@
    0.993,
    0.98
   ],
-  "la_items": 26,
+  "recite_used": 3,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 9045,
+  "reextracted": true,
+  "la_items": 27,
   "la_lost": 1,
   "la_recoverable": {
-   "not_recoverable": 1
+   "not recoverable": 1
   },
   "req_items": 18,
   "req_lost": 0,
@@ -132,23 +162,32 @@
    "peak_call": 254,
    "calls": 668
   },
+  "grading_dir": "data/raw/sprint/s2/native/codex/lossaudit_v2/vitest-duration-sharding-codex-luna-a4",
   "b": "b2",
   "pre_tokens": 150191,
   "sim_calls": 26,
   "recite": [
-   1.0,
-   1.0,
-   1.0
+   0.972,
+   0.986,
+   0.972
   ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "unclosed",
+   "unclosed",
+   "unclosed"
+  ],
+  "summary_chars": 7451,
+  "reextracted": true,
   "la_items": 43,
-  "la_lost": 21,
+  "la_lost": 11,
   "la_recoverable": {
-   "not_recoverable": 21
+   "not recoverable": 11
   },
   "req_items": 44,
-  "req_lost": 35,
-  "req_new": 34,
+  "req_lost": 15,
+  "req_new": 15,
   "req_inh": 0,
-  "req_unk": 1
+  "req_unk": 0
  }
 ]

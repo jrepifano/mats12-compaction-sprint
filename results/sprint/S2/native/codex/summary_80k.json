@@ -1,0 +1,342 @@
+[
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 4.810285,
+  "peak": {
+   "peak_tokens": 79462,
+   "peak_call": 62,
+   "calls": 220
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/kombu-single-active-consumer-priority-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 81663,
+  "sim_calls": 8,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "recite_used": 2,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 6649,
+  "reextracted": false,
+  "la_items": 18,
+  "la_lost": 1,
+  "la_recoverable": {
+   "not recoverable": 1
+  },
+  "req_items": 17,
+  "req_lost": 0,
+  "req_new": 0,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 4.810285,
+  "peak": {
+   "peak_tokens": 79462,
+   "peak_call": 62,
+   "calls": 220
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/kombu-single-active-consumer-priority-codex-luna-a1",
+  "b": "b2",
+  "pre_tokens": 80109,
+  "sim_calls": 14,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 6323,
+  "reextracted": false,
+  "la_items": 17,
+  "la_lost": 4,
+  "la_recoverable": {
+   "not recoverable": 4
+  },
+  "req_items": 33,
+  "req_lost": 28,
+  "req_new": 28,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 4.263396,
+  "peak": {
+   "peak_tokens": 79484,
+   "peak_call": 83,
+   "calls": 154
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/fastapi-implicit-head-options-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 79515,
+  "sim_calls": 9,
+  "recite": [
+   0.75,
+   0.677,
+   0.825
+  ],
+  "recite_used": 3,
+  "fence_layouts": [
+   "bare-pairs",
+   "bare-pairs",
+   "bare-pairs"
+  ],
+  "summary_chars": 8860,
+  "reextracted": true,
+  "la_items": 22,
+  "la_lost": 2,
+  "la_recoverable": {
+   "not searched": 2
+  },
+  "req_items": 12,
+  "req_lost": 0,
+  "req_new": 0,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 2.862774,
+  "peak": {
+   "peak_tokens": 79958,
+   "peak_call": 58,
+   "calls": 175
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/testem-bail-on-test-failure-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 80102,
+  "sim_calls": 7,
+  "recite": [
+   0.956,
+   0.956,
+   1.0
+  ],
+  "recite_used": 1,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 6910,
+  "reextracted": true,
+  "la_items": 20,
+  "la_lost": 6,
+  "la_recoverable": {
+   "not searched": 6
+  },
+  "req_items": 22,
+  "req_lost": 3,
+  "req_new": 3,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 2.862774,
+  "peak": {
+   "peak_tokens": 79958,
+   "peak_call": 58,
+   "calls": 175
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/testem-bail-on-test-failure-codex-luna-a1",
+  "b": "b2",
+  "pre_tokens": 79963,
+  "sim_calls": 13,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 4370,
+  "reextracted": true,
+  "la_items": 19,
+  "la_lost": 7,
+  "la_recoverable": {
+   "not searched": 7
+  },
+  "req_items": 42,
+  "req_lost": 37,
+  "req_new": 34,
+  "req_inh": 3,
+  "req_unk": 0
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 3.25502,
+  "peak": {
+   "peak_tokens": 79757,
+   "peak_call": 101,
+   "calls": 123
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/boa-hierarchical-evaluation-cancellation-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 82160,
+  "sim_calls": 17,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "plain",
+   "plain",
+   "plain"
+  ],
+  "summary_chars": 6085,
+  "reextracted": false,
+  "la_items": 29,
+  "la_lost": 0,
+  "la_recoverable": {},
+  "req_items": 21,
+  "req_lost": 1,
+  "req_new": 1,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a1",
+  "end": "run_cap",
+  "sim": 5.133508,
+  "peak": {
+   "peak_tokens": 79155,
+   "peak_call": 158,
+   "calls": 209
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/helm-array-merge-strategies-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 80325,
+  "sim_calls": 16,
+  "recite": [
+   0.989,
+   0.989,
+   1.0
+  ],
+  "recite_used": 1,
+  "fence_layouts": [
+   "bare-pairs",
+   "bare-pairs",
+   "bare-pairs"
+  ],
+  "summary_chars": 7193,
+  "reextracted": true,
+  "la_items": 40,
+  "la_lost": 2,
+  "la_recoverable": {
+   "not searched": 2
+  },
+  "req_items": 23,
+  "req_lost": 0,
+  "req_new": 0,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 4.85977,
+  "peak": {
+   "peak_tokens": 79903,
+   "peak_call": 153,
+   "calls": 225
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/vitest-duration-sharding-codex-luna-a1",
+  "b": "b1",
+  "pre_tokens": 81444,
+  "sim_calls": 4,
+  "recite": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "bare-pairs",
+   "bare-pairs",
+   "bare-pairs"
+  ],
+  "summary_chars": 8782,
+  "reextracted": true,
+  "la_items": 30,
+  "la_lost": 1,
+  "la_recoverable": {
+   "not searched": 1
+  },
+  "req_items": 15,
+  "req_lost": 0,
+  "req_new": 0,
+  "req_inh": 0,
+  "req_unk": 0
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "end": "submitted",
+  "sim": 4.85977,
+  "peak": {
+   "peak_tokens": 79903,
+   "peak_call": 153,
+   "calls": 225
+  },
+  "grading_dir": "data/raw/sprint/s2/native/codex/t80k/lossaudit_v2/vitest-duration-sharding-codex-luna-a1",
+  "b": "b2",
+  "pre_tokens": 80160,
+  "sim_calls": 13,
+  "recite": [
+   1.0,
+   0.989,
+   0.989
+  ],
+  "recite_used": 0,
+  "fence_layouts": [
+   "bare-pairs",
+   "bare-pairs",
+   "bare-pairs"
+  ],
+  "summary_chars": 5469,
+  "reextracted": true,
+  "la_items": 43,
+  "la_lost": 4,
+  "la_recoverable": {
+   "not searched": 4
+  },
+  "req_items": 41,
+  "req_lost": 8,
+  "req_new": 8,
+  "req_inh": 0,
+  "req_unk": 0
+ }
+]
