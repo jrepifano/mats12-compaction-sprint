@@ -1,0 +1,1026 @@
+[
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "submitted",
+  "sim_usd": 2.2334,
+  "b": 1,
+  "pre_tokens": 137630,
+  "post_tokens": 9605,
+  "summary_chars": 16512,
+  "kept_messages": 13,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 0,
+   "lost": 0,
+   "grades": {},
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 19,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/boa-hierarchical-evaluation-cancellation-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:14:40Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "2ee5f6cec5462782b7d131ad7688253dadf106d1adcba941103b2f93de5fcc30",
+   "result.json": "c2dfa2c82696940f344e1c895d86de48bced84d99554c6f2fa726fd524eda124",
+   "b/run.json": "9d3e174b8563061e3ef25ab5cc9e301d35d898b889a749bee54b3af8415b4410",
+   "boundary.json": "b83ab4c2afe930d9d57aed20dca57e700d246d9ed77aa6a83aeadc8b24e40b14",
+   "compaction.json": "9a8d4a99271149be09a6052bf6879b86977578c8a769d4fea8ee6f04a2f02adb",
+   "requirements.json": "c12d8094d2276293afff6c930025c6556b651bc3aa164dbbe1dafe334bcecd11",
+   "grades.json": "0e956ec1017be8c7dd3af1d170f60f5582f2f5d9a38901b4a27a5f57a72d6a18",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "cfff25d7f84daf6ea5cec857cdefd736e8d963ae107b0e89438c01941d6be81c"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "submitted",
+  "sim_usd": 2.2334,
+  "b": 2,
+  "pre_tokens": 139945,
+  "post_tokens": 14928,
+  "summary_chars": 21510,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 7,
+   "lost": 0,
+   "grades": {
+    "kept": 7
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 32,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/boa-hierarchical-evaluation-cancellation-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:14:40Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "2ee5f6cec5462782b7d131ad7688253dadf106d1adcba941103b2f93de5fcc30",
+   "result.json": "c2dfa2c82696940f344e1c895d86de48bced84d99554c6f2fa726fd524eda124",
+   "b/run.json": "12520559827cc941e82382ca392d9689d7e97573fb3776acf4696ae051cbd9c6",
+   "boundary.json": "e1396d48160d1577fdae4406170c9be3501df0ca98e6e535dbdbd8f0cfd18056",
+   "compaction.json": "e259b8a9c8d8dfdcb3612df23398555e94c0245fdafd2fedddd0af4f450786df",
+   "requirements.json": "98a72885645e794175ca1ff985e4e56229c6fd53ece54b46ea37d3172083492b",
+   "grades.json": "14f7c8c72e614ecc4487c27a9d30dbd826a31c18a33e943b410c22e3a0faac0a",
+   "ledger.json": "f349df41760b83dd8f03d04d6de063443e8f2f3ee6dda14983d0755394af73e1",
+   "lossaudit_rows": "30750eb1e71bdb865679dc363cbf5980c3e86db40d7a4a77cd51c3f2c7c338b1"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "submitted",
+  "sim_usd": 2.2334,
+  "b": 3,
+  "pre_tokens": 137537,
+  "post_tokens": 12347,
+  "summary_chars": 19363,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 26,
+   "lost": 0,
+   "grades": {
+    "kept": 24,
+    "unclear": 2
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 26,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/boa-hierarchical-evaluation-cancellation-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:14:40Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "2ee5f6cec5462782b7d131ad7688253dadf106d1adcba941103b2f93de5fcc30",
+   "result.json": "c2dfa2c82696940f344e1c895d86de48bced84d99554c6f2fa726fd524eda124",
+   "b/run.json": "2a8b1d9d1dbf0b0e6601989ca65342472690da341f1a303830956efe53b13db8",
+   "boundary.json": "7110dee9c030b196e4bb0fa6d36d53e095a430a4ca3af3bf4bdc6f870caaa036",
+   "compaction.json": "783c77c42966026ec02f9b5a7617ca90cc4fc464b0be1d2e58bd842b06a50ee4",
+   "requirements.json": "cd7e0f4fae2b2adf7b080b3a6fad03b261a1f83439a32516ec3c3293c3d776cd",
+   "grades.json": "12092dd69073d1b4aa7a857066e71524eaa45c14a33cccf42816a174d3f29f5a",
+   "ledger.json": "f0b118093748e70e6e070b020d4da739b85fa71ff0ffac2ae3c189062cd5858d",
+   "lossaudit_rows": "793c46d3caef1d478bbc75099a55a1e6d7e609dfcba23da1fe82fbf245341dc5"
+  }
+ },
+ {
+  "task": "boa-hierarchical-evaluation-cancellation",
+  "attempt": "a2",
+  "run_key": "boa-hierarchical-evaluation-cancellation-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "submitted",
+  "sim_usd": 2.2334,
+  "b": 4,
+  "pre_tokens": 137446,
+  "post_tokens": 13552,
+  "summary_chars": 23517,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 31,
+   "lost": 1,
+   "grades": {
+    "kept": 30,
+    "dropped": 1
+   },
+   "new": 1,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 26,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/boa-hierarchical-evaluation-cancellation-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:14:40Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "2ee5f6cec5462782b7d131ad7688253dadf106d1adcba941103b2f93de5fcc30",
+   "result.json": "c2dfa2c82696940f344e1c895d86de48bced84d99554c6f2fa726fd524eda124",
+   "b/run.json": "f9cec53dca8aac34c356d0799ceedb812aa36e513acfa72027f96e290cbebe2b",
+   "boundary.json": "891f2b11556de74a58245d3cdb208d63c01d43d1ee28e417f18e334e74ffd143",
+   "compaction.json": "826838d3dece7ea8b1db58698f5e123f17fa06a5d3c5e12eea197f25629e5a95",
+   "requirements.json": "2733e30ffc1ba6d70947ede9f6c4ad92e1ebe9af4bfa9a38852fc65fb0ae202a",
+   "grades.json": "a76278f17b07b6a05b00eee46aca8de5a0e04330749e541e0860f2c64f4514ba",
+   "ledger.json": "d1ce9bfb801f0d656dd7bfcc8444bdb6321c45704985a993e232ebe028bec4c0",
+   "lossaudit_rows": "52ccf8eacadfc4bb35a857f96377f4f3be67fd99fd2bbcc065fd4fa557d45743"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "run_cap",
+  "sim_usd": 4.8575,
+  "b": 1,
+  "pre_tokens": 134250,
+  "post_tokens": null,
+  "summary_chars": 16064,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 9,
+   "lost": 0,
+   "grades": {
+    "kept": 9
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 36,
+   "lost": 4,
+   "recoverable": {
+    "not_recoverable": 4
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/fastapi-implicit-head-options-cc-haiku-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "d79fd0160356a88feaae4fa340ee8525656cb0351c8e79129af8e8f3eaebb2c7",
+   "result.json": "3e5a5fb2f9a8ecacd615837aabc4e723f3fabebf5dc9c454789b47ffa111a2d3",
+   "b/run.json": "e97913c2e1b147a64e5e9f1533833d23b164e7209e52c91718d26e46fefe3889",
+   "boundary.json": "d57cc5bec22069eeb0587d9373bc6377b7f9c33e5de2aafc4c24d7d11cf7989a",
+   "compaction.json": "d4d5d2d7d91f3b0e9b015e6edc02e8961d29284bec893bc3fd0d29504d0d8dea",
+   "requirements.json": "f81edabd0bfe9a4c6ad10d2b6a1a95f07b6631e9a03cf410fef17f5431f6bda8",
+   "grades.json": "249de502bcfaccafe0d063959f96f2ea9d266b1a04ecb9e909af550a2dc9063d",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "3e279614e3705eee82338c6df1f55ddaa6f61e5bbb3191477731640691487432"
+  }
+ },
+ {
+  "task": "fastapi-implicit-head-options",
+  "attempt": "a1",
+  "run_key": "fastapi-implicit-head-options-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "run_cap",
+  "sim_usd": 4.8575,
+  "b": 2,
+  "pre_tokens": 132113,
+  "post_tokens": null,
+  "summary_chars": 23493,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 21,
+   "lost": 0,
+   "grades": {
+    "kept": 21
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 30,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/fastapi-implicit-head-options-cc-haiku-a1/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "d79fd0160356a88feaae4fa340ee8525656cb0351c8e79129af8e8f3eaebb2c7",
+   "result.json": "3e5a5fb2f9a8ecacd615837aabc4e723f3fabebf5dc9c454789b47ffa111a2d3",
+   "b/run.json": "175901f903bbc6cc235d78e66eb0e1a4ec8a7b359de90986d5304999e6f982db",
+   "boundary.json": "04a65325f7e1c52b80df3677a145747dd7df3bd07cbda857610c96b1c17ef2a0",
+   "compaction.json": "752a311ac284478222c684aa74810e7074ebc2707c4c45109967074870bb9fd5",
+   "requirements.json": "da8b5f5d66b0abbd22271a4c7955398f86fc1c35b3e6098106dd75bfb7a0b302",
+   "grades.json": "40d09687292c7477087770fecb59d0f9854d4a80e5c606fd9f9b62a1ed93da98",
+   "ledger.json": "f349df41760b83dd8f03d04d6de063443e8f2f3ee6dda14983d0755394af73e1",
+   "lossaudit_rows": "62ff05c8f91ed7825577f4c1c3cdcb4218562dc58f057973f20f135bd6732cf5"
+  }
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a1",
+  "run_key": "helm-array-merge-strategies-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "transcript_error",
+  "sim_usd": 0.3928,
+  "b": 1,
+  "pre_tokens": 142838,
+  "post_tokens": null,
+  "summary_chars": 17055,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 6,
+   "lost": 0,
+   "grades": {
+    "kept": 6
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 25,
+   "lost": 1,
+   "recoverable": {
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "a2d5ce5cf4ebe30e5bcee38b6bdcb4bf52ffe1609ca5ab3fe4ca9cba0597c859",
+   "result.json": "dfc782b62813df9faf142028062738e99cfcade52b7eb08ca98747be8e7f863f",
+   "b/run.json": "a7b17a2481b3584fb8a090aeff0aff836eba78dca5928997a175bf7e6be36dda",
+   "boundary.json": "9d540ac88068c31ffb00afd628f823a92dc4afffa482b8eba0c94ae3d0e9fd26",
+   "compaction.json": "b06ac48922f22c14dfbc155a8fcabef3473e9ff22f7940c9212260ef6a5fee51",
+   "requirements.json": "160e1d2f60f80e5e4556af96aaa39da5903fcbe7bf54aeb088dc576596906157",
+   "grades.json": "6f57eed675d74735ebc45e9ab901422cdbdc7cd0c4f8414d87dcb539882af264",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "86c7ee9da8c0f004dc4bdc4650cd9ec34bda5a516a7672caabc2b5cf753e6a42"
+  }
+ },
+ {
+  "task": "helm-array-merge-strategies",
+  "attempt": "a2",
+  "run_key": "helm-array-merge-strategies-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "submitted",
+  "sim_usd": 0.0885,
+  "b": 1,
+  "pre_tokens": 138211,
+  "post_tokens": 10112,
+  "summary_chars": 3888,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 2,
+   "lost": 0,
+   "grades": {
+    "kept": 2
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 25,
+   "lost": 8,
+   "recoverable": {
+    "not_recoverable": 5,
+    "unresolved": 3
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/helm-array-merge-strategies-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": "lossaudit 8: i3/i4 followed, i11 implemented, i14 the code itself exported the helper (summary matches the code); i1-i5 lost with the partly refused summary",
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:14:40Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "9a7ef7b060dee8db61317882d6b4d64537fa5239d69a5e7d7339b63b68a73148",
+   "result.json": "53a522fd5de8a63c56da192a13948def6748aeab763bac923876cadba623223c",
+   "b/run.json": "c402efb01269c4befe48d8c052e0c490c09bc6115f220223ae18f141020144cb",
+   "boundary.json": "4f9a174658d4d827305fcf41800ba47a5e68fd79622b016c75aad70cf9470560",
+   "compaction.json": "e480ae3d67ab085eb000d15d633c26a31ed05e6d069a3ae2553242697bc85464",
+   "requirements.json": "cb6bca1b3ca879ef1233a54b402319e0547410d59b0cf5284e0d86c490719f83",
+   "grades.json": "593fc0c77e787ab0242a148da697a420efcb2a6e7c0538ab68548f153c2ca201",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "7532f9b333df41550c1008a2287e365438dd9c08b9ea2fa733f7e233311f2378"
+  }
+ },
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a1",
+  "run_key": "kombu-single-active-consumer-priority-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "transcript_error",
+  "sim_usd": 1.1539,
+  "b": 1,
+  "pre_tokens": 134562,
+  "post_tokens": null,
+  "summary_chars": 16124,
+  "kept_messages": 7,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 7,
+   "lost": 0,
+   "grades": {
+    "kept": 7
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 19,
+   "lost": 1,
+   "recoverable": {
+    "unresolved": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "5d500ac0c4f41e1b3067ab213cfc7ce98ff0163869e312b427e54d59e25d1d5f",
+   "result.json": "418df15ef8a206ffbcc1a67be8e5299999c98e06cb3d7008c2a21fd4ae98c81c",
+   "b/run.json": "76b135db5805c91aff7f56820ff4097ee73483d0d1f34e58d1f16051d821cfb6",
+   "boundary.json": "f00e4c7ae4ecfa2fda48b9c5545225583fa2fb5d45543adba71158f5ee02f243",
+   "compaction.json": "2d3a0694b5740c4353896114d3b469d84d16b5b1358c0ad4216953ee755f32cf",
+   "requirements.json": "ba2ca8015a28e12fa09545292e4174387052654cf901a0921919fd4d4a46ddaf",
+   "grades.json": "80ebb3fed1e90e75a6981f87fc0661beeaa44747ab0891b32ff814170096b4ed",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "ef0faaf6b6e3e715307ca1aa80a9bc617c6e6ecd9e468d3cd8218f1fc1c832dc"
+  }
+ },
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a2",
+  "run_key": "kombu-single-active-consumer-priority-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "run_cap",
+  "sim_usd": 4.8636,
+  "b": 1,
+  "pre_tokens": 139513,
+  "post_tokens": 11327,
+  "summary_chars": 15130,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 8,
+   "lost": 0,
+   "grades": {
+    "kept": 8
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 28,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/kombu-single-active-consumer-priority-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:16:13Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "c9bf2d9cf3af71c17032838314b8116ac8e22a370d4fc5d8a2f9a7a290e0d27c",
+   "result.json": "0d4b5cc6f1dc887f35ffd7b1c3a222a82d7a885e41bf084ece6c3c1149de236d",
+   "b/run.json": "8c436d673220b748e36a6691eb3d99234c110a166692e4ecb8fc8e313dc50a2a",
+   "boundary.json": "ccfc593d89673e14f9e4451ec39b8fe1404c81cdb7e9426f6e1df19012463ee4",
+   "compaction.json": "c4594cd75f9f24970a808636d57c1f8b0b02832e0d02353f95e66ac11801d066",
+   "requirements.json": "1e5bb5d63e4bae311f618cbb3bf9c87c627ce5b8b5368ca164fd7b676020d1b6",
+   "grades.json": "ed076dafad751e4b87731dc1c99ac5f6473a434ce85eae6fd233b63bed068517",
+   "ledger.json": "d66c3cdd7291bcc922f5895715c22fd78a64aa25a0599eed2e6f2a3f440d275f",
+   "lossaudit_rows": "bf899d6518497fd45a38c4c4ebafe2c91c303e0e52301c4f20c13dcf4397a4e0"
+  }
+ },
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a2",
+  "run_key": "kombu-single-active-consumer-priority-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "run_cap",
+  "sim_usd": 4.8636,
+  "b": 2,
+  "pre_tokens": 137922,
+  "post_tokens": 13679,
+  "summary_chars": 19344,
+  "kept_messages": 5,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 34,
+   "lost": 0,
+   "grades": {
+    "kept": 34
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 16,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/kombu-single-active-consumer-priority-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:16:13Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "c9bf2d9cf3af71c17032838314b8116ac8e22a370d4fc5d8a2f9a7a290e0d27c",
+   "result.json": "0d4b5cc6f1dc887f35ffd7b1c3a222a82d7a885e41bf084ece6c3c1149de236d",
+   "b/run.json": "6cd83f2e1485e2c380a2683ad8f326d34d9cee24fa38a9fb99935c893a6209ff",
+   "boundary.json": "eb90a704c7a9db81b9db48ebf1c171433d60d6c51531e4d5253ad4bad40b050f",
+   "compaction.json": "149e063efb126960f848e8c8829b6765695506eb5915994b9e971d67408174c5",
+   "requirements.json": "fd3c5abcef021a0a04853c1279dda9ae8009fbe472acb7b0ffe186c85323ea28",
+   "grades.json": "c73d34d79e880fa35530979b5a4e037799a83b772b8c1ecd07d7caa9718f4c0b",
+   "ledger.json": "d242e6fc862bff33d62a6bacdd79275cee981666fd1f37ea0463495f4942332d",
+   "lossaudit_rows": "2af624c701aa00872b9a33cfa9eb30d5d1b10a731b6efb63cd9d113d3ec83f34"
+  }
+ },
+ {
+  "task": "kombu-single-active-consumer-priority",
+  "attempt": "a2",
+  "run_key": "kombu-single-active-consumer-priority-cc-haiku-a2",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "run_cap",
+  "sim_usd": 4.8636,
+  "b": 3,
+  "pre_tokens": 137364,
+  "post_tokens": 13609,
+  "summary_chars": 25871,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 50,
+   "lost": 0,
+   "grades": {
+    "kept": 48,
+    "unclear": 2
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 24,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/kombu-single-active-consumer-priority-cc-haiku-a2/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "ab211553",
+    "dirty": true,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "c9d42a4a02e635ab",
+     "common.py": "23bc594d93bf31bd",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "88dade2dd2e44ca0",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T22:16:13Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "c9bf2d9cf3af71c17032838314b8116ac8e22a370d4fc5d8a2f9a7a290e0d27c",
+   "result.json": "0d4b5cc6f1dc887f35ffd7b1c3a222a82d7a885e41bf084ece6c3c1149de236d",
+   "b/run.json": "7e95b6cda6dd1194cc7e404fd9dec97636e2fdb28da126ec7c88ff7f8c21fc7b",
+   "boundary.json": "c7330892bf887fcffd3cfad7fe3c9ee9ea4c1384c3910af5a7483f1253cefb44",
+   "compaction.json": "2e6f941d5a7a9f6c844bc6197d61875212323f79bc59643f359cd2551a881277",
+   "requirements.json": "d1083fa393bafad710f71fcd7fa3ab5f3b775a7e3709ec13f01cac524c794fbf",
+   "grades.json": "0cda3ccbeea153e8a010850f50654ae7ac4eec22fc82bb4b8daceee4793b2267",
+   "ledger.json": "eeb22336f0baa0e23d295fb8e19fbad526a0251a9cc729893bdd00f6f4e086a2",
+   "lossaudit_rows": "b88131a276c371f687cb188de492822a7a753fbb1b4515d4afe8f42d1e5d2067"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a3",
+  "run_key": "testem-bail-on-test-failure-cc-haiku-a3",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "run_cap",
+  "sim_usd": 5.0744,
+  "b": 1,
+  "pre_tokens": 141297,
+  "post_tokens": 14728,
+  "summary_chars": 20971,
+  "kept_messages": 9,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 28,
+   "lost": 0,
+   "grades": {
+    "kept": 26,
+    "unclear": 2
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 40,
+   "lost": 4,
+   "recoverable": {
+    "not_recoverable": 4
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/testem-bail-on-test-failure-cc-haiku-a3/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "b817ea0705430ae040188775ea20a930905558b4ec4f05fe9816cd013d0a8f64",
+   "result.json": "9720f441c2612b960f76cc990804b873e1c2d449038054462abd6a0ef48a142c",
+   "b/run.json": "29c9fee68f019210a08a41f98baf4158ca227b06efe4fbf24b53e19aa92d20b1",
+   "boundary.json": "501a586fe90e718e373516b0176306eea19052eb1842910b7b6c3189c24f059f",
+   "compaction.json": "6caf8689e18ac3cb311f450247f25fe56d42f9bd0df32f4c604a4cf3889dd456",
+   "requirements.json": "c4027d7fca01f3311edd9f0b75b94ecc405ab5084b9fa51231828ec448358825",
+   "grades.json": "2910692ac647cadf515f6e85050ed4e59a563035bbd0e6b678fad4c0cecc6db6",
+   "ledger.json": "d66c3cdd7291bcc922f5895715c22fd78a64aa25a0599eed2e6f2a3f440d275f",
+   "lossaudit_rows": "6f52d6b8d9bf98fddeaddaec9eb9ea7deb99067bfb9939f99452d0d71fa87bff"
+  }
+ },
+ {
+  "task": "testem-bail-on-test-failure",
+  "attempt": "a3",
+  "run_key": "testem-bail-on-test-failure-cc-haiku-a3",
+  "model": "claude-haiku-5-5",
+  "trigger": 170000,
+  "end": "run_cap",
+  "sim_usd": 5.0744,
+  "b": 2,
+  "pre_tokens": 137229,
+  "post_tokens": 14845,
+  "summary_chars": 21662,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": false,
+  "req": {
+   "items": 50,
+   "lost": 0,
+   "grades": {
+    "kept": 45,
+    "unclear": 5
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 30,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/testem-bail-on-test-failure-cc-haiku-a3/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": {
+    "git_head": "64f52b3d",
+    "dirty": false,
+    "files": {
+     "__init__.py": "3f2bb5f57be29009",
+     "agy.py": "a4886fcc3af814d0",
+     "audit.py": "f2d4c1e7551022bc",
+     "claude_code.py": "b90e07d6d1c567d3",
+     "codex.py": "d28d80f22bda83ff",
+     "common.py": "9eb8735a23918742",
+     "egress_proxy.py": "46a3ce0bbd345ec3",
+     "s2_native.py": "45e2f2b7b6669f1f",
+     "s2_interact_audit.py": "9b6ccb0d838090c3",
+     "s2_lossaudit.py": "e570db755f0439bb"
+    },
+    "utc": "2026-10-24T23:20:27Z"
+   },
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "b817ea0705430ae040188775ea20a930905558b4ec4f05fe9816cd013d0a8f64",
+   "result.json": "9720f441c2612b960f76cc990804b873e1c2d449038054462abd6a0ef48a142c",
+   "b/run.json": "7b221c8221d54c9248074d9afafd35ee5370fcce8f8e52df692304e88f2e22a3",
+   "boundary.json": "d24d7e1196134f5066ebc8f8d6a174cc54614c9a1a2c98232122fb5ff58cdd2b",
+   "compaction.json": "6ebc131566aa626f07d037b7ce42d60c11fbfbc9d27e6ea9a1122015042c215b",
+   "requirements.json": "4664631a383d0f750d42e2578b074082a20fd81a60094a89fd91d808c34d9553",
+   "grades.json": "8de18cfb46a8ef90a86ffe31df53087588f175b155c78659142d94cb505823ea",
+   "ledger.json": "d242e6fc862bff33d62a6bacdd79275cee981666fd1f37ea0463495f4942332d",
+   "lossaudit_rows": "21005a82163db6eaa26abf5d75aa9382cab1fd6359ab09d31e42d49fba4fa5ff"
+  }
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "run_key": "vitest-duration-sharding-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "transcript_error",
+  "sim_usd": 4.4244,
+  "b": 1,
+  "pre_tokens": 130037,
+  "post_tokens": null,
+  "summary_chars": 15229,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 15,
+   "lost": 0,
+   "grades": {
+    "kept": 15
+   },
+   "new": 0,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 29,
+   "lost": 5,
+   "recoverable": {
+    "not_recoverable": 1,
+    "unresolved": 4
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/lossaudit/losses.jsonl"
+  },
+  "code_check": null,
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "00ca68d14faf72d72f975febfab29a8cc202fe62aafd95dd980a621596a713ef",
+   "result.json": "7c99f9bc5e61c87545363966f1ecb69001246e464d63a3ef5a271952483fb904",
+   "b/run.json": "d3b96d3ac23f8df4a6ce169842e1359bdf0c98e7702c81f34e2dfff30fc61773",
+   "boundary.json": "e38fe2e9d89b12796e56bd6d4f4d077fc202964d7fbc0ba0b517dcdb65096046",
+   "compaction.json": "8da752f9b5aff2f1ebda8fd064ffdf675a45ac578818287a42d6a3c49afa42c4",
+   "requirements.json": "2a97d8121a9331e36bc1cfd9998adbfa0e86d27cc27f2e629fd3cccbae8f7e54",
+   "grades.json": "a52f7b4e216ba914ae78ac662b7e86a383db118479990abb3b06fc523386d0a3",
+   "ledger.json": "5a57dcc8f66cfc5c3c250065ff1514db006fa160b2e242c77b89979de55817e6",
+   "lossaudit_rows": "a7f895bcd9d213a5808cc83d9adf9db795282c0526e2ba015580722d14547897"
+  }
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "run_key": "vitest-duration-sharding-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "transcript_error",
+  "sim_usd": 4.4244,
+  "b": 2,
+  "pre_tokens": 130979,
+  "post_tokens": null,
+  "summary_chars": 22360,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 41,
+   "lost": 7,
+   "grades": {
+    "kept": 32,
+    "unclear": 2,
+    "dropped": 7
+   },
+   "new": 7,
+   "inherited": 0,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 30,
+   "lost": 1,
+   "recoverable": {
+    "not_recoverable": 1
+   },
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/lossaudit/losses.jsonl"
+  },
+  "code_check": "ledger 7/7 implemented in the code at b2; summary-only losses",
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "00ca68d14faf72d72f975febfab29a8cc202fe62aafd95dd980a621596a713ef",
+   "result.json": "7c99f9bc5e61c87545363966f1ecb69001246e464d63a3ef5a271952483fb904",
+   "b/run.json": "207c039e1e443eed68f3b1434b9cfcd24f148c885c8b6a4a68ae55285bdb56b0",
+   "boundary.json": "5209ae107221c55e654ea9fdb97a7449433634964c4bce922257e00648f03cb4",
+   "compaction.json": "ff3bbb5d2799fba98c52888593f7ca3be965c0736df8930cdfc5235887e7ff38",
+   "requirements.json": "562a22e6045095f1408eceb4aed9150f3ca6e8f139135100b8b704c3b8fc84d9",
+   "grades.json": "1bd6b231b2ac4caa00f76e0cbc3fdada8481d1fd2ccd61a1a669134e2af5d4f7",
+   "ledger.json": "199e8d6821f5c11234ea8f329e217f15740557de554d4957ac84ce7c7c1df724",
+   "lossaudit_rows": "00ecc0bf6eaeea77042d6f4388bceec6aa4912f67842dec8e03ad58a264b5c45"
+  }
+ },
+ {
+  "task": "vitest-duration-sharding",
+  "attempt": "a1",
+  "run_key": "vitest-duration-sharding-cc-haiku-a1",
+  "model": "claude-haiku-5-5",
+  "trigger": 163000,
+  "end": "transcript_error",
+  "sim_usd": 4.4244,
+  "b": 3,
+  "pre_tokens": 130597,
+  "post_tokens": null,
+  "summary_chars": 23925,
+  "kept_messages": 3,
+  "post_source": "request",
+  "quiescent": null,
+  "req": {
+   "items": 60,
+   "lost": 7,
+   "grades": {
+    "kept": 53,
+    "dropped": 6,
+    "misstated": 1
+   },
+   "new": 3,
+   "inherited": 4,
+   "unknown": 0,
+   "items_by_reply": 0
+  },
+  "la": {
+   "items": 33,
+   "lost": 0,
+   "recoverable": {},
+   "source": "data/raw/sprint/s2/native/claude_code/_audit/lossaudit/losses.jsonl"
+  },
+  "code_check": "ledger 7/7 implemented at b3; b2-q7 'misstated' looks like a grader error (conflates r15 with the legacy migration)",
+  "provenance": {
+   "run_code": "unrecorded (launched before ab211553)",
+   "audit_code": "unrecorded (audited before c060f81c)"
+  },
+  "hashes": {
+   "run.json": "00ca68d14faf72d72f975febfab29a8cc202fe62aafd95dd980a621596a713ef",
+   "result.json": "7c99f9bc5e61c87545363966f1ecb69001246e464d63a3ef5a271952483fb904",
+   "b/run.json": "70900bcad316c14d3eec67c2fc46d21590b58e0cdad9303f056dfcb693a41928",
+   "boundary.json": "2fa2e71297b8d679753a69b57be894a928f928c200b3bfa4c32099df1a1f9ecb",
+   "compaction.json": "baab4325b62cd2e8d2ac88ffda2cce77cb78b3758bcd465f63e797f29a5d1595",
+   "requirements.json": "5c6af73977c725ed41465ff19d48f388ab5596a054c408abf2ad940d576b0296",
+   "grades.json": "7d3c0e833b7f2028e444ea6fd314d5961030f3b65c024b5f366097a9168309ad",
+   "ledger.json": "c874c5d7bca84547706a4969a2d3b2d77fbbe446d5c5ebf25fc08edac28388de",
+   "lossaudit_rows": "2818ef972920ff97eb0706bfd72fb1f9eb0a73d7b2ec924cfea3acf4be7df20e"
+  }
+ }
+]
