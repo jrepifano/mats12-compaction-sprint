@@ -508,13 +508,16 @@ def _audit_counts(au: dict) -> dict:
     reqs = au.get("requirements")
     la = au.get("lossaudit") or {}
     req_fields = {"pre_tokens": None, "items": None, "lost": None, "lost_new": None,
-                  "lost_inherited": None}
+                  "lost_inherited": None, "items_by_reply": None, "lost_by_reply": None}
     if reqs is not None:
         req_fields = {"pre_tokens": [r.get("pre_tokens") for r in reqs] or None,
                       "items": sum(r["items"] for r in reqs),
                       "lost": sum(r["lost"] for r in reqs),
                       "lost_new": sum(r.get("lost_new", 0) for r in reqs),
-                      "lost_inherited": sum(r.get("lost_inherited", 0) for r in reqs)}
+                      "lost_inherited": sum(r.get("lost_inherited", 0) for r in reqs),
+                      # split one reply at a time (interact_reqs' fallback), and their losses
+                      "items_by_reply": sum(r.get("items_by_reply", 0) for r in reqs),
+                      "lost_by_reply": sum(r.get("lost_by_reply", 0) for r in reqs)}
     return {**req_fields, "la_items": la.get("items"), "la_lost": la.get("lost"),
             "la_rc": au.get("lossaudit_rc"),
             "audit_errors": {k: v for k, v in au.items() if k.endswith("_error")} or None}

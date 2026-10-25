@@ -649,3 +649,12 @@ def test_a_partly_done_entry_revalidates_its_finished_component(tmp_path, monkey
     assert S.main(["audit-queued", "--arm", "agy", "--root", str(tmp_path)]) == 0
     assert calls["requirements"] == 1 and calls2 == {"requirements": 1, "lossaudit": 1}
     assert (rd / "b1" / "boundary" / "requirements.json").exists() and not q.exists()
+
+
+def test_audit_counts_sum_the_by_reply_provenance():
+    S = _s2n()
+    au = {"requirements": [{"items": 3, "lost": 1, "items_by_reply": 2, "lost_by_reply": 1},
+                           {"items": 4, "lost": 0}]}  # a row from before the fallback
+    c = S._audit_counts(au)
+    assert (c["items"], c["items_by_reply"], c["lost_by_reply"]) == (7, 2, 1)
+    assert S._audit_counts({})["items_by_reply"] is None

@@ -60,4 +60,20 @@ Simulator only (agents on Max / the free quota), from the per-run spend files (`
 
 ## Results
 
-(filled in as runs finish)
+Filled in as runs finish (UTC, 24 Oct). (a) = requirement ledger, live summary (items / lost, new / inherited); (b) = lossaudit (items / lost). Windows: the first Claude Code runs at 163k, then 170k.
+
+| Run | End | Boundaries: pre_tokens (summary chars) | (a) | (b) | Sim $ |
+|---|---|---|---|---|---|
+| CC helm a1 (163k) | transcript_error (old code, infra) | b1 142,838 (17,055) | 6 / 0 | 25 / 1 | 0.39 |
+| CC kombu a1 (163k) | transcript_error (old code, infra) | b1 134,562 | 7 / 0 | 19 / 1 | 1.15 |
+| CC fastapi a1 (163k) | run_cap (sim $4.86 + next bound $1.75 > $6.50) | b1 134,250 (16,064); b2 132,113 (23,493) | 30 / 0 | 66 / 5 (b1 4, b2 1) | 4.86 |
+| CC vitest a1 (163k) | transcript_error (old code, infra) | b1 130,037 (15,229); b2 130,979 (22,360); b3 130,597 (23,925) | 116 / 14 (10 new, 4 inherited) | 92 / 6 | 4.42 |
+| CC helm a2 (170k) | submitted | b1 138,211 (3,888: the summarizer partly refused) | 2 / 0 | 25 / 8 | 0.09 |
+| agy testem a1 | infra_error (rig ssh outage at the b3 screen) | b1, b2 kept; b3 image orphaned, removed | | | 1.33 |
+
+Verified by hand (no model calls; kept images read with `--network none`):
+- **vitest a1's 14 ledger losses are summary-only.** At b2 and b3 the code already implements every one as specified (`resolveConfig.ts` validators and `??=` defaults; `durationHistory.ts:36–37` for the legacy-number migration). The summaries keep the fields generically ("the remaining sequence fields with specified types and defaults… done, committed") without each field's type and default. b3's "misstated" on b2-q7 looks like a grader error: it conflates the reply allowing seconds-based entries to expire (r15) with the bare-number migration. Inherited: b1-q6/q7/q8 were kept at b1, lost at b2 and still lost at b3; b2-q7 was lost at b2 and still lost at b3. Claude Code re-attaches files read before compaction (post[8]), but resolveConfig.ts and core.ts only as "too large to include" notes.
+- **helm a2 b1's 3,888-character summary is genuine, not a capture issue.** Claude Code's own compaction call (Haiku) partly refused its prompt ("I'm not going to produce that analysis/summary block, but I can give you the state of the work directly"). The transcript row matches the capture, the compaction took 5.3 s, and `quiescent: false` is unrelated (background processes frozen). It is 1 of 15 Claude Code boundaries so far; the others use the full sectioned format (12.6k–23.9k chars). It lost the opening task's rules (i1–i5; the first prompt is not re-attached). The repo state at the boundary follows i3 and i4, and the run ended submitted. i14 is misstated because the code itself exported `CoalesceChartTables` rather than adding an internal helper; the summary describes the code correctly.
+- **fastapi b1, lossaudit pass 2: claim facts missing.** The claims call (312k input tokens) exceeds S1's frozen `MAX_OUT_2 = 32_000` deterministically: 3 attempts, about 128k output tokens and 490 s each, on Max. The main session accepted it as unresolvable and said not to retry. The same overflow appears in the cache for 4 other boundaries of other arms. The old launcher's shared lossaudit dir re-ran every staged run at each audit, so vitest a1's rc 3 was this same fastapi error (the per-run dirs of the current code avoid it).
+
+Operations: the 90% audit hold, the Max ping and the launcher hand-over (`_block-*` slots; new launchers for the old ones' queues; old launchers drained) are from commit 64f52b3d (astra audithold r1–r3). Tonight's rig ssh outages were OpenSSH's PerSourcePenalties dropping the laptop's connections (main session); calls back off.
