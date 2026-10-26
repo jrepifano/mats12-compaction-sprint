@@ -6,17 +6,17 @@
 /* Layout: one reading column of numbered cards per section; each card is item, then evidence, then the answer row. */
 :root {
   --bg: #f5f6f4; --panel: #ffffff; --ink: #1d2422; --muted: #5d6864; --rule: #d9dedb;
-  --accent: #0f6b5c; --accent-soft: #e2f0ec; --warn: #9a5b00; --quote: #fbf7e9;
+  --accent: #0f6b5c; --accent-soft: #e2f0ec; --warn: #9a5b00; --quote: #fbf7e9; --mark: #ffe08a;
   --f-display: "IBM Plex Serif", Georgia, serif;
   --f-body: "IBM Plex Sans", -apple-system, "Segoe UI", sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #131816; --panel: #1b211f; --ink: #e3e8e5; --muted: #9aa6a1; --rule: #2e3734;
-  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; color-scheme: dark } }
+  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; --mark: #6b5513; color-scheme: dark } }
 :root[data-theme="dark"] {
   --bg: #131816; --panel: #1b211f; --ink: #e3e8e5; --muted: #9aa6a1; --rule: #2e3734;
-  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; color-scheme: dark }
+  --accent: #5cc3ae; --accent-soft: #1f332e; --warn: #e3a94b; --quote: #26251c; --mark: #6b5513; color-scheme: dark }
 body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-body); }
 .wrap { max-width: 860px; margin: 0 auto; padding-block: 28px 64px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -56,6 +56,14 @@ textarea { width: 100%; box-sizing: border-box; margin-top: 10px; min-height: 58
   color: var(--ink); background: var(--bg); border: 1px solid var(--rule); border-radius: 6px; padding: 8px; resize: vertical; }
 .save { font: 12px var(--f-mono); color: var(--muted); margin-top: 6px; min-height: 1em; }
 .fallback textarea { min-height: 140px; font: 12px/1.4 var(--f-mono); }
+.search { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 4px; position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + var(--barh, 44px)); z-index: 3; background: var(--panel); padding-block: 6px; }
+.search input { flex: 1 1 220px; min-width: 0; font: 14px var(--f-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 6px; padding: 6px 8px; }
+.search .count { font: 12px var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+mark { background: var(--mark); color: var(--ink); border-radius: 2px; }
+mark.cur { outline: 2px solid var(--accent); }
+.msg.hit, .sum.hit { border-color: var(--accent); }
 button.more { color: var(--accent); background: transparent; border: 1px solid var(--rule); font-size: 12px; padding: 4px 8px; margin-top: 6px; }
 button { font: 500 14px var(--f-body); color: var(--panel); background: var(--accent); border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
@@ -91,38 +99,139 @@ let db = null, ok = false;
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 
-function msgs(list, title, open) {
+// A searchable text: the whole text lives in JS; the node shows the preview or all of it, with
+// matches wrapped in <mark> (built from text nodes, never innerHTML). Matching is literal and
+// case-insensitive on the original string (regex with the query escaped, flags "giu"), so the
+// offsets are the original text's. Non-overlapping matches. At most MAX_MARKS are drawn per text;
+// every match is still counted.
+const MAX_MARKS = 2000;
+const escapeRe = (q) => q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function Text(text, kind, preview, details) {
+  const t = { text: text || "", kind, preview: preview || Infinity, details, expanded: false, userCollapsed: false, marks: [], hits: [] };
+  t.node = el("span");
+  t.find = (q) => {
+    t.hits = [];
+    if (!q) return t.hits;
+    const re = new RegExp(escapeRe(q), "giu"); let m;
+    while ((m = re.exec(t.text)) !== null) { t.hits.push([m.index, m.index + m[0].length]); if (m[0].length === 0) re.lastIndex++; }
+    return t.hits;
+  };
+  t.draw = () => {
+    // a match that ends past the preview expands the text, unless the viewer collapsed it
+    if (!t.userCollapsed && t.hits.some(([, e]) => e > t.preview)) t.expanded = true;
+    const shown = t.expanded ? t.text : t.text.slice(0, t.preview);
+    t.node.replaceChildren(); t.marks = [];
+    let pos = 0;
+    for (const [a, b] of t.hits) {
+      if (b > shown.length || t.marks.length >= MAX_MARKS) break;
+      if (a > pos) t.node.append(document.createTextNode(shown.slice(pos, a)));
+      const mk = el("mark", null, shown.slice(a, b)); t.node.append(mk); t.marks.push(mk); pos = b;
+    }
+    if (pos < shown.length) t.node.append(document.createTextNode(shown.slice(pos)));
+    if (t.button) t.button.textContent = t.expanded ? "Show less" : t.more;
+    if (t.box) t.box.classList.toggle("hit", t.hits.length > 0);
+  };
+  t.render = (q) => { t.find(q); if (t.hits.length && t.details) t.details.open = true; t.draw(); return t.hits.length; };
+  // the mark for match i, revealing its section and expanding the text if needed
+  t.reveal = (i) => {
+    if (t.details) t.details.open = true;
+    if (!t.marks[i]) { t.expanded = true; t.userCollapsed = false; t.draw(); }
+    return t.marks[i];
+  };
+  return t;
+}
+
+function msgBox(m, kind, details, targets) {
+  const p = m.preview || 1800;
+  const long = m.text && m.text.length > p + 200;
+  const t = Text(m.text, kind, long ? p : Infinity, details);
+  const box = el("div", "msg"); t.box = box; box.append(t.node);
+  if (long) {
+    t.more = `Show the whole message (${(m.text.length - p).toLocaleString()} more characters)`;
+    const b = el("button", "more", t.more); b.type = "button"; t.button = b;
+    b.addEventListener("click", () => { t.expanded = !t.expanded; t.userCollapsed = !t.expanded; t.draw(); });
+    box.append(el("br"), b);
+  }
+  if (targets) targets.push(t);
+  t.render("");
+  return box;
+}
+
+function msgs(list, title, open, kind, targets) {
   const d = el("details"); if (open) d.open = true;
   d.append(el("summary", null, title));
   const box = el("div", "msgs");
   if (!list.length) box.append(el("div", "msg", "(none)"));
-  for (const m of list) box.append(msgEl(m));
+  for (const m of list) box.append(msgBox(m, kind, d, targets));
   d.append(box); return d;
 }
 
-function msgEl(m) {
-  // the whole message is on the page; long ones show a preview and the rest behind a toggle
-  const p = m.preview || 1800;
-  if (!m.text || m.text.length <= p + 200) return el("div", "msg", m.text || "");
-  const box = el("div", "msg");
-  const more = `Show the whole message (${(m.text.length - p).toLocaleString()} more characters)`;
-  const rest = el("span", null, m.text.slice(p)); rest.hidden = true;
-  const b = el("button", "more", more); b.type = "button";
-  b.addEventListener("click", () => { rest.hidden = !rest.hidden; b.textContent = rest.hidden ? more : "Show less"; });
-  box.append(el("span", null, m.text.slice(0, p)), rest, el("br"), b); return box;
+function searchBar(c, targets, labels, kinds) {
+  const bar = el("div", "search");
+  const inp = el("input"); inp.type = "search"; inp.id = "q-" + c.id;
+  inp.placeholder = `Search ${labels.join(" and ")}`; inp.setAttribute("aria-label", inp.placeholder);
+  const qb = el("button", "more", "Search the item's quote"); qb.type = "button";
+  const prev = el("button", "more", "◀ Prev"), next = el("button", "more", "Next ▶");
+  prev.type = "button"; next.type = "button";
+  prev.setAttribute("aria-label", "Previous match"); next.setAttribute("aria-label", "Next match");
+  const count = el("span", "count", "");
+  // matches are (target, index) records, resolved to marks when stepped to, so expanding or
+  // collapsing a text never leaves navigation pointing at a detached node
+  let cur = -1, timer = null, all = [], tally = {}, lastQ = null, curMark = null;
+  const counts = () => kinds.map(k => `${tally[k] || 0} in ${k}`).join(" · ");
+  const run = () => {
+    clearTimeout(timer); timer = null;
+    const q = inp.value.trim();
+    lastQ = q; tally = {}; all = []; cur = -1; curMark = null;
+    for (const t of targets) {
+      const n = t.render(q);
+      tally[t.kind] = (tally[t.kind] || 0) + n;
+      for (let i = 0; i < n; i++) all.push([t, i]);
+    }
+    const capped = targets.some(t => t.hits.length > MAX_MARKS) ? " (first 2,000 highlighted per message)" : "";
+    count.textContent = q ? counts() + capped : "";
+  };
+  const fresh = () => { if (timer !== null || inp.value.trim() !== lastQ) run(); };
+  const go = (d) => {
+    fresh();
+    if (!all.length) return;
+    if (curMark) curMark.classList.remove("cur");
+    cur = cur === -1 ? (d > 0 ? 0 : all.length - 1) : (cur + d + all.length) % all.length;
+    const [t, i] = all[cur];
+    curMark = t.reveal(i) || null;
+    if (curMark) { curMark.classList.add("cur"); curMark.scrollIntoView({ block: "center" }); }
+    count.textContent = `${counts()} · ${cur + 1}/${all.length}`;
+  };
+  inp.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(run, 150); });
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); go(e.shiftKey ? -1 : 1); }
+    else if (e.key === "Escape") { inp.value = ""; run(); }
+  });
+  prev.addEventListener("click", () => go(-1)); next.addEventListener("click", () => go(1));
+  qb.addEventListener("click", () => { inp.value = c.quote || ""; run(); go(1); });
+  bar.append(inp, qb, prev, next, count);
+  return bar;
 }
 
 function card(c, n, sec) {
   const box = el("div", "card"); box.id = c.id;
   const h = el("div", "head");
   h.append(el("span", "num", `${sec === "lost" ? "1" : "2"}.${n}`), el("span", "tag", c.type || "item"),
-           el("span", "tag", (sec === "lost" ? "compaction " : "compaction ") + c.k));
+           el("span", "tag", "compaction " + c.k));
   box.append(h, el("div", "item", c.text || ""), el("blockquote", null, c.quote || ""));
-  box.append(msgs(c.context, sec === "lost" ? "History around the item (before compaction 1)" : `Messages before compaction ${c.k}`, sec !== "lost"));
+  const targets = [];
   if (sec === "lost") {
+    box.append(msgs(c.context, "History around the item (before compaction 1)", false, "history", null));
     const d = el("details"); d.open = true;
-    d.append(el("summary", null, `Summary ${c.k} (what the agent got)`), el("div", "sum", c.summary || "(empty)"));
-    box.append(d, msgs(c.kept, `Messages kept beside summary ${c.k}`, false));
+    const st = Text(c.summary || "(empty)", "summary", Infinity, d);
+    const sb = el("div", "sum"); st.box = sb; sb.append(st.node); st.render("");
+    d.append(el("summary", null, `Summary ${c.k} (what the agent got)`), sb);
+    targets.push(st);
+    const kept = msgs(c.kept, `Messages kept beside summary ${c.k}`, false, "kept", targets);
+    box.append(searchBar(c, targets, ["summary " + c.k, "the kept messages"], ["summary", "kept"]), d, kept);
+  } else {
+    const ctx = msgs(c.context, `Messages before compaction ${c.k}`, true, "messages", targets);
+    box.append(searchBar(c, targets, ["these messages"], ["messages"]), ctx);
   }
   box.append(el("div", "q", sec === "lost"
     ? `Is this item missing or misstated in what the agent sees after compaction ${c.k}?`
@@ -193,7 +302,15 @@ function refreshSummary() {
   document.getElementById("fallback").value = JSON.stringify({ draw: DATA.draw, labels: rows });
 }
 
+function trackBar() {
+  // the search bars stick just under the progress bar, whatever height it wraps to
+  const bar = document.getElementById("bar");
+  const set = () => document.documentElement.style.setProperty("--barh", bar.offsetHeight + "px");
+  set(); try { new ResizeObserver(set).observe(bar); } catch (e) { window.addEventListener("resize", set); }
+}
+
 function init() {
+  trackBar();
   DATA.sections.lost.forEach((c, i) => document.getElementById("s-lost").append(card(c, i + 1, "lost")));
   DATA.sections.not_current.forEach((c, i) => document.getElementById("s-nc").append(card(c, i + 1, "nc")));
   render(); refreshSummary();
