@@ -352,7 +352,7 @@ def test_a_valid():
 
 
 def test_admission_budget_and_grader_priority():
-    a = D.Admission(mem=lambda: None, poll_s=0)
+    a = D.Admission(mem=lambda: None, poll_s=0, others=lambda: 0)
     never = {"stop": lambda: True}
     with contextlib.ExitStack() as es:
         for _ in range(6):  # 6 x 3 GB within the 20 GB budget
@@ -372,13 +372,34 @@ def test_admission_budget_and_grader_priority():
     a.graders_waiting = 0
     with pytest.raises(L.Stopped), a.slot("agent", **never):
         pass  # a stop request is honoured before anything is granted, even with room
-    guard = D.Admission(mem=lambda: CC.AGENT_GATE_MB + CC.RESERVE_MB - 1, poll_s=0)
+    guard = D.Admission(mem=lambda: CC.AGENT_GATE_MB + CC.RESERVE_MB - 1, poll_s=0,
+                        others=lambda: 0)
     with pytest.raises(L.Stopped), guard.slot("agent", **never):
         pass  # MemAvailable below the gate plus the reserve
 
 
+def _second_stop():
+    calls = iter([False, True])
+    return {"stop": lambda: next(calls)}  # one admission attempt, then stop
+
+
+def test_admission_counts_other_containers():
+    pilot = {"mb": 4 * 3072}  # the planted pilot re-armed with 4 x 3 GB containers
+    a = D.Admission(mem=lambda: None, poll_s=0, others=lambda: pilot["mb"])
+    with contextlib.ExitStack() as es:
+        for _ in range(4):  # 4 x 3 + 12 = 24 <= 26 GB
+            es.enter_context(a.slot("agent"))
+        with pytest.raises(L.Stopped), a.slot("agent", **_second_stop()):
+            pass  # a 5th would leave the pool: we scale down
+    assert a.stats["blocked_by"]["other_containers"] >= 1
+    failing = D.Admission(mem=lambda: None, poll_s=0, others=lambda: None)
+    with pytest.raises(L.Stopped), failing.slot("agent", **_second_stop()):
+        pass  # docker can't be asked: nothing is admitted
+    assert failing.stats["blocked_by"] == {"docker_query_failed": 1}
+
+
 def test_admission_grader_slots():
-    a = D.Admission(mem=lambda: None, poll_s=0.01)
+    a = D.Admission(mem=lambda: None, poll_s=0.01, others=lambda: 0)
     with a.grader(), a.grader(), pytest.raises(L.Stopped), a.grader(stop=lambda: True):
         pass
 

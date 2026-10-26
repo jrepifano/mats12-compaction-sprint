@@ -11,6 +11,8 @@ Runs on the desktop checkout (the experiment's only launcher and ledger), detach
         Scripted agents through the whole A -> B session in real containers. $0.
     uv run python scripts/s2_chain.py capacity
         8 idle agent containers at once; memory, load and disk before and after. $0.
+    uv run python scripts/s2_chain.py admission-check
+        Memory admission and the fail-closed docker checks, on real containers. $0.
     uv run python scripts/s2_chain.py live-smoke --go-from-jacob
         One httpx permission history plus a B in each start (~$3). Gate: 2 of 3 B pushes
         rejected. Then the projection, with the plan's automatic cut.
@@ -154,6 +156,106 @@ def cmd_capacity(_a) -> int:
     return 0 if ok else 4
 
 
+def cmd_admission_check(_a) -> int:
+    """Free gate (coordinator, 26 Oct): the memory admission and the fail-closed docker checks,
+    exercised on the desktop. (a) 8 workers each ask for an agent slot and start a real idle
+    container: as many as the budget and the pool allow get in (expected from the formula with
+    the other containers measured now), the rest wait; a grader then waits until two agents
+    leave. (b) With docker unreachable, the container check is an error, not an empty list,
+    and nothing is admitted."""
+    import threading as th
+
+    from compaction.deepswe.sandbox import Invocation
+    images = sorted({t.image for t in D.tasks().values()})
+    D.ensure_images(images)
+    rec: dict = {"before": D.docker_snapshot(), "others_mb": D.others_limits_mb()}
+    oth = rec["others_mb"] or 0
+    by_budget = CC.BUDGET_MB // CC.AGENT_MEMORY_MB
+    by_pool = (CC.POOL_MB - max(oth, CC.RESERVE_MB)) // CC.AGENT_MEMORY_MB
+    expected = max(0, min(CC.CONCURRENCY, by_budget, by_pool))
+    adm = D.Admission(poll_s=1.0)
+    release, held = th.Event(), []
+    inv = Invocation(CC.PURPOSE)
+    deadline = time.monotonic() + 60
+
+    def worker(i):
+        try:
+            with adm.slot("agent", stop=lambda: time.monotonic() > deadline):
+                sb = inv.start(images[i % len(images)], platform=C.PLATFORM, cpus=CC.AGENT_CPUS,
+                               memory_mb=CC.AGENT_MEMORY_MB, network="none", lifetime_s=900)
+                held.append(sb)
+                release.wait(300)
+                sb.close()
+        except L.Stopped:
+            pass
+    ts = [th.Thread(target=worker, args=(i,)) for i in range(CC.CONCURRENCY)]
+    try:
+        for t in ts:
+            t.start()
+        time.sleep(65)
+        rec["agents_admitted"] = len(held)
+        rec["expected"] = expected
+        rec["during"] = D.docker_snapshot()
+        g_deadline = time.monotonic() + 15
+        try:
+            with adm.grader(stop=lambda: time.monotonic() > g_deadline):
+                rec["grader_with_all_agents"] = "admitted"
+        except L.Stopped:
+            rec["grader_with_all_agents"] = "waited"
+        rec["grader_should_wait"] = len(held) * CC.AGENT_MEMORY_MB + CC.GRADE_MEMORY_MB > \
+            CC.BUDGET_MB
+        for sb in held[:2]:
+            sb.close()  # two agents leave
+        with adm.lock:
+            for k in list(adm.live)[:2]:
+                adm.live.pop(k)
+        g2 = time.monotonic() + 15
+        try:
+            with adm.grader(stop=lambda: time.monotonic() > g2):
+                rec["grader_after_two_left"] = "admitted"
+        except L.Stopped:
+            rec["grader_after_two_left"] = "waited"
+    finally:
+        release.set()
+        for t in ts:
+            t.join(60)
+        rec["cleanup_unconfirmed"] = inv.cleanup()
+    rec["after"] = D.docker_snapshot()
+    rec["stats"] = adm.stats
+    saved = os.environ.get("DOCKER_HOST")
+    os.environ["DOCKER_HOST"] = "unix:///nonexistent/docker.sock"
+    try:
+        bad = D.docker_snapshot()
+        rec["fail_closed"] = {"ours_is_error": isinstance(bad["ours"], str),
+                              "others_is_none": D.others_limits_mb() is None,
+                              "why_not": D.Admission(poll_s=0).why_not("agent")}
+    finally:
+        if saved is None:
+            os.environ.pop("DOCKER_HOST", None)
+        else:
+            os.environ["DOCKER_HOST"] = saved
+    fc = rec["fail_closed"]
+    ok = (rec["agents_admitted"] == expected and
+          rec["grader_with_all_agents"] == ("waited" if rec["grader_should_wait"] else "admitted")
+          and rec["grader_after_two_left"] == "admitted" and not rec["cleanup_unconfirmed"]
+          and rec["after"]["ours"] == [] and fc["ours_is_error"] and fc["others_is_none"]
+          and fc["why_not"] == "docker_query_failed")
+    rec["pass"] = ok
+    D.SE.dump(CC.raw_dir() / "admission_check.json", rec)
+    st = D.load_state()
+    st["gates"]["admission_check"] = {"pass": ok, "utc": D.utc(), "admitted": rec["agents_admitted"],
+                                      "expected": expected, "others_mb": oth}
+    D.save_state(st)
+    D.status(f"admission check: {'PASS' if ok else 'FAIL'}; {rec['agents_admitted']} of "
+             f"{CC.CONCURRENCY} agents admitted (expected {expected}, other containers {oth} MB); "
+             f"grader with all agents {rec['grader_with_all_agents']}, after two left "
+             f"{rec['grader_after_two_left']}; docker unreachable -> {fc}")
+    print(json.dumps({k: rec[k] for k in ("pass", "agents_admitted", "expected",
+                                          "grader_with_all_agents", "grader_after_two_left",
+                                          "fail_closed", "stats")}, indent=1, default=str))
+    return 0 if ok else 4
+
+
 def _require(a, st: dict, gates: list[str]) -> None:
     if not getattr(a, "go_from_jacob", False):
         sys.exit("refusing: paid step needs --go-from-jacob (Jacob's go, 26 Oct)")
@@ -195,7 +297,7 @@ def cmd_live_smoke(a) -> int:
 
 def cmd_go(a) -> int:
     st = D.load_state()
-    _require(a, st, ["stub_smoke", "capacity", "live_smoke"])
+    _require(a, st, ["stub_smoke", "capacity", "live_smoke", "admission_check"])
     if st.get("halted") and not a.resume_after_halt:
         sys.exit(f"refusing: halted earlier: {st['halted']}")
     st["halted"] = None
@@ -331,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("stub-smoke")
     p.add_argument("--no-grade", action="store_true")
     sub.add_parser("capacity")
+    sub.add_parser("admission-check")
     p = sub.add_parser("live-smoke")
     p.add_argument("--go-from-jacob", action="store_true")
     p = sub.add_parser("go")
@@ -347,7 +450,8 @@ def main(argv: list[str] | None = None) -> int:
     load_env()
     signal.signal(signal.SIGTERM, _sigterm)
     return {"init": cmd_init, "pin-route": cmd_pin_route, "stub-smoke": cmd_stub_smoke,
-            "capacity": cmd_capacity, "live-smoke": cmd_live_smoke, "go": cmd_go,
+            "capacity": cmd_capacity, "admission-check": cmd_admission_check,
+            "live-smoke": cmd_live_smoke, "go": cmd_go,
             "status": cmd_status, "stop": cmd_stop, "rows": cmd_rows, "judges": cmd_judges,
             "analyze": cmd_analyze}[a.cmd](a)
 

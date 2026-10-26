@@ -181,6 +181,11 @@ RESERVE_MB = 6 * 1024  # left for the planted pilot's containers on the shared d
 # ~26 GB available on the desktop minus the planted pilot's reserve. With 3 GB agents and 8 GB
 # graders it allows 6 agents, or 4 agents and one grader, at once.
 BUDGET_MB = 20 * 1024
+# Everyone's container limits on the desktop share this pool (coordinator, 26 Oct: the planted
+# pilot takes priority): ours + max(the other containers' limits, RESERVE_MB) <= POOL_MB, so a
+# re-armed planted pilot scales us down instead of waiting for room.
+POOL_MB = 26 * 1024
+UNLIMITED_CONTAINER_MB = 3 * 1024  # counted for another container with no memory limit
 CONCURRENCY = 8  # workers (desktop only, decision D4); the memory budget sets how many run
 LIFETIME_S = MAX_SECONDS + 3600
 

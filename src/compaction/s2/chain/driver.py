@@ -254,30 +254,79 @@ GATE_MB = {"agent": CC.AGENT_GATE_MB, "grader": CC.GRADE_GATE_MB}
 GRADER_SLOTS = 2  # at most two graders at once (the budget usually allows one)
 
 
+def others_limits_mb() -> int | None:
+    """The memory limits of every running container on the desktop that isn't ours (the planted
+    pilot's above all); a container with no limit counts UNLIMITED_CONTAINER_MB. None when
+    docker can't be queried (admission then fails closed)."""
+    try:
+        q = subprocess.run(["docker", "ps", "-q"], capture_output=True, text=True, timeout=60,
+                           check=False)
+        if q.returncode != 0:
+            return None
+        ids = q.stdout.split()
+        if not ids:
+            return 0
+        r = subprocess.run(["docker", "inspect", "--format",
+                            '{{.HostConfig.Memory}} {{index .Config.Labels "emx.sandbox"}}', *ids],
+                           capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if r.returncode != 0:
+        return None  # e.g. a container vanished between the two calls: ask again later
+    total = 0
+    for line in r.stdout.splitlines():
+        mem, _, label = line.partition(" ")
+        if label.strip() == CC.PURPOSE:
+            continue
+        b = int(mem) if mem.strip().isdigit() else 0
+        total += b // 2**20 if b else CC.UNLIMITED_CONTAINER_MB
+    return total
+
+
 class Admission:
     """Admission of a new container, under one lock. It starts only when (a) the limits of our
-    live containers plus its own stay within CC.BUDGET_MB, and (b) MemAvailable still covers the
-    kind's gate plus the planted pilot's reserve (a guard against everyone else's use). Graders
+    live containers plus its own stay within CC.BUDGET_MB; (b) ours plus the larger of the other
+    containers' limits (`others_limits_mb`, the planted pilot's) and the reserve stay within
+    CC.POOL_MB, so the planted pilot scales us down, and an unanswered docker query admits
+    nothing; and (c) MemAvailable still covers the kind's gate plus the reserve. Graders
     hold one of GRADER_SLOTS and have priority: while one waits, no agent is admitted, so a
     finishing B can always be graded. A stop request is checked before anything is granted.
     The MemAvailable guard is skipped where /proc/meminfo doesn't exist (the laptop's tests)."""
 
     def __init__(self, mem=mem_available_mb, poll_s: float = 30.0,
-                 budget_mb: int = CC.BUDGET_MB):
+                 budget_mb: int = CC.BUDGET_MB, others=others_limits_mb,
+                 pool_mb: int = CC.POOL_MB):
         self.mem, self.poll_s, self.budget_mb = mem, poll_s, budget_mb
+        self.others, self.pool_mb = others, pool_mb
+        self.stats = {"admitted": 0, "waits": 0, "max_live_mb": 0, "blocked_by": {}}
         self.lock = threading.Lock()
         self.live: dict[int, int] = {}
         self._n = 0
         self.graders_waiting = 0
         self.graders = threading.BoundedSemaphore(GRADER_SLOTS)
 
-    def fits(self, kind: str) -> bool:
-        if sum(self.live.values()) + EXPECTED_MB[kind] > self.budget_mb:
-            return False
+    def why_not(self, kind: str) -> str | None:
+        ours = sum(self.live.values()) + EXPECTED_MB[kind]
+        if ours > self.budget_mb:
+            return "budget"
         if kind == "agent" and self.graders_waiting:
-            return False
+            return "grader_waiting"
+        if self.others is not None:
+            oth = self.others()
+            if oth is None:
+                return "docker_query_failed"
+            if ours + max(oth, CC.RESERVE_MB) > self.pool_mb:
+                return "other_containers"
         avail = self.mem()
-        return avail is None or avail >= GATE_MB[kind] + CC.RESERVE_MB
+        if avail is not None and avail < GATE_MB[kind] + CC.RESERVE_MB:
+            return "mem_available"
+        return None
+
+    def fits(self, kind: str) -> bool:
+        why = self.why_not(kind)
+        if why is not None:
+            self.stats["blocked_by"][why] = self.stats["blocked_by"].get(why, 0) + 1
+        return why is None
 
     @contextlib.contextmanager
     def slot(self, kind: str, stop: Callable[[], bool] = stop_requested):
@@ -294,7 +343,11 @@ class Admission:
                         self._n += 1
                         key = self._n
                         self.live[key] = EXPECTED_MB[kind]
+                        self.stats["admitted"] += 1
+                        self.stats["max_live_mb"] = max(self.stats["max_live_mb"],
+                                                        sum(self.live.values()))
                         break
+                    self.stats["waits"] += 1
                 time.sleep(self.poll_s)
         finally:
             if kind == "grader":
