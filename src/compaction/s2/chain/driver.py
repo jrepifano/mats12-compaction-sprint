@@ -26,7 +26,7 @@ aside (spend and evidence kept) and redone under the same number. A stage refusa
 halts and stops every loop.
 
 Spend: every API call reserves against stage SPRINT-S2-CHAIN in this checkout's own caps file
-($125, `init_caps`), tagged s2-task-chaining, and against its run's own cap ($2.50).
+($170, `init_caps`), tagged s2-task-chaining, and against its run's own cap ($2.50).
 """
 
 from __future__ import annotations
@@ -185,7 +185,7 @@ def halt(st: dict, step: str, reason: str) -> None:
 
 
 def init_caps(checkout: Path | None = None) -> Path:
-    """This experiment's own caps file: one stage at the cap ($125), booking only from this checkout.
+    """This experiment's own caps file: one stage at the cap (CAP_USD), booking only from this checkout.
     Refuses to change an existing file."""
     root = Path(checkout or CC.REPO_ROOT).resolve()
     p = CC.caps_file(root)
@@ -971,7 +971,7 @@ class CapGate:
     history x project x start) once a run of it is done, else of its (project, start) group,
     else the live smoke's (same project) or the plan's assumption + 30% (project switch); times
     COST_MARGIN. The first refusal closes the gate: no later run starts, in-flight ones finish.
-    The stage cap still refuses any call past $125 in code."""
+    The stage cap still refuses any call past the cap in code."""
 
     def __init__(self, st: dict, measured: dict, cap: float = CC.CAP_USD,
                  spent_fn: Callable[[], float] | None = None, root: Path | None = None):

@@ -3,7 +3,7 @@
 Runs on the desktop checkout (the experiment's only launcher and ledger), detached:
 
     uv run python scripts/s2_chain.py init
-        This checkout's caps file (stage SPRINT-S2-CHAIN, $125). $0.
+        This checkout's caps file (stage SPRINT-S2-CHAIN, $170). $0.
     uv run python scripts/s2_chain.py pin-route --bench logs/provider_bench_SPRINT-S2-CHAIN.jsonl
             --provider <name|deepseek-direct>
         Freeze the measured route to results/sprint/S2/chain/route.json. $0.

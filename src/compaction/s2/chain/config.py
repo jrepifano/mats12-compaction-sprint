@@ -19,7 +19,7 @@ from compaction.s2 import followups as F
 REPO_ROOT = C.REPO_ROOT
 STAGE = "SPRINT-S2-CHAIN"  # this experiment's own stage, in its own caps file (as the planted pilot)
 TAG = "s2-task-chaining"  # in every ledger note
-CAP_USD = 125.0  # Jacob: $110 at the go (26 Oct), raised to $125 the same night to keep all 88 B runs (D17)
+CAP_USD = 170.0  # Jacob: $110 at the go (26 Oct), $125 that night (D17), $170 at 10:25 AM ET for all 88 B runs (D27)
 PURPOSE = "s2-chaining"  # emx.sandbox label value
 SEED = 20261026
 

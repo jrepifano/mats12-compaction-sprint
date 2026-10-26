@@ -415,7 +415,7 @@ def test_projection_and_cut(tmp_path, monkeypatch):
     st = D.load_state()
     pr = D.fit_to_cap(st, {}, 0.0)
     assert pr["n_b"] == 88 and pr["fits"] and not st["cuts"]
-    pr = D.fit_to_cap(st, {"A": 0.9, "full": 1.6}, 30.0)
+    pr = D.fit_to_cap(st, {"A": 0.9, "full": 1.6}, 30.0 + CC.CAP_USD - 125.0)
     assert set(st["cuts"]) == CC.project_switch_permission_cells()
     assert pr["n_b"] == 72
     sp = D.plan_runs(st, same_project_only=True)
@@ -469,7 +469,7 @@ def test_init_caps_idempotent(tmp_path):
     p = D.init_caps(tmp_path)
     assert D.init_caps(tmp_path) == p
     assert f'checkout = "{tmp_path.resolve()}"' in p.read_text()
-    assert "cap_usd = 125.0" in p.read_text()
+    assert f"cap_usd = {CC.CAP_USD}" in p.read_text()
     p.write_text(p.read_text() + "# edited\n")
     with pytest.raises(ValueError):
         D.init_caps(tmp_path)
