@@ -453,6 +453,11 @@ class Driver:
         boundaries = self._boundaries()
         tasks = list(dict.fromkeys(r["task_id"] for r in boundaries))
         if phase == "step0":
+            approval = next((row for row in self.state.get("authorized_step0_retries", [])
+                             if "consumed_by_work_id" not in row), {})
+            required_pairs = (approval.get("decision") or {}).get("required_pairs")
+            if required_pairs == 2 and len(tasks) < 2:
+                raise DriverStop("authorized two-pair Step 0 needs two eligible tasks; no contingency authorized")
             if not boundaries:
                 if self.state["contingency_used"]:
                     raise DriverStop("kill 1: no eligible task after contingency")
@@ -469,9 +474,11 @@ class Driver:
                             return 0
                         candidates = boundaries  # an eligible seeded replacement may already exist
                 kwargs = {"boundaries": candidates}
-                for approval in self.state.get("authorized_step0_retries", []):
-                    if "consumed_by_work_id" not in approval and (approval.get("decision") or {}).get("required_pairs"):
-                        kwargs["required_pairs"] = approval["decision"]["required_pairs"]
+                if required_pairs:
+                    kwargs["required_pairs"] = required_pairs
+                if required_pairs == 2:
+                    kwargs["boundaries"] = [next(row for row in candidates if row["task_id"] == task)
+                        for task in dict.fromkeys(row["task_id"] for row in candidates)]
                 self._assign("step0", kwargs)
         elif phase == "cohort":
             if len(tasks) >= 2:

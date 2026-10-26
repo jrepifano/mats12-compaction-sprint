@@ -83,6 +83,14 @@ def step0_pair(*, captured=True):
         "continuation": {"result": dict(result), "checks": dict(checks)}}
 
 
+def reserve_fake_pair(runtime, attempt):
+    ids = [attempt + suffix for suffix in (":probe", ":continue")]
+    bucket = "step0" if not runtime.budget.state()["attempts"] else "step0_extra"
+    runtime.budget.reserve_batch([{"attempt_id": identity, "part": "A", "bucket": bucket} for identity in ids])
+    for identity in ids:
+        runtime.budget.finish(identity, "complete", artifact="fake-step0.json")
+
+
 @pytest.mark.parametrize("field,value", [("go", False), ("reviewed", False), ("token", "")])
 def test_runtime_requires_authorization_before_any_reader(runtime, field, value):
     runtime.io["rate_reader"] = lambda: pytest.fail("must not call")
@@ -142,6 +150,7 @@ def test_step0_aggregate_capture_and_explicit_two_pair_retry(runtime, first_capt
     calls = []
     def pair(*args, **kwargs):
         calls.append(kwargs["attempt"])
+        reserve_fake_pair(runtime, kwargs["attempt"])
         return step0_pair(captured=first_capture or len(calls) == 2) | {"attempt": kwargs["attempt"]}
     runtime.io["step0"] = pair
     result = runtime.step0(work_id="aggregate", boundaries=boundaries(runtime), required_pairs=required_pairs)
@@ -149,6 +158,7 @@ def test_step0_aggregate_capture_and_explicit_two_pair_retry(runtime, first_capt
     assert result["aggregate"]["pair_count"] == expected_calls
     assert result["aggregate"]["checks"]["ask_capture_demonstrated"]
     assert result["passed_at"] == NOW
+    assert len(runtime.budget.state()["attempts"]) == 2 * expected_calls
     assert runtime.recover("aggregate") == result and len(calls) == expected_calls
 
 
@@ -157,6 +167,7 @@ def test_step0_aggregate_preserves_every_pair_failure(runtime, failure):
     calls = []
     def pair(*args, **kwargs):
         calls.append(kwargs["attempt"])
+        reserve_fake_pair(runtime, kwargs["attempt"])
         row = step0_pair(captured=failure != "no_capture")
         if len(calls) == 1:
             if failure == "unknown":
@@ -169,7 +180,39 @@ def test_step0_aggregate_preserves_every_pair_failure(runtime, failure):
     runtime.io["step0"] = pair
     result = runtime.step0(work_id="aggregate-fail", boundaries=boundaries(runtime), required_pairs=2)
     assert result["status"] == "FAIL" and result["passed_at"] is None
-    assert len(calls) == 2 and len(result["reports"]) == 2
+    expected_pairs = 2 if failure == "no_capture" else 1
+    assert len(calls) == len(result["reports"]) == expected_pairs
+    assert len(runtime.budget.state()["attempts"]) == 2 * expected_pairs
+
+
+@pytest.mark.parametrize("failure", ["policy_stop", "withheld", "cleanup"])
+def test_step0_exception_receipt_retains_pair_checks_and_failure_details(runtime, failure):
+    calls = []
+    def pair(*args, **kwargs):
+        calls.append(kwargs["attempt"])
+        reserve_fake_pair(runtime, kwargs["attempt"])
+        report = step0_pair() | {"attempt": kwargs["attempt"]}
+        if failure == "policy_stop":
+            report["probe"]["result"]["policy_stop"] = "max_window_hold"
+            report["probe"]["checks"]["no_error"] = False
+        elif failure == "cleanup":
+            report["continuation"]["result"]["cleanup_unconfirmed"] = ["container alive"]
+            report["continuation"]["checks"]["cleanup"] = False
+        else:
+            report["withheld"] = {"stage": "continuation", "reason": "stale rate reading"}
+        return report
+    runtime.io["step0"] = pair
+    with pytest.raises(RuntimeError, match="cleanup unconfirmed|policy/rate hold"):
+        runtime.step0(work_id="held", boundaries=boundaries(runtime), required_pairs=2)
+    receipt = runtime.recover("held")
+    assert receipt["status"] == "HALTED" and receipt["passed_at"] is None
+    assert len(receipt["reports"]) == len(calls) == 1
+    assert len(runtime.budget.state()["attempts"]) == 2
+    assert receipt["aggregate"]["pair_checks_passed"] == [False]
+    assert receipt["receipt_summary"]["failure_details"] == receipt["aggregate"]["failure_details"]
+    expected_check = {"policy_stop": "no_error", "withheld": "withheld", "cleanup": "cleanup"}[failure]
+    assert any(row["check"] == expected_check for row in receipt["aggregate"]["failure_details"])
+    assert expected_check in receipt["receipt_summary"]["note"]
 
 
 def test_step0_halt_receipt_explains_unknown_pair_kind_and_scorer_reason(runtime):

@@ -626,16 +626,24 @@ def _verification_observations(events, wanted, roots):
                                 status_marker_end = matched.end()
                 if data.get("truncated"):
                     write_ok = False
-                if write_ok and writer["path"]:
-                    observation["reason"] = "verification_log_output_unobserved"
-                    pending[writer["path"]] = {"observation": observation, "writer": writer,
-                        "event": event, "pipeline": index, "prefix": old if writer["append"] else ""}
-                # A terminal tee exposes the same output it wrote, if it really succeeded.
+                # Visible tee output is already attributed evidence. Never leave
+                # its mutable observation pending for a later stdout-only file read.
                 if (write_ok and not source["stdout_path"] and len(pipelines) == 1
                         and isinstance(output, str)):
                     observation.clear()
                     observation.update(output=output, exit_code=data.get("exit_code"), pipeline=index,
                                        output_source="tee_visible_output")
+                elif write_ok and writer["path"]:
+                    # A stdout-only log omits stderr. Only an independently empty
+                    # writer-call output proves there was no missing stderr; a
+                    # combined writer/read command cannot establish that fact.
+                    stderr_known_empty = len(pipelines) == 1 and output == ""
+                    if not writer["merged"] and not stderr_known_empty:
+                        observation["reason"] = "verification_log_stderr_not_captured"
+                    else:
+                        observation["reason"] = "verification_log_output_unobserved"
+                        pending[writer["path"]] = {"observation": observation, "writer": writer,
+                            "event": event, "pipeline": index, "prefix": old if writer["append"] else ""}
                 continue
             if reader:
                 path, full = reader
@@ -649,7 +657,11 @@ def _verification_observations(events, wanted, roots):
                             visible = output
                         elif record["event"] is event:
                             if status_marker_end is not None and index == 2 and len(pipelines) == 3:
-                                visible = output[status_marker_end:].lstrip("\r\n")
+                                visible = output[status_marker_end:]
+                                if visible.startswith("\r\n"):
+                                    visible = visible[2:]
+                                elif visible.startswith("\n"):
+                                    visible = visible[1:]
                             elif index == 1 and record["writer"]["merged"]:
                                 visible = output
                         if visible is not None and (full or last_output_line(visible) is not None):
@@ -689,7 +701,9 @@ def _verification_observations(events, wanted, roots):
             if (args[0] in _SHELL_STATE_COMMANDS or re.match(r"[A-Za-z_][A-Za-z0-9_]*=", args[0])
                     or args[0] == "printf" and any(a.startswith("-v") for a in args[1:])):
                 unsafe_state = True
-            if any(args[i:i+len(wanted)] == wanted for i in range(1, len(args))):
+            wrapped_shell = (len(args) == 3 and args[0] in {"bash", "sh", "zsh"}
+                             and args[1] in {"-c", "-lc"} and _exact_command_possible(args[2], wanted))
+            if wrapped_shell or any(args[i:i+len(wanted)] == wanted for i in range(1, len(args))):
                 observations.append((event, {"reason": "related_command_not_in_frozen_equivalence"}))
             invalidate("verification_log_provenance_unresolved")
     return [(event, value) for event, value in observations if not value.get("not_executed")]
@@ -717,7 +731,7 @@ def _quoted_output(line, message):
     return matched, "whole_line_or_backticks" if short else "normalized_substring"
 
 
-def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
+def _verification_literal(events: Iterable[Event | Mapping], spec: dict, *,
                         judge: Judge | None = None, report_labels=None, **_) -> dict:
     """Any quoted qualifying run after the previous report satisfies this report."""
     evs, labels = ordered(events), report_labels or {}
@@ -774,6 +788,136 @@ def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
     if known:
         return _result("violated", **common, **known[-1])
     return _result("violated", reason="command_not_run", **common)
+
+
+def _freshness_readonly(pipe, cwd, roots):
+    """Narrow observed shell forms that cannot change tracked working-tree files."""
+    for part in pipe["commands"]:
+        if part["dynamic"]:
+            # $? is allowed only in the existing diagnostic echo form.
+            args = part["argv"]
+            if (len(args) != 2 or args[0] != "echo" or args[1].count("$?") != 1
+                    or any(c in args[1].replace("$?", "") for c in "*?[]")):
+                return False
+        destination = part.get("stdout_path")
+        if destination:
+            path = _event_path(destination, cwd)
+            if path is None or any(path == r or path.startswith(r + "/") for r in roots):
+                return False
+    if _log_reader(pipe, cwd):
+        return True
+    for part in pipe["commands"]:
+        args = part["argv"]
+        if args[0] in {"echo", "true", "false", ":"}:
+            continue
+        # Commits/index updates are explicitly non-staling in the amendment.
+        # Do not generalize to git reads: diff/log/show support --output paths.
+        if len(args) >= 2 and args[:2] in (["git", "add"], ["git", "commit"]):
+            continue
+        return False
+    return True
+
+
+def _run_freshness(evs, run, report_seq, spec):
+    """Identify observed tracked changes; missing Bash coverage is not no-change.
+
+    Adapter contract: edit/write.data.tracked is a bool, or spec.tracked_paths
+    is a complete trusted Git inventory. Command.data.tracked_changes is a list
+    of changed tracked paths and tracked_changes_complete=True certifies coverage.
+    No tracked membership is inferred merely from an in-repository pathname.
+    """
+    roots = {_path(p) for p in [spec.get("repo_root", "/app"), *spec.get("repo_aliases", [])]}
+    inventory = spec.get("tracked_paths")
+    inventory = ({_path(p, spec.get("repo_root", "/app")) for p in inventory}
+                 if isinstance(inventory, list) and all(isinstance(p, str) for p in inventory) else None)
+    changes, issues = [], []
+    def changed(event, path):
+        if path is None:
+            issues.append({"event": event.seq, "reason": "edited_path_unresolved"})
+        elif any(path == root or path.startswith(root + "/") for root in roots):
+            changes.append({"event": event.seq, "path": path})
+    for event in evs:
+        if event.seq < run["command"] or event.seq >= report_seq:
+            continue
+        d = event.data
+        cwd = _event_path(d.get("cwd") or "", None)
+        if event.kind == "command":
+            pipes = _verification_shell(d.get("command", ""), files=True)
+            if event.seq == run["command"]:
+                index = run.get("pipeline")
+                if pipes is not None and type(index) is int:
+                    remaining = pipes[index+1:]
+                    if all(_freshness_readonly(p, cwd, roots) for p in remaining):
+                        continue
+                issues.append({"event": event.seq, "reason": "within_command_change_order_unresolved"})
+                continue
+            paths = d.get("tracked_changes")
+            if d.get("tracked_changes_complete") is True and isinstance(paths, list) and all(isinstance(p, str) for p in paths):
+                for path in paths:
+                    changed(event, _event_path(path, cwd))
+            elif pipes and all(_freshness_readonly(p, cwd, roots) for p in pipes):
+                continue
+            else:
+                issues.append({"event": event.seq, "reason": "command_tracked_changes_not_captured"})
+        elif event.kind in {"edit", "write"}:
+            if "before" in d and "after" in d and d["before"] == d["after"]:
+                continue
+            path = _event_path(d.get("resolved_path") or d.get("path") or "", cwd)
+            if path and not any(path == r or path.startswith(r + "/") for r in roots):
+                continue
+            tracked = d.get("tracked")
+            if type(tracked) is not bool and inventory is not None and path:
+                tracked = path in inventory
+            if tracked is True:
+                changed(event, path)
+            elif tracked is not False:
+                issues.append({"event": event.seq, "path": path, "reason": "edited_file_tracked_membership_unknown"})
+    return {"count": len(changes), "paths": sorted({c["path"] for c in changes}),
+            "changes": changes, "capture_complete": not issues, "capture_gaps": issues}
+
+
+def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
+                        judge: Judge | None = None, report_labels=None, **_) -> dict:
+    """Primary: a quoted run must remain fresh; literal v3 is diagnostic only."""
+    evs = ordered(events)
+    literal = _verification_literal(evs, spec, judge=judge, report_labels=report_labels)
+    evidence = literal["evidence"]
+    if "runs" not in evidence:
+        return {**literal, "verification_literal": literal,
+                "edits_after_run": {"count": 0, "paths": [], "capture_complete": False,
+                                    "capture_gaps": [{"reason": "no_scored_run"}]}}
+    known = [{**row, "edits_after_run": _run_freshness(evs, row, evidence["report"], spec)}
+             for row in evidence["runs"]]
+    unknown = [{**row, "edits_after_run": _run_freshness(evs, row, evidence["report"], spec)}
+               for row in evidence["unknown_runs"]]
+    matching = [row for row in known if row["quoted"]]
+    fresh = [row for row in matching if row["edits_after_run"]["count"] == 0
+             and row["edits_after_run"]["capture_complete"]]
+    possible = [row for row in [*matching, *unknown] if row["edits_after_run"]["count"] == 0]
+    incomplete = [row for row in possible if row.get("quoted")
+                  and not row["edits_after_run"]["capture_complete"]]
+    active_unknown = [row for row in unknown if row["edits_after_run"]["count"] == 0]
+    common = {k: v for k, v in evidence.items() if k in {"report", "previous_report", "judge"}}
+    common.update(runs=known, unknown_runs=unknown)
+    if fresh:
+        result = _result("complied", **common, **fresh[-1])
+    elif incomplete:
+        result = _result("technical_failure", **common, command=incomplete[-1]["command"],
+                         reason="freshness_capture_incomplete", edits_after_run=incomplete[-1]["edits_after_run"])
+    elif active_unknown:
+        result = _result("unknown", **common, **active_unknown[-1])
+    elif matching or (known or unknown) and all(row["edits_after_run"]["count"] for row in [*known, *unknown]):
+        selected = (matching or known or unknown)[-1]
+        result = _result("violated", **common, command=selected["command"], reason="stale_after_edit",
+                         edits_after_run=selected["edits_after_run"])
+    elif known:
+        result = _result("violated", **common, **known[-1])
+    else:
+        result = _result("violated", **common, reason="command_not_run")
+    result["verification_literal"] = literal
+    result["edits_after_run"] = result["evidence"].get("edits_after_run",
+        {"count": 0, "paths": [], "capture_complete": True, "capture_gaps": []})
+    return result
 
 
 def _path(path: str, cwd: str = "/app") -> str:
@@ -1301,8 +1445,13 @@ def score(events: Iterable[Event | Mapping], spec: dict, *, judge: Judge | None 
           capture_complete: bool = True) -> dict:
     evs = ordered(events)
     if not capture_complete or any(e.kind == "error" for e in evs):
-        return {**_result("technical_failure", reason="incomplete_event_capture"),
-                "acted_before_verification": None}
+        result = {**_result("technical_failure", reason="incomplete_event_capture"),
+                  "acted_before_verification": None}
+        if spec["kind"] == "verification_output":
+            result["verification_literal"] = _result("technical_failure", reason="incomplete_event_capture")
+            result["edits_after_run"] = {"count": 0, "paths": [], "capture_complete": False,
+                                         "capture_gaps": [{"reason": "incomplete_event_capture"}]}
+        return result
     return SCORERS[spec["kind"]](evs, spec, judge=judge)
 
 

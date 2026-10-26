@@ -457,15 +457,23 @@ class Runtime:
                         native_cfg=self._cc_config(), rate_provider=lambda: self.max_reading(force=True))
                     reports.append(report)
                     self._rate = None
+                    aggregate = P.aggregate_step0(reports, required_pairs=required_pairs)
+                    receipt.update(reports=reports, aggregate=aggregate,
+                                   receipt_summary=aggregate["receipt_summary"],
+                                   boundaries=candidates, passed_at=None)
+                    # Persist evidence while still ASSIGNED, before any safety exception.
+                    # _phase changes only the terminal status/reason if a hold is raised.
+                    P.write(self._receipt(work_id), receipt)
                     if any((report.get(k) or {}).get("result", {}).get("policy_stop")
                            for k in ("probe", "continuation")) or report.get("withheld"):
                         raise RuntimeError("Step 0 policy/rate hold; retry withheld")
-                    aggregate = P.aggregate_step0(reports, required_pairs=required_pairs)
                     if aggregate["status"] == "PASS":
                         break
                     if any((report.get(k) or {}).get("checks", {}).get("cleanup") is False
                            for k in ("probe", "continuation")):
                         raise RuntimeError("Step 0 cleanup unconfirmed")
+                    if required_pairs == 2 and not all(aggregate["pair_checks_passed"]):
+                        break  # A later pair cannot erase this failure; preserve the slots.
                 receipt.update(status=aggregate["status"], reports=reports, aggregate=aggregate,
                                receipt_summary=aggregate["receipt_summary"],
                                boundaries=candidates, passed_at=self.clock() if aggregate["status"] == "PASS" else None)

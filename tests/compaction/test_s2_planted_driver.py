@@ -839,3 +839,19 @@ def test_report_window_retry_requires_two_pairs_and_cannot_touch_remaining_reser
             make().run(install_signals=False, retry_step0_from=work)
     assert make().run(install_signals=False)["status"] == "HALTED"
     assert make().state_path.read_bytes() == before and len(runtime.calls) == count
+
+
+@pytest.mark.parametrize('eligible_tasks', [0, 1])
+def test_explicit_two_pair_retry_missing_tasks_never_routes_to_contingency(tmp_path, eligible_tasks):
+    clock = Clock()
+    runtime = Runtime(clock, n=eligible_tasks)
+    instance = driver(tmp_path, runtime, clock)
+    instance._load()
+    instance.state['sequence'] = 3
+    instance.state['authorized_step0_retries'] = [{'from_work_id':'pilot-0003-step0',
+        'decision':{'required_pairs':2}}]
+    instance._save()
+    state = instance.run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'HALTED' and 'no contingency authorized' in state['reason']
+    assert not phases(runtime) and state['sequence'] == 3 and not state['contingency_used']
+    assert state['pending'] is None
