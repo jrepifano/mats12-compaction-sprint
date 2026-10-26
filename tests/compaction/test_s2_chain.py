@@ -743,3 +743,16 @@ def test_neutral_names():
     assert "trap" not in (E.HOME + E.PKG + E.BARE + E.PROFILE + E.origin_url("httpx")).lower()
     assert E.origin_url("tengo") == "/srv/git/tengo.git"
     assert "GITD_SHIM_DISABLE=1" in E.NOSHIM and "TRAPS_SHIM_DISABLE=1" in E.NOSHIM
+
+
+def test_others_reserve_setting(tmp_path, monkeypatch):
+    monkeypatch.setenv(CC.RAW_ENV, str(tmp_path))
+    assert D.others_reserve_mb() == CC.RESERVE_MB
+    (tmp_path / "admission.json").write_text(json.dumps({"others_reserve_mb": 13 * 1024}))
+    assert D.others_reserve_mb() == 13 * 1024
+    a = D.Admission(mem=lambda: None, poll_s=0, others=lambda: 0)
+    with contextlib.ExitStack() as es:
+        for _ in range(4):  # 4 x 3 + 13 = 25 <= 26 GB
+            es.enter_context(a.slot("agent"))
+        with pytest.raises(L.Stopped), a.slot("agent", **_second_stop()):
+            pass  # a 5th leaves the room kept for the planted pilot

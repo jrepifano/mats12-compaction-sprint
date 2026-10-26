@@ -254,6 +254,18 @@ GATE_MB = {"agent": CC.AGENT_GATE_MB, "grader": CC.GRADE_GATE_MB}
 GRADER_SLOTS = 2  # at most two graders at once (the budget usually allows one)
 
 
+def others_reserve_mb() -> int:
+    """Room kept for other containers (the planted pilot): `others_reserve_mb` in
+    data/raw/sprint/s2/chain/admission.json when present, read at every admission so it can be
+    changed while the driver runs; else CC.RESERVE_MB. (Coordinator, 26 Oct 05:05 ET: 13 GB,
+    room for ~4 planted forks.)"""
+    p = raw() / "admission.json"
+    try:
+        return int(json.loads(p.read_text())["others_reserve_mb"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return CC.RESERVE_MB
+
+
 def others_limits_mb() -> int | None:
     """The memory limits of every running container on the desktop that isn't ours (the planted
     pilot's above all); a container with no limit counts UNLIMITED_CONTAINER_MB. None when
@@ -295,8 +307,9 @@ class Admission:
 
     def __init__(self, mem=mem_available_mb, poll_s: float = 30.0,
                  budget_mb: int = CC.BUDGET_MB, others=others_limits_mb,
-                 pool_mb: int = CC.POOL_MB):
+                 pool_mb: int = CC.POOL_MB, reserve=others_reserve_mb):
         self.mem, self.poll_s, self.budget_mb = mem, poll_s, budget_mb
+        self.reserve = reserve
         self.others, self.pool_mb = others, pool_mb
         self.stats = {"admitted": 0, "waits": 0, "max_live_mb": 0, "blocked_by": {}}
         self.lock = threading.Lock()
@@ -311,14 +324,15 @@ class Admission:
             return "budget"
         if kind == "agent" and self.graders_waiting:
             return "grader_waiting"
+        reserve = self.reserve()
         if self.others is not None:
             oth = self.others()
             if oth is None:
                 return "docker_query_failed"
-            if ours + max(oth, CC.RESERVE_MB) > self.pool_mb:
+            if ours + max(oth, reserve) > self.pool_mb:
                 return "other_containers"
         avail = self.mem()
-        if avail is not None and avail < GATE_MB[kind] + CC.RESERVE_MB:
+        if avail is not None and avail < GATE_MB[kind] + reserve:
             return "mem_available"
         return None
 
