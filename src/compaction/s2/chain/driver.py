@@ -952,11 +952,87 @@ def b_order(runs: list[CC.BRun]) -> list[CC.BRun]:
     return sorted(runs, key=key)
 
 
+def random_order(runs: list[CC.BRun], seed: int = CC.SEED) -> list[CC.BRun]:
+    """A seeded random interleaving of every B run across cells (coordinator, 26 Oct), so the
+    runs a cap leaves unrun are a random handful, not whole cells."""
+    import random
+    out = sorted(runs, key=lambda b: b.id)
+    random.Random(seed).shuffle(out)
+    return out
+
+
+COST_MARGIN = 1.15  # a run's projection = its cell's measured mean cost x this
+
+
+class CapGate:
+    """Budget admission for the B bulk (coordinator, 26 Oct): a run that needs an agent starts
+    only if spent + what every in-flight run is projected to spend still + its own projection
+    stays within the cap. Projections: the measured mean cost of the run's cell (b_task x
+    history x project x start) once a run of it is done, else of its (project, start) group,
+    else the live smoke's (same project) or the plan's assumption + 30% (project switch); times
+    COST_MARGIN. The first refusal closes the gate: no later run starts, in-flight ones finish.
+    The stage cap still refuses any call past $125 in code."""
+
+    def __init__(self, st: dict, measured: dict, cap: float = CC.CAP_USD,
+                 spent_fn: Callable[[], float] | None = None, root: Path | None = None):
+        self.st, self.measured, self.cap = st, measured, cap
+        self.spent_fn = spent_fn or (lambda: spent()["spent"])
+        self.root = root
+        self.lock = threading.Lock()
+        self.live: dict[str, float] = {}
+        self.closed = False
+        self.refused: list[str] = []
+        self.log: list[dict] = []
+
+    def cost(self, b: CC.BRun) -> float:
+        done = [v for v in self.st["b"].values() if v.get("state") == "done"
+                and v.get("cost_usd") is not None]
+        cell = [v["cost_usd"] for v in done if CC.Cell(**v["cell"]).id == b.cell.id]
+        group = [v["cost_usd"] for v in done if v["cell"]["project"] == b.cell.project
+                 and v["cell"]["start"] == b.cell.start]
+        if cell:
+            base = sum(cell) / len(cell)
+        elif group:
+            base = sum(group) / len(group)
+        else:
+            base = projection(self.measured, 0, [b], 0)["B"]
+        return round(base * COST_MARGIN, 4)
+
+    def _still_to_spend(self, run_id: str, proj: float) -> float:
+        dirs = attempt_dirs(run_id, self.root)
+        so_far = (_attempt_spend(max(dirs, key=lambda d: d.stat().st_mtime)) or 0.0) if dirs \
+            else 0.0
+        return max(0.0, proj - so_far)
+
+    def admit(self, b: CC.BRun) -> bool:
+        with self.lock:
+            if self.closed:
+                self.refused.append(b.id)
+                return False
+            proj = self.cost(b)
+            flight = sum(self._still_to_spend(r, p) for r, p in self.live.items())
+            total = self.spent_fn() + flight + proj
+            ok = total <= self.cap + 1e-9
+            self.log.append({"utc": utc(), "run": b.id, "proj": proj, "in_flight": round(flight, 4),
+                             "total": round(total, 4), "admitted": ok})
+            if not ok:
+                self.closed = True
+                self.refused.append(b.id)
+                return False
+            self.live[b.id] = proj
+            return True
+
+    def release(self, b: CC.BRun) -> None:
+        with self.lock:
+            self.live.pop(b.id, None)
+
+
 def run_b_bulk(st: dict, route: C.Route, spend, tasks_: dict, *, runs: list[CC.BRun],
                concurrency: int = CC.CONCURRENCY, model_for=None, grade=True, caps=None,
-               root=None) -> None:
+               root=None, cap_gate: CapGate | None = None, ordered: list[CC.BRun] | None = None
+               ) -> None:
     todo = []
-    for b in b_order(runs):
+    for b in (ordered if ordered is not None else b_order(runs)):
         ok, why = runnable(b, st)
         if not ok:
             entry(st, "b", b.id, {**b.to_dict(), "attempts": 0})["state"] = f"skipped: {why}"
@@ -968,7 +1044,17 @@ def run_b_bulk(st: dict, route: C.Route, spend, tasks_: dict, *, runs: list[CC.B
     errors = []
 
     def one(b):
+        gated = False
         try:
+            if cap_gate is not None and latest_finished(
+                    {"id": b.id, **(st["b"].get(b.id) or {})}, root) is None:
+                if not cap_gate.admit(b):
+                    with _LOCK:
+                        entry(st, "b", b.id, {**b.to_dict(), "attempts": 0})["state"] = \
+                            "held: cap"
+                    save_state(st)
+                    return None
+                gated = True
             return run_one_b(b, st, route, spend, tasks_, model_for, grade, caps, root)
         except (Halt, L.Stopped):
             raise
@@ -979,6 +1065,9 @@ def run_b_bulk(st: dict, route: C.Route, spend, tasks_: dict, *, runs: list[CC.B
             save_state(st)
             status(f"B {b.id}: driver error {str(e)[:200]}")
             return None
+        finally:
+            if gated:
+                cap_gate.release(b)
 
     with ThreadPoolExecutor(max_workers=concurrency) as ex:
         futs = [ex.submit(one, b) for b in todo]

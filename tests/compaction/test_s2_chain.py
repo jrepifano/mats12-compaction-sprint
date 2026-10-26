@@ -788,3 +788,26 @@ def test_dynamic_reserve(tmp_path, monkeypatch):
     assert D.others_reserve_mb(lambda: False) == CC.RESERVE_MB
     (tmp_path / "admission.json").write_text(json.dumps({"dynamic": {"alive_mb": "x"}}))
     assert D.others_reserve_mb(lambda: False) == 13312
+
+
+def test_random_order_is_seeded_and_mixes_cells():
+    runs = CC.b_runs()
+    o1, o2 = D.random_order(runs, 1), D.random_order(runs, 1)
+    assert [b.id for b in o1] == [b.id for b in o2] and len(o1) == 88
+    assert [b.id for b in o1] != [b.id for b in D.random_order(runs, 2)]
+    assert len({b.cell.id for b in o1[:15]}) >= 8  # the first runs span many cells
+
+
+def test_cap_gate(tmp_path, monkeypatch):
+    monkeypatch.setenv(CC.RAW_ENV, str(tmp_path))
+    runs = CC.b_runs()
+    same = [b for b in runs if b.cell.project == "same" and b.cell.start == "full"]
+    st = {"b": {same[0].id: {**same[0].to_dict(), "state": "done", "cost_usd": 2.0}}}
+    spent = {"usd": 120.0}
+    g = D.CapGate(st, {}, cap=125.0, spent_fn=lambda: spent["usd"])
+    assert g.cost(same[1]) == pytest.approx(2.0 * D.COST_MARGIN)  # measured in its group
+    assert g.admit(same[1]) and g.admit(same[2])  # 120 + 2.3 + 2.3 = 124.6
+    assert not g.admit(same[3])  # 126.9 > 125: the gate closes
+    g.release(same[1])
+    assert not g.admit(same[4]) and g.closed  # closed stays closed
+    assert g.refused == [same[3].id, same[4].id]

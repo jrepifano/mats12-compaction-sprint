@@ -359,13 +359,62 @@ def _go(a, st, route, spend, tasks_) -> int:
     D.save_state(st)
     D.status(f"projection before the B bulk: ${pr['already']:.2f} spent + ${pr['total']:.2f} "
              f"({pr['n_b']} runs left); fits {pr['fits']}; shortfall ${pr['shortfall']:.2f}")
+    runs = D.plan_runs(st, spo)
+    if a.budget_admission:
+        return _budget_bulk(a, st, route, spend, tasks_, runs, meas)
     if not pr["fits"]:
         D.halt(st, "B bulk hold" if not cut else "projection",
                f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD}: shortfall "
                f"${pr['shortfall']:.2f} for {pr['n_b']} B runs (no cells cut)")
-    D.run_b_bulk(st, route, spend, tasks_, runs=D.plan_runs(st, spo), concurrency=a.concurrency)
+    D.run_b_bulk(st, route, spend, tasks_, runs=runs, concurrency=a.concurrency)
     if D.stop_requested():
         raise L.Stopped("stop requested")
+    return 0 if _finish(st, spend) else 7
+
+
+def _budget_bulk(a, st, route, spend, tasks_, runs, meas) -> int:
+    """The B bulk under budget admission (coordinator, 26 Oct): every run in one seeded random
+    order; a run starts only while spent + in-flight projections + its own fit the cap. When the
+    gate closes, the in-flight runs finish and a "HOLD: cap reached" line gives what's left."""
+    order = D.random_order(runs, CC.SEED)
+    st["b_order"] = {"seed": CC.SEED, "ids": [b.id for b in order], "utc": D.utc()}
+    D.save_state(st)
+    D.SE.dump(CC.raw_dir() / "b_order.json", st["b_order"])
+    gate = D.CapGate(st, meas)
+    left = [b for b in order if (st["b"].get(b.id) or {}).get("state") != "done"]
+    fit = 0
+    tot = D.spent()["spent"]
+    for b in left:
+        c = gate.cost(b)
+        if tot + c > CC.CAP_USD:
+            break
+        tot += c
+        fit += 1
+    D.status(f"B bulk (budget admission): seed {CC.SEED}, {len(left)} runs left in random order; "
+             f"about {fit} projected to fit ${CC.CAP_USD:.2f} at measured costs x "
+             f"{D.COST_MARGIN}; planted room {D.others_reserve_mb()} MB")
+    D.run_b_bulk(st, route, spend, tasks_, runs=runs, concurrency=a.concurrency, cap_gate=gate,
+                 ordered=order)
+    D.SE.dump(CC.raw_dir() / "cap_gate_log.json", gate.log)
+    if D.stop_requested():
+        raise L.Stopped("stop requested")
+    held = [b for b in order if (st["b"].get(b.id) or {}).get("state") == "held: cap"]
+    if held:
+        by_cell: dict[str, int] = {}
+        for b in held:
+            by_cell[b.cell.id] = by_cell.get(b.cell.id, 0) + 1
+        need = sum(gate.cost(b) for b in held)
+        sp = D.spent()["spent"]
+        st["cap_hold"] = {"utc": D.utc(), "runs_left": len(held), "by_cell": by_cell,
+                          "projected_usd": round(need, 2), "spent": round(sp, 2),
+                          "needed_above_cap": round(max(0.0, sp + need - CC.CAP_USD), 2)}
+        D.save_state(st)
+        D.status(f"HOLD: cap reached: {len(held)} B runs left ({by_cell}); projected "
+                 f"${need:.2f} more at measured costs x {D.COST_MARGIN}; spent ${sp:.2f}; "
+                 f"${st['cap_hold']['needed_above_cap']:.2f} above ${CC.CAP_USD:.2f} needed")
+        p = D.write_rows(st)
+        (CC.raw_dir() / "analysis.md").write_text(AN.render_markdown(AN.load_rows(p)))
+        return 5
     return 0 if _finish(st, spend) else 7
 
 
@@ -448,6 +497,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--same-project-only", action="store_true")
     p.add_argument("--resume-after-halt", action="store_true")
+    p.add_argument("--budget-admission", action="store_true",
+                   help="B bulk in a seeded random order, each run admitted only while it fits "
+                        "the cap (coordinator, 26 Oct)")
     p.add_argument("--hold-instead-of-cut", action="store_true",
                    help="never cut cells; halt before the B bulk with the shortfall instead "
                         "(coordinator, 26 Oct)")
