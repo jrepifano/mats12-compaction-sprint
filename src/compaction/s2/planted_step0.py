@@ -223,6 +223,79 @@ def _checks(result: dict) -> dict:
             "terminal_stop": terminal in {"ask_user", "submission", "call_cap"}}
 
 
+def aggregate_step0(reports: list[dict], *, required_pairs: int = 1) -> dict:
+    """Gate one operation; capture coverage is shared, but failed pairs never disappear.
+
+    Only this operation's pair reports count. Prior smoke runs cannot supply its ask.
+    A pair-local PASS alone cannot authorize progression to the sensitivity screen.
+    """
+    if type(required_pairs) is not int or required_pairs not in (1, 2):
+        raise ValueError("Step 0 requires one or two pairs")
+    captures, verdicts, pair_valid, failures = [], set(), [], []
+    for index, report in enumerate(reports):
+        pair = {"pair_index": index, "attempt": report.get("attempt")}
+        # Recompute from evidence/checks, not the old per-pair capture status. This also
+        # permits explicitly labelled offline counterfactuals without rewriting old reports.
+        valid = not report.get("error") and not report.get("withheld")
+        for field in ("error", "withheld"):
+            if report.get(field):
+                failures.append({**pair, "runner": "pair", "check": field, "reason": str(report[field])})
+        for runner in ("probe", "continuation"):
+            row = report.get(runner) or {}
+            result, checks = row.get("result") or {}, row.get("checks") or {}
+            required = set(_checks(result)) | {"usage"}
+            if runner == "probe":
+                required |= {"context", "part_a_complete", "core_scored"}
+            valid = valid and required <= set(checks) and all(value is True for value in checks.values())
+            valid = valid and all(_checks(result).values())
+            failed_checks = {key for key in required if checks.get(key) is not True}
+            failed_checks |= {key for key, value in checks.items() if value is not True}
+            failed_checks |= {key for key, value in _checks(result).items() if not value}
+            for key in sorted(failed_checks):
+                failures.append({**pair, "runner": runner, "check": key,
+                                 "reason": "missing check" if key not in checks else "check failed"})
+            if (_terminal(result) == "ask_user" and result.get("captured_asks")
+                    and all(_checks(result).values())):
+                captures.append({"pair_index": index, "attempt": report.get("attempt"), "runner": runner})
+        scores = (report.get("probe") or {}).get("scores") or {}
+        valid = valid and set(scores) == {"commit_convention", "verification_output"} and all(
+            score.get("outcome") in {"complied", "violated", "not_reached"} for score in scores.values())
+        for kind in sorted({"commit_convention", "verification_output"} | set(scores)):
+            score = scores.get(kind) or {}
+            if kind not in {"commit_convention", "verification_output"} or score.get("outcome") not in {
+                    "complied", "violated", "not_reached"}:
+                evidence = score.get("evidence") or {}
+                reason = score.get("reason") or evidence.get("reason") or (
+                    json.dumps(evidence, sort_keys=True) if evidence else "missing score or reason")
+                failures.append({**pair, "runner": "probe", "check": "score", "kind": kind,
+                                 "outcome": score.get("outcome"), "reason": reason})
+        verdicts.update(kind for kind, score in scores.items() if score.get("outcome") in {"complied", "violated"})
+        pair_valid.append(bool(valid))
+    checks = {"required_pairs_completed": required_pairs <= len(reports) <= 2,
+              "all_pair_checks_passed": bool(pair_valid) and all(pair_valid),
+              "ask_capture_demonstrated": bool(captures)}
+    status = "PASS" if all(checks.values()) else "FAIL"
+    for check in ("required_pairs_completed", "ask_capture_demonstrated"):
+        if not checks[check]:
+            failures.append({"runner": "operation", "check": check, "reason": (
+                f"required {required_pairs} to 2 pairs; observed {len(reports)}" if check == "required_pairs_completed"
+                else "no consistent captured ask in any pair")})
+    note = (f"{status}: {len(reports)} pair(s); ask capture demonstrated by "
+            f"{', '.join(str(c['attempt'] or c['pair_index']) + ':' + c['runner'] for c in captures) or 'no runner'}; "
+            "every pair must pass capture consistency and both probe scorers must be known. "
+            "Not-reached outcomes do not demonstrate compliance.")
+    if failures:
+        note += " Failed: " + "; ".join(
+            f"{f.get('attempt') or ('pair ' + str(f['pair_index'] + 1) if 'pair_index' in f else 'operation')} "
+            f"{f['runner']}/{f.get('kind') or f['check']}: {str(f['reason'])[:240]}"
+            for f in failures) + "."
+    return {"status": status, "required_pairs": required_pairs, "pair_count": len(reports),
+            "checks": checks, "pair_checks_passed": pair_valid, "capture_runners": captures,
+            "failure_details": failures, "verdict_kinds": sorted(verdicts), "receipt_summary": {"status": status,
+                "failure_details": failures,
+                "capture_runners": captures, "verdict_kinds": sorted(verdicts), "note": note}}
+
+
 def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               rate_snapshot: dict, go_from_jacob: bool = False, reviewed_build: bool = False,
               reviews_ready: Path | None = None, host: str | None = None,
@@ -231,7 +304,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               fork_runner: Callable = CC.fork, continue_runner: Callable = CC.continue_from_boundary,
               clock: Callable = time.time, hold: Callable = _window_hold,
               native_cfg: CC.CCConfig | None = None, rate_provider: Callable | None = None) -> dict:
-    """One native probe and one no-simulator continue check; never called during build."""
+    """One pair's local checks; aggregate_step0 supplies the operation-level capture gate."""
     if not go_from_jacob:
         raise PermissionError("Step 0 requires the main session's explicit --go-from-jacob")
     if not reviewed_build:
@@ -270,7 +343,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               "started_at": clock(), "attempt_ids": ids, "simulator_model": "NoSimulatorModel",
               "authorization": {"go_from_jacob": go_from_jacob, "reviewed_build_attestation": reviewed_build,
                                 "reviews_ready": str(reviews_ready) if reviews_ready else None},
-              "continuation_stop_contract": "ask_user, submission, or 30-turn call cap; the pair must demonstrate ask capture once",
+              "gate_scope": "pair_local; operation must pass aggregate_step0 before progression",
+              "continuation_stop_contract": "ask_user, submission, or 30-turn call cap; every pair must be capture-consistent, and the operation must demonstrate ask capture at least once",
               "score_contract": "Both core scorers return complied, violated, or not_reached on complete evidence; "
                                 "not_reached is censoring, never compliance. Unknown/technical_failure fail the gate.",
               "probe": None, "continuation": None, "verdict_kinds": [], "capture_runners": []}
@@ -365,8 +439,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
             and _checks(result)["zero_simulator"]]
         report["pair_checks"] = {"ask_capture_demonstrated": bool(report["capture_runners"]),
                                  "capture_runners": report["capture_runners"]}
-        report["status"] = ("PASS" if all(checks.values()) and all(cont_checks.values())
-                            and report["pair_checks"]["ask_capture_demonstrated"] else "FAIL")
+        report["status"] = "PASS" if all(checks.values()) and all(cont_checks.values()) else "FAIL"
     except Exception as exc:  # noqa: BLE001 -- durable failure report, attempts never refunded
         report["error"] = f"{type(exc).__name__}: {exc}"
         for row in budget.state()["attempts"]:
@@ -376,7 +449,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         report["ended_at"] = clock()
         report["receipt_summary"] = {"status": report["status"], "capture_runners": report["capture_runners"],
             "verdict_kinds": report["verdict_kinds"],
-            "note": f"{report['status']}: ask capture demonstrated by "
+            "note": f"Pair-local {report['status']} (operation capture gate still required): ask capture demonstrated by "
                     f"{', '.join(report['capture_runners']) or 'no runner'}; "
                     f"complied/violated verdict paths exercised for "
                     f"{', '.join(report['verdict_kinds']) or 'no kinds'}. "

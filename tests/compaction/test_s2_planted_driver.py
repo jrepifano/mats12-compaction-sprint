@@ -443,7 +443,16 @@ def integrated_runtime(tmp_path, monkeypatch):
         budget.reserve_batch([{"attempt_id": key, "part": "A", "bucket": bucket} for key in ids])
         for key in ids:
             budget.finish(key, "complete", artifact="fake-native.json")
-        return {"status": "PASS", "attempt_ids": ids}
+        result = {"outcome": "ask_user", "captured_asks": [{"text": "done"}],
+                  "fork_check": {"ok": True}, "sim_calls": 0, "sim_cost_usd": 0,
+                  "cleanup_unconfirmed": []}
+        checks = P._checks(result) | {"usage": True}
+        return {"status": "PASS", "attempt": kwargs["attempt"], "attempt_ids": ids,
+                "probe": {"result": result, "checks": checks | {
+                    "context": True, "part_a_complete": True, "core_scored": True},
+                    "scores": {kind: {"outcome": "complied"} for kind in
+                               ("commit_convention", "verification_output")}},
+                "continuation": {"result": result, "checks": checks}}
 
     def fork(boundary, output, **kwargs):
         inserted = bool(kwargs["required_context"])
@@ -789,3 +798,44 @@ def test_new_jacob_decision_authorizes_exact_second_retry_without_erasing_histor
         with pytest.raises(D.DriverStop, match="exact terminal"):
             make().run(install_signals=False, retry_step0_from=work)
         assert make().state_path.read_bytes() == before
+
+
+@pytest.mark.parametrize("pair_count", [0, 3, True, "2"])
+def test_retry_rejects_invalid_required_pairs(tmp_path, pair_count):
+    config = {"step0_retry_authorization": {"decision_id": "planted-report-window-v3",
+        "from_work_id": "pilot-0003-step0", "max_operations": 1,
+        "after_completed_retry_count": 2, "required_pairs": pair_count}}
+    clock = Clock()
+    with pytest.raises(ValueError, match="required pair"):
+        driver(tmp_path, Runtime(clock), clock, configuration=config)
+
+
+@pytest.mark.parametrize("failure_code", [None, "eligibility_missing"])
+def test_report_window_retry_requires_two_pairs_and_cannot_touch_remaining_reserve(tmp_path, failure_code):
+    config = {"step0_retry_authorization": {"decision_id": "planted-report-window-v3",
+        "from_work_id": "pilot-0003-step0", "max_operations": 1,
+        "after_completed_retry_count": 2, "required_pairs": 2}}
+    clock, runtime, instance, _ = failed_step0_driver(tmp_path, config)
+    original = instance.state["completed"][0]
+    instance.state["completed"] = [dict(original, work_id=f"pilot-{n:04d}-step0") for n in (1, 2, 3)]
+    instance.state["sequence"] = 3
+    instance.state["authorized_step0_retries"] = [
+        {"from_work_id": f"pilot-{n:04d}-step0", "consumed_by_work_id": f"pilot-{n+1:04d}-step0"}
+        for n in (1, 2)]
+    instance._save()
+    prior = json.loads(json.dumps(instance.state["completed"]))
+    make = lambda: driver(tmp_path, runtime, clock, configuration=config)
+    fail = runtime.step0
+    runtime.step0 = lambda **kw: {**fail(**kw), "reason_code": failure_code}
+    state = make().run(install_signals=False, retry_step0_from="pilot-0003-step0")
+    assert state["status"] == "HALTED" and state["sequence"] == 4
+    assert "contingency" not in phases(runtime)
+    assert state["completed"][:3] == prior
+    assert [args for phase, args in runtime.calls if phase == "step0"][-1]["required_pairs"] == 2
+    assert state["authorized_step0_retries"][-1]["consumed_by_work_id"] == "pilot-0004-step0"
+    before, count = make().state_path.read_bytes(), len(runtime.calls)
+    for work in ("pilot-0003-step0", "pilot-0004-step0"):
+        with pytest.raises(D.DriverStop, match="exact terminal"):
+            make().run(install_signals=False, retry_step0_from=work)
+    assert make().run(install_signals=False)["status"] == "HALTED"
+    assert make().state_path.read_bytes() == before and len(runtime.calls) == count

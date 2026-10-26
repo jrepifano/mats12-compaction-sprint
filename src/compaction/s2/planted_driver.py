@@ -144,6 +144,9 @@ class Driver:
                     or type(approval.get("after_completed_retry_count")) is not int
                     or approval["after_completed_retry_count"] < 1):
                 raise ValueError("invalid explicit Step 0 retry authorization")
+            if (type(approval.get("required_pairs", 1)) is not int
+                    or approval.get("required_pairs", 1) not in (1, 2)):
+                raise ValueError("invalid Step 0 required pair count")
         self.state = None
         self._part_b = None
         self._previous_handlers = {}
@@ -351,7 +354,10 @@ class Driver:
                 self.state["screen_passed_at"] = self._receipt_time(result, "ended_at")
                 self.state["phase"] = "chains"
         elif status not in {"PASS", "SKIP"}:
-            if phase == "step0" and result.get("reason_code") == "eligibility_missing":
+            # The explicitly authorized two-pair retry halts on every failure,
+            # including eligibility loss; contingency must not spend its last reserve.
+            if (phase == "step0" and result.get("reason_code") == "eligibility_missing"
+                    and pending["kwargs"].get("required_pairs") != 2):
                 self.state["phase"] = "contingency"
             else:
                 stop_reason = f"{phase} {status}: {result.get('reason', 'gate failure')}"
@@ -462,7 +468,11 @@ class Driver:
                             self._event("contingency produced no new boundary; retain prior Step 0 result")
                             return 0
                         candidates = boundaries  # an eligible seeded replacement may already exist
-                self._assign("step0", {"boundaries": candidates})
+                kwargs = {"boundaries": candidates}
+                for approval in self.state.get("authorized_step0_retries", []):
+                    if "consumed_by_work_id" not in approval and (approval.get("decision") or {}).get("required_pairs"):
+                        kwargs["required_pairs"] = approval["decision"]["required_pairs"]
+                self._assign("step0", kwargs)
         elif phase == "cohort":
             if len(tasks) >= 2:
                 self.state["phase"] = "part_b"

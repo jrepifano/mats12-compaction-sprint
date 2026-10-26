@@ -435,7 +435,9 @@ class Runtime:
         summary = next(r["message"]["content"] for r in rows if r.get("uuid") == metadata["native_summary_uuid"])
         return summary, P.read(bdir / "native/hook_payload.json")["compact_summary"]
 
-    def step0(self, *, work_id, boundaries=None):
+    def step0(self, *, work_id, boundaries=None, required_pairs=1):
+        if type(required_pairs) is not int or required_pairs not in (1, 2):
+            raise ValueError("Step 0 requires one or two pairs")
         with self._phase(work_id, "step0") as receipt:
             candidates = boundaries if boundaries is not None else self.snapshot()["boundaries"]
             candidates = [r for r in candidates if r.get("live_eligible")]
@@ -458,14 +460,15 @@ class Runtime:
                     if any((report.get(k) or {}).get("result", {}).get("policy_stop")
                            for k in ("probe", "continuation")) or report.get("withheld"):
                         raise RuntimeError("Step 0 policy/rate hold; retry withheld")
-                    if report["status"] == "PASS":
+                    aggregate = P.aggregate_step0(reports, required_pairs=required_pairs)
+                    if aggregate["status"] == "PASS":
                         break
                     if any((report.get(k) or {}).get("checks", {}).get("cleanup") is False
                            for k in ("probe", "continuation")):
                         raise RuntimeError("Step 0 cleanup unconfirmed")
-                receipt.update(status=reports[-1]["status"], reports=reports,
-                               receipt_summary=reports[-1].get("receipt_summary", {}),
-                               boundaries=candidates, passed_at=self.clock() if reports[-1]["status"] == "PASS" else None)
+                receipt.update(status=aggregate["status"], reports=reports, aggregate=aggregate,
+                               receipt_summary=aggregate["receipt_summary"],
+                               boundaries=candidates, passed_at=self.clock() if aggregate["status"] == "PASS" else None)
         return receipt
 
     def _fork(self, **kwargs):

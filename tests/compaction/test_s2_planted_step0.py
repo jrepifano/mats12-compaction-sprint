@@ -331,8 +331,39 @@ def test_clarifying_ask_demonstrates_capture_but_is_not_report(tmp_path):
 def test_valid_terminals_without_any_ask_do_not_demonstrate_capture(tmp_path):
     report, _ = terminal_run(tmp_path, terminal="call_cap", continuation_terminal="submission")
     assert all(report["probe"]["checks"].values()) and all(report["continuation"]["checks"].values())
-    assert report["status"] == "FAIL"
+    assert report["status"] == "PASS"  # Pair-local checks; the operation still lacks an ask.
     assert not report["pair_checks"]["ask_capture_demonstrated"]
+    assert P.aggregate_step0([report])["status"] == "FAIL"
+
+
+def test_operation_shares_capture_across_two_complete_pairs(tmp_path):
+    first, _ = terminal_run(tmp_path / "first", terminal="call_cap", continuation_terminal="call_cap")
+    second, _ = terminal_run(tmp_path / "second", terminal="call_cap")
+    aggregate = P.aggregate_step0([first, second], required_pairs=2)
+    assert aggregate["status"] == "PASS"
+    assert aggregate["pair_checks_passed"] == [True, True]
+    assert aggregate["capture_runners"] == [{"pair_index": 1, "attempt": second["attempt"], "runner": "continuation"}]
+    assert P.aggregate_step0([first, first], required_pairs=2)["status"] == "FAIL"
+
+
+@pytest.mark.parametrize("runner", ["probe", "continuation"])
+@pytest.mark.parametrize("mismatch", [{"outcome": "ask_user", "captured_asks": []},
+                                     {"outcome": "call_cap", "captured_asks": [{"text": "false capture"}]}])
+def test_operation_cannot_hide_false_or_missed_capture_in_an_earlier_pair(tmp_path, runner, mismatch):
+    first, _ = terminal_run(tmp_path / "first", terminal="call_cap", continuation_terminal="call_cap")
+    second, _ = terminal_run(tmp_path / "second", terminal="call_cap")
+    first[runner]["result"].update(mismatch)
+    # Deliberately leave the old checks True: aggregate must recompute consistency.
+    aggregate = P.aggregate_step0([first, second], required_pairs=2)
+    assert aggregate["status"] == "FAIL" and aggregate["pair_checks_passed"] == [False, True]
+
+
+@pytest.mark.parametrize("outcome", ["unknown", "technical_failure"])
+def test_operation_rejects_any_unknown_probe_even_when_later_pair_passes(tmp_path, outcome):
+    first, _ = terminal_run(tmp_path / "first", terminal="call_cap", continuation_terminal="call_cap")
+    second, _ = terminal_run(tmp_path / "second", terminal="call_cap")
+    first["probe"]["scores"]["verification_output"]["outcome"] = outcome
+    assert P.aggregate_step0([first, second], required_pairs=2)["status"] == "FAIL"
 
 
 @pytest.mark.parametrize("override", [{"outcome": "cli_error"}, {"outcome": "ask_user", "captured_asks": []},

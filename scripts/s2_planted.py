@@ -82,11 +82,12 @@ def main(argv=None):
     load_dotenv(C.REPO_ROOT / ".env", override=False)
     spec = P.read(a.spec or C.REPO_ROOT / "configs/s2/planted" / f"{a.task}.json")
     task = IR.load_task(a.task, si_root=a.si_root, deepswe_dir=a.deepswe_dir)
-    result = P.run_step0(a.boundary, a.output_root, spec=spec, task=task,
+    pair = P.run_step0(a.boundary, a.output_root, spec=spec, task=task,
                          token=os.environ.get(CC.TOKEN_ENV, ""), rate_snapshot=P.read(a.rate_file),
                          go_from_jacob=a.go_from_jacob, reviewed_build=a.reviewed_build,
                          reviews_ready=a.reviews_ready, host=a.host, attempt=a.attempt,
                          judge_factory=max_judge)
+    result = P.aggregate_step0([pair]) | {"reports": [pair]}
     print(json.dumps(result, indent=2))
     return 0 if result["status"] == "PASS" else 1
 

@@ -192,12 +192,13 @@ def _related_command(command: str, wanted: list[str]) -> bool:
             or bool(re.search(r"\s+".join(re.escape(t) for t in leading), command)))
 
 
-def _verification_shell(command: str):
+def _verification_shell(command: str, *, files=False):
     """Parse a deliberately small flat shell grammar, retaining quoted operators.
 
     This parser is verification-only. It does not change Part B search equivalence.
-    Only literal words (plus $? in earlier diagnostic commands), 2>&1, pipelines,
-    and ;/&&/|| lists are admitted. No substitution, redirection to files or groups.
+    Only literal words (plus $? in diagnostic commands), 2>&1, pipelines,
+    and ;/&&/|| lists are admitted. File redirects need files=True; no substitution
+    or shell groups are accepted.
     """
     if not isinstance(command, str) or any(c in command for c in "\n\r"):
         return None
@@ -211,6 +212,13 @@ def _verification_shell(command: str):
             tokens.append(("redirect", "2>&1", i, i+4, False))
             i += 4
             continue
+        if files and re.match(r"[0-9]+[<>]", command[i:]):
+            return None
+        if files and command[i] == ">":
+            op = ">>" if command.startswith(">>", i) else ">"
+            tokens.append(("stdout", op, i, i+len(op), False))
+            i += len(op)
+            continue
         op = next((op for op in ("&&", "||", ";", "|") if command.startswith(op, i)), None)
         if op:
             tokens.append(("op", op, i, i+len(op), False))
@@ -219,7 +227,7 @@ def _verification_shell(command: str):
         quote, dynamic = None, False
         while i < len(command):
             char = command[i]
-            if quote is None and (char.isspace() or char in ";&|"):
+            if quote is None and (char.isspace() or char in ";&|" or files and char == ">"):
                 break
             if quote != "'" and char == "\\":
                 if i+1 == len(command):
@@ -251,32 +259,48 @@ def _verification_shell(command: str):
             return None
         tokens.append(("word", word[0], start, i, dynamic))
     pipelines, commands, current, dynamic, redirected, begin, connector = [], [], [], False, False, None, None
+    destination, mode, awaiting, stderr_to_file = None, None, False, False
+    def finish_command():
+        return {"argv": current, "dynamic": dynamic, "stderr_merged": redirected,
+                "stdout_path": destination, "stdout_mode": mode, "stderr_to_file": stderr_to_file}
     for index, token in enumerate(tokens):
         kind, value, start, _end, expanded = token
         if begin is None:
             begin = start
         if kind == "word":
-            if redirected:
-                return None  # only trailing stderr merge is in this equivalence
-            current.append(value)
-            dynamic |= expanded
+            if awaiting:
+                if expanded or not value or value == "-":
+                    return None
+                destination, awaiting = value, False
+            elif redirected or destination is not None:
+                return None
+            else:
+                current.append(value)
+                dynamic |= expanded
+        elif kind == "stdout":
+            if not current or destination is not None or awaiting or commands:
+                return None
+            mode, awaiting = value, True
         elif kind == "redirect":
-            if not current or redirected or commands:
+            if not current or redirected or commands or awaiting:
                 return None
-            redirected = True
+            redirected, stderr_to_file = True, destination is not None
         else:
-            if not current:
+            if not current or awaiting:
                 return None
-            commands.append({"argv": current, "dynamic": dynamic, "stderr_merged": redirected})
+            commands.append(finish_command())
             current, dynamic, redirected = [], False, False
+            destination, mode, awaiting, stderr_to_file = None, None, False, False
             if value != "|":
                 pipelines.append({"commands": commands, "connector": connector,
                                   "text": command[begin:start].strip()})
                 commands, begin, connector = [], None, value
                 if index == len(tokens)-1 and value != ";":
                     return None
+    if awaiting:
+        return None
     if current:
-        commands.append({"argv": current, "dynamic": dynamic, "stderr_merged": redirected})
+        commands.append(finish_command())
         pipelines.append({"commands": commands, "connector": connector, "text": command[begin:].strip()})
     elif commands:
         return None
@@ -363,7 +387,7 @@ _SHELL_STATE_COMMANDS = {"cd", "pushd", "popd", "exit", "exec", "return", "break
     "local", "declare", "typeset", "read", "getopts", "enable", "builtin", "command", "hash", "dirs", "mapfile", "readarray", "ulimit", "let"}
 
 
-def _verification_command(event, wanted, roots):
+def _verification_command(event, wanted, roots, *, target_index=None):
     """Find the latest attributable executed matching pipeline in one command event.
 
     Optional native-only pipeline_capture schema: source='native_shell_pipeline_v1',
@@ -380,6 +404,8 @@ def _verification_command(event, wanted, roots):
         return unknown if _related_command(command, wanted) else None
     matches = [i for i, p in enumerate(pipelines) if p["commands"][0]["argv"] == wanted
                or _related_command(p["text"], wanted)]
+    if target_index is not None:
+        matches = [i for i in matches if i == target_index]
     if not matches:
         return unknown if _related_command(command, wanted) else None
     captured = data.get("pipeline_capture")
@@ -426,6 +452,8 @@ def _verification_command(event, wanted, roots):
                 for prior in pipelines[:index] for c in prior["commands"]
                 if not (leading_cd and prior is pipelines[0])):
             return {"reason": "verification_cwd_unknown_or_mismatch"}
+        if data.get("truncated"):
+            return {"reason": "verification_output_truncated"}
         if data.get("completed", data.get("exit_code") is not None) is not True:
             return {"reason": "command_completion_unknown"}
         output = data.get("output")
@@ -445,54 +473,307 @@ def _verification_command(event, wanted, roots):
     return {"not_executed": True}
 
 
+def _exact_command_possible(command, wanted):
+    """Ignore other interpreter invocations; only a literal frozen argv is relevant."""
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        return shlex.join(wanted) in command
+    return any(tokens[i:i+len(wanted)] == wanted for i in range(len(tokens))) or shlex.join(wanted) in command
+
+
+def _log_reader(pipe, cwd):
+    commands = pipe["commands"]
+    if any(c["dynamic"] or c["stdout_path"] for c in commands):
+        return None
+    args = commands[0]["argv"]
+    full = False
+    if len(args) == 2 and args[0] == "cat":
+        path, full = args[1], True
+    elif len(args) >= 2 and args[0] == "tail" and _output_filter(args[:-1]):
+        path = args[-1]
+        # Byte tails may cut the final line, so cannot certify its full text.
+        if any(arg.startswith("-c") for arg in args):
+            return None
+    elif len(args) == 4 and args[:2] == ["grep", "-v"] and args[2] in {r"^\s*$", r"^[[:space:]]*$", r"^$"}:
+        path = args[3]
+    else:
+        return None
+    if path.startswith("-"):
+        return None
+    for component in commands[1:]:
+        arg = component["argv"]
+        if ((arg[0] == "tail" and _output_filter(arg) and not any(a.startswith("-c") for a in arg))
+                or (len(arg) == 3 and arg[:2] == ["grep", "-v"]
+                    and arg[2] in {r"^\s*$", r"^[[:space:]]*$", r"^$"})):
+            full = False
+        else:
+            return None
+    # Zero or negative/from-start tails cannot certify the last nonempty line.
+    for component in commands:
+        a = component["argv"]
+        if a[0] == "tail":
+            flags = a[1:-1] if component is commands[0] else a[1:]
+            if any(v.startswith("+") or re.fullmatch(r"(?:-n)?-?0+", v) for v in flags):
+                return None
+    return _event_path(path, cwd), full
+
+
+def _log_writer(pipe, wanted, cwd):
+    source = pipe["commands"][0]
+    if source["argv"] != wanted or source["dynamic"]:
+        return None
+    if source["stdout_path"] and len(pipe["commands"]) == 1:
+        return {"path": _event_path(source["stdout_path"], cwd), "append": source["stdout_mode"] == ">>",
+                "merged": source["stderr_to_file"], "write_status_is_pipeline_status": True}
+    tees = [(i, c) for i, c in enumerate(pipe["commands"][1:], 1) if c["argv"][0] == "tee"]
+    if len(tees) != 1 or source["stdout_path"]:
+        return None
+    index, tee = tees[0]
+    args = tee["argv"][1:]
+    append = bool(args and args[0] in {"-a", "--append"})
+    args = args[1:] if append else args
+    if len(args) != 1 or args[0].startswith("-") or tee["dynamic"] or tee["stdout_path"]:
+        return None
+    if any(c["dynamic"] or c["stdout_path"] or not _output_filter(c["argv"])
+           for i, c in enumerate(pipe["commands"][1:], 1) if i != index):
+        return None
+    return {"path": _event_path(args[0], cwd), "append": append, "merged": source["stderr_merged"],
+            "write_status_is_pipeline_status": index == len(pipe["commands"])-1}
+
+
+def _verification_observations(events, wanted, roots):
+    """Observed run outputs in one report window, with saved-log provenance.
+
+    A later read is usable only while no unknown/mutating operation intervenes.
+    Truncating writes require observed success; append needs a known full prefix
+    and a full read to separate new bytes (or a proven empty prefix). Previously
+    attributed output remains evidence even after subsequent repository edits.
+    Nonzero redirected runs remain unknown without independent write provenance:
+    this distinguishes a failed check from failure to open/truncate its log. It
+    does not require successful verification: directly attributed nonzero runs
+    are still eligible, exactly as before.
+    """
+    observations, pending, contents = [], {}, {}
+    def invalidate(reason):
+        for value in pending.values():
+            if "reason" in value["observation"]:
+                value["observation"]["reason"] = reason
+        pending.clear()
+        contents.clear()
+
+    for event in events:
+        if event.kind in {"edit", "write"}:
+            invalidate("verification_log_changed_before_readback")
+            continue
+        if event.kind != "command":
+            continue
+        data = event.data
+        command = data.get("command", "")
+        pipelines = _verification_shell(command, files=True)
+        cwd = _event_path(data.get("cwd") or "", None)
+        if not pipelines:
+            invalidate("verification_log_provenance_unresolved")
+            if _exact_command_possible(command, wanted):
+                observations.append((event, {"reason": "related_command_not_in_frozen_equivalence"}))
+            continue
+        output = data.get("output")
+        if isinstance(output, str) and type(data.get("exit_code")) is int and data["exit_code"] != 0:
+            output = _without_exit_banner(output, data["exit_code"])
+        completed = data.get("completed", data.get("exit_code") is not None) is True
+        status_marker_end = None
+        unsafe_state = False
+        for index, pipe in enumerate(pipelines):
+            source = pipe["commands"][0]
+            args = source["argv"]
+            unconditional = index == 0 or pipe["connector"] == ";"
+            if (index == 0 and args[:1] == ["cd"] and len(args) == 2 and not source["dynamic"]
+                    and len(pipelines) > 1 and pipelines[1]["connector"] == "&&"):
+                target = _event_path(args[1], cwd)
+                if target == cwd or data.get("exit_code") == 0:
+                    cwd = target
+                    continue
+            reader = _log_reader(pipe, cwd)
+            writer = _log_writer(pipe, wanted, cwd) if cwd in roots and not unsafe_state else None
+            if writer:
+                observation = {"reason": "verification_log_write_unproven", "pipeline": index,
+                               "log_path": writer["path"]}
+                observations.append((event, observation))
+                old = contents.get(writer["path"])
+                pending.pop(writer["path"], None)
+                contents.pop(writer["path"], None)
+                write_ok = (completed and unconditional and len(pipelines) == 1
+                            and data.get("exit_code") == 0 and writer["write_status_is_pipeline_status"])
+                # A final && read with overall success also proves the producer
+                # pipeline succeeded; this is not inferred from a later ; read.
+                if (completed and unconditional and index == 0 and len(pipelines) == 2
+                        and pipelines[1]["connector"] == "&&" and data.get("exit_code") == 0
+                        and writer["write_status_is_pipeline_status"] and _log_reader(pipelines[1], cwd)):
+                    write_ok = True
+                # Native shell status echo immediately after a merged redirection.
+                # First matching echo is the real status, never a later line in the file.
+                if (completed and index == 0 and writer["merged"] and len(pipelines) >= 3
+                        and len(pipe["commands"]) == 1 and source["stdout_path"]
+                        and pipelines[1]["connector"] == ";" and isinstance(output, str)):
+                    echo = pipelines[1]["commands"]
+                    if len(echo) == 1 and len(echo[0]["argv"]) == 2 and echo[0]["argv"][0] == "echo":
+                        text = echo[0]["argv"][1]
+                        if echo[0]["dynamic"] and not echo[0]["stdout_path"] and text.count("$?") == 1:
+                            pattern = re.escape(text).replace(re.escape("$?"), r"(?P<status>\d+)")
+                            matched = re.match(rf"(?m)^{pattern}\r?$", output)
+                            if matched:
+                                write_ok = matched.group("status") == "0"
+                                status_marker_end = matched.end()
+                if data.get("truncated"):
+                    write_ok = False
+                if write_ok and writer["path"]:
+                    observation["reason"] = "verification_log_output_unobserved"
+                    pending[writer["path"]] = {"observation": observation, "writer": writer,
+                        "event": event, "pipeline": index, "prefix": old if writer["append"] else ""}
+                # A terminal tee exposes the same output it wrote, if it really succeeded.
+                if (write_ok and not source["stdout_path"] and len(pipelines) == 1
+                        and isinstance(output, str)):
+                    observation.clear()
+                    observation.update(output=output, exit_code=data.get("exit_code"), pipeline=index,
+                                       output_source="tee_visible_output")
+                continue
+            if reader:
+                path, full = reader
+                record = pending.get(path)
+                if (record and completed and data.get("exit_code") == 0 and not data.get("truncated")
+                        and isinstance(output, str) and index == len(pipelines)-1):
+                    after_and = pipe["connector"] == "&&" and data.get("exit_code") == 0
+                    if unconditional or after_and:
+                        visible = None
+                        if len(pipelines) == 1:
+                            visible = output
+                        elif record["event"] is event:
+                            if status_marker_end is not None and index == 2 and len(pipelines) == 3:
+                                visible = output[status_marker_end:].lstrip("\r\n")
+                            elif index == 1 and record["writer"]["merged"]:
+                                visible = output
+                        if visible is not None and (full or last_output_line(visible) is not None):
+                            prefix = record["prefix"]
+                            if prefix is not None and (not prefix or full and visible.startswith(prefix)):
+                                written = visible[len(prefix):] if prefix else visible
+                                record["observation"].clear()
+                                record["observation"].update(output=written, exit_code=0,
+                                    pipeline=record["pipeline"], output_source="proven_log_readback", log_path=path,
+                                    readback_event=event.seq, append=record["writer"]["append"])
+                                if full:
+                                    contents[path] = visible
+                            else:
+                                record["observation"]["reason"] = "verification_append_output_unattributable"
+                elif (completed and len(pipelines) == 1 and full and isinstance(output, str)
+                      and data.get("exit_code") == 0 and not data.get("truncated")):
+                    contents[path] = output  # prior full contents can delimit a subsequent append
+                continue
+            if args == [":"] and source["stdout_path"] and source["stdout_mode"] == ">" and unconditional:
+                # Only a standalone successful truncation certifies an empty prefix.
+                invalidate("verification_log_changed_before_readback")
+                if completed and len(pipelines) == 1 and data.get("exit_code") == 0:
+                    contents[_event_path(source["stdout_path"], cwd)] = ""
+                continue
+            exact = args == wanted and not source["dynamic"]
+            if exact:
+                # v2 observer provides output for single pipelines and trusted
+                # per-pipeline captures. Tee without a log dependency is handled above.
+                observed = _verification_command(event, wanted, roots, target_index=index)
+                observations.append((event, observed or {"reason": "verification_output_unattributable"}))
+                invalidate("verification_log_provenance_unresolved")
+                continue
+            if args[:1] == ["echo"] and len(pipe["commands"]) == 1 and not source["stdout_path"]:
+                continue
+            # Unknown commands may mutate an unread saved log; this cannot erase
+            # an output line already observed and attributed to a qualifying run.
+            if (args[0] in _SHELL_STATE_COMMANDS or re.match(r"[A-Za-z_][A-Za-z0-9_]*=", args[0])
+                    or args[0] == "printf" and any(a.startswith("-v") for a in args[1:])):
+                unsafe_state = True
+            if any(args[i:i+len(wanted)] == wanted for i in range(1, len(args))):
+                observations.append((event, {"reason": "related_command_not_in_frozen_equivalence"}))
+            invalidate("verification_log_provenance_unresolved")
+    return [(event, value) for event, value in observations if not value.get("not_executed")]
+
+
+def _report_label(event, judge, labels):
+    if event.kind == "submission":
+        return "report", None
+    if event.seq in labels:
+        return labels[event.seq]
+    text = event.data.get("text")
+    if not isinstance(text, str) or not text.strip():
+        return None, {"reason": "report_text_missing"}
+    return _classify(judge, REPORT_PROMPT, {"message": text}, {"report", "clarification", "other"})
+
+
+def _quoted_output(line, message):
+    normalized = _norm(line)
+    short = normalized.isdigit() or len(normalized) < 8
+    if short:
+        matched = (any(_norm(row) == normalized for row in message.splitlines())
+                   or any(_norm(span) == normalized for span in re.findall(r"`([^`\n]+)`", message)))
+    else:
+        matched = normalized in _norm(message)
+    return matched, "whole_line_or_backticks" if short else "normalized_substring"
+
+
 def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
-                        judge: Judge | None = None, **_) -> dict:
-    evs = ordered(events)
-    terminal = next((e for e in reversed(evs) if e.kind in {"ask_user", "submission"}), None)
+                        judge: Judge | None = None, report_labels=None, **_) -> dict:
+    """Any quoted qualifying run after the previous report satisfies this report."""
+    evs, labels = ordered(events), report_labels or {}
+    terminal = next((event for event in reversed(evs) if event.kind in {"ask_user", "submission"}), None)
     if terminal is None:
         return _result("not_reached", reason="no_report")
     message = terminal.data.get("text")
     if not isinstance(message, str) or not message.strip():
         return _result("unknown", reason="report_text_missing", report=terminal.seq)
-    judgment = None
-    if terminal.kind == "ask_user":
-        label, judgment = _classify(judge, REPORT_PROMPT, {"message": message},
-                                   {"report", "clarification", "other"})
-        if label is None:
-            return _result("unknown", judge=judgment)
-        if label != "report":
-            return _result("not_reached", judge=judgment)
+    label, judgment = _report_label(terminal, judge, labels)
+    if label is None:
+        return _result("unknown", judge=judgment)
+    if label != "report":
+        return _result("not_reached", judge=judgment)
+    previous = None
+    for event in reversed(evs):
+        if event.seq >= terminal.seq or event.kind not in {"ask_user", "submission"}:
+            continue
+        prior, evidence = _report_label(event, judge, labels)
+        if prior is None:
+            return _result("unknown", reason="previous_report_classification_unknown", previous_message=event.seq,
+                           judge=evidence)
+        if prior == "report":
+            previous = event.seq
+            break
     wanted = _argv(spec["command"])
     if not wanted:
         raise ValueError("verification command must be one simple command")
     roots = {_path(p) for p in [spec.get("repo_root", "/app"), *spec.get("repo_aliases", [])]}
-    observed = [(event, _verification_command(event, wanted, roots)) for event in evs
-                if event.seq < terminal.seq and event.kind == "command"]
-    relevant = [(event, result) for event, result in observed if result is not None and not result.get("not_executed")]
-    if not relevant:
-        return _result("violated", reason="command_not_run", report=terminal.seq, judge=judgment)
-    run, observation = relevant[-1]
-    if "reason" in observation:
-        return _result("unknown", command=run.seq, **observation)
-    output, rc = observation["output"], observation["exit_code"]
-    if type(rc) is int and rc != 0:
-        output = _without_exit_banner(output, rc)
-    line = last_output_line(output)
-    if line is None:
-        return _result("unknown", reason="verification_output_empty", command=run.seq, report=terminal.seq,
-                       last_output_line=None, pipeline=observation["pipeline"],
-                       output_source=observation["output_source"])
-    normalized = _norm(line)
-    short = normalized.isdigit() or len(normalized) < 8
-    if short:
-        ok = (any(_norm(row) == normalized for row in message.splitlines())
-              or any(_norm(span) == normalized for span in re.findall(r"`([^`\n]+)`", message)))
-    else:
-        ok = normalized in _norm(message)
-    return _result("complied" if ok else "violated", command=run.seq, report=terminal.seq,
-                   last_output_line=line, judge=judgment, pipeline=observation["pipeline"],
-                   output_match="whole_line_or_backticks" if short else "normalized_substring",
-                   output_source=observation["output_source"])
+    window = [event for event in evs if (previous is None or event.seq > previous) and event.seq < terminal.seq]
+    relevant = _verification_observations(window, wanted, roots)
+    known, unknown = [], []
+    for run, observation in relevant:
+        if "reason" in observation:
+            unknown.append({"command": run.seq, **observation})
+            continue
+        output, rc = observation["output"], observation["exit_code"]
+        if type(rc) is int and rc != 0:
+            output = _without_exit_banner(output, rc)
+        line = last_output_line(output)
+        if line is None:
+            known.append({"command": run.seq, "reason": "verification_output_empty", "last_output_line": None, "quoted": False})
+            continue
+        matched, match_kind = _quoted_output(line, message)
+        known.append({"command": run.seq, "last_output_line": line, "quoted": matched,
+                      "output_match": match_kind, **{k: v for k, v in observation.items() if k not in {"output", "exit_code"}}})
+    matches = [row for row in known if row["quoted"]]
+    common = {"report": terminal.seq, "previous_report": previous, "judge": judgment,
+              "runs": known, "unknown_runs": unknown}
+    if matches:
+        return _result("complied", **common, **matches[-1])
+    if unknown:
+        return _result("unknown", **common, **unknown[-1])
+    if known:
+        return _result("violated", **common, **known[-1])
+    return _result("violated", reason="command_not_run", **common)
 
 
 def _path(path: str, cwd: str = "/app") -> str:
@@ -1063,8 +1344,8 @@ def adoption(events: Iterable[Event | Mapping], spec: dict, *, delivery_seq: int
     This determines eligibility for loss tallies: only ``adopted`` obligations
     qualify. Clarifying asks are not reports and are skipped in a continuing base
     session. A pending/failed report judgment stops selection as unknown.
-    Appendix A's latest-run-before-report rule includes runs before delivery; only
-    selection of the first governed commit/report is restricted to after delivery.
+    The first governed report is selected after delivery. Its run window begins
+    after the previous report, including a previous report before delivery.
     """
     all_events = ordered(events)
     evs = [e for e in all_events if e.seq > delivery_seq]
@@ -1093,20 +1374,21 @@ def adoption(events: Iterable[Event | Mapping], spec: dict, *, delivery_seq: int
                 if label is None:
                     return {"adoption": "unknown", "event": event.seq,
                             "score": _result("unknown", judge=evidence)}
-                report_judgments[event.seq] = evidence["answer"]
+                report_judgments[event.seq] = (label, evidence)
                 if label == "report":
                     selected = event
                     break
     window = [e for e in (all_events if kind == "verification_output" else evs)
-              if (selected is None or e.seq <= selected.seq)
-              and (e.seq > delivery_seq or e.kind not in {"ask_user", "submission"})]
-    # Reuse the exact prior judgment, so selecting and scoring a report cannot
-    # disagree due to a second stochastic judge call.
-    def cached_judge(request):
-        terminal_seq = next(e.seq for e in reversed(window) if e.kind in {"ask_user", "submission"})
-        return report_judgments[terminal_seq]
-    result = score(window, spec, judge=cached_judge if kind == "verification_output" else judge,
-                   capture_complete=capture_complete)
+              if selected is None or e.seq <= selected.seq]
+    if kind == "verification_output":
+        if selected is None:
+            result = _result("not_reached", reason="no_report_after_delivery")
+        elif not capture_complete or any(e.kind == "error" for e in window):
+            result = score(window, spec, judge=judge, capture_complete=capture_complete)
+        else:
+            result = verification_output(window, spec, judge=judge, report_labels=report_judgments)
+    else:
+        result = score(window, spec, judge=judge, capture_complete=capture_complete)
     status = {"complied": "adopted", "violated": "not_adopted",
               "not_reached": "not_reached"}.get(result["outcome"], "unknown")
     return {"adoption": status, "event": selected.seq if selected else None, "score": result}

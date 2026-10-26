@@ -72,6 +72,17 @@ def good_fork(out, *, with_rule=True, verify=True):
             "token_usage": {"input_tokens": 5, "output_tokens": 3}}
 
 
+def step0_pair(*, captured=True):
+    result = {"outcome": "ask_user" if captured else "call_cap",
+              "captured_asks": [{"text": "done"}] if captured else [], "fork_check": {"ok": True},
+              "sim_calls": 0, "sim_cost_usd": 0, "cleanup_unconfirmed": []}
+    checks = P._checks(result) | {"usage": True}
+    return {"status": "PASS", "probe": {"result": dict(result),
+        "checks": checks | {"context": True, "part_a_complete": True, "core_scored": True},
+        "scores": {kind: {"outcome": "not_reached"} for kind in ("commit_convention", "verification_output")}},
+        "continuation": {"result": dict(result), "checks": dict(checks)}}
+
+
 @pytest.mark.parametrize("field,value", [("go", False), ("reviewed", False), ("token", "")])
 def test_runtime_requires_authorization_before_any_reader(runtime, field, value):
     runtime.io["rate_reader"] = lambda: pytest.fail("must not call")
@@ -124,6 +135,64 @@ def test_step0_two_attempts_then_stop_and_no_repeat_on_recovery(runtime):
     assert all(call["native_cfg"].auto_compact_window == 80_000 for call in calls)
     assert calls[0]["attempt"] != calls[1]["attempt"]
     assert runtime.recover("stepzero")["status"] == "FAIL" and len(calls) == 2
+
+
+@pytest.mark.parametrize("first_capture,required_pairs,expected_calls", [(False, 1, 2), (True, 1, 1), (True, 2, 2)])
+def test_step0_aggregate_capture_and_explicit_two_pair_retry(runtime, first_capture, required_pairs, expected_calls):
+    calls = []
+    def pair(*args, **kwargs):
+        calls.append(kwargs["attempt"])
+        return step0_pair(captured=first_capture or len(calls) == 2) | {"attempt": kwargs["attempt"]}
+    runtime.io["step0"] = pair
+    result = runtime.step0(work_id="aggregate", boundaries=boundaries(runtime), required_pairs=required_pairs)
+    assert result["status"] == "PASS" and len(calls) == expected_calls
+    assert result["aggregate"]["pair_count"] == expected_calls
+    assert result["aggregate"]["checks"]["ask_capture_demonstrated"]
+    assert result["passed_at"] == NOW
+    assert runtime.recover("aggregate") == result and len(calls) == expected_calls
+
+
+@pytest.mark.parametrize("failure", ["no_capture", "unknown", "false_capture", "missed_capture"])
+def test_step0_aggregate_preserves_every_pair_failure(runtime, failure):
+    calls = []
+    def pair(*args, **kwargs):
+        calls.append(kwargs["attempt"])
+        row = step0_pair(captured=failure != "no_capture")
+        if len(calls) == 1:
+            if failure == "unknown":
+                row["probe"]["scores"]["verification_output"]["outcome"] = "unknown"
+            elif failure == "false_capture":
+                row["continuation"]["result"]["outcome"] = "call_cap"
+            elif failure == "missed_capture":
+                row["probe"]["result"]["captured_asks"] = []
+        return row
+    runtime.io["step0"] = pair
+    result = runtime.step0(work_id="aggregate-fail", boundaries=boundaries(runtime), required_pairs=2)
+    assert result["status"] == "FAIL" and result["passed_at"] is None
+    assert len(calls) == 2 and len(result["reports"]) == 2
+
+
+def test_step0_halt_receipt_explains_unknown_pair_kind_and_scorer_reason(runtime):
+    count = 0
+    def pair(*args, **kwargs):
+        nonlocal count
+        count += 1
+        report = step0_pair() | {"attempt": kwargs["attempt"]}
+        if count == 1:
+            report["probe"]["checks"]["core_scored"] = False
+            report["probe"]["scores"]["verification_output"] = {
+                "outcome": "unknown", "evidence": {"reason": "verification_output_empty"}}
+        return report
+    runtime.io["step0"] = pair
+    result = runtime.step0(work_id="explain", boundaries=boundaries(runtime), required_pairs=2)
+    assert result["status"] == "FAIL"
+    note = result["receipt_summary"]["note"]
+    assert "explain-1 probe/verification_output: verification_output_empty" in note
+    assert "explain-1 probe/core_scored: check failed" in note
+    details = result["aggregate"]["failure_details"]
+    assert {"pair_index": 0, "attempt": "explain-1", "runner": "probe", "check": "score",
+            "kind": "verification_output", "outcome": "unknown", "reason": "verification_output_empty"} in details
+    assert runtime.recover("explain")["receipt_summary"]["failure_details"] == details
 
 
 def test_screen_twelve_real_scored_forks_both_kinds_pass(runtime, monkeypatch):
@@ -730,7 +799,7 @@ def test_step0_supplies_forced_fresh_rate_callback(runtime):
     runtime.io["rate_reader"] = lambda: reads.append(1) or rate()
     def step0(*a, **kw):
         kw["rate_provider"]()
-        return {"status": "PASS"}
+        return step0_pair()
     runtime.io["step0"] = step0
     runtime.step0(work_id="fresh-stepzero", boundaries=boundaries(runtime))
     assert len(reads) == 2

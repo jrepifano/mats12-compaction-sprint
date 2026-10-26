@@ -18,7 +18,7 @@ def setup(tmp_path):
     directory.mkdir(parents=True)
     shutil.copy(ROOT / 'logs/s2/planted_verification_v2_freeze.json', directory)
     shutil.copytree(ROOT / 'configs/s2/planted', tmp_path / 'specs')
-    config = json.loads((ROOT / 'logs/s2/planted_run_config.json').read_text())
+    config = json.loads((ROOT / 'logs/s2/planted_run_config.before_report_window.json').read_text())
     config['specs_dir'] = str(tmp_path / 'specs')
     old = deepcopy(config)
     old.pop('step0_retry_authorization')
