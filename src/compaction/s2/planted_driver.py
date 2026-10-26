@@ -200,7 +200,7 @@ class Driver:
         self.state["metrics"] = snapshot
         return snapshot
 
-    def _event(self, message: str, *, result=None):
+    def _event(self, message: str, *, result=None, hold: bool = False):
         entry = {"at": utc(self.clock()), "phase": self.state["phase"], "message": message,
                  "metrics": {k: v for k, v in (self.state.get("metrics") or {}).items()
                              if k != "boundaries"}, "max": self.state.get("max")}
@@ -209,14 +209,21 @@ class Driver:
         self.state["events"].append(entry)
         self._save()
         m, rate = entry["metrics"] or {}, entry["max"] or {}
-        line = (f"- {entry['at']} {entry['phase']}: {message}; "
+        # The watcher anchors at column zero; Markdown bullets hid prior stops.
+        # Keep the durable event unchanged and prefix every physical status line,
+        # including multiline exception/receipt details.
+        status = self.state["status"]
+        prefix = ("STOP: " if status in TERMINAL else "HOLD: " if hold
+                  or status in {"WAIT_MAX", "WAIT_RESET"}
+                  or isinstance(result, dict) and result.get("status") == "HOLD" else "- ")
+        line = (f"{entry['at']} {entry['phase']}: {message}; "
                 f"forks A {m.get('forks_a', '?')}/60, B {m.get('forks_b', '?')}/34, "
                 f"total {m.get('forks_total', '?')}/94; "
                 f"remaining {94 - m['forks_total'] if 'forks_total' in m else '?'}; "
                 f"simulator ${m.get('simulator_usd', '?')}; Max weekly {rate.get('utilization', '?')}, "
                 f"five-hour {rate.get('five_hour_utilization', '?')}\n")
         with self.status_path.open("a") as handle:
-            handle.write(line)
+            handle.write("".join(prefix + part + "\n" for part in line.splitlines()))
             handle.flush()
             os.fsync(handle.fileno())
 
@@ -490,7 +497,7 @@ class Driver:
             elif self.clock() < MONDAY_NOON.timestamp():
                 if self.state.get("waiting_until") != MONDAY_NOON.isoformat():
                     self.state["waiting_until"] = MONDAY_NOON.isoformat()
-                    self._event("one task eligible; wait for Monday noon single-task decision")
+                    self._event("one task eligible; wait for Monday noon single-task decision", hold=True)
                 return min(30, MONDAY_NOON.timestamp() - self.clock())
             else:
                 self.state["single_task"] = True

@@ -855,3 +855,80 @@ def test_explicit_two_pair_retry_missing_tasks_never_routes_to_contingency(tmp_p
     assert state['status'] == 'HALTED' and 'no contingency authorized' in state['reason']
     assert not phases(runtime) and state['sequence'] == 3 and not state['contingency_used']
     assert state['pending'] is None
+
+
+@pytest.mark.parametrize('status,hold,result,prefix', [
+    ('HALTED', False, None, 'STOP:'),
+    ('STOPPED_BEFORE_CARDS', False, None, 'STOP:'),
+    ('WAIT_MAX', False, None, 'HOLD:'),
+    ('WAIT_RESET', False, None, 'HOLD:'),
+    ('RUNNING', True, None, 'HOLD:'),
+    ('RUNNING', False, {'status': 'HOLD'}, 'HOLD:'),
+    ('HALTED', False, {'status': 'HOLD'}, 'STOP:'),
+    ('RUNNING', False, None, '- '),
+])
+def test_status_watch_prefix_at_column_zero_preserves_multiline_details(tmp_path, status, hold, result, prefix):
+    clock = Clock()
+    instance = driver(tmp_path, Runtime(clock), clock)
+    instance._load()
+    instance._metrics()
+    instance.state['status'] = status
+    message = 'first detail\nsecond detail'
+    instance._event(message, result=result, hold=hold)
+    lines = instance.status_path.read_text().splitlines()
+    assert len(lines) == 2 and all(line.startswith(prefix) for line in lines)
+    assert D.utc(clock()) in lines[0] and 'step0: first detail' in lines[0]
+    assert 'second detail; forks A 0/60' in lines[1]
+    assert 'simulator $0' in lines[1]
+    assert instance.state['events'][-1]['message'] == message
+    assert json.loads(instance.state_path.read_text())['events'][-1]['message'] == message
+
+
+@pytest.mark.parametrize('failure', ['runtime_error', 'policy_hold', 'operator_stop', 'signal', 'receipt_hold'])
+def test_actual_halt_paths_emit_watcher_stop_lines(tmp_path, failure):
+    import signal
+    clock = Clock()
+    runtime = Runtime(clock)
+    instance = driver(tmp_path, runtime, clock)
+    def fail(**kwargs):
+        if failure == 'runtime_error':
+            raise RuntimeError('failure detail\nretained second line')
+        if failure == 'policy_hold':
+            raise D.RateHold('in-operation policy hold')
+        if failure == 'operator_stop':
+            instance.stop_path.write_text('stop')
+            instance.before_action({'action': 'fake'})
+        if failure == 'signal':
+            instance._signal(signal.SIGTERM, None)
+        return {'status': 'HOLD', 'reason': 'receipt policy hold'}
+    runtime.step0 = fail
+    state = instance.run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'HALTED'
+    lines = instance.status_path.read_text().splitlines()
+    stops = [line for line in lines if line.startswith('STOP:')]
+    assert stops and lines[-1].startswith('STOP:')
+    if failure == 'runtime_error':
+        assert len(stops) == 2 and 'retained second line' in stops[-1]
+    assert len([name for name, _ in runtime.calls if name == 'max_reading']) >= 1
+
+
+def test_rate_wait_and_normal_card_stop_are_both_watcher_visible(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock)
+    original = runtime.max_reading
+    rejected = True
+    def reading():
+        nonlocal rejected
+        row = original()
+        if rejected:
+            row['rate_limit_info']['unifiedWindows']['seven_day']['utilization'] = .9
+            rejected = False
+        return row
+    runtime.max_reading = reading
+    instance = driver(tmp_path, runtime, clock)
+    state = instance.run(claim_owner=True, install_signals=False)
+    lines = instance.status_path.read_text().splitlines()
+    hold = next(line for line in lines if 'rate hold before assignment' in line)
+    assert hold.startswith('HOLD:') and 'retry 1/6 at ' in hold
+    assert state['status'] == 'STOPPED_BEFORE_CARDS'
+    assert lines[-1].startswith('STOP:') and 'cards and repair require' in lines[-1]

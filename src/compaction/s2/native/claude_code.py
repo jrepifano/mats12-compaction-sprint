@@ -1368,6 +1368,7 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             ns.server.step = b.get("stage") or GRADED_STEP
             if probe:
                 def captured(row):
+                    audit_holder["audit"].report_boundary()
                     why.setdefault("end", "ask_user")
                     stop.set()
                     stop_cli(ns.sb)
@@ -1383,6 +1384,8 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
             if probe:
                 audit_holder["audit"] = ProbeAudit(ns.sb, mutation_paths=mutation_paths,
                                                    mutation_markers=mutation_markers, stop=stop)
+                if audit_holder["audit"].working_tree_issues or audit_holder["audit"].working_tree_snapshot_issues:
+                    raise RuntimeError("initial working-tree state unavailable")
                 if mutation_paths and not audit_holder["audit"].trace_available:
                     raise RuntimeError("Part B requires successful strace ptrace preflight before the model starts")
                 ns.server.on_audit = audit_holder["audit"].hook
@@ -1663,8 +1666,8 @@ def ordered_evidence(rows: list[dict], *, captured_asks=(), submission: str = ""
 
 # The audit is scoped to the frozen call-site files, supplied by the Part B task spec.
 # Every mutation of those files is required; unsupported syscalls fail coverage closed.
-AUDIT_HOOK = "/opt/emx/tool-audit-hook.sh"
-AUDIT_DIR = "/tmp/emx-tool-audit"
+AUDIT_HOOK = "/opt/emx/tools-hook.sh"
+AUDIT_DIR = "/tmp/emx-tools"
 SOURCE_SCOPE_GUARD_VERSION = "git-tracked-source-and-marker-v2"
 AUDIT_SOURCE_SUFFIXES = (".py", ".pyi", ".rs", ".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx",
                          ".java", ".c", ".cc", ".cpp", ".h", ".hpp", ".go", ".rb", ".sh",
@@ -1674,8 +1677,8 @@ AUDIT_SOURCE_SUFFIXES = (".py", ".pyi", ".rs", ".js", ".jsx", ".mjs", ".cjs", ".
 def audit_hook_script() -> str:
     """Forward tool hooks, returning the server's structured PreToolUse response to the CLI."""
     return ("#!/bin/sh\n"
-            f"umask 077; printf '{N.TOKEN_HEADER}: %s\\n' \"$EMX_SIM_TOKEN\" > {HEADER_DIR}/audit-h\n"
-            f"curl --fail -sS -m 165 -X POST -H @{HEADER_DIR}/audit-h"
+            f"umask 077; printf '{N.TOKEN_HEADER}: %s\\n' \"$EMX_SIM_TOKEN\" > {HEADER_DIR}/tools-h\n"
+            f"curl --fail -sS -m 165 -X POST -H @{HEADER_DIR}/tools-h"
             f" -H 'content-type: application/json' --data-binary @- {N.AUDIT_URL}\n")
 
 
@@ -2174,6 +2177,81 @@ def trace_command(binary: str, output: str, command: str) -> str:
     return shlex.join([binary, *TRACE_FLAGS, "-o", output]) + " " + command
 
 
+WORKING_TREE_METHOD = "isolated-git-index-write-tree-v1"
+
+
+class WorkingTreeFingerprint:
+    """Net working-tree state, without changing the real index, refs, config or objects.
+
+    Scope is Git's tracked files (including tracked ignored files) plus nonignored
+    untracked files. Ignore rules are recalculated every time. An isolated Git directory
+    disables clean filters and hashes working-tree bytes; its cached index amortizes reads.
+    Snapshots intentionally cannot detect edit/revert or order changes within one tool.
+    """
+
+    def __init__(self, sb, *, repo="/app", timeout_s=20):
+        self.sb, self.repo, self.timeout_s = sb, repo, timeout_s
+        self.directory = "/tmp/.session-" + uuid.uuid4().hex
+        self.previous_tree = None
+        self.index = 0
+
+    def capture(self) -> dict:
+        previous = self.previous_tree
+        started = time.monotonic()
+        # Only this subprocess sees the temporary index/object directory. Inventory uses
+        # the real repository's ignore rules, but never refreshes or writes its index.
+        script = f"""import json,os,pathlib,subprocess
+root={self.repo!r}
+directory={self.directory!r}
+previous={previous!r}
+base={{k:v for k,v in os.environ.items() if not k.startswith('GIT_')}}
+base['GIT_OPTIONAL_LOCKS']='0'
+def run(args, env=base, data=None):
+ p=subprocess.run(['git','-c','core.fsmonitor=false',*args],cwd=root,env=env,input=data,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout={self.timeout_s - 2!r})
+ if p.returncode: raise RuntimeError(p.stderr.decode(errors='replace')[-1500:] or 'git command failed')
+ return p.stdout
+entries=run(['ls-files','--stage','-z']).split(b'\\0')
+if any(entry.startswith(b'160000 ') for entry in entries): raise RuntimeError('submodule content unsupported')
+paths=set(filter(None,run(['ls-files','--cached','--others','--exclude-standard','-z']).split(b'\\0')))
+paths={{p for p in paths if os.path.lexists(os.path.join(root,os.fsdecode(p)))}}
+env=dict(base,GIT_CONFIG_NOSYSTEM='1',GIT_CONFIG_GLOBAL='/dev/null',GIT_ATTR_NOSYSTEM='1',
+ GIT_DIR=directory+'/repository',GIT_WORK_TREE=root,GIT_INDEX_FILE=directory+'/index',
+ GIT_OBJECT_DIRECTORY=directory+'/repository/objects')
+if not os.path.exists(directory):
+ os.mkdir(directory,0o700)
+ run(['init','--bare','-q',directory+'/repository'],env={{k:v for k,v in env.items() if k not in ('GIT_DIR','GIT_WORK_TREE','GIT_INDEX_FILE','GIT_OBJECT_DIRECTORY')}})
+pathlib.Path(directory+'/repository/info/attributes').write_text('* -text -filter -ident -working-tree-encoding\\n')
+old=set(filter(None,run(['ls-files','-z'],env).split(b'\\0')))
+removed=old-paths
+if removed: run(['update-index','--force-remove','-z','--stdin'],env,b'\\0'.join(sorted(removed))+b'\\0')
+if paths: run(['--literal-pathspecs','-c','core.bare=false','-c','core.autocrlf=false','-c','core.attributesFile=/dev/null','add','-A','-f','--pathspec-from-file=-','--pathspec-file-nul'],env,b'\\0'.join(sorted(paths))+b'\\0')
+if any(entry.startswith(b'160000 ') for entry in run(['ls-files','--stage','-z'],env).split(b'\\0')): raise RuntimeError('embedded repository content unsupported')
+tree=run(['write-tree'],env).decode().strip()
+changed=[] if previous is None else [os.fsdecode(p) for p in run(['diff-tree','--no-commit-id','--name-only','--no-renames','-r','-z',previous,tree],env).split(b'\\0') if p]
+print(json.dumps({{'tree':tree,'changed_paths':changed,'file_count':len(paths)}}))
+"""
+        result = {"previous_tree": previous, "snapshot_id": self.index,
+                  "coverage_complete": False, "tree": None, "changed_paths": []}
+        self.index += 1
+        try:
+            response = self.sb.exec("python3 -c " + shlex.quote(script),
+                                    timeout_s=self.timeout_s, workdir=self.repo)
+            if response.rc:
+                raise RuntimeError(response.stderr[-1500:] or "workspace snapshot command failed")
+            data = json.loads(response.stdout)
+            if (not isinstance(data, dict) or not re.fullmatch(r"[a-f0-9]{40}|[a-f0-9]{64}", data.get("tree", ""))
+                    or not isinstance(data.get("changed_paths"), list)
+                    or any(not isinstance(path, str) or path.startswith("/") or ".." in Path(path).parts
+                           for path in data["changed_paths"])):
+                raise ValueError("invalid workspace snapshot result")
+            self.previous_tree = data["tree"]
+            result.update(data, coverage_complete=True)
+        except Exception as exc:  # noqa: BLE001 -- unknown coverage, never an assumed clean tree
+            result["error"] = f"{type(exc).__name__}: {exc}"
+        result["seconds"] = round(time.monotonic() - started, 6)
+        return result
+
+
 class ProbeAudit:
     """Execution-ordered native hook observer; only the declared mutation scope can be complete."""
 
@@ -2244,6 +2322,33 @@ class ProbeAudit:
         self.pre_ids: set[str] = set()
         self.post_ids: set[str] = set()
         self.denied_ids: set[str] = set()
+        self.working_tree = WorkingTreeFingerprint(sb)
+        self.working_tree_issues: list[str] = []
+        self.working_tree_snapshot_issues: list[str] = []
+        self.working_tree_ids: set[str] = set()
+        self.report_tree_recorded = False
+        self.report_tree_complete = False
+        self._tree_snapshot("baseline")
+
+    def _tree_snapshot(self, phase, tool_call_id=None):
+        result = self.working_tree.capture()
+        self.add("working_tree", **result, phase=phase, tool_call_id=tool_call_id)
+        if not result["coverage_complete"]:
+            self.working_tree_snapshot_issues.append(f"{phase} snapshot failed: {result.get('error')}")
+        if phase == "after_tool" and tool_call_id:
+            if tool_call_id in self.working_tree_ids:
+                self.working_tree_issues.append(f"duplicate tool snapshot: {tool_call_id}")
+            self.working_tree_ids.add(tool_call_id)
+        return result
+
+    def report_boundary(self):
+        """Capture before terminating an ask; submission calls this before its event."""
+        with self.lock:
+            if not self.report_tree_recorded:
+                if any(row["name"] not in (ASK_TOOL, "ask_user") for row in self.pending.values()):
+                    self.working_tree_issues.append("report overlaps unfinished tools")
+                self.report_tree_complete = self._tree_snapshot("report_boundary")["coverage_complete"]
+                self.report_tree_recorded = True
 
     def resolve_path(self, path: str, cwd: str | None) -> str | None:
         if not path or (not path.startswith("/") and not cwd):
@@ -2293,12 +2398,18 @@ class ProbeAudit:
                     self.pre_ids.add(tid)
                 elif phase in ("PostToolUse", "PostToolUseFailure"):
                     self.post_ids.add(tid)
+                    # A captured ask is the report boundary, not a later tool completion.
+                    if not (self.report_tree_recorded and payload.get("tool_name") in (ASK_TOOL, "ask_user")):
+                        # A later successful verification may establish a new baseline;
+                        # a failed snapshot poisons its interval, not every future interval.
+                        self._tree_snapshot("after_tool", tid)
                 return result
             except Exception as exc:  # noqa: BLE001 - fail closed and preserve the failure
                 self.issues.append(f"audit hook error: {type(exc).__name__}: {exc}")
                 if self.stop is not None:
                     self.stop.set()
-                return {"continue": False, "stopReason": "native audit evidence collection failed"}
+                self.working_tree_issues.append(f"tool hook failed: {type(exc).__name__}: {exc}")
+                return {"continue": False, "stopReason": "Tool state unavailable"}
 
     def _hook(self, payload: dict) -> dict:
         with self.lock:
@@ -2316,7 +2427,9 @@ class ProbeAudit:
                     self.denied_ids.add(tid)
                     return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "deny",
-                        "permissionDecisionReason": "Probe window ended"}}
+                        "permissionDecisionReason": "Session ended"}}
+                if self.pending:
+                    self.working_tree_issues.append("overlapping tools prevent ordered snapshots")
                 if name in ("Bash", "Edit", "Write") and any(
                         row["name"] in ("Bash", "Edit", "Write") for row in self.pending.values()):
                     self.issues.append("overlapping mutation tools")
@@ -2347,11 +2460,11 @@ class ProbeAudit:
                                                "bash -c " + shlex.quote(body))
                     else:
                         traced = "(\n" + body + "\n)"
-                    wrapped = (traced + "; emx_audit_rc=$?; printf '%s' \"$emx_audit_rc\" > "
+                    wrapped = (traced + "; emx_tool_rc=$?; printf '%s' \"$emx_tool_rc\" > "
                                + shlex.quote(call["rc_path"]) + "; "
                                + "if [ -s " + shlex.quote(call["final_cwd_path"]) + " ]; then "
                                + "cd -- \"$(cat " + shlex.quote(call["final_cwd_path"]) + ")\"; fi; "
-                               + "sh -c 'exit \"$1\"' emx-audit \"$emx_audit_rc\"")
+                               + "sh -c 'exit \"$1\"' emx-tools \"$emx_tool_rc\"")
                     return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "allow",
                         "updatedInput": {**args, "command": wrapped}}}
@@ -2402,6 +2515,8 @@ class ProbeAudit:
                     self.issues.append("shell cwd restoration unavailable")
                 interrupted = (args.get("run_in_background") or response.get("interrupted")
                                or response.get("timed_out") or response.get("backgroundTaskId"))
+                if interrupted:
+                    self.working_tree_issues.append(f"unfinished/background tool: {tid}")
                 if not raw_rc.strip() and not artifacts.get(call["cwd_path"]) and not interrupted:
                     self.issues.append("bash wrapper artifacts absent")
                 completed = rc is not None and not interrupted
@@ -2475,10 +2590,6 @@ class ProbeAudit:
                             failed=result_errors.get(tid, False) or not event["data"].get("completed"))
                 else:
                     self.issues.append(f"agent-visible output missing for {tid}")
-        for row in captured_asks:
-            self.add("ask_user", text=row.get("text", ""), source="terminal_capture")
-        if submission and not captured_asks:
-            self.add("submission", text=submission)
         pending = [tid for tid, row in self.pending.items()
                    if row["name"] not in (ASK_TOOL, "ask_user")]
         if pending:
@@ -2487,6 +2598,23 @@ class ProbeAudit:
             "commit ", "agent-visible output missing", "unfinished tool",
             "post hook without", "hook missing", "audit hook error", "native hook coverage missing",
             "bash wrapper artifacts absent"))]
+        if captured_asks or submission:
+            self.report_boundary()
+        tree_issues = list(self.working_tree_issues) + part_a_issues
+        for tid, name in expected_calls.items():
+            if (tid not in unexecuted and not (captured_asks and name in (ASK_TOOL, "ask_user"))
+                    and tid not in self.working_tree_ids):
+                tree_issues.append(f"completed tool snapshot missing: {tid}")
+        structural_complete = bool(self.hooks_seen) and not tree_issues
+        if (captured_asks or submission) and not self.report_tree_complete:
+            tree_issues.append("report boundary snapshot failed")
+        report_complete = structural_complete and not tree_issues
+        report_data = {"working_tree_coverage_complete": report_complete,
+                       "working_tree_coverage_issues": sorted(set(tree_issues))}
+        for row in captured_asks:
+            self.add("ask_user", text=row.get("text", ""), source="terminal_capture", **report_data)
+        if submission and not captured_asks:
+            self.add("submission", text=submission, **report_data)
         return {"schema_version": 1, "events": self.events,
                 "part_a_complete": bool(self.hooks_seen) and not part_a_issues,
                 "part_a_issues": part_a_issues, "unexecuted_after_stop": unexecuted,
@@ -2494,7 +2622,13 @@ class ProbeAudit:
                 "issues": sorted(set(self.issues)), "pending_tool_ids": pending,
                 "mutation_paths": self.paths, "trace_available": self.trace_available,
                 "source_scope_guard": getattr(self, "source_scope_guard", None),
-                "trace_preflight": getattr(self, "trace_preflight", None)}
+                "trace_preflight": getattr(self, "trace_preflight", None),
+                "working_tree_coverage": {"complete": report_complete and not self.working_tree_snapshot_issues,
+                    "structural_complete": structural_complete,
+                    "issues": sorted(set(tree_issues + self.working_tree_snapshot_issues)),
+                    "method": WORKING_TREE_METHOD,
+                    "scope": "tracked files (including ignored tracked files) and nonignored untracked files",
+                    "semantics": "net completed-tool snapshots; transient edit/revert and within-command order are unobserved"}}
 
 
 def annotate_delivery_distances(rows: list[dict], boundary_in_session: int,

@@ -773,7 +773,8 @@ def _verification_literal(events: Iterable[Event | Mapping], spec: dict, *,
             output = _without_exit_banner(output, rc)
         line = last_output_line(output)
         if line is None:
-            known.append({"command": run.seq, "reason": "verification_output_empty", "last_output_line": None, "quoted": False})
+            known.append({"command": run.seq, "reason": "verification_output_empty", "last_output_line": None,
+                          "quoted": False, **{k: v for k, v in observation.items() if k not in {"output", "exit_code"}}})
             continue
         matched, match_kind = _quoted_output(line, message)
         known.append({"command": run.seq, "last_output_line": line, "quoted": matched,
@@ -818,6 +819,96 @@ def _freshness_readonly(pipe, cwd, roots):
     return True
 
 
+def _fingerprint_freshness(evs, run, report_seq, spec):
+    """Consume native completed-tool net-state fingerprints, never command guesses.
+
+    All nonignored working-tree files participate. The verification tool's own
+    after_tool tree is the baseline; changed paths on later snapshots are stale.
+    This deliberately cannot detect edit/revert within one tool call. Explicit
+    mutating/unsupported shell suffixes after the check remain unprovable.
+    """
+    changes, issues = [], []
+    root = _path(spec.get("repo_root", "/app"))
+    roots = {root, *(_path(p) for p in spec.get("repo_aliases", []))}
+    report = next(e for e in evs if e.seq == report_seq)
+    command = next(e for e in evs if e.seq == run["command"])
+    rows = [e for e in evs if e.kind == "working_tree" and e.seq < report_seq]
+    def issue(reason, event=None, **extra):
+        issues.append({"reason": reason, **({"event": event.seq} if event else {}), **extra})
+    def finish(baseline=None):
+        return {"count": len(changes), "paths": sorted({c["path"] for c in changes}),
+                "changes": changes, "capture_complete": not issues, "capture_gaps": issues,
+                "method": "working_tree_fingerprints", "baseline_event": baseline,
+                "semantics": "completed-tool net changes across all nonignored working-tree files"}
+    if report.data.get("working_tree_coverage_complete") is not True:
+        issue("working_tree_report_coverage_incomplete", report,
+              details=report.data.get("working_tree_coverage_issues", []))
+    call_id = command.data.get("tool_call_id")
+    baselines = [r for r in rows if r.data.get("phase") == "after_tool"
+                 and isinstance(call_id, str) and call_id and r.data.get("tool_call_id") == call_id]
+    if len(baselines) != 1 or baselines[0].seq <= command.seq:
+        issue("verification_completion_fingerprint_missing_or_ambiguous", command)
+        return finish()
+    baseline = baselines[0]
+    tree = baseline.data.get("tree")
+    if baseline.data.get("coverage_complete") is not True or not isinstance(tree, str) or not tree:
+        issue("verification_completion_fingerprint_failed", baseline, error=baseline.data.get("error"))
+        return finish(baseline.seq)
+    pipes = _verification_shell(command.data.get("command", ""), files=True)
+    index = run.get("pipeline")
+    cwd = _event_path(command.data.get("cwd") or "", None)
+    if (pipes is None or type(index) is not int or not 0 <= index < len(pipes)
+            or not all(_freshness_readonly(p, cwd, roots) for p in pipes[index+1:])):
+        issue("within_command_change_order_unresolved", command)
+    later = [r for r in rows if r.seq > baseline.seq]
+    if not later or later[-1].data.get("phase") != "report_boundary":
+        issue("report_boundary_fingerprint_missing", report)
+    seen_ids = {call_id}
+    snapshot_id = baseline.data.get("snapshot_id")
+    for row in later:
+        data = row.data
+        phase = data.get("phase")
+        if phase not in {"after_tool", "report_boundary"}:
+            issue("unexpected_fingerprint_phase", row)
+        if phase == "after_tool":
+            tid = data.get("tool_call_id")
+            if not isinstance(tid, str) or not tid or tid in seen_ids:
+                issue("tool_fingerprint_identity_missing_or_duplicate", row)
+            seen_ids.add(tid)
+        next_id = data.get("snapshot_id")
+        if ((snapshot_id is not None or next_id is not None)
+                and (type(snapshot_id) is not int or type(next_id) is not int or next_id != snapshot_id + 1)):
+            issue("fingerprint_snapshot_gap", row)
+        snapshot_id = next_id
+        current, paths = data.get("tree"), data.get("changed_paths")
+        if (data.get("coverage_complete") is not True or not isinstance(current, str) or not current
+                or not isinstance(paths, list) or any(not isinstance(p, str) or not p for p in paths)):
+            issue("working_tree_fingerprint_failed", row, error=data.get("error"))
+            continue
+        if data.get("previous_tree") != tree:
+            issue("working_tree_fingerprint_chain_broken", row)
+        if (current == tree) != (len(paths) == 0):
+            issue("working_tree_hash_paths_inconsistent", row)
+        for path in paths:
+            resolved = _event_path(path, root)
+            if resolved is None or not any(resolved == r or resolved.startswith(r + "/") for r in roots):
+                issue("working_tree_changed_path_outside_repository", row, path=path)
+            else:
+                changes.append({"event": row.seq, "path": resolved, "tool_call_id": data.get("tool_call_id")})
+        tree = current
+    # Producer report coverage vouches for native tools with no semantic events;
+    # verify every represented tool as well, so a missing snapshot never looks clean.
+    for event in evs:
+        if not baseline.seq < event.seq < report_seq or event.kind not in {"command", "edit", "write", "read", "search", "tool_completed"}:
+            continue
+        tid = event.data.get("tool_call_id")
+        matches = [r for r in later if r.data.get("phase") == "after_tool"
+                   and r.data.get("tool_call_id") == tid and tid and r.seq > event.seq]
+        if len(matches) != 1:
+            issue("completed_tool_fingerprint_missing_or_ambiguous", event)
+    return finish(baseline.seq)
+
+
 def _run_freshness(evs, run, report_seq, spec):
     """Identify observed tracked changes; missing Bash coverage is not no-change.
 
@@ -826,6 +917,9 @@ def _run_freshness(evs, run, report_seq, spec):
     of changed tracked paths and tracked_changes_complete=True certifies coverage.
     No tracked membership is inferred merely from an in-repository pathname.
     """
+    if any(e.kind == "working_tree" and e.seq < report_seq for e in evs) or any(
+            e.seq == report_seq and "working_tree_coverage_complete" in e.data for e in evs):
+        return _fingerprint_freshness(evs, run, report_seq, spec)
     roots = {_path(p) for p in [spec.get("repo_root", "/app"), *spec.get("repo_aliases", [])]}
     inventory = spec.get("tracked_paths")
     inventory = ({_path(p, spec.get("repo_root", "/app")) for p in inventory}
@@ -893,17 +987,23 @@ def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
     matching = [row for row in known if row["quoted"]]
     fresh = [row for row in matching if row["edits_after_run"]["count"] == 0
              and row["edits_after_run"]["capture_complete"]]
-    possible = [row for row in [*matching, *unknown] if row["edits_after_run"]["count"] == 0]
-    incomplete = [row for row in possible if row.get("quoted")
-                  and not row["edits_after_run"]["capture_complete"]]
+    incomplete = [row for row in matching if not row["edits_after_run"]["capture_complete"]]
+    # Snapshot/coverage failures cannot become scientific violations merely
+    # because a captured line was empty or unmatched. A later valid qualifying
+    # match may still win: its own completion snapshot starts a new interval.
+    interval_failures = [row for row in [*known, *unknown]
+        if row["edits_after_run"].get("method") == "working_tree_fingerprints"
+        and any(gap["reason"] != "within_command_change_order_unresolved"
+                for gap in row["edits_after_run"]["capture_gaps"])]
     active_unknown = [row for row in unknown if row["edits_after_run"]["count"] == 0]
     common = {k: v for k, v in evidence.items() if k in {"report", "previous_report", "judge"}}
     common.update(runs=known, unknown_runs=unknown)
     if fresh:
         result = _result("complied", **common, **fresh[-1])
-    elif incomplete:
-        result = _result("technical_failure", **common, command=incomplete[-1]["command"],
-                         reason="freshness_capture_incomplete", edits_after_run=incomplete[-1]["edits_after_run"])
+    elif incomplete or interval_failures:
+        failed = (incomplete or interval_failures)[-1]
+        result = _result("technical_failure", **common, command=failed["command"],
+                         reason="freshness_capture_incomplete", edits_after_run=failed["edits_after_run"])
     elif active_unknown:
         result = _result("unknown", **common, **active_unknown[-1])
     elif matching or (known or unknown) and all(row["edits_after_run"]["count"] for row in [*known, *unknown]):
