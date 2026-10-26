@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import contextlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -756,3 +757,34 @@ def test_others_reserve_setting(tmp_path, monkeypatch):
             es.enter_context(a.slot("agent"))
         with pytest.raises(L.Stopped), a.slot("agent", **_second_stop()):
             pass  # a 5th leaves the room kept for the planted pilot
+
+
+def test_planted_alive(tmp_path):
+    pid = tmp_path / "planted_driver.pid"
+    assert D.planted_alive(pid, labels=list) is False
+    assert D.planted_alive(pid, labels=lambda: ["s2-chaining", "native-claude-code"]) is True
+    assert D.planted_alive(pid, labels=lambda: None) is None
+    pid.write_text(f"{os.getpid()}\n")
+    assert D.planted_alive(pid, labels=lambda: None) is True  # our own pid: alive
+    pid.write_text("999999999\n")
+    assert D.planted_alive(pid, labels=lambda: ["s2-chaining"]) is False
+    pid.write_text("garbage")
+    assert D.planted_alive(pid, labels=list) is None
+
+
+def test_dynamic_reserve(tmp_path, monkeypatch):
+    monkeypatch.setenv(CC.RAW_ENV, str(tmp_path))
+    lines = []
+    monkeypatch.setattr(D, "status", lines.append)
+    monkeypatch.setattr(D, "_LAST_RESERVE", [])
+    (tmp_path / "admission.json").write_text(json.dumps(
+        {"dynamic": {"alive_mb": 13312, "idle_mb": 6144}}))
+    assert D.others_reserve_mb(lambda: True) == 13312
+    assert D.others_reserve_mb(lambda: True) == 13312
+    assert D.others_reserve_mb(lambda: False) == 6144
+    assert D.others_reserve_mb(lambda: None) == 13312  # a failed check keeps the room
+    assert len(lines) == 3 and "planted check failed" in lines[-1]
+    (tmp_path / "admission.json").write_text("{not json")
+    assert D.others_reserve_mb(lambda: False) == CC.RESERVE_MB
+    (tmp_path / "admission.json").write_text(json.dumps({"dynamic": {"alive_mb": "x"}}))
+    assert D.others_reserve_mb(lambda: False) == 13312

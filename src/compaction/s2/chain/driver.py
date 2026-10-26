@@ -35,6 +35,7 @@ import contextlib
 import fcntl
 import json
 import os
+import re
 import subprocess
 import threading
 import time
@@ -254,16 +255,78 @@ GATE_MB = {"agent": CC.AGENT_GATE_MB, "grader": CC.GRADE_GATE_MB}
 GRADER_SLOTS = 2  # at most two graders at once (the budget usually allows one)
 
 
-def others_reserve_mb() -> int:
-    """Room kept for other containers (the planted pilot): `others_reserve_mb` in
-    data/raw/sprint/s2/chain/admission.json when present, read at every admission so it can be
-    changed while the driver runs; else CC.RESERVE_MB. (Coordinator, 26 Oct 05:05 ET: 13 GB,
-    room for ~4 planted forks.)"""
+PLANTED_PID = Path.home() / "emx-planted" / "logs" / "s2" / "planted_driver.pid"
+PLANTED_LABEL = re.compile(r"planted|^native-")  # the planted pilot's emx.sandbox values
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def emx_labels() -> list[str] | None:
+    """emx.sandbox values of every running container; None if docker can't be asked."""
+    try:
+        q = subprocess.run(["docker", "ps", "--format", '{{.Label "emx.sandbox"}}'],
+                           capture_output=True, text=True, timeout=60, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return q.stdout.split() if q.returncode == 0 else None
+
+
+def planted_alive(pid_file: Path = PLANTED_PID, labels=emx_labels) -> bool | None:
+    """The planted pilot's driver is alive: the pid in its pid file is a running process, or a
+    planted-labelled container runs. Read only (never writes to that checkout). None when the
+    check itself fails."""
+    try:
+        alive = pid_file.exists() and _pid_alive(int(pid_file.read_text().split()[0]))
+    except (OSError, ValueError, IndexError):
+        return None
+    if alive:
+        return True
+    ls = labels()
+    if ls is None:
+        return None
+    return any(PLANTED_LABEL.search(x) for x in ls)
+
+
+_LAST_RESERVE: list[int] = []
+
+
+def others_reserve_mb(alive_fn=planted_alive) -> int:
+    """Room kept for other containers, read at every admission (D23, D24) from
+    data/raw/sprint/s2/chain/admission.json: a fixed `others_reserve_mb`, or a `dynamic` pair
+    {"alive_mb", "idle_mb"} chosen by whether the planted pilot's driver is alive (coordinator,
+    26 Oct): alive_mb while it is, or when the check fails; idle_mb otherwise. Without the file,
+    CC.RESERVE_MB. Each change is logged in the status file."""
     p = raw() / "admission.json"
     try:
-        return int(json.loads(p.read_text())["others_reserve_mb"])
-    except (OSError, ValueError, KeyError, TypeError):
-        return CC.RESERVE_MB
+        cfg = json.loads(p.read_text())
+    except (OSError, ValueError):
+        cfg = {}
+    try:
+        if "dynamic" in cfg:
+            d = cfg["dynamic"]
+            alive = alive_fn()
+            mb = int(d["alive_mb"]) if alive in (True, None) else int(d["idle_mb"])
+            why = {True: "planted driver alive", False: "planted driver idle",
+                   None: "planted check failed"}[alive]
+        elif "others_reserve_mb" in cfg:
+            mb, why = int(cfg["others_reserve_mb"]), "fixed setting"
+        else:
+            mb, why = CC.RESERVE_MB, "default"
+    except (KeyError, ValueError, TypeError):
+        mb, why = 13312, "admission.json unreadable"
+    with _LOCK:
+        if not _LAST_RESERVE or _LAST_RESERVE[-1] != mb:
+            _LAST_RESERVE.append(mb)
+            status(f"room kept for other containers: {mb} MB ({why})")
+    return mb
 
 
 def others_limits_mb() -> int | None:
