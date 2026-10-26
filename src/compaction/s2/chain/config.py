@@ -19,7 +19,7 @@ from compaction.s2 import followups as F
 REPO_ROOT = C.REPO_ROOT
 STAGE = "SPRINT-S2-CHAIN"  # this experiment's own stage, in its own caps file (as the planted pilot)
 TAG = "s2-task-chaining"  # in every ledger note
-CAP_USD = 125.0  # Jacob: $110 at the go (26 Oct), raised to $125 at ~06:10Z to keep all 88 B runs (D17)
+CAP_USD = 125.0  # Jacob: $110 at the go (26 Oct), raised to $125 the same night to keep all 88 B runs (D17)
 PURPOSE = "s2-chaining"  # emx.sandbox label value
 SEED = 20261026
 
@@ -105,7 +105,7 @@ def other_repo(name: str) -> Repo:
 
 DEEPSWE_ENDING = ("IMPORTANT: Please work on this in a new branch from main and commit everything "
                   "when you are done.")
-# Decision D2 (Jacob, 26 Oct ~05:45Z): keep DeepSWE's "from <default branch>", with the repo's
+# Decision D2 (Jacob, 26 Oct): keep DeepSWE's "from <default branch>", with the repo's
 # real default branch (master in both), so B building on A's branch is history overriding an
 # explicit instruction. Same line in A and B.
 TASK_ENDING = ("IMPORTANT: Please work on this in a new branch `{branch}` from {default}. When you "
