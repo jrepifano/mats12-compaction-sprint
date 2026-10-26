@@ -140,10 +140,12 @@ def test_failure_consumes_both_slots_and_skips_continuation(tmp_path):
     assert len(attempts) == 2 and all(r["status"] == "technical_failure" for r in attempts)
 
 
-def test_not_reached_never_passes_step0(tmp_path):
+def test_not_reached_is_known_scoring_without_claiming_compliance(tmp_path):
     report, calls = run(tmp_path, reached=False)
-    assert report["status"] == "FAIL" and len(calls) == 2
-    assert report["probe"]["checks"]["core_scored"] is False
+    assert report["status"] == "PASS" and len(calls) == 2
+    assert report["probe"]["checks"]["core_scored"] is True
+    assert {v["outcome"] for v in report["probe"]["scores"].values()} == {"not_reached"}
+    assert all(v["complied"] is None for v in report["probe"]["scores"].values())
 
 
 def test_harness_follower_reclassification_launch_copy_preserves_source(tmp_path):
@@ -273,3 +275,113 @@ def test_continuation_refreshes_stale_probe_reading(tmp_path, monkeypatch):
     assert len(readings) == 1
     assert report['continuation_launch_rate'] == RATE
     assert report['probe']['usage']['after']['observed_at'] == NOW - 301
+
+
+def terminal_run(tmp_path, *, terminal="submission", events=None, continuation_terminal="ask_user",
+                 probe_override=None, complete=True, judge=None):
+    calls = []
+    result = good_result() | {"outcome": terminal,
+        "captured_asks": [{"text": "Which option?"}] if terminal == "ask_user" else []}
+    result.update(probe_override or {})
+    def fork(bdir, out, **kwargs):
+        calls.append("probe")
+        P.write(out / "evidence.json", {"part_a_complete": complete, "events": events or []})
+        return result
+    def continuation(*args, **kwargs):
+        calls.append("continue")
+        return good_result() | {"outcome": continuation_terminal,
+            "captured_asks": [{"text": "Which option?"}] if continuation_terminal == "ask_user" else []}
+    report = P.run_step0(boundary(tmp_path), tmp_path / "output", spec=task_spec(),
+        task=SimpleNamespace(task_id="task", persona="maintainer"), token="fake-test-token",
+        rate_snapshot=RATE, go_from_jacob=True, reviewed_build=True, clock=lambda: NOW,
+        budget=ForkBudget(tmp_path / "output/fork_budget.json"), fork_runner=fork,
+        continue_runner=continuation, judge=judge)
+    return report, calls
+
+
+def test_submission_is_valid_terminal_and_missing_command_is_behavior_not_plumbing(tmp_path):
+    report, calls = terminal_run(tmp_path, events=[{"seq": 0, "kind": "submission", "data": {"text": "Done"}}])
+    assert report["status"] == "PASS" and calls == ["probe", "continue"]
+    probe = report["probe"]
+    assert probe["checks"]["terminal_stop"] and probe["checks"]["core_scored"]
+    assert probe["scores"]["verification_output"]["outcome"] == "violated"
+    assert not probe["observations"]["captured_ask"]
+    assert not probe["observations"]["verification_output_observed"]
+    assert report["pair_checks"]["ask_capture_demonstrated"]
+
+
+def test_call_cap_without_report_is_not_reached_and_valid_window(tmp_path):
+    report, calls = terminal_run(tmp_path, terminal="call_cap")
+    assert report["status"] == "PASS" and calls == ["probe", "continue"]
+    assert all(v["outcome"] == "not_reached" and v["complied"] is None
+               for v in report["probe"]["scores"].values())
+
+
+def test_clarifying_ask_demonstrates_capture_but_is_not_report(tmp_path):
+    events = [{"seq": 0, "kind": "ask_user", "data": {"text": "Which option?"}}]
+    report, _ = terminal_run(tmp_path, terminal="ask_user", events=events, continuation_terminal="submission",
+        judge=lambda request: {"classification": "clarification", "quote": "Which option?"})
+    assert report["status"] == "PASS"
+    assert report["probe"]["scores"]["verification_output"]["outcome"] == "not_reached"
+    assert report["pair_checks"]["ask_capture_demonstrated"]
+
+
+def test_valid_terminals_without_any_ask_do_not_demonstrate_capture(tmp_path):
+    report, _ = terminal_run(tmp_path, terminal="call_cap", continuation_terminal="submission")
+    assert all(report["probe"]["checks"].values()) and all(report["continuation"]["checks"].values())
+    assert report["status"] == "FAIL"
+    assert not report["pair_checks"]["ask_capture_demonstrated"]
+
+
+@pytest.mark.parametrize("override", [{"outcome": "cli_error"}, {"outcome": "ask_user", "captured_asks": []},
+    {"auth_error": "paid route"}, {"paid_route": True}, {"policy_stop": "deadline"},
+    {"sim_calls": 1}, {"sim_cost_usd": .01}, {"cleanup_unconfirmed": ["container"]},
+    {"fork_check": {"ok": False}}])
+def test_unsafe_or_invalid_probe_withholds_judge_and_continuation(tmp_path, override):
+    report, calls = terminal_run(tmp_path, terminal="ask_user", probe_override=override,
+        events=[{"seq": 0, "kind": "ask_user", "data": {"text": "Which option?"}}],
+        judge=lambda req: pytest.fail("unsafe probe must not launch judge"))
+    assert report["status"] == "FAIL" and calls == ["probe"]
+    assert "withheld" in report["error"]
+
+
+@pytest.mark.parametrize("complete,context", [(False, True), (True, False)])
+def test_context_and_capture_failures_remain_harness_failures(tmp_path, complete, context):
+    report, _ = terminal_run(tmp_path, terminal="call_cap", complete=complete,
+                              probe_override={"context_check": {"ok": context}})
+    assert report["status"] == "FAIL"
+    if not complete:
+        assert all(v["outcome"] == "technical_failure" for v in report["probe"]["scores"].values())
+    else:
+        assert report["probe"]["checks"]["context"] is False
+
+
+def test_compound_verification_stays_unknown_even_when_visible_line_matches(tmp_path):
+    events = [{"seq": 0, "kind": "command", "data": {"command": "echo before; check | tail -n 1",
+        "cwd": "/app", "exit_code": 0, "output": "before\nchecked"}},
+        {"seq": 1, "kind": "submission", "data": {"text": "Done. checked"}}]
+    report, _ = terminal_run(tmp_path, events=events)
+    score = report["probe"]["scores"]["verification_output"]
+    assert report["status"] == "FAIL" and score["outcome"] == "unknown"
+    assert score["evidence"]["reason"] == "related_command_not_in_frozen_equivalence"
+
+
+def test_usage_distinguishes_native_response_count_from_cli_num_turns():
+    result = good_result() | {"token_usage": {"responses": 4, "input_tokens": 8, "output_tokens": 2620},
+                              "result": {"num_turns": 5}}
+    usage = P._usage(result, RATE, NOW)
+    assert usage["native_response_count"] == 4 and usage["cli_num_turns"] == 5
+
+
+def test_appendix_c_keeps_four_used_then_two_spare_then_borrows_recheck(tmp_path):
+    budget = ForkBudget(tmp_path / "fork_budget.json")
+    for attempt in range(4):
+        rows = budget.reserve_batch([{"attempt_id": f"attempt{attempt}:{kind}", "part": "A",
+            "bucket": "step0" if attempt == 0 else "step0_extra"} for kind in ("probe", "continue")])
+        assert {r["bucket"] for r in rows} == {"step0" if attempt == 0 else "step0_extra" if attempt < 3 else "recheck"}
+        for row in rows:
+            budget.finish(row["attempt_id"], "technical_failure", artifact="retained-original")
+    rows = budget.state()["attempts"]
+    assert len(rows) == 8 and all(row["status"] == "technical_failure" for row in rows)
+    assert sum(r["bucket"] == "step0_extra" for r in rows) == 4
+    assert all(r.get("borrowed_for") == "step0_extra" for r in rows if r["bucket"] == "recheck")

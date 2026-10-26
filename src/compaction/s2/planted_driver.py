@@ -509,10 +509,42 @@ class Driver:
     def _signal(self, signum, frame):
         raise DriverStop(f"operator signal {signal.Signals(signum).name}")
 
-    def run(self, *, claim_owner=False, install_signals=True) -> dict:
+    def _retry_failed_step0(self, work_id: str):
+        """Consume one explicit post-fix authorization, preserving history and spend.
+
+        Binding the request to the failed operation makes the launch command
+        one-shot: repeating it after another failure cannot start another retry.
+        No assigned operation is replayed; _assign will increment sequence.
+        """
+        last = (self.state.get("completed") or [{}])[-1]
+        if (self.state.get("status") != "HALTED" or self.state.get("phase") != "step0"
+                or self.state.get("pending") is not None
+                or last.get("work_id") != work_id or last.get("phase") != "step0"
+                or (last.get("result") or {}).get("status") != "FAIL"
+                or self.state.get("reason") != "step0 FAIL: gate failure"
+                or any(row.get("from_work_id") == work_id
+                       for row in self.state.get("authorized_step0_retries", []))):
+            raise DriverStop("retry requires the exact terminal failed Step 0 receipt; never replay assigned work")
+        self._stop_check()
+        self._metrics()
+        self.state.setdefault("authorized_step0_retries", []).append({
+            "from_work_id": work_id, "authorized_at": utc(self.clock()),
+            "next_sequence": self.state["sequence"] + 1,
+            "prior_reason": self.state["reason"],
+            "scope": "one Step 0 operation, at most two probe/continue pairs"})
+        self.state.update(status="ARMED", rate_guard_retries=0)
+        self.state.pop("reason", None)
+        self.state.pop("rate_retry_at", None)
+        self._event(f"explicit post-fix Step 0 retry authorized from {work_id}; "
+                    "prior receipts and fork assignments retained")
+
+    def run(self, *, claim_owner=False, install_signals=True,
+            retry_step0_from: str | None = None) -> dict:
         with process_lock(self.directory / "planted_run.lock"):
             self._owner(claim_owner)
             self._load()
+            if retry_step0_from is not None:
+                self._retry_failed_step0(retry_step0_from)
             if self.state["status"] in TERMINAL:
                 return self.state
             if install_signals:

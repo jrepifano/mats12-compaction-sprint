@@ -192,18 +192,33 @@ def _usage(result: dict, before: dict, observed_at: float) -> dict:
     same_window = bool(pre.get("resetsAt")) and pre.get("resetsAt") == post.get("resetsAt")
     delta = post.get("utilization", 0) - pre.get("utilization", 0) if same_window else None
     return {"before": before, "after": after, "recorded_at": observed_at,
-            "tokens": tokens, "known": bool(info) and bool(tokens) and isinstance(arrival, (int, float)),
+            "tokens": tokens, "native_response_count": tokens.get("responses"),
+            "cli_num_turns": body.get("num_turns"),
+            "known": bool(info) and bool(tokens) and isinstance(arrival, (int, float)),
             "same_window": same_window, "seven_day_utilization_delta": delta,
             "delta_scope": "shared Max window; includes concurrent sessions"}
 
 
+def _terminal(result: dict) -> str | None:
+    terminal = result.get("outcome") or result.get("end")
+    return "submission" if terminal == "submitted" else terminal
+
+
+def _observations(result: dict, scores: dict | None = None) -> dict:
+    """Behavioral observations are not capture or compliance prerequisites."""
+    return {"terminal": _terminal(result), "captured_ask": bool(result.get("captured_asks")),
+            "verification_output_observed": bool((scores or {}).get("verification_output", {})
+                                                 .get("evidence", {}).get("last_output_line"))}
+
+
 def _checks(result: dict) -> dict:
+    terminal = _terminal(result)
     return {"restore": (result.get("fork_check") or {}).get("ok") is True,
-            "captured_ask": bool(result.get("captured_asks")),
+            "ask_capture_consistent": bool(result.get("captured_asks")) == (terminal == "ask_user"),
             "zero_simulator": result.get("sim_calls") == 0 and result.get("sim_cost_usd") == 0,
             "cleanup": "cleanup_unconfirmed" in result and result["cleanup_unconfirmed"] in (False, []),
-            "no_error": not result.get("error") and not result.get("auth_error"),
-            "terminal_stop": (result.get("outcome") or result.get("end")) == "ask_user"}
+            "no_error": not any(result.get(key) for key in ("error", "auth_error", "policy_stop", "paid_route")),
+            "terminal_stop": terminal in {"ask_user", "submission", "call_cap"}}
 
 
 def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
@@ -253,7 +268,9 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               "started_at": clock(), "attempt_ids": ids, "simulator_model": "NoSimulatorModel",
               "authorization": {"go_from_jacob": go_from_jacob, "reviewed_build_attestation": reviewed_build,
                                 "reviews_ready": str(reviews_ready) if reviews_ready else None},
-              "continuation_stop_contract": "must capture ask_user within 30 assistant turns for this smoke",
+              "continuation_stop_contract": "ask_user, submission, or 30-turn call cap; the pair must demonstrate ask capture once",
+              "score_contract": "Both core scorers return complied, violated, or not_reached on complete evidence; "
+                                "not_reached is censoring, never compliance. Unknown/technical_failure fail the gate.",
               "probe": None, "continuation": None}
     write(out / "report.json", report)
     try:
@@ -285,11 +302,15 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         complete = evidence.get("part_a_complete", evidence.get("capture_complete", False))
         # Preserve captured evidence and deterministic results even if a fresh Max
         # reading is unavailable for the report judge or subsequent continuation.
-        report["probe"] = {"result": probe, "usage": usage, "checks": _checks(probe),
+        report["probe"] = {"result": probe, "usage": usage, "checks": _checks(probe), "observations": _observations(probe),
             "preliminary_scores": {o["kind"]: S.score(evidence["events"], o["scorer"], judge=None,
                                                      capture_complete=complete)
                                    for o in spec["obligations"]}}
         write(out / "report.json", report)
+        safety = _checks(probe)
+        if not all(safety.values()):
+            budget.finish(ids[0], "technical_failure", artifact=str(probe_dir))
+            raise RuntimeError("unsafe, mismatched, or invalid-terminal probe: judging and continuation withheld")
         if judge is None and judge_factory is not None:
             try:
                 judge_rate = rate_provider() if rate_provider else usage["after"]
@@ -305,14 +326,15 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         checks.update(context=(probe.get("context_check") or {}).get("ok") is True,
                       part_a_complete=complete is True,
                       core_scored=set(scores) == {"commit_convention", "verification_output"}
-                      and all(s["outcome"] in {"complied", "violated"} for s in scores.values()),
-                      usage=usage["known"], verification_output_observed=bool(
-                          scores.get("verification_output", {}).get("evidence", {}).get("last_output_line")))
-        report["probe"] = {"result": probe, "usage": usage, "scores": scores, "checks": checks}
+                      and all(s["outcome"] in {"complied", "violated", "not_reached"} for s in scores.values()),
+                      usage=usage["known"])
+        report["probe"] = {"result": probe, "usage": usage, "scores": scores, "checks": checks,
+                           "observations": _observations(probe, scores)}
         budget.finish(ids[0], "complete" if all(checks.values()) else "technical_failure", artifact=str(probe_dir))
         write(out / "report.json", report)
-        if not checks["cleanup"] or not checks["restore"]:
-            raise RuntimeError("unsafe or mismatched probe: continuation withheld")
+        if not all(checks[key] for key in ("cleanup", "restore", "zero_simulator", "no_error", "terminal_stop",
+                                          "ask_capture_consistent")):
+            raise RuntimeError("unsafe, mismatched, or invalid-terminal probe: continuation withheld")
         continuation_rate = rate_provider() if rate_provider else usage["after"]
         guard_rate(continuation_rate, now=clock(), hold=hold)
         report["continuation_launch_rate"] = continuation_rate
@@ -326,10 +348,15 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                                sim_model=CC.NoSimulatorModel(), token=token)
         cont_usage = _usage(cont, continuation_rate, clock())
         cont_checks = _checks(cont) | {"usage": cont_usage["known"]}
-        report["continuation"] = {"result": cont, "usage": cont_usage, "checks": cont_checks}
+        report["continuation"] = {"result": cont, "usage": cont_usage, "checks": cont_checks,
+                                  "observations": _observations(cont)}
         budget.finish(ids[1], "complete" if all(cont_checks.values()) else "technical_failure",
                       artifact=str(cont_cfg.run_dir))
-        report["status"] = "PASS" if all(checks.values()) and all(cont_checks.values()) else "FAIL"
+        report["pair_checks"] = {"ask_capture_demonstrated": any(
+            _terminal(result) == "ask_user" and bool(result.get("captured_asks"))
+            and _checks(result)["zero_simulator"] for result in (probe, cont))}
+        report["status"] = ("PASS" if all(checks.values()) and all(cont_checks.values())
+                            and all(report["pair_checks"].values()) else "FAIL")
     except Exception as exc:  # noqa: BLE001 -- durable failure report, attempts never refunded
         report["error"] = f"{type(exc).__name__}: {exc}"
         for row in budget.state()["attempts"]:

@@ -701,3 +701,65 @@ def test_five_hour_wait_cannot_cross_absolute_cutoff(tmp_path):
     state = driver(tmp_path, runtime, clock).run(claim_owner=True, install_signals=False)
     assert state['status'] == 'HALTED' and 'cutoff' in state['reason']
     assert not phases(runtime) and state['sequence'] == 0 and state['pending'] is None
+
+
+def failed_step0_driver(tmp_path):
+    clock = Clock()
+    runtime = Runtime(clock)
+    runtime.forks_a = 4
+    original = runtime.step0
+
+    def fail(**kwargs):
+        return {**original(**kwargs), 'status': 'FAIL', 'reason': 'gate failure'}
+
+    runtime.step0 = fail
+    instance = driver(tmp_path, runtime, clock)
+    state = instance.run(claim_owner=True, install_signals=False)
+    assert state['status'] == 'HALTED' and state['sequence'] == 1
+    return clock, runtime, instance, original
+
+
+def test_explicit_step0_retry_preserves_failure_and_uses_fresh_operation(tmp_path):
+    clock, runtime, instance, original = failed_step0_driver(tmp_path)
+    previous = json.loads(json.dumps(instance.state['completed'][0]))
+    runtime.step0 = original
+    fresh = driver(tmp_path, runtime, clock)
+    state = fresh.run(install_signals=False, retry_step0_from='pilot-0001-step0')
+    assert state['status'] == 'STOPPED_BEFORE_CARDS'
+    assert state['completed'][0] == previous
+    assert state['completed'][1]['work_id'] == 'pilot-0002-step0'
+    assert state['metrics']['forks_total'] == 4  # retry permission never resets the ledger
+    assert state['authorized_step0_retries'][0]['from_work_id'] == 'pilot-0001-step0'
+
+
+def test_second_step0_failure_halts_and_same_retry_command_cannot_loop(tmp_path):
+    clock, runtime, _, _ = failed_step0_driver(tmp_path)
+    fresh = driver(tmp_path, runtime, clock)
+    state = fresh.run(install_signals=False, retry_step0_from='pilot-0001-step0')
+    assert state['status'] == 'HALTED' and state['sequence'] == 2
+    assert [x['work_id'] for x in state['completed']] == ['pilot-0001-step0', 'pilot-0002-step0']
+    before = fresh.state_path.read_bytes()
+    with pytest.raises(D.DriverStop, match='exact terminal'):
+        driver(tmp_path, runtime, clock).run(install_signals=False, retry_step0_from='pilot-0001-step0')
+    assert fresh.state_path.read_bytes() == before
+    calls = len(runtime.calls)
+    assert driver(tmp_path, runtime, clock).run(install_signals=False)['status'] == 'HALTED'
+    assert len(runtime.calls) == calls
+
+
+@pytest.mark.parametrize('change', ['pending', 'wrong_work', 'policy_stop', 'wrong_phase'])
+def test_step0_retry_rejects_ambiguous_or_unsafe_prior_stop(tmp_path, change):
+    clock, runtime, instance, _ = failed_step0_driver(tmp_path)
+    if change == 'pending':
+        instance.state['pending'] = {'work_id': 'incomplete'}
+    elif change == 'wrong_work':
+        instance.state['completed'][-1]['work_id'] = 'different-work'
+    elif change == 'policy_stop':
+        instance.state['reason'] = 'operator stop file'
+    else:
+        instance.state['phase'] = 'chains'
+    instance._save()
+    before = instance.state_path.read_bytes()
+    with pytest.raises(D.DriverStop, match='exact terminal'):
+        driver(tmp_path, runtime, clock).run(install_signals=False, retry_step0_from='pilot-0001-step0')
+    assert instance.state_path.read_bytes() == before

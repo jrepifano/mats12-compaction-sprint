@@ -987,6 +987,7 @@ class SimServer:
         self.on_audit: Callable[[dict], dict] | None = None
         self.audit_calls: list[dict] = []
         self.captured_asks: list[dict] = []
+        self.capture_errors: list[dict] = []
         self.step = "01_plan"
         self.rows: list[dict] = []
         self.boundary_calls: list[dict] = []
@@ -1003,8 +1004,15 @@ class SimServer:
                 if self.captured_asks:
                     raise ProbeCaptured("probe already ended at its first ask_user")
                 row = {"kind": "ask_user", "text": question, "step": self.step, "utc": utc()}
+                # Preserve the observation before the callback can stop the CLI, cancel its
+                # request, or fail. It is an observation, never a simulator reply.
                 self.captured_asks.append(row)
-                self.capture_ask(row)
+                try:
+                    self.capture_ask(copy.deepcopy(row))
+                except Exception as exc:
+                    self.capture_errors.append({"utc": utc(),
+                                                "error": f"{type(exc).__name__}: {exc}"})
+                    raise
                 raise ProbeCaptured("probe window ended at ask_user")
             if hasattr(self.sim, "set_delivery_context"):
                 self.sim.set_delivery_context(stage=self.step)
@@ -1075,7 +1083,17 @@ class SimServer:
         server = self
 
         async def ask_user(question: str) -> str:
-            return await anyio.to_thread.run_sync(server.ask, question)
+            try:
+                return await anyio.to_thread.run_sync(server.ask, question)
+            except ProbeCaptured:
+                # The capture callback has finished stopping the CLI. This is a terminal
+                # observation, not an MCP tool failure or a synthetic user reply. Keep the
+                # released string output schema, but send no text content. Ordinary simulator
+                # and capture-callback exceptions still reach FastMCP as real errors.
+                if server.capture_errors:
+                    raise
+                from fastmcp.tools.base import ToolResult
+                return ToolResult(content=[], structured_content={"result": ""})
 
         ask_user.__doc__ = ASK_USER_DOC  # FastMCP takes the description from the docstring
         mcp.tool()(ask_user)

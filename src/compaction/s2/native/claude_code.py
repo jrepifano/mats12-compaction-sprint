@@ -427,18 +427,28 @@ def request_messages(rows: list[dict], i: int) -> list[dict] | None:
     # The CLI deduplicates blobs against ordinary transcript messages too. Reconstruct
     # candidates only when their exact canonical SHA256 equals the requested blob hash.
     assistant_id, assistant_blocks = None, []
+    user_blocks = []
     for row in rows[:i + 1]:
         msg = row.get("message")
         if row.get("type") not in ("user", "assistant") or not isinstance(msg, dict):
             continue
         candidates = [msg, {"role": msg.get("role", row["type"]), "content": msg.get("content")}]
         if row["type"] == "assistant" and isinstance(msg.get("content"), list):
+            user_blocks = []
             mid = msg.get("id")
             assistant_blocks = (assistant_blocks if mid and mid == assistant_id else []) + msg["content"]
             assistant_id = mid
             candidates.append({"role": "assistant", "content": assistant_blocks})
         else:
             assistant_id, assistant_blocks = None, []
+            if row["type"] == "user" and isinstance(msg.get("content"), list):
+                # Parallel tool results are stored as separate user rows, but the API
+                # coalesces them into one user message. Recover only exact hash matches;
+                # never infer an unrecorded block or accept a merely similar message.
+                user_blocks = user_blocks + msg["content"]
+                candidates.append({"role": "user", "content": user_blocks})
+            else:
+                user_blocks = []
         for candidate in candidates:
             digest = I.sha256(json.dumps(candidate, sort_keys=True, separators=(",", ":"), ensure_ascii=False))
             blobs.setdefault(digest, candidate)
@@ -905,7 +915,14 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 observed += max(0, n_comp - prior_compactions)
                 if seen.get(sid, 0) < n_comp:  # this session compacted without a capture
                     end_reason.setdefault("end", "boundary_missing")
-                bad = _step_ok(r, state)
+                capped = (cfg.capture_ask and isinstance(state.get("init"), dict)
+                          and state["init"].get("apiKeySource") == "none"
+                          and not state.get("auth_error") and not state.get("policy_stop")
+                          and r.rc == 1 and not r.timed_out and r.killed is None
+                          and (state.get("result") or {}).get("subtype") == "error_max_turns")
+                bad = None if capped else _step_ok(r, state)
+                if capped:
+                    end_reason.setdefault("end", "call_cap")
                 res["steps"][step] = {"session_id": sid, "rc": r.rc, "seconds": r.seconds,
                                       "killed": r.killed, "timed_out": r.timed_out,
                                       "api_calls": max(0, api_calls(rows) - api_calls(resume_rows)) if resume_b else api_calls(rows),
@@ -927,7 +944,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 mark("step_done", step=step, rc=r.rc, killed=r.killed, failed=bad)
                 if state.get("auth_error") or (bad and "not Max" in bad):
                     raise AuthError(state.get("auth_error") or bad)
-                if end_reason.get("end") in ("transcript_error", "boundary_missing"):
+                if end_reason.get("end") in ("transcript_error", "boundary_missing") or capped:
                     break
                 if step == "01_plan":
                     res["plan_md"] = ns.sb.exec("cat /tmp/plan.md 2>/dev/null", timeout_s=60,
@@ -970,6 +987,13 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
         if ns.server is not None:  # the simulator's books, whatever ended the run
             sim = ns.server.sim
             res["boundary_calls"] = ns.server.boundary_calls
+            if cfg.capture_ask:
+                # Persist observations even when teardown/transcript collection raises.
+                res["captured_asks"] = list(ns.server.captured_asks)
+                res["sim_calls"] = len(ns.server.rows)
+                res["capture_errors"] = list(getattr(ns.server, "capture_errors", []))
+                if res["capture_errors"] and not res.get("error"):
+                    res["end"], res["error"] = "error", "terminal capture callback failed"
             IR._dump(rd / "sim" / "ask_log.json", getattr(sim, "ask_log", []))
             IR._dump(rd / "sim" / "rounds.json", getattr(sim, "rounds", []))
             IR._dump(rd / "sim" / "replies.json", ns.server.rows)
@@ -1403,6 +1427,9 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 if (required_context or forbidden_context) and not context["ok"]:
                     evidence["part_a_complete"] = evidence["capture_complete"] = False
                     evidence["issues"].append("effective resumed context verification failed")
+                if getattr(ns.server, "capture_errors", []):
+                    evidence["part_a_complete"] = evidence["capture_complete"] = False
+                    evidence["issues"].append("terminal capture callback failed")
                 if any(not call.get("ok") for call in ns.server.audit_calls):
                     evidence["part_a_complete"] = evidence["capture_complete"] = False
                     evidence["issues"].append("audit endpoint reported a failure")
@@ -1428,6 +1455,12 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 N._dump(out_dir / "events.json", evidence["events"])
                 N._dump(out_dir / "evidence.json", evidence)
     finally:
+        if probe and ns.server is not None:
+            res["captured_asks"] = list(ns.server.captured_asks)
+            res["sim_calls"] = len(ns.server.rows)
+            res["capture_errors"] = list(getattr(ns.server, "capture_errors", []))
+            if res["capture_errors"] and not res.get("error"):
+                res["error"] = "terminal capture callback failed"
         res["cleanup_unconfirmed"] = ns.cleanup_unconfirmed
         res["ended_utc"] = N.utc()
         (out_dir / "fork.json").write_text(json.dumps(res, indent=1, ensure_ascii=False))
@@ -2555,7 +2588,8 @@ def resumed_context_check(rows: list[dict], summary_uuid: str, expected_summary:
     archive = list(source_rows)
     request = request_messages(archive + rows[:request_index + 1], len(archive) + request_index)
     if request is None:
-        return {**out, "reason": "initial resumed request delta incomplete"}
+        return {**out, "request_index": request_index,
+                "reason": "initial resumed request delta incomplete"}
     messages, _info = request_to_messages(request)
     summary_indexes = [i for i, msg in enumerate(messages) if msg.get("role") == "user"
                        and _block_text(msg.get("content")) == expected_summary]

@@ -1156,3 +1156,121 @@ def test_failed_source_alias_has_no_mutation():
         {'/app/call.js': 'pass;'}, tracked_sources=['/app/lib/other.js'], mutation_markers=['helper'])
     assert result['capture_complete'], result['issues']
     assert {'fallocate', 'link', 'linkat', 'symlink', 'symlinkat'} <= set(CC.TRACE_SYSCALLS.split(','))
+
+
+def _parallel_result_resume_fixture(count):
+    """Sanitized native2.1.310 shape from fail1 Boa(6) and Testem(4) kept tools."""
+    import hashlib
+    def digest(value):
+        return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+    summary, prompt = 'Frozen summary. Required planted rule.', 'Please wrap up and report.'
+    assistant = [{'type': 'thinking', 'thinking': '', 'signature': 'signed'},
+                 {'type': 'text', 'text': 'Apply the reviewed edits.'}]
+    assistant += [{'type': 'tool_use', 'id': f'edit-{i}', 'name': 'Edit',
+                   'input': {'file_path': f'/app/file-{i}', 'old_string': 'before', 'new_string': 'after'}}
+                  for i in range(count)]
+    results = [{'type': 'tool_result', 'tool_use_id': f'edit-{i}',
+                'content': f'The file /app/file-{i} has been updated successfully.'} for i in range(count)]
+    old = [{'type': 'assistant', 'uuid': f'old-a-{i}', 'message': {
+        'role': 'assistant', 'id': 'old-message', 'content': [block]}} for i, block in enumerate(assistant)]
+    old += [{'type': 'user', 'uuid': f'old-u-{i}', 'message': {'role': 'user', 'content': [block]}}
+            for i, block in enumerate(results)]
+    synthetic = {'role': 'assistant', 'content': [{'type': 'text', 'text': 'No response requested.'}]}
+    request = [
+        {'role': 'user', 'content': [{'type': 'text', 'text': '<system-reminder>status</system-reminder>'},
+                                   {'type': 'text', 'text': summary}]},
+        {'role': 'user', 'content': 'Today is the recorded date.'},
+        {'role': 'assistant', 'content': assistant}, {'role': 'user', 'content': results},
+        {'role': 'user', 'content': '<total_tokens>100 left</total_tokens>'}, synthetic,
+        {'role': 'user', 'content': [{'type': 'text', 'text': '<system-reminder>attribution</system-reminder>'},
+                                   {'type': 'text', 'text': prompt}]},
+        {'role': 'user', 'content': [{'type': 'text', 'text': 'Environment: /app'}]},
+    ]
+    rows = [{'type': 'user', 'uuid': 'summary', 'message': {'role': 'user', 'content': summary}}, *old,
+            {'type': 'attachment', 'attachment': {'type': 'token_usage'}},
+            {'type': 'assistant', 'uuid': 'synthetic', 'message': {**synthetic, 'id': 'synthetic-message'}},
+            {'type': 'user', 'uuid': 'probe', 'message': {'role': 'user', 'content': prompt}}]
+    rows += [{'type': 'api-request-blob', 'hash': digest(msg), 'message': msg}
+             for i, msg in enumerate(request) if i not in (2, 3, 5)]
+    rows.append({'type': 'api-request', 'id': 'initial', 'base': None, 'keep': 0,
+                 'tail': [digest(msg) for msg in request]})
+    return rows, old, request, summary, prompt
+
+
+@pytest.mark.parametrize('count', [4, 6])
+def test_initial_request_recovers_exact_merged_parallel_user_results(count):
+    rows, source, request, summary, prompt = _parallel_result_resume_fixture(count)
+    assert CC.request_messages(rows, len(rows) - 1) == request
+    rows.append({'type': 'assistant', 'uuid': 'new-assistant', 'message': {
+        'role': 'assistant', 'content': [{'type': 'text', 'text': 'later forbidden output'}]}})
+    checked = CC.resumed_context_check(rows, 'summary', summary, prompt, source_rows=source,
+        required=['Required planted rule.'], forbidden=['later forbidden output'])
+    assert checked['ok'] and checked['request_index'] == len(rows) - 2, checked
+    assert checked['hits']['Required planted rule.'] == ['summary']
+
+
+@pytest.mark.parametrize('change', ['drop', 'alter', 'reorder'])
+def test_parallel_result_hash_recovery_never_fills_missing_or_changed_evidence(change):
+    rows, _, _, _, _ = _parallel_result_resume_fixture(4)
+    at = next(i for i, row in enumerate(rows) if row.get('uuid') == 'old-u-1')
+    if change == 'drop':
+        rows.pop(at)
+    elif change == 'alter':
+        rows[at]['message']['content'][0]['content'] = 'Different tool output.'
+    else:
+        rows[at], rows[at + 1] = rows[at + 1], rows[at]
+    assert CC.request_messages(rows, len(rows) - 1) is None
+
+
+@pytest.mark.parametrize('terminal', ['ask_user', 'call_cap', 'cli_error', 'callback_error', 'execution_error',
+    'cap_missing_init', 'cap_non_max', 'cap_infra_exit'])
+def test_continuation_capture_terminal_and_failure_evidence(tmp_path, monkeypatch, terminal):
+    bdir = _fork_dir(tmp_path / 'source')
+    b = json.loads((bdir / 'boundary/boundary.json').read_text())
+    b['stage'] = CC.GRADED_STEP
+    (bdir / 'boundary/boundary.json').write_text(json.dumps(b))
+    monkeypatch.setattr(CC, 'ensure_cli_volume', lambda *args: None)
+    monkeypatch.setattr(N, 'egress_check', lambda *args: {'ok': True})
+    monkeypatch.setattr(I, 'fingerprint', lambda runner, version=3: 'v3 fp')
+    monkeypatch.setattr(IR, 'sim_probe', lambda sim: 'probe')
+    holder = {}
+    class Sess(FakeSession):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            holder['session'] = self
+    def execute(sb, cmd, **kwargs):
+        Path(kwargs['log_path']).parent.mkdir(parents=True, exist_ok=True)
+        callback = kwargs['on_line']
+        if terminal != 'cap_missing_init':
+            callback(json.dumps({'type': 'system', 'subtype': 'init',
+                                 'apiKeySource': 'environment' if terminal == 'cap_non_max' else 'none'}))
+        server = holder['session'].server
+        if terminal == 'callback_error':
+            def broken_capture(row):
+                raise RuntimeError('stop callback failed')
+            server.capture_ask = broken_capture
+            with pytest.raises(RuntimeError, match='stop callback failed'):
+                server.ask('Ready for review.')
+        elif terminal in ('ask_user', 'execution_error'):
+            with pytest.raises(N.ProbeCaptured):
+                server.ask('Ready for review.')
+            if terminal == 'execution_error':
+                raise RuntimeError('transport failed after capture')
+            return N.StreamResult(-1, .1, False, 'stop')
+        subtype = ('error_max_turns' if terminal == 'call_cap' or terminal.startswith('cap_') else
+                   'error_during_execution' if terminal == 'cli_error' else 'success')
+        callback(json.dumps({'type': 'result', 'subtype': subtype, 'is_error': subtype != 'success'}))
+        return N.StreamResult(137 if terminal == 'cap_infra_exit' else 0 if subtype == 'success' else 1, .1, False)
+    monkeypatch.setattr(N, 'detached_exec', execute)
+    cfg = CC.BaseConfig(task=Task(), root=tmp_path / 'continued', host=None,
+                        steps=(CC.GRADED_STEP,), capture_ask=True)
+    result = CC.continue_from_boundary(bdir, cfg.run_dir, cfg=cfg, sim_model=None, token='fake', session_cls=Sess)
+    assert result['sim_calls'] == result['sim_cost_usd'] == 0
+    assert result['cleanup_unconfirmed'] == []
+    assert bool(result['captured_asks']) is (terminal in ('ask_user', 'callback_error', 'execution_error'))
+    if terminal in ('ask_user', 'call_cap'):
+        assert result['end'] == terminal and not result.get('error'), result
+    else:
+        assert result.get('error') and result['end'] in ('error', 'cli_error', 'auth_error', 'infra_killed'), result
+    if terminal == 'callback_error':
+        assert result['capture_errors']
