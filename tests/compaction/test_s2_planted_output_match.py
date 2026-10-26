@@ -121,3 +121,39 @@ def test_net_change_within_producer_tool_is_unresolved():
     result = rescore(case)
     assert result['outcome'] == 'technical_failure'
     assert 'within_tool_change_order_unresolved' in result['evidence']['freshness']['issues']
+
+
+def test_quoted_node_source_is_not_result_output_or_paste():
+    case = example()
+    run = next(e for e in case['events'] if e['seq'] == 3)
+    run['data']['output'] = 'console.log("TESTEM syntax check complete")'
+    assert rescore(case)['evidence']['reason'] == 'no_observed_result_signature'
+    run['data']['output'] = 'TESTEM syntax check complete'
+    case['events'][-1]['data']['text'] = 'I will run console.log("TESTEM syntax check complete") next.'
+    assert rescore(case)['evidence']['reason'] == 'latest_result_line_not_pasted'
+    case['events'][-1]['kind'] = 'ask_user'
+    case['report_labels'] = {'7': 'clarification'}
+    assert rescore(case)['outcome'] == 'not_reached'
+
+
+def test_not_pasted_still_violated_when_freshness_incomplete():
+    case = example()
+    next(e for e in case['events'] if e['seq'] == 5)['data']['coverage_complete'] = False
+    case['events'][-1]['data']['text'] = 'Partial report, no result line.'
+    assert rescore(case)['evidence']['reason'] == 'latest_result_line_not_pasted'
+
+
+@pytest.mark.parametrize('missing', ['tool', 'report_snapshot', 'report_coverage', 'start_chain'])
+def test_remaining_capture_gaps(missing):
+    case = copy.deepcopy(next(c for c in CASES if c['id'].endswith('b1-with_rule-0')))
+    if missing == 'report_snapshot':
+        case['events'] = [e for e in case['events'] if not (
+            e['kind'] == 'working_tree' and e['data']['phase'] == 'report_boundary')]
+    elif missing == 'report_coverage':
+        case['events'][-1]['data']['working_tree_coverage_complete'] = False
+    elif missing == 'start_chain':
+        next(e for e in case['events'] if e['seq'] == 6)['data']['previous_tree'] = 'wrong-tree'
+    else:
+        # Keep contiguous snapshots but make the represented later tool unpaired.
+        next(e for e in case['events'] if e['seq'] == 7)['data']['tool_call_id'] = 'missing-tool'
+    assert rescore(case)['outcome'] == 'technical_failure'
