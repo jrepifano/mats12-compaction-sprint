@@ -28,6 +28,7 @@ from compaction.s2 import planted_score as S
 from compaction.s2 import planted_step0 as P
 from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
+from compaction.s2.planted_driver import atomic_json
 from compaction.s2.planting import PlantingSchedule
 
 CONTINGENCY_TAG = "s2-planted-contingency"
@@ -280,6 +281,7 @@ class Runtime:
         self._rate, self._judge = None, None
         self._active_work = "idle"
         self._active_attempt = None
+        self.resource_status = None
 
     def _authorized(self):
         if not self.go or not self.reviewed:
@@ -400,12 +402,22 @@ class Runtime:
         return receipt
 
     @contextmanager
-    def _phase(self, work_id, phase):
+    def _phase(self, work_id, phase, *, resume_screen=False):
         self._authorized()
         path = self._receipt(work_id)
+        previous = None
         if path.exists():
-            raise FileExistsError("operation already assigned; use recover, never relaunch")
+            previous = P.read(path)
+            if (not resume_screen or phase != "screen" or previous.get("status") != "HALTED"
+                    or previous.get("reason") != E.LEGACY_RESOURCE_ERROR
+                    or previous.get("resume_history")):
+                raise FileExistsError("operation already assigned; use recover, never relaunch")
+        elif resume_screen:
+            raise ValueError("screen resume requires its original stopped receipt")
         receipt = {"work_id": work_id, "phase": phase, "status": "ASSIGNED", "started_at": self.clock()}
+        if previous is not None:
+            receipt["resume_history"] = [previous]
+            receipt["resume_reason"] = "coordinator authorized reuse of unlaunched screen assignments"
         P.write(path, receipt)
         self._active_work = work_id
         try:
@@ -487,9 +499,13 @@ class Runtime:
             self._active_attempt = previous
 
     def _fork_assigned(self, *, identity, row, bdir, summary, prompt, required=(), forbidden=(), score=True):
+        if "fork" not in self.io:
+            self._resources()
         before = self.guard("decision_probe")
-        E.resource_guard(self.host) if "fork" not in self.io else None
         out = self.root / "forks" / identity
+        # Durable intention before any native launch; even an ambiguous crash cannot replay it.
+        atomic_json(self.root / "launch-intents" / f"{identity}.json",
+                {"attempt_id": identity, "at": self.clock(), "work_id": self._active_work})
         result = (self.io.get("fork") or CC.fork)(bdir, out, new_summary=summary, prompt=prompt,
             sim_model=CC.NoSimulatorModel(), token=self.token, persona=self.task_loader(row["task_id"]).persona,
             cfg=self._cc_config(probe=True), host=self.host, probe=True,
@@ -534,8 +550,65 @@ class Runtime:
             raise RuntimeError(f"actual resumed context verification failed: {identity}")
         return report
 
-    def screen(self, *, work_id, boundaries, single_task=False):
-        with self._phase(work_id, "screen") as receipt:
+    def _resources(self, *, deadline=FINAL_CUTOFF):
+        def check():
+            self._authorized()
+            if self.clock() >= deadline:
+                raise RuntimeError("resource wait reached operation deadline")
+        return E.resource_guard(self.host, task_cpus=N.AGENT_CPUS,
+            task_memory_mb=N.AGENT_MEMORY_MB, status=self.resource_status, check=check)
+
+    def check_unlaunched_screen(self, *, work_id, boundaries, single_task=False):
+        """Read-only proof for the explicitly authorized legacy resource-stop recovery."""
+        receipt = P.read(self._receipt(work_id))
+        if (receipt.get("work_id") != work_id or receipt.get("phase") != "screen"
+                or receipt.get("status") != "HALTED" or receipt.get("reason") != E.LEGACY_RESOURCE_ERROR
+                or receipt.get("resume_history")):
+            raise ValueError("not an untouched legacy resource-stop receipt")
+        if len(boundaries) != 2 or len({r["task_id"] for r in boundaries}) != (1 if single_task else 2):
+            raise ValueError("screen resume boundary mismatch")
+        roster = P.read(self._receipt(work_id).parent / "roster.json")
+        expected = [{"id": f"{work_id}-b{i}-{version}-{repeat}", "boundary": row["boundary"],
+                     "version": version, "task_id": row["task_id"], "index": i}
+                    for i, row in enumerate(boundaries)
+                    for version in ("with_rule", "without_rule") for repeat in range(3)]
+        if roster != expected:
+            raise ValueError("screen resume roster mismatch")
+        attempts = [a for a in self.budget.state()["attempts"] if a["attempt_id"].startswith(work_id + "-")]
+        if len(attempts) != 12 or {a["attempt_id"] for a in attempts} != {r["id"] for r in roster}:
+            raise ValueError("screen resume assignment mismatch")
+        by_id = {a["attempt_id"]: a for a in attempts}
+        for row in roster:
+            a = by_id[row["id"]]
+            if (a.get("status") != "assigned" or a.get("part") != "A" or a.get("bucket") != "screen"
+                    or a.get("boundary") != row["boundary"] or a.get("version") != row["version"]
+                    or "artifact" in a or "finished_utc" in a
+                    or (self.root / "forks" / row["id"]).exists()
+                    or (self.root / "launch-intents" / f"{row['id']}.json").exists()):
+                raise ValueError("screen fork may have launched; never replay")
+        return roster
+
+    def _screen_source(self, row, index, work_id, resume):
+        destination = self._receipt(work_id).parent / f"source-{index}"
+        if not resume:
+            return self._boundary(row, destination)
+        original = Path(row["boundary"])
+        copied = destination / original.parent.name / original.name
+        source, retained = P.inspect_boundary(original), P.inspect_boundary(copied)
+        if not source["offline_eligible"] or not retained["offline_eligible"]:
+            raise ValueError("screen resume source no longer eligible")
+        if (P.read(original.parent / "run.json").get("task", {}).get("task_id") != row["task_id"]
+                or P.read(copied / "boundary/boundary.json") !=
+                N.reclassify_harness_quiescence(P.read(original / "boundary/boundary.json"))
+                or {k: v for k, v in source["hashes"].items() if k != "boundary/boundary.json"} !=
+                {k: v for k, v in retained["hashes"].items() if k != "boundary/boundary.json"}):
+            raise ValueError("screen resume source changed")
+        return copied
+
+    def screen(self, *, work_id, boundaries, single_task=False, resume_unlaunched=False):
+        if resume_unlaunched:
+            self.check_unlaunched_screen(work_id=work_id, boundaries=boundaries, single_task=single_task)
+        with self._phase(work_id, "screen", resume_screen=resume_unlaunched) as receipt:
             if len(boundaries) != 2 or len({r["boundary"] for r in boundaries}) != 2:
                 raise ValueError("screen requires two different eligible boundaries")
             tasks = {r["task_id"] for r in boundaries}
@@ -543,7 +616,7 @@ class Runtime:
                 raise ValueError("screen task/boundary selection violates frozen protocol")
             prepared = []
             for i, row in enumerate(boundaries):
-                bdir = self._boundary(row, self._receipt(work_id).parent / f"source-{i}")
+                bdir = self._screen_source(row, i, work_id, resume_unlaunched)
                 summary, body = self._summary(bdir)
                 spec = self.load_spec(row["task_id"])
                 markers = [o["text"] for o in spec["obligations"]]
@@ -566,9 +639,10 @@ class Runtime:
                        "version": version, "task_id": row["task_id"], "index": i}
                       for i, (row, *_rest) in enumerate(prepared)
                       for version in ("with_rule", "without_rule") for repeat in range(3)]
-            self.budget.reserve_batch([{"attempt_id": r["id"], "part": "A", "bucket": "screen",
-                                        "boundary": r["boundary"], "version": r["version"]} for r in roster])
-            P.write(self._receipt(work_id).parent / "roster.json", roster)
+            if not resume_unlaunched:
+                self.budget.reserve_batch([{"attempt_id": r["id"], "part": "A", "bucket": "screen",
+                                            "boundary": r["boundary"], "version": r["version"]} for r in roster])
+                P.write(self._receipt(work_id).parent / "roster.json", roster)
             reports = {}
             for assigned in roster:
                 row, bdir, summary, body, spec, markers = prepared[assigned["index"]]
@@ -654,11 +728,11 @@ class Runtime:
     def _base_segment(self, task_id, identity, *, boundary=None, deadline=FINAL_CUTOFF,
                       contingency=False, simulator_cap_usd=25., kinds=None):
         identity = f"{identity}-{task_id.split('-')[0]}"
-        self.guard("base_continuation" if boundary else "base_run")
         if self.clock() >= deadline:
             return {"status": "TIME_LIMIT", "boundaries": []}
         if "base" not in self.io:
-            E.resource_guard(self.host)
+            self._resources(deadline=deadline)
+        self.guard("base_continuation" if boundary else "base_run")
         remaining = min(simulator_cap_usd, PC.SIM_CAP_USD - sum(self._totals()))
         if contingency:
             remaining = min(remaining, 6. - sum(self._totals(CONTINGENCY_TAG)))

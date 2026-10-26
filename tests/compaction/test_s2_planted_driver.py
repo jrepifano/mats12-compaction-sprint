@@ -932,3 +932,44 @@ def test_rate_wait_and_normal_card_stop_are_both_watcher_visible(tmp_path):
     assert hold.startswith('HOLD:') and 'retry 1/6 at ' in hold
     assert state['status'] == 'STOPPED_BEFORE_CARDS'
     assert lines[-1].startswith('STOP:') and 'cards and repair require' in lines[-1]
+
+
+def test_explicit_screen_resume_keeps_pending_sequence_and_passing_kind(tmp_path):
+    clock = Clock(D.RESET + timedelta(hours=10))
+    runtime = Runtime(clock)
+    runtime.raise_phase = 'screen'
+    d = driver(tmp_path, runtime, clock)
+    state = d.run(claim_owner=True, install_signals=False)
+    from compaction.s2.planted_eligibility import LEGACY_RESOURCE_ERROR
+    state['reason'] = LEGACY_RESOURCE_ERROR
+    d._save()
+    pending = state['pending'].copy()
+    prior_completed = list(state['completed'])
+    checked = []
+    runtime.check_unlaunched_screen = lambda **kw: checked.append(kw)
+    def resumed(**kw):
+        assert kw['work_id'] == pending['work_id'] and kw['resume_unlaunched'] is True
+        assert d.state['sequence'] == state['sequence']
+        return {'status': 'PASS', 'passed_kinds': ['commit_convention'], 'ended_at': clock()}
+    runtime.screen = resumed
+    runtime.raise_phase = None
+    result = d.run(install_signals=False, resume_screen_from=pending['work_id'])
+    assert checked and result['status'] == 'STOPPED_BEFORE_CARDS'
+    assert result['completed'][:len(prior_completed)] == prior_completed
+    assert result['completed'][len(prior_completed)]['work_id'] == pending['work_id']
+    assert result['usable_kinds'] == ['commit_convention'] and result['redesign_deferred']
+    assert result['screen_resource_resume']['work_id'] == pending['work_id']
+    assert [kw for phase, kw in runtime.calls if phase == 'chains'][-1]['kinds'] == ['commit_convention']
+    d.run(install_signals=False, resume_screen_from=pending['work_id'])
+    assert d.state['status'] == 'HALTED' and 'exact unlaunched' in d.state['reason']
+
+
+def test_resource_wait_status_writes_hold_at_column_zero(tmp_path):
+    clock = Clock(D.RESET + timedelta(hours=10))
+    runtime = Runtime(clock)
+    runtime.raise_phase = 'screen'
+    d = driver(tmp_path, runtime, clock)
+    d.run(claim_owner=True, install_signals=False)
+    d.state['status'] = 'RUNNING'
+    runtime.resource_status('HOLD: resource pool full after45minutes')
+    assert d.status_path.read_text().splitlines()[-1].startswith('HOLD: ')

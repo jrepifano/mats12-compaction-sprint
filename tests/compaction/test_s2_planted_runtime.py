@@ -933,3 +933,83 @@ def test_expired_short_window_does_not_hide_active_weekly_hold(tmp_path):
     info["unifiedWindows"]["five_hour"] = {"status": "rejected", "resetsAt": NOW-1}
     assert backend._watch({"type": "rate_limit_event", "rate_limit_info": info})
     assert backend.pilot_stop_reason == "max_window_hold"
+
+
+def stopped_unlaunched_screen(runtime, monkeypatch):
+    rows = prepare_screen(runtime, monkeypatch)
+    def stop(**kwargs):
+        raise ValueError('local eligibility launch exceeds 3 containers / 12 GB / 8 CPUs')
+    monkeypatch.setattr(runtime, '_fork', stop)
+    with pytest.raises(ValueError, match='local eligibility'):
+        runtime.screen(work_id='pilot-0005-screen', boundaries=rows)
+    return rows
+
+
+def test_resume_screen_keeps_twelve_original_assignments_and_receipt(runtime, monkeypatch):
+    rows = stopped_unlaunched_screen(runtime, monkeypatch)
+    before = runtime.budget.state()['attempts']
+    receipt = P.read(runtime._receipt('pilot-0005-screen'))
+    roster_bytes = (runtime._receipt('pilot-0005-screen').parent / 'roster.json').read_bytes()
+    monkeypatch.setattr(runtime, '_screen_source', lambda row, *args: M.Path(row['boundary']))
+    monkeypatch.setattr(runtime, '_fork', M.Runtime._fork.__get__(runtime))
+    calls = []
+    def fork(bdir, out, **kw):
+        calls.append(out.name)
+        return good_fork(out, with_rule=bool(kw['required_context']))
+    runtime.io['fork'] = fork
+    monkeypatch.setattr(runtime.budget, 'reserve_batch', lambda *a: pytest.fail('must not reassign'))
+    result = runtime.screen(work_id='pilot-0005-screen', boundaries=rows, resume_unlaunched=True)
+    after = runtime.budget.state()['attempts']
+    assert len(calls) == len(set(calls)) == len(after) == 12
+    assert calls == [a['attempt_id'] for a in before]
+    assert [a['assigned_utc'] for a in after] == [a['assigned_utc'] for a in before]
+    assert all(a['status'] == 'complete' for a in after)
+    assert result['resume_history'] == [receipt]
+    assert result['status'] == 'PASS'
+    assert (runtime._receipt('pilot-0005-screen').parent / 'roster.json').read_bytes() == roster_bytes
+    with pytest.raises(ValueError, match='untouched'):
+        runtime.screen(work_id='pilot-0005-screen', boundaries=rows, resume_unlaunched=True)
+
+
+@pytest.mark.parametrize('mutation', ['output', 'intent', 'finished', 'roster', 'wrong_error'])
+def test_resume_screen_rejects_any_ambiguous_or_changed_attempt(runtime, monkeypatch, mutation):
+    rows = stopped_unlaunched_screen(runtime, monkeypatch)
+    identity = runtime.budget.state()['attempts'][0]['attempt_id']
+    if mutation == 'output':
+        (runtime.root / 'forks' / identity).mkdir(parents=True)
+    elif mutation == 'intent':
+        P.write(runtime.root / 'launch-intents' / f'{identity}.json', {})
+    elif mutation == 'finished':
+        runtime.budget.finish(identity, 'technical_failure', artifact='unknown')
+    elif mutation == 'roster':
+        P.write(runtime._receipt('pilot-0005-screen').parent / 'roster.json', [])
+    else:
+        r = P.read(runtime._receipt('pilot-0005-screen')); r['reason'] = 'some other crash'
+        P.write(runtime._receipt('pilot-0005-screen'), r)
+    with pytest.raises(ValueError):
+        runtime.screen(work_id='pilot-0005-screen', boundaries=rows, resume_unlaunched=True)
+
+
+def test_resource_wait_precedes_fresh_rate_guard_and_intent(runtime, monkeypatch):
+    order = []
+    monkeypatch.setattr(runtime, '_resources', lambda: order.append('resource_wait'))
+    monkeypatch.setattr(runtime, 'guard', lambda *a: order.append('fresh_guard') or rate())
+    def fork(bdir, out, **kw):
+        assert (runtime.root / 'launch-intents' / 'assigned.json').exists()
+        order.append('launch')
+        return good_fork(out)
+    monkeypatch.setattr(M.CC, 'fork', fork)
+    runtime.budget.reserve('assigned', part='A', bucket='screen')
+    runtime._fork(identity='assigned', row={'task_id': C.task_order()[0]}, bdir=runtime.root,
+                  summary='summary', prompt='report')
+    assert order[:3] == ['resource_wait', 'fresh_guard', 'launch']
+
+
+def test_resource_wait_honors_base_deadline(runtime, monkeypatch):
+    def waiting(host, **kw):
+        assert kw['task_cpus'] == M.N.AGENT_CPUS
+        assert kw['task_memory_mb'] == M.N.AGENT_MEMORY_MB
+        kw['check']()
+    monkeypatch.setattr(M.E, 'resource_guard', waiting)
+    with pytest.raises(RuntimeError, match='operation deadline'):
+        runtime._resources(deadline=NOW)

@@ -582,21 +582,47 @@ class Driver:
         self._event(f"explicit post-fix Step 0 retry authorized from {work_id}; "
                     "prior receipts and fork assignments retained")
 
+    def _resume_unlaunched_screen(self, work_id):
+        """One explicit recovery of the same roster; never allocate replacement forks."""
+        pending = self.state.get("pending") or {}
+        from compaction.s2.planted_eligibility import LEGACY_RESOURCE_ERROR
+        if (self.state.get("status") != "HALTED" or self.state.get("phase") != "screen"
+                or self.state.get("reason") != LEGACY_RESOURCE_ERROR
+                or pending.get("work_id") != work_id or pending.get("phase") != "screen"
+                or self.state.get("screen_resource_resume")
+                or not self.state.get("step0_passed_at")):
+            raise DriverStop("resume requires the exact unlaunched resource-stopped screen")
+        self._stop_check()
+        kwargs = pending["kwargs"]
+        self.runtime.check_unlaunched_screen(work_id=work_id, **kwargs)
+        self.state["screen_resource_resume"] = {"work_id": work_id, "at": utc(self.clock()),
+            "prior_reason": self.state["reason"], "same_assignments": True}
+        self.state.update(status="RUNNING", reason=None)
+        self._event(f"ARMED pid={os.getpid()}; explicitly resuming {work_id} "
+                    "with its original unlaunched assignments")
+        result = self.runtime.screen(work_id=work_id, resume_unlaunched=True, **kwargs)
+        self._complete(result)
+
     def run(self, *, claim_owner=False, install_signals=True,
-            retry_step0_from: str | None = None) -> dict:
+            retry_step0_from: str | None = None, resume_screen_from: str | None = None) -> dict:
         with process_lock(self.directory / "planted_run.lock"):
             self._owner(claim_owner)
             self._load()
+            if retry_step0_from is not None and resume_screen_from is not None:
+                raise DriverStop("choose retry or screen resume, not both")
             if retry_step0_from is not None:
                 self._retry_failed_step0(retry_step0_from)
-            if self.state["status"] in TERMINAL:
+            if self.state["status"] in TERMINAL and resume_screen_from is None:
                 return self.state
             if install_signals:
                 for sig in (signal.SIGINT, signal.SIGTERM):
                     self._previous_handlers[sig] = signal.signal(sig, self._signal)
             self.runtime.before_action = self.before_action
+            self.runtime.resource_status = lambda line: self._event(line, hold=line.startswith("HOLD:"))
             try:
                 self._metrics()
+                if resume_screen_from is not None:
+                    self._resume_unlaunched_screen(resume_screen_from)
                 self._event(f"ARMED pid={os.getpid()}; sole desktop driver")
                 while self.state["status"] not in TERMINAL:
                     wait = self.tick()

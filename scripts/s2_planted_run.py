@@ -32,6 +32,8 @@ def parser():
     run.add_argument("--reviewed-build", action="store_true")
     run.add_argument("--retry-step0-from", metavar="FAILED_WORK_ID",
                      help="explicit one-shot post-fix retry of this failed Step 0; preserves all spent forks")
+    run.add_argument("--resume-screen-from", metavar="WORK_ID",
+                     help="explicitly resume the same unlaunched resource-stopped screen assignments")
     commands.add_parser("status")
     commands.add_parser("stop")
     return p
@@ -98,7 +100,8 @@ def main(argv=None):
     load_dotenv(C.REPO_ROOT / ".env", override=False)
     config = json.loads(args.config.read_text())
     instance = build_driver(config)
-    state = instance.run(claim_owner=args.claim_owner, retry_step0_from=args.retry_step0_from)
+    state = instance.run(claim_owner=args.claim_owner, retry_step0_from=args.retry_step0_from,
+                         resume_screen_from=args.resume_screen_from)
     print(json.dumps({"status": state["status"], "phase": state["phase"],
                       "reason": state.get("reason")}, indent=2))
     return 0 if state["status"] == "STOPPED_BEFORE_CARDS" else 1

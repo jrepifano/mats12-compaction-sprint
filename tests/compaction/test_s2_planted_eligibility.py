@@ -134,17 +134,135 @@ def test_cohort_counts_distinct_selected_tasks_and_retains_failed_tasks(tmp_path
     assert result["decision"] == "existing_boundaries" and len(result["tasks"]) == 3
 
 
-def test_local_resource_guard_refuses_oversubscription_without_starting_container(monkeypatch):
+def resource_docker(monkeypatch, snapshots):
+    """Advance the read-only container census once per poll, without Docker."""
+    calls = []
+    state = {"poll": -1}
     def docker(args, **kwargs):
-        assert args[0] in ("ps", "inspect")
+        calls.append(args)
+        assert args[0] in ("ps", "inspect")  # No launch/stop/kill/remove operation.
         if args[0] == "ps":
-            return SimpleNamespace(stdout=b"one\ntwo\n")
-        return SimpleNamespace(stdout=json.dumps([
-            {"HostConfig": {"Memory": 1024**3, "NanoCpus": 10**9}},
-            {"HostConfig": {"Memory": 1024**3, "NanoCpus": 10**9}}]).encode())
+            assert args == ["ps", "-q", "--filter", f"label={E.SB.LABEL_KEY}"]
+            state["poll"] += 1
+            rows = snapshots[min(state["poll"], len(snapshots) - 1)]
+            return SimpleNamespace(stdout="\n".join(f"container-{i}" for i in range(len(rows))).encode())
+        rows = snapshots[min(state["poll"], len(snapshots) - 1)]
+        assert args[1:] == [f"container-{i}" for i in range(len(rows))]
+        return SimpleNamespace(stdout=json.dumps(rows).encode())
     monkeypatch.setattr(E.SB, "_docker", docker)
-    with pytest.raises(ValueError, match="3 containers"):
-        E.resource_guard(None)
+    return calls
+
+
+def limited(memory_gb=3, cpus=2):
+    return {"HostConfig": {"Memory": int(memory_gb * 1024**3), "NanoCpus": int(cpus * 1e9)}}
+
+
+class WaitClock:
+    def __init__(self):
+        self.now, self.sleeps = 0., []
+
+    def __call__(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def test_desktop_pool_counts_all_six_chaining_containers_but_has_no_count_cap(monkeypatch):
+    resource_docker(monkeypatch, [[limited() for _ in range(6)]])
+    monkeypatch.setattr(E.socket, "gethostname", lambda: "desktop")
+    result = E.resource_guard("unix:///var/run/docker.sock")
+    assert result["pool"] == "desktop" and result["container_cap"] is None
+    assert result["projected_containers"] == 8
+    assert result["projected_memory_bytes"] == (18 * 1024 + 3072 + 128) * 1024**2
+    assert result["projected_cpus"] == 14.5
+    assert result["memory_cap_bytes"] == 26 * 1024**3 and result["cpu_cap"] == 28
+    assert result["wait_polls"] == 0
+
+
+@pytest.mark.parametrize("memory_gb, cpus", [(22.875, 25.5)])
+def test_desktop_pool_accepts_exact_memory_and_cpu_limits(monkeypatch, memory_gb, cpus):
+    resource_docker(monkeypatch, [[limited(memory_gb, cpus)]])
+    result = E.resource_guard(None, local_hostname="desktop")
+    assert result["projected_memory_bytes"] == 26 * 1024**3
+    assert result["projected_cpus"] == 28
+
+
+@pytest.mark.parametrize("over_limit", [limited(22.875 + 1 / 1024**3, 1), limited(1, 25.500001)])
+def test_desktop_memory_or_cpu_overage_waits_then_recensuses(monkeypatch, over_limit):
+    calls = resource_docker(monkeypatch, [[over_limit], []])
+    clock, lines = WaitClock(), []
+    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+                              status=lines.append)
+    assert clock.sleeps == [60] and result["waited_s"] == 60 and result["wait_polls"] == 1
+    assert result["projected_containers"] == 2
+    assert lines[0].startswith("WAIT:") and not any(line.startswith("HOLD:") for line in lines)
+    assert len([call for call in calls if call[0] == "ps"]) == 2
+
+
+@pytest.mark.parametrize("rows", [[limited(1, 1), limited(1, 1)], [limited(9, 1)], [limited(1, 6)]])
+def test_laptop_retains_container_memory_and_cpu_caps_and_waits(monkeypatch, rows):
+    resource_docker(monkeypatch, [rows, []])
+    clock = WaitClock()
+    result = E.resource_guard(None, local_hostname="laptop", clock=clock, sleeper=clock.sleep,
+                              status=lambda line: None)
+    assert result["pool"] == "laptop" and result["container_cap"] == 3
+    assert result["memory_cap_bytes"] == 12 * 1024**3 and result["cpu_cap"] == 8
+    assert clock.sleeps == [60]
+
+
+def test_resource_wait_emits_one_hold_after_45_minutes_and_keeps_waiting(monkeypatch):
+    resource_docker(monkeypatch, [[limited(26)] for _ in range(47)] + [[]])
+    clock, lines, checked = WaitClock(), [], []
+    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+                              status=lines.append, check=lambda: checked.append(clock()))
+    assert clock.sleeps == [60] * 47 and result["waited_s"] == 2820
+    hold = [line for line in lines if line.startswith("HOLD:")]
+    assert len(hold) == 1 and "2700s" in hold[0] and "continuing to wait" in hold[0]
+    assert result["hold_emitted"] and checked[-1] == 2820
+    assert len(checked) == 49  # Every poll and a final cancellation check before launch.
+
+
+@pytest.mark.parametrize("field", ["Memory", "NanoCpus"])
+def test_unbounded_existing_limit_waits_instead_of_launching(monkeypatch, field):
+    row = limited()
+    row["HostConfig"][field] = 0
+    resource_docker(monkeypatch, [[row], []])
+    clock, lines = WaitClock(), []
+    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+                              status=lines.append)
+    assert clock.sleeps == [60] and result["bounded_existing_limits"]
+    assert "memory_bytes=None, cpus=None" in lines[0]
+
+
+def test_wait_checks_cancellation_without_launching_or_reassigning(monkeypatch):
+    calls = resource_docker(monkeypatch, [[limited(26)]])
+    clock = WaitClock()
+    def check():
+        if clock() >= 60:
+            raise PermissionError("STOP: requested")
+    with pytest.raises(PermissionError, match="STOP:"):
+        E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+                         status=lambda line: None, check=check)
+    assert clock.sleeps == [60] and len(calls) == 2
+
+
+def test_resource_guard_accounts_for_actual_task_size(monkeypatch):
+    resource_docker(monkeypatch, [[limited(22, 22)], []])
+    clock = WaitClock()
+    result = E.resource_guard(None, local_hostname="desktop", task_memory_mb=4096, task_cpus=6,
+                              clock=clock, sleeper=clock.sleep, status=lambda line: None)
+    assert clock.sleeps == [60]
+    assert result["projected_memory_bytes"] == 4224 * 1024**2
+    assert result["projected_cpus"] == 6.5
+
+
+def test_remote_eligibility_policy_remains_separate(monkeypatch):
+    def no_docker(*args, **kwargs):
+        raise AssertionError("Remote policy must not census the local Docker daemon")
+    monkeypatch.setattr(E.SB, "_docker", no_docker)
+    assert E.resource_guard("ssh://rig")["scope"] == "remote"
 
 
 def test_cohort_persists_missing_tasks_load_failures_and_cleanup_stop(tmp_path):

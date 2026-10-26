@@ -7,7 +7,11 @@ records immutable Docker image identity, and confirms cleanup. Originals stay re
 from __future__ import annotations
 
 import json
+import math
 import re
+import socket
+import sys
+import time
 from collections.abc import Callable
 from pathlib import Path
 
@@ -20,6 +24,7 @@ from compaction.s2.native import common as N
 CPUS = 2.0
 MEMORY_MB = 3072
 LIFETIME_S = 600
+LEGACY_RESOURCE_ERROR = "ValueError: local eligibility launch exceeds 3 containers / 12 GB / 8 CPUs"
 
 
 def audit_dependencies(sb) -> dict:
@@ -45,28 +50,79 @@ def image_identity(image: str, host: str | None, container: str | None = None) -
     return {"tag": image, "image_id": image_id, "container_image_id": container_id}
 
 
-def resource_guard(host: str | None) -> dict:
-    """Local aggregate cap includes the task and its native egress sidecar."""
+def resource_guard(host: str | None, *, task_cpus: float = CPUS,
+                   task_memory_mb: int = MEMORY_MB, local_hostname: str | None = None,
+                   clock: Callable = time.monotonic, sleeper: Callable = time.sleep,
+                   status: Callable | None = None, check: Callable | None = None,
+                   poll_s: float = 60., hold_after_s: float = 45 * 60.) -> dict:
+    """Wait for room for the task and its 128 MiB / 0.5 CPU egress sidecar.
+
+    The desktop shares a 26 GiB / 28 CPU pool with *all* emx containers,
+    including task chaining. Other local hosts keep the laptop's three-container,
+    12 GiB / 8 CPU cap. This is a read-only census, never container reclamation.
+    The sole planted launcher serializes launches; the chaining launcher owns its
+    own reservations. Remote SSH eligibility retains its existing separate policy.
+
+    ``status`` receives WAIT lines and a single HOLD: line after 45 minutes; the
+    unattended runtime supplies its durable status writer. ``check`` can raise
+    for cancellation or a deadline, including immediately before a fit returns.
+    Incomplete/unbounded limits cannot establish fit and also wait. Polling never
+    allocates a fork or changes its assignment.
+    """
+    if (not math.isfinite(task_cpus) or task_cpus <= 0 or task_memory_mb <= 0
+            or not math.isfinite(poll_s) or poll_s <= 0
+            or not math.isfinite(hold_after_s) or hold_after_s < 0):
+        raise ValueError("resource guard limits and polling intervals must be positive")
     if host and host.startswith("ssh://"):
-        return {"scope": "remote", "task_cpus": CPUS, "task_memory_mb": MEMORY_MB}
-    with SB.using_host(host):
-        running = SB._docker(["ps", "-q", "--filter", f"label={SB.LABEL_KEY}"], timeout=60)
-        names = running.stdout.decode().split()
-        metadata = []
-        if names:
-            result = SB._docker(["inspect", *names], timeout=60)
-            metadata = json.loads(result.stdout)
-    # Unbounded existing resource settings cannot establish that the cap is met.
-    configs = [row["HostConfig"] for row in metadata]
-    if any(not row.get("Memory") or not row.get("NanoCpus") for row in configs):
-        raise ValueError("existing local emx container has unbounded CPU/memory")
-    count = len(names) + 2
-    memory = sum(row["Memory"] for row in configs) + (MEMORY_MB + 128) * 1024**2
-    cpus = sum(row["NanoCpus"] / 1e9 for row in configs) + CPUS + .5
-    if count > 3 or memory > 12 * 1024**3 or cpus > 8:
-        raise ValueError("local eligibility launch exceeds 3 containers / 12 GB / 8 CPUs")
-    return {"scope": "local", "projected_containers": count,
-            "projected_memory_bytes": memory, "projected_cpus": cpus}
+        return {"scope": "remote", "task_cpus": task_cpus, "task_memory_mb": task_memory_mb}
+    hostname = local_hostname if local_hostname is not None else socket.gethostname()
+    desktop = hostname == "desktop"
+    pool = "desktop" if desktop else "laptop"
+    count_cap, memory_cap, cpu_cap = (None, 26 * 1024**3, 28.) if desktop else (3, 12 * 1024**3, 8.)
+    emit = status if status is not None else lambda line: print(line, file=sys.stderr, flush=True)
+    started, polls, held = clock(), 0, False
+    while True:
+        if check is not None:
+            check()
+        with SB.using_host(host):
+            running = SB._docker(["ps", "-q", "--filter", f"label={SB.LABEL_KEY}"], timeout=60)
+            names = running.stdout.decode().split()
+            metadata = []
+            if names:
+                result = SB._docker(["inspect", *names], timeout=60)
+                metadata = json.loads(result.stdout)
+        configs = [row.get("HostConfig", {}) for row in metadata]
+        bounded = len(configs) == len(names) and all(
+            isinstance(row.get("Memory"), (int, float)) and row["Memory"] > 0
+            and isinstance(row.get("NanoCpus"), (int, float)) and row["NanoCpus"] > 0
+            for row in configs)
+        count = len(names) + 2
+        memory = (sum(row["Memory"] for row in configs) + (task_memory_mb + 128) * 1024**2
+                  if bounded else None)
+        cpus = (sum(row["NanoCpus"] / 1e9 for row in configs) + task_cpus + .5
+                if bounded else None)
+        elapsed = max(0., clock() - started)
+        result = {"scope": "local", "pool": pool, "hostname": hostname,
+                  "projected_containers": count, "projected_memory_bytes": memory,
+                  "projected_cpus": cpus, "container_cap": count_cap,
+                  "memory_cap_bytes": memory_cap, "cpu_cap": cpu_cap,
+                  "task_memory_mb": task_memory_mb, "task_cpus": task_cpus,
+                  "sidecar_memory_mb": 128, "sidecar_cpus": .5,
+                  "bounded_existing_limits": bounded, "waited_s": elapsed,
+                  "wait_polls": polls, "hold_emitted": held}
+        if bounded and (count_cap is None or count <= count_cap) and memory <= memory_cap and cpus <= cpu_cap:
+            if check is not None:
+                check()
+            return result
+        detail = (f"{pool} resource pool; projected containers={count}, "
+                  f"memory_bytes={memory}, cpus={cpus}; limits "
+                  f"containers={count_cap}, memory_bytes={memory_cap}, cpus={cpu_cap}")
+        if not held and elapsed >= hold_after_s:
+            emit(f"HOLD: resource capacity unavailable for {elapsed:.0f}s; {detail}; continuing to wait")
+            held = True
+        emit(f"WAIT: {detail}; rechecking in {poll_s:g}s")
+        polls += 1
+        sleeper(poll_s)
 
 
 def validate_boundary(bdir: Path, out_dir: Path, *, task, go_from_jacob: bool = False,
