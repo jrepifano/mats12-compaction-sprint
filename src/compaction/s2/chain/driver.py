@@ -1139,23 +1139,24 @@ def remaining(st: dict, same_project_only: bool = False) -> dict:
 
 
 def fit_to_cap(st: dict, measured: dict, already: float,
-               same_project_only: bool = False) -> dict:
+               same_project_only: bool = False, cut: bool = True) -> dict:
     """The plan's automatic cut, on the work still to do: if spent + projection exceeds the
     cap, cut the project-switch permission cells first (their finished runs stay in the rows);
     if it still exceeds it, the caller halts."""
     rem = remaining(st, same_project_only)
     pr = projection(measured, rem["n_a"], rem["runs"], rem["n_comp"])
-    if already + pr["total"] > CC.CAP_USD:
-        cut = sorted(CC.project_switch_permission_cells() - set(st.get("cuts") or []))
-        if cut:
+    if already + pr["total"] > CC.CAP_USD and cut:
+        cells = sorted(CC.project_switch_permission_cells() - set(st.get("cuts") or []))
+        if cells:
             with _LOCK:
-                st["cuts"] = sorted(set(st.get("cuts") or []) | set(cut))
+                st["cuts"] = sorted(set(st.get("cuts") or []) | set(cells))
             status(f"projection ${already + pr['total']:.2f} > cap: cut the project-switch "
-                   f"permission cells {cut}")
+                   f"permission cells {cells}")
             rem = remaining(st, same_project_only)
             pr = projection(measured, rem["n_a"], rem["runs"], rem["n_comp"])
     pr["already"] = round(already, 2)
     pr["fits"] = already + pr["total"] <= CC.CAP_USD
+    pr["shortfall"] = round(max(0.0, already + pr["total"] - CC.CAP_USD), 2)
     save_state(st)
     return pr
 

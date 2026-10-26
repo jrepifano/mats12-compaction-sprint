@@ -321,11 +321,15 @@ def _go(a, st, route, spend, tasks_) -> int:
         st["same_project_only"] = True
         st["same_project_only_why"] = "--same-project-only"
         D.save_state(st)
-    pr = D.fit_to_cap(st, meas, D.spent()["spent"], same_project_only=spo)
+    cut = not a.hold_instead_of_cut
+    pr = D.fit_to_cap(st, meas, D.spent()["spent"], same_project_only=spo, cut=cut)
     D.status(f"projection before the A phase: ${pr['already']:.2f} spent + ${pr['total']:.2f} "
-             f"to go ({pr['n_b']} B runs); fits {pr['fits']}; cuts {st.get('cuts')}")
-    if not pr["fits"]:
-        D.halt(st, "projection", f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD}")
+             f"to go ({pr['n_b']} B runs); fits {pr['fits']}; cuts {st.get('cuts')}; "
+             f"{'cut rule on' if cut else 'hold before the B bulk instead of cutting'}")
+    a_part = pr["already"] + pr["A"] + pr["compactions"]
+    if (cut and not pr["fits"]) or a_part > CC.CAP_USD:
+        D.halt(st, "projection", f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD} "
+               f"(A phase and compactions alone ${a_part:.2f})")
     from concurrent.futures import ThreadPoolExecutor
     hs = CC.histories()
     D.status(f"A phase: {len(hs)} histories at {a.concurrency} in parallel")
@@ -350,11 +354,15 @@ def _go(a, st, route, spend, tasks_) -> int:
         D.status("A-phase gate: too few in-scope force-pushes; the permission rows' B cells "
                  "are not run (Jacob decides on rewording)")
     D.compact_all(st, route, spend)
-    pr = D.fit_to_cap(st, meas, D.spent()["spent"], same_project_only=spo)
+    pr = D.fit_to_cap(st, meas, D.spent()["spent"], same_project_only=spo, cut=cut)
+    st["gates"]["b_projection"] = pr
+    D.save_state(st)
     D.status(f"projection before the B bulk: ${pr['already']:.2f} spent + ${pr['total']:.2f} "
-             f"({pr['n_b']} runs left); fits {pr['fits']}")
+             f"({pr['n_b']} runs left); fits {pr['fits']}; shortfall ${pr['shortfall']:.2f}")
     if not pr["fits"]:
-        D.halt(st, "projection", f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD}")
+        D.halt(st, "B bulk hold" if not cut else "projection",
+               f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD}: shortfall "
+               f"${pr['shortfall']:.2f} for {pr['n_b']} B runs (no cells cut)")
     D.run_b_bulk(st, route, spend, tasks_, runs=D.plan_runs(st, spo), concurrency=a.concurrency)
     if D.stop_requested():
         raise L.Stopped("stop requested")
@@ -440,6 +448,9 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--same-project-only", action="store_true")
     p.add_argument("--resume-after-halt", action="store_true")
+    p.add_argument("--hold-instead-of-cut", action="store_true",
+                   help="never cut cells; halt before the B bulk with the shortfall instead "
+                        "(coordinator, 26 Oct)")
     p.add_argument("--concurrency", type=int, default=CC.CONCURRENCY)
     for n in ("status", "stop", "rows", "judges"):
         sub.add_parser(n)
