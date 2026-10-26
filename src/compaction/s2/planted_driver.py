@@ -582,8 +582,8 @@ class Driver:
         self._event(f"explicit post-fix Step 0 retry authorized from {work_id}; "
                     "prior receipts and fork assignments retained")
 
-    def _resume_unlaunched_screen(self, work_id):
-        """One explicit recovery of the same roster; never allocate replacement forks."""
+    def _validate_screen_resume(self, work_id):
+        """Reject invalid recovery requests without changing the saved state."""
         pending = self.state.get("pending") or {}
         from compaction.s2.planted_eligibility import LEGACY_RESOURCE_ERROR
         if (self.state.get("status") != "HALTED" or self.state.get("phase") != "screen"
@@ -595,6 +595,11 @@ class Driver:
         self._stop_check()
         kwargs = pending["kwargs"]
         self.runtime.check_unlaunched_screen(work_id=work_id, **kwargs)
+        return kwargs
+
+    def _resume_unlaunched_screen(self, work_id):
+        """One explicit recovery of the same roster; never allocate replacement forks."""
+        kwargs = self._validate_screen_resume(work_id)
         self.state["screen_resource_resume"] = {"work_id": work_id, "at": utc(self.clock()),
             "prior_reason": self.state["reason"], "same_assignments": True}
         self.state.update(status="RUNNING", reason=None)
@@ -614,6 +619,8 @@ class Driver:
                 self._retry_failed_step0(retry_step0_from)
             if self.state["status"] in TERMINAL and resume_screen_from is None:
                 return self.state
+            if resume_screen_from is not None:
+                self._validate_screen_resume(resume_screen_from)
             if install_signals:
                 for sig in (signal.SIGINT, signal.SIGTERM):
                     self._previous_handlers[sig] = signal.signal(sig, self._signal)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import socket
 import sys
@@ -16,6 +17,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from compaction.deepswe import sandbox as SB
+from compaction.s2 import hosts as H
 from compaction.s2 import interact as I
 from compaction.s2 import planted_step0 as P
 from compaction.s2.native import claude_code as CC
@@ -52,6 +54,7 @@ def image_identity(image: str, host: str | None, container: str | None = None) -
 
 def resource_guard(host: str | None, *, task_cpus: float = CPUS,
                    task_memory_mb: int = MEMORY_MB, local_hostname: str | None = None,
+                   pool: str | None = None,
                    clock: Callable = time.monotonic, sleeper: Callable = time.sleep,
                    status: Callable | None = None, check: Callable | None = None,
                    poll_s: float = 60., hold_after_s: float = 45 * 60.) -> dict:
@@ -61,7 +64,10 @@ def resource_guard(host: str | None, *, task_cpus: float = CPUS,
     including task chaining. Other local hosts keep the laptop's three-container,
     12 GiB / 8 CPU cap. This is a read-only census, never container reclamation.
     The sole planted launcher serializes launches; the chaining launcher owns its
-    own reservations. Remote SSH eligibility retains its existing separate policy.
+    own reservations. The logical ``desktop`` pool comes from an explicit caller
+    selection or a matching local endpoint in SPRINT_S2_HOSTS, never the machine
+    hostname. Unconfigured hosts default safely to laptop. Remote SSH eligibility
+    retains its existing separate policy.
 
     ``status`` receives WAIT lines and a single HOLD: line after 45 minutes; the
     unattended runtime supplies its durable status writer. ``check`` can raise
@@ -73,11 +79,21 @@ def resource_guard(host: str | None, *, task_cpus: float = CPUS,
             or not math.isfinite(poll_s) or poll_s <= 0
             or not math.isfinite(hold_after_s) or hold_after_s < 0):
         raise ValueError("resource guard limits and polling intervals must be positive")
+    if pool not in (None, "desktop", "laptop"):
+        raise ValueError("resource pool must be desktop or laptop")
     if host and host.startswith("ssh://"):
         return {"scope": "remote", "task_cpus": task_cpus, "task_memory_mb": task_memory_mb}
     hostname = local_hostname if local_hostname is not None else socket.gethostname()
-    desktop = hostname == "desktop"
-    pool = "desktop" if desktop else "laptop"
+    if pool is None:
+        target = host or os.environ.get("DOCKER_HOST") or None
+        configured = H.default_hosts()
+        # Only a local endpoint may opt into this pool. Matching every configured
+        # alias prevents a conflicting laptop alias from silently widening caps.
+        matching = [entry.name for entry in configured
+                    if (entry.docker_host or os.environ.get("DOCKER_HOST") or None) == target]
+        local = target is None or target.startswith("unix://")
+        pool = "desktop" if local and matching == ["desktop"] else "laptop"
+    desktop = pool == "desktop"
     count_cap, memory_cap, cpu_cap = (None, 26 * 1024**3, 28.) if desktop else (3, 12 * 1024**3, 8.)
     emit = status if status is not None else lambda line: print(line, file=sys.stderr, flush=True)
     started, polls, held = clock(), 0, False

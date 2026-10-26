@@ -937,6 +937,7 @@ def test_expired_short_window_does_not_hide_active_weekly_hold(tmp_path):
 
 def stopped_unlaunched_screen(runtime, monkeypatch):
     rows = prepare_screen(runtime, monkeypatch)
+    monkeypatch.setattr(runtime, "_screen_source", lambda row, *args: M.Path(row["boundary"]))
     def stop(**kwargs):
         raise ValueError('local eligibility launch exceeds 3 containers / 12 GB / 8 CPUs')
     monkeypatch.setattr(runtime, '_fork', stop)
@@ -1007,9 +1008,37 @@ def test_resource_wait_precedes_fresh_rate_guard_and_intent(runtime, monkeypatch
 
 def test_resource_wait_honors_base_deadline(runtime, monkeypatch):
     def waiting(host, **kw):
+        assert kw['pool'] == 'desktop'
         assert kw['task_cpus'] == M.N.AGENT_CPUS
         assert kw['task_memory_mb'] == M.N.AGENT_MEMORY_MB
         kw['check']()
     monkeypatch.setattr(M.E, 'resource_guard', waiting)
     with pytest.raises(RuntimeError, match='operation deadline'):
         runtime._resources(deadline=NOW)
+
+
+def test_chain_boundary_validation_resource_wait_has_stop_deadline_and_status(runtime, monkeypatch):
+    seen = []
+    runtime.io['base'] = lambda *a, **kw: {'end': 'ok', 'boundaries': [1], 'cleanup_unconfirmed': []}
+    def resources(**kw):
+        seen.append(kw)
+        raise RuntimeError('resource wait reached operation deadline')
+    monkeypatch.setattr(runtime, '_resources', resources)
+    def validate(bdir, out, **kw):
+        kw['resources'](kw['host'])
+        pytest.fail('deadline must interrupt validation wait')
+    runtime.io['validator'] = validate
+    with pytest.raises(RuntimeError, match='operation deadline'):
+        runtime._base_segment(C.task_order()[0], 'chain', deadline=NOW + 100)
+    assert seen == [{'deadline': NOW + 100}]
+
+
+def test_resume_source_failure_preserves_original_receipt(runtime, monkeypatch):
+    rows = stopped_unlaunched_screen(runtime, monkeypatch)
+    original = runtime._receipt('pilot-0005-screen').read_bytes()
+    def changed(*a):
+        raise ValueError('source changed')
+    monkeypatch.setattr(runtime, '_screen_source', changed)
+    with pytest.raises(ValueError, match='source changed'):
+        runtime.screen(work_id='pilot-0005-screen', boundaries=rows, resume_unlaunched=True)
+    assert runtime._receipt('pilot-0005-screen').read_bytes() == original

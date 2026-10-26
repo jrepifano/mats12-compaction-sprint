@@ -960,8 +960,11 @@ def test_explicit_screen_resume_keeps_pending_sequence_and_passing_kind(tmp_path
     assert result['usable_kinds'] == ['commit_convention'] and result['redesign_deferred']
     assert result['screen_resource_resume']['work_id'] == pending['work_id']
     assert [kw for phase, kw in runtime.calls if phase == 'chains'][-1]['kinds'] == ['commit_convention']
-    d.run(install_signals=False, resume_screen_from=pending['work_id'])
-    assert d.state['status'] == 'HALTED' and 'exact unlaunched' in d.state['reason']
+    saved = d.state_path.read_bytes()
+    with pytest.raises(D.DriverStop, match='exact unlaunched'):
+        d.run(install_signals=False, resume_screen_from=pending['work_id'])
+    assert d.state_path.read_bytes() == saved
+    assert d.state['status'] == 'STOPPED_BEFORE_CARDS'
 
 
 def test_resource_wait_status_writes_hold_at_column_zero(tmp_path):

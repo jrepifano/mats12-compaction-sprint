@@ -171,8 +171,10 @@ class WaitClock:
 
 def test_desktop_pool_counts_all_six_chaining_containers_but_has_no_count_cap(monkeypatch):
     resource_docker(monkeypatch, [[limited() for _ in range(6)]])
-    monkeypatch.setattr(E.socket, "gethostname", lambda: "desktop")
+    monkeypatch.setattr(E.socket, "gethostname", lambda: "cachyos-x8664")
+    monkeypatch.setenv("SPRINT_S2_HOSTS", "desktop=unix:///var/run/docker.sock,3,1")
     result = E.resource_guard("unix:///var/run/docker.sock")
+    assert result["hostname"] == "cachyos-x8664"
     assert result["pool"] == "desktop" and result["container_cap"] is None
     assert result["projected_containers"] == 8
     assert result["projected_memory_bytes"] == (18 * 1024 + 3072 + 128) * 1024**2
@@ -184,7 +186,7 @@ def test_desktop_pool_counts_all_six_chaining_containers_but_has_no_count_cap(mo
 @pytest.mark.parametrize("memory_gb, cpus", [(22.875, 25.5)])
 def test_desktop_pool_accepts_exact_memory_and_cpu_limits(monkeypatch, memory_gb, cpus):
     resource_docker(monkeypatch, [[limited(memory_gb, cpus)]])
-    result = E.resource_guard(None, local_hostname="desktop")
+    result = E.resource_guard(None, pool="desktop")
     assert result["projected_memory_bytes"] == 26 * 1024**3
     assert result["projected_cpus"] == 28
 
@@ -193,7 +195,7 @@ def test_desktop_pool_accepts_exact_memory_and_cpu_limits(monkeypatch, memory_gb
 def test_desktop_memory_or_cpu_overage_waits_then_recensuses(monkeypatch, over_limit):
     calls = resource_docker(monkeypatch, [[over_limit], []])
     clock, lines = WaitClock(), []
-    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+    result = E.resource_guard(None, pool="desktop", clock=clock, sleeper=clock.sleep,
                               status=lines.append)
     assert clock.sleeps == [60] and result["waited_s"] == 60 and result["wait_polls"] == 1
     assert result["projected_containers"] == 2
@@ -205,7 +207,7 @@ def test_desktop_memory_or_cpu_overage_waits_then_recensuses(monkeypatch, over_l
 def test_laptop_retains_container_memory_and_cpu_caps_and_waits(monkeypatch, rows):
     resource_docker(monkeypatch, [rows, []])
     clock = WaitClock()
-    result = E.resource_guard(None, local_hostname="laptop", clock=clock, sleeper=clock.sleep,
+    result = E.resource_guard(None, pool="laptop", clock=clock, sleeper=clock.sleep,
                               status=lambda line: None)
     assert result["pool"] == "laptop" and result["container_cap"] == 3
     assert result["memory_cap_bytes"] == 12 * 1024**3 and result["cpu_cap"] == 8
@@ -215,7 +217,7 @@ def test_laptop_retains_container_memory_and_cpu_caps_and_waits(monkeypatch, row
 def test_resource_wait_emits_one_hold_after_45_minutes_and_keeps_waiting(monkeypatch):
     resource_docker(monkeypatch, [[limited(26)] for _ in range(47)] + [[]])
     clock, lines, checked = WaitClock(), [], []
-    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+    result = E.resource_guard(None, pool="desktop", clock=clock, sleeper=clock.sleep,
                               status=lines.append, check=lambda: checked.append(clock()))
     assert clock.sleeps == [60] * 47 and result["waited_s"] == 2820
     hold = [line for line in lines if line.startswith("HOLD:")]
@@ -230,7 +232,7 @@ def test_unbounded_existing_limit_waits_instead_of_launching(monkeypatch, field)
     row["HostConfig"][field] = 0
     resource_docker(monkeypatch, [[row], []])
     clock, lines = WaitClock(), []
-    result = E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+    result = E.resource_guard(None, pool="desktop", clock=clock, sleeper=clock.sleep,
                               status=lines.append)
     assert clock.sleeps == [60] and result["bounded_existing_limits"]
     assert "memory_bytes=None, cpus=None" in lines[0]
@@ -243,7 +245,7 @@ def test_wait_checks_cancellation_without_launching_or_reassigning(monkeypatch):
         if clock() >= 60:
             raise PermissionError("STOP: requested")
     with pytest.raises(PermissionError, match="STOP:"):
-        E.resource_guard(None, local_hostname="desktop", clock=clock, sleeper=clock.sleep,
+        E.resource_guard(None, pool="desktop", clock=clock, sleeper=clock.sleep,
                          status=lambda line: None, check=check)
     assert clock.sleeps == [60] and len(calls) == 2
 
@@ -251,7 +253,7 @@ def test_wait_checks_cancellation_without_launching_or_reassigning(monkeypatch):
 def test_resource_guard_accounts_for_actual_task_size(monkeypatch):
     resource_docker(monkeypatch, [[limited(22, 22)], []])
     clock = WaitClock()
-    result = E.resource_guard(None, local_hostname="desktop", task_memory_mb=4096, task_cpus=6,
+    result = E.resource_guard(None, pool="desktop", task_memory_mb=4096, task_cpus=6,
                               clock=clock, sleeper=clock.sleep, status=lambda line: None)
     assert clock.sleeps == [60]
     assert result["projected_memory_bytes"] == 4224 * 1024**2
@@ -306,3 +308,45 @@ def test_dependency_check_records_exact_readonly_command():
     assert result["stderr"] == "fixture missing curl"
     assert calls == [("command -v python3 && command -v curl && command -v git",
                       {"timeout_s": 30, "workdir": "/"})]
+
+
+@pytest.mark.parametrize("hostname", ["desktop", "cachyos-x8664", "laptop"])
+def test_unconfigured_machine_defaults_to_laptop_regardless_of_hostname(monkeypatch, hostname):
+    monkeypatch.delenv("SPRINT_S2_HOSTS", raising=False)
+    monkeypatch.delenv("DOCKER_HOST", raising=False)
+    resource_docker(monkeypatch, [[]])
+    result = E.resource_guard(None, local_hostname=hostname)
+    assert result["pool"] == "laptop" and result["container_cap"] == 3
+
+
+def test_desktop_config_must_match_the_actual_docker_endpoint(monkeypatch):
+    monkeypatch.setenv("SPRINT_S2_HOSTS", "desktop=unix:///var/run/docker.sock,3,1")
+    resource_docker(monkeypatch, [[]])
+    result = E.resource_guard("unix:///another/docker.sock", local_hostname="cachyos-x8664")
+    assert result["pool"] == "laptop"
+
+
+def test_default_daemon_resolves_docker_host_for_configured_desktop(monkeypatch):
+    monkeypatch.setenv("SPRINT_S2_HOSTS", "desktop=unix:///var/run/docker.sock,3,1")
+    monkeypatch.setenv("DOCKER_HOST", "unix:///var/run/docker.sock")
+    resource_docker(monkeypatch, [[]])
+    assert E.resource_guard(None, local_hostname="cachyos-x8664")["pool"] == "desktop"
+
+
+def test_explicit_runtime_pool_uses_pinned_owner_not_os_hostname(monkeypatch):
+    monkeypatch.delenv("SPRINT_S2_HOSTS", raising=False)
+    resource_docker(monkeypatch, [[]])
+    assert E.resource_guard(None, pool="desktop", local_hostname="cachyos-x8664")["pool"] == "desktop"
+
+
+def test_conflicting_endpoint_aliases_keep_smaller_pool(monkeypatch):
+    monkeypatch.setenv("SPRINT_S2_HOSTS", "desktop=unix:///var/run/docker.sock,3,1;laptop=unix:///var/run/docker.sock,3,1")
+    resource_docker(monkeypatch, [[]])
+    assert E.resource_guard("unix:///var/run/docker.sock")["pool"] == "laptop"
+
+
+def test_invalid_pool_rejected_before_docker(monkeypatch):
+    calls = resource_docker(monkeypatch, [[]])
+    with pytest.raises(ValueError, match="resource pool"):
+        E.resource_guard(None, pool="desktpo")
+    assert calls == []

@@ -555,7 +555,7 @@ class Runtime:
             self._authorized()
             if self.clock() >= deadline:
                 raise RuntimeError("resource wait reached operation deadline")
-        return E.resource_guard(self.host, task_cpus=N.AGENT_CPUS,
+        return E.resource_guard(self.host, pool="desktop", task_cpus=N.AGENT_CPUS,
             task_memory_mb=N.AGENT_MEMORY_MB, status=self.resource_status, check=check)
 
     def check_unlaunched_screen(self, *, work_id, boundaries, single_task=False):
@@ -586,6 +586,8 @@ class Runtime:
                     or (self.root / "forks" / row["id"]).exists()
                     or (self.root / "launch-intents" / f"{row['id']}.json").exists()):
                 raise ValueError("screen fork may have launched; never replay")
+        for index, row in enumerate(boundaries):
+            self._screen_source(row, index, work_id, True)
         return roster
 
     def _screen_source(self, row, index, work_id, resume):
@@ -795,7 +797,8 @@ class Runtime:
             bdir = cfg.run_dir / f"b{k}"
             validation = (self.io.get("validator") or E.validate_boundary)(bdir,
                 self.root / "validation" / f"{identity}-b{k}", task=cfg.task,
-                go_from_jacob=True, host=self.host)
+                go_from_jacob=True, host=self.host,
+                resources=lambda host: self._resources(deadline=deadline))
             if validation.get("cleanup_unconfirmed"):
                 raise RuntimeError("eligibility cleanup unconfirmed")
             boundaries.append({"task_id": task_id, "boundary": str(bdir),
