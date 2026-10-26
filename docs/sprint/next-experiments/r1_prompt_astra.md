@@ -1,0 +1,1 @@
+You are an adviser, not a code reviewer, for this task. Read docs/sprint/next-experiments/brief.md and follow its instructions exactly. Read the files it points to (paths relative to the repo root; the brief sits in docs/sprint/next-experiments). Read-only: do not edit files.
