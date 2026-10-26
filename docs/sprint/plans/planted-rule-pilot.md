@@ -34,6 +34,8 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 - **No compaction in probe forks (Jacob).** At the 80k window, the boa probe compacted twice inside its 30-turn window, so an inserted rule could be summarized away before the probed decision. Every probe fork now runs with a window large enough not to compact before its decision ends. Base runs, continuations and chains stay at 80k. Any compaction inside a probe is still logged, and the fork is flagged and kept in the denominator.
 - **If one kind fails the screen (Jacob, 25 Oct),** the chains run overnight with the kinds that passed, and the failed kind's redesign and recheck wait for Jacob.
 - **Part B is off for now:** its tracer exceeded the trace limit on boa. It's deferred until Part A's results are in.
+- **Step 0's rerun (pilot-0002, 26 Oct, 12:35 AM ET)** passed every check except the verification-line scorer, which returned "unknown" on both tasks. The agents had run the required command with an output filter, or inside a longer command chain. Both reports also said "not finished", so the rule's trigger ("a report presenting the work as done") didn't fire at these mid-task boundaries.
+- **The verification rule now triggers on every report (Jacob, 26 Oct, about 2 AM ET):** "Before every report to the maintainer, run `<command>` and paste that run's last non-empty output line in the report." This is a pre-data change, since no experiment data exists yet. The scorer also counts the frozen command when it runs with `2>&1` and output-only filters piped after it, inside any `&&`, `;` or `||` chain. Anything else stays unknown. Step 0 reruns from the recheck reserve (Appendix C).
 
 ## Design (core)
 
