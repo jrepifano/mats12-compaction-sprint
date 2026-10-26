@@ -14,6 +14,10 @@ Two blind sections, cards in a seeded random order within each:
    messages around the one the scan cited, without marking it. Question: was the item
    superseded or no longer relevant by compaction j? yes / no / can't tell.
 
+Section 1 also holds `N_KEPT_PER_K` decoys per k: rows the judge graded kept, a seeded simple
+random sample, shuffled in so the expected answer is not always "lost" (side agent, 26 Oct). They
+are scored apart (`kept_controls`), never in the precision.
+
 Part B's consequential/not-recoverable check was left out: sections 1 and 2 already make 50
 cards, past the main session's limit of about 45.
 
@@ -49,6 +53,9 @@ from compaction import s1_data
 
 SEED = "s1-chain-label:20261025"
 N_PER_K = 15
+N_KEPT_PER_K = (
+    5  # judge-kept decoys per k, so the expected answer isn't always "lost" (side agent, 26 Oct)
+)
 KS = (2, 3)
 MSG_PREVIEW = 1_800  # characters shown before "show the whole message"
 MSG_MAX = (
@@ -103,6 +110,24 @@ def draw_lost(rows: list[dict], n: int = N_PER_K, seed: str = SEED) -> list[dict
             for r in rng.sample(cs, take.get(t, 0)):
                 out.append({"k": k, "type": t, "pool": len(cs), "taken": take[t],
                             "pi": take[t] / len(cs), "row": r})  # fmt: skip
+    return out
+
+
+def draw_kept(rows: list[dict], n: int = N_KEPT_PER_K, seed: str = SEED) -> list[dict]:
+    """Decoys: a seeded simple random sample of `n` cohort-1 rows the judge graded kept at each
+    k, shuffled in among the lost cards. They are scored apart (does Jacob also say kept?)."""
+    rng = random.Random(seed + ":kept")
+    out = []
+    for k in KS:
+        pool = sorted(
+            (r for r in rows if r["cohort"] == 1 and r["k"] == k and r["usable"]
+             and r["grade"] == "kept" and not r["lost"]),
+            key=lambda r: (r["group"], r["chain_item"]),
+        )  # fmt: skip
+        take = min(n, len(pool))
+        for r in rng.sample(pool, take):
+            out.append({"k": k, "type": r["type"], "pool": len(pool), "taken": take,
+                        "pi": take / len(pool), "row": r, "control": True})  # fmt: skip
     return out
 
 
@@ -169,6 +194,7 @@ def build_cards(lost: list[dict], nc: list[dict], chains: Mapping[str, list[str]
         )
         key[cid] = {
             "section": "lost",
+            "control": bool(d.get("control")),
             "k": r["k"],
             "type": r["type"],
             "pi": d["pi"],
@@ -290,11 +316,11 @@ def cmd_build(a) -> None:
     nc = CD._read_jsonl(CD.OUT / "not_current_sample.jsonl")
     meta = json.loads((CD.OUT / "meta.json").read_text())
     chains = {c["group"]: c["rids"] for c in meta["design"]["draw"]}
-    lost = draw_lost(rows)
+    lost = draw_lost(rows) + draw_kept(rows)
     data = build_cards(lost, nc, chains, s1_data.load)
     key = data["key"]
     # the draw tag names the card -> item mapping and the inputs (astra label-page r1 #1)
-    ident = {"key": {c: {f: v.get(f) for f in ("section", "k", "group", "chain_item", "item_id")}
+    ident = {"key": {c: {f: v.get(f) for f in ("section", "control", "k", "group", "chain_item", "item_id")}
                      for c, v in key.items()},
              "rows": CD._sha(CD.OUT / "rows.jsonl"),
              "not_current": CD._sha(CD.OUT / "not_current_sample.jsonl")}  # fmt: skip
@@ -326,6 +352,7 @@ def cmd_build(a) -> None:
                         "pool": d["pool"],
                         "taken": d["taken"],
                         "pi": d["pi"],
+                        "control": bool(d.get("control")),
                         "group": d["row"]["group"],
                         "chain_item": d["row"]["chain_item"],
                     }
@@ -376,6 +403,7 @@ def score(labels: Mapping[str, dict], key: Mapping) -> dict:
     cards, notes, invalid = key["cards"], [], []
     s1: dict[int, list[tuple[bool, float]]] = defaultdict(list)
     s2: list[bool] = []
+    controls: dict[int, list[bool]] = defaultdict(list)
     counts: Counter = Counter()
     wrong_draw = []
     for cid, lab in labels.items():
@@ -391,7 +419,9 @@ def score(labels: Mapping[str, dict], key: Mapping) -> dict:
         if note:
             notes.append({"card": cid, "section": k["section"], "choice": ch, "note": note})
         counts[(k["section"], ch)] += 1
-        if k["section"] == "lost" and ch in ("lost", "kept", "misstated"):
+        if k["section"] == "lost" and k.get("control") and ch in ("lost", "kept", "misstated"):
+            controls[k["k"]].append(ch == "kept")
+        elif k["section"] == "lost" and ch in ("lost", "kept", "misstated"):
             s1[k["k"]].append((ch != "kept", 1 / k["pi"]))
         elif k["section"] == "not_current" and ch in ("yes", "no"):
             s2.append(ch == "yes")
@@ -420,6 +450,9 @@ def score(labels: Mapping[str, dict], key: Mapping) -> dict:
             "yes": sum(s2),
             "share": sum(s2) / len(s2) if s2 else None,
             "wilson": [lo, hi],
+        },
+        "kept_controls": {
+            str(k): {"n": len(v), "jacob_kept": sum(v)} for k, v in sorted(controls.items())
         },
         "not_on_page": invalid,
         "wrong_draw": wrong_draw,

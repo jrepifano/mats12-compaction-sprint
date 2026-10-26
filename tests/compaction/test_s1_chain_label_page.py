@@ -138,3 +138,15 @@ def test_score_keeps_note_only_cards_and_drops_other_draws(tmp_path):
         json.dumps({"draw": "d1", "labels": [{"card": "a", "choice": "lost", "note": ""}]})
     )
     assert LP.read_labels(f) == {"a": {"card": "a", "choice": "lost", "note": "", "draw": "d1"}}
+
+
+def test_kept_decoys_are_judge_kept_and_scored_apart():
+    rows = _rows() + [dict(_row(k, "rule", 200 + i, lost=False), grade="kept")
+                      for k in (2, 3) for i in range(6)]  # fmt: skip
+    dec = LP.draw_kept(rows, n=5)
+    assert len(dec) == 10 and all(d["control"] and d["row"]["grade"] == "kept" for d in dec)
+    key = {"draw": "d", "cards": {"a": {"section": "lost", "control": True, "k": 2, "pi": 0.5},
+                                  "b": {"section": "lost", "control": False, "k": 2, "pi": 0.5}}}  # fmt: skip
+    s = LP.score({"a": {"choice": "kept"}, "b": {"choice": "lost"}}, key)
+    assert s["kept_controls"]["2"] == {"n": 1, "jacob_kept": 1}
+    assert s["lost_precision"]["2"]["n"] == 1
