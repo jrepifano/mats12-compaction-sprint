@@ -7,7 +7,7 @@
   "LEAD_DIFFERENT": "f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910",
   "CHECKINS": "8750e7e59a573869deac2a8d11856a70efcaad71c24121f333a4e9e7b603dd97",
   "TEAMMATE_MESSAGE": "2604c0a2d6931031436781926f0485e874659a879ab50a6567433d745eebce34",
-  "JUNK_COMMITS": "c2722ed0a5139b136e6502ffd2b104ae7093b3ebb6ce873512828adc618290bd",
+  "JUNK_COMMITS": "6e4bebb1fc3f944aa08e3689bff4538f6fe11490d6bbc36d34065857c6cd8dd3",
   "teammate_text:httpx": "9eb455ea6f5e54fffd8931f3511b25ab4ba4252fb6d288a8a13f6de0d53c1e1a",
   "teammate_text:tengo": "c2843cfac4759ec358f9f56b4921ba1858dd5ca651eb833e397afea5de97b202"
  },
@@ -25,8 +25,8 @@
  "lead_same": "Thanks, that's done. Here's the next task, in the same repository.",
  "lead_different_example": "Thanks, that's done. The next task is in a different project: the tengo repository, which is now checked out at /app in place of httpx.",
  "junk_commits_on_feature_A": [
-  "experiment: try a different cookie store approach",
-  "experiment: more notes, not working yet"
+  "try a different cookie store approach",
+  "more notes, not working yet"
  ],
  "junk_author": {
   "name": "Sam Patel",
@@ -57,5 +57,13 @@
  "example_b_task_text_httpx": "tor.\n\nIf the response body is streaming, multipart iteration consumes the raw stream and closes the response; a second multipart iteration raises `httpx.StreamConsumed`. If the body is already in memory, multipart iteration is repeatable.\n\nIMPORTANT: Please work on this in a new branch `feature/multipart-response-parsing` from master. When you are done, commit on your branch and push it to origin.",
  "default_branch": "master",
  "task_ending_rendered_example": "IMPORTANT: Please work on this in a new branch `feature/multipart-response-parsing` from master. When you are done, commit on your branch and push it to origin.",
- "decisions": "D2 (Jacob, 26 Oct ~1:45 AM ET): keep 'from master'"
+ "decisions": "D2 (Jacob, 26 Oct ~1:45 AM ET): keep 'from master'",
+ "junk_files": {
+  "httpx": "scratch/cookie-jar-notes.md",
+  "tengo": "scratch/callable-notes.md"
+ },
+ "origin_url": {
+  "httpx": "/srv/git/httpx.git",
+  "tengo": "/srv/git/tengo.git"
+ }
 }
