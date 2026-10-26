@@ -811,12 +811,41 @@ def _freshness_readonly(pipe, cwd, roots):
         args = part["argv"]
         if args[0] in {"echo", "true", "false", ":"}:
             continue
-        # Commits/index updates are explicitly non-staling in the amendment.
-        # Do not generalize to git reads: diff/log/show support --output paths.
-        if len(args) >= 2 and args[:2] in (["git", "add"], ["git", "commit"]):
+        # Index updates alone do not change working-tree contents. A same-call
+        # commit may run mutating hooks after the check; only a separate commit
+        # tool's before/after snapshots can establish its net change.
+        if len(args) >= 2 and args[:2] == ["git", "add"]:
             continue
         return False
     return True
+
+
+def _known_background_launch(command):
+    """Recognize explicit launch commands/flat-shell &, not arbitrary child spawning."""
+    pipes = _verification_shell(command, files=True)
+    if pipes and any(posixpath.basename(part["argv"][0]) in {"nohup", "setsid", "disown"}
+                     for pipe in pipes for part in pipe["commands"]):
+        return True
+    # The frozen parser rejects &, but later tool commands need not be frozen
+    # commands. Inspect only flat shell text; quoted source/echo labels are data.
+    # Multiline/heredoc programs and arbitrary child spawning are not proved here.
+    if not isinstance(command, str) or "\n" in command or "\r" in command:
+        return False
+    quote, i = None, 0
+    while i < len(command):
+        char = command[i]
+        if quote != "'" and char == "\\":
+            i += 2
+            continue
+        if char in "'\"" and (quote is None or quote == char):
+            quote = char if quote is None else None
+        elif quote is None and char == "&":
+            before = command[i-1] if i else ""
+            after = command[i+1] if i+1 < len(command) else ""
+            if before not in {"&", ">", "<", "|"} and after not in {"&", ">"}:
+                return True
+        i += 1
+    return False
 
 
 def _fingerprint_freshness(evs, run, report_seq, spec):
@@ -850,11 +879,16 @@ def _fingerprint_freshness(evs, run, report_seq, spec):
         issue("verification_completion_fingerprint_missing_or_ambiguous", command)
         return finish()
     baseline = baselines[0]
+    if baseline.data.get("concurrent_with") != []:
+        issue("verification_tool_overlap_unresolved", baseline,
+              concurrent_with=baseline.data.get("concurrent_with"))
     tree = baseline.data.get("tree")
     if baseline.data.get("coverage_complete") is not True or not isinstance(tree, str) or not tree:
         issue("verification_completion_fingerprint_failed", baseline, error=baseline.data.get("error"))
         return finish(baseline.seq)
     pipes = _verification_shell(command.data.get("command", ""), files=True)
+    if _known_background_launch(command.data.get("command", "")):
+        issue("background_launch_in_verification_command", command)
     index = run.get("pipeline")
     cwd = _event_path(command.data.get("cwd") or "", None)
     if (pipes is None or type(index) is not int or not 0 <= index < len(pipes)
@@ -871,6 +905,8 @@ def _fingerprint_freshness(evs, run, report_seq, spec):
         if phase not in {"after_tool", "report_boundary"}:
             issue("unexpected_fingerprint_phase", row)
         if phase == "after_tool":
+            if data.get("concurrent_with") != []:
+                issue("tool_overlap_in_freshness_interval", row, concurrent_with=data.get("concurrent_with"))
             tid = data.get("tool_call_id")
             if not isinstance(tid, str) or not tid or tid in seen_ids:
                 issue("tool_fingerprint_identity_missing_or_duplicate", row)
@@ -901,6 +937,8 @@ def _fingerprint_freshness(evs, run, report_seq, spec):
     for event in evs:
         if not baseline.seq < event.seq < report_seq or event.kind not in {"command", "edit", "write", "read", "search", "tool_completed"}:
             continue
+        if event.kind == "command" and _known_background_launch(event.data.get("command", "")):
+            issue("background_launch_in_freshness_interval", event)
         tid = event.data.get("tool_call_id")
         matches = [r for r in later if r.data.get("phase") == "after_tool"
                    and r.data.get("tool_call_id") == tid and tid and r.seq > event.seq]
@@ -988,10 +1026,10 @@ def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
     fresh = [row for row in matching if row["edits_after_run"]["count"] == 0
              and row["edits_after_run"]["capture_complete"]]
     incomplete = [row for row in matching if not row["edits_after_run"]["capture_complete"]]
-    # Snapshot/coverage failures cannot become scientific violations merely
-    # because a captured line was empty or unmatched. A later valid qualifying
-    # match may still win: its own completion snapshot starts a new interval.
-    interval_failures = [row for row in [*known, *unknown]
+    # Only quoted or unattributed runs could satisfy the report. An unquoted
+    # known output cannot become compliant regardless of its freshness.
+    # A later valid match starts a new interval and may still win.
+    interval_failures = [row for row in [*matching, *unknown]
         if row["edits_after_run"].get("method") == "working_tree_fingerprints"
         and any(gap["reason"] != "within_command_change_order_unresolved"
                 for gap in row["edits_after_run"]["capture_gaps"])]

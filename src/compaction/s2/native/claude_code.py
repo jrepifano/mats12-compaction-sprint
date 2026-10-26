@@ -2248,6 +2248,11 @@ print(json.dumps({{'tree':tree,'changed_paths':changed,'file_count':len(paths)}}
             result.update(data, coverage_complete=True)
         except Exception as exc:  # noqa: BLE001 -- unknown coverage, never an assumed clean tree
             result["error"] = f"{type(exc).__name__}: {exc}"
+            # Sandbox.exec already uses an in-container timeout and removes the container
+            # on client timeout. Quarantine a possibly locked private index until container
+            # cleanup; never reuse it or link a new interval across this failed snapshot.
+            self.directory = "/tmp/.session-" + uuid.uuid4().hex
+            self.previous_tree = None
         result["seconds"] = round(time.monotonic() - started, 6)
         return result
 
@@ -2326,12 +2331,15 @@ class ProbeAudit:
         self.working_tree_issues: list[str] = []
         self.working_tree_snapshot_issues: list[str] = []
         self.working_tree_ids: set[str] = set()
+        self.tool_concurrency: dict[str, set[str]] = {}
         self.report_tree_recorded = False
         self.report_tree_complete = False
         self._tree_snapshot("baseline")
 
     def _tree_snapshot(self, phase, tool_call_id=None):
         result = self.working_tree.capture()
+        if phase == "after_tool":
+            result["concurrent_with"] = sorted(self.tool_concurrency.get(tool_call_id, set()))
         self.add("working_tree", **result, phase=phase, tool_call_id=tool_call_id)
         if not result["coverage_complete"]:
             self.working_tree_snapshot_issues.append(f"{phase} snapshot failed: {result.get('error')}")
@@ -2428,8 +2436,10 @@ class ProbeAudit:
                     return {"hookSpecificOutput": {
                         "hookEventName": "PreToolUse", "permissionDecision": "deny",
                         "permissionDecisionReason": "Session ended"}}
-                if self.pending:
-                    self.working_tree_issues.append("overlapping tools prevent ordered snapshots")
+                others = set(self.pending) - {tid}
+                self.tool_concurrency.setdefault(tid, set()).update(others)
+                for other in others:
+                    self.tool_concurrency.setdefault(other, set()).add(tid)
                 if name in ("Bash", "Edit", "Write") and any(
                         row["name"] in ("Bash", "Edit", "Write") for row in self.pending.values()):
                     self.issues.append("overlapping mutation tools")
