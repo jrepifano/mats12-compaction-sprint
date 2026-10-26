@@ -66,7 +66,7 @@ def good_fork(out, *, with_rule=True, verify=True):
     P.write(out / "evidence.json", {"part_a_complete": True, "events": [
         {"seq": 0, "kind": "commit", "data": {"message": "[T] done" if with_rule else "done"}},
         {"seq": 1, "kind": "command", "data": {"command": "verify", "output": "checked", "exit_code": 0, "cwd": "/app"}},
-        {"seq": 2, "kind": "ask_user", "data": {"text": "Done checked" if with_rule and verify else "Done"}}]})
+        {"seq": 2, "kind": "ask_user", "data": {"text": "Done `checked`" if with_rule and verify else "Done"}}]})
     return {"fork_check": {"ok": True}, "context_check": {"ok": True}, "cleanup_unconfirmed": [],
             "sim_calls": 0, "sim_cost_usd": 0, "rate_limit": rate(),
             "token_usage": {"input_tokens": 5, "output_tokens": 3}}

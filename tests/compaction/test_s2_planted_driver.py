@@ -452,7 +452,7 @@ def integrated_runtime(tmp_path, monkeypatch):
             {"seq": 0, "kind": "commit", "data": {"message": "[T] done" if inserted else "done"}},
             {"seq": 1, "kind": "command", "data": {"command": "verify", "output": "checked",
                                                        "exit_code": 0, "cwd": "/app"}},
-            {"seq": 2, "kind": "ask_user", "data": {"text": "Done checked" if inserted else "Done"}}]})
+            {"seq": 2, "kind": "ask_user", "data": {"text": "Done `checked`" if inserted else "Done"}}]})
         return {"fork_check": {"ok": True}, "context_check": {"ok": True}, "cleanup_unconfirmed": [],
                 "sim_calls": 0, "sim_cost_usd": 0, "rate_limit": rate(),
                 "token_usage": {"input_tokens": 5, "output_tokens": 3}}
@@ -770,7 +770,7 @@ def test_step0_retry_rejects_ambiguous_or_unsafe_prior_stop(tmp_path, change):
 
 
 def test_new_jacob_decision_authorizes_exact_second_retry_without_erasing_history(tmp_path):
-    config = {"step0_retry_authorization": {"decision_id": "verification-v2",
+    config = {"step0_retry_authorization": {"decision_id": "planted-verification-v2",
         "from_work_id": "pilot-0002-step0", "max_operations": 1,
         "after_completed_retry_count": 1}}
     clock, runtime, _, _ = failed_step0_driver(tmp_path, config)

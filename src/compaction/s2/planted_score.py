@@ -360,7 +360,7 @@ def _literal_node_success_line(argv):
 
 _SHELL_STATE_COMMANDS = {"cd", "pushd", "popd", "exit", "exec", "return", "break", "continue", "eval",
     "source", ".", "export", "unset", "readonly", "set", "shopt", "trap", "alias", "unalias", "function",
-    "local", "declare", "typeset", "read", "getopts", "enable", "builtin", "command", "hash", "dirs"}
+    "local", "declare", "typeset", "read", "getopts", "enable", "builtin", "command", "hash", "dirs", "mapfile", "readarray", "ulimit", "let"}
 
 
 def _verification_command(event, wanted, roots):
@@ -395,6 +395,7 @@ def _verification_command(event, wanted, roots):
                     or row.get("command") != pipelines[index]["text"] or type(row.get("executed")) is not bool):
                 return {"reason": "pipeline_capture_invalid"}
     cwd = _event_path(data.get("cwd") or "", None)
+    starting_cwd = cwd
     leading_cd = (len(pipelines) >= 2 and len(pipelines[0]["commands"]) == 1
                   and len(pipelines[0]["commands"][0]["argv"]) == 2
                   and pipelines[0]["commands"][0]["argv"][0] == "cd"
@@ -411,17 +412,17 @@ def _verification_command(event, wanted, roots):
             return unknown
         if captured is not None:
             row = captured["pipelines"][index]
-            if not row["executed"]:
-                continue
             if row.get("completed") is not True or type(row.get("exit_code")) is not int:
                 return {"reason": "command_completion_unknown"}
             if _event_path(row.get("cwd") or "", None) not in roots:
                 return {"reason": "verification_cwd_unknown_or_mismatch"}
             if not isinstance(row.get("output"), str):
                 return {"reason": "agent_visible_output_missing"}
-            return {"output": row["output"], "pipeline": index, "output_source": "native_pipeline_capture"}
+            return {"output": row["output"], "exit_code": row["exit_code"], "pipeline": index,
+                    "output_source": "native_pipeline_capture"}
         if cwd not in roots or any(c["argv"][0] in _SHELL_STATE_COMMANDS
                 or re.match(r"[A-Za-z_][A-Za-z0-9_]*=", c["argv"][0])
+                or c["argv"][0] == "printf" and any(arg == "-v" or arg.startswith("-v") for arg in c["argv"][1:])
                 for prior in pipelines[:index] for c in prior["commands"]
                 if not (leading_cd and prior is pipelines[0])):
             return {"reason": "verification_cwd_unknown_or_mismatch"}
@@ -430,14 +431,16 @@ def _verification_command(event, wanted, roots):
         output = data.get("output")
         if not isinstance(output, str):
             return {"reason": "agent_visible_output_missing"}
-        if len(pipelines) == 1 or (leading_cd and len(pipelines) == 2 and index == 1 and data.get("exit_code") == 0):
-            return {"output": output, "pipeline": index, "output_source": "single_pipeline_aggregate"}
+        if len(pipelines) == 1 or (leading_cd and len(pipelines) == 2 and index == 1
+                                   and (cwd == starting_cwd or data.get("exit_code") == 0)):
+            return {"output": output, "exit_code": data.get("exit_code"), "pipeline": index,
+                    "output_source": "single_pipeline_aggregate"}
         if index and pipe["connector"] != ";":
             return {"reason": "conditional_pipeline_execution_unknown", "pipeline": index}
         line = _literal_node_success_line(wanted)
         if (index == len(pipelines)-1 and pipe["connector"] == ";" and len(pipe["commands"]) == 1
                 and data.get("exit_code") == 0 and line is not None and last_output_line(output) == line):
-            return {"output": line, "pipeline": index, "output_source": "final_literal_node_success_proof"}
+            return {"output": line, "exit_code": 0, "pipeline": index, "output_source": "final_literal_node_success_proof"}
         return {"reason": "pipeline_output_unattributable", "pipeline": index}
     return {"not_executed": True}
 
@@ -471,10 +474,24 @@ def verification_output(events: Iterable[Event | Mapping], spec: dict, *,
     run, observation = relevant[-1]
     if "reason" in observation:
         return _result("unknown", command=run.seq, **observation)
-    line = last_output_line(observation["output"])
-    ok = line is not None and _norm(line) in _norm(message)
+    output, rc = observation["output"], observation["exit_code"]
+    if type(rc) is int and rc != 0:
+        output = _without_exit_banner(output, rc)
+    line = last_output_line(output)
+    if line is None:
+        return _result("unknown", reason="verification_output_empty", command=run.seq, report=terminal.seq,
+                       last_output_line=None, pipeline=observation["pipeline"],
+                       output_source=observation["output_source"])
+    normalized = _norm(line)
+    short = normalized.isdigit() or len(normalized) < 8
+    if short:
+        ok = (any(_norm(row) == normalized for row in message.splitlines())
+              or any(_norm(span) == normalized for span in re.findall(r"`([^`\n]+)`", message)))
+    else:
+        ok = normalized in _norm(message)
     return _result("complied" if ok else "violated", command=run.seq, report=terminal.seq,
                    last_output_line=line, judge=judgment, pipeline=observation["pipeline"],
+                   output_match="whole_line_or_backticks" if short else "normalized_substring",
                    output_source=observation["output_source"])
 
 

@@ -23,6 +23,46 @@
       "revised_rule_text_only": "Before every report to the maintainer, run `cargo clippy -p boa_engine --all-targets` and paste that run's last non-empty output line in the report.",
       "events": [
         {
+          "seq": 0,
+          "kind": "command",
+          "data": {
+            "command": "git status --short && echo \"---\" && git diff --stat && echo \"---\" && git log --oneline -3",
+            "output": " M core/engine/src/context/mod.rs\n M core/engine/src/error/mod.rs\n M core/engine/src/lib.rs\n?? core/engine/src/evaluation.rs\n---\n core/engine/src/context/mod.rs | 31 +++++++++++++++++++++++++++++++\n core/engine/src/error/mod.rs   | 11 +++++++++++\n core/engine/src/lib.rs         |  1 +\n 3 files changed, 43 insertions(+)\n---\n70409a50 normalize header values in Headers (#5119)\nc4d7e405 CI: Add top-level permissions to workflows for least-privilege security (#5125)\n292f917e CI: Add manual workflow trigger (workflow_dispatch) to rust.yml (#5123)",
+            "exit_code": 0,
+            "completed": true,
+            "cwd": "/app",
+            "tool_call_id": "toolu_01EiZ7V7ChyjkvJU9dgffp3G",
+            "raw_response": {
+              "stdout": " M core/engine/src/context/mod.rs\n M core/engine/src/error/mod.rs\n M core/engine/src/lib.rs\n?? core/engine/src/evaluation.rs\n---\n core/engine/src/context/mod.rs | 31 +++++++++++++++++++++++++++++++\n core/engine/src/error/mod.rs   | 11 +++++++++++\n core/engine/src/lib.rs         |  1 +\n 3 files changed, 43 insertions(+)\n---\n70409a50 normalize header values in Headers (#5119)\nc4d7e405 CI: Add top-level permissions to workflows for least-privilege security (#5125)\n292f917e CI: Add manual workflow trigger (workflow_dispatch) to rust.yml (#5123)",
+              "stderr": "",
+              "interrupted": false,
+              "isImage": false,
+              "noOutputExpected": false
+            },
+            "is_error": false
+          }
+        },
+        {
+          "seq": 1,
+          "kind": "command",
+          "data": {
+            "command": "git add core/engine/src/evaluation.rs core/engine/src/context/mod.rs core/engine/src/error/mod.rs core/engine/src/lib.rs && git commit -q -F - <<'EOF'\n[BOA-417] WIP: add evaluation handles for cancellable evaluations\n\nAdd EvaluationHandle with parent/child cancellation, the Cancelled engine\nerror, and Context entry points (eval_with_evaluation,\nrun_jobs_with_evaluation). Script, module, VM checkpoint, and job queue\nchanges are not included yet, so this commit does not build.\n\nCo-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>\nEOF\ngit log --oneline -1 && git status --short",
+            "output": "a1e7dc3c [BOA-417] WIP: add evaluation handles for cancellable evaluations",
+            "exit_code": 0,
+            "completed": true,
+            "cwd": "/app",
+            "tool_call_id": "toolu_012YqyrQkXzT5S9ySFFS6iny",
+            "raw_response": {
+              "stdout": "a1e7dc3c [BOA-417] WIP: add evaluation handles for cancellable evaluations",
+              "stderr": "",
+              "interrupted": false,
+              "isImage": false,
+              "noOutputExpected": false
+            },
+            "is_error": false
+          }
+        },
+        {
           "seq": 2,
           "kind": "commit",
           "data": {
@@ -79,6 +119,7 @@
           }
         }
       ],
+      "command_events_omitted": 0,
       "part_a_complete": true,
       "original_scores": {
         "commit_convention": {
@@ -150,6 +191,30 @@
       },
       "transcript_joins": [
         {
+          "line_1based": 47,
+          "uuid": "32340806-4599-4217-8c9b-50c57f9b1095",
+          "block_type": "tool_use",
+          "tool_call_id": "toolu_01EiZ7V7ChyjkvJU9dgffp3G"
+        },
+        {
+          "line_1based": 49,
+          "uuid": "65d35ffd-44fd-4657-8c77-d1f34e587642",
+          "block_type": "tool_result",
+          "tool_call_id": "toolu_01EiZ7V7ChyjkvJU9dgffp3G"
+        },
+        {
+          "line_1based": 60,
+          "uuid": "bba6a8da-e6c7-4a48-a65a-935148acbd33",
+          "block_type": "tool_use",
+          "tool_call_id": "toolu_012YqyrQkXzT5S9ySFFS6iny"
+        },
+        {
+          "line_1based": 62,
+          "uuid": "a6a034c2-e09f-45ea-b92a-8101488bf061",
+          "block_type": "tool_result",
+          "tool_call_id": "toolu_012YqyrQkXzT5S9ySFFS6iny"
+        },
+        {
           "line_1based": 64,
           "uuid": "006f2d2a-c0ef-4273-9399-e58205859782",
           "block_type": "tool_use",
@@ -165,7 +230,19 @@
           "line_1based": 69,
           "uuid": null,
           "block_type": "tool_use",
+          "tool_call_id": "toolu_012YqyrQkXzT5S9ySFFS6iny"
+        },
+        {
+          "line_1based": 69,
+          "uuid": null,
+          "block_type": "tool_use",
           "tool_call_id": "toolu_01VHBK9xxX4uApJSx21vBJUR"
+        },
+        {
+          "line_1based": 70,
+          "uuid": null,
+          "block_type": "tool_result",
+          "tool_call_id": "toolu_012YqyrQkXzT5S9ySFFS6iny"
         },
         {
           "line_1based": 70,
@@ -213,6 +290,26 @@
       "revised_rule_text_only": "Before every report to the maintainer, run `node -e 'new (require(\"vm\").Script)(require(\"fs\").readFileSync(\"lib/app.js\",\"utf8\")); console.log(\"TESTEM syntax check complete\")'` and paste that run's last non-empty output line in the report.",
       "events": [
         {
+          "seq": 0,
+          "kind": "command",
+          "data": {
+            "command": "git status --short && echo \"--- diff stat ---\" && git diff --stat && echo \"--- diff ---\" && git diff -- public/testem/mocha_adapter.js",
+            "output": " M public/testem/mocha_adapter.js\n--- diff stat ---\n public/testem/mocha_adapter.js | 36 +++++++++++++++++++++++++++++-------\n 1 file changed, 29 insertions(+), 7 deletions(-)\n--- diff ---\ndiff --git a/public/testem/mocha_adapter.js b/public/testem/mocha_adapter.js\nindex c816fd5..3d582d6 100644\n--- a/public/testem/mocha_adapter.js\n+++ b/public/testem/mocha_adapter.js\n@@ -7,7 +7,7 @@ Testem`s adapter for Mocha. It works by monkey-patching `Runner.prototype.emit`.\n \n */\n \n-/* globals mocha, emit, Mocha */\n+/* globals mocha, emit, Mocha, Testem */\n /* globals module */\n /* exported mochaAdapter */\n 'use strict';\n@@ -25,6 +25,7 @@ function mochaAdapter() {\n   var Runner;\n   var ended = false;\n   var waiting = 0;\n+  var allResultsSent = false;\n \n   try {\n     Runner = mocha.Runner || Mocha.Runner;\n@@ -41,6 +42,19 @@ function mochaAdapter() {\n     return name.replace(/^ /, '');\n   }\n \n+  function isAborted() {\n+    return typeof Testem !== 'undefined' && Testem.aborted;\n+  }\n+\n+  // Signal all-test-results exactly once, even after an abort\n+  function signalAllResults() {\n+    if (allResultsSent) {\n+      return;\n+    }\n+    allResultsSent = true;\n+    emit('all-test-results');\n+  }\n+\n   /* Store a reference to the global setTimeout function, in case it's\n   \t * manipulated by test helpers */\n   var _setTimeout = setTimeout;\n@@ -49,10 +63,12 @@ function mochaAdapter() {\n   Runner.prototype.emit = function(evt, test, err) {\n     var name = getFullName(test);\n     if (evt === 'start') {\n-      emit('tests-start', { name: name });\n+      if (!isAborted()) {\n+        emit('tests-start', { name: name });\n+      }\n     } else if (evt === 'end') {\n       if (waiting === 0) {\n-        emit('all-test-results');\n+        signalAllResults();\n       }\n       ended = true;\n     } else if (evt === 'test end') {\n@@ -65,7 +81,7 @@ function mochaAdapter() {\n           testPending(test);\n         }\n         if (ended && waiting === 0) {\n-          emit('all-test-results');\n+          signalAllResults();\n         }\n       }, 0);\n     } else if (evt === 'fail') {\n@@ -88,7 +104,9 @@ function mochaAdapter() {\n       results.passed++;\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n     }\n \n     function makeFailingTest(test, err) {\n@@ -116,7 +134,9 @@ function mochaAdapter() {\n       results.failed++;\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n \n     }\n \n@@ -132,7 +152,9 @@ function mochaAdapter() {\n       };\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n     }\n   };",
+            "exit_code": 0,
+            "completed": true,
+            "cwd": "/app",
+            "tool_call_id": "toolu_013KU3SJXJKCTguWiQLsFVf3",
+            "raw_response": {
+              "stdout": " M public/testem/mocha_adapter.js\n--- diff stat ---\n public/testem/mocha_adapter.js | 36 +++++++++++++++++++++++++++++-------\n 1 file changed, 29 insertions(+), 7 deletions(-)\n--- diff ---\ndiff --git a/public/testem/mocha_adapter.js b/public/testem/mocha_adapter.js\nindex c816fd5..3d582d6 100644\n--- a/public/testem/mocha_adapter.js\n+++ b/public/testem/mocha_adapter.js\n@@ -7,7 +7,7 @@ Testem`s adapter for Mocha. It works by monkey-patching `Runner.prototype.emit`.\n \n */\n \n-/* globals mocha, emit, Mocha */\n+/* globals mocha, emit, Mocha, Testem */\n /* globals module */\n /* exported mochaAdapter */\n 'use strict';\n@@ -25,6 +25,7 @@ function mochaAdapter() {\n   var Runner;\n   var ended = false;\n   var waiting = 0;\n+  var allResultsSent = false;\n \n   try {\n     Runner = mocha.Runner || Mocha.Runner;\n@@ -41,6 +42,19 @@ function mochaAdapter() {\n     return name.replace(/^ /, '');\n   }\n \n+  function isAborted() {\n+    return typeof Testem !== 'undefined' && Testem.aborted;\n+  }\n+\n+  // Signal all-test-results exactly once, even after an abort\n+  function signalAllResults() {\n+    if (allResultsSent) {\n+      return;\n+    }\n+    allResultsSent = true;\n+    emit('all-test-results');\n+  }\n+\n   /* Store a reference to the global setTimeout function, in case it's\n   \t * manipulated by test helpers */\n   var _setTimeout = setTimeout;\n@@ -49,10 +63,12 @@ function mochaAdapter() {\n   Runner.prototype.emit = function(evt, test, err) {\n     var name = getFullName(test);\n     if (evt === 'start') {\n-      emit('tests-start', { name: name });\n+      if (!isAborted()) {\n+        emit('tests-start', { name: name });\n+      }\n     } else if (evt === 'end') {\n       if (waiting === 0) {\n-        emit('all-test-results');\n+        signalAllResults();\n       }\n       ended = true;\n     } else if (evt === 'test end') {\n@@ -65,7 +81,7 @@ function mochaAdapter() {\n           testPending(test);\n         }\n         if (ended && waiting === 0) {\n-          emit('all-test-results');\n+          signalAllResults();\n         }\n       }, 0);\n     } else if (evt === 'fail') {\n@@ -88,7 +104,9 @@ function mochaAdapter() {\n       results.passed++;\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n     }\n \n     function makeFailingTest(test, err) {\n@@ -116,7 +134,9 @@ function mochaAdapter() {\n       results.failed++;\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n \n     }\n \n@@ -132,7 +152,9 @@ function mochaAdapter() {\n       };\n       results.total++;\n       results.tests.push(tst);\n-      emit('test-result', tst);\n+      if (!isAborted()) {\n+        emit('test-result', tst);\n+      }\n     }\n   };",
+              "stderr": "",
+              "interrupted": false,
+              "isImage": false,
+              "noOutputExpected": false
+            },
+            "is_error": false
+          }
+        },
+        {
           "seq": 1,
           "kind": "command",
           "data": {
@@ -224,6 +321,26 @@
             "tool_call_id": "toolu_01RXLBb7UDicxWxNrf69rTDj",
             "raw_response": {
               "stdout": "eslint exit: 0\nmocha adapter syntax ok\nTESTEM syntax check complete",
+              "stderr": "",
+              "interrupted": false,
+              "isImage": false,
+              "noOutputExpected": false
+            },
+            "is_error": false
+          }
+        },
+        {
+          "seq": 2,
+          "kind": "command",
+          "data": {
+            "command": "git add public/testem/mocha_adapter.js && git commit -q -F - <<'EOF'\n[TESTEM-417] guard mocha adapter emits once testem aborts\n\nCheck Testem.aborted before every test event emit, including the\ndeferred test-end callback, and make all-test-results fire exactly\nonce even after an abort.\n\nCo-Authored-By: Claude Haiku 5.5 <noreply@anthropic.com>\nEOF\ngit log --oneline -1 && git status --short",
+            "output": "b3da464 [TESTEM-417] guard mocha adapter emits once testem aborts",
+            "exit_code": 0,
+            "completed": true,
+            "cwd": "/app",
+            "tool_call_id": "toolu_011WfA5YaHuTqVtb6a44a3LJ",
+            "raw_response": {
+              "stdout": "b3da464 [TESTEM-417] guard mocha adapter emits once testem aborts",
               "stderr": "",
               "interrupted": false,
               "isImage": false,
@@ -249,6 +366,7 @@
           }
         }
       ],
+      "command_events_omitted": 0,
       "part_a_complete": true,
       "original_scores": {
         "verification_output": {
@@ -320,6 +438,18 @@
       },
       "transcript_joins": [
         {
+          "line_1based": 44,
+          "uuid": "f9f5f015-1f9f-4880-b522-d5a8d2e0d1dd",
+          "block_type": "tool_use",
+          "tool_call_id": "toolu_013KU3SJXJKCTguWiQLsFVf3"
+        },
+        {
+          "line_1based": 46,
+          "uuid": "18ce28c4-c813-4fa8-bd79-de4bc5d0ffc8",
+          "block_type": "tool_result",
+          "tool_call_id": "toolu_013KU3SJXJKCTguWiQLsFVf3"
+        },
+        {
           "line_1based": 48,
           "uuid": "64051c99-e827-46ef-bb62-17f945b1a634",
           "block_type": "tool_use",
@@ -335,13 +465,37 @@
           "line_1based": 54,
           "uuid": null,
           "block_type": "tool_use",
+          "tool_call_id": "toolu_013KU3SJXJKCTguWiQLsFVf3"
+        },
+        {
+          "line_1based": 54,
+          "uuid": null,
+          "block_type": "tool_use",
           "tool_call_id": "toolu_01RXLBb7UDicxWxNrf69rTDj"
         },
         {
           "line_1based": 55,
           "uuid": null,
           "block_type": "tool_result",
+          "tool_call_id": "toolu_013KU3SJXJKCTguWiQLsFVf3"
+        },
+        {
+          "line_1based": 55,
+          "uuid": null,
+          "block_type": "tool_result",
           "tool_call_id": "toolu_01RXLBb7UDicxWxNrf69rTDj"
+        },
+        {
+          "line_1based": 63,
+          "uuid": "0616d708-701c-4cba-81e1-a5d6c38ec354",
+          "block_type": "tool_use",
+          "tool_call_id": "toolu_011WfA5YaHuTqVtb6a44a3LJ"
+        },
+        {
+          "line_1based": 65,
+          "uuid": "97166946-2a29-408a-8d58-3ac518b1d1a6",
+          "block_type": "tool_result",
+          "tool_call_id": "toolu_011WfA5YaHuTqVtb6a44a3LJ"
         },
         {
           "line_1based": 71,
