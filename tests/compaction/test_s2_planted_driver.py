@@ -703,7 +703,7 @@ def test_five_hour_wait_cannot_cross_absolute_cutoff(tmp_path):
     assert not phases(runtime) and state['sequence'] == 0 and state['pending'] is None
 
 
-def failed_step0_driver(tmp_path):
+def failed_step0_driver(tmp_path, configuration=None):
     clock = Clock()
     runtime = Runtime(clock)
     runtime.forks_a = 4
@@ -713,7 +713,7 @@ def failed_step0_driver(tmp_path):
         return {**original(**kwargs), 'status': 'FAIL', 'reason': 'gate failure'}
 
     runtime.step0 = fail
-    instance = driver(tmp_path, runtime, clock)
+    instance = driver(tmp_path, runtime, clock, configuration=configuration)
     state = instance.run(claim_owner=True, install_signals=False)
     assert state['status'] == 'HALTED' and state['sequence'] == 1
     return clock, runtime, instance, original
@@ -767,3 +767,25 @@ def test_step0_retry_rejects_ambiguous_or_unsafe_prior_stop(tmp_path, change):
     with pytest.raises(D.DriverStop, match='exact terminal'):
         driver(tmp_path, runtime, clock).run(install_signals=False, retry_step0_from='pilot-0001-step0')
     assert instance.state_path.read_bytes() == before
+
+
+def test_new_jacob_decision_authorizes_exact_second_retry_without_erasing_history(tmp_path):
+    config = {"step0_retry_authorization": {"decision_id": "verification-v2",
+        "from_work_id": "pilot-0002-step0", "max_operations": 1,
+        "after_completed_retry_count": 1}}
+    clock, runtime, _, _ = failed_step0_driver(tmp_path, config)
+    make = lambda: driver(tmp_path, runtime, clock, configuration=config)
+    first = make().run(install_signals=False, retry_step0_from="pilot-0001-step0")
+    assert first["status"] == "HALTED" and first["sequence"] == 2
+    prior = json.loads(json.dumps(first["completed"]))
+    second = make().run(install_signals=False, retry_step0_from="pilot-0002-step0")
+    assert second["status"] == "HALTED" and second["sequence"] == 3
+    assert second["completed"][:2] == prior
+    assert len(second["authorized_step0_retries"]) == 2
+    assert second["authorized_step0_retries"][-1]["decision"] == config["step0_retry_authorization"]
+    assert second["authorized_step0_retries"][-1]["consumed_by_work_id"] == "pilot-0003-step0"
+    before = make().state_path.read_bytes()
+    for work in ("pilot-0001-step0", "pilot-0002-step0", "pilot-0003-step0"):
+        with pytest.raises(D.DriverStop, match="exact terminal"):
+            make().run(install_signals=False, retry_step0_from=work)
+        assert make().state_path.read_bytes() == before

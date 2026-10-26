@@ -50,6 +50,8 @@ def build_driver(config: dict, *, runtime_factory=None, part_b_factory=None) -> 
     eligibility = json.loads(Path(config["eligibility_path"]).read_text())
     if eligibility.get("cleanup_stop") is not False:
         raise ValueError("live eligibility cleanup must be confirmed")
+    from compaction.s2.planted_config import validate_verification_freeze
+    validate_verification_freeze(config, C.REPO_ROOT)
     if runtime_factory is None:
         from compaction.s2.planted_runtime import Runtime
         runtime_factory = Runtime

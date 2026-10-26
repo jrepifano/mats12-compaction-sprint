@@ -135,6 +135,15 @@ class Driver:
         self.expected_hostname = expected_hostname
         self.clock, self.sleeper, self.identity_provider = clock, sleeper, identity_provider
         self.configuration_sha256 = hashlib.sha256(json.dumps(configuration or {}, sort_keys=True).encode()).hexdigest()
+        self.retry_authorization = (configuration or {}).get("step0_retry_authorization")
+        if self.retry_authorization is not None:
+            approval = self.retry_authorization
+            if (not isinstance(approval, dict) or not approval.get("decision_id")
+                    or not isinstance(approval.get("from_work_id"), str)
+                    or approval.get("max_operations") != 1
+                    or type(approval.get("after_completed_retry_count")) is not int
+                    or approval["after_completed_retry_count"] < 1):
+                raise ValueError("invalid explicit Step 0 retry authorization")
         self.state = None
         self._part_b = None
         self._previous_handlers = {}
@@ -523,12 +532,17 @@ class Driver:
         No assigned operation is replayed; _assign will increment sequence.
         """
         last = (self.state.get("completed") or [{}])[-1]
+        history = self.state.get("authorized_step0_retries", [])
+        approval = self.retry_authorization or {}
+        new_decision = (approval.get("from_work_id") == work_id
+                        and approval.get("after_completed_retry_count") == len(history))
         if (self.state.get("status") != "HALTED" or self.state.get("phase") != "step0"
                 or self.state.get("pending") is not None
                 or last.get("work_id") != work_id or last.get("phase") != "step0"
                 or (last.get("result") or {}).get("status") != "FAIL"
                 or self.state.get("reason") != "step0 FAIL: gate failure"
-                or self.state.get("authorized_step0_retries")):
+                or (history and not new_decision)
+                or any(row.get("from_work_id") == work_id for row in history)):
             raise DriverStop("retry requires the exact terminal failed Step 0 receipt; never replay assigned work")
         self._stop_check()
         self._metrics()
@@ -536,6 +550,7 @@ class Driver:
             "from_work_id": work_id, "authorized_at": utc(self.clock()),
             "next_sequence": self.state["sequence"] + 1,
             "prior_reason": self.state["reason"],
+            "decision": approval if new_decision else None,
             "scope": "one Step 0 operation, at most two probe/continue pairs"})
         self.state.update(status="ARMED", rate_guard_retries=0)
         self.state.pop("reason", None)

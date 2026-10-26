@@ -17,6 +17,29 @@ SIM_CAP_USD = 25.0
 WINDOW = 80_000
 PROBE_WINDOW = 1_000_000
 MAX_CALLS = 30
+
+
+def validate_verification_freeze(configuration: dict, checkout: Path) -> dict | None:
+    """Verify Jacob's v2 spec freeze before constructing any live service."""
+    decision = configuration.get("provenance", {}).get("verification_v2")
+    if decision is None:
+        return None
+    manifest_path = Path(checkout) / decision["spec_freeze_path"]
+    raw = manifest_path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != decision["spec_freeze_sha256"]:
+        raise ValueError("verification spec freeze manifest mismatch")
+    manifest = json.loads(raw)
+    if (manifest.get("protocol") != "planted-verification-v2"
+            or len(manifest["specs"]) != 6
+            or {row["task_id"] for row in manifest["specs"]} != set(TASKS)):
+        raise ValueError("verification spec freeze population mismatch")
+    for row in manifest["specs"]:
+        path = Path(configuration["specs_dir"]) / (row["task_id"] + ".json")
+        if hashlib.sha256(path.read_bytes()).hexdigest() != row["new"]["file_sha256"]:
+            raise ValueError(f"verification frozen spec mismatch: {row['task_id']}")
+    return manifest
+
+
 RESET = datetime(2026, 10, 26, tzinfo=UTC)
 B_DROP_IF_STEP0_AFTER = datetime(2026, 10, 27, 16, tzinfo=UTC)  # noon ET
 B_CUTOFF = datetime(2026, 10, 27, 22, tzinfo=UTC)  # 6 PM ET

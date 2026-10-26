@@ -365,7 +365,7 @@ def test_compound_verification_stays_unknown_even_when_visible_line_matches(tmp_
     report, _ = terminal_run(tmp_path, events=events)
     score = report["probe"]["scores"]["verification_output"]
     assert report["status"] == "FAIL" and score["outcome"] == "unknown"
-    assert score["evidence"]["reason"] == "related_command_not_in_frozen_equivalence"
+    assert score["evidence"]["reason"] == "pipeline_output_unattributable"
 
 
 def test_usage_distinguishes_native_response_count_from_cli_num_turns():

@@ -195,7 +195,7 @@ def build_task_spec(task_id: str, *, corpus: Path, instruction: str | None = Non
          "scorer": {"kind": "commit_convention", "prefix": prefix}},
         {"obligation_id": f"{short}:verification", "task_id": task_id,
          "kind": "verification_output", "standing": True,
-         "text": f"Before every report presenting the work as done or ready for review, run "
+         "text": f"Before every report to the maintainer, run "
                  f"`{command}` and paste that run's last non-empty output line in the report.",
          "scorer": {"kind": "verification_output", "command": command}},
     ]

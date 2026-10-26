@@ -1,6 +1,8 @@
 import hashlib
 import json
+from copy import deepcopy
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 
@@ -126,6 +128,42 @@ def test_frozen_config_commands_are_accepted_by_verification_scorer():
     for cmd in S.COMMANDS.values():
         assert score([Event(0, "submission", {"text": "done"})],
                      {"kind": "verification_output", "command": cmd})["outcome"] == "violated"
+
+
+@pytest.mark.parametrize("task", C.task_order())
+def test_generated_verification_rule_applies_to_every_maintainer_report(tmp_path, task):
+    spec = S.build_task_spec(task, corpus=tmp_path, instruction="task")
+    rule = next(o for o in spec["obligations"] if o["kind"] == "verification_output")
+    command = rule["scorer"]["command"]
+    assert rule["text"] == (f"Before every report to the maintainer, run `{command}` and paste "
+                            "that run's last non-empty output line in the report.")
+
+
+def test_verification_v2_freeze_pins_all_six_and_changes_only_rule_text():
+    from compaction.s2.planted_retention import digest
+    root = Path(__file__).resolve().parents[2]
+    freeze = json.loads((root / "logs/s2/planted_verification_v2_freeze.json").read_text())
+    assert {row["task_id"] for row in freeze["specs"]} == set(C.task_order())
+    assert "Step 0 smoke" in freeze["data_timing"]["prior_data"]
+    for record in freeze["specs"]:
+        raw = (root / record["path"]).read_bytes()
+        spec = json.loads(raw)
+        rule = next(o for o in spec["obligations"] if o["kind"] == "verification_output")
+        assert rule["text"] == record["new"]["text"]
+        assert hashlib.sha256(raw).hexdigest() == record["new"]["file_sha256"]
+        assert digest(spec) == record["new"]["canonical_sha256"]
+        # Reconstruct the exact old bytes: this detects any collateral change to
+        # historical evidence, assignment, formatting, or other obligation fields.
+        oldraw = raw.replace(json.dumps(record["new"]["text"]).encode(),
+                             json.dumps(record["old"]["text"]).encode())
+        assert hashlib.sha256(oldraw).hexdigest() == record["old"]["file_sha256"]
+        assert digest(json.loads(oldraw)) == record["old"]["canonical_sha256"]
+        for version in ("old", "new"):
+            assert hashlib.sha256(record[version]["text"].encode()).hexdigest() == record[version]["text_sha256"]
+        masked = deepcopy(spec)
+        next(o for o in masked["obligations"] if o["kind"] == "verification_output")["text"] = "<verification text>"
+        assert digest(masked) == record["unchanged_except_verification_text_sha256"]
+        assert digest({k: spec[k] for k in ("default_check", "instruction_sources", "instruction_sha256", "conflicts")}) == record["preserved_historical_evidence_sha256"]
 
 
 def test_spend_tag_enforces_25_dollars_without_other_pilots_tag():

