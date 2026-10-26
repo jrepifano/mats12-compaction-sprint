@@ -29,6 +29,12 @@ Draft v0.4, Sat 24 Oct 2026 (Part A signed off by Jacob 25 Oct; Part B v0.3 afte
 
 **If steps slip.** If (iii) hasn't passed by Mon 26 at noon, the chains run on 2 tasks, not 3. If only 1 task has an eligible boundary by then, the pilot runs as a **single-task case study**, labelled as such: the screen uses 2 boundaries of that task, and there is no expansion gate. The Max 7-day reset is 2026-10-26T00:00Z, which is Sun 25 at 8 PM ET; that comes from Claude Code's `rate_limit_info`, as read by the native arms. The reading was 82% at 23:28Z on 24 Oct (`cc_batch5.log`).
 
+**Decisions after Step 0's first run (26 Oct, 12:15 AM ET; mirrored to the Claude Doc at rev 9).**
+- **Step 0's first run failed both attempts** at 8:33 PM ET (00:33Z; 4 forks, $0). The failures were capture bugs, now being fixed (`logs/s2/planted_step0_fail1.md` on `sprint/planted-pilot`).
+- **No compaction in probe forks (Jacob).** At the 80k window, the boa probe compacted twice inside its 30-turn window, so an inserted rule could be summarized away before the probed decision. Every probe fork now runs with a window large enough not to compact before its decision ends. Base runs, continuations and chains stay at 80k. Any compaction inside a probe is still logged, and the fork is flagged and kept in the denominator.
+- **If one kind fails the screen (Jacob, 25 Oct),** the chains run overnight with the kinds that passed, and the failed kind's redesign and recheck wait for Jacob.
+- **Part B is off for now:** its tracer exceeded the trace limit on boa. It's deferred until Part A's results are in.
+
 ## Design (core)
 
 - **Obligations.** Each task has two core obligations, one delivered early (the first maintainer reply of `02_implement`) and one late (the first maintainer reply after compaction 1).
