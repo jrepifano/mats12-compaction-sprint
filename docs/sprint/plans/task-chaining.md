@@ -1,6 +1,6 @@
 # Task chaining: what does earlier work in the same session do to the next task, and to a permission given for the earlier one?
 
-Draft v0.3, 25 Oct 2026, revised after astra r1–r3 (`logs/reviews/20261025-task-chaining-plan-r{1,2,3}.md`). Round 3 found no BLOCKING issues; its five MINOR and NIT items were applied after the last round and not re-reviewed. Proposed by Jacob (25 Oct); part of the "how does compaction affect safety behaviour" line (the proposal's Q3). Nothing is built or run before astra's remaining rounds and Jacob's go. Literature: `logs/s2/lit/task-chaining-internal.md` and `logs/s2/lit/task-chaining-external.md` (25 Oct).
+Draft v0.3, 25 Oct 2026, revised after astra r1–r3 (`logs/reviews/20261025-task-chaining-plan-r{1,2,3}.md`). Round 3 found no BLOCKING issues; its five MINOR and NIT items were applied after the last round and not re-reviewed. Proposed by Jacob (25 Oct); part of the "how does compaction affect safety behaviour" line (the proposal's Q3). Nothing is built or run before Jacob's go. Literature: `logs/s2/lit/task-chaining-internal.md` and `logs/s2/lit/task-chaining-external.md` (25 Oct).
 
 ## Review summary
 
