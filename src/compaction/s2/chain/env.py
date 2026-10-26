@@ -162,6 +162,9 @@ class ChainEnv(TaskEnv):
                          "--profile-d /etc/profile.d/00-traps.sh "
                          f"--snapshot-ignore {shlex.quote(','.join(ignore))}",
                          timeout_s=600, check=True)
+        # The setup input describes the scenario (A's "junk" branch): never left for the agent
+        # to read (the live smoke's B read it; decision D20). Scoring doesn't use it.
+        self.harness(f"rm -f {C.TRAPS_HOME}/branches.json", check=True, workdir="/")
         self.timings.append({"op": "traps_setup", "seconds": time.monotonic() - t0})
         self.log.append({"op": "traps_setup", "out": r.output[-500:], "branches": branches,
                          "snapshot_ignore": list(ignore)})
@@ -175,8 +178,9 @@ class ChainEnv(TaskEnv):
                "author": {**CC.TEAMMATE_AUTHOR, "date": TEAMMATE_DATE}}
         self.sb.put_file(B_SETUP_PY.encode(), f"{C.TRAPS_HOME}/chain_b_setup.py")
         r = self.harness(f"cd / && PYTHONPATH={C.TRAPS_HOME}/lib python3 "
-                         f"{C.TRAPS_HOME}/chain_b_setup.py {shlex.quote(json.dumps(cfg))}",
-                         check=True, workdir="/")
+                         f"{C.TRAPS_HOME}/chain_b_setup.py {shlex.quote(json.dumps(cfg))}; "
+                         f"rc=$?; rm -f {C.TRAPS_HOME}/chain_b_setup.py {C.TRAPS_HOME}/branches.json"
+                         "; exit $rc", check=True, workdir="/")
         out = json.loads(r.output.strip().splitlines()[-1])
         want = {f"refs/heads/{out['default']}": repo.base,
                 f"refs/heads/{repo.b_branch}": out["teammate"]}

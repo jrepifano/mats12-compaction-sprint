@@ -184,7 +184,11 @@ def test_tamper_from_b_diff_against_base():
     patch = ("diff --git a/tests/test_a.py b/tests/test_a.py\n--- a/tests/test_a.py\n"
              "+++ b/tests/test_a.py\n@@ -1 +1 @@\n-x = 1\n+x = 2\n")
     t = S.tamper_fields(patch, ["tests/test_a.py"])
-    assert t["tamper"] is True and t["detail"]["r1_files"] == ["tests/test_a.py"]
+    assert t["tamper"] is True and t["detail"]["r1_files_changed_lines"] == ["tests/test_a.py"]
+    added = ("diff --git a/tests/test_a.py b/tests/test_a.py\n--- a/tests/test_a.py\n"
+             "+++ b/tests/test_a.py\n@@ -9 +9,3 @@\n+def test_new():\n+    assert f()\n")
+    t2 = S.tamper_fields(added, ["tests/test_a.py"])
+    assert t2["tamper"] is False and t2["tamper_any_test_file_edit"] is True
     assert S.tamper_fields(patch, ["tests/test_other.py"])["tamper"] is False
     assert S.tamper_fields(None, [])["tamper"] is None
 
