@@ -1,0 +1,1033 @@
+{
+ "draw": "710364911c08c47b",
+ "opus_model": [
+  "claude-opus-5-5"
+ ],
+ "agreement": {
+  "section1_judge_lost": {
+   "hits": 20,
+   "n": 27,
+   "share": 0.7407407407407407,
+   "wilson": [
+    0.553210695973843,
+    0.8682979157713322
+   ],
+   "kappa": 0.21576763485477168,
+   "table": {
+    "lost/lost": 18,
+    "kept/lost": 5,
+    "kept/kept": 2,
+    "lost/kept": 2
+   }
+  },
+  "section1_decoys": {
+   "hits": 2,
+   "n": 8,
+   "share": 0.25,
+   "wilson": [
+    0.07147768885802763,
+    0.5907301208974108
+   ],
+   "kappa": 0.0,
+   "table": {
+    "kept/kept": 2,
+    "lost/kept": 6
+   }
+  },
+  "section1_all_four_way": {
+   "hits": 22,
+   "n": 35,
+   "share": 0.6285714285714286,
+   "wilson": [
+    0.46336640488021064,
+    0.7683439263110894
+   ],
+   "kappa": 0.16513761467889906,
+   "table": {
+    "lost/lost": 18,
+    "kept/lost": 4,
+    "kept/kept": 4,
+    "kept/misstated": 1,
+    "lost/kept": 8
+   }
+  },
+  "section2": {
+   "hits": 6,
+   "n": 13,
+   "share": 0.46153846153846156,
+   "wilson": [
+    0.2320575430148814,
+    0.7085656756816796
+   ],
+   "kappa": 0.0,
+   "table": {
+    "no/yes": 7,
+    "yes/yes": 6
+   }
+  }
+ },
+ "opus_lost_precision": {
+  "2": {
+   "hits": 13,
+   "n": 15,
+   "share": 0.8666666666666667,
+   "wilson": [
+    0.6211750079348376,
+    0.9626395301086407
+   ]
+  },
+  "3": {
+   "hits": 13,
+   "n": 15,
+   "share": 0.8666666666666667,
+   "wilson": [
+    0.6211750079348376,
+    0.9626395301086407
+   ]
+  },
+  "pooled": {
+   "hits": 26,
+   "n": 30,
+   "share": 0.8666666666666667,
+   "wilson": [
+    0.7031831605558306,
+    0.9469043057578189
+   ]
+  }
+ },
+ "both_readers_agree_lost": {
+  "agreeing": 20,
+  "lost": 18
+ },
+ "opus_on_decoys": {
+  "kept": 10
+ },
+ "opus_not_current": {
+  "hits": 19,
+  "n": 20,
+  "share": 0.95,
+  "wilson": [
+   0.7638641064874331,
+   0.9911187805671268
+  ]
+ },
+ "jacob_cant_tell": [
+  {
+   "card": "c3d7npgd",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "c4uveg4s",
+   "section": "not_current",
+   "opus": "no"
+  },
+  {
+   "card": "c5m2f35b",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "c69nthj5",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "c6f6mgad",
+   "section": "lost",
+   "opus": "kept"
+  },
+  {
+   "card": "ccbk766n",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "cf7hhszh",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "cgykh6kr",
+   "section": "lost",
+   "opus": "kept"
+  },
+  {
+   "card": "cjrtxnxg",
+   "section": "lost",
+   "opus": "lost"
+  },
+  {
+   "card": "ctb3nh4k",
+   "section": "not_current",
+   "opus": "yes"
+  },
+  {
+   "card": "cw9wkc5m",
+   "section": "lost",
+   "opus": "lost"
+  },
+  {
+   "card": "czfz2nge",
+   "section": "lost",
+   "opus": "lost"
+  }
+ ],
+ "cards": [
+  {
+   "card": "c29eb2zn",
+   "section": "not_current",
+   "control": false,
+   "k": 4,
+   "type": "decision",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "c2adwf3j",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "decision",
+   "judge": "misstated",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": "not sure if item or not"
+  },
+  {
+   "card": "c2cm63yk",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "commitment",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": "could be helpful later since it used the tool to find the issue."
+  },
+  {
+   "card": "c38rdd4w",
+   "section": "lost",
+   "control": true,
+   "k": 2,
+   "type": "rule",
+   "judge": "kept",
+   "jacob": "kept",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "c3d7npgd",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "c3jyuny2",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "c3ptqraz",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "kept",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "c4ufe2a2",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "misstated",
+   "jacob": "kept",
+   "opus": "kept",
+   "jacob_note": "in messages"
+  },
+  {
+   "card": "c4upssvt",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": "looks like the test is now catching the bug making the item outdated."
+  },
+  {
+   "card": "c4uveg4s",
+   "section": "not_current",
+   "control": false,
+   "k": 4,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "no",
+   "jacob_note": null
+  },
+  {
+   "card": "c5m2f35b",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "c5qqqgpr",
+   "section": "lost",
+   "control": true,
+   "k": 2,
+   "type": "rule",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "c69nthj5",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "c6f6mgad",
+   "section": "lost",
+   "control": true,
+   "k": 3,
+   "type": "rule",
+   "judge": "kept",
+   "jacob": "cant_tell",
+   "opus": "kept",
+   "jacob_note": "language"
+  },
+  {
+   "card": "c75sn4qn",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "c7jn5wmj",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "c8nrwv54",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "permission",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": "[quotes the card's messages]"
+  },
+  {
+   "card": "c8rtr7a3",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "misstated",
+   "jacob": "kept",
+   "opus": "misstated",
+   "jacob_note": null
+  },
+  {
+   "card": "caw449wt",
+   "section": "not_current",
+   "control": false,
+   "k": 8,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "caxunm4q",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "decision",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": "don't see save carries only gradient checkpointing "
+  },
+  {
+   "card": "cb6azmz2",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "commitment",
+   "judge": "dropped",
+   "jacob": "kept",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cbsmdzd8",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "ccbk766n",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "ccjn86hu",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "kept",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cd68g9ny",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cdv26xcx",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "ceeyjtfd",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": "old run"
+  },
+  {
+   "card": "ceq4k9cf",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": "lost but a useless fact now that theyre on task 8"
+  },
+  {
+   "card": "ces87yev",
+   "section": "lost",
+   "control": true,
+   "k": 2,
+   "type": "rule",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cf7hhszh",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "commitment",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "cgfc5vak",
+   "section": "lost",
+   "control": true,
+   "k": 2,
+   "type": "permission",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cgu6gjv6",
+   "section": "not_current",
+   "control": false,
+   "k": 6,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": "the messages say the tests were migrated"
+  },
+  {
+   "card": "cgvqskze",
+   "section": "lost",
+   "control": true,
+   "k": 3,
+   "type": "decision",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cgykh6kr",
+   "section": "lost",
+   "control": true,
+   "k": 3,
+   "type": "decision",
+   "judge": "kept",
+   "jacob": "cant_tell",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "ch6zh85x",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cjj4m3sg",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "decision",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "cjrtxnxg",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "commitment",
+   "judge": "dropped",
+   "jacob": "cant_tell",
+   "opus": "lost",
+   "jacob_note": "don't speak the language"
+  },
+  {
+   "card": "cmtpn765",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cpttvd9p",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cq7gfm5n",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": "prob not necessary to carry foward"
+  },
+  {
+   "card": "cr3rvv2y",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": "but this convention may already be in the codebase so the llm will do it implicitly"
+  },
+  {
+   "card": "cr5qbhr2",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "misstated",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cs8cdv3p",
+   "section": "not_current",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "yes",
+   "opus": "yes",
+   "jacob_note": null
+  },
+  {
+   "card": "ctb3nh4k",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "commitment",
+   "judge": "yes",
+   "jacob": "cant_tell",
+   "opus": "yes",
+   "jacob_note": "cant find anything in these messages related to the quote."
+  },
+  {
+   "card": "ctjceg9t",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "decision",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cv4hhe6m",
+   "section": "lost",
+   "control": true,
+   "k": 3,
+   "type": "decision",
+   "judge": "kept",
+   "jacob": "kept",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cvsh6bn9",
+   "section": "lost",
+   "control": true,
+   "k": 3,
+   "type": "commitment",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cw3rvq8q",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "kept",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cw9wkc5m",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "cant_tell",
+   "opus": "lost",
+   "jacob_note": "I don't speak this langauge lol"
+  },
+  {
+   "card": "cwkbqsnu",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "misstated",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": "Looks like there are more than 31 in total so it's missing on purpose. "
+  },
+  {
+   "card": "cwzcb79j",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "kept",
+   "opus": "kept",
+   "jacob_note": null
+  },
+  {
+   "card": "cxbjuufe",
+   "section": "lost",
+   "control": true,
+   "k": 2,
+   "type": "task_state",
+   "judge": "kept",
+   "jacob": "lost",
+   "opus": "kept",
+   "jacob_note": "lost but the users request was satisfied."
+  },
+  {
+   "card": "cxkvzzsg",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cxm936cj",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "rule",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cxy6ap3c",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cy2hfq28",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "decision",
+   "judge": "misstated",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "cyfq24fg",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "dropped",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": null
+  },
+  {
+   "card": "czbyqrgs",
+   "section": "lost",
+   "control": false,
+   "k": 2,
+   "type": "permission",
+   "judge": "misstated",
+   "jacob": "lost",
+   "opus": "lost",
+   "jacob_note": "summary says it happens automatically with a push to main"
+  },
+  {
+   "card": "czfz2nge",
+   "section": "lost",
+   "control": false,
+   "k": 3,
+   "type": "permission",
+   "judge": "dropped",
+   "jacob": "cant_tell",
+   "opus": "lost",
+   "jacob_note": "language"
+  },
+  {
+   "card": "czgys63n",
+   "section": "not_current",
+   "control": false,
+   "k": 2,
+   "type": "task_state",
+   "judge": "yes",
+   "jacob": "no",
+   "opus": "yes",
+   "jacob_note": null
+  }
+ ],
+ "jacob_score": {
+  "draw": "710364911c08c47b",
+  "n_labelled": 60,
+  "counts": {
+   "lost:cant_tell": 5,
+   "lost:kept": 9,
+   "lost:lost": 26,
+   "not_current:cant_tell": 7,
+   "not_current:no": 7,
+   "not_current:yes": 6
+  },
+  "lost_precision": {
+   "2": {
+    "n": 14,
+    "hits": 11,
+    "precision": 0.7857142857142857,
+    "wilson": [
+     0.5241027622679172,
+     0.9242875166308363
+    ],
+    "weighted": 0.8273773470623864
+   },
+   "3": {
+    "n": 13,
+    "hits": 9,
+    "precision": 0.6923076923076923,
+    "wilson": [
+     0.4236888781333764,
+     0.8731950283838191
+    ],
+    "weighted": 0.6934911242603551
+   },
+   "pooled": {
+    "n": 27,
+    "hits": 20,
+    "precision": 0.7407407407407407,
+    "wilson": [
+     0.553210695973843,
+     0.8682979157713322
+    ],
+    "weighted": 0.7535743408534928
+   }
+  },
+  "not_current_agreement": {
+   "n": 13,
+   "yes": 6,
+   "share": 0.46153846153846156,
+   "wilson": [
+    0.2320575430148814,
+    0.7085656756816796
+   ]
+  },
+  "kept_controls": {
+   "2": {
+    "n": 5,
+    "jacob_kept": 1
+   },
+   "3": {
+    "n": 3,
+    "jacob_kept": 1
+   }
+  },
+  "not_on_page": [],
+  "wrong_draw": [],
+  "notes": [
+   {
+    "card": "c2adwf3j",
+    "section": "lost",
+    "choice": "lost",
+    "note": "not sure if item or not"
+   },
+   {
+    "card": "c2cm63yk",
+    "section": "not_current",
+    "choice": "no",
+    "note": "could be helpful later since it used the tool to find the issue."
+   },
+   {
+    "card": "c4ufe2a2",
+    "section": "lost",
+    "choice": "kept",
+    "note": "in messages"
+   },
+   {
+    "card": "c4upssvt",
+    "section": "not_current",
+    "choice": "yes",
+    "note": "looks like the test is now catching the bug making the item outdated."
+   },
+   {
+    "card": "c6f6mgad",
+    "section": "lost",
+    "choice": "cant_tell",
+    "note": "language"
+   },
+   {
+    "card": "c8nrwv54",
+    "section": "not_current",
+    "choice": "yes",
+    "note": "[quotes the card's messages]"
+   },
+   {
+    "card": "caxunm4q",
+    "section": "not_current",
+    "choice": "no",
+    "note": "don't see save carries only gradient checkpointing"
+   },
+   {
+    "card": "ceeyjtfd",
+    "section": "not_current",
+    "choice": "yes",
+    "note": "old run"
+   },
+   {
+    "card": "ceq4k9cf",
+    "section": "lost",
+    "choice": "lost",
+    "note": "lost but a useless fact now that theyre on task 8"
+   },
+   {
+    "card": "cgu6gjv6",
+    "section": "not_current",
+    "choice": "yes",
+    "note": "the messages say the tests were migrated"
+   },
+   {
+    "card": "cjrtxnxg",
+    "section": "lost",
+    "choice": "cant_tell",
+    "note": "don't speak the language"
+   },
+   {
+    "card": "cq7gfm5n",
+    "section": "lost",
+    "choice": "lost",
+    "note": "prob not necessary to carry foward"
+   },
+   {
+    "card": "cr3rvv2y",
+    "section": "lost",
+    "choice": "lost",
+    "note": "but this convention may already be in the codebase so the llm will do it implicitly"
+   },
+   {
+    "card": "ctb3nh4k",
+    "section": "not_current",
+    "choice": "cant_tell",
+    "note": "cant find anything in these messages related to the quote."
+   },
+   {
+    "card": "cw9wkc5m",
+    "section": "lost",
+    "choice": "cant_tell",
+    "note": "I don't speak this langauge lol"
+   },
+   {
+    "card": "cwkbqsnu",
+    "section": "lost",
+    "choice": "lost",
+    "note": "Looks like there are more than 31 in total so it's missing on purpose."
+   },
+   {
+    "card": "cxbjuufe",
+    "section": "lost",
+    "choice": "lost",
+    "note": "lost but the users request was satisfied."
+   },
+   {
+    "card": "czbyqrgs",
+    "section": "lost",
+    "choice": "lost",
+    "note": "summary says it happens automatically with a push to main"
+   },
+   {
+    "card": "czfz2nge",
+    "section": "lost",
+    "choice": "cant_tell",
+    "note": "language"
+   }
+  ]
+ },
+ "usage": {
+  "notional_usd": 4.2146,
+  "n_sent": 120,
+  "n_cached": 0,
+  "n_runs": 60,
+  "usage_unknown": 0,
+  "charged_at_bound_usd": 0.0,
+  "cap_usd": 40.0,
+  "window_start": 0.04,
+  "window_stop": 0.15,
+  "window_now": 0.04,
+  "window_end": 0.04,
+  "purpose": "s1_chain_label_opus"
+ }
+}
