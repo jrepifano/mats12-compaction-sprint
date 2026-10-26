@@ -730,6 +730,7 @@ def test_explicit_step0_retry_preserves_failure_and_uses_fresh_operation(tmp_pat
     assert state['completed'][1]['work_id'] == 'pilot-0002-step0'
     assert state['metrics']['forks_total'] == 4  # retry permission never resets the ledger
     assert state['authorized_step0_retries'][0]['from_work_id'] == 'pilot-0001-step0'
+    assert state['authorized_step0_retries'][0]['consumed_by_work_id'] == 'pilot-0002-step0'
 
 
 def test_second_step0_failure_halts_and_same_retry_command_cannot_loop(tmp_path):
@@ -741,6 +742,9 @@ def test_second_step0_failure_halts_and_same_retry_command_cannot_loop(tmp_path)
     before = fresh.state_path.read_bytes()
     with pytest.raises(D.DriverStop, match='exact terminal'):
         driver(tmp_path, runtime, clock).run(install_signals=False, retry_step0_from='pilot-0001-step0')
+    assert fresh.state_path.read_bytes() == before
+    with pytest.raises(D.DriverStop, match='exact terminal'):
+        driver(tmp_path, runtime, clock).run(install_signals=False, retry_step0_from='pilot-0002-step0')
     assert fresh.state_path.read_bytes() == before
     calls = len(runtime.calls)
     assert driver(tmp_path, runtime, clock).run(install_signals=False)['status'] == 'HALTED'

@@ -303,6 +303,10 @@ class Driver:
         work_id = f"pilot-{self.state['sequence']:04d}-{phase}"
         self.state["pending"] = {"work_id": work_id, "phase": phase, "kwargs": kwargs,
                                  "assigned_at": utc(self.clock())}
+        if phase == "step0":
+            for authorization in self.state.get("authorized_step0_retries", []):
+                if "consumed_by_work_id" not in authorization:
+                    authorization["consumed_by_work_id"] = work_id
         self._event(f"assigned {work_id}")
         backend = self._part_b_runtime() if phase == "part_b" else self.runtime
         if phase == "part_b":
@@ -373,6 +377,8 @@ class Driver:
         self.state["completed"].append({**pending, "result": result})
         self.state["pending"] = None
         note = f"{pending['work_id']}: {status} {result.get('reason', '')}"
+        if phase == "step0" and result.get("receipt_summary", {}).get("note"):
+            note += "; " + result["receipt_summary"]["note"]
         if phase == "screen" and self.state.get("redesign_deferred"):
             note += f"; continue with {self.state['usable_kinds']}; failed-kind redesign deferred to morning"
         if self.state["status"] in TERMINAL:
@@ -522,8 +528,7 @@ class Driver:
                 or last.get("work_id") != work_id or last.get("phase") != "step0"
                 or (last.get("result") or {}).get("status") != "FAIL"
                 or self.state.get("reason") != "step0 FAIL: gate failure"
-                or any(row.get("from_work_id") == work_id
-                       for row in self.state.get("authorized_step0_retries", []))):
+                or self.state.get("authorized_step0_retries")):
             raise DriverStop("retry requires the exact terminal failed Step 0 receipt; never replay assigned work")
         self._stop_check()
         self._metrics()

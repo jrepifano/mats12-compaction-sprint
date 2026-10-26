@@ -445,8 +445,10 @@ def request_messages(rows: list[dict], i: int) -> list[dict] | None:
                 # Parallel tool results are stored as separate user rows, but the API
                 # coalesces them into one user message. Recover only exact hash matches;
                 # never infer an unrecorded block or accept a merely similar message.
-                user_blocks = user_blocks + msg["content"]
-                candidates.append({"role": "user", "content": user_blocks})
+                user_blocks.append(msg["content"])
+                for start in range(len(user_blocks)):
+                    candidates.append({"role": "user", "content": [
+                        block for part in user_blocks[start:] for block in part]})
             else:
                 user_blocks = []
         for candidate in candidates:
@@ -668,6 +670,7 @@ def _stream_watch(state: dict, stop: threading.Event,
                         stop.set()
         elif ev.get("type") == "system" and ev.get("subtype") == "compact_boundary":
             state.setdefault("compactions", []).append(ev.get("compact_metadata"))
+            state.setdefault("compaction_events", []).append(ev)
     return on_line
 
 
@@ -840,6 +843,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                      on_boundary=on_boundary, on_cap=on_cap, before_close=drain)
     ns._cc_token = token  # for the secret scan; never written anywhere
     observed = 0
+    capture_rows: list[dict] = []
     try:
         with ns:
             ns_holder["ns"] = ns
@@ -937,6 +941,7 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                     window_info = {}
                     usage_rows = resumed_window_rows(rows, resume_rows, CONTINUE_PROMPT,
                                                       cut=cut, metadata=window_info)
+                    capture_rows = usage_rows
                     res["token_usage"] = transcript_usage(usage_rows)
                     res["token_usage_window"] = window_info
                     res["token_usage_anchored_to_prompt"] = window_info["anchored_to_prompt"]
@@ -992,6 +997,11 @@ def run_base(cfg: BaseConfig, *, sim_model, token: str,
                 res["captured_asks"] = list(ns.server.captured_asks)
                 res["sim_calls"] = len(ns.server.rows)
                 res["capture_errors"] = list(getattr(ns.server, "capture_errors", []))
+                res["capture_stop_check"] = capture_stop_check(capture_rows, res["captured_asks"])
+                if not res["capture_stop_check"]["ok"]:
+                    res["evidence_complete"] = False
+                    if not res.get("error"):
+                        res["end"], res["error"] = "capture_error", "terminal capture stop check failed"
                 if res["capture_errors"] and not res.get("error"):
                     res["end"], res["error"] = "error", "terminal capture callback failed"
             IR._dump(rd / "sim" / "ask_log.json", getattr(sim, "ask_log", []))
@@ -1315,8 +1325,11 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
     rows = read_jsonl((bdir / "native" / "transcript.jsonl").read_text(), strict=probe)
     exported = json.loads((bdir / "boundary" / "sim_state.json").read_text())
     rj = json.loads((bdir.parent / "run.json").read_text())
+    from compaction.s2.planted_config import PROBE_WINDOW
     cfg = cfg or CCConfig(model=b.get("model") or MODEL, effort=b.get("effort"),
-                          auto_compact_window=b.get("auto_compact_window"))
+                          auto_compact_window=PROBE_WINDOW if probe else b.get("auto_compact_window"))
+    if probe and cfg.auto_compact_window != PROBE_WINDOW:
+        raise ValueError(f"probe forks require auto_compact_window={PROBE_WINDOW}")
     new_sid = str(uuid.uuid4())
     si = next(i for i, r in enumerate(rows) if r.get("uuid") == b["native_summary_uuid"])
     # the kept transcript ends at the request the CLI resumed with; a fork resumes from the
@@ -1343,6 +1356,10 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
         why.setdefault("end", "run_cap")
         stop.set()
 
+    state: dict = {}
+    full_rows: list[dict] = []
+    if probe:
+        res.update(probe_compactions=[], probe_compaction_count=0, probe_compacted=False)
     ns = session_cls(ARM, b["tag"], sim_factory, host=host, setup_git=False,
                      extra_args=run_args(),
                      on_boundary=lambda p: {"ok": True, "ignored": "fork"}, on_cap=on_cap)
@@ -1409,12 +1426,17 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 cut = next((i for i, row in enumerate(full_rows)
                             if row.get("uuid") == b["native_summary_uuid"]), -1)
                 window = resumed_window_rows(full_rows, rows, prompt, cut=cut)
+                res["capture_stop_check"] = capture_stop_check(window, captured_rows)
                 evidence = audit_holder["audit"].finish(
                     window, captured_asks=captured_rows,
                     terminal_stop=bool(captured_rows) or (state.get("result") or {}).get("subtype") == "error_max_turns",
                     submission=final_text(out_dir / "stream.jsonl")
                     if (out_dir / "stream.jsonl").exists() and
                     (state.get("result") or {}).get("subtype") == "success" else "")
+                if not res["capture_stop_check"]["ok"]:
+                    evidence["part_a_complete"] = evidence["capture_complete"] = False
+                    evidence["issues"].extend(res["capture_stop_check"]["issues"])
+                    res["error"] = "terminal capture stop check failed"
                 if cut < 0:
                     evidence["capture_complete"] = False
                     evidence["part_a_complete"] = False
@@ -1455,6 +1477,16 @@ def fork(bdir: Path, out_dir: Path, *, new_summary: str, prompt: str, sim_model,
                 N._dump(out_dir / "events.json", evidence["events"])
                 N._dump(out_dir / "evidence.json", evidence)
     finally:
+        if probe:
+            diagnostics = probe_compactions(full_rows, rows, state.get("compaction_events", []), prompt)
+            res.update(diagnostics)
+            evidence_path = out_dir / "evidence.json"
+            saved = (json.loads(evidence_path.read_text()) if evidence_path.exists() else
+                     {"events": [], "capture_complete": False, "part_a_complete": False,
+                      "issues": ["probe ended before evidence assembly completed"]})
+            saved.update(diagnostics)
+            saved["capture_stop_check"] = res.get("capture_stop_check")
+            N._dump(evidence_path, saved)
         if probe and ns.server is not None:
             res["captured_asks"] = list(ns.server.captured_asks)
             res["sim_calls"] = len(ns.server.rows)
@@ -2690,3 +2722,108 @@ def resumed_window_rows(rows: list[dict], source_rows: list[dict], prompt: str, 
             row = {**row, "message": {**msg, "content": content}}
         result.append(row)
     return result
+
+
+def capture_stop_check(rows: list[dict], captured_asks) -> dict:
+    """Prove a recorded terminal ask was not followed by its reply or another assistant row."""
+    result = {"ok": True, "captured": bool(captured_asks), "issues": [], "call_ids": [],
+              "ask_row_indexes": [], "later_assistant_indexes": [], "reply_row_indexes": [],
+              "shutdown_reply_indexes": [], "later_request_indexes": []}
+    if not captured_asks:
+        return result
+    texts = {row.get("text") for row in captured_asks}
+    matches = []
+    for i, row in enumerate(rows):
+        content = (row.get("message") or {}).get("content")
+        for block in content if isinstance(content, list) else []:
+            if (isinstance(block, dict) and block.get("type") == "tool_use"
+                    and block.get("name") in (ASK_TOOL, "ask_user")
+                    and (block.get("input") or {}).get("question") in texts):
+                matches.append((i, block.get("id")))
+    if not matches:
+        result["issues"].append("captured ask_user absent from recorded window")
+    else:
+        first = matches[0][0]
+        ids = {tid for _, tid in matches if tid}
+        result["call_ids"] = sorted(ids)
+        result["ask_row_indexes"] = [i for i, _ in matches]
+        if len(ids) != 1 or len(captured_asks) != 1:
+            result["issues"].append("terminal captured ask_user identity is ambiguous")
+        for i, row in enumerate(rows):
+            if i > first and row.get("type") == "assistant":
+                result["later_assistant_indexes"].append(i)
+            if i > first and row.get("type") == "api-request":
+                result["later_request_indexes"].append(i)
+            content = (row.get("message") or {}).get("content")
+            for block in content if isinstance(content, list) else []:
+                if not (isinstance(block, dict) and block.get("type") == "tool_result"
+                        and block.get("tool_use_id") in ids):
+                    continue
+                shutdown = ('MCP server "user-server" connection closed before the tool call was answered. '
+                            'The tool may have run: check whether it did before running it again.')
+                # CLI's exact shutdown diagnostic is not an MCP reply. Keep it visible.
+                key = ("shutdown_reply_indexes" if block.get("is_error") is True
+                       and _block_text(block.get("content")) == shutdown else "reply_row_indexes")
+                result[key].append(i)
+        if result["later_assistant_indexes"]:
+            result["issues"].append("assistant execution continued after terminal ask_user capture")
+        if result["later_request_indexes"]:
+            result["issues"].append("API request recorded after terminal ask_user capture")
+        if result["reply_row_indexes"]:
+            result["issues"].append("tool result recorded after terminal ask_user capture")
+    result["ok"] = not result["issues"]
+    return result
+
+
+def probe_compactions(rows: list[dict], source_rows: list[dict], stream_events: list[dict],
+                      prompt: str) -> dict:
+    """Count new probe boundaries once across transcript and stream; inherited UUIDs excluded.
+
+    UUIDs identify actual boundaries. Older UUID-less stream records match one occurrence
+    of the same normalized metadata from the transcript, never collapse distinct UUIDs.
+    """
+    def normalize(value):
+        if isinstance(value, dict):
+            return {re.sub(r"(?<!^)(?=[A-Z])", "_", key).lower(): normalize(item)
+                    for key, item in value.items()}
+        if isinstance(value, list):
+            return [normalize(item) for item in value]
+        return value
+    def compatible(left, right):
+        if not all(key in left and key in right and left[key] == right[key]
+                   for key in ("pre_tokens", "post_tokens")):
+            return False
+        def shared_equal(a, b):
+            return all(shared_equal(a[key], b[key]) if isinstance(a[key], dict) and isinstance(b[key], dict)
+                       else a[key] == b[key] for key in a.keys() & b.keys())
+        return shared_equal(left, right)
+    source_ids = {row.get("uuid") for row in source_rows if row.get("uuid")}
+    records, by_uuid = [], {}
+    for origin, entries in (("transcript", enumerate(rows)), ("stream", enumerate(stream_events))):
+        for index, row in entries:
+            if (row.get("type") != "system" or row.get("subtype") != "compact_boundary"
+                    or row.get("uuid") in source_ids):
+                continue
+            uid = row.get("uuid")
+            metadata = normalize(row.get("compact_metadata") or row.get("compactMetadata") or {})
+            match = by_uuid.get(uid) if uid else None
+            if match is None and origin == "stream":
+                match = next((item for item in records if "stream" not in item["observed_in"]
+                              and (not uid or not item["uuid"]) and compatible(item["metadata"], metadata)), None)
+            if match is None:
+                match = {"uuid": uid, "timestamp": row.get("timestamp"),
+                         "metadata": metadata, "observed_in": [], "raw_events": [],
+                         "transcript_indexes": [], "stream_indexes": []}
+                records.append(match)
+            if uid:
+                by_uuid[uid] = match
+            if origin not in match["observed_in"]:
+                match["observed_in"].append(origin)
+            match[origin + "_indexes"].append(index)
+            match["raw_events"].append({"source": origin, "index": index,
+                "uuid": uid, "timestamp": row.get("timestamp"),
+                "metadata": row.get("compact_metadata") or row.get("compactMetadata") or {}})
+            if not match["timestamp"]:
+                match["timestamp"] = row.get("timestamp")
+    return {"probe_compactions": records, "probe_compaction_count": len(records),
+            "probe_compacted": bool(records)}

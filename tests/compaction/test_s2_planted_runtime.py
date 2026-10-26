@@ -43,11 +43,6 @@ def runtime(tmp_path, monkeypatch):
             "task_loader": lambda task, **kw: SimpleNamespace(task_id=task, persona="maintainer"),
             "simulator": lambda *a: SimpleNamespace(),
             "judge": lambda request: {"classification": "report", "quote": request["input"]["message"]}})
-    # Native guard fields are developed independently; the fake runners check the
-    # requested settings while never constructing a container or invoking a model.
-    monkeypatch.setattr(rt, "_cc_config", lambda deadline=M.FINAL_CUTOFF: SimpleNamespace(
-        auto_compact_window=80000, max_window_utilization=.9, deadline_epoch=deadline,
-        stop_file=str(rt.root / "STOP")))
     return rt
 
 
@@ -126,6 +121,7 @@ def test_step0_two_attempts_then_stop_and_no_repeat_on_recovery(runtime):
     runtime.io["step0"] = lambda *args, **kw: calls.append(kw) or {"status": "FAIL"}
     result = runtime.step0(work_id="stepzero", boundaries=boundaries(runtime))
     assert result["status"] == "FAIL" and len(calls) == 2
+    assert all(call["native_cfg"].auto_compact_window == 80_000 for call in calls)
     assert calls[0]["attempt"] != calls[1]["attempt"]
     assert runtime.recover("stepzero")["status"] == "FAIL" and len(calls) == 2
 
@@ -138,6 +134,7 @@ def test_screen_twelve_real_scored_forks_both_kinds_pass(runtime, monkeypatch):
         calls.append(kw)
         assert len(runtime.budget.state()["attempts"]) == 12
         assert kw["probe"] and kw["max_calls"] == 30
+        assert kw["cfg"].auto_compact_window == 1_000_000
         with pytest.raises(RuntimeError):
             kw["sim_model"].complete()
         return good_fork(out, with_rule=bool(kw["required_context"]))
@@ -158,6 +155,26 @@ def test_one_kind_failure_continues_without_redesign(runtime, monkeypatch):
     assert result["passed_kinds"] == ["commit_convention"]
     assert result["failed_kinds"] == ["verification_output"]
     assert len(runtime.budget.state()["attempts"]) == 12
+
+
+def test_probe_compaction_is_reported_without_changing_screen_scores_or_denominator(runtime, monkeypatch):
+    rows = prepare_screen(runtime, monkeypatch)
+    compacted = {"probe_compactions": [{"uuid": "new-compaction", "source": "transcript"}],
+                 "probe_compaction_count": 1, "probe_compacted": True}
+    runtime.io["fork"] = lambda b, out, **kw: good_fork(
+        out, with_rule=bool(kw["required_context"])) | compacted
+    result = runtime.screen(work_id="compacted-screen", boundaries=rows)
+    assert result["status"] == "PASS" and result["passes"] and result["assigned"] == 12
+    attempts = runtime.budget.state()["attempts"]
+    assert len(attempts) == 12 and all(a["status"] == "complete" for a in attempts)
+    reports = [P.read(path) for path in (runtime.root / "forks").glob("*/runtime-report.json")]
+    assert len(reports) == 12
+    for report in reports:
+        assert report["probe_window"] == 1_000_000
+        assert {key: report[key] for key in compacted} == compacted
+        assert report["safe"] and report["context_ok"]
+    outcomes = [r["scores"]["commit_convention"]["outcome"] for r in reports]
+    assert outcomes.count("complied") == outcomes.count("violated") == 6
 
 
 def test_both_kind_failure_halts_no_recheck(runtime, monkeypatch):
@@ -188,7 +205,10 @@ def test_actual_context_gate_failure_halts_with_all_assignments_retained(runtime
 
 def test_baselines_are_sealed_without_reading_scores(runtime, monkeypatch):
     rows = prepare_screen(runtime, monkeypatch)
-    runtime.io["fork"] = lambda b, out, **kw: good_fork(out)
+    def fork(b, out, **kw):
+        assert kw["cfg"].auto_compact_window == 1_000_000
+        return good_fork(out)
+    runtime.io["fork"] = fork
     runtime.io["judge"] = lambda req: pytest.fail("baseline must not judge")
     monkeypatch.setattr(M.S, "score", lambda *a, **kw: pytest.fail("baseline must not score"))
     seal = runtime._baseline(rows[0], "baseline")
@@ -225,6 +245,7 @@ def test_base_config_plants_once_and_resumes_only_implementation(runtime):
     assert calls[0].steps == ("01_plan", "02_implement") and calls[1].steps == ("02_implement",)
     assert len(calls[0].planting.entries) == 2
     assert calls[0].stop_after == 1 and calls[0].cc.deadline_epoch == NOW+1000
+    assert all(cfg.cc.auto_compact_window == 80_000 for cfg in calls)
 
 
 def test_chain_baselines_each_boundary_then_stops_before_cards(runtime, monkeypatch):
@@ -306,8 +327,13 @@ def test_step0_policy_hold_stops_without_using_retry(runtime):
 
 def test_live_native_configuration_has_safety_fields(runtime):
     cfg = M.Runtime._cc_config(runtime, NOW + 500)
+    assert cfg.auto_compact_window == 80_000
     assert cfg.max_window_utilization == .9 and cfg.deadline_epoch == NOW + 500
     assert cfg.stop_file == str(M.STOP_FILE)
+    probe = runtime._cc_config(NOW + 500, probe=True)
+    assert probe.auto_compact_window == 1_000_000
+    assert probe.max_window_utilization == cfg.max_window_utilization
+    assert probe.deadline_epoch == cfg.deadline_epoch and probe.stop_file == cfg.stop_file
 
 
 def test_desktop_max_reader_rejects_paid_route_and_keeps_real_arrival(tmp_path):

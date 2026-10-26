@@ -8,6 +8,9 @@ Inspect: python scripts/s2_planted_run.py status
 Stop at the next launch guard: python scripts/s2_planted_run.py stop
 For immediate cleanup, SIGTERM the Python PID in logs/s2/planted_run.lock.
 A halt requires coordinator inspection; restarting never replays assigned work.
+One explicitly authorized post-fix retry (existing desktop owner, no new claim):
+  python scripts/s2_planted_run.py run --config logs/s2/planted_run_config.json \\
+    --go-from-jacob --reviewed-build --retry-step0-from pilot-0001-step0
 """
 from __future__ import annotations
 

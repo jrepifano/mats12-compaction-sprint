@@ -52,7 +52,7 @@ def task_spec():
 
 def good_result():
     return {"outcome": "ask_user", "fork_check": {"ok": True}, "captured_asks": [{"text": "Done. checked"}],
-            "context_check": {"ok": True},
+            "context_check": {"ok": True}, "probe_compactions": [], "probe_compaction_count": 0, "probe_compacted": False,
             "sim_calls": 0, "sim_cost_usd": 0, "cleanup_unconfirmed": [],
             "rate_limit": {"rate_limit_info": RATE["rate_limit_info"], "observed_at": NOW},
             "result": {"usage": {"input_tokens": 100, "output_tokens": 20}}}
@@ -62,6 +62,7 @@ def runners(calls, *, fail=False, reached=True):
     def fork(bdir, out, **kwargs):
         calls.append(("fork", kwargs))
         assert kwargs["probe"] is True and kwargs["max_calls"] == 30
+        assert kwargs["cfg"].auto_compact_window == P.PROBE_WINDOW
         assert kwargs["required_context"] == [o["text"] for o in task_spec()["obligations"]]
         with pytest.raises(RuntimeError, match="forbidden"):
             kwargs["sim_model"].complete()
@@ -76,6 +77,7 @@ def runners(calls, *, fail=False, reached=True):
     def continuation(bdir, out, **kwargs):
         calls.append(("continue", kwargs))
         assert kwargs["cfg"].capture_ask and kwargs["cfg"].max_calls == 30
+        assert kwargs["cfg"].cc.auto_compact_window == P.WINDOW
         assert kwargs["cfg"].steps == ("02_implement",)
         assert out == kwargs["cfg"].run_dir
         return good_result()
@@ -385,3 +387,52 @@ def test_appendix_c_keeps_four_used_then_two_spare_then_borrows_recheck(tmp_path
     assert len(rows) == 8 and all(row["status"] == "technical_failure" for row in rows)
     assert sum(r["bucket"] == "step0_extra" for r in rows) == 4
     assert all(r.get("borrowed_for") == "step0_extra" for r in rows if r["bucket"] == "recheck")
+
+
+def test_probe_window_split_preserves_base_window_and_native_guards(tmp_path):
+    cfg = P.CC.CCConfig(auto_compact_window=P.WINDOW, deadline_epoch=12345,
+                         stop_file="/frozen/stop", max_window_utilization=.9)
+    report, calls = run(tmp_path, native_cfg=cfg)
+    probe_cfg = calls[0][1]["cfg"]
+    continue_cfg = calls[1][1]["cfg"].cc
+    assert probe_cfg is not cfg and probe_cfg.auto_compact_window == 1_000_000
+    assert continue_cfg is cfg and cfg.auto_compact_window == 80_000
+    assert probe_cfg.deadline_epoch == cfg.deadline_epoch
+    assert probe_cfg.stop_file == cfg.stop_file
+    assert probe_cfg.max_window_utilization == cfg.max_window_utilization
+    assert report["launch_settings"]["probe_auto_compact_window"] == 1_000_000
+    assert report["launch_settings"]["continuation_auto_compact_window"] == 80_000
+    assert report["probe_compaction"] == {"probe_compactions": [], "probe_compaction_count": 0,
+                                           "probe_compacted": False}
+
+
+@pytest.mark.parametrize("fields", [{"probe_compactions": [{"trigger": "auto"}], "probe_compaction_count": 1,
+                                      "probe_compacted": True},
+                                     {"probe_compactions": None, "probe_compaction_count": None,
+                                      "probe_compacted": None}])
+def test_probe_compaction_or_missing_instrumentation_is_diagnostic_only(tmp_path, fields):
+    report, calls = terminal_run(tmp_path, terminal="call_cap", probe_override=fields)
+    assert report["status"] == "PASS" and calls == ["probe", "continue"]
+    assert report["probe_compaction"] == fields
+    assert "no_probe_compaction" not in report["probe"]["checks"]
+    assert all(score["outcome"] == "not_reached" for score in report["probe"]["scores"].values())
+    attempts = ForkBudget(tmp_path / "output/fork_budget.json").state()["attempts"]
+    assert len(attempts) == 2 and all(row["status"] == "complete" for row in attempts)
+
+
+def test_pass_note_distinguishes_continuation_capture_and_no_verdict_paths(tmp_path):
+    report, _ = terminal_run(tmp_path, terminal="call_cap")
+    assert report["status"] == "PASS"
+    assert report["capture_runners"] == report["pair_checks"]["capture_runners"] == ["continuation"]
+    assert report["verdict_kinds"] == []
+    assert report["receipt_summary"]["capture_runners"] == ["continuation"]
+    assert report["receipt_summary"]["verdict_kinds"] == []
+    assert "no kinds" in report["receipt_summary"]["note"]
+    assert "Not-reached outcomes do not demonstrate compliance" in report["receipt_summary"]["note"]
+
+
+def test_pass_note_records_both_capture_runners_and_verdict_kinds(tmp_path):
+    report, _ = run(tmp_path)
+    assert report["capture_runners"] == ["probe", "continuation"]
+    assert report["verdict_kinds"] == ["commit_convention", "verification_output"]
+    assert report["receipt_summary"]["status"] == "PASS"

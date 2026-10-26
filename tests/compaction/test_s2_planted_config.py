@@ -375,3 +375,8 @@ def test_stage_setup_refuses_to_forget_legacy_pilot_charges(tmp_path):
     spend.record("judge", "old", 1, 2, note=C.SPEND_TAG, exp="SPRINT-S3-Q2", ledger=ledger)
     with pytest.raises(ValueError, match="legacy pilot charges"):
         C.initialize_pilot_budget(checkout=tmp_path)
+
+
+def test_probe_window_is_separate_from_base_compaction_window():
+    assert C.PROBE_WINDOW == 1_000_000
+    assert C.WINDOW == 80_000

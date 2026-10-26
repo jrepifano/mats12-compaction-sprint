@@ -124,6 +124,11 @@ def test_probe_fork_zero_simulator_and_terminal_capture(tmp_path, monkeypatch, e
                              "session_id": "fork-1"}))
         sb.files[f"{CC.PROJECT}/fork-1.jsonl"] = "".join(json.dumps(r) + "\n" for r in rows)
         if end == "ask_user":
+            rows += [{"type": "user", "uuid": "new-probe", "message": {"content": "Finish now."}},
+                     {"type": "assistant", "uuid": "terminal-ask", "message": {"content": [
+                         {"type": "tool_use", "id": "ask-one", "name": CC.ASK_TOOL,
+                          "input": {"question": "The work is ready for review."}}]}}]
+            sb.files[f"{CC.PROJECT}/fork-1.jsonl"] = "".join(json.dumps(r) + "\n" for r in rows)
             path.write_text("")
             with pytest.raises(N.ProbeCaptured):
                 holder["ns"].server.ask("The work is ready for review.")
@@ -140,10 +145,15 @@ def test_probe_fork_zero_simulator_and_terminal_capture(tmp_path, monkeypatch, e
                      sim_model=CC.NoSimulatorModel(), persona="persona", token="test-token",
                      host=None, session_cls=Sess, probe=True)
     assert result["outcome"] == end
+    assert result["cc"]["auto_compact_window"] == 1_000_000
     assert result["sim_calls"] == 0 and result["sim_cost_usd"] == 0
     assert result["fork_check"]["ok"]
     evidence = json.loads((tmp_path / "probe/evidence.json").read_text())
+    assert result["probe_compactions"] == evidence["probe_compactions"] == []
+    assert result["probe_compaction_count"] == evidence["probe_compaction_count"] == 0
+    assert result["probe_compacted"] is evidence["probe_compacted"] is False
     if end == "ask_user":
+        assert result["capture_stop_check"]["ok"]
         assert evidence["events"][-1]["kind"] == "ask_user"
     assert not evidence["capture_complete"]  # no tool hooks in this fake CLI
 
@@ -1245,6 +1255,15 @@ def test_continuation_capture_terminal_and_failure_evidence(tmp_path, monkeypatc
             callback(json.dumps({'type': 'system', 'subtype': 'init',
                                  'apiKeySource': 'environment' if terminal == 'cap_non_max' else 'none'}))
         server = holder['session'].server
+        if terminal in ('ask_user', 'callback_error', 'execution_error'):
+            sid = cmd.split('--resume ')[1].split()[0]
+            path = f'{CC.PROJECT}/{sid}.jsonl'
+            rows = CC.read_jsonl(sb.files[path])
+            rows += [{'type': 'user', 'uuid': 'new-continue', 'message': {'content': CC.CONTINUE_PROMPT}},
+                     {'type': 'assistant', 'uuid': 'terminal-ask', 'message': {'content': [
+                         {'type': 'tool_use', 'id': 'ask-one', 'name': CC.ASK_TOOL,
+                          'input': {'question': 'Ready for review.'}}]}}]
+            sb.files[path] = ''.join(json.dumps(row) + '\n' for row in rows)
         if terminal == 'callback_error':
             def broken_capture(row):
                 raise RuntimeError('stop callback failed')
@@ -1274,3 +1293,119 @@ def test_continuation_capture_terminal_and_failure_evidence(tmp_path, monkeypatc
         assert result.get('error') and result['end'] in ('error', 'cli_error', 'auth_error', 'infra_killed'), result
     if terminal == 'callback_error':
         assert result['capture_errors']
+
+
+def test_probe_window_defaults_to_million_and_refuses_explicit_base_window(tmp_path):
+    from compaction.s2.planted_config import PROBE_WINDOW
+    bdir = _fork_dir(tmp_path / 'source')
+    with pytest.raises(ValueError, match='1000000'):
+        CC.fork(bdir, tmp_path / 'bad', new_summary='summary', prompt='Finish now.',
+                sim_model=None, token='fake', persona={}, probe=True,
+                cfg=CC.CCConfig(auto_compact_window=80_000))
+    assert PROBE_WINDOW == 1_000_000
+    assert not (tmp_path / 'bad').exists()
+    assert CC.BaseConfig(task=Task(), root=tmp_path,
+                         cc=CC.CCConfig(auto_compact_window=80_000)).cc.auto_compact_window == 80_000
+
+
+def test_probe_compactions_exclude_inherited_and_deduplicate_both_recordings():
+    old = {'type': 'system', 'subtype': 'compact_boundary', 'uuid': 'inherited',
+           'compactMetadata': {'preTokens': 80000}}
+    first = {'type': 'system', 'subtype': 'compact_boundary', 'uuid': 'new-one',
+             'compactMetadata': {'preTokens': 900000, 'postTokens': 10000}}
+    second = {'type': 'system', 'subtype': 'compact_boundary', 'uuid': 'new-two',
+              'compactMetadata': {'preTokens': 900000, 'postTokens': 10000}}
+    rows = [old, {'type': 'user', 'uuid': 'probe', 'message': {'content': 'Finish.'}}, first, second]
+    event = lambda uid: {'type': 'system', 'subtype': 'compact_boundary', 'uuid': uid,
+                         'compact_metadata': {'pre_tokens': 900000, 'post_tokens': 10000}}
+    stream = [old, event('new-one'), event('new-one'), event('new-two'), event('stream-only')]
+    result = CC.probe_compactions(rows, [old], stream, 'Finish.')
+    assert result['probe_compacted'] and result['probe_compaction_count'] == 3
+    assert [row['uuid'] for row in result['probe_compactions']] == ['new-one', 'new-two', 'stream-only']
+    assert result['probe_compactions'][0]['observed_in'] == ['transcript', 'stream']
+    assert CC.probe_compactions(rows[:2], [old], [old], 'Finish.') == {
+        'probe_compactions': [], 'probe_compaction_count': 0, 'probe_compacted': False}
+    anonymous = {key: value for key, value in event('new-one').items() if key != 'uuid'}
+    assert CC.probe_compactions(rows, [old], [anonymous, anonymous], 'Finish.')['probe_compaction_count'] == 2
+
+
+@pytest.mark.parametrize('later', ['none', 'reply', 'assistant', 'both', 'missing'])
+def test_terminal_capture_rejects_reply_or_assistant_continuation(later):
+    rows = [{'type': 'assistant', 'uuid': 'ask-row', 'message': {'content': [
+        {'type': 'tool_use', 'name': CC.ASK_TOOL, 'id': 'ask-one', 'input': {'question': 'Done.'}}]}}]
+    if later in ('reply', 'both'):
+        rows.append({'type': 'user', 'message': {'content': [
+            {'type': 'tool_result', 'tool_use_id': 'ask-one', 'content': ''}]}})
+    if later in ('assistant', 'both'):
+        rows.append({'type': 'assistant', 'message': {'content': [{'type': 'text', 'text': 'Continuing.'}]}})
+    if later == 'missing':
+        rows = []
+    check = CC.capture_stop_check(rows, [{'text': 'Done.'}])
+    assert check['ok'] is (later == 'none')
+    assert bool(check['issues']) is (later != 'none')
+
+
+def test_parallel_user_blob_recovery_tries_every_contiguous_start():
+    rows, _, expected, _, _ = _parallel_result_resume_fixture(4)
+    at = next(i for i, row in enumerate(rows) if row.get('uuid') == 'old-u-0')
+    rows.insert(at, {'type': 'user', 'message': {'content': [{'type': 'text', 'text': 'Leading reminder.'}]}})
+    assert CC.request_messages(rows, len(rows) - 1) == expected
+
+
+def test_probe_startup_compaction_before_prompt_and_full_raw_metadata():
+    boundary = {'type': 'system', 'subtype': 'compact_boundary', 'uuid': 'new-startup',
+                'timestamp': '2026-10-26T00:00:00Z',
+                'compactMetadata': {'preTokens': 900000, 'postTokens': 10000,
+                                    'trigger': 'auto', 'preservedSegment': {'tailUuid': 'tail'}}}
+    stream = {'type': 'system', 'subtype': 'compact_boundary',
+              'compact_metadata': {'pre_tokens': 900000, 'post_tokens': 10000, 'trigger': 'auto'}}
+    prompt = {'type': 'user', 'message': {'content': 'Finish.'}}
+    report = CC.probe_compactions([boundary, prompt], [], [stream], 'Finish.')
+    assert report['probe_compaction_count'] == 1
+    event = report['probe_compactions'][0]
+    assert event['timestamp'] == boundary['timestamp']
+    assert event['raw_events'][0]['metadata'] == boundary['compactMetadata']
+    assert event['observed_in'] == ['transcript', 'stream']
+
+
+def test_raw_fail1_boa_probe_compaction_replay():
+    root = Path('data/raw/sprint/s2/planted/fail1_snapshot/step0/pilot-0001-step0-1/probe')
+    if not (root / 'transcript.jsonl').exists():
+        pytest.skip('raw fail1 archive is not installed')
+    read = lambda name: CC.read_jsonl((root / name).read_text(), strict=True)
+    report = CC.probe_compactions(read('transcript.jsonl'), read('input_transcript.jsonl'),
+                                 read('stream.jsonl'), json.loads((root / 'fork.json').read_text())['prompt'])
+    assert report['probe_compaction_count'] == 2
+    assert [event['uuid'] for event in report['probe_compactions']] == [
+        '78b661cc-738e-472e-9916-b92e7a82aadb', 'd479d18b-2a75-4af4-a6fb-ab7bc1f29af3']
+    assert all(event['observed_in'] == ['transcript', 'stream'] for event in report['probe_compactions'])
+
+
+def test_raw_fail1_testem_continuation_records_shutdown_diagnostic():
+    root = Path('data/raw/sprint/s2/planted/fail1_snapshot/step0/pilot-0001-step0-2')
+    continued = root / 'step0-continue-testem-bail-on-test-failure-cc-haiku-a1'
+    if not (continued / 'result.json').exists():
+        pytest.skip('raw fail1 archive is not installed')
+    rows = CC.read_jsonl((continued / 'steps/02_implement/transcript.jsonl').read_text(), strict=True)
+    source = CC.read_jsonl((root / 'source/testem-bail-on-test-failure-cc-haiku-a3/b1/native/transcript.jsonl').read_text(), strict=True)
+    window = CC.resumed_window_rows(rows, source, CC.CONTINUE_PROMPT)
+    check = CC.capture_stop_check(window, json.loads((continued / 'result.json').read_text())['captured_asks'])
+    assert check['ok'], check
+    assert check['call_ids'] == ['toolu_018ro54dmWxKthZRgpwbZsE7']
+    assert check['shutdown_reply_indexes'] and not check['later_assistant_indexes']
+    assert not check['reply_row_indexes']
+
+
+@pytest.mark.parametrize('kind', ['shutdown', 'success', 'arbitrary_error', 'request'])
+def test_terminal_capture_exact_shutdown_exception(kind):
+    text = ('MCP server "user-server" connection closed before the tool call was answered. '
+            'The tool may have run: check whether it did before running it again.')
+    rows = [{'type': 'assistant', 'message': {'content': [
+        {'type': 'tool_use', 'name': CC.ASK_TOOL, 'id': 'ask', 'input': {'question': 'Done.'}}]}}]
+    rows.append({'type': 'user', 'message': {'content': [
+        {'type': 'tool_result', 'tool_use_id': 'ask', 'is_error': kind != 'success',
+         'content': 'Arbitrary error' if kind == 'arbitrary_error' else text}]}})
+    if kind == 'request':
+        rows.append({'type': 'api-request'})
+    check = CC.capture_stop_check(rows, [{'text': 'Done.'}])
+    assert check['ok'] is (kind == 'shutdown')

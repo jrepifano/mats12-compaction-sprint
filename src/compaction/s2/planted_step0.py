@@ -11,6 +11,7 @@ import json
 import shutil
 import time
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,7 @@ from compaction.s2.native import claude_code as CC
 from compaction.s2.native import common as N
 from compaction.s2.planted_config import (
     MAX_CALLS,
+    PROBE_WINDOW,
     WINDOW,
     ActiveCohort,
     ForkBudget,
@@ -271,7 +273,7 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
               "continuation_stop_contract": "ask_user, submission, or 30-turn call cap; the pair must demonstrate ask capture once",
               "score_contract": "Both core scorers return complied, violated, or not_reached on complete evidence; "
                                 "not_reached is censoring, never compliance. Unknown/technical_failure fail the gate.",
-              "probe": None, "continuation": None}
+              "probe": None, "continuation": None, "verdict_kinds": [], "capture_runners": []}
     write(out / "report.json", report)
     try:
         bdir = snapshot_boundary(Path(bdir), out / "source", expected_hashes=census["hashes"])
@@ -286,15 +288,19 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
         if cfg.auto_compact_window != WINDOW:
             raise ValueError("Step 0 requires the frozen 80k window")
         report["source_settings"] = {k: b.get(k) for k in ("model", "effort", "auto_compact_window")}
+        probe_cfg = replace(cfg, auto_compact_window=PROBE_WINDOW)
         report["launch_settings"] = {"model": cfg.model, "effort": cfg.effort,
-                                     "auto_compact_window": WINDOW, "cpus": N.AGENT_CPUS,
-                                     "memory_mb": N.AGENT_MEMORY_MB}
+                                     "probe_auto_compact_window": probe_cfg.auto_compact_window,
+                                     "continuation_auto_compact_window": cfg.auto_compact_window,
+                                     "cpus": N.AGENT_CPUS, "memory_mb": N.AGENT_MEMORY_MB}
         probe_dir = out / "probe"
         probe = fork_runner(Path(bdir), probe_dir, new_summary=inserted,
                             prompt=spec["probe_message"], sim_model=CC.NoSimulatorModel(), token=token,
-                            persona=task.persona, cfg=cfg, host=host, probe=True, max_calls=MAX_CALLS,
+                            persona=task.persona, cfg=probe_cfg, host=host, probe=True, max_calls=MAX_CALLS,
                             required_context=[o["text"] for o in spec["obligations"]])
         report["probe"] = {"result": probe}
+        report["probe_compaction"] = {key: probe.get(key) for key in
+            ("probe_compactions", "probe_compaction_count", "probe_compacted")}
         write(out / "report.json", report)
         usage = _usage(probe, rate_snapshot, clock())
         evidence = read(probe_dir / "evidence.json")
@@ -328,6 +334,8 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                       core_scored=set(scores) == {"commit_convention", "verification_output"}
                       and all(s["outcome"] in {"complied", "violated", "not_reached"} for s in scores.values()),
                       usage=usage["known"])
+        report["verdict_kinds"] = sorted(kind for kind, score in scores.items()
+                                          if score["outcome"] in {"complied", "violated"})
         report["probe"] = {"result": probe, "usage": usage, "scores": scores, "checks": checks,
                            "observations": _observations(probe, scores)}
         budget.finish(ids[0], "complete" if all(checks.values()) else "technical_failure", artifact=str(probe_dir))
@@ -352,11 +360,13 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                                   "observations": _observations(cont)}
         budget.finish(ids[1], "complete" if all(cont_checks.values()) else "technical_failure",
                       artifact=str(cont_cfg.run_dir))
-        report["pair_checks"] = {"ask_capture_demonstrated": any(
-            _terminal(result) == "ask_user" and bool(result.get("captured_asks"))
-            and _checks(result)["zero_simulator"] for result in (probe, cont))}
+        report["capture_runners"] = [name for name, result in (("probe", probe), ("continuation", cont))
+            if _terminal(result) == "ask_user" and bool(result.get("captured_asks"))
+            and _checks(result)["zero_simulator"]]
+        report["pair_checks"] = {"ask_capture_demonstrated": bool(report["capture_runners"]),
+                                 "capture_runners": report["capture_runners"]}
         report["status"] = ("PASS" if all(checks.values()) and all(cont_checks.values())
-                            and all(report["pair_checks"].values()) else "FAIL")
+                            and report["pair_checks"]["ask_capture_demonstrated"] else "FAIL")
     except Exception as exc:  # noqa: BLE001 -- durable failure report, attempts never refunded
         report["error"] = f"{type(exc).__name__}: {exc}"
         for row in budget.state()["attempts"]:
@@ -364,5 +374,12 @@ def run_step0(bdir: Path, output_root: Path, *, spec: dict, task, token: str,
                 budget.finish(row["attempt_id"], "technical_failure", artifact=str(out))
     finally:
         report["ended_at"] = clock()
+        report["receipt_summary"] = {"status": report["status"], "capture_runners": report["capture_runners"],
+            "verdict_kinds": report["verdict_kinds"],
+            "note": f"{report['status']}: ask capture demonstrated by "
+                    f"{', '.join(report['capture_runners']) or 'no runner'}; "
+                    f"complied/violated verdict paths exercised for "
+                    f"{', '.join(report['verdict_kinds']) or 'no kinds'}. "
+                    "Not-reached outcomes do not demonstrate compliance."}
         write(out / "report.json", report)
     return report

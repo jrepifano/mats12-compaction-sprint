@@ -15,6 +15,7 @@ SPEND_TAG = "s2-planted-rule-part-a"
 SPEND_STAGE = "SPRINT-S2-PLANTED"
 SIM_CAP_USD = 25.0
 WINDOW = 80_000
+PROBE_WINDOW = 1_000_000
 MAX_CALLS = 30
 RESET = datetime(2026, 10, 26, tzinfo=UTC)
 B_DROP_IF_STEP0_AFTER = datetime(2026, 10, 27, 16, tzinfo=UTC)  # noon ET

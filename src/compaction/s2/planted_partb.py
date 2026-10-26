@@ -34,6 +34,7 @@ from compaction.s2.native import common as N
 from compaction.s2.planted_config import (
     B_CUTOFF,
     B_DROP_IF_STEP0_AFTER,
+    PROBE_WINDOW,
     RESET,
     ForkBudget,
     PartBAllowance,
@@ -776,7 +777,7 @@ class PartBRuntime:
                 task = self.task_loader(row['task'])
                 fork = self.fork_runner(Path(spec.boundary_id), attempt / 'fork',
                     new_summary=arm['summary'], prompt=spec.probe_message, sim_model=CC.NoSimulatorModel(),
-                    token=self.token, persona=task.persona, cfg=CC.CCConfig(auto_compact_window=80_000, max_window_utilization=min(.90, P.read(self.allowance.path)['start_utilization'] + .02),
+                    token=self.token, persona=task.persona, cfg=CC.CCConfig(auto_compact_window=PROBE_WINDOW, max_window_utilization=min(.90, P.read(self.allowance.path)['start_utilization'] + .02),
                         deadline_epoch=B_CUTOFF.timestamp(),
                         stop_file=str(C.REPO_ROOT / 'logs/s2/planted_run.stop')),
                     host=LOCAL_DOCKER, probe=True, max_calls=30,

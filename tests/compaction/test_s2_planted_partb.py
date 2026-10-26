@@ -94,6 +94,10 @@ def runtime(tmp_path, monkeypatch, *, now=NOW, incomplete=False, utilization=.1)
 
 def test_exact_thirty_forks_contexts_budgets_blind_judges_and_no_replay(tmp_path, monkeypatch):
     obj, calls, judgments, rates, guards, _ = runtime(tmp_path, monkeypatch)
+    original = obj.fork_runner
+    compacted = {'probe_compactions': [{'uuid': 'new-compaction'}],
+                 'probe_compaction_count': 1, 'probe_compacted': True}
+    obj.fork_runner = lambda *args, **kwargs: original(*args, **kwargs) | compacted
     result = obj.run_part_b('partb', TASKS, guards.append)
     assert result['status'] == 'PASS', result
     assert len(calls) == 30 and len(result['assignments']) == 30
@@ -101,11 +105,15 @@ def test_exact_thirty_forks_contexts_budgets_blind_judges_and_no_replay(tmp_path
     assert all('events' not in request and 'outcome' not in request for request in judgments)
     assert sum(rates) == 36  # post-action readings forced for each fork and judgment
     assert len(obj.budget.state()['attempts']) == 30
-    for _, _, args in calls:
+    for _, fork_dir, args in calls:
         assert args['probe'] and args['max_calls'] == 30 and args['host'] == B.LOCAL_DOCKER
         assert args['cfg'].max_window_utilization == pytest.approx(.12) and args['cfg'].deadline_epoch == B.B_CUTOFF.timestamp()
+        assert args['cfg'].auto_compact_window == 1_000_000
         assert args['mutation_paths'] == ['/app/caller.py', '/app/helper.py']
         assert args['sim_model'].__class__.__name__ == 'NoSimulatorModel'
+        recorded = P.read(fork_dir.parent / 'result.json')
+        assert {key: recorded['fork'][key] for key in compacted} == compacted
+        assert recorded['capture_complete'] is True
     assert obj.run_part_b('partb', TASKS, guards.append) == result
     assert len(calls) == 30
 

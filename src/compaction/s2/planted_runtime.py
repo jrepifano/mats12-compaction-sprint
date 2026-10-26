@@ -464,6 +464,7 @@ class Runtime:
                            for k in ("probe", "continuation")):
                         raise RuntimeError("Step 0 cleanup unconfirmed")
                 receipt.update(status=reports[-1]["status"], reports=reports,
+                               receipt_summary=reports[-1].get("receipt_summary", {}),
                                boundaries=candidates, passed_at=self.clock() if reports[-1]["status"] == "PASS" else None)
         return receipt
 
@@ -480,7 +481,7 @@ class Runtime:
         out = self.root / "forks" / identity
         result = (self.io.get("fork") or CC.fork)(bdir, out, new_summary=summary, prompt=prompt,
             sim_model=CC.NoSimulatorModel(), token=self.token, persona=self.task_loader(row["task_id"]).persona,
-            cfg=self._cc_config(), host=self.host, probe=True,
+            cfg=self._cc_config(probe=True), host=self.host, probe=True,
             max_calls=PC.MAX_CALLS, timeout_s=max(1, min(1800, int(FINAL_CUTOFF - self.clock()))),
             required_context=required, forbidden_context=forbidden)
         self._rate = result.get("rate_limit") or None
@@ -496,7 +497,12 @@ class Runtime:
         safe = safe and not global_stop and result.get("outcome") in (None, "ask_user", "submission", "call_cap", "ok")
         context_ok = (result.get("context_check") or {}).get("ok") is True
         report = {"attempt_id": identity, "safe": safe, "context_ok": context_ok,
-                  "usage": P._usage(result, before, self.clock()), "output": str(out), "scores": {}}
+                  "usage": P._usage(result, before, self.clock()), "output": str(out), "scores": {},
+                  "probe_window": PC.PROBE_WINDOW,
+                  "probe_compactions": result.get("probe_compactions", []),
+                  "probe_compaction_count": result.get("probe_compaction_count", 0),
+                  "probe_compacted": result.get("probe_compacted", False)}
+        # Compaction is diagnostic only: preserve each assigned fork and its original score.
         if score and not global_stop:
             evidence = P.read(out / "evidence.json")
             complete = safe and context_ok and evidence.get("part_a_complete") is True
@@ -573,8 +579,8 @@ class Runtime:
                            single_task=single_task, boundaries=boundaries)
         return receipt
 
-    def _cc_config(self, deadline=FINAL_CUTOFF):
-        return CC.CCConfig(auto_compact_window=PC.WINDOW, max_window_utilization=.90,
+    def _cc_config(self, deadline=FINAL_CUTOFF, *, probe=False):
+        return CC.CCConfig(auto_compact_window=PC.PROBE_WINDOW if probe else PC.WINDOW, max_window_utilization=.90,
                            deadline_epoch=min(deadline, FINAL_CUTOFF),
                            stop_file=str(STOP_FILE))
 
