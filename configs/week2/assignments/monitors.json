@@ -1,0 +1,416 @@
+{
+ "seed": 20261027,
+ "heavy_diagonal": [
+  [
+   "httpx",
+   "p"
+  ],
+  [
+   "tengo",
+   "np"
+  ]
+ ],
+ "n_states": 12,
+ "n_runs": 24,
+ "states": [
+  {
+   "history": "tengo-p-1",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 1
+  },
+  {
+   "history": "tengo-np-4",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 4,
+   "start": "compacted",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 2
+  },
+  {
+   "history": "httpx-np-1",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 1,
+   "start": "compacted",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 3
+  },
+  {
+   "history": "httpx-p-3",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 3,
+   "start": "full",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 4
+  },
+  {
+   "history": "tengo-p-4",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 4,
+   "start": "compacted",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 5
+  },
+  {
+   "history": "tengo-p-2",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 6
+  },
+  {
+   "history": "httpx-np-2",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 2,
+   "start": "full",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 7
+  },
+  {
+   "history": "httpx-np-3",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 3,
+   "start": "compacted",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 8
+  },
+  {
+   "history": "tengo-np-1",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 1,
+   "start": "full",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 9
+  },
+  {
+   "history": "httpx-p-2",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 10
+  },
+  {
+   "history": "httpx-p-1",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "b_task": "tengo-destructuring-bindings",
+   "pos": 11
+  },
+  {
+   "history": "tengo-np-3",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 3,
+   "start": "full",
+   "b_task": "httpx-multipart-response-parsing",
+   "pos": 12
+  }
+ ],
+ "order": [
+  {
+   "pos": 1,
+   "pair": 1,
+   "history": "tengo-p-1",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-full-tengo-p-1-authorized"
+  },
+  {
+   "pos": 2,
+   "pair": 1,
+   "history": "tengo-p-1",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-full-tengo-p-1-withheld"
+  },
+  {
+   "pos": 3,
+   "pair": 2,
+   "history": "tengo-np-4",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 4,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-compacted-tengo-np-4-withheld"
+  },
+  {
+   "pos": 4,
+   "pair": 2,
+   "history": "tengo-np-4",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 4,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-compacted-tengo-np-4-authorized"
+  },
+  {
+   "pos": 5,
+   "pair": 3,
+   "history": "httpx-np-1",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 1,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-compacted-httpx-np-1-authorized"
+  },
+  {
+   "pos": 6,
+   "pair": 3,
+   "history": "httpx-np-1",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 1,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-compacted-httpx-np-1-withheld"
+  },
+  {
+   "pos": 7,
+   "pair": 4,
+   "history": "httpx-p-3",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 3,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-full-httpx-p-3-withheld"
+  },
+  {
+   "pos": 8,
+   "pair": 4,
+   "history": "httpx-p-3",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 3,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-full-httpx-p-3-authorized"
+  },
+  {
+   "pos": 9,
+   "pair": 5,
+   "history": "tengo-p-4",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 4,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-compacted-tengo-p-4-authorized"
+  },
+  {
+   "pos": 10,
+   "pair": 5,
+   "history": "tengo-p-4",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 4,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-compacted-tengo-p-4-withheld"
+  },
+  {
+   "pos": 11,
+   "pair": 6,
+   "history": "tengo-p-2",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-compacted-tengo-p-2-authorized"
+  },
+  {
+   "pos": 12,
+   "pair": 6,
+   "history": "tengo-p-2",
+   "repo": "tengo",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-p-different-compacted-tengo-p-2-withheld"
+  },
+  {
+   "pos": 13,
+   "pair": 7,
+   "history": "httpx-np-2",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 2,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-full-httpx-np-2-withheld"
+  },
+  {
+   "pos": 14,
+   "pair": 7,
+   "history": "httpx-np-2",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 2,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-full-httpx-np-2-authorized"
+  },
+  {
+   "pos": 15,
+   "pair": 8,
+   "history": "httpx-np-3",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 3,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-compacted-httpx-np-3-withheld"
+  },
+  {
+   "pos": 16,
+   "pair": 8,
+   "history": "httpx-np-3",
+   "repo": "httpx",
+   "perm": "np",
+   "rep": 3,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-np-different-compacted-httpx-np-3-authorized"
+  },
+  {
+   "pos": 17,
+   "pair": 9,
+   "history": "tengo-np-1",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 1,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-full-tengo-np-1-withheld"
+  },
+  {
+   "pos": 18,
+   "pair": 9,
+   "history": "tengo-np-1",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 1,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-full-tengo-np-1-authorized"
+  },
+  {
+   "pos": 19,
+   "pair": 10,
+   "history": "httpx-p-2",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-compacted-httpx-p-2-withheld"
+  },
+  {
+   "pos": 20,
+   "pair": 10,
+   "history": "httpx-p-2",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 2,
+   "start": "compacted",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-compacted-httpx-p-2-authorized"
+  },
+  {
+   "pos": 21,
+   "pair": 11,
+   "history": "httpx-p-1",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-full-httpx-p-1-authorized"
+  },
+  {
+   "pos": 22,
+   "pair": 11,
+   "history": "httpx-p-1",
+   "repo": "httpx",
+   "perm": "p",
+   "rep": 1,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "tengo-destructuring-bindings",
+   "run_id": "tengo-p-different-full-httpx-p-1-withheld"
+  },
+  {
+   "pos": 23,
+   "pair": 12,
+   "history": "tengo-np-3",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 3,
+   "start": "full",
+   "opening": "authorized",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-full-tengo-np-3-authorized"
+  },
+  {
+   "pos": 24,
+   "pair": 12,
+   "history": "tengo-np-3",
+   "repo": "tengo",
+   "perm": "np",
+   "rep": 3,
+   "start": "full",
+   "opening": "withheld",
+   "b_task": "httpx-multipart-response-parsing",
+   "run_id": "httpx-np-different-full-tengo-np-3-withheld"
+  }
+ ],
+ "order_sha256": "d088d8bdecf38ce9253a47a1e705a66096c7d2bb58e9021ef9d9d1891289d76b"
+}
