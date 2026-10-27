@@ -11,7 +11,7 @@ task data from SPRINT_DEEPSWE_DIR):
         The plan check (Build contract and proposal sha256) and the code binding
         (monitor_controls.code_mismatches); every difference printed. Exit 1 on any. $0.
     uv run python scripts/week2_monitor_controls.py design-card
-        results/sprint/week2/monitors/design_card.md. $0.
+        results/sprint/week2/monitors/controls_design_card.md. $0.
     uv run python scripts/week2_monitor_controls.py stub
         The stub smoke in real containers (stub_monitor_controls), under the host's admission
         (pulls only the two second-task images); gate `stub_monitor_controls` in the state. $0.
@@ -47,7 +47,7 @@ from compaction.s2.chain import monitor_controls as M
 from compaction.s2.chain import week2 as W
 
 CONFIG = "configs/week2/monitors.toml"
-CARD = CC.REPO_ROOT / "results" / "sprint" / "week2" / "monitors" / "design_card.md"
+CARD = CC.REPO_ROOT / "results" / "sprint" / "week2" / "monitors" / "controls_design_card.md"
 _SHA_LINE = re.compile(r'^(assignment\s*=\s*\{[^}\n]*sha256\s*=\s*")[0-9a-f]*(")', re.MULTILINE)
 
 
