@@ -15,6 +15,7 @@ request and logs usage. On top of it:
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -209,6 +210,8 @@ def score(calls: list[Call], cfg: ScorerConfig, factory: Callable[[str], object]
                 if v.get("valid"):
                     done.add(_ck(c))
                 else:
+                    # a malformed answer or a safeguard refusal: one retry (refusals succeed on
+                    # a retry about a fifth of the time, 6 of 30 in step 1; Advisor, 27 Oct)
                     retry.append(c)
             if retry:
                 again = launch(model, [c.req("-retry1") for c in retry])
@@ -224,6 +227,18 @@ def score(calls: list[Call], cfg: ScorerConfig, factory: Callable[[str], object]
             break
     res.unscored = [_ck(c) for c in calls if _ck(c) not in done]
     return res
+
+
+SAFEGUARD_REFUSAL = re.compile(r"^API Error: .{1,60}'s safeguards flagged this message\b")
+
+
+def refused_by_safeguards(resp: Resp) -> bool:
+    """The model's own safeguards refused the request: `claude -p` ends with error `cli_error`
+    and the API's refusal text ("API Error: Opus 5.5's safeguards flagged this message ...").
+    No other error (timeout, limit, interruption, model mismatch) counts. Retried once like a
+    malformed answer; a refusal on the retry leaves the decision missing (reported with bounds,
+    never filled in), recorded as its own outcome."""
+    return resp.error == "cli_error" and bool(SAFEGUARD_REFUSAL.match((resp.text or "").strip()))
 
 
 def _ck(c: Call) -> str:
@@ -246,7 +261,8 @@ def _row(c: Call, resp: Resp, v: dict, *, attempt: int) -> dict:
             "prompt": c.prompt, "stage": c.stage, "model": c.model, "rep": c.rep,
             "attempt": attempt, "request_sha256": c.request_sha(), "error": resp.error,
             "verdict": v, "text": resp.text, "input_tokens": resp.input_tokens,
-            "output_tokens": resp.output_tokens, "seven_day_util": seven_day_util(resp)}
+            "output_tokens": resp.output_tokens, "seven_day_util": seven_day_util(resp),
+            "refused_by_safeguards": refused_by_safeguards(resp)}
 
 
 def final_rows(rows: list[dict]) -> list[dict]:

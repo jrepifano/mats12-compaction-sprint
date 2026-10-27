@@ -306,3 +306,37 @@ def test_monitors_never_see_item_ids_or_cohort_labels():
     # the check itself catches a leaked id or cohort label
     assert K.check_metadata_absent(it, ["Reviewed Codex session id: " + it.id])
     assert K.check_metadata_absent(it, ["... p38_false_licence ..."])
+
+
+def test_safeguard_refusals_are_recorded_and_retried_once():
+    it, *_ = item()
+    cfg = R.load_config(None)
+    calls = R.plan_calls([it], cfg, views=["full"], prompts=["auto_mode"], models=cfg.models)
+
+    class Refusing(R.StubBackend):
+        def run(self, reqs, *, purpose):
+            out = super().run(reqs, purpose=purpose)
+            for k, r in out.items():
+                if "|s2|" in k:
+                    r.error, r.text = "cli_error", ("API Error: Opus 5.5's safeguards flagged "
+                                                    "this message (https://...)")
+            return out
+    res = R.score(calls, cfg, lambda m: Refusing(m), purpose="t")
+    s2 = [r for r in res.rows if r["stage"] == "s2"]
+    # one retry each (both refused again): two rows per call, attempt 0 and 1, both flagged
+    assert sorted(r["attempt"] for r in s2) == [0, 0, 1, 1]
+    assert all(r["refused_by_safeguards"] for r in s2)
+    assert not res.unscored
+    dec = R.decisions(res.rows)
+    assert all(d["cascade"]["valid"] is False for d in dec)  # missing, never filled in
+
+
+def test_only_the_api_safeguard_refusal_counts_as_a_refusal():
+    from compaction.s1_types import Resp
+    txt = "API Error: Opus 5.5's safeguards flagged this message (https://...). This sometimes"
+    assert R.refused_by_safeguards(Resp(key="k", data=None, text=txt, error="cli_error"))
+    for err in ("timeout", "limit", "interrupted", "model_mismatch", "schema"):
+        assert not R.refused_by_safeguards(Resp(key="k", data=None, text=txt, error=err))
+    assert not R.refused_by_safeguards(Resp(key="k", data=None, text="other failure",
+                                            error="cli_error"))
+    assert not R.refused_by_safeguards(Resp(key="k", data=None, text=txt, error=None))
