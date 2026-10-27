@@ -26,6 +26,7 @@ import json
 import os
 import socket
 import sys
+import threading
 import tomllib
 import uuid
 from datetime import datetime
@@ -161,8 +162,9 @@ def _load_topup_registry(out: Path) -> dict:
 
 
 def _dump_topup_registry(reg_path: Path, reg: dict) -> None:
-    clean = {k: v for k, v in reg.items() if k != "_path"}
-    RF.dump(reg_path, clean)
+    with D._LOCK:  # never serialize while a driver thread inserts
+        clean = {k: v for k, v in reg.items() if k != "_path"}
+        RF.dump(reg_path, clean)
 
 
 def _load_tasks_safe() -> dict:
@@ -270,15 +272,16 @@ class RunIdAdmission:
 
     def __init__(self, inner):
         self.inner = inner
-        self.pending: str | None = None
+        self._local = threading.local()  # per worker thread: slot and Invocation share a thread
 
     def slot(self, kind: str, stop=None, *, run_id: str | None = None):
         rid = run_id or uuid.uuid4().hex[:12]  # Invocation's own run-id format
-        self.pending = rid
+        self._local.pending = rid
         return self.inner.slot(kind, stop, run_id=rid)
 
     def take_run_id(self) -> str | None:
-        rid, self.pending = self.pending, None
+        rid = getattr(self._local, "pending", None)
+        self._local.pending = None
         return rid
 
     def __getattr__(self, name):
@@ -431,73 +434,138 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
         route = D.load_route()
         all_tasks = D.tasks()
 
-    for item in order:
-        hid = item["history"]
-        prior = (reg.get("a") or {}).get(hid)
-        if prior is not None and prior.get("state") in ("valid", "empty"):
-            continue  # done; an unfinished slot (pending/running) is resumed below (r3 #4)
-        n_run = len(reg.get("a") or {}) - (1 if prior is not None else 0)
-        stop_reason = RF.topup_stop(
-            len(qualified), n_run, _now(),
-            target=int(rcfg["target_histories"]),
-            max_tasks=int(rcfg["topup_max_tasks"]),
-            deadline_et=deadline,
-            spent_usd=_spent(),
-            cap_usd=cap_usd,
-        )
-        if stop_reason is not None:
-            break
-        h = RF.history_from_id(hid)
-        a_dir: Path | None = topup_root / "a" / hid / "a1"
-        if args.stub and a_dir is not None and (a_dir / "messages.json").exists():
-            reg.setdefault("a", {})[hid] = {
-                "attempt": 1, "state": "valid", "dir": str(a_dir), "cost_usd": 0.0,
-            }
-        elif not args.stub:
-            old_cp = D.CHECKPOINT
-            D.CHECKPOINT = {"on": ["push_rejected", "ask_user"], "max": 6}
-            try:
-                def _model_for(_kind: str, att_dir: Path, _route=route,
-                               _cap: float = float(src_caps["run_usd"]), _spend=topup_spend):
-                    # inside the admitted slot, before any paid model exists: the deadline is
-                    # rechecked for every attempt, retries included (r3 #9)
-                    if RF._et(_now()) >= RF._et(deadline):
-                        raise L.Stopped(f"top-up deadline {deadline} ET passed")
-                    return D.paid_model(_route, att_dir, _cap, _spend)
+    # Workers (Advisor, 27 Oct: up to 2 at once, Jacob wants speed). Each takes the next history
+    # of the one seeded order under a lock, so launches follow the seeded order; the stop rules
+    # are checked under the same lock before every launch. Driver state, registry saves and the
+    # laptop reservations are already thread-safe (`driver.save_state`, run-id per thread).
+    lock = threading.Lock()
+    state = {"next": 0, "stop": None}
+    pos_of = {it["history"]: k for k, it in enumerate(order)}
+    if not args.stub:
+        old_cp = D.CHECKPOINT
+        D.CHECKPOINT = {"on": ["push_rejected", "ask_user"], "max": 6}
 
-                slot = D.run_history(
-                    h, reg, route, topup_spend, all_tasks,
-                    model_for=_model_for, root=topup_root,
-                    caps={"max_calls": int(src_caps["max_calls"]),
-                          "max_seconds": float(src_caps["max_seconds"])},
-                )
-                a_dir = (
-                    Path(slot["dir"])
-                    if slot.get("state") == "valid" and slot.get("dir")
-                    else None
-                )
-                if slot.get("state") == "stopped":
-                    stop_reason = "stopped"
-            except L.Stopped as e:
-                stop_reason = f"stopped: {e}"
-                a_dir = None
-            finally:
-                D.CHECKPOINT = old_cp
-        else:
-            break
-        # the host each top-up history ran on (3b's comparisons are within-history; the card
-        # reports hosts per history)
-        reg.setdefault("hosts", {})[hid] = socket.gethostname()
-        reg["spent_usd"] = round(_spent(), 6)
-        _dump_topup_registry(reg_path, reg)
-        if a_dir is not None and (a_dir / "messages.json").exists():
-            prop = RF.propose_history(a_dir, h)
-            rows_by_h[hid] = prop | {"confirmed": None, "confirmed_decline": None, "note": "topup"}
-            if prop.get("qualifies") and hid not in qualified:
-                qualified.append(hid)
-            ran_ids.append(hid)
-        if stop_reason is not None and stop_reason.startswith("stopped"):
-            break
+    def _model_for(_kind: str, att_dir: Path, _cap: float | None = None):
+        # Inside the admitted slot, before any paid model exists, for every attempt (retries
+        # included): another worker's stop, the deadline, the spend cap and 8 qualified are
+        # rechecked under the lock (r3 #9; workers r1 #1). The task cap is not: this history
+        # is already counted (its pending entry was made at launch).
+        with lock:
+            if state["stop"] is not None:
+                raise L.Stopped(f"another worker stopped: {state['stop']}")
+            if RF._et(_now()) >= RF._et(deadline):
+                state["stop"] = f"stopped: top-up deadline {deadline} ET passed"
+                raise L.Stopped(state["stop"])
+            why = RF.topup_stop(len(qualified), 0, _now(),
+                                target=int(rcfg["target_histories"]),
+                                max_tasks=int(rcfg["topup_max_tasks"]), deadline_et=deadline,
+                                spent_usd=_spent(), cap_usd=cap_usd)
+            if why is not None:
+                state["stop"] = f"stopped: {why}"
+                raise L.Stopped(why)
+        return D.paid_model(route, att_dir, float(src_caps["run_usd"]), topup_spend)
+
+    def _take():
+        """The next history to launch, or None (with the reason in state["stop"])."""
+        with lock:
+            while state["stop"] is None and state["next"] < len(order):
+                hid = order[state["next"]]["history"]
+                state["next"] += 1
+                prior = (reg.get("a") or {}).get(hid)
+                if prior is not None and prior.get("state") in ("valid", "empty"):
+                    continue  # done; an unfinished slot is resumed (r3 #4)
+                n_run = len(reg.get("a") or {}) - (1 if prior is not None else 0)
+                why = RF.topup_stop(
+                    len(qualified), n_run, _now(),
+                    target=int(rcfg["target_histories"]),
+                    max_tasks=int(rcfg["topup_max_tasks"]),
+                    deadline_et=deadline, spent_usd=_spent(), cap_usd=cap_usd)
+                if why is not None:
+                    state["stop"] = why
+                    return None
+                if not args.stub:  # counted at once for the other worker's task cap
+                    D.entry(reg, "a", hid, {"attempts": [], "state": "pending"})
+                return hid
+            return None
+
+    def _worker() -> None:
+        try:
+            _work()
+        except BaseException as e:  # noqa: BLE001 - recorded, stops the others, re-raised
+            with lock:
+                state["error"] = state.get("error") or e
+                state["stop"] = state["stop"] or f"worker failed: {type(e).__name__}: {e}"
+
+    def _work() -> None:
+        while True:
+            hid = _take()
+            if hid is None:
+                return
+            h = RF.history_from_id(hid)
+            a_dir: Path | None = topup_root / "a" / hid / "a1"
+            if args.stub:
+                if a_dir is not None and (a_dir / "messages.json").exists():
+                    with lock, D._LOCK:
+                        reg.setdefault("a", {})[hid] = {"attempt": 1, "state": "valid",
+                                                        "dir": str(a_dir), "cost_usd": 0.0}
+                else:
+                    return
+            else:
+                try:
+                    slot = D.run_history(
+                        h, reg, route, topup_spend, all_tasks,
+                        model_for=_model_for, root=topup_root,
+                        caps={"max_calls": int(src_caps["max_calls"]),
+                              "max_seconds": float(src_caps["max_seconds"])})
+                    a_dir = (Path(slot["dir"]) if slot.get("state") == "valid"
+                             and slot.get("dir") else None)
+                    if slot.get("state") == "stopped":
+                        with lock:
+                            state["stop"] = state["stop"] or "stopped"
+                except L.Stopped as e:
+                    with lock:
+                        state["stop"] = state["stop"] or f"stopped: {e}"
+                    a_dir = None
+            prop = None
+            if a_dir is not None and (a_dir / "messages.json").exists():
+                prop = RF.propose_history(a_dir, h)
+            spent_now = _spent()
+            with lock, D._LOCK:  # the driver's threads write `reg` under D._LOCK too
+                # the host each top-up history ran on (3b's comparisons are within-history)
+                reg.setdefault("hosts", {})[hid] = socket.gethostname()
+                reg["spent_usd"] = round(spent_now, 6)
+                _dump_topup_registry(reg_path, reg)
+                if prop is not None:
+                    rows_by_h[hid] = prop | {"confirmed": None, "confirmed_decline": None,
+                                             "note": "topup", "topup_position": pos_of[hid]}
+                    if prop.get("qualifies") and hid not in qualified:
+                        qualified.append(hid)
+                    ran_ids.append(hid)
+                    print(f"TOPUP_RESULT {hid} position={pos_of[hid]} "
+                          f"qualifies={bool(prop.get('qualifies'))} "
+                          f"exclude={prop.get('exclude')} n_qualified={len(qualified)}",
+                          flush=True)
+            if state["stop"] is not None and state["stop"].startswith("stopped"):
+                return
+
+    n_workers = int(getattr(args, "workers", 1) or 1)
+    if n_workers not in (1, 2):
+        raise SystemExit("refused: --workers must be 1 or 2 (at most 2 top-up containers)")
+    try:
+        threads = [threading.Thread(target=_worker, name=f"topup-{k}", daemon=True)
+                   for k in range(n_workers)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+    finally:
+        if not args.stub:
+            D.CHECKPOINT = old_cp
+    stop_reason = state["stop"]
+    if state.get("error") is not None:
+        with D._LOCK:
+            _dump_topup_registry(reg_path, reg)
+        raise state["error"]
 
     n_run = len(reg.get("a") or {})
     spent_usd = _spent()
@@ -516,7 +584,23 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
             spent_usd=spent_usd,
             cap_usd=cap_usd,
         )
+    # Selection (Advisor, 27 Oct): with workers in flight more than the target may qualify; the
+    # histories used are the source qualifiers plus the first top-up qualifiers in seeded order
+    # up to the target. Extras are recorded and kept out of the test.
+    src_ids = {h.id for h in src_hists}
+    n_src_q = sum(1 for h in qualified if h in src_ids)
+    topup_q = sorted((h for h in qualified if h not in src_ids), key=lambda h: pos_of.get(h, 1e9))
+    room = max(0, int(rcfg["target_histories"]) - n_src_q)
+    for h in topup_q[room:]:  # enforced where qualify/prepare read it: the rubric rows
+        rows_by_h[h] = rows_by_h[h] | {"qualifies": False,
+                                       "exclude": "extra_topup_after_target"}
+        qualified.remove(h)
+    rubric["rows"] = [rows_by_h[k] for k in sorted(rows_by_h)]
+    RF.dump(rubric_path, rubric)
     out_summary = {
+        "selected_topups": topup_q[:room],
+        "extra_topup_qualifiers": topup_q[room:],
+        "workers": n_workers,
         "ran": ran_ids,
         "n_run": n_run,
         "n_qualified": len(qualified),
@@ -1034,6 +1118,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_top.add_argument("--stub", action="store_true")
     p_top.add_argument("--go", action="store_true")
     p_top.add_argument("--go-from-jacob", action="store_true")
+    p_top.add_argument("--workers", type=int, default=1,
+                       help="top-ups at once, from the one seeded order (Advisor: up to 2)")
 
     p_prep = sub.add_parser("prepare", help="Run Appendix A preparation on qualified histories.")
     p_prep.add_argument("--out", type=Path, default=DEFAULT_OUT)

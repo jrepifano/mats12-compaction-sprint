@@ -2552,3 +2552,160 @@ def test_topup_reservation_carries_the_containers_run_id(monkeypatch):
         inv2 = D.Invocation("s2-chaining")
     assert inv2.run_id == seen["reserved"] != inv.run_id  # a fresh id per slot
     assert D.Invocation("s2-chaining").run_id != inv2.run_id  # outside a slot: its own id
+
+
+def test_two_topup_workers_follow_the_seeded_order_and_the_selection_rule(tmp_path, monkeypatch):
+    """Advisor, 27 Oct: up to 2 top-ups at once from the one seeded order; the stop rules hold
+    across workers; with extra in-flight qualifiers the first ones in seeded order are used."""
+    import threading
+    import time
+    cfg, raw, out_dir, co, card = _topup_scaffold(tmp_path)
+    cfg_path = tmp_path / "cfg.toml"
+    txt = (REPO_ROOT / "configs/week2/summary_refusal.toml").read_text()
+    cfg_path.write_text(txt.replace("topup_max_tasks = 20", "topup_max_tasks = 6"))
+    card.write_text(f"# Design Card\n- config sha256: `{RF.load_config(cfg_path)['_sha256']}`\n")
+    launched: list[str] = []
+    in_flight, peak = [0], [0]
+    lk = threading.Lock()
+
+    def fake_run_history(h, reg, route, spend, all_tasks, model_for, root, *, caps=None):
+        with lk:
+            launched.append(h.id)
+            in_flight[0] += 1
+            peak[0] = max(peak[0], in_flight[0])
+        time.sleep(0.05)
+        d = Path(root) / "a" / h.id / "a1"
+        d.mkdir(parents=True, exist_ok=True)
+        RF.dump(d / "messages.json", [])
+        with lk:
+            in_flight[0] -= 1
+        with D._LOCK:
+            reg["a"][h.id] = {"state": "valid", "dir": str(d), "attempts": [{}]}
+        return reg["a"][h.id]
+
+    monkeypatch.setattr(D, "run_history", fake_run_history)
+    monkeypatch.setattr(D, "load_route", lambda: ROUTES["stub"])
+    monkeypatch.setattr(D, "tasks", dict)
+    monkeypatch.setattr(RF, "tag_spend", lambda _s: (0.0, 0.0))
+    monkeypatch.setattr(RF, "propose_history", lambda d, h: {"history": h.id, "qualifies": True})
+    rc = CLI.main(["--config", str(cfg_path), "topup", "--out", str(out_dir),
+                   "--source-dir", str(raw), "--checkout", str(co), "--card", str(card),
+                   "--now-et", "2026-10-28T10:00", "--go", "--workers", "2"])
+    assert rc == 0
+    order = [it["history"] for it in RF.topup_order(
+        seed=int(cfg["design"]["seed"]), n=6,
+        repos=tuple(cfg["refusal"].get("topup_repos") or ("httpx", "tengo")),
+        rep0=int(cfg["refusal"].get("topup_rep_start", 101)))]
+    assert len(launched) == len(set(launched)) and peak[0] == 2
+    # every one qualifies: 5 source + top-ups stop at 8; in-flight extras are recorded apart
+    tsum = json.loads((out_dir / "topup_summary.json").read_text())
+    assert tsum["workers"] == 2
+    assert tsum["selected_topups"] == [h for h in order if h in launched][:3]
+    assert set(tsum["extra_topup_qualifiers"]) == set(launched) - set(tsum["selected_topups"])
+    assert all(h in order[:len(launched)] for h in launched)  # launches follow the seeded order
+
+
+def test_run_id_admission_is_per_thread(monkeypatch):
+    import contextlib as cl
+    import threading
+    got = {}
+
+    class Gate:
+        @cl.contextmanager
+        def slot(self, kind, stop=None, *, run_id=None):
+            yield
+
+    monkeypatch.setattr(D, "ADMISSION", Gate())
+    monkeypatch.setattr(D, "Invocation", D.Invocation)
+    CLI._match_topup_reservations()
+    barrier = threading.Barrier(2)
+
+    def work(k):
+        with D.ADMISSION.slot("agent"):
+            rid = D.ADMISSION._local.pending
+            barrier.wait()  # both slots open before either makes its Invocation
+            got[k] = (rid, D.Invocation("s2-chaining").run_id)
+    ts = [threading.Thread(target=work, args=(k,)) for k in range(2)]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert got[0][0] == got[0][1] and got[1][0] == got[1][1] and got[0][0] != got[1][0]
+
+
+def _topup_main(out_dir, raw, co, card, *extra, cfg_path=None):
+    args = (["--config", str(cfg_path)] if cfg_path else []) + [
+        "topup", "--out", str(out_dir), "--source-dir", str(raw), "--checkout", str(co),
+        "--card", str(card), "--now-et", "2026-10-28T10:00", "--go", *extra]
+    return CLI.main(args)
+
+
+def test_workers_r1_in_slot_recheck_and_failure_propagation(tmp_path, monkeypatch):
+    _cfg, raw, out_dir, co, card = _topup_scaffold(tmp_path)
+    monkeypatch.setattr(D, "load_route", lambda: ROUTES["stub"])
+    monkeypatch.setattr(D, "tasks", dict)
+    monkeypatch.setattr(RF, "tag_spend", lambda _s: (0.0, 0.0))
+    built: list[str] = []
+    monkeypatch.setattr(D, "paid_model", lambda *a, **k: built.append("model") or (None, None))
+    calls = {"n": 0}
+    real_stop = RF.topup_stop
+
+    def stop_on_second(*a, **k):  # free at the launch check, cap reached once admitted
+        calls["n"] += 1
+        return None if calls["n"] == 1 else "top-up spend $25.00 reached cap $25.00"
+    monkeypatch.setattr(RF, "topup_stop", stop_on_second)
+
+    def fake_run_history(h, reg, route, spend, all_tasks, model_for, root, *, caps=None):
+        model_for("A", Path(root) / "a" / h.id / "a1")  # inside the admitted slot
+        raise AssertionError("unreachable")
+    monkeypatch.setattr(D, "run_history", fake_run_history)
+    assert _topup_main(out_dir, raw, co, card, "--workers", "2") == 0
+    tsum = json.loads((out_dir / "topup_summary.json").read_text())
+    assert "reached cap" in tsum["stop_reason"] and built == []
+    # an unexpected worker failure stops the others and fails the command
+    monkeypatch.setattr(RF, "topup_stop", real_stop)
+
+    def boom(*a, **k):
+        raise RuntimeError("driver broke")
+    monkeypatch.setattr(D, "run_history", boom)
+    with pytest.raises(RuntimeError, match="driver broke"):
+        _topup_main(out_dir, raw, co, card, "--workers", "2")
+    with pytest.raises(SystemExit):
+        _topup_main(out_dir, raw, co, card, "--workers", "3")
+
+
+def test_workers_r1_extras_are_excluded_in_the_rubric(tmp_path, monkeypatch):
+    _cfg, raw, out_dir, co, card = _topup_scaffold(tmp_path)
+    monkeypatch.setattr(D, "load_route", lambda: ROUTES["stub"])
+    monkeypatch.setattr(D, "tasks", dict)
+    monkeypatch.setattr(RF, "tag_spend", lambda _s: (0.0, 0.0))
+    monkeypatch.setattr(RF, "propose_history", lambda d, h: {"history": h.id, "qualifies": True})
+    import threading
+    gate = threading.Barrier(2)
+
+    def fake_run_history(h, reg, route, spend, all_tasks, model_for, root, *, caps=None):
+        try:
+            gate.wait(timeout=2)  # both in flight together
+        except threading.BrokenBarrierError:
+            pass
+        d = Path(root) / "a" / h.id / "a1"
+        d.mkdir(parents=True, exist_ok=True)
+        RF.dump(d / "messages.json", [])
+        with D._LOCK:
+            reg["a"][h.id] = {"state": "valid", "dir": str(d), "attempts": [{}]}
+        return reg["a"][h.id]
+    monkeypatch.setattr(D, "run_history", fake_run_history)
+    # 7 qualify already (5 source + 2 earlier top-ups): room for 1; 2 in flight -> 1 extra
+    rub = json.loads((out_dir / "rubric.json").read_text())
+    for k in (1, 2):
+        rub["rows"].append({"history": f"httpx-np-9{k}", "qualifies": True,
+                            "confirmed": None, "confirmed_decline": None})
+    RF.dump(out_dir / "rubric.json", rub)
+    RF.dump(out_dir / "topup_registry.json", {"a": {f"httpx-np-9{k}": {"state": "valid"}
+                                                    for k in (1, 2)}})
+    assert _topup_main(out_dir, raw, co, card, "--workers", "2") == 0
+    tsum = json.loads((out_dir / "topup_summary.json").read_text())
+    rows = {r["history"]: r for r in json.loads((out_dir / "rubric.json").read_text())["rows"]}
+    for h in tsum["extra_topup_qualifiers"]:
+        assert rows[h]["qualifies"] is False and rows[h]["exclude"] == "extra_topup_after_target"
+    assert tsum["n_qualified"] <= 8
