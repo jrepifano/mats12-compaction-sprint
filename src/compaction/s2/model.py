@@ -33,7 +33,9 @@ MAX_ATTEMPTS = 4  # billed or failed attempts per call
 # 23 Oct): they get their own budget, about 5 minutes of capped backoff, before the call fails.
 RATE_LIMIT_ATTEMPTS = 10
 _UNBILLED = (400, 401, 402, 403, 404, 413, 422, 429)  # refused before inference (402: no balance)
-_TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 529)
+# 520-524: Cloudflare-style upstream errors (Together via OpenRouter returned a 520 at call 161
+# of experiment 1's tengo-np-7, 27 Oct, ending the attempt). Charged at the bound like a 500.
+_TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 520, 521, 522, 523, 524, 529)
 
 
 class ModelError(RuntimeError):

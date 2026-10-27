@@ -296,6 +296,25 @@ def test_openai_compat_retries_transient_and_fails_fatal():
     assert sp3.charged == pytest.approx(sp3.reserved)  # unknown cost: charged at the bound
 
 
+@pytest.mark.parametrize("status", [520, 521, 522, 523, 524])
+def test_upstream_5xx_codes_are_retried(status):
+    sp = M.NullSpend()
+    cl, comp = fake_client([StatusError(status), response()])
+    r = M.OpenAICompatModel(C.ROUTES["deepseek"], sp, client=cl, sleep=lambda s: None).complete(
+        [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert r.attempts == 2 and len(comp.bodies) == 2
+    assert r.cost_total_usd > r.usage.cost_usd  # the failed attempt is charged at its bound
+    sp2 = M.NullSpend()
+    cl, comp = fake_client([StatusError(status)] * (M.MAX_ATTEMPTS + 1))
+    with pytest.raises(M.ModelError) as ei:
+        M.OpenAICompatModel(C.ROUTES["deepseek"], sp2, client=cl,
+                            sleep=lambda s: None).complete(
+            [{"role": "user", "content": "u"}], None, 10, purpose="t")
+    assert len(comp.bodies) == M.MAX_ATTEMPTS  # counted against the billed budget
+    assert sp2.charged == pytest.approx(sp2.reserved) == pytest.approx(ei.value.cost_usd)
+    assert not sp2._open  # every attempt settled at its bound
+
+
 def test_stub_model_actions_and_summary():
     s = M.StubModel([{"bash": "ls"}, {"ask": "ok?", "action": "x"}, {"say": "hm"}],
                     summary=lambda m: "SUM")
