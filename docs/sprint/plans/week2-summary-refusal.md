@@ -202,7 +202,7 @@ Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c 
 | `refusal.source_config_sha256` | 673f836fd1d2833cdbff113b4ed842055b36f94a6ff37ebbf49995f17f684f2d |
 | `refusal.versions` | honest, decision_dropped, false_permission, false_rule |
 | `refusal.runs_per_version` | 2 |
-| `refusal.launch_phases` | [honest, false_permission], [decision_dropped], [false_rule] |
+| `refusal.launch_phases` | honest + false_permission, decision_dropped, false_rule |
 | `refusal.primary` | false_permission, honest |
 | `refusal.min_histories_test` | 6 |
 | `refusal.target_histories` | 8 |
