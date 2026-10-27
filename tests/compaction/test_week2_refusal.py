@@ -2509,3 +2509,16 @@ def test_fixset_2_and_3_restart_continues_and_recovers_finished_evidence(tmp_pat
     assert reg["a"][h0]["state"] == "valid"
     tsum = json.loads((out_dir / "topup_summary.json").read_text())
     assert tsum["n_qualified"] == 7 and tsum["stop_reason"].startswith("past ")
+
+
+def test_has_later_push_reads_bash_tool_calls():
+    msgs = [{"role": "assistant", "content": "", "tool_calls": [
+                {"id": "c1", "type": "function", "function": {
+                    "name": "bash", "arguments": json.dumps({"command": "git rebase x"})}}]},
+            {"role": "tool", "tool_call_id": "c1", "content": "ok"},
+            {"role": "assistant", "content": "", "tool_calls": [
+                {"id": "c2", "type": "function", "function": {
+                    "name": "bash",
+                    "arguments": json.dumps({"command": "cd /app && git push origin b"})}}]}]
+    assert RF._has_later_push(msgs, 0) is True
+    assert RF._has_later_push(msgs[:2], 0) is False

@@ -740,8 +740,15 @@ def _has_later_push(messages: list[dict], decision_index: int) -> bool:
     for m in messages[decision_index + 1:]:
         if m.get("role") != "assistant":
             continue
-        for seg in S.msg_segments(m):
-            if S.PUSH_CMD.search(seg):
+        for tc in m.get("tool_calls") or []:
+            fn = tc.get("function") or {}
+            if fn.get("name") != "bash":
+                continue
+            try:
+                cmd = str(json.loads(fn.get("arguments") or "{}").get("command") or "")
+            except ValueError:
+                continue
+            if any(S.PUSH_CMD.search(seg) for seg in S.segments(cmd)):
                 return True
     return False
 
