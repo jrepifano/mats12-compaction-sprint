@@ -38,7 +38,8 @@ class PlanDrift(RuntimeError):
 
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
-    "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit"),
+    "design": {"kind": ("two_phase", "chain", "precedent", "monitor_controls", "exploit",
+                        "summary_refusal"),
                "stage": "str",
                "seed": "int",
                "n_phases": "int", "log_reasoning": "bool"},
@@ -82,17 +83,42 @@ SCHEMA: dict[str, dict] = {
                 "position": "int", "cells": "list[str]", "smoke": "int",
                 "related_chains": "str", "signs_of_life_points": "int", "task_files": "str",
                 "validation": "str", "claim_scoring": "str"},
+    # experiment 3b (summary refusal, week2-build-c): forks of experiment 1's divergent
+    # histories resumed from a pi summary with a planted line
+    "refusal": {"source_exp": "str", "source_arm": "str", "source_assignment": "str",
+                "source_assignment_sha256": "str", "source_config": "str",
+                "source_config_sha256": "str", "topup_deadline_et": "str",
+                "pairs_only_after_et": "str", "restore_from": "str", "summary_policy": "str",
+                "resume_template": "str", "placement_section": "str",
+                "placement_fallback_after": "str",
+                "versions": "list[str]", "primary": "list[str]", "topup_repos": "list[str]",
+                "monitor_views": "list[str]", "launch_phases": "list[list[str]]",
+                "runs_per_version": "int", "min_histories_test": "int",
+                "target_histories": "int", "max_histories": "int", "topup_max_tasks": "int",
+                "topup_rep_start": "int", "summary_regenerations": "int",
+                "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int"},
     "wording": {"*": "file"},
 }
 KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
-                 "monitor_controls": "monitors", "exploit": "exploit"}  # design.kind -> its own section
+                 "monitor_controls": "monitors", "exploit": "exploit",
+                 "summary_refusal": "refusal"}  # design.kind -> its own section
 # A kind's own shape for a shared section: a dict replaces SCHEMA's keys, None makes the
 # section optional (validated against SCHEMA if present).
-KIND_OVERRIDES: dict[str, dict] = {"exploit": {"caps": {"exploit_usd": "float"},
-                                               "parallelism": None}}
+KIND_OVERRIDES: dict[str, dict] = {
+    "exploit": {"caps": {"exploit_usd": "float"}, "parallelism": None},
+    # 3b has no phases (design.n_phases left out) and its own caps and laptop/rig limits
+    "summary_refusal": {
+        "design": {k: t for k, t in SCHEMA["design"].items() if k != "n_phases"},
+        "caps": {"stage_usd": "float", "topup_usd": "float", "run_usd": "float",
+                 "max_calls": "int", "max_seconds": "int", "summary_usd": "float"},
+        "parallelism": {"rig_agents": "int", "laptop_agents": "int", "laptop_ramp": "list[int]",
+                        "laptop_ramp_after_s": "float", "laptop_poll_s": "float",
+                        "laptop_agent_memory_mb": "int", "laptop_agent_cpus": "int",
+                        "laptop_min_free_mem_frac": "float", "laptop_max_load1": "float",
+                        "max_concurrent_histories": "int", "sandbox_label": "str"}}}
 # Keys a config may leave out (a later experiment's keys in a shared section); the plan check
 # still reports any the contract lists and the config lacks.
 OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
@@ -128,6 +154,11 @@ def _type_ok(v, t) -> str | None:
           "list[str]": lambda: isinstance(v, list) and all(isinstance(x, str) for x in v),
           "list[int]": lambda: isinstance(v, list) and all(
               isinstance(x, int) and not isinstance(x, bool) for x in v),
+          # nonempty groups of items free of the flatten separators, so "a + b, c" is unique
+          "list[list[str]]": lambda: isinstance(v, list) and all(
+              isinstance(x, list) and x and all(
+                  isinstance(y, str) and y.strip() == y and y and not set(y) & {",", "+"}
+                  for y in x) for x in v),
           "draw_table": lambda: isinstance(v, dict) and set(v) == {"seed", "path"}
           and isinstance(v["seed"], int) and not isinstance(v["seed"], bool)
           and isinstance(v["path"], str),
@@ -230,7 +261,7 @@ def validate(cfg: dict) -> None:
     # Cross-field rules (types are known good from here).
     if not SHA_RE.match(cfg["meta"]["built_against"]):
         errors.append("meta.built_against: must be a 64-hex sha256")
-    n = cfg["design"]["n_phases"]
+    n = cfg["design"].get("n_phases", 2)  # absent only where the kind has no phases
     if n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
     if kind in ("two_phase", "precedent", "monitor_controls") and n != 2:
@@ -250,8 +281,8 @@ def validate(cfg: dict) -> None:
 
 
 def stage_cap(cfg: dict) -> float:
-    """The stage cap a config's caps file holds: caps.stage_usd, or the exploitation ending's
-    caps.exploit_usd."""
+    """The stage cap a config's caps file holds: caps.stage_usd (3b's too), or the exploitation
+    ending's caps.exploit_usd."""
     caps = cfg["caps"]
     return float(caps["exploit_usd"] if cfg["design"]["kind"] == "exploit" else caps["stage_usd"])
 
@@ -309,7 +340,9 @@ def flatten(cfg: dict) -> dict[str, str]:
                 for kk, vv in v.items():
                     out[f"{sec}.{k}.{kk}"] = _scalar(vv)
             elif isinstance(v, list):
-                out[f"{sec}.{k}"] = ", ".join(_scalar(x) for x in v)
+                # a list of lists (3b's launch_phases) reads "a + b, c": groups by comma
+                out[f"{sec}.{k}"] = ", ".join(" + ".join(_scalar(y) for y in x)
+                                              if isinstance(x, list) else _scalar(x) for x in v)
             else:
                 out[f"{sec}.{k}"] = _scalar(v)
     return out
