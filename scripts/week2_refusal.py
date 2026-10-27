@@ -27,6 +27,7 @@ import os
 import socket
 import sys
 import tomllib
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -260,6 +261,45 @@ def cmd_qualify(args: argparse.Namespace, cfg: dict) -> int:
 TOPUP_TAG = "s2-refusal-topup"
 
 
+class RunIdAdmission:
+    """`driver.run_history` takes `ADMISSION.slot("agent")` with no run id and only then makes
+    the container's `Invocation`, so the laptop gate could never match the reservation to the
+    container (counted twice; builder b, 27 Oct). This wrapper gives every slot a fresh run id
+    and hands it to the next `Invocation` the driver makes inside that slot; driver.py is
+    untouched."""
+
+    def __init__(self, inner):
+        self.inner = inner
+        self.pending: str | None = None
+
+    def slot(self, kind: str, stop=None, *, run_id: str | None = None):
+        rid = run_id or uuid.uuid4().hex[:12]  # Invocation's own run-id format
+        self.pending = rid
+        return self.inner.slot(kind, stop, run_id=rid)
+
+    def take_run_id(self) -> str | None:
+        rid, self.pending = self.pending, None
+        return rid
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
+def _match_topup_reservations() -> RunIdAdmission:
+    """Install `RunIdAdmission` over the laptop gate and make the driver's `Invocation` use the
+    slot's run id (top-ups run one at a time, in this process only)."""
+    adm = RunIdAdmission(D.ADMISSION)
+    D.ADMISSION = adm
+
+    def _invocation(purpose, *a, **kw):
+        rid = adm.take_run_id()
+        if rid is not None and "run_id" not in kw:
+            kw["run_id"] = rid
+        return Invocation(purpose, *a, **kw)
+    D.Invocation = _invocation
+    return adm
+
+
 def _topup_spend(cfg: dict, checkout, caps_path, cap_usd: float):
     """The chain's stage spend with one more tag: the top-up's own cap, checked (charged + held
     + request) at every reservation under the spend's lock."""
@@ -317,6 +357,7 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
             stage="topup",
         )
         RB.install_laptop_admission(cfg, log=out / "laptop_admission.jsonl")
+        _match_topup_reservations()
 
     reg_path = out / "topup_registry.json"
     reg = _load_topup_registry(out)

@@ -35,6 +35,12 @@ BRANCH = "feature/AsyncHTTPTransport-aclose"
 
 
 @pytest.fixture(autouse=True)
+def _no_live_stop_file(tmp_path_factory, monkeypatch):
+    """Tests never see a live run's STOP file in this checkout's raw dir."""
+    monkeypatch.setattr(D, "stop_path", lambda: tmp_path_factory.mktemp("stop") / "STOP")
+
+
+@pytest.fixture(autouse=True)
 def _restore_driver_globals():
     """The 3b code sets the chain driver's module state (stage, cap, agent limits, checkpoint
     rule, admission) as a launch does; restore it so other test files see the defaults."""
@@ -2522,3 +2528,27 @@ def test_has_later_push_reads_bash_tool_calls():
                     "arguments": json.dumps({"command": "cd /app && git push origin b"})}}]}]
     assert RF._has_later_push(msgs, 0) is True
     assert RF._has_later_push(msgs[:2], 0) is False
+
+
+def test_topup_reservation_carries_the_containers_run_id(monkeypatch):
+    """builder b, 27 Oct: the laptop reservation must carry the emx.run label of the container
+    the driver then starts, or the gate counts the agent twice."""
+    import contextlib as cl
+    seen = {}
+
+    class Gate:
+        @cl.contextmanager
+        def slot(self, kind, stop=None, *, run_id=None):
+            seen["reserved"] = run_id
+            yield
+
+    monkeypatch.setattr(D, "ADMISSION", Gate())
+    monkeypatch.setattr(D, "Invocation", D.Invocation)
+    CLI._match_topup_reservations()
+    with D.ADMISSION.slot("agent"):  # as driver.run_history does: slot, then Invocation
+        inv = D.Invocation("s2-chaining")
+    assert seen["reserved"] and inv.run_id == seen["reserved"]
+    with D.ADMISSION.slot("agent"):
+        inv2 = D.Invocation("s2-chaining")
+    assert inv2.run_id == seen["reserved"] != inv.run_id  # a fresh id per slot
+    assert D.Invocation("s2-chaining").run_id != inv2.run_id  # outside a slot: its own id
