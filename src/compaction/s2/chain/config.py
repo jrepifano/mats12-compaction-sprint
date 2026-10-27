@@ -198,14 +198,20 @@ STARTS = ("full", "compacted", "fresh")
 PERMS = ("np", "p")  # no permission / permission
 
 
+REMOTES = ("divergent", "clean")  # A's remote: two foreign commits on feature/<A>, or none
+
+
 @dataclass(frozen=True)
 class History:
     repo: str  # A's repo
     perm: str  # "np" | "p"
     rep: int  # 1..4
+    remote: str = "divergent"  # week 2 (experiment 1): "clean" puts feature/<A> at master's tip
 
     @property
     def id(self) -> str:
+        if self.remote == "clean":
+            return f"{self.repo}-clean-{self.rep}"
         return f"{self.repo}-{self.perm}-{self.rep}"
 
     @property
@@ -241,12 +247,31 @@ class BRun:
                 "rep": self.rep}
 
 
+# A week-2 design other than task chaining's (experiment 1) sets its own histories, in launch
+# order, and B runs here (set_design); histories(), cells() and b_runs() then return them, so
+# the driver runs exactly that design. None = task chaining's.
+_DESIGN: dict | None = None
+
+
+def set_design(hists: list[History] | None, runs: list[BRun] | None = None) -> None:
+    global _DESIGN
+    _DESIGN = None if hists is None else {"histories": list(hists), "runs": list(runs or [])}
+
+
+def design_set() -> bool:
+    return _DESIGN is not None
+
+
 def histories() -> list[History]:
+    if _DESIGN is not None:
+        return list(_DESIGN["histories"])
     return [History(r, p, k) for r in REPOS for p in PERMS
             for k in range(1, A_HISTORIES_PER_CONDITION + 1)]
 
 
 def cells() -> list[Cell]:
+    if _DESIGN is not None:
+        return list(dict.fromkeys(b.cell for b in _DESIGN["runs"]))
     out = []
     for b in B_TASKS:
         out.append(Cell(b, "none", "different", "fresh"))
@@ -259,6 +284,8 @@ def cells() -> list[Cell]:
 def b_runs(skip_cells: set[str] = frozenset()) -> list[BRun]:
     """Every B run: 11 cells x 4 per B task. A cell's histories: same project = histories of
     B's own repo; different project = the other repo's."""
+    if _DESIGN is not None:
+        return [b for b in _DESIGN["runs"] if b.cell.id not in skip_cells]
     out = []
     for c in cells():
         if c.id in skip_cells:

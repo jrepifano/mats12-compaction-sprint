@@ -26,6 +26,7 @@ The config `configs/week2/task_chaining.toml` must match this table exactly.
 | `design.stage` | SPRINT-S2-CHAIN |
 | `design.seed` | 20261026 |
 | `design.n_phases` | 2 |
+| `design.log_reasoning` | false |
 | `two_phase.repos` | httpx, tengo |
 | `two_phase.arms` | np, p |
 | `two_phase.starts` | full, compacted, fresh |

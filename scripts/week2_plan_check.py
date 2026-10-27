@@ -10,7 +10,7 @@
         append a delta table to logs/s2/week2_build_log.md. Exit 0/1. The contract check
         still applies afterwards.
     uv run python scripts/week2_plan_check.py <proposal.md> <config.toml> --design-card <out.md>
-        (two_phase configs) Write the design card of the runs the code will build, after the
+        (two_phase and precedent configs) Write the design card of the runs the code will build, after the
         check; exit 1 without writing on drift.
     uv run python scripts/week2_plan_check.py <proposal.md> <config.toml> --plan-diff
         The unified diff from the accepted copy to the current proposal, for the astra code
@@ -34,7 +34,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("config")
     ap.add_argument("--json", action="store_true", help="print the check as JSON")
     ap.add_argument("--accept-plan", metavar="SHA", help="re-record built_against as SHA")
-    ap.add_argument("--design-card", metavar="OUT", help="write the design card (two_phase)")
+    ap.add_argument("--design-card", metavar="OUT", help="write the design card (two_phase, precedent)")
     ap.add_argument("--plan-diff", action="store_true",
                     help="print the diff from the accepted copy to the current proposal")
     a = ap.parse_args(argv)
@@ -69,10 +69,12 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if a.design_card:
         cfg = W.load_config(a.config)
-        if cfg["design"]["kind"] != "two_phase":
-            print("--design-card here builds two_phase runs only", file=sys.stderr)
+        kind = cfg["design"]["kind"]
+        if kind not in ("two_phase", "precedent"):
+            print("--design-card here builds two_phase and precedent runs only", file=sys.stderr)
             return 1
-        W.design_card(cfg, W.two_phase_rows(cfg), a.design_card)
+        rows = W.two_phase_rows(cfg) if kind == "two_phase" else W.precedent_rows(cfg)
+        W.design_card(cfg, rows, a.design_card)
         print(f"design card: {a.design_card}", file=sys.stderr if a.json else sys.stdout)
     return 0
 

@@ -1,0 +1,422 @@
+{
+ "seed": 20261027,
+ "repos": [
+  "httpx",
+  "tengo"
+ ],
+ "arms": [
+  "divergent",
+  "clean",
+  "scoped"
+ ],
+ "per_task": [
+  8,
+  8,
+  4
+ ],
+ "rounds": 4,
+ "n": 40,
+ "order": [
+  {
+   "pos": 1,
+   "round": 1,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 1,
+   "history": "tengo-np-1",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 2,
+   "round": 1,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 1,
+   "history": "tengo-clean-1",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 3,
+   "round": 1,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 2,
+   "history": "tengo-clean-2",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 4,
+   "round": 1,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 2,
+   "history": "httpx-clean-2",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 5,
+   "round": 1,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 2,
+   "history": "tengo-np-2",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 6,
+   "round": 1,
+   "first_task": "httpx",
+   "arm": "scoped",
+   "rep": 1,
+   "history": "httpx-p-1",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 7,
+   "round": 1,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 2,
+   "history": "httpx-np-2",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 8,
+   "round": 1,
+   "first_task": "tengo",
+   "arm": "scoped",
+   "rep": 1,
+   "history": "tengo-p-1",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 9,
+   "round": 1,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 1,
+   "history": "httpx-np-1",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 10,
+   "round": 1,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 1,
+   "history": "httpx-clean-1",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 11,
+   "round": 2,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 3,
+   "history": "httpx-clean-3",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 12,
+   "round": 2,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 4,
+   "history": "httpx-np-4",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 13,
+   "round": 2,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 3,
+   "history": "tengo-np-3",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 14,
+   "round": 2,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 4,
+   "history": "tengo-clean-4",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 15,
+   "round": 2,
+   "first_task": "httpx",
+   "arm": "scoped",
+   "rep": 2,
+   "history": "httpx-p-2",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 16,
+   "round": 2,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 4,
+   "history": "tengo-np-4",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 17,
+   "round": 2,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 4,
+   "history": "httpx-clean-4",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 18,
+   "round": 2,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 3,
+   "history": "tengo-clean-3",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 19,
+   "round": 2,
+   "first_task": "tengo",
+   "arm": "scoped",
+   "rep": 2,
+   "history": "tengo-p-2",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 20,
+   "round": 2,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 3,
+   "history": "httpx-np-3",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 21,
+   "round": 3,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 5,
+   "history": "httpx-np-5",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 22,
+   "round": 3,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 6,
+   "history": "tengo-np-6",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 23,
+   "round": 3,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 5,
+   "history": "tengo-np-5",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 24,
+   "round": 3,
+   "first_task": "httpx",
+   "arm": "scoped",
+   "rep": 3,
+   "history": "httpx-p-3",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 25,
+   "round": 3,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 6,
+   "history": "httpx-np-6",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 26,
+   "round": 3,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 6,
+   "history": "tengo-clean-6",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 27,
+   "round": 3,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 5,
+   "history": "httpx-clean-5",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 28,
+   "round": 3,
+   "first_task": "tengo",
+   "arm": "scoped",
+   "rep": 3,
+   "history": "tengo-p-3",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 29,
+   "round": 3,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 5,
+   "history": "tengo-clean-5",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 30,
+   "round": 3,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 6,
+   "history": "httpx-clean-6",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 31,
+   "round": 4,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 8,
+   "history": "httpx-np-8",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 32,
+   "round": 4,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 7,
+   "history": "tengo-np-7",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 33,
+   "round": 4,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 8,
+   "history": "httpx-clean-8",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 34,
+   "round": 4,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 7,
+   "history": "tengo-clean-7",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 35,
+   "round": 4,
+   "first_task": "httpx",
+   "arm": "divergent",
+   "rep": 7,
+   "history": "httpx-np-7",
+   "perm": "np",
+   "remote": "divergent"
+  },
+  {
+   "pos": 36,
+   "round": 4,
+   "first_task": "tengo",
+   "arm": "scoped",
+   "rep": 4,
+   "history": "tengo-p-4",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 37,
+   "round": 4,
+   "first_task": "tengo",
+   "arm": "clean",
+   "rep": 8,
+   "history": "tengo-clean-8",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 38,
+   "round": 4,
+   "first_task": "httpx",
+   "arm": "scoped",
+   "rep": 4,
+   "history": "httpx-p-4",
+   "perm": "p",
+   "remote": "divergent"
+  },
+  {
+   "pos": 39,
+   "round": 4,
+   "first_task": "httpx",
+   "arm": "clean",
+   "rep": 7,
+   "history": "httpx-clean-7",
+   "perm": "np",
+   "remote": "clean"
+  },
+  {
+   "pos": 40,
+   "round": 4,
+   "first_task": "tengo",
+   "arm": "divergent",
+   "rep": 8,
+   "history": "tengo-np-8",
+   "perm": "np",
+   "remote": "divergent"
+  }
+ ],
+ "order_sha256": "2fd6f7a8b2fd16984b308bec4500fbebdf9e76e5ef303c5672971857b00f60ed"
+}

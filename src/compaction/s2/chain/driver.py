@@ -245,10 +245,31 @@ def load_route() -> C.Route:
     return C.Route(**d)
 
 
+# Week 2: every reply's reasoning text goes to the run's side log (reasoning.ReasoningLog),
+# switched on by the design's `log_reasoning` (apply_design). Task chaining ran without it.
+LOG_REASONING = False
+# Experiment 1's mid-task checkpoints in first tasks ({"on": [...], "max": n}; SE.Checkpoints).
+CHECKPOINT: dict | None = None
+
+
+def apply_design(cfg: dict) -> None:
+    """A week-2 design's harness switches, from its config: reasoning logging ([design]) and,
+    for experiment 1, the first tasks' checkpoints ([precedent])."""
+    global LOG_REASONING, CHECKPOINT
+    LOG_REASONING = bool(cfg["design"]["log_reasoning"])
+    pr = cfg.get("precedent")
+    CHECKPOINT = ({"on": list(pr["checkpoint_on"]), "max": pr["checkpoint_max"]}
+                  if pr and pr["checkpoint_on"] else None)
+
+
 def paid_model(route: C.Route, run_dir: Path, cap_usd: float, spend):
     from compaction.s2.model import OpenAICompatModel
     rs = RunSpend(spend, cap_usd).attach(run_dir / "spend.jsonl")
-    return OpenAICompatModel(route, rs), rs
+    model = OpenAICompatModel(route, rs)
+    if LOG_REASONING:
+        from compaction.s2.chain.reasoning import LOG_NAME, ReasoningLog
+        model = ReasoningLog(model, run_dir / LOG_NAME)
+    return model, rs
 
 
 # ------------------------------------------------------------------------------------------
@@ -746,7 +767,8 @@ def run_history(hist: CC.History, st: dict, route: C.Route, spend, tasks_: dict,
                 inv = Invocation(CC.PURPOSE)
                 try:
                     r = SE.run_a(hist, k, tasks_[hist.a_task], model, inv, out, stop=L.STOP,
-                                 on_keep=keep_hook("A", f"{hist.id}-a{k}", root), **caps)
+                                 on_keep=keep_hook("A", f"{hist.id}-a{k}", root),
+                                 checkpoint=CHECKPOINT, **caps)
                 finally:
                     bad = cleanup(inv)
             res = r.to_dict()
@@ -1012,9 +1034,11 @@ class CapGate:
     COST_MARGIN. The first refusal closes the gate: no later run starts, in-flight ones finish.
     The stage cap still refuses any call past the cap in code."""
 
-    def __init__(self, st: dict, measured: dict, cap: float = CC.CAP_USD,
+    def __init__(self, st: dict, measured: dict, cap: float | None = None,
                  spent_fn: Callable[[], float] | None = None, root: Path | None = None):
-        self.st, self.measured, self.cap = st, measured, cap
+        # the cap at construction, not at import: a week-2 design sets its own (apply_stage)
+        self.st, self.measured = st, measured
+        self.cap = CC.CAP_USD if cap is None else cap
         self.spent_fn = spent_fn or (lambda: spent()["spent"])
         self.root = root
         self.lock = threading.Lock()
@@ -1134,10 +1158,14 @@ def unfinished_row(rec: dict) -> dict:
 
 
 def assigned(st: dict) -> list[CC.BRun]:
-    """The B runs the experiment assigned: every planned run not in a cut cell and not on an
-    empty history slot."""
-    return [b for b in plan_runs(st, bool(st.get("same_project_only")))
-            if not slot_empty(st, b.history)]
+    """The B runs the experiment assigned: every planned run not in a cut cell and, for task
+    chaining, not on an empty history slot. A week-2 design (config.set_design) keeps every
+    assigned slot, an empty history's forks included, as unknowns (intent to treat; astra
+    precedent r1); `runnable` still skips running them."""
+    runs = plan_runs(st, bool(st.get("same_project_only")))
+    if CC.design_set():
+        return runs
+    return [b for b in runs if not slot_empty(st, b.history)]
 
 
 def latest_finished(rec: dict, root: Path | None = None) -> Path | None:
@@ -1234,7 +1262,7 @@ def write_rows(st: dict, root: Path | None = None) -> Path:
         row |= aggregate_attempts(rec, row, root)
         if rec.get("history"):
             aud = (st["a"].get(rec["history"]) or {}).get("audit") or {}
-            perm_c = rec["cell"]["hist"] == "p" and rec["cell"]["start"] == "compacted"
+            perm_c = rec["cell"]["hist"] in ("p", "scoped") and rec["cell"]["start"] == "compacted"
             row["exposure"] = aud.get("exposure") if perm_c else None
             row["perm_summary_category"] = (st.get("perm_categories") or {}).get(
                 rec["history"]) if perm_c else None
@@ -1434,3 +1462,37 @@ def live_smoke(route: C.Route, spend, tasks_: dict, model_for=None, caps=None,
             "permission_delivery": json.loads((Path(sub["a"][h.id]["dir"]) / "result.json")
                                               .read_text())["extra"].get("permission_delivery"),
             "audit": sub["a"][h.id].get("audit")}
+
+
+# Experiment 1's live smoke (proposal "Checks" 2): one clean and one divergent first task, on
+# the two repos in parallel, rep 0 (never one of the assigned histories).
+PRECEDENT_SMOKE = (CC.History("httpx", "np", 0, "clean"), CC.History("tengo", "np", 0))
+
+
+def precedent_smoke(route: C.Route, spend, tasks_: dict, model_for=None, caps=None) -> dict:
+    """Both first tasks in their own state file and directory. Passes when both count (submitted
+    and kept). Its runs measure the first task's cost; Jacob reads both transcripts."""
+    from compaction.s2.chain import precedent as P
+    root = raw() / "smoke_precedent"
+    sub = load_state(root / "state.json")
+    with ThreadPoolExecutor(len(PRECEDENT_SMOKE)) as ex:
+        futs = [ex.submit(run_history, h, sub, route, spend, tasks_, model_for, root, caps)
+                for h in PRECEDENT_SMOKE]
+        slots = [f.result() for f in futs]
+    rows = []
+    for h, slot in zip(PRECEDENT_SMOKE, slots, strict=True):
+        a = slot["attempts"][-1] if slot["attempts"] else {}
+        row = {"history": h.id, "arm": P.arm_of(h), "state": slot["state"],
+               **{k: a.get(k) for k in ("end", "n_calls", "cost_usd")}}
+        if slot["state"] == "valid":
+            d = Path(slot["dir"])
+            out = AU.a_outcomes(d, h)
+            row |= {"rejection": out["rejection"], "dir": str(d),
+                    "foreign_lost": P.first_stage(d, h)["foreign_lost"],
+                    "checkpoints": len(json.loads((d / "checkpoints.json").read_text()))
+                    if (d / "checkpoints.json").exists() else 0}
+        rows.append(row)
+    ok = all(r["state"] == "valid" for r in rows)
+    costs = [r["cost_usd"] for r in rows if r.get("cost_usd") is not None]
+    return {"pass": ok, "rows": rows, "rejections": sum(r.get("rejection") == "yes" for r in rows),
+            "n_b": 0, "measured": {"A": round(sum(costs) / len(costs), 4)} if costs else {}}

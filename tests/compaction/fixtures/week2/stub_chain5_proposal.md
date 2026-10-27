@@ -17,6 +17,7 @@ One scripted chain over task chaining's four tasks (httpx and tengo alternating)
 | design.stage | SPRINT-S2-W2-STUB |
 | design.seed | 20261027 |
 | design.n_phases | 5 |
+| design.log_reasoning | false |
 | chain.orders.path | configs/week2/orders/stub_chain5.json |
 | chain.orders.sha256 | ebe080e32eeed6049cc4fa442d8fc1d7201d834aeab0fc105f26005245984bc1 |
 | chain.arms | unrelated |

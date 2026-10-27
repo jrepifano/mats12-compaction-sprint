@@ -38,6 +38,7 @@ from compaction.deepswe.sandbox import Invocation
 from compaction.s2 import compact as K
 from compaction.s2 import loop as L
 from compaction.s2.chain import config as CC
+from compaction.s2.chain import score as S
 from compaction.s2.chain.env import ChainEnv, a_branches
 from compaction.s2.model import ChatModel, ModelError, RunCapReached, StageCapReached, est_tokens
 from compaction.s2.tasks import TaskInfo
@@ -93,8 +94,10 @@ def _tally(res: RunResult, loop: L.Loop) -> None:
 
 
 def drive(loop: L.Loop, label: str, after_call=None, max_calls: int = CC.MAX_CALLS,
-          max_seconds: float = CC.MAX_SECONDS, clock=time.monotonic) -> str:
-    """Agent calls until submit or a cap. `after_call(loop)` runs after each call (check-ins).
+          max_seconds: float = CC.MAX_SECONDS, clock=time.monotonic, on_call=None) -> str:
+    """Agent calls until submit or a cap. `on_call(loop)` runs after every call, the submitting
+    one included (checkpoints); `after_call(loop)` after each call that didn't submit
+    (check-ins).
     A run-cap refusal (RunCapReached, raised before a call is sent) ends it as capped_cost; a
     stage refusal (StageCapReached) ends it as stage_cap."""
     t0 = clock()
@@ -108,6 +111,8 @@ def drive(loop: L.Loop, label: str, after_call=None, max_calls: int = CC.MAX_CAL
             if loop.ctx_tokens + r.max_output > r.window:
                 return END_WINDOW
             loop.step(f"{label}{loop.n_calls + 1}")
+            if on_call is not None:
+                on_call(loop)
             if loop.submitted:
                 return END_SUBMIT
             if after_call is not None:
@@ -156,6 +161,63 @@ class Checkins:
                                                   loop.model.route.bytes_per_token)}
 
 
+CHECKPOINT_ON = ("push_rejected", "ask_user")
+
+
+def checkpoint_reasons(messages: list[dict], on: tuple[str, ...]) -> list[str]:
+    """Why the call that produced the last assistant message is a checkpoint: a push the
+    remote rejected (its output has the rejection text) and/or an ask_user call."""
+    last = max((i for i, m in enumerate(messages) if m.get("role") == "assistant"), default=None)
+    if last is None:
+        return []
+    out = []
+    if "push_rejected" in on and any(p["rejected"] for p in
+                                     S.pushes(S.bash_steps(messages, last))):
+        out.append("push_rejected")
+    if "ask_user" in on and any((tc.get("function") or {}).get("name") == "ask_user"
+                                for tc in messages[last].get("tool_calls") or []):
+        out.append("ask_user")
+    return out
+
+
+@dataclass
+class Checkpoints:
+    """Experiment 1's mid-task checkpoints: after a call whose tool calls include a rejected
+    push or an ask_user call, the container, the remote and the scorer's state so far are saved
+    (ChainEnv.checkpoint), up to `max_n` per run. Each is registered like a kept ending
+    (on_keep) and listed in `taken`; a failure is recorded, never raised."""
+
+    env: ChainEnv
+    rid: str
+    out: Path
+    on: tuple[str, ...] = CHECKPOINT_ON
+    max_n: int = 6
+    on_keep: object = None
+    taken: list[dict] = field(default_factory=list)
+
+    def __call__(self, loop: L.Loop) -> None:
+        if len(self.taken) >= self.max_n:
+            return
+        why = checkpoint_reasons(loop.messages, self.on)
+        if not why:
+            return
+        n = loop.n_calls
+        tag = keep_tag("c", f"{self.rid}-c{n}")
+        row = {"call": n, "reasons": why, "message_index": len(loop.messages), "tag": tag}
+        try:
+            if self.on_keep is not None:
+                self.on_keep("intent", tag)
+            row |= self.env.checkpoint(tag, self.out / "checkpoints" / f"c{n}",
+                                       {"emx.chain": "checkpoint", "emx.chain.id": self.rid,
+                                        "emx.chain.call": str(n)})
+            if self.on_keep is not None:
+                self.on_keep("kept", tag)
+        except Exception as e:  # noqa: BLE001 - the run goes on; the miss is recorded
+            row["error"] = f"{type(e).__name__}: {str(e)[:300]}"
+        self.taken.append(row)
+        dump(self.out / "checkpoints.json", self.taken)
+
+
 def _keep(env: ChainEnv, tag: str, labels: dict, on_keep) -> None:
     """The kept snapshot, registered before (intent) and after (kept) the commit, so an image
     that outlives its run is always listed (astra r1 B13)."""
@@ -168,25 +230,45 @@ def _keep(env: ChainEnv, tag: str, labels: dict, on_keep) -> None:
 
 def run_a(hist: CC.History, attempt: int, task: TaskInfo, model: ChatModel, inv: Invocation,
           out: Path, *, stop=None, max_calls: int = CC.MAX_CALLS,
-          max_seconds: float = CC.MAX_SECONDS, on_keep=None) -> RunResult:
+          max_seconds: float = CC.MAX_SECONDS, on_keep=None,
+          checkpoint: dict | None = None) -> RunResult:
+    """One first task. `checkpoint` ({"on": [...], "max": n}, experiment 1) adds mid-task
+    checkpoints (Checkpoints), taken before that call's check-in is appended."""
     t0 = time.monotonic()
     repo = CC.REPOS[hist.repo]
     rid = f"{hist.id}-a{attempt}"
     res = RunResult("A", rid)
     env = loop = None
+    agent_ended = False
     ck = Checkins(hist.perm == "p")
     try:
-        env, inventory = ChainEnv.create(inv, task, out, a_branches(repo))
+        env, inventory = ChainEnv.create(inv, task, out, a_branches(repo, hist.remote))
         res.extra["test_inventory"] = inventory
+        res.extra["remote"] = hist.remote
         text = CC.task_text(task.instruction, repo.a_branch)
         loop = L.Loop(opening(text, env.uname), model, env, f"A:{rid}", stop=stop)
         loop.ctx_tokens = est_tokens(loop.messages, model.route.bytes_per_token)
-        res.end = drive(loop, "turn-", ck, max_calls, max_seconds)
+        cp = None
+        if checkpoint is not None:
+            cp = Checkpoints(env, rid, Path(out), tuple(checkpoint["on"]), checkpoint["max"],
+                             on_keep)
+            res.extra["checkpoints"] = cp.taken
+        try:
+            # checkpoints run after every call, the submitting one too, and before that call's
+            # check-in is appended
+            res.end = drive(loop, "turn-", ck, max_calls, max_seconds, on_call=cp)
+        except ModelError as e:
+            res.end, res.error = END_FAILED, f"ModelError: {e}"
+        except L.Stopped as e:
+            res.end, res.error = END_STOPPED, str(e)
+        agent_ended = True
         res.extra["checkins"] = ck.delivered
         res.extra["permission_delivery"] = ck.permission_delivery
+        # The scorer's state is exported at every ending, submitted or not (week 2: each first
+        # task keeps an auditable ref log); only a submitted ending is kept for forking.
+        res.traps_home = str(env.finish_traps("a-final"))
+        res.refs = env.refs().to_dict()
         if res.end == END_SUBMIT:
-            res.traps_home = str(env.finish_traps("a-final"))
-            res.refs = env.refs().to_dict()
             res.keep_tag = keep_tag("a", rid)
             _keep(env, res.keep_tag, {"emx.chain": "a", "emx.chain.id": rid}, on_keep)
     except ModelError as e:
@@ -194,12 +276,18 @@ def run_a(hist: CC.History, attempt: int, task: TaskInfo, model: ChatModel, inv:
     except L.Stopped as e:
         res.end, res.error = END_STOPPED, str(e)
     except Exception:  # noqa: BLE001 - recorded; the container is removed below
-        res.end, res.error = END_FAILED, traceback.format_exc()[-6000:]
+        tb = traceback.format_exc()[-6000:]
+        if agent_ended and res.end != END_SUBMIT:
+            res.extra["evidence_error"] = tb  # the agent's ending stands (as in B)
+        else:
+            res.end, res.error = END_FAILED, tb
     finally:
         if loop is not None:
             _tally(res, loop)
             dump(out / "messages.json", loop.messages)
             dump(out / "calls.json", loop.calls)
+        if env is not None and loop is not None:  # the agent's loop started: evidence
+            _salvage(env, res, "a-final")
         if env is not None:
             res.extra["timings"] = env.timings
             dump(out / "env_log.json", env.log)
@@ -207,6 +295,21 @@ def run_a(hist: CC.History, attempt: int, task: TaskInfo, model: ChatModel, inv:
         res.seconds = round(time.monotonic() - t0, 3)
         dump(out / "result.json", res.to_dict())
     return res
+
+
+def _salvage(env: ChainEnv, res: RunResult, label: str) -> None:
+    """An ending whose evidence wasn't exported (an exception skipped finish_traps): export
+    what can be, step by step, before the container goes (astra precedent r1). The ending
+    itself stands."""
+    if res.traps_home is not None:
+        return
+    res.traps_home = env.salvage(label)
+    res.extra["salvaged"] = True
+    if res.refs is None:
+        try:
+            res.refs = env.refs().to_dict()
+        except Exception as e:  # noqa: BLE001 - recorded
+            res.extra["salvage_refs_error"] = str(e)[:300]
 
 
 def a_valid(res: RunResult, perm: str) -> tuple[bool, str]:
@@ -333,6 +436,8 @@ def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel
             dump(out / "messages.json", loop.messages)
             dump(out / "calls.json", loop.calls)
         if env is not None:
+            if loop is not None:  # B's setup ran: anything after it is evidence
+                _salvage(env, res, "final")
             res.extra["timings"] = env.timings
             dump(out / "env_log.json", env.log)
             env.close()

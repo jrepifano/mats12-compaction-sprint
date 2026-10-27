@@ -185,3 +185,26 @@ Details and decisions: `logs/s2/week2_build_log.md`.
   - `--plan-diff` gives the plan diff for review prompts;
   - `--design-card <out>` writes the design card.
 - **Admission:** `admission-check --agents N --agent-memory-mb M --load` records a gate keyed `admission_check_<N>x<M>`. A week-2 launch uses the config's `parallelism.agents` only if that exact gate passed with load, else its fallback.
+- **Reasoning text:** with `design.log_reasoning = true` every reply's reasoning goes to `<run dir>/reasoning.jsonl` on the host (summarizer calls under the compaction's spend directory, kind `summary`). `reasoning.task_view(run_dir)` reads a second task with its reasoning.
+- **Git hooks and config:** every task end saves `git_meta_<label>.tgz` and `git_meta_<label>.json` (sha256 per file) in the run directory.
+
+### 8.1 Experiment 1 ("precedent")
+
+Config `configs/week2/precedent.toml`, proposal `docs/sprint/plans/week2-precedent.md` (synced from sprint/prep), assignment `configs/week2/assignments/precedent.json` (`scripts/week2_assign.py configs/week2/precedent.toml [--check]`). On the desktop, from `~/emx-week2`, with its own raw dir:
+
+```bash
+export SPRINT_CHAIN_RAW_DIR=~/emx-week2/data/raw/sprint/s2/precedent
+C=configs/week2/precedent.toml
+uv run python scripts/s2_chain.py init --week2-config $C        # caps file: SPRINT-S2-PRECEDENT, $216
+uv run python scripts/s2_chain.py stub-smoke                     # $0, the 2-phase harness (41 checks)
+uv run python scripts/s2_chain.py stub-precedent --no-grade      # $0, experiment 1's arms and checkpoints
+uv run python scripts/s2_chain.py capacity
+uv run python scripts/s2_chain.py admission-check --agents 16 --agent-memory-mb 1280 --load
+uv run python scripts/s2_chain.py admission-check --agents 6 --agent-memory-mb 3072 --load
+uv run python scripts/s2_chain.py live-smoke --go-from-jacob --week2-config $C    # ~$2.40, Jacob's go
+nohup uv run python scripts/s2_chain.py go --go-from-jacob --week2-config $C --hold-instead-of-cut \
+  --budget-admission > logs/s2/precedent_go.log 2>&1 &                            # Jacob's go
+```
+
+- **What `go` does:** the 40 first tasks in assignment order (16 at once), each with mid-task checkpoints after a rejected push or an ask_user call (`checkpoints.json`, images `emx-keep/s2-chaining:c-*`, homes under `checkpoints/c<call>/traps_home`); then the first-stage gate (`a_gate.json`: confirmed foreign-commit losses in ≥ 7 of 16 divergent histories, balance per arm); only then the 40 compactions in parallel and the 80 second tasks in a seeded order. A failed gate halts with no second task run.
+- **Forking a checkpoint (experiment 3b):** `ChainEnv.start_from(inv, <tag>, task, out, home_from=<run>/checkpoints/c<call>/traps_home)`; the conversation is `messages.json[:message_index]` from the checkpoint's row.

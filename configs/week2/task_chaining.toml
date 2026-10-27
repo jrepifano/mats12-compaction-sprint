@@ -5,13 +5,14 @@
 [meta]
 exp = "task_chaining"
 proposal = "tests/compaction/fixtures/week2/task_chaining_proposal.md"
-built_against = "11cc61c3fa464fe08d0a8d8ed8e6fd870a06eaa62987b6436f148030b4f5c53f"
+built_against = "926ff945dc7be74b2d09b120921be65d4655ca7536280574f6254e115870e8c2"
 
 [design]
 kind = "two_phase"
 stage = "SPRINT-S2-CHAIN"
 seed = 20261026
 n_phases = 2
+log_reasoning = false  # task chaining ran without the side log
 
 [two_phase]
 repos = ["httpx", "tengo"]

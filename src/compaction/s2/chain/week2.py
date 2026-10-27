@@ -38,7 +38,8 @@ class PlanDrift(RuntimeError):
 
 SCHEMA: dict[str, dict] = {
     "meta": {"exp": "str", "proposal": "str", "built_against": "str"},
-    "design": {"kind": ("two_phase", "chain"), "stage": "str", "seed": "int", "n_phases": "int"},
+    "design": {"kind": ("two_phase", "chain", "precedent"), "stage": "str", "seed": "int",
+               "n_phases": "int", "log_reasoning": "bool"},
     "two_phase": {"repos": "list[str]", "arms": "list[str]", "starts": "list[str]",
                   "projects": "list[str]", "histories_per_arm": "int", "a_retries": "int",
                   "plain_fresh_per_task": "int", "permission_after_call": "int",
@@ -46,12 +47,19 @@ SCHEMA: dict[str, dict] = {
     "chain": {"orders": "file", "arms": "list[str]", "boundary": ("compacted", "full"),
               "auto_compact_tokens": "int", "update_prompt_from_boundary": "int",
               "fork_after_every_phase": "bool"},
+    "precedent": {"repos": "list[str]", "arms": "list[str]", "per_task": "list[int]",
+                  "rounds": "int", "starts": "list[str]", "project": ("different",),
+                  "a_retries": "int", "permission_after_call": "int",
+                  "checkin_calls": "list[int]", "first_stage_min": "int",
+                  "assignment": "file", "checkpoint_on": "list[str]", "checkpoint_max": "int",
+                  "second_tasks_after_gate": "bool", "spillover_acts": "list[str]",
+                  "interim_after_second_tasks": "int"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int"},
     "wording": {"*": "file"},
 }
-KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain"}  # design.kind -> its own section
+KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent"}  # design.kind -> its own section
 NOT_CONTRACT = ("meta", "_source")  # flatten skips these
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
 FILE_KEYS = ("path", "sha256")
@@ -170,14 +178,16 @@ def validate(cfg: dict) -> None:
     n = cfg["design"]["n_phases"]
     if n < 2:
         errors.append(f"design.n_phases: must be >= 2, got {n}")
-    if kind == "two_phase" and n != 2:
-        errors.append(f"design.n_phases: must be 2 for two_phase, got {n}")
+    if kind in ("two_phase", "precedent") and n != 2:
+        errors.append(f"design.n_phases: must be 2 for {kind}, got {n}")
     for name, spec in cfg["wording"].items():
         _check_file(f"wording.{name}", spec, errors)
     if kind == "chain":
         p = _check_file("chain.orders", cfg["chain"]["orders"], errors)
         if p is not None and n >= 2:
             _check_orders(p, cfg, errors)
+    if kind == "precedent":
+        _check_file("precedent.assignment", cfg["precedent"]["assignment"], errors)
     if errors:
         raise ValueError("config invalid:\n  " + "\n  ".join(errors))
 
@@ -530,6 +540,14 @@ def design_card(cfg: dict, runs: list[dict], out_path: str | Path) -> str:
     if d["kind"] == "chain":
         o = cfg["chain"]["orders"]
         out += ["", f"Orders: {o['path']} (sha256 {o['sha256']})"]
+    if d["kind"] == "precedent":
+        pr = cfg["precedent"]
+        o = pr["assignment"]
+        out += ["", f"Assignment: {o['path']} (sha256 {o['sha256']}); per first task "
+                + ", ".join(f"{a} {n}" for a, n in zip(pr["arms"], pr["per_task"], strict=True))
+                + f"; {pr['rounds']} launch rounds; first-stage gate >= {pr['first_stage_min']} "
+                "divergent histories"]
+    out += ["", f"Reasoning text logged: {'yes' if d['log_reasoning'] else 'no'}"]
     out += ["", "## Caps and parallelism", "",
             (f"- stage ${_scalar(caps['stage_usd'])}, per run ${_scalar(caps['run_usd'])}, "
              f"{caps['max_calls']} calls, {caps['max_seconds']} s"),
@@ -601,3 +619,95 @@ def fingerprint(cfg: dict) -> dict:
     (astra r1 B4)."""
     return {"exp": cfg["meta"]["exp"], "config_sha256": cfg["_source"]["sha256"],
             "proposal_sha256": cfg["meta"]["built_against"]}
+
+
+# ------------------------------------------------------------------------------------------
+# Experiment 1 (precedent): the assignment and the code it runs
+# ------------------------------------------------------------------------------------------
+
+# The texts the precedent design uses (task chaining's, minus the same-project lead-in).
+PRECEDENT_WORDING = {k: v for k, v in TWO_PHASE_WORDING.items() if k != "lead_same"}
+
+
+def precedent_assignment(cfg: dict) -> dict:
+    """The seeded assignment the config's [precedent] parameters give."""
+    from compaction.s2.chain import precedent as P
+    pr = cfg["precedent"]
+    return P.assign(pr["repos"], pr["arms"], pr["per_task"], pr["rounds"], cfg["design"]["seed"])
+
+
+def precedent_runs(cfg: dict) -> tuple[list[CC.History], list[CC.BRun]]:
+    from compaction.s2.chain import precedent as P
+    a = precedent_assignment(cfg)
+    return P.histories(a), P.b_runs(a, cfg["precedent"]["starts"])
+
+
+def precedent_rows(cfg: dict) -> list[dict]:
+    """precedent_runs in design_card's `runs` shape (first tasks and second-task runs)."""
+    from compaction.s2.chain import precedent as P
+    hists, runs = precedent_runs(cfg)
+    rows = [{"id": h.id, "arm": P.arm_of(h), "start": "first task", "project": "-",
+             "tasks": [h.a_task]} for h in hists]
+    rows += [{"id": r.id, "arm": r.cell.hist, "start": r.cell.start, "project": r.cell.project,
+              "tasks": [CC.REPOS[r.history.split("-")[0]].a_task, r.cell.b_task]} for r in runs]
+    return rows
+
+
+def precedent_code_mismatches(cfg: dict) -> list[str]:
+    """Where a precedent config differs from what the driver will run: the committed
+    assignment must be exactly what the parameters and seed give, the arms and starts must be
+    ones the code implements, and the first task's check-ins, retries, caps and every frozen
+    text must equal the code's. Empty = the code runs exactly this design."""
+    from compaction.s2.chain import precedent as P
+    if cfg["design"]["kind"] != "precedent":
+        return [f"design.kind is {cfg['design']['kind']!r}, not 'precedent'"]
+    pr, caps, out = cfg["precedent"], cfg["caps"], []
+    try:
+        want = precedent_assignment(cfg)
+    except ValueError as e:
+        return [f"precedent assignment: {e}"]
+    got = json.loads(resolve(pr["assignment"]["path"]).read_text())
+    if got.get("order") != want["order"]:
+        out.append(f"precedent.assignment: {pr['assignment']['path']} is not what seed "
+                   f"{cfg['design']['seed']} and the [precedent] parameters give (regenerate it "
+                   "with scripts/week2_assign.py)")
+    from compaction.s2.chain.session import CHECKPOINT_ON
+    odd = [x for x in pr["checkpoint_on"] if x not in CHECKPOINT_ON]
+    if odd or pr["checkpoint_max"] < 0:
+        out.append(f"precedent.checkpoint_on {pr['checkpoint_on']} / checkpoint_max "
+                   f"{pr['checkpoint_max']}: the code knows {list(CHECKPOINT_ON)}, max >= 0")
+    if pr["second_tasks_after_gate"] is not True:
+        out.append("precedent.second_tasks_after_gate: the driver only holds every second task "
+                   "until all first tasks are resolved and the gate passes (true)")
+    if sorted(pr["spillover_acts"]) != sorted(P.SPILLOVER_ACTS):
+        out.append(f"precedent.spillover_acts {pr['spillover_acts']}: the scorer's columns are "
+                   f"{list(P.SPILLOVER_ACTS)}")
+    if pr["interim_after_second_tasks"] < 1:
+        out.append("precedent.interim_after_second_tasks: must be >= 1 (a descriptive look)")
+    bad = [s for s in pr["starts"] if s not in ("full", "compacted")]
+    if bad or not pr["starts"]:
+        out.append(f"precedent.starts: {pr['starts']}; the code runs full and compacted")
+    unknown = [a for a in pr["arms"] if a not in P.ARMS]
+    if unknown:
+        out.append(f"precedent.arms: unknown {unknown} (the code knows {list(P.ARMS)})")
+    # The stage and its cap are the config's own (driver.apply_stage); `go` checks them against
+    # the checkout's caps file instead.
+    for key, code in (("precedent.a_retries", CC.A_RETRIES),
+                      ("precedent.permission_after_call", CC.PERMISSION_AFTER_CALL),
+                      ("precedent.checkin_calls", list(CC.CHECKIN_CALLS)),
+                      ("caps.run_usd", CC.RUN_CAP_USD),
+                      ("caps.max_calls", CC.MAX_CALLS), ("caps.max_seconds", CC.MAX_SECONDS)):
+        sec, k = key.split(".")
+        v = {"precedent": pr, "caps": caps}[sec][k]
+        if v != code:
+            out.append(f"{key}: config {v!r}, code {code!r}")
+    hashes = CC.text_hashes()
+    names = set(cfg.get("wording") or {})
+    if names != set(PRECEDENT_WORDING):
+        out.append(f"wording names {sorted(names)} != the code's {sorted(PRECEDENT_WORDING)}")
+    for name, code_key in PRECEDENT_WORDING.items():
+        w = (cfg.get("wording") or {}).get(name)
+        if w and w["sha256"] != hashes[code_key]:
+            out.append(f"wording.{name}: config sha256 {w['sha256'][:12]}, code "
+                       f"{hashes[code_key][:12]}")
+    return out

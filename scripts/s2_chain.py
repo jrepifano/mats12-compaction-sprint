@@ -134,6 +134,32 @@ def cmd_stub_smoke(a) -> int:
     return 0 if out["pass"] else 4
 
 
+def cmd_stub_precedent(a) -> int:
+    """Experiment 1's stub smoke (compaction.s2.chain.stub_precedent): gate `stub_precedent`."""
+    from compaction.s2.chain import stub_precedent as SP
+    root = CC.raw_dir() / "stub_precedent"
+    D.ensure_images(sorted({t.image for t in D.tasks().values()}))
+    try:
+        out = SP.run(root, grade=not a.no_grade)
+    finally:
+        left = stubs.remove_kept(root)  # its kept endings and checkpoints are never forked again
+    after = D.docker_snapshot()
+    if left or after["ours"]:
+        out["pass"] = False
+        out["checks"].append({"name": "smoke images and containers removed", "ok": False,
+                              "detail": {"images": left, "containers": after["ours"]}})
+    D.SE.dump(root / "stub_precedent.json", out)
+    for c in out["checks"]:
+        print(("PASS " if c["ok"] else "FAIL ") + c["name"])
+    D.status(f"precedent stub smoke: {'PASS' if out['pass'] else 'FAIL'} "
+             f"({sum(c['ok'] for c in out['checks'])}/{len(out['checks'])} checks)")
+    st = D.load_state()
+    st["gates"]["stub_precedent"] = {"pass": out["pass"], "utc": D.utc(),
+                                     "failed": [c["name"] for c in out["checks"] if not c["ok"]]}
+    D.save_state(st)
+    return 0 if out["pass"] else 4
+
+
 def cmd_capacity(_a) -> int:
     from compaction.deepswe.sandbox import Invocation
     images = sorted({t.image for t in D.tasks().values()})
@@ -375,6 +401,18 @@ def _require(a, st: dict, gates: list[str]) -> None:
 
 def cmd_live_smoke(a) -> int:
     st = D.load_state()
+    cfg = None
+    if getattr(a, "week2_config", None) is not None:  # experiment 1's own smoke
+        cfg = week2_gate(a, st)
+        if cfg["design"]["kind"] != "precedent":
+            sys.exit("refusing: live-smoke --week2-config runs the precedent design only")
+        from compaction.s2.chain import week2 as W
+        bad = W.precedent_code_mismatches(cfg)
+        if bad:
+            sys.exit("refusing: the driver doesn't run this design:\n  " + "\n  ".join(bad))
+        apply_precedent(cfg)
+        D.apply_design(cfg)
+        D.set_agent_memory(admitted(st, cfg)[1])
     _require(a, st, ["stub_smoke", "capacity"])
     route, spend = D.load_route(), D.chain_spend()
     s0 = D.spent()["spent"]
@@ -382,7 +420,8 @@ def cmd_live_smoke(a) -> int:
     with D.driver_lock():
         D.watch_stop()
         try:
-            out = D.live_smoke(route, spend, D.tasks())
+            out = (D.precedent_smoke(route, spend, D.tasks()) if cfg is not None else
+                   D.live_smoke(route, spend, D.tasks()))
         except D.Halt as e:
             out = {"pass": False, "reason": f"halt: {e}"}
         except L.Stopped as e:
@@ -434,9 +473,33 @@ def week2_gate(a, st: dict | None = None) -> dict | None:
             sys.exit(f"refusing: this run state already holds runs ({', '.join(runs)}) and no "
                      f"week-2 design; start a new raw dir ({CC.RAW_ENV})")
         st["week2_design"] = fp
+        st["week2_config"] = str(a.week2_config)  # for restore_design in later processes
         D.save_state(st)
     D.status(f"week-2 plan check passed: {cfg['meta']['exp']} ({a.week2_config}, proposal "
              f"{cfg['meta']['built_against'][:12]})")
+    return cfg
+
+
+def restore_design(st: dict) -> dict | None:
+    """A command that reads or writes runs outside `go` (rows, judges, status, analyze) works on
+    the state's bound design: the config recorded at binding is reloaded, must still have the
+    bound fingerprint, and a precedent design is applied (its stage, histories and runs), so
+    the rows are experiment 1's 80 and not task chaining's 88 (astra precedent r1). None for a
+    state with no week-2 design."""
+    from compaction.s2.chain import week2 as W
+    fp = st.get("week2_design")
+    if fp is None:
+        return None
+    path = st.get("week2_config")
+    if not path:
+        sys.exit(f"refusing: the run state is bound to {fp} but records no config path")
+    cfg = W.load_config(path)
+    if W.fingerprint(cfg) != fp:
+        sys.exit(f"refusing: {path} is now {W.fingerprint(cfg)}, not the bound design {fp}")
+    if cfg["design"]["kind"] == "precedent":
+        D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
+        CC.set_design(*W.precedent_runs(cfg))
+        D.apply_design(cfg)
     return cfg
 
 
@@ -461,7 +524,10 @@ def cmd_go(a) -> int:
     cfg = week2_gate(a, st)
     if cfg is not None:
         from compaction.s2.chain import week2 as W
-        bad = W.two_phase_code_mismatches(cfg)
+        kind = cfg["design"]["kind"]
+        bad = (W.two_phase_code_mismatches(cfg) if kind == "two_phase" else
+               W.precedent_code_mismatches(cfg) if kind == "precedent" else
+               [f"design.kind {kind!r} runs with chain-go, not go"])
         if bad:  # the 2-phase driver would run its own constants, not this design (r1 B1)
             sys.exit("refusing: the 2-phase driver doesn't run this design:\n  " +
                      "\n  ".join(bad))
@@ -475,12 +541,18 @@ def cmd_go(a) -> int:
             sys.exit(f"refusing: this run state carries a run selection {stale}; a week-2 "
                      f"design runs its checked run set (start a new raw dir, {CC.RAW_ENV})")
         a.week2 = True
+        if kind == "precedent":
+            apply_precedent(cfg)
+            a.precedent = cfg["precedent"]
+            a.seed = cfg["design"]["seed"]
+        D.apply_design(cfg)
         n, mb = admitted(st, cfg)
         D.set_agent_memory(mb)
         a.concurrency = min(a.concurrency or n, n)
     elif a.concurrency is None:
         a.concurrency = CC.CONCURRENCY
-    _require(a, st, ["stub_smoke", "capacity", "live_smoke", "admission_check"])
+    _require(a, st, ["stub_smoke", "capacity", "live_smoke", "admission_check"]
+             + (["stub_precedent"] if getattr(a, "precedent", None) else []))
     if st.get("halted") and not a.resume_after_halt:
         sys.exit(f"refusing: halted earlier: {st['halted']}")
     st["halted"] = None
@@ -520,6 +592,8 @@ def _go(a, st, route, spend, tasks_) -> int:
         futs = [ex.submit(D.run_history, h, st, route, spend, tasks_) for h in hs]
         for f in futs:
             f.result()  # a Halt or Stopped in any worker propagates (the others stop too)
+    if getattr(a, "precedent", None):
+        return _precedent_after_a(a, st, route, spend, tasks_, meas, hs, spo, cut)
     g = D.a_gate(st)
     st["gates"]["a_phase"] = {k: v for k, v in g.items() if k != "rows"} | {"utc": D.utc()}
     D.SE.dump(CC.raw_dir() / "a_gate.json", g)
@@ -558,12 +632,61 @@ def _go(a, st, route, spend, tasks_) -> int:
     return 0 if _finish(st, spend) else 7
 
 
+def apply_precedent(cfg: dict) -> None:
+    """Experiment 1: its own stage and cap (which must be this checkout's caps file), its
+    histories in assignment order and its B runs (config.set_design), and its design card."""
+    from compaction.s2.chain import week2 as W
+    D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
+    caps = D.read_caps()
+    if caps != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
+        sys.exit(f"refusing: caps file {CC.caps_file()} holds {caps}, not this design's "
+                 "stage and cap (run `init --week2-config` in a new checkout or raw dir)")
+    hists, runs = W.precedent_runs(cfg)
+    CC.set_design(hists, runs)
+    W.design_card(cfg, W.precedent_rows(cfg), CC.REPO_ROOT / "results" / "sprint" / "week2" /
+                  cfg["meta"]["exp"] / "design_card.md")
+
+
+def _precedent_after_a(a, st, route, spend, tasks_, meas, hs, spo, cut) -> int:
+    """Experiment 1 after its first tasks: the first-stage gate (confirmed foreign-commit
+    losses in the divergent histories; first tasks aren't graded here), the compactions in
+    parallel, then the B bulk."""
+    from compaction.s2.chain import precedent as P
+    g = P.gate(st, hs, a.precedent["first_stage_min"])
+    st["gates"]["a_phase"] = {k: v for k, v in g.items() if k != "rows"} | {"utc": D.utc()}
+    D.SE.dump(CC.raw_dir() / "a_gate.json", g)
+    D.save_state(st)
+    D.status(f"first-stage gate: foreign commits lost in {g['core_lost']}/{g['core_n']} "
+             f"divergent histories (needs {g['min_core_lost']}); by arm {g['by_arm']}")
+    if not g["pass"]:
+        D.halt(st, "first-stage gate", f"{g['core_lost']}/{g['core_n']} divergent histories "
+               f"lost the foreign commits, below {g['min_core_lost']}")
+    D.compact_all(st, route, spend, workers=a.concurrency)
+    pr = D.fit_to_cap(st, meas, D.spent()["spent"], same_project_only=spo, cut=cut)
+    st["gates"]["b_projection"] = pr
+    D.save_state(st)
+    D.status(f"projection before the B bulk: ${pr['already']:.2f} spent + ${pr['total']:.2f} "
+             f"({pr['n_b']} runs left); fits {pr['fits']}; shortfall ${pr['shortfall']:.2f}")
+    runs = D.plan_runs(st, spo)
+    if a.budget_admission:
+        return _budget_bulk(a, st, route, spend, tasks_, runs, meas)
+    if not pr["fits"]:
+        D.halt(st, "B bulk hold", f"${pr['already'] + pr['total']:.2f} > ${CC.CAP_USD}: "
+               f"shortfall ${pr['shortfall']:.2f} for {pr['n_b']} B runs")
+    D.run_b_bulk(st, route, spend, tasks_, runs=runs, concurrency=a.concurrency,
+                 ordered=D.random_order(runs, a.seed))
+    if D.stop_requested():
+        raise L.Stopped("stop requested")
+    return 0 if _finish(st, spend) else 7
+
+
 def _budget_bulk(a, st, route, spend, tasks_, runs, meas) -> int:
     """The B bulk under budget admission (coordinator, 26 Oct): every run in one seeded random
     order; a run starts only while spent + in-flight projections + its own fit the cap. When the
     gate closes, the in-flight runs finish and a "HOLD: cap reached" line gives what's left."""
-    order = D.random_order(runs, CC.SEED)
-    st["b_order"] = {"seed": CC.SEED, "ids": [b.id for b in order], "utc": D.utc()}
+    seed = getattr(a, "seed", CC.SEED)
+    order = D.random_order(runs, seed)
+    st["b_order"] = {"seed": seed, "ids": [b.id for b in order], "utc": D.utc()}
     D.save_state(st)
     D.SE.dump(CC.raw_dir() / "b_order.json", st["b_order"])
     gate = D.CapGate(st, meas)
@@ -576,7 +699,7 @@ def _budget_bulk(a, st, route, spend, tasks_, runs, meas) -> int:
             break
         tot += c
         fit += 1
-    D.status(f"B bulk (budget admission): seed {CC.SEED}, {len(left)} runs left in random order; "
+    D.status(f"B bulk (budget admission): seed {seed}, {len(left)} runs left in random order; "
              f"about {fit} projected to fit ${CC.CAP_USD:.2f} at measured costs x "
              f"{D.COST_MARGIN}; planted room {D.others_reserve_mb()} MB")
     D.run_b_bulk(st, route, spend, tasks_, runs=runs, concurrency=a.concurrency, cap_gate=gate,
@@ -610,7 +733,10 @@ def _finish(st, spend) -> bool:
     D.run_judges(st, spend)
     p = D.write_rows(st)
     rows = AN.load_rows(p)
-    md = AN.render_markdown(rows)
+    if (st.get("week2_design") or {}).get("exp") == "precedent":  # its own readout, later
+        md = "Experiment 1: rows in rows.jsonl; analysed by its own readout.\n"
+    else:
+        md = AN.render_markdown(rows)
     (CC.raw_dir() / "analysis.md").write_text(md)
     dk = D.docker_snapshot()
     kept = D.reconcile_kept()
@@ -733,6 +859,7 @@ def cmd_chain_go(a) -> int:
 
 def cmd_status(_a) -> int:
     st = D.load_state()
+    restore_design(st)
     a = {k: v.get("state") for k, v in st["a"].items()}
     b: dict[str, int] = {}
     for v in st["b"].values():
@@ -755,17 +882,24 @@ def cmd_stop(_a) -> int:
 
 
 def cmd_rows(_a) -> int:
-    print(D.write_rows(D.load_state()))
+    st = D.load_state()
+    restore_design(st)
+    print(D.write_rows(st))
     return 0
 
 
 def cmd_judges(_a) -> int:
     st = D.load_state()
+    restore_design(st)
     D.run_judges(st, D.chain_spend())
     return 0
 
 
 def cmd_analyze(a) -> int:
+    cfg = restore_design(D.load_state())
+    if cfg is not None and cfg["design"]["kind"] == "precedent":
+        sys.exit("refusing: task chaining's analysis doesn't apply to experiment 1 (its own "
+                 "readout reads rows.jsonl)")
     rows = AN.load_rows(Path(a.rows) if a.rows else CC.raw_dir() / "rows.jsonl")
     md = AN.render_markdown(rows)
     out = Path(a.out) if a.out else CC.raw_dir() / "analysis.md"
@@ -794,6 +928,7 @@ def main(argv: list[str] | None = None) -> int:
                    help="each admitted container runs its repo's tests; memory peaks logged")
     p = sub.add_parser("live-smoke")
     p.add_argument("--go-from-jacob", action="store_true")
+    p.add_argument("--week2-config", type=Path, help="a precedent config: experiment 1's smoke")
     p = sub.add_parser("go")
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--same-project-only", action="store_true")
@@ -809,6 +944,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--week2-config", type=Path)
     p.add_argument("--task-chaining-v031", action="store_true",
                    help="the task-chaining design (v0.3.1), with no week-2 config")
+    p = sub.add_parser("stub-precedent")
+    p.add_argument("--no-grade", action="store_true")
     p = sub.add_parser("stub-chain5")
     p.add_argument("--no-grade", action="store_true")
     p = sub.add_parser("visibility-check")
@@ -828,6 +965,7 @@ def main(argv: list[str] | None = None) -> int:
     return {"init": cmd_init, "pin-route": cmd_pin_route, "stub-smoke": cmd_stub_smoke,
             "capacity": cmd_capacity, "admission-check": cmd_admission_check,
             "live-smoke": cmd_live_smoke, "go": cmd_go, "stub-chain5": cmd_stub_chain5,
+            "stub-precedent": cmd_stub_precedent,
             "visibility-check": cmd_visibility_check, "chain-go": cmd_chain_go,
             "status": cmd_status, "stop": cmd_stop, "rows": cmd_rows, "judges": cmd_judges,
             "analyze": cmd_analyze}[a.cmd](a)

@@ -5,13 +5,14 @@
 [meta]
 exp = "stub_chain5"
 proposal = "tests/compaction/fixtures/week2/stub_chain5_proposal.md"
-built_against = "d98ed44225f8feb31b94e79a1f3abd62510a541b2e59daddfc3c5be672b24471"
+built_against = "b690280572960c4ec8edb1f2474f91ac70da2ca28f32837e3ffe53ce883e6cdf"
 
 [design]
 kind = "chain"
 stage = "SPRINT-S2-W2-STUB"
 seed = 20261027
 n_phases = 5
+log_reasoning = false  # stub model: no reasoning text
 
 [chain]
 orders = { path = "configs/week2/orders/stub_chain5.json", sha256 = "ebe080e32eeed6049cc4fa442d8fc1d7201d834aeab0fc105f26005245984bc1" }
