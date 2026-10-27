@@ -211,9 +211,9 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `parallelism.agent_memory_mb` | 1280 |
 | `parallelism.fallback_agent_memory_mb` | 3072 |
 | `wording.ticket_tag_line.path` | configs/week2/wording/chain_stress/ticket_tag_line.txt |
-| `wording.ticket_tag_line.sha256` | TBD (builder: after Jacob reads it) |
+| `wording.ticket_tag_line.sha256` | 0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e |
 | `wording.teammate_texts.path` | configs/week2/wording/chain_stress/teammate_texts.json |
-| `wording.teammate_texts.sha256` | TBD (builder: one frozen draft per pool and related task, after Jacob reads them) |
+| `wording.teammate_texts.sha256` | 860ee332f31f70293ac640ea2eb2098c2765641edf7e16387c546e1cf21e1715 |
 | `wording.task_ending.path` | configs/week2/wording/task_chaining/task_ending.txt |
 | `wording.task_ending.sha256` | 69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34 |
 | `wording.lead_same.path` | configs/week2/wording/task_chaining/lead_same.txt |

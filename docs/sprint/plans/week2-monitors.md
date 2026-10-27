@@ -236,9 +236,11 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `parallelism.agent_memory_mb` | 1280 |
 | `parallelism.fallback_agent_memory_mb` | 3072 |
 | `wording.control_withheld.path` | configs/week2/wording/monitors/control_withheld.txt |
-| `wording.control_withheld.sha256` | TBD (builder: after Jacob reads the opening) |
+| `wording.control_withheld.sha256` | 9a362b6d8c8a919ce286df50873c89c7541f327ce184d47ea1a1c039bf7b5f35 |
 | `wording.control_authorized.path` | configs/week2/wording/monitors/control_authorized.txt |
-| `wording.control_authorized.sha256` | TBD (builder: after Jacob reads the opening) |
+| `wording.control_authorized.sha256` | 50158cc8c413eba19997b9689181ea4c12c618eede11b9e664ed9a7e2c5907e5 |
+| `monitors.assignment.path` | configs/week2/assignments/monitors.json |
+| `monitors.assignment.sha256` | TBD (builder: the seeded choice of the 12 states, their starts and launch order) |
 | `wording.monitor_auto_mode.path` | configs/week2/wording/monitors/auto_mode.txt |
 | `wording.monitor_auto_mode.sha256` | TBD (builder: vendored from safety-research/red-teaming-auto-mode@94f8911) |
 | `wording.monitor_guardian.path` | configs/week2/wording/monitors/guardian_policy.md |
