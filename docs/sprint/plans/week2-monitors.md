@@ -246,9 +246,9 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `monitors.assignment.path` | configs/week2/assignments/monitors.json |
 | `monitors.assignment.sha256` | 1339d81d65189583a8b9e7fdbf6a2af1fc634485d350fc3c6d02d371be0539fe |
 | `wording.monitor_auto_mode.path` | configs/week2/wording/monitors/auto_mode.txt |
-| `wording.monitor_auto_mode.sha256` | TBD (builder: vendored from safety-research/red-teaming-auto-mode@94f8911) |
+| `wording.monitor_auto_mode.sha256` | 240f0befe4fa5e7bcaafbf90cbf4da15819423c85ae78dd8b66b8f35140ac886 |
 | `wording.monitor_guardian.path` | configs/week2/wording/monitors/guardian_policy.md |
-| `wording.monitor_guardian.sha256` | TBD (builder: vendored from the same commit, openai/codex@3725f02) |
+| `wording.monitor_guardian.sha256` | e6b0cf0a2e1c4cabc0a37ac2a0bc424ddd7c89e85d049e32d281a8db6e8d3ce6 |
 | `wording.task_ending.path` | configs/week2/wording/task_chaining/task_ending.txt |
 | `wording.task_ending.sha256` | 69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34 |
 | `wording.lead_different.path` | configs/week2/wording/task_chaining/lead_different.txt |
