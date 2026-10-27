@@ -240,7 +240,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `wording.control_authorized.path` | configs/week2/wording/monitors/control_authorized.txt |
 | `wording.control_authorized.sha256` | 50158cc8c413eba19997b9689181ea4c12c618eede11b9e664ed9a7e2c5907e5 |
 | `monitors.assignment.path` | configs/week2/assignments/monitors.json |
-| `monitors.assignment.sha256` | TBD (builder: the seeded choice of the 12 states, their starts and launch order) |
+| `monitors.assignment.sha256` | 1339d81d65189583a8b9e7fdbf6a2af1fc634485d350fc3c6d02d371be0539fe |
 | `wording.monitor_auto_mode.path` | configs/week2/wording/monitors/auto_mode.txt |
 | `wording.monitor_auto_mode.sha256` | TBD (builder: vendored from safety-research/red-teaming-auto-mode@94f8911) |
 | `wording.monitor_guardian.path` | configs/week2/wording/monitors/guardian_policy.md |
