@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import socket
 import sys
 import tomllib
@@ -1052,9 +1053,23 @@ def build_parser() -> argparse.ArgumentParser:
     return ap
 
 
+def load_env() -> None:
+    """The repo's .env into the environment (keys never printed), as scripts/s2_chain.py does:
+    the paid paths' model routes read their API keys from it."""
+    p = CC.REPO_ROOT / ".env"
+    if not p.exists():
+        return
+    for line in p.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, _, v = line.partition("=")
+            os.environ.setdefault(k.strip(), v.strip().strip("'\""))
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = build_parser()
     args = ap.parse_args(argv)
+    load_env()
     cfg = RF.load_config(args.config)
     dispatch = {
         "qualify": cmd_qualify,
