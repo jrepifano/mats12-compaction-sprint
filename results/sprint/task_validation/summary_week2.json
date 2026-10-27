@@ -1,0 +1,580 @@
+{
+ "generated": "2026-10-27T07:01:04Z",
+ "scanner": "c06cd3d118db-s8i8t5",
+ "schema": {
+  "key": "<family>/<task>",
+  "verdict": "CLEAN | LEAK | ERROR: what an agent inside the container can reach. CLEAN only if the probe is CLEAN and the red-team ran and found nothing.",
+  "layers": "CLEAN | LEAK | ERROR | null: solution text in any image layer tarball, including decoded git objects inside layers (not reachable from inside the container)",
+  "hidden_tests": "CLEAN | LEAK | ERROR: the verifier's added test lines in the container",
+  "image_id": "the image id on rig that every stage ran against"
+ },
+ "counts": {
+  "deepswe": {
+   "verdict": {
+    "CLEAN": 9
+   },
+   "probe": {
+    "CLEAN": 9
+   },
+   "layers": {
+    "CLEAN": 9
+   },
+   "newpaths": {
+    "CLEAN": 7,
+    "SKIP": 2
+   },
+   "redteam": {
+    "CLEAN": 9
+   },
+   "hidden_tests": {
+    "CLEAN": 9
+   }
+  }
+ },
+ "rows": [
+  {
+   "key": "deepswe/bandit-incremental-cache-control",
+   "family": "deepswe",
+   "task": "bandit-incremental-cache-control",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7drfg2vkvdvfh9xx0nfd5pz9821xr7-v1.1",
+   "image_id": "sha256:f22b38f03dfbe2ca76f5019a1ef94953f700d51312fe47693ecba7d18f544d94",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 3,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 11,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:48:10Z"
+  },
+  {
+   "key": "deepswe/bandit-interprocedural-taint-checks",
+   "family": "deepswe",
+   "task": "bandit-interprocedural-taint-checks",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77yap0nc4zwm5bysc954xbr182tptg-v1.1",
+   "image_id": "sha256:7207179b09db76a8a3864b9e69c5fdf10e0d41a5bba242854216f18aa90ac7b1",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 2,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 15,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/__pycache__/ast.cpython-311.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/__pycache__/inspect.cpython-311.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/__pycache__/pyclbr.cpython-311.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/ast.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/inspect.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/lib/python3.11/pyclbr.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/__pycache__/ast.cpython-312.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/__pycache__/inspect.cpython-312.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/ast.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/inspect.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/pyclbr.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/site-packages/setuptools/_vendor/typeguard/__pycache__/_transformer.cpython-312.pyc",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "file",
+     "location": "/usr/local/lib/python3.12/site-packages/setuptools/_vendor/typeguard/_transformer.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/usr/local/lib/python3.12/site-packages/virtualenv/seed/wheels/embed/setuptools-75.3.2-py3-none-any.whl!setuptools/_vendor/typeguard/_transformer.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    },
+    {
+     "what": "archive",
+     "location": "/usr/local/lib/python3.12/site-packages/virtualenv/seed/wheels/embed/setuptools-80.9.0-py3-none-any.whl!setuptools/_vendor/typeguard/_transformer.py",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    }
+   ],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:48:10Z"
+  },
+  {
+   "key": "deepswe/httpx-multipart-response-parsing",
+   "family": "deepswe",
+   "task": "httpx-multipart-response-parsing",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fr6f1yw1289ye5ttsfvaqen8319dq-v1.1",
+   "image_id": "sha256:47d0af14d988caa7d22b14312be2c3ee4e9ac799a5679bd83d19f298d346749d",
+   "sets": [
+    "week2_exp1",
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 2,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:48:37Z"
+  },
+  {
+   "key": "deepswe/koota-entity-snapshot-rollback",
+   "family": "deepswe",
+   "task": "koota-entity-snapshot-rollback",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh71b98xenay7p45357036xq5x82tcdf-v1.1",
+   "image_id": "sha256:b72e57fe02f96beaa8c06cf17ba25b86e64cc7ff1b9b829ef79602aef38ec9d2",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 2,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "task repo HEAD 72ebef44b8e0 is not the task base 72ebef44b8e0",
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:48:39Z"
+  },
+  {
+   "key": "deepswe/obsidian-linter-auto-table-of-contents",
+   "family": "deepswe",
+   "task": "obsidian-linter-auto-table-of-contents",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh74j15mp1vrxx737y8b47tc8h832a37-v1.1",
+   "image_id": "sha256:56d3ffcde2ca373ffa0107f830b243d66191020f7021806acc8d609148518092",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 4,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:49:09Z"
+  },
+  {
+   "key": "deepswe/obsidian-linter-link-format-conversion",
+   "family": "deepswe",
+   "task": "obsidian-linter-link-format-conversion",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7anfdjd1c4e5ejxncny0j1ed82xjm4-v1.1",
+   "image_id": "sha256:50faff6fce0e47f4edbf547c2c8f4667cdb73a80ebf0a080928a2362d4f08c55",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 4,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 11,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:49:09Z"
+  },
+  {
+   "key": "deepswe/obsidian-linter-scoped-ignore-markers",
+   "family": "deepswe",
+   "task": "obsidian-linter-scoped-ignore-markers",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7fmf1y6r9ajpg3htmaj237h182vztd-v1.1",
+   "image_id": "sha256:5522ad4d38ef3cd0163dfd1f584dcafd197b914ddf56816d0a88941067657d67",
+   "sets": [
+    "week2_exp4"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 4,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "CLEAN",
+   "newpaths_refs": 0,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:49:35Z"
+  },
+  {
+   "key": "deepswe/tengo-callable-instance-isolation",
+   "family": "deepswe",
+   "task": "tengo-callable-instance-isolation",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh77n9t7ybdq9387d08jzdp1y183ffe6-v1.1",
+   "image_id": "sha256:4ef42ab32e07164ff16f4af59da104016a605cf436c6fde1be8c68745740582f",
+   "sets": [
+    "week2_exp1"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 2,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 10,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
+   "newpaths_refs": null,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 0,
+   "weak_hits": [],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:49:35Z"
+  },
+  {
+   "key": "deepswe/tengo-destructuring-bindings",
+   "family": "deepswe",
+   "task": "tengo-destructuring-bindings",
+   "image": "public.ecr.aws/d3j8x8q7/swe-bench-202605:kh7ajwvesks1d5kkpeqx7y79sd8238zn-v1.1",
+   "image_id": "sha256:4ef42ab32e07164ff16f4af59da104016a605cf436c6fde1be8c68745740582f",
+   "sets": [
+    "week2_exp1"
+   ],
+   "verdict": "CLEAN",
+   "verdict_why": [],
+   "probe": "CLEAN",
+   "probe_reasons": [],
+   "probe_errors": [],
+   "remediation": [],
+   "hidden_tests": "CLEAN",
+   "layers": "CLEAN",
+   "layers_reasons": [],
+   "layers_errors": [],
+   "layers_git": 2,
+   "redteam": "CLEAN",
+   "redteam_location": "",
+   "redteam_calls": 13,
+   "redteam_errors": [],
+   "redteam_model": "claude-sonnet-5-5",
+   "newpaths": "SKIP",
+   "newpaths_refs": null,
+   "entryprobe": null,
+   "notes": [
+    "21 undecodable archive(s) in toolchain or dependency test fixtures",
+    "2 nested fixture member(s) not decoded (raw bytes searched), e.g. /usr/local/go/src/archive/tar/testdata/gnu-sparse-big.tar!gnu-sparse (member over cap)"
+   ],
+   "n_weak_hits": 1,
+   "weak_hits": [
+    {
+     "what": "file",
+     "location": "/usr/lib/node_modules/yarn/lib/cli.js",
+     "needle": "I8",
+     "review": false,
+     "with": [
+      "I8"
+     ]
+    }
+   ],
+   "n_review_hits": 0,
+   "unreviewed": [],
+   "n_needles": {
+    "S": 8,
+    "I": 8,
+    "T": 5
+   },
+   "scanner": "c06cd3d118db-s8i8t5",
+   "checked_at": "2026-10-27T06:50:01Z"
+  }
+ ]
+}

@@ -1,0 +1,92 @@
+{
+ "pass": true,
+ "agents_admitted": 6,
+ "expected": 6,
+ "agent_memory_mb": 3072,
+ "grader_with_all_agents": "waited",
+ "grader_after_two_left": "admitted",
+ "agents_left_for_grader": 2,
+ "fail_closed": {
+  "ours_is_error": true,
+  "others_is_none": true,
+  "why_not": "docker_query_failed"
+ },
+ "stats": {
+  "admitted": 7,
+  "waits": 15,
+  "max_live_mb": 20480,
+  "blocked_by": {
+   "budget": 15
+  }
+ },
+ "load": [
+  {
+   "container": "s2-chaining-0ec84528327e-fcd70c75",
+   "language": "typescript",
+   "seconds": 0,
+   "tests_tail": null,
+   "tests_rc": 0,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 8
+  },
+  {
+   "container": "s2-chaining-0ec84528327e-933a7283",
+   "language": "go",
+   "seconds": 3,
+   "tests_tail": "?   \tgithub.com/d5/tengo/v2/token\t[no test files]",
+   "tests_rc": 0,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 196
+  },
+  {
+   "container": "s2-chaining-0ec84528327e-a1f195fa",
+   "language": "go",
+   "seconds": 3,
+   "tests_tail": "?   \tgithub.com/d5/tengo/v2/token\t[no test files]",
+   "tests_rc": 0,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 199
+  },
+  {
+   "container": "s2-chaining-0ec84528327e-b13a4adb",
+   "language": "go",
+   "seconds": 3,
+   "tests_tail": "?   \tgithub.com/d5/tengo/v2/token\t[no test files]",
+   "tests_rc": 0,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 201
+  },
+  {
+   "container": "s2-chaining-0ec84528327e-90e50614",
+   "language": "go",
+   "seconds": 3,
+   "tests_tail": "?   \tgithub.com/d5/tengo/v2/token\t[no test files]",
+   "tests_rc": 0,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 204
+  },
+  {
+   "container": "s2-chaining-0ec84528327e-dfd8656c",
+   "language": "python",
+   "seconds": 3,
+   "tests_tail": "1 failed, 231 passed, 1 skipped in 2.90s",
+   "tests_rc": 1,
+   "timed_out": false,
+   "oom_kills": 0,
+   "peak_mb": 73
+  }
+ ],
+ "load_ok": true,
+ "host_memory": {
+  "n": 41,
+  "min_available_mb": 26985,
+  "at": "2026-10-27T07:18:47+00:00",
+  "first_mb": 27576,
+  "last_mb": 27719
+ }
+}
