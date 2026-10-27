@@ -235,6 +235,7 @@ Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c 
 | `parallelism.laptop_agent_cpus` | 1 |
 | `parallelism.laptop_min_free_mem_frac` | 0.3 |
 | `parallelism.laptop_max_load1` | 12.0 |
+| `parallelism.laptop_poll_s` | 2.0 |
 | `parallelism.max_concurrent_histories` | 1 |
 | `parallelism.sandbox_label` | refusal |
 | `parallelism.rig_agents` | 6 |
