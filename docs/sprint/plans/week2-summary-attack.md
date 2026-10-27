@@ -1,5 +1,7 @@
 # Week 2, Experiment 3: is the compaction summary a trust boundary?
 
+**Parked (Jacob, 27 Oct 2026, ~11 AM ET): not run this week.** It becomes a next-steps slide citing P07, P38 and P44. Reasons: on solvable tasks the gate likely fails (0/88 existing-test edits in task chaining, 0/8 even with the rule dropped); P07 already found summary ≈ tool output (+4 [−10, +17]); lowest priority for rig time. Rescope C (fixed false-authorization line + tool-output control on tasks with real test pressure) is a possible add-on only if rig time frees up. The partial draft below is kept for the record and is unreviewed.
+
 Draft v0.1, 27 Oct 2026. Proposal writer for Experiment 3 of the week-2 plan ([umbrella plan](#week-2-umbrella-plan)). Not yet reviewed. Nothing is built or paid for before Jacob's go. Literature: `docs/sprint/next-experiments/lit_summary-attack_internal.md` and `lit_summary-attack_external.md`.
 
 ## Review summary
