@@ -88,7 +88,14 @@ def origin_url(repo_name: str) -> str:
     return f"/srv/git/{repo_name}.git"
 
 
+# Explicit repo names for tasks outside task chaining (week 2, experiment 4 registers them from
+# its per-task file): "obsidian-linter", not "obsidian". Empty by default.
+REPO_NAMES: dict[str, str] = {}
+
+
 def repo_name(task_id: str) -> str:
+    if task_id in REPO_NAMES:
+        return REPO_NAMES[task_id]
     r = CC.REPO_OF_TASK.get(task_id)
     return r.name if r is not None else task_id.split("-", 1)[0]
 
@@ -196,6 +203,23 @@ def main(raw):
         g["new_commits"] = gitstate.new_commits(ws, base) if base is not None else None
     sys.stdout.write(json.dumps({"fs": snap, "git": g}))
 '''
+
+
+def parse_memory(text: str) -> dict:
+    """ChainEnv.memory's output: cgroup v2 `memory.events` lines, `peak=<bytes>` and
+    `max=<bytes or "max">`. Unknown fields are None."""
+    vals: dict[str, str] = {}
+    for line in text.splitlines():
+        k, _, v = line.replace("=", " ", 1).partition(" ")
+        vals[k.strip()] = v.strip()
+
+    def num(k: str) -> int | None:
+        v = vals.get(k, "")
+        return int(v) if v.isdigit() else None
+    peak, lim = num("peak"), num("max")
+    return {"oom_kills": num("oom_kill"), "oom_events": num("oom"),
+            "peak_mb": None if peak is None else peak // 2**20,
+            "limit_mb": None if lim is None else lim // 2**20}
 
 
 def refs_sh(bare: str) -> str:
@@ -404,6 +428,15 @@ class ChainEnv(TaskEnv):
                "seconds": round(time.monotonic() - t0, 3), "traps_home": str(home)}
         self.timings.append({"op": "checkpoint", **rec})
         return rec
+
+    def memory(self) -> dict:
+        """The container's cgroup memory record as its run ends (read inside, nothing written):
+        OOM kills, the peak and the limit. An OOM-killed process must not read as agent
+        behaviour (Jacob, 27 Oct)."""
+        r = self.harness("grep -h '^oom' /sys/fs/cgroup/memory.events 2>/dev/null; "
+                         "echo peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null); "
+                         "echo max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null)", workdir="/")
+        return parse_memory(r.output)
 
     def salvage(self, label: str) -> str | None:
         """Best-effort evidence for an ending that skipped `finish_traps` (an exception before
@@ -692,8 +725,14 @@ class ChainEnv(TaskEnv):
             if p in allowed or p.startswith(f"{HOME}/bin/"):
                 continue
             name = p.rsplit("/", 1)[-1].lower()
-            ours = ("gitd" in p.lower() or name in ("shim.jsonl", "push.jsonl", "ask.jsonl")
+            # a "gitd" name counts only when the container added it: some task images ship one
+            # (arcane's Go module cache holds docker's contrib/gitdm)
+            ours = (("gitd" in p.lower() and p in added)
+                    or name in ("shim.jsonl", "push.jsonl", "ask.jsonl")
                     or name.startswith("traps_home") or p.startswith("/tmp/vcs_"))
+            if "gitd" in p.lower() and not ours:
+                image_native.append(p)
+                continue
             maybe = ("trap" in name or name in ("messages.json", "calls.json", "result.json",
                                                  "compaction.json") or name == ".pi"
                      or "transcript" in name or name.startswith(("fs_", "git_", "vcs_"))

@@ -703,7 +703,9 @@ def a_dir(hist_id: str, attempt: int, root: Path | None = None) -> Path:
 def _a_record(k: int, res: dict, perm: str, spent_usd: float | None, bad: list) -> dict:
     r = SE.RunResult(**res)
     valid, why = SE.a_valid(r, perm)
+    mem = r.extra.get("memory") or {}
     return {"attempt": k, "end": r.end, "valid": valid, "why": why, "n_calls": r.n_calls,
+            "oom_kills": mem.get("oom_kills"), "mem_peak_mb": mem.get("peak_mb"),
             "cost_usd": round(spent_usd if spent_usd is not None else r.cost_usd, 6),
             "keep_tag": r.keep_tag, "cleanup_unconfirmed": bad, "error": (r.error or "")[-300:]}
 

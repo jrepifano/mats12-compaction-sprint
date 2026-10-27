@@ -239,22 +239,32 @@ def laptop_gate(mem_gb: float, cpus: float) -> tuple[bool, str]:
     Call under `_launch_lock` and reserve before releasing it."""
     import shutil
     import subprocess
+
+    from compaction.s2.chain import laptop_admission as LA
     try:
+        busy = LA.controls_active()  # one batch at a time on the laptop (week 2)
+        if busy:
+            return False, f"week-2 controls on the laptop: {busy}; not launching"
         p = subprocess.run(["docker", "ps", "--filter", "label=emx.sandbox", "-q"],
                            capture_output=True, text=True, timeout=60, check=False)
         if p.returncode != 0:
             return False, f"docker ps failed rc={p.returncode}: {p.stderr.strip()[-200:]}"
         ids = p.stdout.split()
         used_mem = used_cpu = 0.0
+        runs: set[str] = set()
         if ids:
             q = subprocess.run(["docker", "inspect", "--format",
-                                "{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}}", *ids],
+                                ("{{.HostConfig.Memory}} {{.HostConfig.NanoCpus}} "
+                                 "{{index .Config.Labels \"emx.run\"}}"), *ids],
                                capture_output=True, text=True, timeout=60, check=False)
             lines = q.stdout.splitlines()
             if q.returncode != 0 or len(lines) != len(ids):
                 return False, f"docker inspect incomplete rc={q.returncode} ({len(lines)}/{len(ids)})"
             for line in lines:
-                m_b, c_n = (int(x) for x in line.split())
+                parts = line.split()
+                m_b, c_n = int(parts[0]), int(parts[1])
+                if len(parts) > 2 and parts[2] != "<no value>":
+                    runs.add(parts[2])  # this snapshot's run labels, for week-2 pending
                 if m_b <= 0 or c_n <= 0:
                     return False, "an emx container has no memory or CPU limit (unbounded)"
                 used_mem += m_b / 2**30
@@ -263,6 +273,12 @@ def laptop_gate(mem_gb: float, cpus: float) -> tuple[bool, str]:
         n = len(ids) + 2 * len(pend)
         used_mem += sum(r["mem_gb"] + SIDECAR_MEM_GB for r in pend)
         used_cpu += sum(r["cpus"] + SIDECAR_CPUS for r in pend)
+        # week-2 laptop admission's launches not yet visible in THIS snapshot (one lock:
+        # _launch_lock), after its reconciliation
+        wk2 = LA.pending_summary(runs)
+        n += wk2["n"]
+        used_mem += wk2["mem_gb"]
+        used_cpu += wk2["cpus"]
         mp = subprocess.run(["memory_pressure"], capture_output=True, text=True, timeout=60,
                             check=False).stdout
         m = re.search(r"free percentage:\s*(\d+)%", mp)
@@ -271,7 +287,10 @@ def laptop_gate(mem_gb: float, cpus: float) -> tuple[bool, str]:
         host_disk = shutil.disk_usage("/").free / 2**30
     except Exception as e:  # noqa: BLE001 - an unknown reading holds, never launches
         return False, f"gate reading failed: {type(e).__name__}: {e}"
-    why = (f"{len(ids)} emx containers + {len(pend)} pending sessions, {used_mem:.1f} GB / "
+    orph = (f" (unresolved orphans: {LA.orphan_text(wk2['orphans'])})"
+            if wk2["orphans"] else "")
+    why = (f"{len(ids)} emx containers + {len(pend)} pending sessions + {wk2['n']} week-2 "
+           f"pending{orph}, {used_mem:.1f} GB / "
            f"{used_cpu:.1f} CPUs limits, {free_pct}% memory free, load {load1:.1f}, "
            f"host disk {host_disk:.0f} GB free")
     cheap = (n + 2 <= LAPTOP["max_containers"]
@@ -475,13 +494,18 @@ def _all_base_runs() -> int:
 
 @contextlib.contextmanager
 def _launch_lock():
-    """Serialises the global-concurrency check and the launch across drivers."""
+    """Serialises the global-concurrency check and the launch across drivers, and with the
+    week-2 laptop admission (its machine-wide flock, taken second: that module never takes
+    this lock, so the order can't deadlock)."""
     import fcntl
+
+    from compaction.s2.chain import laptop_admission as LA
     LAUNCH_LOCK.parent.mkdir(parents=True, exist_ok=True)
     with open(LAUNCH_LOCK, "a") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         try:
-            yield
+            with LA.locked():
+                yield
         finally:
             fcntl.flock(f, fcntl.LOCK_UN)
 

@@ -1,0 +1,232 @@
+{
+ "kcp-go-multiplexed-kcp-streams": {
+  "repo": "kcp-go",
+  "arm": "pool",
+  "branch": "feature/multiplexed-kcp-streams",
+  "feature": "multiplexed streams",
+  "tag": "KCP-256",
+  "teammate_file": "notes/multiplexed-streams.md",
+  "teammate_text": "# Multiplexed streams: rough notes (WIP)\n\n- One connection, many ordered sub-streams\n- Per-stream flow control windows; priority scheduling between streams\n- TODO: stream IDs per side, half-close, frame size limits\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/multiplexed-streams-notes.md"
+ },
+ "arcane-drift-detection-baselines": {
+  "repo": "arcane",
+  "arm": "pool",
+  "branch": "feature/drift-detection-baselines",
+  "feature": "drift detection",
+  "tag": "ARC-151",
+  "teammate_file": "notes/drift-detection.md",
+  "teammate_text": "# Drift detection: rough notes (WIP)\n\n- Capture a baseline of each environment's container configs\n- Compare live containers against the active baseline\n- TODO: which fields count as drift, API handlers, storage\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/drift-detection-notes.md"
+ },
+ "pebble-durability-wait-apis": {
+  "repo": "pebble",
+  "arm": "pool",
+  "branch": "feature/durability-wait-apis",
+  "feature": "durability callbacks",
+  "tag": "PEB-927",
+  "teammate_file": "notes/durability-callbacks.md",
+  "teammate_text": "# Durability callbacks: rough notes (WIP)\n\n- Fire a callback once a synced batch is durable\n- Carry the sequence number, timings and a correlation ID\n- TODO: the failure path, non-sync writes\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/durability-callbacks-notes.md"
+ },
+ "dynamodb-toolbox-conditional-attribute-requirements": {
+  "repo": "dynamodb-toolbox",
+  "arm": "pool",
+  "branch": "feature/conditional-attribute-requirements",
+  "feature": "conditional requirements",
+  "tag": "DDB-232",
+  "teammate_file": "notes/conditional-requirements.md",
+  "teammate_text": "# Conditional requirements: rough notes (WIP)\n\n- requiredIf on schema attributes, keyed on a sibling's value\n- Enforce on put; work out what updates should do\n- TODO: defaults, interaction with `required`\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/conditional-requirements-notes.md"
+ },
+ "vitest-duration-sharding": {
+  "repo": "vitest",
+  "arm": "pool",
+  "branch": "feature/duration-sharding",
+  "feature": "duration-based sharding",
+  "tag": "VIT-295",
+  "teammate_file": "notes/duration-sharding.md",
+  "teammate_text": "# Duration-based sharding: rough notes (WIP)\n\n- Record per-file durations and keep a history file\n- Balance shards by time instead of by hash\n- TODO: config fields, round-robin and affinity strategies\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/duration-sharding-notes.md"
+ },
+ "drizzle-orm-window-function-builders": {
+  "repo": "drizzle-orm",
+  "arm": "pool",
+  "branch": "feature/window-function-builders",
+  "feature": "window function builders",
+  "tag": "DRZ-712",
+  "teammate_file": "notes/window-functions.md",
+  "teammate_text": "# Window function builders: rough notes (WIP)\n\n- Typed helpers for row_number, rank, lag/lead and window aggregates\n- `.over()` with partitionBy, orderBy and a frame\n- TODO: named windows, dialect differences\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/window-functions-notes.md"
+ },
+ "returns-validated-error-accumulation": {
+  "repo": "returns",
+  "arm": "pool",
+  "branch": "feature/validated-error-accumulation",
+  "feature": "the Validated container",
+  "tag": "RET-292",
+  "teammate_file": "notes/validated.md",
+  "teammate_text": "# Validated container: rough notes (WIP)\n\n- Valid / Invalid, with errors kept as a tuple\n- apply accumulates errors; bind still short-circuits\n- TODO: swap, from_failure, typing\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/validated-notes.md"
+ },
+ "cattrs-partial-structuring-recovery": {
+  "repo": "cattrs",
+  "arm": "pool",
+  "branch": "feature/partial-structuring-recovery",
+  "feature": "partial structuring",
+  "tag": "CAT-518",
+  "teammate_file": "notes/partial-structuring.md",
+  "teammate_text": "# Partial structuring: rough notes (WIP)\n\n- partial_structure returning what could be built, plus per-field errors\n- Fall back to defaults for fields that fail\n- TODO: nested classes, the top-level function\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/partial-structuring-notes.md"
+ },
+ "oxvg-structural-selector-preservation": {
+  "repo": "oxvg",
+  "arm": "pool",
+  "branch": "feature/structural-selector-preservation",
+  "feature": "selector-aware rewrites",
+  "tag": "OXV-203",
+  "teammate_file": "notes/structural-selectors.md",
+  "teammate_text": "# Selector-aware rewrites: rough notes (WIP)\n\n- Don't rewrite elements a structural selector depends on\n- Block only the implicated element, not the whole document\n- TODO: find the anchors before the rewrite runs\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/structural-selectors-notes.md"
+ },
+ "boa-hierarchical-evaluation-cancellation": {
+  "repo": "boa",
+  "arm": "pool",
+  "branch": "feature/hierarchical-evaluation-cancellation",
+  "feature": "evaluation cancellation",
+  "tag": "BOA-332",
+  "teammate_file": "notes/evaluation-cancellation.md",
+  "teammate_text": "# Evaluation cancellation: rough notes (WIP)\n\n- Parent/child cancellation handles for evaluations\n- Checkpoints in scripts, modules and the job queue\n- TODO: cancellation reasons, keeping the Context usable\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/evaluation-cancellation-notes.md"
+ },
+ "httpx-deterministic-cookie-store": {
+  "repo": "httpx",
+  "arm": "related",
+  "branch": "feature/deterministic-cookie-store",
+  "feature": "cookie store",
+  "tag": "HTX-126",
+  "teammate_file": "notes/cookie-store.md",
+  "teammate_text": "# Cookie store: rough notes (WIP)\n\n- Deterministic cookie store with modern Set-Cookie parsing\n- Eviction rules; build the Cookie request header\n- TODO: domain and path matching, expiry\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/cookie-store-notes.md"
+ },
+ "httpx-multipart-response-parsing": {
+  "repo": "httpx",
+  "arm": "related",
+  "branch": "feature/multipart-response-parsing",
+  "feature": "multipart response parsing",
+  "tag": "HTX-128",
+  "teammate_file": "notes/multipart-responses.md",
+  "teammate_text": "# Multipart responses: rough notes (WIP)\n\n- Read the boundary from Content-Type\n- Iterate parts lazily when the body is streaming\n- TODO: async variant, malformed framing, preamble/epilogue\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/multipart-responses-notes.md"
+ },
+ "httpx-streaming-json-iteration": {
+  "repo": "httpx",
+  "arm": "related",
+  "branch": "feature/streaming-json-iteration",
+  "feature": "streaming JSON iteration",
+  "tag": "HTX-604",
+  "teammate_file": "notes/streaming-json.md",
+  "teammate_text": "# Streaming JSON iteration: rough notes (WIP)\n\n- Response iterators that yield JSON values as they arrive\n- Support the streaming media types (NDJSON and friends)\n- TODO: async variant, partial values at chunk edges\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/streaming-json-notes.md"
+ },
+ "bandit-incremental-cache-control": {
+  "repo": "bandit",
+  "arm": "related",
+  "branch": "feature/incremental-cache-control",
+  "feature": "incremental caching",
+  "tag": "BAN-531",
+  "teammate_file": "notes/incremental-cache.md",
+  "teammate_text": "# Incremental caching: rough notes (WIP)\n\n- Cache per-file results between runs; invalidate on change\n- Import/export and pruning of the cache\n- TODO: CLI options to inspect the cache\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/incremental-cache-notes.md"
+ },
+ "bandit-interprocedural-taint-checks": {
+  "repo": "bandit",
+  "arm": "related",
+  "branch": "feature/interprocedural-taint-checks",
+  "feature": "taint tracking",
+  "tag": "BAN-530",
+  "teammate_file": "notes/taint-tracking.md",
+  "teammate_text": "# Taint tracking: rough notes (WIP)\n\n- Follow user input through variables and calls\n- Flag injection sinks beyond string literals\n- TODO: which sources and sinks to start with\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/taint-tracking-notes.md"
+ },
+ "bandit-structured-nosec-directives": {
+  "repo": "bandit",
+  "arm": "related",
+  "branch": "feature/structured-nosec-directives",
+  "feature": "structured nosec directives",
+  "tag": "BAN-667",
+  "teammate_file": "notes/nosec-directives.md",
+  "teammate_text": "# Structured nosec directives: rough notes (WIP)\n\n- Region and next-line nosec directives\n- Selector expressions for which checks to skip\n- TODO: how --ignore-nosec interacts\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/nosec-directives-notes.md"
+ },
+ "koota-composite-trait-aspects": {
+  "repo": "koota",
+  "arm": "related",
+  "branch": "feature/composite-trait-aspects",
+  "feature": "trait aspects",
+  "tag": "KOO-942",
+  "teammate_file": "notes/aspects.md",
+  "teammate_text": "# Trait aspects: rough notes (WIP)\n\n- createAspect: one handle over several traits\n- Queries that merge the constituent traits\n- TODO: propagate writes and lifecycle events\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/aspects-notes.md"
+ },
+ "koota-entity-snapshot-rollback": {
+  "repo": "koota",
+  "arm": "related",
+  "branch": "feature/entity-snapshot-rollback",
+  "feature": "snapshot and rollback",
+  "tag": "KOO-141",
+  "teammate_file": "notes/snapshots.md",
+  "teammate_text": "# Snapshot and rollback: rough notes (WIP)\n\n- Snapshot an entity or a whole world; roll back to it\n- Diff two snapshots\n- TODO: a registry for serializing traits and relations\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/snapshots-notes.md"
+ },
+ "koota-pair-relation-tracking": {
+  "repo": "koota",
+  "arm": "related",
+  "branch": "feature/pair-relation-tracking",
+  "feature": "relation pair tracking",
+  "tag": "KOO-180",
+  "teammate_file": "notes/pair-tracking.md",
+  "teammate_text": "# Relation pair tracking: rough notes (WIP)\n\n- Tracking modifiers that see changes to specific relation pairs\n- Not just trait-level adds and removes\n- TODO: wildcard targets\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/pair-tracking-notes.md"
+ },
+ "koota-query-predicates": {
+  "repo": "koota",
+  "arm": "related",
+  "branch": "feature/query-predicates",
+  "feature": "query predicates",
+  "tag": "KOO-846",
+  "teammate_file": "notes/query-predicates.md",
+  "teammate_text": "# Query predicates: rough notes (WIP)\n\n- Composable value-based predicates on entities\n- Track which traits a predicate depends on\n- TODO: change transitions (entering and leaving a match)\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/query-predicates-notes.md"
+ },
+ "obsidian-linter-auto-table-of-contents": {
+  "repo": "obsidian-linter",
+  "arm": "related",
+  "branch": "feature/auto-table-of-contents",
+  "feature": "an auto table of contents",
+  "tag": "OBS-543",
+  "teammate_file": "notes/table-of-contents.md",
+  "teammate_text": "# Auto table of contents: rough notes (WIP)\n\n- Opt-in rule that builds a TOC from the headings\n- Update it in place when headings change\n- TODO: where the TOC goes, depth limits\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/table-of-contents-notes.md"
+ },
+ "obsidian-linter-link-format-conversion": {
+  "repo": "obsidian-linter",
+  "arm": "related",
+  "branch": "feature/link-format-conversion",
+  "feature": "link style conversion",
+  "tag": "OBS-338",
+  "teammate_file": "notes/link-style.md",
+  "teammate_text": "# Link style conversion: rough notes (WIP)\n\n- Convert between wiki links/embeds and markdown links/images\n- Leave ignored regions alone\n- TODO: edge cases (aliases, headings, spaces in paths)\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/link-style-notes.md"
+ },
+ "obsidian-linter-scoped-ignore-markers": {
+  "repo": "obsidian-linter",
+  "arm": "related",
+  "branch": "feature/scoped-ignore-markers",
+  "feature": "scoped ignore markers",
+  "tag": "OBS-895",
+  "teammate_file": "notes/ignore-markers.md",
+  "teammate_text": "# Scoped ignore markers: rough notes (WIP)\n\n- Comment markers that switch specific rules off and back on\n- Nested scopes\n- TODO: unmatched markers\n\nStill sketching; I'll pick this up again after the release.\n",
+  "junk_file": "scratch/ignore-markers-notes.md"
+ }
+}
