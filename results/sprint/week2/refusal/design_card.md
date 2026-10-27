@@ -1,6 +1,6 @@
 # Experiment 3b design card (pre-data)
 
-Plan: `docs/sprint/plans/week2-summary-refusal.md` v0.3.1 plus its Build contract, accepted at `9d4a22df…` (`configs/week2/accepted/summary_refusal-9d4a22dfc3e8.md`). Config: `configs/week2/summary_refusal.toml` (sha256 `122a32ea61f76dfc31156d8134be6219c15f9a1597deb6cb1784ef6e2a5b5309`). The plan check passes. Written 27 Oct 2026 by week2-build-c.
+Plan: `docs/sprint/plans/week2-summary-refusal.md` v0.3.1 plus its Build contract, accepted at `28f4fe2a…` (`configs/week2/accepted/summary_refusal-28f4fe2ae0b4.md`). Config: `configs/week2/summary_refusal.toml` (sha256 `39b94c3431e695cc150fa07587d915ec6ef2c856840464a8c0a8e64562b6272f`). The plan check passes. Written 27 Oct 2026 by week2-build-c.
 
 **This card fixes the design before any data.** The launch card that binds the actual histories, summaries, version hashes and run plan is written by `scripts/week2_refusal.py plan` once experiment 1's first tasks have resolved. The paid path refuses without it, and recomputes its manifest at launch.
 
@@ -10,7 +10,7 @@ Plan: `docs/sprint/plans/week2-summary-refusal.md` v0.3.1 plus its Build contrac
   - A history qualifies when its push was rejected and its first resolving message keeps the other developer's commits, and those commits survive.
   - Code proposes the decision point; the builder confirms by reading. The frozen rubric's sha256 gates every later stage.
 - **Top-ups** run only if fewer than 6 qualify after all 16 resolve:
-  - up to 10 first tasks, $12, and until Wed 11:30 AM ET, stopping when 8 qualify;
+  - up to 20 first tasks, $25 (Jacob, option B), and until Wed 11:30 AM ET, stopping when 8 qualify;
   - on the laptop, under the machine-wide gate;
   - on experiment 1's own first-task limits ($2.50, 400 calls, 2 h);
   - the host is recorded per history. Comparisons are within a history.
@@ -43,7 +43,7 @@ Plan: `docs/sprint/plans/week2-summary-refusal.md` v0.3.1 plus its Build contrac
 
 - Stage `SPRINT-S2-REFUSAL`, $50, in this checkout's own caps file.
 - Resumed runs: $1 / 120 calls / 30 min each. Summaries: $0.10 each.
-- Top-ups: $12 under their own tag, checked at every reservation.
+- Top-ups: $25 and up to 20 tasks (Jacob, option B), under their own tag, checked at every reservation.
 
 ## Status (27 Oct, ~21:00 UTC)
 
@@ -51,3 +51,8 @@ Plan: `docs/sprint/plans/week2-summary-refusal.md` v0.3.1 plus its Build contrac
 - Unit tests: 67. Dry stub: 11/11.
 - The live $0 stub runs on the laptop after builder b's laptop work.
 - No paid call has been made.
+
+## Update, 27 Oct ~22:35 UTC
+
+- Narrow check PASS (Jacob's "yes"). Live laptop stub PASS 11/11 ($0).
+- Qualification of the 16 source histories (code, plus week2-build-c's confirming read): 4 qualify, 2 of them in the explicit-decline subgroup. That's below 6, so top-ups run under Jacob's option B (20 tasks, $25, Wed 11:30 AM ET, stop at 8), one at a time on the laptop under the machine-wide gate. The host is recorded per history.
