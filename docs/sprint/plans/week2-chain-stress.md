@@ -186,7 +186,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `design.n_phases` | 5 |
 | `design.log_reasoning` | true |
 | `chain.orders.path` | configs/week2/orders/chain_stress.json |
-| `chain.orders.sha256` | TBD (builder: sha256 of the committed draw and orders) |
+| `chain.orders.sha256` | c73fcc4318809fdefce4508b320ee6fe98037d3cb6938b40886deb7592fe7a00 |
 | `chain.arms` | unrelated, related, within_task, fresh |
 | `chain.boundary` | compacted |
 | `chain.auto_compact_tokens` | 0 |
