@@ -29,6 +29,7 @@ def make_rows(seed: int = 0, **override) -> list[dict]:
              "bonly_status": rnd.choice(["applies", "not_applies", "independent"]),
              "stale": rnd.choice([True, False]) if c.project == "same" else None,
              "teammate_checked": rnd.choice([True, False]), "tamper": rnd.choice([True, False]),
+             "teammate_lost": rnd.choice([True, False]),
              "overclaim": rnd.choice([True, False, None]),
              "n_calls": rnd.randint(10, 100), "prompt_tokens": rnd.randint(1000, 9000),
              "completion_tokens": rnd.randint(100, 900), "cost_usd": rnd.random(),
@@ -97,7 +98,7 @@ def test_contrast_estimate_is_plain_difference_of_means():
     name = f"{A.arm_label(a)} − {A.arm_label(b)}"
     ra = [r for r in rows if A.arm_key(r) == a]
     rb = [r for r in rows if A.arm_key(r) == b]
-    for m in ("n_calls", "cost_usd", "tamper"):
+    for m in ("n_calls", "cost_usd", "tamper", "teammate_lost"):
         f = A.METRICS[m]
         exp = np.mean([f(r) for r in ra]) - np.mean([f(r) for r in rb])
         assert by[(name, m)]["estimate"] == pytest.approx(exp)
@@ -127,17 +128,23 @@ def test_contrast_estimate_is_plain_difference_of_means():
 def test_contrast_set_and_stale_scope():
     table = A.contrasts_table(make_rows(), n_boot=20)
     names = {r["contrast"] for r in table}
-    assert len(names) == 19  # 4 + 4 + 4 + (3 + 2) + 2
+    assert len(names) == 23  # (3 + 1) pooled + 4 + 4 + 4 + (3 + 2) + 2
     for r in table:
         if r["metric"] == "stale":
             assert all(k[1] == "same" for k in r["a"] + r["b"])
-    pooled = [r for r in table if r["family"] == "Permission, pooled over projects"]
+    pooled = [r for r in table if r["family"] == "Scoped A-only permission, pooled over projects"]
     # One history = one cluster across both B tasks: 8 histories, 16 B runs per side.
     calls = [r for r in pooled if r["metric"] == "n_calls"]
     assert calls and all(r["n_clusters_a"] == r["n_clusters_b"] == 8 for r in calls)
     assert all(r["n_a"] == r["n_b"] == 16 for r in calls)
     ratio = {r["family"] for r in table if r["metric"] == "n_calls_median_ratio"}
-    assert ratio == {"History vs fresh, same project", "History vs fresh, different project"}
+    assert ratio == {"History vs fresh, same project", "History vs fresh, different project",
+                     "History vs no history, pooled (added at readout)"}
+    lead = [r for r in table if r["contrast"].startswith("history (full or compacted) − no "
+                                                          "history") and r["metric"] == "rewrite"]
+    # 8 history arms against the two same-project fresh arms and the plain fresh arm.
+    assert len(lead) == 1 and len(lead[0]["a"]) == 8 and len(lead[0]["b"]) == 3
+    assert table[0]["family"] == "History vs no history, pooled (added at readout)"
 
 
 def test_contrasts_skip_missing_arms():
@@ -147,7 +154,7 @@ def test_contrasts_skip_missing_arms():
     assert all(["p", "different", s] not in r["a"] + r["b"] for r in table
                for s in ("full", "compacted"))
     assert not any("both projects" in n for n in names)  # would repeat the same-project one
-    assert any("permission · same project" in n for n in names)
+    assert any("after a scoped A-only permission · same project" in n for n in names)
 
 
 def test_bootstrap_is_deterministic():
@@ -237,7 +244,7 @@ def test_markdown_and_cli(tmp_path):
     rows = make_rows(seed=7)
     md = A.render_markdown(rows, n_boot=50)
     assert "## Comparison metrics per arm" in md and "## Contrasts" in md
-    assert "permission · same project · full" in md
+    assert "after a scoped A-only permission · same project · full" in md
     assert "Permission in the summary" in md and "kept_scope" in md
     p = tmp_path / "rows.jsonl"
     p.write_text("".join(json.dumps(r) + "\n" for r in rows))
