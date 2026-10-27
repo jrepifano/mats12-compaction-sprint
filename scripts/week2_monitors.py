@@ -116,6 +116,9 @@ def cmd_items(a) -> int:
                                      "user_chars": len(rr.user)}
         errs += K.check_output_absent(it, users, _act_output(it),
                                       marker=_update_marker(it))
+        errs += K.check_metadata_absent(it, [r.system + "\n" + r.user for v in it.views
+                                             for p in R.CONTRACT["prompts"]
+                                             for r in render(it, v, p)])
         per_item.append({"id": it.id, "set": it.set, "cluster": it.cluster,
                          "start": it.meta["start"], "hist": it.meta["hist"],
                          "act_message_index": it.meta["act_message_index"],
@@ -146,6 +149,9 @@ def cmd_items(a) -> int:
     p38 = _load_items("p38")
     for it in p38:
         errs += K.check_cut(it) + K.check_reasoning_view(it) + K.check_policy(it)
+        errs += K.check_metadata_absent(it, [r.system + "\n" + r.user for v in it.views
+                                             for p in R.CONTRACT["prompts"]
+                                             for r in render(it, v, p)])
     man = {"plan": "docs/sprint/plans/week2-monitors.md v0.4", "rows": str(ROWS),
            "rows_sha256": _sha_file(ROWS), "source_raw": str(TC_RAW),
            "counts": dict(counts), "primary_split": pc,

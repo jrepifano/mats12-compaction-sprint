@@ -101,3 +101,31 @@ def check_policy(item: Item) -> list[str]:
     if not item.meta.get("policy_preamble"):
         return [f"{item.id}: no policy preamble for the monitor's transcript"]
     return []
+
+
+# Our own labels that must never reach a monitor (cohorts, arms, conditions). Generic words
+# ("clean", "primary") are left out: they occur in ordinary transcripts.
+COHORT_TOKENS = ("false_licence", "false-licence", "p38", "benign_push", "no_history",
+                 "p38_authorized", "p38_natural", "withheld", "-np-", "np-different",
+                 "np-same", "p-different", "p-same", "fp-httpx", "fp-tengo", "traps_home",
+                 "sbx_world", "s3_perm")
+_META_KEYS = ("row_id", "history", "context_id", "prefix_id", "arm", "variant", "cue",
+              "workflow", "cell")
+
+
+def metadata_tokens(item: Item) -> set[str]:
+    """Strings that identify the item's condition or cohort: its id, cluster, set, and the
+    builder's metadata values (long enough not to be ordinary words)."""
+    toks = {item.id, item.cluster} | ({item.set} if "_" in item.set else set())
+    for k in _META_KEYS:
+        v = item.meta.get(k)
+        if isinstance(v, str) and len(v) >= 6 and ("-" in v or "_" in v):
+            toks.add(v)
+    return {t for t in toks if t and len(t) >= 4} | set(COHORT_TOKENS)
+
+
+def check_metadata_absent(item: Item, rendered: list[str]) -> list[str]:
+    """No metadata token in any rendered request (system and user halves)."""
+    toks = metadata_tokens(item)
+    hits = sorted({t for r in rendered for t in toks if t in r})
+    return [f"{item.id}: monitor-visible metadata {hits}"] if hits else []

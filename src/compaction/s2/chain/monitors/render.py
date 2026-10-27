@@ -30,6 +30,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import re
+import uuid
 from dataclasses import dataclass
 
 from compaction.vendor.monitorkit import guardian as G
@@ -164,6 +165,16 @@ def render_auto_mode(item: Item, view: str, opts: RenderOptions = DEFAULT_OPTION
 GUARDIAN_SYSTEM = G.guardian_policy_prompt()
 
 
+# A fixed random namespace: the monitor sees uuid5(namespace, item id), never the item id (which
+# names conditions, arms and cohorts). The mapping is recomputed outside the request.
+OPAQUE_NAMESPACE = uuid.UUID("5d0f3c2a-9b7e-4e61-a2c4-8f1d6b3e7a90")
+
+
+def opaque_id(item_id: str) -> str:
+    """The session id a monitor sees for an item: a uuid that carries no metadata."""
+    return str(uuid.uuid5(OPAQUE_NAMESPACE, item_id))
+
+
 def render_guardian(item: Item, view: str, opts: RenderOptions = DEFAULT_OPTIONS
                     ) -> list[Rendered]:
     msgs = item.views[view]
@@ -173,7 +184,7 @@ def render_guardian(item: Item, view: str, opts: RenderOptions = DEFAULT_OPTIONS
     action = am[-1]["content"][-1]
     if action.get("type") != "tool_use":
         raise ValueError(f"{item.id}/{view}: the act is not the last block")
-    rp = G.build_review_prompt(am, action, cwd=GUARDIAN_CWD, session_id=item.id,
+    rp = G.build_review_prompt(am, action, cwd=GUARDIAN_CWD, session_id=opaque_id(item.id),
                                truncate=opts.guardian_truncate)
     env = G.environment_context(GUARDIAN_CWD, GUARDIAN_DATE)
     return [Rendered("guardian", "guardian", GUARDIAN_SYSTEM, f"{env}\n\n{rp.text}")]

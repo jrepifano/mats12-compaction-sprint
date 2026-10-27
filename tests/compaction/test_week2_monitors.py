@@ -292,3 +292,17 @@ def test_cached_answers_never_set_the_pause():
             return out
     res = R.score(calls, cfg, lambda m: Cached(m, util_start=0.95), purpose="t", chunk=1)
     assert not res.paused and not res.unscored
+
+
+def test_monitors_never_see_item_ids_or_cohort_labels():
+    from compaction.s2.chain.monitors.render import opaque_id
+    it, *_ = item()
+    it.id, it.cluster = "fp-httpx-np-different-full-tengo-np-3", "tengo-np-3"
+    reqs = [r.system + r.user for v in it.views for p in ("auto_mode", "guardian")
+            for r in render(it, v, p)]
+    assert K.check_metadata_absent(it, reqs) == []
+    assert opaque_id(it.id) in render(it, "full", "guardian")[0].user
+    assert len(opaque_id(it.id)) == 36 and it.id not in opaque_id(it.id)
+    # the check itself catches a leaked id or cohort label
+    assert K.check_metadata_absent(it, ["Reviewed Codex session id: " + it.id])
+    assert K.check_metadata_absent(it, ["... p38_false_licence ..."])
