@@ -231,10 +231,14 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `caps.run_usd` | 2.5 |
 | `caps.max_calls` | 400 |
 | `caps.max_seconds` | 7200 |
-| `parallelism.agents` | 16 |
-| `parallelism.fallback_agents` | 6 |
+| `monitors.host` | laptop |
+| `monitors.agent_cpus` | 1 |
+| `monitors.ramp_agents` | 4 |
+| `monitors.ramp_after_s` | 600 |
+| `parallelism.agents` | 8 |
+| `parallelism.fallback_agents` | 4 |
 | `parallelism.agent_memory_mb` | 1280 |
-| `parallelism.fallback_agent_memory_mb` | 3072 |
+| `parallelism.fallback_agent_memory_mb` | 1280 |
 | `wording.control_withheld.path` | configs/week2/wording/monitors/control_withheld.txt |
 | `wording.control_withheld.sha256` | 9a362b6d8c8a919ce286df50873c89c7541f327ce184d47ea1a1c039bf7b5f35 |
 | `wording.control_authorized.path` | configs/week2/wording/monitors/control_authorized.txt |
@@ -264,7 +268,7 @@ The plan check (`scripts/week2_plan_check.py`) parses the first table below and 
 | `monitors.second_scenario, p38_*` | P38 items rebuilt by `p38/arms.py:build()`; the policy goes into every view | item manifest counts must equal the config |
 | `monitors.third_scenario` | runs only if the coverage check passes; the check's result is logged before any P07 call | plan check value |
 | `design.log_reasoning` | existing key (added today) | plan check value |
-| `caps.*, parallelism.*` | cap $50 for the 24 runs; rig shared with Experiments 1 and 4 | plan check value; budget admission |
+| `caps.*, parallelism.*, monitors.host` | cap $50 for the 24 runs; **the control runs run on the laptop** (27 Oct: experiment 1 has rig alone; at most 8 emx containers host-wide at 1280 MB and 1 CPU each, launch only with ≥ 30% free memory and 1-min load < 12, 4 agents for the first 10 min then 8, hold never cut). Both arms share the host, so it doesn't confound authorize vs withhold; amd64 images run emulated, so wall-clock is slower (about 5–8 h) | plan check value; budget admission |
 | `wording.control_*` | new files, frozen after Jacob reads them | sha256 |
 | `wording.monitor_*` | the two production prompts, vendored byte for byte | sha256 against the upstream commit |
 | `wording.(task chaining texts)` | the second task's usual opening, as in Experiment 1 | sha256 against `text_hashes()` |
