@@ -11,14 +11,26 @@ Runs on the desktop checkout (the experiment's only launcher and ledger), detach
         Scripted agents through the whole A -> B session in real containers. $0.
     uv run python scripts/s2_chain.py capacity
         8 idle agent containers at once; memory, load and disk before and after. $0.
-    uv run python scripts/s2_chain.py admission-check
-        Memory admission and the fail-closed docker checks, on real containers. $0.
+    uv run python scripts/s2_chain.py admission-check [--agents N --agent-memory-mb M] [--load]
+        Memory admission and the fail-closed docker checks, on real containers. $0. With
+        --load, every admitted container runs its repo's tests at once and its cgroup memory
+        peak is logged (week 2: 10 agents at 2 GB).
     uv run python scripts/s2_chain.py live-smoke --go-from-jacob
         One httpx permission history plus a B in each start (~$3). Gate: 2 of 3 B pushes
         rejected. Then the projection, with the plan's automatic cut.
-    uv run python scripts/s2_chain.py go --go-from-jacob [--same-project-only]
+    uv run python scripts/s2_chain.py go --go-from-jacob (--week2-config <toml> |
+            --task-chaining-v031) [--same-project-only]
         A phase -> A-phase gate -> compactions -> B bulk -> Max reads -> rows -> analysis.
-        Resumable: rerun after a stop or crash.
+        Resumable: rerun after a stop or crash. A week-2 config is checked against its proposal
+        first (`week2.gate`: the Build contract and the proposal's sha256); any drift refuses.
+    uv run python scripts/s2_chain.py stub-chain5 [--no-grade]
+        Week 2: scripted agents through one 5-task chain (configs/week2/stub_chain5.toml), a
+        container switch and a compaction at every boundary; writes the design card. $0.
+    uv run python scripts/s2_chain.py visibility-check
+        Week 2: what an agent command sees of the harness, after setup and in a fork after B's
+        setup (find, the remote, env). $0.
+    uv run python scripts/s2_chain.py chain-go --go-from-jacob --week2-config <toml>
+        Week 2: the N-task chains of a chain config, after its plan check. Resumable.
     uv run python scripts/s2_chain.py status | stop | rows | judges | analyze
 
 SIGTERM or `stop` (the STOP file) ends every loop at its next model call; containers are
@@ -30,6 +42,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import signal
 import subprocess
 import sys
@@ -59,7 +72,11 @@ def _sigterm(*_a) -> None:
     L.STOP.set()
 
 
-def cmd_init(_a) -> int:
+def cmd_init(a) -> int:
+    if getattr(a, "week2_config", None) is not None:  # a week-2 design's own stage and cap
+        from compaction.s2.chain import week2 as W
+        cfg = W.load_config(a.week2_config)
+        D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
     p = D.init_caps()
     print(json.dumps({"caps_file": str(p), "ledger": str(CC.ledger()),
                       "spend": D.spent()}, indent=1))
@@ -156,7 +173,58 @@ def cmd_capacity(_a) -> int:
     return 0 if ok else 4
 
 
-def cmd_admission_check(_a) -> int:
+LOAD_CMD = {  # the repo's own tests, as an agent runs them (week-2 admission load)
+    "python": "python -m pytest -q -x -p no:cacheprovider 2>&1 | tail -1",
+    "go": "go test ./... 2>&1 | tail -1"}
+
+
+def _load(sb, language: str | None) -> dict:
+    """The repo's tests in an admitted container; its cgroup memory peak (MB) after."""
+    cmd = LOAD_CMD.get(language or "", "true")
+    t0 = time.monotonic()
+    r = sb.exec(f"cd /app && timeout 600 bash -lc {shlex.quote(cmd + '; exit ${PIPESTATUS[0]}')};"
+                " echo rc=$?; grep -h oom_kill /sys/fs/cgroup/memory.events 2>/dev/null; "
+                "cat /sys/fs/cgroup/memory.peak 2>/dev/null || "
+                "cat /sys/fs/cgroup/memory/memory.max_usage_in_bytes", timeout_s=700)
+    lines = (r.stdout or "").strip().splitlines()
+    peak = int(lines[-1]) // (1024 * 1024) if lines and lines[-1].isdigit() else None
+    rc = next((int(x[3:]) for x in lines if x.startswith("rc=") and x[3:].isdigit()), None)
+    oom = next((int(x.split()[-1]) for x in lines if x.startswith("oom_kill ")), None)
+    return {"container": sb.name, "language": language, "seconds": round(time.monotonic() - t0),
+            "tests_tail": next((x for x in reversed(lines[:-1]) if not x.startswith(
+                ("rc=", "oom_kill"))), None),
+            "tests_rc": rc, "timed_out": rc == 124, "oom_kills": oom, "peak_mb": peak}
+
+
+class _MemSampler:
+    """MemAvailable on the host every 2 s while the check runs (min and when)."""
+
+    def __init__(self):
+        import threading as th
+        self.samples, self._stop = [], th.Event()
+        self._t = th.Thread(target=self._run, daemon=True)
+
+    def _run(self):
+        while not self._stop.is_set():
+            m = D.mem_available_mb()
+            if m is not None:
+                self.samples.append((D.utc(), m))
+            self._stop.wait(2)
+
+    def start(self):
+        self._t.start()
+
+    def stop(self) -> dict:
+        self._stop.set()
+        self._t.join(10)
+        if not self.samples:
+            return {"n": 0}
+        lo = min(self.samples, key=lambda x: x[1])
+        return {"n": len(self.samples), "min_available_mb": lo[1], "at": lo[0],
+                "first_mb": self.samples[0][1], "last_mb": self.samples[-1][1]}
+
+
+def cmd_admission_check(a) -> int:
     """Free gate (coordinator, 26 Oct): the memory admission and the fail-closed docker checks,
     exercised on the desktop. (a) 8 workers each ask for an agent slot and start a real idle
     container: as many as the budget and the pool allow get in (expected from the formula with
@@ -166,15 +234,21 @@ def cmd_admission_check(_a) -> int:
     import threading as th
 
     from compaction.deepswe.sandbox import Invocation
-    images = sorted({t.image for t in D.tasks().values()})
+    agents = a.agents or CC.CONCURRENCY
+    if a.agent_memory_mb:
+        D.set_agent_memory(a.agent_memory_mb)
+    tasks_ = D.tasks()
+    images = sorted({t.image for t in tasks_.values()})
+    lang = {t.image: t.language for t in tasks_.values()}
     D.ensure_images(images)
     rec: dict = {"before": D.docker_snapshot(), "others_mb": D.others_limits_mb()}
     oth = rec["others_mb"] or 0
     by_budget = CC.BUDGET_MB // CC.AGENT_MEMORY_MB
     by_pool = (CC.POOL_MB - max(oth, CC.RESERVE_MB)) // CC.AGENT_MEMORY_MB
-    expected = max(0, min(CC.CONCURRENCY, by_budget, by_pool))
+    expected = max(0, min(agents, by_budget, by_pool))
     adm = D.Admission(poll_s=1.0)
-    release, held = th.Event(), []
+    release, held, loaded = th.Event(), [], []
+    sampler = _MemSampler() if a.load else None
     inv = Invocation(CC.PURPOSE)
     deadline = time.monotonic() + 60
 
@@ -184,15 +258,24 @@ def cmd_admission_check(_a) -> int:
                 sb = inv.start(images[i % len(images)], platform=C.PLATFORM, cpus=CC.AGENT_CPUS,
                                memory_mb=CC.AGENT_MEMORY_MB, network="none", lifetime_s=900)
                 held.append(sb)
+                if a.load:
+                    loaded.append(_load(sb, lang.get(images[i % len(images)])))
                 release.wait(300)
                 sb.close()
         except L.Stopped:
             pass
-    ts = [th.Thread(target=worker, args=(i,)) for i in range(CC.CONCURRENCY)]
+    ts = [th.Thread(target=worker, args=(i,)) for i in range(agents)]
     try:
+        if sampler:
+            sampler.start()
         for t in ts:
             t.start()
         time.sleep(65)
+        if a.load:  # the tests run on in every container; wait for them (at most 15 min)
+            t_end = time.monotonic() + 900
+            while len(loaded) < len(held) and time.monotonic() < t_end:
+                time.sleep(5)
+            rec["load"] = list(loaded)
         rec["agents_admitted"] = len(held)
         rec["expected"] = expected
         rec["during"] = D.docker_snapshot()
@@ -204,10 +287,15 @@ def cmd_admission_check(_a) -> int:
             rec["grader_with_all_agents"] = "waited"
         rec["grader_should_wait"] = len(held) * CC.AGENT_MEMORY_MB + CC.GRADE_MEMORY_MB > \
             CC.BUDGET_MB
-        for sb in held[:2]:
-            sb.close()  # two agents leave
+        # enough agents leave for a grader to fit the budget: two at 3 GB agents (task
+        # chaining), four at 2 GB (week 2: 10 agents)
+        need = len(held) * CC.AGENT_MEMORY_MB + CC.GRADE_MEMORY_MB - CC.BUDGET_MB
+        leave = max(2, -(-need // CC.AGENT_MEMORY_MB))
+        rec["agents_left_for_grader"] = leave
+        for sb in held[:leave]:
+            sb.close()
         with adm.lock:
-            for k in list(adm.live)[:2]:
+            for k in list(adm.live)[:leave]:
                 adm.live.pop(k)
         g2 = time.monotonic() + 15
         try:
@@ -222,6 +310,9 @@ def cmd_admission_check(_a) -> int:
         rec["cleanup_unconfirmed"] = inv.cleanup()
     rec["after"] = D.docker_snapshot()
     rec["stats"] = adm.stats
+    rec["agents"], rec["agent_memory_mb"] = agents, CC.AGENT_MEMORY_MB
+    if sampler:
+        rec["host_memory"] = sampler.stop()
     saved = os.environ.get("DOCKER_HOST")
     os.environ["DOCKER_HOST"] = "unix:///nonexistent/docker.sock"
     try:
@@ -240,19 +331,37 @@ def cmd_admission_check(_a) -> int:
           and rec["grader_after_two_left"] == "admitted" and not rec["cleanup_unconfirmed"]
           and rec["after"]["ours"] == [] and fc["ours_is_error"] and fc["others_is_none"]
           and fc["why_not"] == "docker_query_failed")
+    if a.load:
+        peaks = [x.get("peak_mb") for x in rec.get("load") or []]
+        # The workload is the repo's own tests at its base commit, where some fail (httpx: 1
+        # of 233), so a test failure is a valid result. Not valid: a timeout (124), a kill
+        # (128+), a missing exit code, or an OOM kill or missing OOM evidence.
+        rec["load_ok"] = (len(peaks) == rec["agents_admitted"] and
+                          all(p is not None and p < CC.AGENT_MEMORY_MB for p in peaks) and
+                          all(x.get("tests_rc") is not None and x["tests_rc"] < 124 and
+                              x.get("oom_kills") == 0 for x in rec["load"]))
+        ok = ok and rec["load_ok"]
     rec["pass"] = ok
     D.SE.dump(CC.raw_dir() / "admission_check.json", rec)
     st = D.load_state()
     st["gates"]["admission_check"] = {"pass": ok, "utc": D.utc(), "admitted": rec["agents_admitted"],
                                       "expected": expected, "others_mb": oth}
+    # week 2: the gate a launch reads, bound to the setting it checked (astra r1 B6)
+    st["gates"][f"admission_check_{agents}x{CC.AGENT_MEMORY_MB}"] = {
+        "pass": ok and rec["agents_admitted"] == agents, "utc": D.utc(),
+        "admitted": rec["agents_admitted"], "expected": expected, "others_mb": oth,
+        "load_ok": rec.get("load_ok"), "host_memory": rec.get("host_memory")}
     D.save_state(st)
     D.status(f"admission check: {'PASS' if ok else 'FAIL'}; {rec['agents_admitted']} of "
-             f"{CC.CONCURRENCY} agents admitted (expected {expected}, other containers {oth} MB); "
-             f"grader with all agents {rec['grader_with_all_agents']}, after two left "
-             f"{rec['grader_after_two_left']}; docker unreachable -> {fc}")
-    print(json.dumps({k: rec[k] for k in ("pass", "agents_admitted", "expected",
-                                          "grader_with_all_agents", "grader_after_two_left",
-                                          "fail_closed", "stats")}, indent=1, default=str))
+             f"{agents} agents admitted (expected {expected}, other containers {oth} MB); "
+             f"grader with all agents {rec['grader_with_all_agents']}, after agents left "
+             f"{rec['grader_after_two_left']} ({rec['agents_left_for_grader']} left); docker unreachable -> {fc}")
+    print(json.dumps({k: rec.get(k) for k in ("pass", "agents_admitted", "expected",
+                                              "agent_memory_mb", "grader_with_all_agents",
+                                              "grader_after_two_left", "agents_left_for_grader",
+                                              "fail_closed", "stats",
+                                              "load", "load_ok", "host_memory")},
+                     indent=1, default=str))
     return 0 if ok else 4
 
 
@@ -285,8 +394,9 @@ def cmd_live_smoke(a) -> int:
     D.status(f"live smoke: {'PASS' if out['pass'] else 'FAIL'} ({out.get('rejections')} of "
              f"{out.get('n_b')} B pushes rejected); measured {out.get('measured')}")
     if out["pass"]:
+        wk = st.get("week2_design") is not None  # a week-2 design never cuts (r3 B1)
         pr = D.fit_to_cap(st, out["measured"], out["spend_after"]["spent"],
-                          same_project_only=D.apply_deadline(st))
+                          same_project_only=False if wk else D.apply_deadline(st), cut=not wk)
         st["gates"]["projection"] = pr
         D.save_state(st)
         D.status(f"projection: ${pr['already']:.2f} spent + ${pr['total']:.2f} to go "
@@ -295,8 +405,81 @@ def cmd_live_smoke(a) -> int:
     return 0 if out["pass"] else 4
 
 
+def week2_gate(a, st: dict | None = None) -> dict | None:
+    """Week 2: a launch checks its config against its proposal (week2.gate: the Build contract
+    and the proposal's sha256, always the config's own `meta.proposal`) and refuses on any
+    drift. With `st`, the run state is bound to the design's fingerprint: a state started under
+    another config or proposal is refused (astra r1 B4). `go` without a week-2 config must
+    name the task-chaining design explicitly. Returns the loaded config (None for task
+    chaining)."""
+    from compaction.s2.chain import week2 as W
+    if getattr(a, "week2_config", None) is None:
+        if getattr(a, "task_chaining_v031", False):
+            return None
+        sys.exit("refusing: give --week2-config <toml> (checked against its proposal), or "
+                 "--task-chaining-v031 for the task-chaining design")
+    cfg = W.load_config(a.week2_config)
+    try:
+        W.gate(W.resolve(cfg["meta"]["proposal"]), a.week2_config)
+    except W.PlanDrift as e:
+        sys.exit(f"refusing: plan drift\n{e}")
+    if st is not None:
+        fp = W.fingerprint(cfg)
+        old = st.get("week2_design")
+        if old is not None and old != fp:
+            sys.exit(f"refusing: this run state was started under {old}, not {fp}; resume "
+                     f"under the same design, or start a new raw dir ({CC.RAW_ENV})")
+        runs = [k for k in ("a", "b", "chains") if st.get(k)]
+        if old is None and runs:  # a state with runs but no design: never adopted (r2 B4)
+            sys.exit(f"refusing: this run state already holds runs ({', '.join(runs)}) and no "
+                     f"week-2 design; start a new raw dir ({CC.RAW_ENV})")
+        st["week2_design"] = fp
+        D.save_state(st)
+    D.status(f"week-2 plan check passed: {cfg['meta']['exp']} ({a.week2_config}, proposal "
+             f"{cfg['meta']['built_against'][:12]})")
+    return cfg
+
+
+def admitted(st: dict, cfg: dict) -> tuple[int, int]:
+    """The parallelism a launch may use: the config's agents at its declared memory if the
+    admission check passed at exactly that setting (with load), else its fallback likewise,
+    else refuse (astra r1 B6)."""
+    par = cfg["parallelism"]
+    for n, mb in ((par["agents"], par["agent_memory_mb"]),
+                  (par["fallback_agents"], par["fallback_agent_memory_mb"])):
+        g = st["gates"].get(f"admission_check_{n}x{mb}") or {}
+        if g.get("pass") and g.get("load_ok"):
+            return n, mb
+    sys.exit(f"refusing: no admission check with load passed at {par['agents']} x "
+             f"{par['agent_memory_mb']} MB or {par['fallback_agents']} x "
+             f"{par['fallback_agent_memory_mb']} MB (run admission-check --agents N "
+             "--agent-memory-mb M --load)")
+
+
 def cmd_go(a) -> int:
     st = D.load_state()
+    cfg = week2_gate(a, st)
+    if cfg is not None:
+        from compaction.s2.chain import week2 as W
+        bad = W.two_phase_code_mismatches(cfg)
+        if bad:  # the 2-phase driver would run its own constants, not this design (r1 B1)
+            sys.exit("refusing: the 2-phase driver doesn't run this design:\n  " +
+                     "\n  ".join(bad))
+        # The checked run set is what runs: no cut, no same-project-only, no deadline rule
+        # (astra r2 B1); a cap shortfall holds instead.
+        if a.same_project_only or not a.hold_instead_of_cut:
+            sys.exit("refusing: a week-2 design runs its checked run set; drop "
+                     "--same-project-only and pass --hold-instead-of-cut")
+        stale = {k: st[k] for k in ("cuts", "same_project_only") if st.get(k)}
+        if stale:  # selection state saved earlier (a smoke's cut, the deadline rule): r3 B1
+            sys.exit(f"refusing: this run state carries a run selection {stale}; a week-2 "
+                     f"design runs its checked run set (start a new raw dir, {CC.RAW_ENV})")
+        a.week2 = True
+        n, mb = admitted(st, cfg)
+        D.set_agent_memory(mb)
+        a.concurrency = min(a.concurrency or n, n)
+    elif a.concurrency is None:
+        a.concurrency = CC.CONCURRENCY
     _require(a, st, ["stub_smoke", "capacity", "live_smoke", "admission_check"])
     if st.get("halted") and not a.resume_after_halt:
         sys.exit(f"refusing: halted earlier: {st['halted']}")
@@ -316,7 +499,7 @@ def cmd_go(a) -> int:
 
 def _go(a, st, route, spend, tasks_) -> int:
     meas = D.measured_costs(st)
-    spo = D.apply_deadline(st) or a.same_project_only
+    spo = False if getattr(a, "week2", False) else (D.apply_deadline(st) or a.same_project_only)
     if a.same_project_only and not st.get("same_project_only"):
         st["same_project_only"] = True
         st["same_project_only_why"] = "--same-project-only"
@@ -346,6 +529,9 @@ def _go(a, st, route, spend, tasks_) -> int:
              "force-pushed")
     if not g["half_reached"]:
         D.halt(st, "A-phase gate", "fewer than half of the A runs reached a rejected push")
+    if not g["perm_ok"] and getattr(a, "week2", False):  # never cut a checked design (r3 B1)
+        D.halt(st, "A-phase gate", "too few in-scope force-pushes; a week-2 design doesn't drop "
+               "rows on its own (Jacob decides)")
     if not g["perm_ok"] and not st["gates"]["a_phase"].get("permission_rows_dropped"):
         cut = sorted(c.id for c in CC.cells() if c.hist == "p")
         st["cuts"] = sorted(set(st.get("cuts") or []) | set(cut))
@@ -436,6 +622,115 @@ def _finish(st, spend) -> bool:
     return not dk["ours"] and not D.UNRESOLVED
 
 
+def cmd_stub_chain5(a) -> int:
+    root = CC.raw_dir() / "stub_chain5"
+    D.ensure_images(sorted({t.image for t in D.tasks().values()}))
+    try:
+        out = stubs.run_chain5(root, grade=not a.no_grade)
+    finally:
+        left = stubs.remove_kept(root)
+    out["kept_removed_unconfirmed"] = left
+    if left:
+        out["pass"] = False
+    st = D.load_state()
+    st["gates"]["stub_chain5"] = {"pass": out["pass"], "utc": D.utc(),
+                                  "failed": [c["name"] for c in out["checks"] if not c["ok"]]}
+    D.save_state(st)
+    D.status(f"stub chain smoke (N = 5): {'PASS' if out['pass'] else 'FAIL'} "
+             f"({sum(c['ok'] for c in out['checks'])}/{len(out['checks'])} checks)")
+    print(json.dumps({k: out.get(k) for k in ("pass", "checks", "rows")}, indent=1,
+                     default=str))
+    return 0 if out["pass"] else 4
+
+
+def cmd_visibility_check(a) -> int:
+    """After A's setup, and in a fork of A's ending after B's setup: what an agent command sees
+    (ChainEnv.visibility). With --legacy-tag, also a fork of an ending kept before week 2
+    (migrated at start; the kept image itself is not changed). Containers and the check's own
+    kept image are removed."""
+    from compaction.deepswe.sandbox import Invocation, remove_image
+    from compaction.s2.chain import env as E
+    tasks_ = D.tasks()
+    hx = CC.REPOS["httpx"]
+    root = CC.raw_dir() / "visibility_check"
+    inv = Invocation(CC.PURPOSE)
+    rec: dict = {"utc": D.utc()}
+    tag = None
+    try:
+        env, _ = E.ChainEnv.create(inv, tasks_[hx.a_task], root / "a", E.a_branches(hx))
+        try:
+            rec["after_setup"] = env.visibility()
+            tag = f"{D.SE.KEEP_REPO}:visibility-{int(time.time())}"
+            env.keep(tag, {"emx.chain": "visibility"})
+            env.export_traps_home()
+        finally:
+            env.close()
+        fork = E.ChainEnv.start_from(inv, tag, tasks_[hx.b_task], root / "b",
+                                     home_from=root / "a" / "traps_home")
+        try:
+            fork.b_setup(hx)
+            rec["fork_after_b_setup"] = fork.visibility()
+        finally:
+            fork.close()
+        if a.legacy_tag:
+            repo = CC.REPOS[a.legacy_tag.split(":", 1)[1].split("-")[1]]
+            old = E.ChainEnv.start_from(inv, a.legacy_tag, tasks_[repo.b_task], root / "legacy")
+            try:
+                old.b_setup(repo)
+                rec["legacy_fork_after_b_setup"] = old.visibility()
+                rec["legacy_log"] = old.log
+                home = old.export_traps_home()
+                rec["legacy_home"] = sorted(str(x.relative_to(home)) for x in home.rglob("*")
+                                            if "remote" not in x.parts)[:50]
+            finally:
+                old.close()
+    finally:
+        rec["cleanup_unconfirmed"] = inv.cleanup()
+        if tag:
+            rec["kept_removed"] = remove_image(tag)
+    rec["pass"] = bool(rec.get("after_setup", {}).get("ok") and
+                       rec.get("fork_after_b_setup", {}).get("ok")
+                       and (not a.legacy_tag or rec.get("legacy_fork_after_b_setup", {}).get("ok"))
+                       and not rec["cleanup_unconfirmed"])
+    D.SE.dump(root / "visibility.json", rec)
+    D.status(f"visibility check: {'PASS' if rec['pass'] else 'FAIL'}")
+    print(json.dumps(rec, indent=1, default=str))
+    return 0 if rec["pass"] else 4
+
+
+def cmd_chain_go(a) -> int:
+    from compaction.s2.chain import nchain as N
+    from compaction.s2.chain import week2 as W
+    if a.week2_config is None:
+        sys.exit("refusing: chain-go needs --week2-config")
+    st = D.load_state()
+    cfg = week2_gate(a, st)
+    if cfg["design"]["kind"] != "chain":
+        sys.exit(f"refusing: {a.week2_config} is not a chain config")
+    _require(a, st, ["stub_chain5"])
+    n, mb = admitted(st, cfg)
+    D.set_agent_memory(mb)
+    D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
+    caps = D.read_caps()
+    if caps != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
+        sys.exit(f"refusing: caps file {CC.caps_file()} holds {caps}, not this design's "
+                 "stage and cap (run `init --week2-config` in a new checkout or raw dir)")
+    s = N.settings_from_config(cfg)
+    chains = N.chains_from_config(cfg)
+    W.design_card(cfg, N.design_rows(chains, s), CC.REPO_ROOT / "results" / "sprint" / "week2" /
+                  cfg["meta"]["exp"] / "design_card.md")
+    route, spend, tasks_ = D.load_route(), D.chain_spend(), D.tasks()
+    with D.driver_lock():
+        D.watch_stop()
+        try:
+            out = N.run_chains(chains, st, route, spend, tasks_, s,
+                               concurrency=min(a.concurrency or n, n))
+        except D.Halt as e:
+            print(f"HALT: {e}")
+            return 5
+    print(json.dumps(out, indent=1))
+    return 0
+
 def cmd_status(_a) -> int:
     st = D.load_state()
     a = {k: v.get("state") for k, v in st["a"].items()}
@@ -482,7 +777,8 @@ def cmd_analyze(a) -> int:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("init")
+    p = sub.add_parser("init")
+    p.add_argument("--week2-config", type=Path)
     p = sub.add_parser("pin-route")
     p.add_argument("--bench", required=True)
     p.add_argument("--provider", required=True)
@@ -490,7 +786,12 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("stub-smoke")
     p.add_argument("--no-grade", action="store_true")
     sub.add_parser("capacity")
-    sub.add_parser("admission-check")
+    p = sub.add_parser("admission-check")
+    p.add_argument("--agents", type=int, default=None, help=f"default {CC.CONCURRENCY}")
+    p.add_argument("--agent-memory-mb", type=int, default=None,
+                   help=f"default {CC.AGENT_MEMORY_MB}")
+    p.add_argument("--load", action="store_true",
+                   help="each admitted container runs its repo's tests; memory peaks logged")
     p = sub.add_parser("live-smoke")
     p.add_argument("--go-from-jacob", action="store_true")
     p = sub.add_parser("go")
@@ -503,7 +804,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--hold-instead-of-cut", action="store_true",
                    help="never cut cells; halt before the B bulk with the shortfall instead "
                         "(coordinator, 26 Oct)")
-    p.add_argument("--concurrency", type=int, default=CC.CONCURRENCY)
+    p.add_argument("--concurrency", type=int, default=None,
+                   help=f"default {CC.CONCURRENCY}; a week-2 config's admitted agents")
+    p.add_argument("--week2-config", type=Path)
+    p.add_argument("--task-chaining-v031", action="store_true",
+                   help="the task-chaining design (v0.3.1), with no week-2 config")
+    p = sub.add_parser("stub-chain5")
+    p.add_argument("--no-grade", action="store_true")
+    p = sub.add_parser("visibility-check")
+    p.add_argument("--legacy-tag", help="also fork this pre-week-2 kept ending (read only)")
+    p = sub.add_parser("chain-go")
+    p.add_argument("--go-from-jacob", action="store_true")
+    p.add_argument("--week2-config", type=Path)
+    p.add_argument("--concurrency", type=int, default=None)
     for n in ("status", "stop", "rows", "judges"):
         sub.add_parser(n)
     p = sub.add_parser("analyze")
@@ -514,7 +827,8 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGTERM, _sigterm)
     return {"init": cmd_init, "pin-route": cmd_pin_route, "stub-smoke": cmd_stub_smoke,
             "capacity": cmd_capacity, "admission-check": cmd_admission_check,
-            "live-smoke": cmd_live_smoke, "go": cmd_go,
+            "live-smoke": cmd_live_smoke, "go": cmd_go, "stub-chain5": cmd_stub_chain5,
+            "visibility-check": cmd_visibility_check, "chain-go": cmd_chain_go,
             "status": cmd_status, "stop": cmd_stop, "rows": cmd_rows, "judges": cmd_judges,
             "analyze": cmd_analyze}[a.cmd](a)
 

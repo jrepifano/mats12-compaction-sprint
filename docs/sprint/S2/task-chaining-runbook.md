@@ -165,3 +165,23 @@ To regenerate, run `s2_chain.py rows`, then `analyze`. Scoring reads the copied 
 - **Per-run cap:** 5 of 88 runs hit $2.50.
 - **Other costs:** the Max reads were $0 on Jacob's Max plan (about 2 minutes for 81 reads).
 - **Laptop as a second host:** at most 3 containers, a separate batch, about +2.5 runs/h. Copying the images there takes 30–60 min.
+
+## 8. Week-2 additions (branch `sprint/week2-build`, 27 Oct)
+
+Details and decisions: `logs/s2/week2_build_log.md`.
+
+- **The harness is hidden.** Between harness steps the container holds the repo, the remote at `/srv/git/<repo>.git` and the wrappers in `/var/lib/gitd/bin`, and nothing else of the scorer.
+  - The wrappers and the hook log to the container's stdout and stderr; the host reads them with `docker logs`.
+  - Snapshots run from stdin. The scorer's state, logs and a copy of the remote live in each run's `traps_home/` on the host.
+  - Forks take `home_from=<source run>/traps_home`. Endings kept before week 2 are migrated when forked.
+  - Check it with `s2_chain.py visibility-check [--legacy-tag <kept tag>]`.
+- **`go` needs a design:**
+  - `--week2-config configs/week2/<exp>.toml` checks the config against its proposal's Build contract and sha256, binds the run state to that design, and refuses unless the 2-phase code runs exactly that config;
+  - `--task-chaining-v031` is the original design.
+- **N-task chains** (`nchain.py`): `stub-chain5` is the $0 smoke, and `chain-go --week2-config <chain config> --go-from-jacob` runs them.
+- **Plan check:**
+  - `uv run python scripts/week2_plan_check.py <proposal> <config>` runs the check;
+  - `--accept-plan <sha>` records a new proposal hash, adds a delta table to the build log and stores the accepted copy under `configs/week2/accepted/`;
+  - `--plan-diff` gives the plan diff for review prompts;
+  - `--design-card <out>` writes the design card.
+- **Admission:** `admission-check --agents N --agent-memory-mb M --load` records a gate keyed `admission_check_<N>x<M>`. A week-2 launch uses the config's `parallelism.agents` only if that exact gate passed with load, else its fallback.

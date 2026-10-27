@@ -203,6 +203,24 @@ def init_caps(checkout: Path | None = None) -> Path:
     return p
 
 
+def apply_stage(stage: str, cap_usd: float) -> None:
+    """A week-2 design's own stage and cap (its config), for `init_caps` and `chain_spend`."""
+    CC.STAGE, CC.CAP_USD = stage, float(cap_usd)
+
+
+def read_caps(checkout: Path | None = None) -> tuple[str, float] | None:
+    """(stage, cap) of this checkout's caps file, or None."""
+    import tomllib
+    p = CC.caps_file(checkout)
+    if not p.exists():
+        return None
+    st = tomllib.loads(p.read_text()).get("stages") or {}
+    if len(st) != 1:
+        return None
+    ((name, v),) = st.items()
+    return name, float(v["cap_usd"])
+
+
 def chain_spend(checkout: Path | None = None):
     from compaction.s2.interact_run import PilotSpend
     root = Path(checkout or CC.REPO_ROOT)
@@ -253,6 +271,13 @@ def mem_available_mb() -> int | None:
 EXPECTED_MB = {"agent": CC.AGENT_MEMORY_MB, "grader": CC.GRADE_MEMORY_MB}
 GATE_MB = {"agent": CC.AGENT_GATE_MB, "grader": CC.GRADE_GATE_MB}
 GRADER_SLOTS = 2  # at most two graders at once (the budget usually allows one)
+
+
+def set_agent_memory(mb: int) -> None:
+    """A week-2 config's declared agent-container limit (parallelism.agent_memory_mb): the
+    containers' hard limit and what admission counts for each agent."""
+    CC.AGENT_MEMORY_MB = int(mb)
+    EXPECTED_MB["agent"] = int(mb)
 
 
 PLANTED_PID = Path.home() / "emx-planted" / "logs" / "s2" / "planted_driver.pid"
@@ -779,43 +804,57 @@ def a_gate(st: dict) -> dict:
 
 
 def compact_all(st: dict, route: C.Route, spend, model_for: Callable | None = None,
-                hists: list[CC.History] | None = None) -> None:
-    for h in (hists if hists is not None else CC.histories()):
-        slot = st["a"].get(h.id) or {}
-        if slot.get("state") != "valid" or slot.get("compaction") == "done":
-            continue
-        d = Path(slot["dir"])
-        for attempt in (1, 2):
-            if stop_requested():
-                raise L.Stopped("stop requested")
-            if (d / "compaction.json").exists():
-                model = None  # reused below: no summarizer call
-            elif model_for:
-                model, _ = model_for("compaction", d)
-            else:
-                model, _ = paid_model(route, d / f"compaction_spend{attempt}", 1.0, spend)
-            try:
-                cp = d / "compaction.json"
-                # an earlier process finished the summary but not the state update: reuse it
-                rec = json.loads(cp.read_text()) if cp.exists() else \
-                    SE.compact_history(d, h.id, model)
-            except StageCapReached:
-                halt(st, "compactions", f"stage cap refused the compaction of {h.id}")
-            except Exception as e:  # noqa: BLE001 - one retry, then recorded
-                status(f"compaction {h.id} attempt {attempt} failed: {str(e)[:200]}")
-                continue
-            a_out = AU.a_outcomes(d, h)
-            aud = AU.compaction_audit(a_out, rec)
-            SE.dump(d / "compaction_audit.json", aud)
-            slot["compaction"] = "done"
-            slot["audit"] = aud
-            save_state(st)
-            status(f"compaction {h.id}: ${rec['cost_usd']:.3f}, {rec['pre_tokens_est']} -> "
-                   f"{rec['post_tokens_est']} tokens est, {aud}")
-            break
+                hists: list[CC.History] | None = None, workers: int = 1) -> None:
+    """One pi compaction per valid history, in order; with `workers` > 1 (week 2) that many at
+    once. A halt or stop in any of them is raised after the running ones finish."""
+    todo = [h for h in (hists if hists is not None else CC.histories())
+            if (st["a"].get(h.id) or {}).get("state") == "valid"
+            and (st["a"].get(h.id) or {}).get("compaction") != "done"]
+    if workers <= 1:
+        for h in todo:
+            _compact_one(st, h, route, spend, model_for)
+        return
+    with ThreadPoolExecutor(workers) as ex:
+        futs = [ex.submit(_compact_one, st, h, route, spend, model_for) for h in todo]
+    for f in futs:
+        f.result()
+
+
+def _compact_one(st: dict, h: CC.History, route: C.Route, spend,
+                 model_for: Callable | None) -> None:
+    slot = st["a"][h.id]
+    d = Path(slot["dir"])
+    for attempt in (1, 2):
+        if stop_requested():
+            raise L.Stopped("stop requested")
+        if (d / "compaction.json").exists():
+            model = None  # reused below: no summarizer call
+        elif model_for:
+            model, _ = model_for("compaction", d)
         else:
-            slot["compaction"] = "failed"
-            save_state(st)
+            model, _ = paid_model(route, d / f"compaction_spend{attempt}", 1.0, spend)
+        try:
+            cp = d / "compaction.json"
+            # an earlier process finished the summary but not the state update: reuse it
+            rec = json.loads(cp.read_text()) if cp.exists() else \
+                SE.compact_history(d, h.id, model)
+        except StageCapReached:
+            halt(st, "compactions", f"stage cap refused the compaction of {h.id}")
+        except Exception as e:  # noqa: BLE001 - one retry, then recorded
+            status(f"compaction {h.id} attempt {attempt} failed: {str(e)[:200]}")
+            continue
+        a_out = AU.a_outcomes(d, h)
+        aud = AU.compaction_audit(a_out, rec)
+        SE.dump(d / "compaction_audit.json", aud)
+        slot["compaction"] = "done"
+        slot["audit"] = aud
+        save_state(st)
+        status(f"compaction {h.id}: ${rec['cost_usd']:.3f}, {rec['pre_tokens_est']} -> "
+               f"{rec['post_tokens_est']} tokens est, {aud}")
+        break
+    else:
+        slot["compaction"] = "failed"
+        save_state(st)
 
 
 # ------------------------------------------------------------------------------------------

@@ -287,7 +287,8 @@ def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel
     agent_ended = False
     try:
         if cell.project == "same":
-            env = ChainEnv.start_from(inv, hist.keep_tag, task, out)
+            env = ChainEnv.start_from(inv, hist.keep_tag, task, out,
+                                      home_from=Path(hist.a_dir) / "traps_home")
         else:
             env, _ = ChainEnv.create(inv, task, out, [])
         setup = env.b_setup(b_repo)
