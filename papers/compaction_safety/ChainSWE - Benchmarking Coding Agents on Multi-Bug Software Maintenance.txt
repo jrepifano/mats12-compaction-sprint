@@ -1,0 +1,1317 @@
+                                                C HAIN SWE: Benchmarking Coding Agents on Multi-Bug Software
+                                                                       Maintenance
+                                                      Qirui Jin1‡ , Lingching Tung4 , Kenan Li2 , Qiyang Shi3 , Yushi She1 ,
+                                                   Huanzhong Jia1 , Harrison Zhao5 , Kejing Xia1 , Zhenbang Du1 , Jiaxin Pei6 ,
+                                                      Zhenyu Zhang6 , Zhen Qi7 , Yuyan Duan1 , Wenke Lee1 , Zijian Jin3‡
+                                            1
+                                                Georgia Institute of Technology 2 University College London 3 New York University
+                                                 4
+                                                   NVIDIA 5 Cornell University 6 Stanford University 7 Northeastern University
+                                                                       ‡
+                                                                           Correspondence: qiruijin@gatech.edu, zj2076@nyu.edu
+
+
+                                                               Abstract                                 However, every benchmark in this family fol-
+                                                                                                     lows the same basic evaluation protocol: a model
+                                            Language model (LM) agents are increasingly              is evaluated on a single, self-contained issue within
+
+
+
+
+arXiv:2607.02606v2 [cs.SE] 1 Sep 2026
+                                            deployed to maintain codebases over extended             a sandbox container. The agent starts from a clean
+                                            periods, fixing streams of related defects while
+                                                                                                     checkout at a pre-specified runnable base com-
+                                            carrying context from one fix to the next. Yet
+                                            existing software engineering (SWE) bench-               mit, receives a single problem statement, edits
+                                            marks evaluate models one bug at a time: the             the codebase, and is evaluated against pre-written
+                                            repository is reset, the codebase is re-read, and        tests harvested from that issue. This protocol mea-
+                                            a single self-contained issue is graded in isola-        sures whether a patch satisfies a local hard-coded
+                                            tion. This setting collapses a continuous main-          test suite. However, it does not capture whether
+                                            tenance workflow into a series of independent            the agent avoids unnecessary edits, resolves latent
+                                            sessions, ignoring the cumulative dependencies           multi-file dependencies, or manages context across
+                                            that make real-world bug fixing challenging.
+                                                                                                     an evolving sequence of related fixes. As a result,
+                                            To bridge this gap, we introduce C HAIN SWE,
+                                            the first benchmark for evaluating agents on             this per-issue schema misses two failure modes that
+                                            sequential, dependent bug fixes within a shared          only emerge when bugs are evaluated sequentially,
+                                            codebase. We collect chronological chains of             repository state carries across rollouts, and avail-
+                                            304 issues across 54 Python projects, mined              able tests fail to capture the damage left by earlier
+                                            from six SWE-bench-family datasets. Our eval-            patches:
+                                            uation across a range of agents and models re-
+                                            veals a consistent performance drop by up to
+                                                                                                      • Overshoot (Figure 1 (a)), where an agent fixing
+                                            70% as the chain length increases. Our data
+                                            and code are available at C-lister/ChainSWE.                an earlier bug modifies files beyond the gold-
+                                                                                                        patch-intended area; when a downstream bug
+                                        1       Introduction                                            subsequently targets those same files, its edits
+                                                                                                        are applied on a polluted baseline, and otherwise
+                                        Language model (LM) agents are now deployed                     correct changes no longer produce the expected
+                                        across a wide range of software engineering tasks,              behavior. The amaranth chain in Figure 1(a)
+                                        including competitive programming (Quan et al.,                 provides a representative example. The gold
+                                        2025; Jain et al., 2024), code repair (Xia et al.,              patch modifies four files, whereas the agent ad-
+                                        2024; Li et al., 2026a), automatic environment                  ditionally rewrites three unrelated backend files.
+                                        setup (Hu et al., 2026; Li et al., 2026b), and full-            A subsequent issue targets two of these files,
+                                        repository construction (Ding et al., 2026; Yang                causing all eight downstream tests to fail.
+                                        et al., 2026). In particular, agent performance has
+                                        improved rapidly on a family of issue-resolution              • Undershoot (Figure 1 (b)), where the prior bug’s
+                                        benchmarks, including SWE-bench (Jimenez et al.,                gold patch is a multi-file refactor, but the agent
+                                        2024), SWE-bench Live (Zhang et al., 2025),                     ships only the subset named in the issue title or
+                                        SWE-rebench (Badertdinov et al., 2025) and SWE-                 description; downstream tests then fail not be-
+                                        rebench-v2 (Badertdinov et al., 2026), SWE-                     cause the current bug is mishandled but because
+                                        Gym (Pan et al., 2025), and SWE-bench Pro (Deng                 they exercise code paths whose preconditions
+                                        et al., 2025). Strong agents now successfully re-               were never established. The MONAI chain in Fig-
+                                        solve a substantial fraction of issues on these live            ure 1(b) exhibits the opposite failure mode. Al-
+                                        leaderboards (Yang et al., 2024; Wang et al., 2025).            though the gold patch spans five files, the agent
+   G
+
+
+
+   </>
+
+
+
+
+   G
+
+
+
+   </>
+
+
+
+
+           Figure 1: Two failure modes (overshoot and undershoot) exposed by C HAIN SWE rollouts.
+
+
+  edits only two files explicitly referenced in the is-   E DIT (Zhang et al., 2026)) under three context-
+  sue description and omits three supporting refac-       management configurations, where continuous roll-
+  tors. As a result, a downstream test fails despite      out reveals failure modes that are not exposed un-
+  the agent producing the correct modification to         der conventional isolated protocols. We observe
+  the target file.                                        that performance drops by up to 70% compared
+                                                          to the corresponding single-issue setting, with the
+   These examples show a mismatch between cur-            sharpest declines at the deepest positions in a chain.
+rent benchmarks and the real-world software main-         Our results suggest that further progress in SWE
+tenance process. In practice, software engineers          agents will require advances in dependency track-
+must leave the codebase in a state that is both cor-      ing, long-horizon reasoning, and robust repository-
+rect for the current issue and usable as the start-       state management, rather than improvements in
+ing point for future work. They also need to read         isolated issue resolution alone.
+through the surrounding context and adapt their              The contributions of this paper are threefold:
+fixes to the evolving repository state they inherit.
+                                                              • We introduce C HAIN SWE, the first open-
+   To bridge this gap, we introduce C HAIN SWE,
+                                                                source SWE benchmark that explicitly evalu-
+a benchmark for continuous SWE rollouts. Each
+                                                                ates language models on sequential, multi-bug
+C HAIN SWE instance consists of a time-ordered
+                                                                rollouts over real-world repositories.
+chain of real bug fixes with overlapping modified
+files, functions, or classes from the same reposi-            • We develop a scalable pipeline for construct-
+tory. We validate each chain by replaying the ac-               ing and validating chained SWE tasks from ex-
+cumulated gold patches and associated test suites.              isting benchmarks, enabling continuous evalu-
+During evaluation, at step k, the agent receives                ation over arbitrarily long bug-fix sequences.
+only the k-th issue statement and operates on the
+repository state produced by the previous steps.              • We conduct comprehensive evaluations of
+The agent is evaluated not only on whether it can               seven state-of-the-art LMs under multiple
+solve each issue in isolation, but also on whether              context-management configurations. We
+its earlier patches create a valid substrate for later          provide detailed analysis of their failure
+fixes. We refer to failures caused by accumulated               modes, offering guidance for future work on
+agent-generated state, rather than by the intrinsic             dependency-aware reasoning in code LMs
+difficulty of the current bug, as chain errors. Our             and repository state management in agent har-
+C HAIN SWE dataset contains 100 bug chains span-                nesses.
+ning 304 instances and 54 repositories, drawn from
+                                                          2    Related Work
+six open-source SWE-bench-family datasets.
+   We evaluate seven state-of-the-art language            Repository-level issue resolution benchmarks.
+models using a fixed agent scaffold (SWE-                 SWE-bench (Jimenez et al., 2024) introduced the
+standard setup of pairing real GitHub issues with       by-step pipeline. Related work also considers
+hidden test suites to grade repository-level cod-       budget-aware observation planning and the reli-
+ing agents, and a number of variants have fol-          ability of self-improving agent workflows (Peng
+lowed. SWE-bench Verified re-audits and re-labels       et al., 2026; Wang et al., 2026a; Liu et al., 2026;
+the original instances to remove under-specified        Wang et al., 2026b). Most relevant to our study
+or untestable tasks. SWE-bench Live (Zhang              is SWE-E DIT (Zhang et al., 2026), which uses a
+et al., 2025), SWE-rebench (Badertdinov et al.,         constrained edit format and an optional sub-agent
+2025) and SWE-rebench-v2 (Badertdinov et al.,           to apply code changes, lowering token costs during
+2026) propose automated pipelines that continu-         long interactions. These harnesses primarily dif-
+ously curate up-to-date issues to mitigate training-    fer in how they manage state across multiple turns.
+set contamination, while SWE-Gym (Pan et al.,           We adopt SWE-E DIT as a baseline framework to
+2025) targets training rather than evaluation and       test three distinct context-management strategies:
+SWE-bench Pro (Deng et al., 2025) extends both          full history, summarization, and sub-agent editing.
+the difficulty and the size of the task set. Be-        Using C HAIN SWE, we measure how each strategy
+yondSWE (Chen et al., 2026) broadens code-              performs as conversation history and code edits
+agent evaluation beyond single-repository bug fix-      accumulate across a continuous, multi-bug session.
+ing to cross-repository, domain specific, depen-
+                                                        Sequential and continual reasoning benchmarks.
+dency migration, and document-to-repository tasks.
+                                                        Another line of work (Liu et al., 2024; Ma et al.,
+ScaleSWE (Zhao et al., 2026) instead presents an
+                                                        2024) evaluates language agents in multi-step envi-
+automated pipeline for constructing large-scale,
+                                                        ronments where success requires planning, tool use,
+verified software engineering data for coding agent
+                                                        and state tracking. Recent memory benchmarks fur-
+training.
+                                                        ther test whether assistants can retain and update in-
+   Despite their differences, all of these bench-
+                                                        formation over long conversations or multi-session
+marks follow the same evaluation protocol: one
+                                                        user histories (Maharana et al., 2024; Wu et al.,
+issue per rollout, a fresh container reset to a clean
+                                                        2025). These settings are sequential, but they typi-
+base commit, and a fresh conversation, so each task
+                                                        cally reset between tasks or evaluate memory over
+is graded in complete isolation from every other.
+                                                        dialogue state rather than over persistent changes to
+This design measures single-shot issue-resolution
+                                                        an external artifact. To the best of our knowledge,
+ability but deliberately removes the cross-task
+                                                        C HAIN SWE is the first benchmark that combines
+dependencies that characterize real maintenance,
+                                                        real, test-validated repository bug fixes, multi-bug
+where a developer fixes a stream of related defects
+                                                        chains constructed with explicit code-overlap, and
+on top of a repository they themselves have just
+                                                        an evaluation protocol that distinguishes per-bug
+modified. Unlike these benchmarks, C HAIN SWE
+                                                        from full-chain success.
+asks the agent to work through a chain of related
+issues in a single rollout, without resetting between   3     C HAIN SWE
+bugs, and grades both per-bug and full-chain suc-
+cess to observe failures caused by accumulated,         This section illustrates the data collection pipeline
+self-generated state.                                   of C HAIN SWE in detail.
+
+Agent harnesses for code. A coding harness              3.1   Task Features
+connects a language model to tools—such as shell        C HAIN SWE pools instances from six exist-
+execution, file navigation, and code editing—and        ing repository-level SWE benchmarks: SWE-
+controls the context the model sees at each step.       bench (Jimenez et al., 2024), SWE-bench
+Existing harnesses take different approaches to con-    Live (Zhang et al., 2025), SWE-rebench (Badertdi-
+text management: SWE- AGENT (Yang et al., 2024)         nov et al., 2025) and SWE-rebench-v2 (Badertdi-
+uses a structured interface; O PEN H ANDS (Wang         nov et al., 2026), SWE-Gym (Pan et al., 2025), and
+et al., 2025) automatically summarizes conversa-        SWE-bench Pro (Deng et al., 2025). Every instance
+tion history at context limit; C LAUDE C ODE (An-       is a tuple of repository, base commit, problem state-
+thropic, 2025) further proposes sub-agent dele-         ment, gold patch, test patch, FAIL_TO_PASS test
+gation and task planning for better long-context        list, PASS_TO_PASS test list, and test commands.
+management; and AGENTLESS (Xia et al., 2024)            All six benchmarks target Python projects and ship
+replaces an autonomous loop with a fixed, step-         pre-built Docker images for reproducible test exe-
+                                                            CLASS
+
+
+
+
+                              Figure 2: The data mining pipeline for C HAIN SWE.
+
+
+cution, which enables evaluation of an arbitrary          benchmark’s Docker image, starts a fresh container
+subset under a single harness. An instance of             at the chain’s base commit, and applies—in order—
+C HAIN SWE is a unified list of such instances, each      each bug’s test patch followed by its gold patch
+ordered chronologically with the Docker image re-         (the same setting as O RACLE; see Section 4.3).
+set to the base commit of the first bug in the chain,     Then, we run the bug’s test commands and ver-
+tagged with a unique chain ID.                            ify that all FAIL_TO_PASS tests now pass and no
+                                                          PASS_TO_PASS tests regress. A chain is accepted
+3.2   Mining Chains                                       only if all filter stages clear.
+As illustrated in Figure 2, we synthesize C HAIN -
+SWE chains in two stages: code-overlap scoring            3.3       Data Selection
+and containerized test re-execution. For each repos-      After running the pipeline above, we obtained can-
+itory in the pooled source, we collect all of its         didate chains with lengths ranging from 2 to 5. Dur-
+instances and sort them by commit date. We then           ing data selection, we intentionally drop all chains
+group consecutive instances into chains using a slid-     of length 2 for two reasons:
+ing window, joining two instances into the same
+chain if either of the following conditions holds:          1. Length-2 chains are too short to constitute a
+                                                               meaningful stress test: with only one prior
+  1. The latter’s base commit is the immediate suc-            bug, there is no meaningful accumulation of
+     cessor of the former’s (i.e., no intervening              context or compounding of patch errors.
+     commits in the repository’s history).
+                                                            2. Most length-2 sequences are already embed-
+  2. The latter’s base commit is not the immediate             ded as contiguous prefixes inside length-3 or
+     successor of the former’s, but its gold patch             longer chains, so evaluating them separately
+     and test patch apply cleanly on top of the for-           would be largely redundant.
+     mer’s resolved state.
+                                                             For the remaining chains, we apply a sec-
+The resulting candidate chains are passed to the          ond round of difficulty-based selection. Be-
+filtering stages below; note that a chain of length l     cause C HAIN SWE targets the cross-task state-
+also induces all contiguous sub-chains of lengths         management capabilities of agent harnesses rather
+ranging from 2 to l.                                      than raw bug-solving ability, each chain should be
+    Code-overlap heuristic filter. For each gold          individually tractable once state propagation is re-
+patch, we use an AST parser on the git diff               moved: a chain that fails because a single bug is
+hunks to extract the modified files, functions, and       intrinsically too hard tells us little about how well
+classes, and discard any window whose bugs have           an agent carries state across fixes. We therefore
+zero pairwise overlap.                                    pre-run O RACLE mode (see Section 4.3) on BASE -
+    Test re-execution filter. The heuristic above is a    LINE with Qwen3.7-Max and retain only chains for
+cheap signal but does not guarantee that the chain        which more than half of the bugs are solved (e.g.,
+actually builds. We therefore run a containerized         for a chain of length k, at least ⌊k/2⌋ + 1 bugs
+filter that, for each candidate chain, pulls the source   must pass). This filters out chains whose difficulty
+is dominated by the per-bug task rather than by            Model               SWE-bench Pro Score     Context
+accumulated repository state.                              GPT-5.5             58.6%                   1M
+                                                           GPT-5.4-mini        54.4%                   400K
+3.4    Dataset Statistics                                  GPT-5.4-nano        52.4%                   400K
+                                                           Claude-Opus-4.7     64.3%                   1M
+The final version of C HAIN SWE yields 100 ac-             Claude-Opus-4.5     57.1%                   200K
+cepted chains with an average length of 3.04, com-         DeepSeek-V4-Pro     54.4%                   1M
+                                                           Gemini-3.1-Pro      54.2%                   1M
+prising 304 bug-fix tasks drawn from 54 unique
+repositories and spanning April 2019 to August
+                                                          Table 1: Language models evaluated on C HAIN SWE.
+2025. A detailed breakdown is provided in the             Exact API context limits are those exposed by the serv-
+Appendix A.                                               ing provider at evaluation time.
+
+4     Evaluation
+4.1    Agent Configurations
+We hold the agent scaffold fixed across all exper-                 </>                         </>
+
+
+
+
+iments and vary only how it manages its context,
+so that performance differences can be attributed
+to the model and the context-management strat-
+egy rather than to the harness. We use SWE-
+                                                                   </>                         </>
+
+E DIT (Zhang et al., 2026), a variant of SWE-
+AGENT; we evaluate three configurations that differ
+only in how the trajectory is kept within the context
+window as it grows:
+BASELINE. The base SWE-E DIT agent with
+no augmentations, identical to the original SWE-                   </>                         </>
+
+
+AGENT . It retains the full interaction transcript
+in context and applies edits with an exact string-
+replacement editor; no context compaction of any
+                                                          Figure 3: The three evaluation modes of C HAIN SWE:
+kind is performed.                                        O RACLE (oracle prior fixes), S EQ (cumulative reposi-
+S UMMARIZE. BASELINE augmented with con-                  tory, fresh agent), and S EQ +M EM (cumulative reposi-
+                                                          tory, persistent agent).
+versation summarization. Once the running context
+exceeds a fixed budget (50K input tokens), we re-
+place the earlier portion of the history with a model-    GPT-5.4-nano, Claude-Opus-4.7, Claude-Opus
+written structured summary while retaining the 50         -4.5, DeepSeek-V4-Pro, Gemini-3.1-Pro. All
+most recent messages.                                     experiments use the API’s default inference
+S UB -AGENT. S UB -AGENT offloads file view-              parameters. For reasoning-capable models, we set
+ing and editing to dedicated viewer and editor sub-       thinking effort to medium to balance performance
+agents, rather than placing file contents and diffs di-   and cost. Table 1 summarizes the models used in
+rectly in the main agent’s context. The main agent        this paper.
+issues a natural-language instruction describing the
+                                                          4.3   Evaluation Modes
+intended change, and a separate, typically smaller,
+editor model materializes the concrete patch. This        C HAIN SWE scores each agent-model pair in three
+keeps the most token-heavy content out of the pri-        modes, as demonstrated in Figure 3, each exercis-
+mary trajectory; no summarization is applied.             ing a distinct dimension of context management.
+   All three configurations share the same model,            O RACLE is the chain-aware and self-contained
+tools, and prompts (see Appendix D).                      analogue of the standard SWE-bench protocol. For
+                                                          each bug in the chain, the container is reset to the
+4.2    Language Models                                    base commit, then all earlier bugs in the chain have
+We evaluate seven LMs spanning different                  their gold test patches and gold fix patches applied
+long-context management capacities and                    before the agent starts. The agent never sees its
+tool-use strengths: GPT-5.5, GPT-5.4-mini,                own prior patches; instead, it operates on an ora-
+cle codebase matching the original maintenance            5     Results
+history.
+                                                          5.1    Overall Success Rate
+   S EQ (Sequential). The agent works through
+                                                          Because O RACLE already presents the agent with
+bugs 1 to n in order inside one container that is
+                                                          every earlier issue and its gold patch, the gap
+not reset between bugs. After each bug, the model-
+                                                          between O RACLE and the two sequential modes
+generated patch is committed to the repository, and
+                                                          measures the cost of operating on imperfect, self-
+the next bug starts from this updated codebase. The
+                                                          generated repository state. The remaining gap be-
+agent harness is restarted between bugs, so the con-
+                                                          tween S EQ and S EQ +M EM measures the effect of
+versation is fresh, but the repository carries the full
+                                                          carrying the interaction history across bugs while
+history of model patches. A chain is not aborted at
+                                                          still solving on self-generated state.
+the first or second failed bug to ensure a fair com-
+parison with O RACLE because downstream fixes             Sequential execution sharply reduces per-bug
+may still fix the chain cleanly.                          accuracy. Averaged over the seven models and
+   S EQ +M EM (Sequential + Memory). This                 three configurations, per-bug accuracy drops from
+mode is identical to S EQ except that the agent’s         58.9% under O RACLE to 36.5% under S EQ and
+conversation history is also preserved across bugs.       36.9% under S EQ +M EM, a roughly 38% relative
+The agent enters bug k+1 with the transcript              decline. Every one of the 21 model×configuration
+from bug k, including intermediate observations           cells loses accuracy when moving from O RACLE to
+and dead ends. This mode isolates the effect              S EQ, so the effect is not driven by a few weak mod-
+of transcript-level memory from repository-level          els or settings. For S EQ, the decline ranges from
+state.                                                    29% for GPT-5.5 under BASELINE (69.1 → 49.0)
+                                                          to 48% for DeepSeek-V4-Pro under S UB -AGENT
+   O RACLE provides an oracle-state per-bug base-         (48.4 → 25.0). Chain accuracy is less diagnostic
+line, independent of error propagation, while S EQ        because a single missed bug makes the whole chain
+and S EQ +M EM measure the cost of carrying               fail; it is already low under O RACLE (mean 20.0%).
+model-modified repository state across a chain.           Under S EQ the mean is comparable (17.0%), most
+The gap between these modes quantifies how much           model–configuration pairs fall, as later bugs in-
+performance is lost due to accumulated agent and          herit the state drift and errors left behind by ear-
+repo state rather than genuine bug difficulty.            lier self-generated edits. A few actually improve,
+                                                          e.g. GPT-5.5 and Gemini-3.1-Pro under S UM -
+                                                          MARIZE. This is because a correct earlier fix leaves
+4.4   Experiment Settings                                 behind context that helps with the next bug.
+
+All experiments are executed on a CPU-only Linux          Robustness to accumulated state varies across
+server (x86_64) with 32 cores and 64 GB of RAM,           models. The relative O RACLE-to-S EQ degrada-
+running 4 evaluations in parallel. For all agents,        tion in per-bug accuracy, averaged over configura-
+we enforce a per-instance limit of 100 turns and a        tions, ranges from 36% for GPT-5.4-mini to 42%
+per-instance timeout of 30 minutes; all other param-      for DeepSeek-V4-Pro. The most robust models
+eters use the default configurations of each harness.     are those able to tell which of the previously ac-
+                                                          cumulated edits are relevant to the current bug
+                                                          and which are not, and to reason about the ef-
+4.5   Metrics                                             fects those edits have already had on the reposi-
+                                                          tory. Under the raw-history baseline BASELINE,
+We report %Resolved, which refers to the percent-         GPT-5.5 is the most robust model (−29%), but
+age of task instances where the agent-generated           its advantage erodes under the rewriting configu-
+patches pass all tests. Because C HAIN SWE eval-          rations (−38% under S UMMARIZE, −44% under
+uates ordered bug sequences, we also report per-          S UB -AGENT). In comparison, smaller GPT mod-
+chain success by position and full-chain success          els show more consistent and uniform degradation.
+rate, where a chain is successful only if all bugs are    Among the models with competitive O RACLE ac-
+resolved. Finally, we report average API cost per         curacy, Claude-Opus-4.7 shows one of the largest
+task and per chain, computed from the input and           average gaps (−39%), indicating that strong single-
+output tokens consumed during each rollout.               shot ability does not guarantee robustness to self-
+                                        BASELINE                  S UMMARIZE                  S UB -AGENT
+ Model              Mode        Per-Bug     Chain      Cost Per-Bug     Chain     Cost Per-Bug      Chain    Cost
+                                  (%)        (%)        ($)   (%)        (%)       ($)   (%)         (%)      ($)
+                    O RACLE      69.1      26.0         6.0   68.1      23.0       6.2   62.5      22.0       4.8
+ GPT-5.5            S EQ       49.0 −29% 23.0 −12%      5.6 42.4 −38% 25.0 +9%     6.2 35.2 −44% 20.0 −9%     4.6
+                    S EQ +M EM 47.4 −31% 19.0 −27%      6.4 49.7 −27% 23.0 −0%     6.8 43.4 −31% 21.0 −5%     4.3
+                    O RACLE      61.8      22.0         1.1   61.8      26.0       1.1   36.2      10.0       1.2
+ GPT-5.4-mini       S EQ       41.8 −32% 15.0 −32%      1.1 39.8 −36% 21.0 −19%    1.2 21.7 −40% 10.0 −0%     1.3
+                    S EQ +M EM 41.8 −32% 17.0 −23%      1.4 37.8 −39% 18.0 −31%    1.2 22.0 −39% 9.0 −10%     1.1
+                    O RACLE      64.8      27.0         0.4   62.8      22.0       0.3   37.8      12.0       0.2
+ GPT-5.4-nano       S EQ       45.1 −30% 21.0 −22%      0.3 33.9 −46% 16.0 −27%    0.3 23.0 −39% 12.0 −0%     0.2
+                    S EQ +M EM 44.1 −32% 18.0 −33%      0.4 35.5 −43% 18.0 −18%    0.4 18.1 −52% 9.0 −25%     0.2
+                    O RACLE      64.5      22.0         1.8   65.5      24.0       1.8   63.5      21.0       3.2
+ Claude-Opus-4.7    S EQ       40.5 −37% 18.0 −18%      1.7 39.5 −40% 20.0 −17%    1.6 38.0 −40% 17.0 −19%    3.1
+                    S EQ +M EM 39.5 −39% 17.0 −23%      2.1 41.5 −37% 20.0 −17%    2.3 40.0 −37% 19.0 −10%    3.6
+                    O RACLE      64.0      21.0         1.5   66.5      24.0       1.5   62.5      20.0       5.6
+ Claude-Opus-4.5    S EQ       43.0 −33% 19.0 −10%      1.5 40.5 −39% 18.0 −25%    1.4 38.5 −38% 17.0 −15%    5.2
+                    S EQ +M EM 37.5 −41% 16.0 −24%      3.1 40.0 −40% 20.0 −17%    2.9 40.0 −36% 20.0 −0%     6.7
+                 O RACLE      42.8           10.0       1.5   50.3      16.0       1.9   48.4      12.0       2.0
+ DeepSeek-V4-Pro S EQ       29.6 −31%       5.0 −50%    1.5 27.3 −46% 11.0 −31%    1.9 25.0 −48% 11.0 −8%     2.0
+                 S EQ +M EM 28.6 −33%       9.0 −10%    1.7 26.0 −48% 8.0 −50%     2.0 28.0 −42% 11.0 −8%     2.1
+                    O RACLE      61.8      20.0         1.3   61.5      19.0       1.5   61.5      20.0       1.9
+ Gemini-3.1-Pro     S EQ       36.5 −41% 18.0 −10%      1.4 39.5 −36% 20.0 +5%     1.4 37.2 −40% 19.0 −5%     1.9
+                    S EQ +M EM 37.5 −39% 18.0 −10%      1.9 39.8 −35% 21.0 +11%    1.9 37.2 −40% 19.0 −5%     2.5
+
+Table 2: Main results on C HAIN SWE with SWE-E DIT under three context-management configurations (BASELINE,
+S UMMARIZE, S UB -AGENT). We report all 100 chains (304 bugs); under S EQ and S EQ +M EM. Per-Bug is per-bug
+accuracy out of the 304 bugs; Chain is the fraction of the 100 chains for which all bugs pass; Cost is the estimated
+average USD per chain. Red subscripts on S EQ and S EQ +M EM rows give the relative change from the corresponding
+O RACLE baseline (green + marks an increase).
+
+
+generated state.                                            eraged over models, the relative O RACLE-to-S EQ
+                                                            drop grows from 33% under BASELINE to 40%
+GPT-5.5 shows the largest observed gain from
+                                                            under S UMMARIZE and 41% under S UB -AGENT.
+conversation memory. Carrying the conversa-
+                                                            Simply retaining the raw history (BASELINE)
+tion history across bugs (S EQ +M EM) does not
+                                                            is therefore more robust than summarizing it
+improve the performance, as mean per-bug accu-
+                                                            (S UMMARIZE) or routing edits through an LLM ed-
+racy is essentially unchanged from S EQ (36.9% vs.
+                                                            itor (S UB -AGENT). Even though the latter two are
+36.5%). GPT-5.5 improves from a config-averaged
+                                                            designed to reduce context pressure, they degrade
+42.2% under S EQ to 46.8% under S EQ +M EM,
+                                                            overall performance due to potential information
+with gains of +7.3 points under S UMMARIZE
+                                                            loss and inconsistency.
+(42.4 → 49.7) and +8.2 points under S UB -AGENT
+(35.2 → 43.4). The other six models see no
+such benefit: S EQ +M EM stays within about two
+                                                            Cost. Per-chain cost is driven primarily by model
+points of S EQ on average and is often slightly
+                                                            tier rather than execution mode: it ranges from
+worse, with even DeepSeek-V4-Pro essentially
+                                                            $0.2–$0.4 for GPT-5.4-nano to $4.3–$6.8 for
+unchanged (config-averaged 27.3 → 27.5). Pre-
+                                                            GPT-5.5. Within a model, S EQ +M EM is often
+served history compensates for imperfect reposi-
+                                                            slightly more expensive than S EQ because it car-
+tory state only when the model can productively
+                                                            ries longer histories, but the added context rarely
+reason over the longer history; otherwise, it adds
+                                                            translates into higher accuracy. S UMMARIZE and
+input tokens without a measurable benefit.
+                                                            S UB -AGENT can sometimes reduce cost for ex-
+Lighter context management is more robust                   pensive main-model runs by shortening or moving
+than active rewriting. Holding the model fixed,             token-heavy context out of the main trajectory, but
+the context-management configuration determines             Table 2 shows that this saving often comes with
+how quickly sequential execution degrades. Av-              lower robustness.
+  Context     Mode        Pos. 1   Pos. 2   Pos. 3           Mode               Pos. 1   Pos. 2    Pos. 3
+               O RACLE    58.6   64.3      67.0              GPT-5.5
+  BASELINE     S EQ       57.1 39.3 −39% 27.7 −59%           O RACLE            61.2   70.4      75.9
+               S EQ +M EM 56.5 38.0 −41% 28.2 −58%           S EQ               62.5 40.5 −42% 28.2 −63%
+             O RACLE    58.0   66.0      68.4                S EQ +M EM         61.9 44.7 −37% 37.8 −50%
+  S UMMARIZE S EQ       60.0 35.4 −46% 20.6 −70%             GPT-5.4-mini
+             S EQ +M EM 59.3 36.6 −45% 22.0 −68%             O RACLE            51.2   58.1      56.4
+              O RACLE    49.5   58.1      59.2               S EQ               51.9 33.7 −42% 20.6 −63%
+  S UB -AGENT S EQ       50.3 29.9 −49% 17.5 −70%            S EQ +M EM         51.5 31.6 −46% 21.3 −62%
+              S EQ +M EM 50.4 31.3 −46% 19.2 −67%
+                                                             GPT-5.4-nano
+                                                             O RACLE            50.2   61.9      59.1
+Table 3: Per-position resolution rate (%) by context-        S EQ               50.5 32.0 −48% 21.6 −63%
+management configuration, averaged across the seven          S EQ +M EM         48.8 30.9 −50% 21.0 −65%
+evaluated models. Red subscripts report the relative         Claude-Opus-4.7
+drop from the corresponding O RACLE baseline.                O RACLE            60.0   68.0      72.0
+                                                             S EQ               60.0 38.0 −44% 24.0 −67%
+                                                             S EQ +M EM         60.5 39.0 −43% 25.0 −65%
+5.2   Success Rate by Position                               Claude-Opus-4.5
+                                                             O RACLE            60.5   68.5      71.0
+Tables 3 and 4 break per-bug resolution down by              S EQ               61.0 39.0 −43% 24.5 −65%
+a bug’s position in its chain, computed over the             S EQ +M EM         60.0 38.0 −45% 23.0 −68%
+97 length-3 chains; the 3 longer chains (two of              DeepSeek-V4-Pro
+length 4, one of length 5) are too few for stable            O RACLE         44.3   48.8      53.3
+per-position estimates and are omitted. Position             S EQ            44.7 24.7 −49% 15.1 −72%
+                                                             S EQ +M EM      45.4 26.1 −46% 14.1 −74%
+resolves the ambiguity in the aggregate numbers:
+it separates whether later bugs are intrinsically            Gemini-3.1-Pro
+                                                             O RACLE            60.1   63.9      66.3
+harder from whether accumulated state makes them             S EQ               59.8 36.1 −44% 19.6 −70%
+harder.                                                      S EQ +M EM         59.8 36.8 −42% 19.9 −70%
+
+Under oracle resets, later bugs are not harder.          Table 4: Per-position resolution rate (%) by model, av-
+In O RACLE, each bug begins from the correct             eraged across the three context-management configura-
+prior state, so by construction position reflects        tions. Red subscripts report the relative drop from the
+only intrinsic task difficulty rather than accu-         corresponding O RACLE baseline.
+mulated error; resolution is therefore expected
+to be flat or even rising with position. Aver-           sitions 2 and 3. As the chain gets deeper, the perfor-
+aged over configurations, GPT-5.5 resolves 61.2%,        mance gap between isolated (O RACLE) and sequen-
+70.4%, and 75.9% at positions 1 to 3 (rising             tial (S EQ) fixing widens significantly—eventually
+with position), and the same shape holds across          reaching a 37.5-point drop for GPT-5.4-nano at
+models (Claude-Opus-4.7:          60.0/68.0/72.0;        position 3 (59.1% down to 21.6%).
+DeepSeek-V4-Pro: 44.3/48.8/53.3). Later bugs
+in a chain are therefore not inherently more diffi-      The configuration ordering is stable across posi-
+cult.                                                    tions. Table 3 shows that the configurations are
+                                                         roughly the same at position 1 (50–60% across all
+Under accumulation, difficulty compounds with            modes) and separate only as state accumulates. At
+depth. In both S EQ and S EQ +M EM, an agent’s           position 3 under S EQ, BASELINE retains 27.7%
+success rate drops sharply and consistently along        against 20.6% for S UMMARIZE and 17.5% for
+the chain. Under S EQ, GPT-5.5 falls from                S UB -AGENT—a 59% relative drop from the O R -
+62.5% at position 1 to 40.5% and then 28.2%;             ACLE baseline for BASELINE versus 70% for the
+GPT-5.4-nano similarly drops from 50.5% to               rewriting configurations. S EQ +M EM provides a
+32.0% to 21.6%. For the first-bug success rate           small, inconsistent improvement at the last posi-
+across all seven models, it remains close to the         tion (e.g., S UB -AGENT, 17.5 → 19.2) but does not
+isolated O RACLE baseline (e.g., 62.5% vs. 61.2%         change the ordering. This is consistent with the
+for GPT-5.5), because the agent faces a clean slate      model-level finding: under accumulation, context
+with no accumulated changes. The entire penalty          rewriting increases errors more than carrying the
+for sequential fixing is therefore concentrated at po-   context in its original form.
+                                (a) Failures that are chain errors                                   (b) Harness fingerprint
+
+
+
+
+% of downstream failures
+                                 Undershoot    Overshoot                                                                             is that the agent breaks previously working code
+
+
+                                                                     % of chain errors
+                           60                               52%                                  40%
+                                48%                                                      40                                34%       simply because it is forced to build upon an already
+                                              43%
+                           40                                                                                 25%
+                                                                                         20                                          corrupted repository state:
+                                                             46
+                           20     43            39
+
+                            0 Overall         Pos. 2       Pos. 3                         0      Broke       Left bug    No usable       • Broke working code (40%): the later bug’s
+                                                                                              working code   unfixed      patch
+                                                                                                                                           edit composes onto the corrupted state and
+Figure 4: Chain-error analysis on BASELINE cells. (a)                                                                                      a previously-passing PASS _ TO _ PASS test
+Of the downstream S EQ failures (positions 2–3), 48%                                                                                       breaks.
+overall (43% at position 2, 52% at position 3) are chain
+errors; each bar is split into the share of chain errors                                                                                 • Left the bug unfixed (25%): the later bug’s
+caused by an earlier under-edit (green) versus over-edit                                                                                   own FAIL _ TO _ PASS target cannot be made to
+(red), roughly nine to one. (b) Harness fingerprint of                                                                                     pass because a precondition is missing, but
+the 318 chain errors that the agent attempted on the                                                                                       nothing else breaks.
+accumulated state.
+                                                                                                                                         • Produced no usable patch (34%): the inher-
+                                                                                                                                           ited state prevents the agent from producing
+ 5.3                            Failure Mode Analysis
+                                                                                                                                           or applying a usable patch at all, or leaves the
+Since agents struggle increasingly with later bugs,                                                                                        suite uncollectable.
+we shift our focus to analyze failures at the chain
+level rather than the individual bug level, where                                                                                    The fact that broke working code is the most com-
+the latter has already been thoroughly explored in                                                                                   mon outcome—around 40% at both downstream
+prior works (Jimenez et al., 2024; Zhang et al.,                                                                                     positions—helps explain why preserving a richer
+2025). For every downstream bug (position ≥ 2),                                                                                      chat history (S EQ +M EM) rarely helps. The struc-
+we re-tested it in isolation (O RACLE) starting from                                                                                 tural damage is already baked into the repository
+a perfect prior state. If a bug passes under O RACLE                                                                                 state before the agent even begins tackling the later
+but fails under S EQ, the failure is clearly induced                                                                                 bug, meaning a longer conversation history simply
+by the agent’s accumulated errors, not the bug it-                                                                                   cannot undo it.
+self. We call such a failure a chain error. Across
+                                                                                                                                     6    Conclusion
+the BASELINE models, 318 of the 663 downstream
+S EQ failures at positions 2–3 (48%) are chain er-                                                                                   We introduced C HAIN SWE, the first benchmark
+rors, and the rate grows with depth (43% at posi-                                                                                    that evaluates coding agents on sequential, depen-
+tion 2 and 52% at position 3; Figure 4a): once state                                                                                 dent bug fixes within a shared codebase. By mining
+accumulates, roughly half of all later-bug failures                                                                                  chains of real issues from six SWE-bench-family
+are attributable to the chain rather than the bug                                                                                    datasets and validating them through containerized
+itself.                                                                                                                              test replay, C HAIN SWE exposes failure modes that
+   As introduced in Section 1, depending on how an                                                                                   are not exposed when bugs are graded in isolation,
+earlier bug’s agent patch is miscalibrated relative                                                                                  with per-bug success dropping by up to 70% at the
+to that earlier bug’s own gold patch, chain errors                                                                                   deepest chain positions. Over models and context-
+divide into two symmetric families: Overshoot                                                                                        management configurations, we demonstrate that
+and Undershoot. These two errors aren’t mutually                                                                                     carrying the history of previous fixes yields only
+exclusive—by the time an agent reaches the third                                                                                     a marginal gain, whereas active summarization
+bug, earlier patches have typically both over- and                                                                                   and sub-agent editing exhibit larger degradation.
+under-edited the codebase. However, when we can                                                                                      These results offer insights for future work on long-
+trace a chain error back to a single shared file, prior                                                                              context, dependency-aware reasoning in code LMs
+omissions (under-edits) clearly outnumber prior                                                                                      and on repository-state management in agent har-
+over-edits (Figure 4a). This mirrors our earlier                                                                                     nesses.
+finding: agents are much more likely to leave a
+later bug’s preconditions unmet than to actively                                                                                     Limitations
+overwrite working code.                                                                                                              The six source benchmarks used to construct chain
+   Regardless of the cause, the chain errors the                                                                                     tasks inevitably contain noisy instances, where tests
+agent attempts on the accumulated state show up                                                                                      enforce implementation details or extra functional-
+in the testing harness in one of three distinct ways.                                                                                ity not specified in the problem description (Ope-
+As Figure 4b shows, the most common outcome                                                                                          nAI, 2026). As a result, a small portion of chain
+failures can stem not from agents incorrectly fol-        Jingzhe Ding, Shengda Long, Changxin Pu, Huan Zhou,
+lowing earlier issue descriptions, but from the im-          Hongwan Gao, Xiang Gao, Chao He, Yue Hou,
+                                                             Fei Hu, Zhaojian Li, Weiran Shi, Zaiyuan Wang,
+possibility of inferring the hidden requirements of
+                                                             Daoguang Zan, Chenchen Zhang, Xiaoxu Zhang,
+later tests from the problem descriptions of earlier         Qizhi Chen, Xianfu Cheng, Bo Deng, Qingshui Gu,
+issues.                                                      and 30 others. 2026. Nl2repo-bench: Towards long-
+   The current release is restricted to Python and           horizon repository generation evaluation of coding
+                                                             agents. Preprint, arXiv:2512.12730.
+is modest in scale. Because long contiguous is-
+sue sequences are rare in existing benchmarks, we         Ruida Hu, Chao Peng, Junjielong Xu, and Cuiyun Gao.
+are unable to construct chain tasks longer than             2026. Repo2run: Automated building executable
+five instances from the current data pool. This             environment for code repository at scale. Advances
+                                                            in Neural Information Processing Systems, 38:32679–
+limits both the generalizability of our findings to         32718.
+other programming languages and ecosystems and
+our ability to evaluate error accumulation and con-       Naman Jain, King Han, Alex Gu, Wen-Ding Li, Fanjia
+text management over longer maintenance hori-               Yan, Tianjun Zhang, Sida Wang, Armando Solar-
+                                                            Lezama, Koushik Sen, and Ion Stoica. 2024. Live-
+zons. Nonetheless, the construction pipeline itself         CodeBench: Holistic and contamination free evalu-
+is not specific to Python and can be extended as            ation of large language models for code. Preprint,
+executable SWE-style datasets expand in language            arXiv:2403.07974.
+coverage, repository coverage, and size.
+                                                          Carlos E Jimenez, John Yang, Alexander Wettig,
+                                                            Shunyu Yao, Kexin Pei, Ofir Press, and Karthik R
+Acknowledgements                                            Narasimhan. 2024. SWE-bench: Can language mod-
+The views expressed in this paper are solely those          els resolve real-world github issues? In The Twelfth
+                                                            International Conference on Learning Representa-
+of the authors and do not reflect those of NVIDIA,          tions.
+which does not sponsor or endorse this research.
+                                                          Kenan Li, Qirui Jin, Liao Zhu, Xiaosong Huang, Yi-
+                                                            jia Wu, Yikai Zhang, Xin Zhang, Zijian Jin, Yufan
+                                                            Huang, Elsie Nallipogu, Chaoyun Zhang, Yu Kang,
+References                                                  Saravan Rajmohan, Qingwei Lin, Wenke Lee, and
+Anthropic. 2025.     Claude code.      https://code.        Dongmei Zhang. 2026a. Oracle-swe: Quantifying
+  claude.com/.                                              the contribution of oracle information signals on swe
+                                                            agents. Preprint, arXiv:2604.07789.
+Ibragim Badertdinov, Alexander Golubev, Maksim
+                                                          Kenan Li, Rongzhi Li, Linghao Zhang, Qirui Jin,
+   Nekrashevich, Anton Shevtsov, Simon Karasik, An-
+                                                            Liao Zhu, Xiaosong Huang, Geng Zhang, Yikai
+   drei Andriushchenko, Maria Trofimova, Daria Litv-
+                                                            Zhang, Shilin He, Chengxing Xie, Xin Zhang, Zi-
+   intseva, and Boris Yangel. 2025. Swe-rebench: An
+                                                            jian Jin, Bowen Li, Chaoyun Zhang, Yu Kang, Yufan
+   automated pipeline for task collection and decon-
+                                                            Huang, Elsie Nallipogu, Saravan Rajmohan, Qing-
+   taminated evaluation of software engineering agents.
+                                                            wei Lin, and Dongmei Zhang. 2026b. Repolaunch:
+   Preprint, arXiv:2505.20411.
+                                                            Automating build and management of code repos-
+                                                            itories across languages and platforms. Preprint,
+Ibragim Badertdinov, Maksim Nekrashevich, Anton
+                                                            arXiv:2603.05026.
+   Shevtsov, and Alexander Golubev. 2026. Swe-
+   rebench v2: Language-agnostic swe task collection      Lifei Liu, Haoran Yu, Xiaochong Jiang, Su Wang, Pin
+   at scale. Preprint, arXiv:2602.23866.                     Qian, and Yihang Chen. 2026. Operational reframing
+                                                             and approval-framed delegation in multi-agent llm
+Guoxin Chen, Fanzhe Meng, Jiale Zhao, Minghao Li,            safety. arXiv preprint arXiv:2607.07097.
+  Daixuan Cheng, Huatong Song, Jie Chen, Yuzhi
+  Lin, Hui Chen, Xin Zhao, Ruihua Song, Chang Liu,        Xiao Liu, Hao Yu, Hanchen Zhang, Yifan Xu, Xuanyu
+  Cheng Chen, Kai Jia, and Ji-Rong Wen. 2026. Be-           Lei, Hanyu Lai, Yu Gu, Hangliang Ding, Kaiwen
+  yondswe: Can current code agent survive beyond            Men, Kejuan Yang, Shudan Zhang, Xiang Deng, Ao-
+  single-repo bug fixing? Preprint, arXiv:2603.03194.       han Zeng, Zhengxiao Du, Chenhui Zhang, Sheng
+                                                            Shen, Tianjun Zhang, Yu Su, Huan Sun, and 3 others.
+Xiang Deng, Jeff Da, Edwin Pan, Yannis Yiming He,           2024. Agentbench: Evaluating LLMs as agents. In
+  Charles Ide, Kanak Garg, Niklas Lauffer, Andrew           The Twelfth International Conference on Learning
+  Park, Nitin Pasari, Chetan Rane, Karmini Sampath,         Representations.
+  Maya Krishnan, Srivatsa Kundurthy, Sean Hendryx,
+  Zifan Wang, Vijay Bharadwaj, Jeff Holm, Raja Aluri,     Chang Ma, Junlei Zhang, Zhihao Zhu, Cheng Yang,
+  Chen Bo Calvin Zhang, and 3 others. 2025. Swe-            Yujiu Yang, Yaohui Jin, Zhenzhong Lan, Lingpeng
+  bench pro: Can ai agents solve long-horizon software      Kong, and Junxian He. 2024. Agentboard: An an-
+  engineering tasks? Preprint, arXiv:2509.16941.            alytical evaluation board of multi-turn llm agents.
+  Advances in neural information processing systems,      Chunqiu Steven Xia, Yinlin Deng, Soren Dunn, and
+  37:74325–74362.                                           Lingming Zhang. 2024. Agentless: Demystify-
+                                                            ing llm-based software engineering agents. arXiv
+Adyasha Maharana, Dong-Ho Lee, Sergey Tulyakov,             preprint arXiv:2407.01489.
+  Mohit Bansal, Francesco Barbieri, and Yuwei Fang.
+  2024. Evaluating very long-term conversational          John Yang, Carlos E Jimenez, Alexander Wettig, Kil-
+  memory of llm agents. In Proceedings of the 62nd          ian Lieret, Shunyu Yao, Karthik R Narasimhan, and
+  Annual Meeting of the Association for Computational       Ofir Press. 2024. SWE-agent: Agent-computer inter-
+  Linguistics (Volume 1: Long Papers), pages 13851–         faces enable automated software engineering. In The
+  13870.                                                    Thirty-eighth Annual Conference on Neural Informa-
+                                                            tion Processing Systems.
+OpenAI. 2026.             Why swe-bench verified
+   no longer measures frontier coding ca-
+   pabilities.          https://openai.com/index/        John Yang, Kilian Lieret, Jeffrey Ma, Parth Thakkar,
+   why-we-no-longer-evaluate-swe-bench-verified/. Dmitrii Pedchenko, Sten Sootla, Emily McMilin,
+   Accessed: 2026-06-19.                                    Pengcheng Yin, Rui Hou, Gabriel Synnaeve, Diyi
+                                                            Yang, and Ofir Press. 2026. Programbench: Can
+Jiayi Pan, Xingyao Wang, Graham Neubig, Navdeep             language models rebuild programs from scratch?
+   Jaitly, Heng Ji, Alane Suhr, and Yizhe Zhang. 2025.      Preprint, arXiv:2605.03546.
+   Training software engineering agents and verifiers
+   with swe-gym. In Proceedings of the 42nd Inter-       Linghao Zhang, Shilin He, Chaoyun Zhang, Yu Kang,
+   national Conference on Machine Learning (ICML            Bowen Li, Chengxing Xie, Junhao Wang, Maoquan
+   2025). ArXiv:2412.21139, accepted at ICML 2025.          Wang, Yufan Huang, Shengyu Fu, Elsie Nallipogu,
+                                                            Qingwei Lin, Yingnong Dang, Saravan Rajmohan,
+Chong Peng, Pin Qian, Su Wang, Yihang Chen, and             and Dongmei Zhang. 2025. Swe-bench goes live!
+   Varun Sah. 2026. Bap-sql: Budget-aware observa-          arXiv preprint arXiv:2505.23419.
+   tion planning for agentic text-to-sql. arXiv preprint
+   arXiv:2608.02876.
+                                                         Yikai Zhang, Jiaxin Pei, Kenan Li, Qirui Jin, Maoquan
+Shanghaoran Quan, Jiaxi Yang, Bowen Yu, Bo Zheng,           Wang, Jin Pan, Yu Kang, Shengyu Fu, Elsie Nalli-
+   Dayiheng Liu, An Yang, Xuancheng Ren, Bofei              pogu, Junjie Hu, Yufan Huang, and Zijian Jin. 2026.
+   Gao, Yibo Miao, Yunlong Feng, Zekun Wang,                Swe-edit: Rethinking code editing for efficient swe-
+   Jian Yang, Zeyu Cui, Yang Fan, Yichang Zhang,            agent. Preprint, arXiv:2604.26102.
+   Binyuan Hui, and Junyang Lin. 2025. Codeelo:
+   Benchmarking competition-level code generation of     Jiale Zhao, Guoxin Chen, Fanzhe Meng, Minghao Li,
+   llms with human-comparable elo ratings. Preprint,        Jie Chen, Hui Xu, Yongshuai Sun, Wayne Xin Zhao,
+   arXiv:2501.01257.                                        Ruihua Song, Yuan Zhang, Peng Wang, Cheng Chen,
+                                                            Jirong Wen, and Kai Jia. 2026. Immersion in the
+Su Wang, Pin Qian, Yihang Chen, Junxian You, Xi-            github universe: Scaling coding agents to mastery.
+   aoyuan Wang, Xiaochong Jiang, Lifei Liu, Haoran          Preprint, arXiv:2602.09892.
+   Yu, and Jingzhou Xu. 2026a. When safe skills col-
+   lide: Measuring compositional risk in agent skill
+   ecosystems. arXiv preprint arXiv:2606.00448.          A Dataset Details
+Su Wang, Pin Qian, Yifan Lin, Jingzhou Xu, Yihang         A.1   Data Format
+  Chen, Xiaochong Jiang, Lifei Liu, and Haoran Yu.
+  2026b. Phantom guardrails: When self-improving          Each C HAIN SWE instance is a chain: a time-
+  agent harnesses fix failures that never happened.       ordered list of bug-fix tasks over a single repository,
+  arXiv preprint arXiv:2607.13083.                        sharing one Docker image and base commit. Ta-
+Xingyao Wang, Boxuan Li, Yufan Song, Frank F. Xu,         ble 5 lists the chain-level fields, and Table 6 the per-
+  Xiangru Tang, Mingchen Zhuge, Jiayi Pan, Yueqi          bug fields stored inside bug_fixes. Each per-bug
+  Song, Bowen Li, Jaskirat Singh, Hoang H. Tran,          entry is itself a self-contained, SWE-bench-style
+  Fuqiang Li, Ren Ma, Mingzhang Zheng, Bill Qian,         task instance.
+  Yanjun Shao, Niklas Muennighoff, Yizhe Zhang,
+  Binyuan Hui, and 5 others. 2025. Openhands: An
+  open platform for AI software developers as gener-      A.2   Per-Repository Breakdown
+  alist agents. In The Thirteenth International Confer-
+  ence on Learning Representations.                       C HAIN SWE spans 54 repositories with
+                                                          varying chain counts.     Table 9 lists all
+Di Wu, Hongwei Wang, Wenhao Yu, Yuwei Zhang,              54 repositories with their chain and bug
+  Kai-Wei Chang, and Dong Yu. 2025. Longmemeval:
+  Benchmarking chat assistants on long-term interac-
+                                                          counts; tobymao/sqlglot (12 chains) and
+  tive memory. In The Thirteenth International Con-       s-knibbs/dataclasses-jsonschema (7) are the
+  ference on Learning Representations.                    largest.
+                                  Table 5: Chain-level fields of a C HAIN SWE instance.
+
+  Field                          Type                    Description
+  continuous_id                  str                     Unique identifier for the chain.
+  repo                           str                     Source repository in owner/name form.
+  base_commit                    str                     Commit the chain starts from; the repository is reset here before the
+                                                         first bug.
+  source                         str                     Originating SWE-bench-family dataset.
+  date_range                     str                     Span of the earliest to latest bug date in the chain.
+  docker_image                   str                     Pre-built execution environment shared by every bug in the chain.
+  swebench_instance_ids          List[str]               Ordered list of the underlying SWE-bench instance IDs in the chain.
+  bug_fixes                      List[dict]              The ordered bug-fix tasks; each entry has the fields in Table 6.
+
+                                Table 6: Per-bug fields stored in each entry of bug_fixes.
+
+  Field                         Type                     Description
+  order                         int                      Position of the bug within the chain (1-indexed).
+  swebench_instance_id          str                      Identifier of the underlying SWE-bench task instance.
+  commit_hash                   str                      Commit at which this bug’s gold patch was merged.
+  problem_statement             str                      Issue description used as the task prompt for this bug.
+  date                          str                      Date of the bug’s fixing commit, used to order the chain.
+  source                        str                      Originating SWE-bench-family dataset for this bug.
+  patch                         str                      Gold patch proposed by the pull request.
+  test_patch                    str                      Modifications to the test suite to check whether the issue is resolved.
+  FAIL_TO_PASS                  List[str]                Tests expected to change from failing to passing once fixed.
+  PASS_TO_PASS                  List[str]                Tests already passing before the fix.
+  test_cmds                     str                      Command(s) used to run the test suite.
+
+
+  Table 7: Per-Source breakdown for C HAIN SWE.                    A.4     Context Usage
+
+               Source                   Chains                     To quantify how much context each configu-
+                                                                   ration actually consumes, we record the peak
+               SWE-rebench-v2              52                      input-context size (in tokens) reached during ev-
+               SWE-rebench                 17                      ery agent run, take the maximum over the bugs
+               SWE-bench Live              12                      in a chain, and average across all models and
+               SWE-Gym                      7                      chains. Table 8 reports this average maximum
+               SWE-bench                    6                      context for each context-management configura-
+               Mixed                        6                      tion (BASELINE, S UMMARIZE, S UB -AGENT) un-
+               SWE-bench Pro                0                      der the three evaluation modes (O RACLE, S EQ,
+                                                                   S EQ +M EM). S EQ +M EM consistently reaches the
+Table 8: Average maximum context reached per chain,                largest context—10–16k tokens above the corre-
+averaged across all models.                                        sponding O RACLE and S EQ runs—because it car-
+                                                                   ries the agent’s conversation history across bugs.
+      Config        O RACLE         S EQ    S EQ +M EM             This confirms that C HAIN SWE exercises markedly
+      BASELINE          48.2k      48.1k        63.6k              longer context than common SWE-related tasks.
+      S UMMARIZE        42.7k      41.8k        48.4k
+      S UB -AGENT       42.8k      42.6k        53.0k
+                                                                   B     Contamination Analysis
+
+                                                                   Performance by source dataset. Table 10 re-
+A.3    Per-Source Breakdown                                        ports per-bug success rates grouped by source
+                                                                   dataset and averaged across all evaluated language
+According to Table 7, SWE-rebench-v2 contributes                   models and agent configurations. Both S EQ and
+the largest share with 52 chains (52%), followed                   S EQ +M EM underperform O RACLE in every source
+by SWE-rebench (17 chains), SWE-bench Live                         group. The difference between O RACLE and the se-
+(12), SWE-Gym (7), SWE-bench (6), and chains                       quential modes ranges from 2.0 to 10.8 percentage.
+spanning multiple sources (6); SWE-bench Pro                       This indicates that the degradation under accumu-
+contributes no chains that survive filtering.                      lated agent-generated state is not limited to a single
+Table 9: Per-repository breakdown of C HAIN SWE (54 repositories, 100 chains, 304 bugs), sorted by chain count.
+
+ Repository                             Chains     Bugs   Repository                              Chains        Bugs
+ tobymao/sqlglot                          12        36    drivendataorg/cloudpathlib                    1         3
+ s-knibbs/dataclasses-jsonschema           7        21    falconry/falcon                               1         4
+ Project-MONAI/MONAI                       4        12    fonttools/fonttools                           1         3
+ brazilian-utils/brutils-python            4        12    hdmf-dev/hdmf                                 1         3
+ pyccel/pyccel                            4         12    hikari-py/hikari                              1         3
+ reata/sqllineage                          4        12    instructlab/instructlab                       1         3
+ HypothesisWorks/hypothesis                3         9    ipython/ipython                               1         3
+ MartinThoma/flake8-simplify               3         9    jazzband/tablib                               1         3
+ PyCQA/docformatter                        3         9    joke2k/faker                                  1         3
+ amaranth-lang/amaranth                    3         9    jsonpickle/jsonpickle                         1         3
+ pydata/xarray                            3          9    keras-team/keras                              1         3
+ sdv-dev/RDT                              3          9    koxudaxi/datamodel-code-generator             1         3
+ getmoto/moto                             2          6    matthewwithanm/python-markdownify             1         3
+ litestar-org/polyfactory                  2         6    meltano/sdk                                   1         3
+ mikedh/trimesh                           2          7    oscal-compass/compliance-trestle              1         3
+ modin-project/modin                       2         6    pallets/click                                 1         3
+ mwaskom/seaborn                          2          6    pydantic/pydantic                             1         3
+ Kozea/WeasyPrint                          1         3    pydicom/pydicom                               1         3
+ NeurodataWithoutBorders/pynwb             1         3    pytask-dev/pytask                             1         3
+ Python-Markdown/markdown                  1         3    pytest-dev/pyfakefs                           1         3
+ Textualize/rich                          1          3    reanahub/reana-client                         1         3
+ aio-libs/aiohttp                          1         3    relekang/python-semantic-release              1         3
+ alteryx/woodwork                          1         3    samuelcolvin/pydantic                         1         3
+ beeware/briefcase                         1         5    sanic-org/sanic-ext                           1         3
+ codezonediitj/pydatastructs               1         3    sissbruecker/linkding                         1         3
+ copier-org/copier                         1         3    spulec/freezegun                              1         3
+ deepset-ai/haystack                       1         3    stanfordnlp/dspy                              1         3
+
+
+Table 10: Per-bug success rate (%) by source dataset,     Table 11: Per-bug success rate (%) by the time between
+averaged across all evaluated language models and agent   issue date and model release, averaged across all evalu-
+configurations.                                           ated language models and agent configurations.
+
+   Source             O RACLE    S EQ    S EQ +M EM         Gap to model release       O RACLE   S EQ       S EQ +M EM
+   Mixed                44.3     40.5       37.6            ≤ 1 year before release     46.7     42.4          42.4
+   SWE-Gym              59.2     52.9       54.9            1–2 years before release    53.2     46.0          44.2
+   SWE-rebench          74.4     68.2       67.6            2–4 years before release    56.5     48.7          48.6
+   SWE-rebench-v2       56.0     46.1       45.2            > 4 years before release    65.9     59.0          58.5
+   SWE-bench            57.4     55.4       54.9
+   SWE-bench Live       41.4     37.2       36.7
+
+                                                          C    Failure Mode Examples
+
+source dataset.                                           We give a concrete, verified instance of each case
+                                                          in the chain-error taxonomy of Section 5.3. Every
+                                                          example is a real BASELINE rollout. In each one,
+Performance by issue date relative to model re-           the downstream bug we point to is solved correctly
+lease. Absolute issue dates do not account for            when the agent starts from the oracle prior state
+differences among model release dates. We there-          (O RACLE), but fails when it starts from the state the
+fore additionally group each evaluation according         agent itself accumulated (S EQ)—which is exactly
+to the time between the issue date and the release        what we mean by a chain error.
+of the evaluated model. As shown in Table 11,
+S EQ and S EQ +M EM remain below O RACLE in all           Cause:     overshoot. In stanfordnlp/dspy
+four temporal groups. This includes issues dated          (GPT-5.5),    the agent overshoots while
+within one year before model release, for which           fixing bug 2 (dspy-1609).           The in-
+success decreases from 46.7% under O RACLE to             tended fix only touches chat_adapter.py,
+42.4% under both sequential modes. The degrada-           predict.py,      signatures/utils.py,    and
+tion therefore does not occur only on issues long         utils/dummies.py, but the agent also modifies
+before the models were released.                          functional/functional.py, a file outside the
+gold patch. This stray change later interferes                 --- a/dspy/functional/functional.py
+with bug 3 (dspy-1651), which also edits                       +++ b/dspy/functional/functional.py
+                                                               @@ -240,7 +240,7 @@ class TypedPredictor(dspy.Module):
+functional/functional.py. Bug 3 is solved                      ,→
+                                                                                        schema = json.dumps(type_.
+correctly from the oracle state (O RACLE), yet                 ,→ model_json_schema())
+in S EQ its patch is applied on top of the earlier                                  else:
+                                                                                        adapter = pydantic.
+unintended modification, causing the final reposi-             ,→ TypeAdapter(type_)
+                                                               -                        to_json = lambda x: adapter.
+tory state to diverge from the oracle. As a result,            ,→ serializer.to_json(x)
+four previously passing test_signature_typed                   +                        to_json = lambda x: adapter.
+                                                               ,→ serializer.to_json(x).decode("utf-8")
+tests begin to fail. The agent’s full patch for                                         from_json = lambda x, type_=
+                                                               ,→ adapter: type_.validate_json(x)
+bug 2 is shown below; note the second hunk, on                                          schema = json.dumps(adapter.
+functional.py, which lies outside the gold set.                ,→ json_schema())
+                                                                                    if self.wrap_json:
+
+
+
+   diff --git a/dspy/adapters/chat_adapter.py b/dspy/       Cause:                             undershoot. In
+   ,→ adapters/chat_adapter.py
+   index 5a20dcff..8f8213ed 100644                          s-knibbs/dataclasses-jsonschema
+   --- a/dspy/adapters/chat_adapter.py
+   +++ b/dspy/adapters/chat_adapter.py
+                                                            (DeepSeek-V4-Pro),                 all          three
+   @@ -85,8 +85,15 @@ def format_list(items):               bugs         involve        the      same         file,
+        return "\n".join([f"[{idx+1}] {format_blob(txt)
+   ,→ }" for idx, txt in enumerate(items)])                 dataclasses_jsonschema/__init__.py. When
+                                                            fixing bug 2 (dataclasses-jsonschema-112),
+   -def _format_field_value(value) -> str:                  the agent fails to modify the target file and instead
+   -    if isinstance(value, list):
+   +def _format_field_value(value, field_info=None) ->      generates a standalone script that merely repro-
+   ,→ str:
+   +    if field_info is not None:                          duces the issue and bypass the issue. As a result,
+   +        formatter = (field_info.json_schema_extra or    the repository state after bug 2 remains incomplete,
+   ,→ {}).get("format")
+   +        if formatter is not None:                       with the required changes to __init__.py never
+   +            value = formatter(value)
+   +                                                        applied. Bug 3 (dataclasses-jsonschema-116)
+   +    if isinstance(value, bytes):
+   +        return value.decode("utf-8")
+                                                            is solved correctly from the oracle state (O RACLE),
+   +    elif isinstance(value, list):                       but under S EQ its patch is applied to a repository
+            return format_list(value)
+        elif isinstance(value, pydantic.BaseModel):         that is still missing bug 2’s fix, causing the final
+            return value.model_dump_json()
+   @@ -94,10 +101,11 @@ def _format_field_value(value)      state to diverge from the oracle and several
+   ,→ -> str:                                               previously passing tests to fail. Agent’s entire
+            return str(value)
+                                                            patch for bug 2 consists solely of the following
+   -def format_fields(fields):                              throwaway script.
+   +def format_fields(fields, field_infos=None):
+        output = []
+        for k, v in fields.items():                            diff --git a/reproduce_subclass_override.py b/
+   -        v = _format_field_value(v)                         ,→ reproduce_subclass_override.py
+   +        field_info = field_infos.get(k) if                 new file mode 100644
+   ,→ field_infos is not None else None                        index 0000000..17834ea
+   +        v = _format_field_value(v, field_info)             --- /dev/null
+            output.append(f"[[ ## {k} ## ]]\n{v}")             +++ b/reproduce_subclass_override.py
+                                                               @@ -0,0 +1,59 @@
+        return "\n\n".join(output).strip()                     +import sys
+   @@ -132,7 +140,12 @@ def format_turn(signature,             +sys.path.insert(0, '/workspace/dataclasses-
+   ,→ values, role, incomplete=False):                         ,→ jsonschema/')
+            if not set(values).issuperset(set(                 +
+   ,→ field_names)):                                           +from typing import Literal
+                raise ValueError(f"Expected {field_names}      +from dataclasses import dataclass
+   ,→ but got {values.keys()}")                                +
+                                                               +from dataclasses_jsonschema import JsonSchemaMixin
+   -    content.append(format_fields({k: values.get(k, "       +
+   ,→ Not supplied for this particular example.") for k        +
+   ,→ in field_names}))                                        +@dataclass
+   +    content.append(                                        +class BaseObject(JsonSchemaMixin):
+   +        format_fields(                                     +    field: str
+   +            {k: values.get(k, "Not supplied for this       +
+   ,→ particular example.") for k in field_names},             +
+   +            signature.fields,                              +@dataclass
+   +        ),                                                 +class NarrowedObject(BaseObject, JsonSchemaMixin):
+   +    )                                                      +    field: Literal['staticstr']
+                                                               +
+        if role == "user":                                     +
+            content.append(                                    +print("Testing BaseObject:")
+   diff --git a/dspy/functional/functional.py b/dspy/          +print(BaseObject.json_schema())
+   ,→ functional/functional.py                                 +print()
+   index a45e302c..598e6658 100644                             +
+   +print("Testing NarrowedObject:")                          from singer_sdk.helpers.capabilities import (
+   +try:                                                     +    BATCH_CONFIG,
+   +    schema = NarrowedObject.json_schema()                     TARGET_SCHEMA_CONFIG,
+   +    print(schema)                                             CapabilitiesEnum,
+   +except Exception as e:                                        PluginCapabilities,
+   +    print(f"Error: {type(e).__name__}: {e}")             @@ -104,6 +106,23 @@ class Target(PluginBase,
+   +                                                         ,→ SingerReader, metaclass=abc.ABCMeta):
+   +print()                                                               PluginCapabilities.FLATTENING,
+   +                                                                  ]
+   +# Also test with embeddable=True
+   +print("Testing NarrowedObject embeddable:")              +    @classmethod
+   +try:                                                     +    def append_builtin_config(cls: type[Target],
+   +    schema = NarrowedObject.json_schema(embeddable=      ,→ config_jsonschema: dict) -> None:
+   ,→ True)                                                  +        """Appends built-in config to `
+   +    print(schema)                                        ,→ config_jsonschema` if not already set.
+   +except Exception as e:                                   +
+   +    print(f"Error: {type(e).__name__}: {e}")             +        To customize or disable this behavior,
+   +                                                         ,→ developers may either override this class
+   +print()                                                  +        method or override the `capabilities`
+   +                                                         ,→ property to disable any unwanted
+   +# Test deserialization                                   +        built-in capabilities.
+   +print("Test from_dict:")                                 +
+   +try:                                                     +        Args:
+   +    obj = NarrowedObject.from_dict({"field": "           +            config_jsonschema: Config JSON schema to
+   ,→ staticstr"})                                           ,→ append built-in config to.
+   +    print(f" Success: {obj}")                            +        """
+   +except Exception as e:                                   +        super().append_builtin_config(
+   +    print(f" Error: {type(e).__name__}: {e}")            ,→ config_jsonschema)
+   +                                                         +
+   +print()                                                  +        capabilities = cls.capabilities
+   +                                                         +        if PluginCapabilities.BATCH in capabilities:
+   +# Test deserialization with wrong value                  +            merge_missing_config_jsonschema(
+   +print("Test from_dict with wrong value:")                ,→ BATCH_CONFIG, config_jsonschema)
+   +try:                                                     +
+   +    obj = NarrowedObject.from_dict({"field": "                @property
+   ,→ wrongvalue"})                                               def max_parallelism(self) -> int:
+   +    print(f" Success: {obj}")                                     """Get max parallel sinks.
+   +except Exception as e:
+   +    print(f" Error: {type(e).__name__}: {e}")
+
+                                                          Fingerprint:        left the bug unfixed. In
+Fingerprint:        broke working code. In                amaranth-lang/amaranth (GPT-5.5), bug 1
+meltano/sdk (GPT-5.5), bug 2 (meltano-1880)               (amaranth-1265) is left half-finished.            Its
+is resolved correctly under O RACLE. However, in          gold fix spans four files _ast.py, _ir.py,
+S EQ, although the agent successfully makes the           _xfrm.py, and sim/_pyrtl.py, but the agent
+target bug pass, it applies the same modification         edits only _ir.py and _xfrm.py (together with
+to singer_sdk/target_base.py on top of an                 the __init__.py and ir.py export lists), leaving
+inherited state where earlier behavior has not been       _ast.py and sim/_pyrtl.py untouched. Bug 2
+fully accounted for. This results in a regression         (amaranth-1268) then correctly updates its own
+test, test_add_sqlsink_and_get_sink, which                target file, lib/wiring.py, without introducing
+was previously passing, begins to fail again. Thus,       additional regressions, but test_is_compliant
+while the current bug is fixed, previously correct        still fails under S EQ because it runs on top of the
+functionality is inadvertently broken. The full           incompletely fixed state from bug 1. The full patch
+agent patch is shown below.                               for bug 1 is shown below.
+
+   diff --git a/singer_sdk/target_base.py b/singer_sdk/      diff --git a/amaranth/hdl/__init__.py b/amaranth/hdl/
+   ,→ target_base.py                                         ,→ __init__.py
+   index fe2bc04..0d79d4c 100644                             index 43852da..b967d73 100644
+   --- a/singer_sdk/target_base.py                           --- a/amaranth/hdl/__init__.py
+   +++ b/singer_sdk/target_base.py                           +++ b/amaranth/hdl/__init__.py
+   @@ -12,12 +12,14 @@ import typing as t                    @@ -6,8 +6,8 @@ from ._ast import Format, Print,
+    import click                                             ,→ Assert, Assume, Cover
+    from joblib import Parallel, delayed,                     from ._ast import IOValue, IOPort
+   ,→ parallel_backend                                        from ._dsl import Module
+                                                              from ._cd import DomainError, ClockDomain
+   +from singer_sdk.configuration._dict_config import        -from ._ir import UnusedElaboratable, Elaboratable,
+   ,→ merge_missing_config_jsonschema                        ,→ DriverConflict, Fragment
+    from singer_sdk.connectors import SQLConnector           -from ._ir import Instance, IOBufferInstance
+    from singer_sdk.exceptions import                        +from ._ir import UnusedElaboratable, Elaboratable,
+   ,→ RecordsWithoutSchemaException                          ,→ DuplicateElaboratable
+    from singer_sdk.helpers._batch import                    +from ._ir import DriverConflict, Fragment, Instance,
+   ,→ BaseBatchFileEncoding                                  ,→ IOBufferInstance
+    from singer_sdk.helpers._classproperty import             from ._mem import MemoryData, MemoryInstance, Memory,
+   ,→ classproperty                                          ,→ ReadPort, WritePort, DummyPort
+    from singer_sdk.helpers._compat import final              from ._rec import Record
+  from ._xfrm import DomainRenamer, ResetInserter,        +                 if isinstance(obj, Fragment):
+,→ EnableInserter                                         +                     if hasattr(obj, "origins"):
+@@ -26,7 +26,7 @@ __all__ = [                             +                         obj.origins = tuple(origins)
+      # _cd                                               +                     if outermost:
+      "DomainError", "ClockDomain",                       +                         obj.
+      # _ir                                               ,→ _check_duplicate_elaboratables()
+-     "UnusedElaboratable", "Elaboratable", "             +                     return obj
+,→ DriverConflict", "Fragment",                           +                 elif isinstance(obj, Elaboratable):
++     "UnusedElaboratable", "Elaboratable", "             +                     code = obj.elaborate.__code__
+,→ DuplicateElaboratable", "DriverConflict", "            +                     UnusedElaboratable.
+,→ Fragment",                                             ,→ _MustUse__silence = False
+      "Instance", "IOBufferInstance",                     +                     obj._MustUse__used = True
+      # _mem                                              +                     new_obj = obj.elaborate(platform
+      "MemoryData", "MemoryInstance", "Memory", "         ,→ )
+,→ ReadPort", "WritePort", "DummyPort",                   +                 else:
+diff --git a/amaranth/hdl/_ir.py b/amaranth/hdl/_ir.      +                     raise TypeError(f"Object {obj!r}
+,→ py                                                     ,→ is not an 'Elaboratable' nor 'Fragment'")
+index 717db2e..7e7890c 100644                             +                 if new_obj is obj:
+--- a/amaranth/hdl/_ir.py                                 +                     raise RecursionError(f"Object {
++++ b/amaranth/hdl/_ir.py                                 ,→ obj!r} elaborates to itself")
+@@ -9,8 +9,8 @@ from . import _ast, _cd, _ir, _nir        +                 if new_obj is None and code is not
+                                                          ,→ None:
+                                                          +                     warnings.warn_explicit(
+  __all__ = [                                             +                         message=".elaborate()
+-     "UnusedElaboratable", "Elaboratable", "             ,→ returned None; missing return statement?",
+,→ DriverConflict", "Fragment", "Instance",               +                         category=UserWarning,
+-     "IOBufferInstance", "PortDirection", "Design", "    +                         filename=code.co_filename,
+,→ build_netlist",                                        +                         lineno=code.co_firstlineno)
++     "UnusedElaboratable", "Elaboratable", "             +                 origins.append(obj)
+,→ DuplicateElaboratable", "DriverConflict",              +                 obj = new_obj
++     "Fragment", "Instance", "IOBufferInstance", "       +        finally:
+,→ PortDirection", "Design", "build_netlist",             +            Fragment._elaborating -= 1
+  ]
+                                                               def __init__(self, *, src_loc=None):
+                                                                   self.drivers = OrderedDict()
+@@ -26,37 +26,50 @@ class Elaboratable(_unused.           @@ -110,6 +123,26 @@ class Fragment:
+,→ MustUse):                                                       assert isinstance(subfragment, Fragment)
+     _MustUse__warning = UnusedElaboratable                        self.subfragments.append((subfragment, name,
+                                                          ,→ src_loc))
+
++class DuplicateElaboratable(UserWarning):                +    def _check_duplicate_elaboratables(self):
++     pass                                                +        origin_paths = OrderedDict()
++                                                         +
++                                                         +        def traverse(fragment, hierarchy):
+  class DriverConflict(UserWarning):                      +            for origin in getattr(fragment, "origins
+      pass                                                ,→ ", ()) or ():
+                                                          +                origin_paths.setdefault(id(origin),
+                                                          ,→ (origin, []))[1].append(hierarchy)
+    class Fragment:                                       +            for index, (subfragment, name, _src_loc)
++       _elaborating = 0                                  ,→ in enumerate(fragment.subfragments):
++                                                         +                if name is None:
+     @staticmethod                                        +                    name = f"<unnamed #{index}>"
+     def get(obj, platform):                              +                traverse(subfragment, (*hierarchy,
+         code = None                                      ,→ name))
+         origins = []                                     +
+-        while True:                                      +        traverse(self, ("top",))
+-             if isinstance(obj, Fragment):               +        for origin, paths in origin_paths.values():
+-                 if hasattr(obj, "origins"):             +            if len(paths) <= 1:
+-                     obj.origins = tuple(origins)        +                continue
+-                 return obj                              +            warnings.warn(
+-             elif isinstance(obj, Elaboratable):         +                "Elaboratable {!r} is added to the
+-                 code = obj.elaborate.__code__           ,→ hierarchy more than once: {}"
+-                 UnusedElaboratable._MustUse__silence    +                .format(origin, ", ".join(".".join(
+,→ = False                                                ,→ path) for path in paths)),
+-                 obj._MustUse__used = True               +                DuplicateElaboratable, stacklevel=3)
+-                 new_obj = obj.elaborate(platform)       +
+-             else:                                            def find_subfragment(self, name_or_index):
+-                 raise TypeError(f"Object {obj!r} is              if isinstance(name_or_index, int):
+,→ not an 'Elaboratable' nor 'Fragment'")                              if name_or_index < len(self.subfragments
+-             if new_obj is obj:                          ,→ ):
+-                 raise RecursionError(f"Object {obj!r}   diff --git a/amaranth/hdl/_xfrm.py b/amaranth/hdl/
+,→ elaborates to itself")                                 ,→ _xfrm.py
+-             if new_obj is None and code is not None:    index 01b4fa1..e74176d 100644
+-                 warnings.warn_explicit(                 --- a/amaranth/hdl/_xfrm.py
+-                     message=".elaborate() returned      +++ b/amaranth/hdl/_xfrm.py
+,→ None; missing return statement?",                      @@ -318,6 +318,8 @@ class FragmentTransformer:
+-                     category=UserWarning,                                )
+-                     filename=code.co_filename,                   else:
+-                     lineno=code.co_firstlineno)                      new_fragment = Fragment(src_loc=fragment.
+-             origins.append(obj)                         ,→ src_loc)
+-             obj = new_obj                               +        if hasattr(fragment, "origins"):
++        outermost = Fragment._elaborating == 0           +            new_fragment.origins = fragment.origins
++        Fragment._elaborating += 1                                new_fragment.attrs = OrderedDict(fragment.
++        try:                                             ,→ attrs)
++             while True:
+           self.map_subfragments(fragment, new_fragment        +    """
+   ,→ )                                                        +
+            self.map_domains(fragment, new_fragment)           +    return isinstance(pis, str) and validate(pis)
+   diff --git a/amaranth/hdl/ir.py b/amaranth/hdl/ir.py        +
+   index db44e53..737c749 100644                               +
+   --- a/amaranth/hdl/ir.py                                    +def _hashdigit(pis): # type: (str) -> int
+   +++ b/amaranth/hdl/ir.py                                    +    """
+   @@ -4,7 +4,10 @@ from .. import hdl as __hdl                +    Will compute the PIS checksum digit for the
+    from . import _ir as __origin                              ,→ given `pis` input.
+                                                               +    The input needs to contain the 10 base digits
+                                                               ,→ else computation
+   -__all__ = ["UnusedElaboratable", "Elaboratable", "         +    will yield the wrong result.
+   ,→ DriverConflict", "Fragment", "Instance"]                 +    """
+   +__all__ = [                                                +
+   +    "UnusedElaboratable", "Elaboratable", "                +    weights = (3, 2, 9, 8, 7, 6, 5, 4, 3, 2)
+   ,→ DuplicateElaboratable", "DriverConflict",                +    val = sum(int(digit) * weight for digit, weight
+   +    "Fragment", "Instance",                                ,→ in zip(pis[:10], weights)) % 11
+   +]                                                          +    digit = 11 - val
+                                                               +
+                                                               +    return 0 if digit in (10, 11) else digit
+    def __getattr__(name):                                     +
+                                                               +
+                                                               +def _checksum(basenum): # type: (str) -> str
+                                                               +    """
+Fingerprint: produced no usable patch. In                      +    Will compute the checksum digit for a given PIS
+                                                               ,→ base number.
+brazilian-utils/brutils-python (GPT-5.5),                      +    `basenum` needs to be a digit-string of adequate
+                                                               ,→ length.
+bug 2 (brutils-216) only partially applies the in-             +    """
+tended changes, modifying just two of the seven                +
+                                                               +    return str(_hashdigit(basenum))
+gold files __init__.py and pis.py, and primarily
+wiring up an import while leaving the rest of the
+package unchanged. Bug 3 (brutils-218) still               D     Agent Prompts
+succeeds under O RACLE, but in S EQ the partially          This section lists the prompts used by the SWE-
+updated state from bug 2 causes the test suite to fail     E DIT.
+at collection time (exit code 2). The agent’s full
+patch for bug 2 is shown below.                            D.1    Viewer Subagent Prompt
+                                                           When the view command is invoked under S UB -
+   diff --git a/brutils/__init__.py b/brutils/__init__.    AGENT, the viewer subagent receives the numbered
+   ,→ py
+   index e005bdb..e0b89c2 100644                           file contents and a natural-language query, and re-
+   --- a/brutils/__init__.py
+   +++ b/brutils/__init__.py                               turns the line ranges relevant to that query so that
+   @@ -16,3 +16,4 @@ from brutils.cep import (             only those ranges are read into the main trajectory.
+        remove_symbols as remove_symbols_cep,
+        generate as generate_cep,                          The complete system prompt is shown below.
+     )
+   +from brutils.pis import is_valid as is_valid_pis
+   diff --git a/brutils/pis.py b/brutils/pis.py                Viewer Subagent System Prompt
+   new file mode 100644
+   index 0000000..e1d1a5c                                      You are an expert code analyzer. Your task
+   --- /dev/null                                               is to identify line ranges in a file that
+   +++ b/brutils/pis.py                                        are relevant to a given query.
+   @@ -0,0 +1,48 @@
+   +# OPERATIONS                                               You will be given:
+   +############                                               1. A file with numbered lines in the format:
+   +                                                              LINE_NUMBER\tLINE_CONTENT
+   +                                                           2. A query describing what the user is
+   +def validate(pis): # type: (str) -> bool                      looking for
+   +    """
+   +    Returns whether or not the verifying checksum          Your job is to analyze the file and return
+   ,→ digit of the                                             the line ranges that are most relevant to
+   +    given `pis` matches its base number. Input             the query. Consider:
+   ,→ should be a digit                                        - Function/method definitions that match
+   +    string of proper length.                                 the query
+   +                                                           - Class definitions related to the query
+   +    Source: https://www.macoratti.net/alg_pis.htm          - Variable declarations or assignments
+   +    """                                                      relevant to the query
+   +                                                           - Import statements if they're relevant
+   +    if not pis.isdigit() or len(pis) != 11 or len(         - Comments that explain relevant code
+   ,→ set(pis)) == 1:                                          - Any code blocks that implement
+   +        return False                                         functionality related to the query
+   +
+   +    return _hashdigit(pis) == int(pis[-1])                 OUTPUT FORMAT:
+   +                                                           You must output your response as a JSON
+   +                                                           array of line ranges. Each range is an
+   +def is_valid(pis): # type: (str) -> bool                   array of two integers [start_line, end_line]
+   +    """                                                    (inclusive, 1-indexed).
+   +    Evaluates that pis is String and calls validate.
+   Example output:                                           the REPLACE block
+   [[10, 25], [45, 60], [100, 115]]                       4. Each SEARCH block must be unique in
+                                                             the file - if there are multiple
+   RULES:                                                    matches, include more context
+   1. Only output the JSON array, no                      5. Only output the search-replace blocks,
+      additional explanation or comments                     no additional explanation or comments
+   2. Line numbers are 1-indexed (first line
+      is line 1)                                          Example 1 - Modifying specific lines:
+   3. Each range should include complete                  <<<<<<< SEARCH
+      logical blocks (don't cut functions/                def calculate_total(items):
+      classes in the middle)                                  return sum(items)
+   4. Include a few lines of context before               =======
+      and after each relevant section when                def calculate_total(items):
+      appropriate                                             if not items:
+   5. If nothing in the file is relevant to                       return 0
+      the query, return an empty array: []                    return sum(items)
+   6. Ranges should be sorted by start line               >>>>>>> REPLACE
+      number
+   7. Merge overlapping or adjacent ranges                Example 2 - Multiple edits:
+   8. Keep ranges focused - don't include                 <<<<<<< SEARCH
+      entire files unless the query asks for              import os
+      everything                                          =======
+                                                          import os
+   Example 1 - Finding a specific function:               import sys
+   Query: "Where is the calculate_total                   >>>>>>> REPLACE
+   function defined?"
+   Output: [[15, 28]]                                     <<<<<<< SEARCH
+                                                          def main():
+   Example 2 - Finding multiple related                       pass
+   sections:                                              =======
+   Query: "How is user authentication                     def main():
+   handled?"                                                  print("Hello, World!")
+   Output: [[5, 8], [23, 45], [102, 130]]                 >>>>>>> REPLACE
+
+   Example 3 - Nothing relevant found:                    Example 3 - Rewriting entire file
+   Query: "Where is the database connection               (empty SEARCH block):
+   configured?"                                           <<<<<<< SEARCH
+   Output: []                                             =======
+                                                          #!/usr/bin/env python3
+   Now, analyze the file content and query                # New file content here
+   provided, and output the relevant line                 def new_function():
+   ranges as a JSON array.                                    pass
+                                                          >>>>>>> REPLACE
+
+                                                          Now, analyze the file content and
+D.2   Editor Subagent Prompt                              instruction provided, and output the
+                                                          necessary search-replace blocks.
+When the edit command is invoked, the editor
+subagent receives the file contents and the edit in-
+                                                       D.3   Context Summarization Prompt
+struction. The complete system prompt is shown
+below.                                                 Under the S UMMARIZE configuration, once the
+                                                       running context exceeds a token budget the earlier
+   Editor Subagent System Prompt                       portion of the trajectory is replaced by a model-
+   You are an expert code editor. Your task            written summary. The summarizer is driven by the
+   is to analyze a file and make                       system prompt below.
+   modifications according to the provided
+   instructions.
+
+   You must output your changes using the
+                                                          Summarization System Prompt
+   search-replace format shown below. You
+   can make multiple edits by including                   You are a meticulous context-summarization
+   multiple search-replace blocks.                        assistant for an autonomous
+                                                          software-engineering agent. The agent is
+   Format for each edit:                                  solving a coding task and its conversation
+   <<<<<<< SEARCH                                         has grown too long to keep in full. Your
+   exact lines from the original file to find             job is to compress the earlier part of the
+   =======                                                conversation into a dense, factual summary
+   new lines to replace them with                         that lets the agent continue working
+   >>>>>>> REPLACE                                        without re-reading the original messages.
+
+   IMPORTANT RULES:                                       Preserve everything that is operationally
+   1. The SEARCH block must match the                     important and discard chatter. Produce a
+      original file content EXACTLY,                      structured summary with these sections
+      including whitespace and indentation                (omit a section only if it is genuinely
+   2. You can make multiple edits by                      empty):
+      including multiple search-replace                   1. TASK: the problem statement / goal the
+      blocks                                                 agent is working toward.
+   3. If the SEARCH block is empty (no                    2. REPO STATE: relevant files, directories,
+      content between <<<<<<< SEARCH and                     and code locations discovered (with
+      =======), it means you want to REWRITE                 paths and key symbols/line references
+      THE ENTIRE FILE with the content in                    when known).
+  3. CHANGES MADE: edits already applied to          package imports to ensure you're
+     the codebase, described precisely enough        testing the local version, not an
+     to reconstruct what was done.                   installed version.
+  4. COMMANDS & RESULTS: important shell/test   3. Edit the source code of the repo to
+     commands run and their outcomes               resolve the issue
+     (failures, tracebacks, test pass/fail).    4. Rerun your reproduce script and
+  5. CURRENT STATE & NEXT STEPS: where things      confirm that the error is fixed!
+     stand and what remains to be done.         5. Think about edge cases and make sure
+  6. KEY FACTS: any other constraints,             your fix handles them as well
+     hypotheses, or observations worth
+     keeping.                                   Your thinking should be thorough and so
+                                                it's fine if it's very long.
+  Be specific and concrete -- keep exact file
+  paths, function names, error messages, and
+  command strings. Do not invent information.
+  Do not ask questions or address the user;
+  output only the summary.
+
+
+
+  Summarization User Template
+  Summarize the following earlier portion of
+  the agent's conversation so the agent can
+  continue the task. This transcript is the
+  prefix that will be replaced by your
+  summary; the most recent messages are kept
+  verbatim and are NOT shown here.
+
+  <transcript>
+  {transcript}
+  </transcript>
+
+
+
+D.4   System Prompt
+  SWE-Bench System Prompt
+  <uploaded_files>
+  {{ instance.repo_path }}
+  </uploaded_files>
+  I've uploaded a python code repository in
+  the directory {{ instance.repo_path }}
+  (not in /tmp/inputs). Consider the
+  following issue descriptions:
+
+  <issue_description>
+  {{ instance.problem_statement }}
+  </issue_description>
+
+  Can you help me implement the necessary
+  changes to the repository so that the
+  requirements specified in the
+  <issue_description> are met?
+  I've already taken care of all changes to
+  any of the test files described in the
+  <issue_description>. This means you DON'T
+  have to modify the testing logic or any
+  of the tests in any way!
+  Also the development Python environment
+  is already set up for you (i.e., all
+  dependencies already installed), so you
+  don't need to install other packages.
+
+  Your task is to make the minimal changes
+  to non-test files in the
+  {{ instance.repo_path }} directory to
+  ensure the <issue_description> is
+  satisfied.
+
+  Follow these steps to resolve the issue:
+  1. As a first step, it might be a good
+     idea to explore the repo to
+     familiarize yourself with its
+     structure.
+  2. Create a script to reproduce the error
+     and execute it with
+     `python <filename.py>` using the
+     execute_bash tool to confirm the error
+     - **Important:** If testing a Python
+       package, add
+       `import sys; sys.path.insert(0,
+       '{{ instance.repo_path }}')`
+       at the top of your script before
+
