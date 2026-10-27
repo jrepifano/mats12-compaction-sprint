@@ -184,6 +184,12 @@ Still open: astra's NIT that the title still says "refusal" although the constru
 #### Refusal scan
 `docs/sprint/plans/reviews/week2-summary-refusal-scan.py` and its output `.txt` (rough string matching on task chaining's laptop copy of its run data), and `week2-summary-refusal-scan-adjudicated.txt` (the hand-adjudicated list of 20 explicit declines).
 
+## Revision, 27 Oct evening (Jacob)
+
+| Change | Source | Old | New |
+|---|---|---|---|
+| Top-up size | Only 4 of 16 source histories qualify (2 explicit declines); at that yield 10 top-ups reach 6 about half the time. Jacob chose option B. | up to 10 first tasks, $12 | **up to 20 first tasks, $25**, still stopping at 8 qualifying, same deadline (Wed 11:30 AM ET), on the laptop |
+
 ## Build contract
 
 Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c with Argon). The plan check (`scripts/week2_plan_check.py`) parses the first table and compares it, key by key, with `configs/week2/summary_refusal.toml`. Notes: `refusal.source_config_sha256` pins experiment 1's `precedent.toml`, so a change there makes top-ups refuse until it is re-pinned; `caps.run_usd`, `max_calls` and `max_seconds` are the resumed runs' limits, while top-ups take experiment 1's first-task limits from the source config; the batch runs on the laptop (host recorded per history; top-ups too).
@@ -207,7 +213,7 @@ Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c 
 | `refusal.min_histories_test` | 6 |
 | `refusal.target_histories` | 8 |
 | `refusal.max_histories` | 12 |
-| `refusal.topup_max_tasks` | 10 |
+| `refusal.topup_max_tasks` | 20 |
 | `refusal.topup_rep_start` | 101 |
 | `refusal.topup_repos` | httpx, tengo |
 | `refusal.topup_deadline_et` | 2026-10-28T11:30 |
@@ -223,7 +229,7 @@ Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c 
 | `refusal.monitor_views` | current_only, current_plus_reasoning |
 | `refusal.crash_reruns` | 1 |
 | `caps.stage_usd` | 50.0 |
-| `caps.topup_usd` | 12.0 |
+| `caps.topup_usd` | 25.0 |
 | `caps.run_usd` | 1.0 |
 | `caps.max_calls` | 120 |
 | `caps.max_seconds` | 1800 |
