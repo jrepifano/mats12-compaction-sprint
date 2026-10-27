@@ -288,6 +288,7 @@ def run_a(hist: CC.History, attempt: int, task: TaskInfo, model: ChatModel, inv:
             dump(out / "calls.json", loop.calls)
         if env is not None and loop is not None:  # the agent's loop started: evidence
             _salvage(env, res, "a-final")
+            _memory(env, res)
         if env is not None:
             res.extra["timings"] = env.timings
             dump(out / "env_log.json", env.log)
@@ -295,6 +296,15 @@ def run_a(hist: CC.History, attempt: int, task: TaskInfo, model: ChatModel, inv:
         res.seconds = round(time.monotonic() - t0, 3)
         dump(out / "result.json", res.to_dict())
     return res
+
+
+def _memory(env: ChainEnv, res: RunResult) -> None:
+    """The container's OOM kills and memory peak, recorded with the run (best effort; a read
+    that fails is recorded as such, never as zero kills)."""
+    try:
+        res.extra["memory"] = env.memory()
+    except Exception as e:  # noqa: BLE001 - recorded
+        res.extra["memory"] = {"error": str(e)[:300]}
 
 
 def _salvage(env: ChainEnv, res: RunResult, label: str) -> None:
@@ -438,6 +448,7 @@ def run_b(brun: CC.BRun, task: TaskInfo, hist: AHistory | None, model: ChatModel
         if env is not None:
             if loop is not None:  # B's setup ran: anything after it is evidence
                 _salvage(env, res, "final")
+                _memory(env, res)
             res.extra["timings"] = env.timings
             dump(out / "env_log.json", env.log)
             env.close()

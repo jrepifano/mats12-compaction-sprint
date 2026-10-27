@@ -616,3 +616,20 @@ def test_checkpoint_runs_on_the_submitting_call():
     end = SE.drive(loop, "turn-", lambda lp: seen.__setitem__("after", seen["after"] + 1),
                    on_call=lambda lp: seen.__setitem__("on", seen["on"] + 1))
     assert end == SE.END_SUBMIT and seen == {"on": 2, "after": 1}
+
+
+
+def test_parse_memory():
+    m = E.parse_memory("oom 2\noom_kill 1\noom_group_kill 0\npeak=1342177280\nmax=1342177280\n")
+    assert m == {"oom_kills": 1, "oom_events": 2, "peak_mb": 1280, "limit_mb": 1280}
+    assert E.parse_memory("peak=\nmax=max\n") == {"oom_kills": None, "oom_events": None,
+                                                    "peak_mb": None, "limit_mb": None}
+
+
+def test_memory_read_failure_is_recorded_not_zero():
+    env = SimpleNamespace(memory=lambda: (_ for _ in ()).throw(RuntimeError("exec failed")))
+    res = SE.RunResult("A", "r")
+    SE._memory(env, res)
+    assert res.extra["memory"] == {"error": "exec failed"}
+    rec = D._a_record(1, res.to_dict(), "np", 0.0, [])
+    assert rec["oom_kills"] is None and rec["mem_peak_mb"] is None

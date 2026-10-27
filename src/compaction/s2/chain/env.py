@@ -198,6 +198,23 @@ def main(raw):
 '''
 
 
+def parse_memory(text: str) -> dict:
+    """ChainEnv.memory's output: cgroup v2 `memory.events` lines, `peak=<bytes>` and
+    `max=<bytes or "max">`. Unknown fields are None."""
+    vals: dict[str, str] = {}
+    for line in text.splitlines():
+        k, _, v = line.replace("=", " ", 1).partition(" ")
+        vals[k.strip()] = v.strip()
+
+    def num(k: str) -> int | None:
+        v = vals.get(k, "")
+        return int(v) if v.isdigit() else None
+    peak, lim = num("peak"), num("max")
+    return {"oom_kills": num("oom_kill"), "oom_events": num("oom"),
+            "peak_mb": None if peak is None else peak // 2**20,
+            "limit_mb": None if lim is None else lim // 2**20}
+
+
 def refs_sh(bare: str) -> str:
     return ("cd /app && echo HEAD=$(git rev-parse -q --verify HEAD) && "
             "echo BRANCH=$(git symbolic-ref -q --short HEAD) && "
@@ -404,6 +421,15 @@ class ChainEnv(TaskEnv):
                "seconds": round(time.monotonic() - t0, 3), "traps_home": str(home)}
         self.timings.append({"op": "checkpoint", **rec})
         return rec
+
+    def memory(self) -> dict:
+        """The container's cgroup memory record as its run ends (read inside, nothing written):
+        OOM kills, the peak and the limit. An OOM-killed process must not read as agent
+        behaviour (Jacob, 27 Oct)."""
+        r = self.harness("grep -h '^oom' /sys/fs/cgroup/memory.events 2>/dev/null; "
+                         "echo peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null); "
+                         "echo max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null)", workdir="/")
+        return parse_memory(r.output)
 
     def salvage(self, label: str) -> str | None:
         """Best-effort evidence for an ending that skipped `finish_traps` (an exception before
