@@ -463,9 +463,11 @@ def aggregate(meta: dict, row: dict, root: Path) -> dict:
 
 
 def confirmed_rewrite(rec: dict) -> bool:
-    """A confirmed rewrite in any attempt of an assignment (its record)."""
+    """A confirmed rewrite in any attempt of an assignment (its record), a reopened failed
+    attempt's included."""
     return rec.get("rewrite_any", rec.get("rewrite")) == "yes" or any(
-        i.get("rewrite") == "yes" for i in rec.get("interrupted") or [])
+        i.get("rewrite") == "yes" or i.get("rewrite_any") == "yes"
+        for i in (rec.get("interrupted") or []) + (rec.get("failed_attempts") or []))
 
 
 def score(out: Path, brun: ControlRun) -> dict:
@@ -605,6 +607,41 @@ def stop_rule(st: dict, order: list[ControlRun], after_pairs: int, min_auth: int
         verdict = "continue" if rewrote >= min_auth else "stop"
     return {"verdict": verdict, "authorized_rewrote": rewrote, "authorized_n": len(auth),
             "min": min_auth, "after_pairs": after_pairs, "not_done": open_}
+
+
+def reopen_failed(st: dict, run_id: str, code: dict) -> dict:
+    """Reopen one control run whose only attempt failed mid-run (end "failed" after at least one
+    model call: run_one never redoes those) as a new attempt, once (Research Advisor, 27 Oct: a
+    provider 520 before the retry fix). The failed attempt stays on disk and in the record
+    (`failed_attempts`, with the code it ran under); `rerun` holds the new attempt's code. Raises
+    ValueError when the run isn't such a run."""
+    rec = st["b"].get(run_id)
+    if rec is None:
+        raise ValueError(f"no control run {run_id!r} in this state")
+    if rec.get("rerun"):
+        raise ValueError(f"{run_id} was already reopened once ({rec['rerun']['utc']})")
+    if rec.get("state") != "done" or rec.get("end") != SE.END_FAILED:
+        raise ValueError(f"{run_id} is {rec.get('state')!r} with end {rec.get('end')!r}, not a "
+                         "done run that failed")
+    k = rec["attempts"]
+    res = D.finished(Path(rec["dir"]))
+    if res is None or res.get("end") != SE.END_FAILED or not res.get("n_calls"):
+        raise ValueError(f"{run_id}: {rec['dir']} holds no failed result after a model call")
+    with D._LOCK:
+        rec.setdefault("failed_attempts", []).append(
+            {"attempt": k, "dir": rec["dir"], "end": rec["end"], "n_calls": res["n_calls"],
+             "cost_usd": rec.get("cost_usd"), "error": (res.get("error") or "")[-500:],
+             "rewrite": rec.get("rewrite"), "rewrite_any": rec.get("rewrite_any"),
+             "rejection": rec.get("rejection"), "code": code.get("failed_attempt")})
+        for f in ("dir", "end", "cost_usd", "rewrite", "rejection", "teammate_lost",
+                  "rewrite_any", "rewrite_attempt", "rewrite_msg_index"):
+            rec.pop(f, None)
+        rec["rerun"] = {"utc": D.utc(), "from_attempt": k, "code": code.get("rerun")}
+        rec["attempts"] = k + 1
+        rec["state"] = "pending"
+    D.save_state(st)
+    D.status(f"control {run_id}: attempt {k} failed mid-run, reopened as attempt {k + 1}")
+    return rec
 
 
 def cut_withheld(st: dict, order: list[ControlRun], root: Path) -> list[str]:
@@ -754,7 +791,8 @@ def write_rows(st: dict, cfg: dict, root: Path) -> Path:
         row |= aggregate(meta, row, root)
         row |= {"pos": o["pos"], "pair": o["pair"], "state": rec.get("state"),
                 "host": rec.get("host") or cfg["monitors"]["host"],
-                "interrupted": rec.get("interrupted") or []}
+                "interrupted": rec.get("interrupted") or [],
+                "failed_attempts": rec.get("failed_attempts") or [], "rerun": rec.get("rerun")}
         rows.append(row)
     p = Path(root) / "rows.jsonl"
     p.write_text("".join(json.dumps(r, default=str) + "\n" for r in rows))

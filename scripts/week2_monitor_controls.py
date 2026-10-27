@@ -23,6 +23,10 @@ task data from SPRINT_DEEPSWE_DIR):
         (laptop_admission: <= 8 emx containers, 1 CPU and 1280 MB each, >= 30% memory free,
         load < 12, 4 agents until 4 slots have run 10 min). Refuses without a clean plan check, an empty code binding
         check, the stub gate and the caps file holding the config's stage and cap. Resumable.
+    uv run python scripts/week2_monitor_controls.py go --go-from-jacob --source-raw <dir>
+            --rerun-failed <run id> --failed-attempt-head <sha>
+        The same go, after reopening one run whose attempt failed mid-run as a new attempt
+        (monitor_controls.reopen_failed); the failed attempt and its code stay in the record.
     uv run python scripts/week2_monitor_controls.py status | rows
 
 Init the caps file first with `scripts/s2_chain.py init --week2-config configs/week2/monitors.toml`.
@@ -149,6 +153,20 @@ def host_ok(cfg: dict) -> None:
         sys.exit(f"refusing: monitors.host is {host!r} but this machine is {sys.platform}")
 
 
+def code_now() -> dict:
+    """The checkout's commit and whether its tracked files differ from it, plus model.py's
+    sha256 (a rerun's code record)."""
+    import subprocess
+
+    def git(*args: str) -> str:
+        return subprocess.run(["git", "-C", str(CC.REPO_ROOT), *args], capture_output=True,
+                              text=True, check=True).stdout.strip()
+    model = CC.REPO_ROOT / "src" / "compaction" / "s2" / "model.py"
+    return {"head": git("rev-parse", "HEAD"),
+            "dirty": bool(git("status", "--porcelain", "--untracked-files=no")),
+            "model_py_sha256": hashlib.sha256(model.read_bytes()).hexdigest()}
+
+
 def bind(st: dict, cfg: dict, config_path: str) -> None:
     """The run state is bound to this design's fingerprint (as s2_chain.week2_gate)."""
     fp = W.fingerprint(cfg)
@@ -244,6 +262,12 @@ def _go(a, cfg: dict) -> int:
     conc = min(a.concurrency or (par["agents"] if st["host"] == "laptop"
                                  else par["fallback_agents"]), par["agents"])
     route, spend, tasks_ = D.load_route(), D.chain_spend(), D.tasks()
+    if a.rerun_failed:  # last, so a refusal above leaves the run as it was (astra r1)
+        try:
+            M.reopen_failed(st, a.rerun_failed, {"failed_attempt": {"head": a.failed_attempt_head},
+                                                 "rerun": code_now()})
+        except ValueError as e:
+            sys.exit(f"refusing: {e}")
     D.watch_stop()
     try:
         out = M.run_controls(cfg, st, route, spend, tasks_, root, concurrency=conc,
@@ -319,9 +343,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--concurrency", type=int, default=None,
                    help="default parallelism.fallback_agents, at most parallelism.agents")
     p.add_argument("--resume-after-halt", action="store_true")
+    p.add_argument("--rerun-failed", metavar="RUN_ID",
+                   help="first reopen this run, whose attempt failed mid-run, as a new attempt")
+    p.add_argument("--failed-attempt-head", metavar="SHA",
+                   help="the commit the failed attempt ran under (required with --rerun-failed)")
     sub.add_parser("status")
     sub.add_parser("rows")
     a = ap.parse_args(argv)
+    if getattr(a, "rerun_failed", None) and not a.failed_attempt_head:
+        ap.error("--rerun-failed needs --failed-attempt-head")
     load_env()
     signal.signal(signal.SIGTERM, lambda *_: L.STOP.set())
     return {"assign": cmd_assign, "check": cmd_check, "design-card": cmd_design_card,
