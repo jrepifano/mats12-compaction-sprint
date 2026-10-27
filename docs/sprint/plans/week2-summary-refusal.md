@@ -183,3 +183,66 @@ Still open: astra's NIT that the title still says "refusal" although the constru
 
 #### Refusal scan
 `docs/sprint/plans/reviews/week2-summary-refusal-scan.py` and its output `.txt` (rough string matching on task chaining's laptop copy of its run data), and `week2-summary-refusal-scan-adjudicated.txt` (the hand-adjudicated list of 20 explicit declines).
+
+## Build contract
+
+Added 27 Oct (evening ET), after Jacob approved v0.3.1 and the build (builder c with Argon). The plan check (`scripts/week2_plan_check.py`) parses the first table and compares it, key by key, with `configs/week2/summary_refusal.toml`. Notes: `refusal.source_config_sha256` pins experiment 1's `precedent.toml`, so a change there makes top-ups refuse until it is re-pinned; `caps.run_usd`, `max_calls` and `max_seconds` are the resumed runs' limits, while top-ups take experiment 1's first-task limits from the source config; the batch runs on the laptop (host recorded per history; top-ups too).
+
+| parameter | value |
+|---|---|
+| `design.kind` | summary_refusal |
+| `design.stage` | SPRINT-S2-REFUSAL |
+| `design.seed` | 20261027 |
+| `design.log_reasoning` | true |
+| `refusal.source_exp` | precedent |
+| `refusal.source_arm` | divergent |
+| `refusal.source_assignment` | configs/week2/assignments/precedent.json |
+| `refusal.source_assignment_sha256` | 913855b922a7c98252e3193a38018b36219d33d2f103f37767137eb8b4f7bb97 |
+| `refusal.source_config` | configs/week2/precedent.toml |
+| `refusal.source_config_sha256` | 673f836fd1d2833cdbff113b4ed842055b36f94a6ff37ebbf49995f17f684f2d |
+| `refusal.versions` | honest, decision_dropped, false_permission, false_rule |
+| `refusal.runs_per_version` | 2 |
+| `refusal.launch_phases` | [honest, false_permission], [decision_dropped], [false_rule] |
+| `refusal.primary` | false_permission, honest |
+| `refusal.min_histories_test` | 6 |
+| `refusal.target_histories` | 8 |
+| `refusal.max_histories` | 12 |
+| `refusal.topup_max_tasks` | 10 |
+| `refusal.topup_rep_start` | 101 |
+| `refusal.topup_repos` | httpx, tengo |
+| `refusal.topup_deadline_et` | 2026-10-28T11:30 |
+| `refusal.pairs_only_after_et` | 2026-10-28T18:00 |
+| `refusal.restore_from` | last_rejected_push |
+| `refusal.summary_policy` | pi_whole_history |
+| `refusal.summary_regenerations` | 1 |
+| `refusal.resume_template` | system + pi_wrapper(summary) + continue_turn |
+| `refusal.placement_section` | Constraints & Preferences |
+| `refusal.placement_fallback_after` | Goal |
+| `refusal.bootstrap_reps` | 2000 |
+| `refusal.alpha` | 0.05 |
+| `refusal.monitor_views` | current_only, current_plus_reasoning |
+| `refusal.crash_reruns` | 1 |
+| `caps.stage_usd` | 50.0 |
+| `caps.topup_usd` | 12.0 |
+| `caps.run_usd` | 1.0 |
+| `caps.max_calls` | 120 |
+| `caps.max_seconds` | 1800 |
+| `caps.summary_usd` | 0.1 |
+| `parallelism.laptop_agents` | 8 |
+| `parallelism.laptop_ramp` | 4, 8 |
+| `parallelism.laptop_ramp_after_s` | 120.0 |
+| `parallelism.laptop_agent_memory_mb` | 1280 |
+| `parallelism.laptop_agent_cpus` | 1 |
+| `parallelism.laptop_min_free_mem_frac` | 0.3 |
+| `parallelism.laptop_max_load1` | 12.0 |
+| `parallelism.max_concurrent_histories` | 1 |
+| `parallelism.sandbox_label` | refusal |
+| `parallelism.rig_agents` | 6 |
+| `wording.false_permission.path` | configs/week2/wording/summary_refusal/false_permission.txt |
+| `wording.false_permission.sha256` | 66dbb04f93b6299d5be37d7216e8e8277a973d9e9bc480321c695afcbf3fe955 |
+| `wording.false_rule.path` | configs/week2/wording/summary_refusal/false_rule.txt |
+| `wording.false_rule.sha256` | a6f2d8ae5430ceb85f87ce5f376b891b3b254c08cff5278eb9c3711271c2adbb |
+| `wording.not_run_tool_message.path` | configs/week2/wording/summary_refusal/not_run_tool_message.txt |
+| `wording.not_run_tool_message.sha256` | 29cdfb17d872bafe8fc8d9b5d39ffe0cf95bdb1f96cf531f6eabcfa8882a5e81 |
+| `wording.continue_turn.path` | configs/week2/wording/summary_refusal/continue_turn.txt |
+| `wording.continue_turn.sha256` | 10b5eb29e894b3bbcd90e1e47e8d751d753d031d106464fb0d80446fc9353200 |
