@@ -29,8 +29,20 @@ Runs on the desktop checkout (the experiment's only launcher and ledger), detach
     uv run python scripts/s2_chain.py visibility-check
         Week 2: what an agent command sees of the harness, after setup and in a fork after B's
         setup (find, the remote, env). $0.
+    uv run python scripts/s2_chain.py stub-chain-stress [--no-grade]
+        Week 2, experiment 4: scripted agents through two fresh controls, a 3-task chain with
+        saved states and a restore, and a within-task phase (configs/week2/chain_stress.toml);
+        writes the design card. $0. Gate `stub_chain_stress`.
+    uv run python scripts/s2_chain.py push-check --week2-config configs/week2/chain_stress.toml
+        Week 2, experiment 4: every task's remote rejects a plain push (junk and teammate
+        setups). $0. Gate `push_check_all`.
+    uv run python scripts/s2_chain.py live-smoke --go-from-jacob --week2-config
+            configs/week2/chain_stress.toml
+        Week 2, experiment 4: one 2-task unrelated chain (~$4). Gate `live_smoke_chain_stress`.
     uv run python scripts/s2_chain.py chain-go --go-from-jacob --week2-config <toml>
-        Week 2: the N-task chains of a chain config, after its plan check. Resumable.
+            [--arms fresh,unrelated,...]
+        Week 2: the N-task chains of a chain config, after its plan check (experiment 4: also
+        its stub gate and code check). --arms launches only those arms' chains. Resumable.
     uv run python scripts/s2_chain.py status | stop | rows | judges | analyze
 
 SIGTERM or `stop` (the STOP file) ends every loop at its next model call; containers are
@@ -40,6 +52,7 @@ removed on the way out.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shlex
@@ -76,7 +89,7 @@ def cmd_init(a) -> int:
     if getattr(a, "week2_config", None) is not None:  # a week-2 design's own stage and cap
         from compaction.s2.chain import week2 as W
         cfg = W.load_config(a.week2_config)
-        D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
+        D.apply_stage(cfg["design"]["stage"], W.stage_cap(cfg))
     p = D.init_caps()
     print(json.dumps({"caps_file": str(p), "ledger": str(CC.ledger()),
                       "spend": D.spent()}, indent=1))
@@ -404,6 +417,10 @@ def cmd_live_smoke(a) -> int:
     cfg = None
     if getattr(a, "week2_config", None) is not None:  # experiment 1's own smoke
         cfg = week2_gate(a, st)
+        if cfg["meta"]["exp"] == "chain_stress":  # experiment 4's 2-task chain smoke
+            if not getattr(a, "go_from_jacob", False):
+                sys.exit("refusing: paid step needs --go-from-jacob")
+            return live_smoke_chain_stress(a, cfg)
         if cfg["design"]["kind"] != "precedent":
             sys.exit("refusing: live-smoke --week2-config runs the precedent design only")
         from compaction.s2.chain import week2 as W
@@ -824,16 +841,109 @@ def cmd_visibility_check(a) -> int:
     return 0 if rec["pass"] else 4
 
 
+def cmd_stub_chain_stress(a) -> int:
+    """Experiment 4's stub smoke (compaction.s2.chain.stub_chain_stress): gate
+    `stub_chain_stress`. --keep-states leaves su1's after_task1 and end states (and their kept
+    images) for the exploitation stub; --remove-kept-states removes them and exits."""
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import stub_chain_stress as SCS
+    root = CC.raw_dir() / "stub_chain_stress"
+    if a.remove_kept_states:
+        left = SCS.remove_kept_states(root)
+        print(json.dumps({"not_removed": left}))
+        return 0 if not left else 4
+    try:
+        CS.apply_host(a.host)
+    except RuntimeError as e:
+        sys.exit(f"refusing: {e}")
+    infos = CS.task_infos(SCS.smoke_tasks())
+    D.ensure_images(sorted({t.image for t in infos.values()}))
+    digests = CS.image_digests(infos)
+    try:
+        prov = CS.provenance(infos)  # before anything runs (astra r3 B1)
+    except ValueError as e:
+        sys.exit(f"refusing: {e}")
+    grade = not a.no_grade and a.host != "laptop"  # no graders on the laptop (8 GB each)
+    before = D.docker_snapshot()
+    try:
+        out = SCS.run(root, grade=grade, keep_states=a.keep_states)
+    finally:
+        left = SCS.remove_kept(root)  # the smoke's kept endings, but any kept for forking
+    after = D.docker_snapshot()
+    # another driver's containers running since before the smoke are not the smoke's
+    ours = after["ours"] if isinstance(after["ours"], str) else \
+        [c for c in after["ours"] if c not in (before["ours"] if isinstance(before["ours"], list)
+                                              else [])]
+    if left or ours:
+        out["pass"] = False
+        out["checks"].append({"name": "smoke images and containers removed", "ok": False,
+                              "detail": {"images": left, "containers": ours}})
+    D.SE.dump(root / "stub_chain_stress.json", out)
+    for c in out["checks"]:
+        print(("PASS " if c["ok"] else "FAIL ") + c["name"])
+    st = D.load_state()
+    st["gates"]["stub_chain_stress"] = {"pass": out["pass"], "utc": D.utc(),
+                                        "fingerprint": out.get("fingerprint"),
+                                        "version": CS.SMOKE_VERSIONS["stub_chain_stress"],
+                                        "host": a.host, "image_digests": digests,
+                                        "provenance": prov,
+                                        "grading": "on" if grade else
+                                        ("skipped on laptop" if a.host == "laptop" else "off"),
+                                        "failed": [c["name"] for c in out["checks"]
+                                                   if not c["ok"]]}
+    D.save_state(st)
+    D.status(f"chain-stress stub smoke: {'PASS' if out['pass'] else 'FAIL'} "
+             f"({sum(c['ok'] for c in out['checks'])}/{len(out['checks'])} checks)")
+    return 0 if out["pass"] else 4
+
+
 def cmd_chain_go(a) -> int:
+    """The chains of a chain config, after its plan check. For experiment 4 (chain stress) also
+    its stub gate and `chain_stress.code_mismatches`; `--arms` launches only those arms'
+    chains (recorded in the state)."""
     from compaction.s2.chain import nchain as N
     from compaction.s2.chain import week2 as W
     if a.week2_config is None:
         sys.exit("refusing: chain-go needs --week2-config")
+    import platform
+    if platform.system() == "Darwin":
+        sys.exit("refusing: chain-go runs on the rig only (laptop gates come in through "
+                 "import-gates)")
     st = D.load_state()
     cfg = week2_gate(a, st)
     if cfg["design"]["kind"] != "chain":
         sys.exit(f"refusing: {a.week2_config} is not a chain config")
-    _require(a, st, ["stub_chain5"])
+    from compaction.s2.chain import chain_stress as CS
+    stress = cfg["meta"]["exp"] == CS.EXP
+    if stress:
+        bad = CS.code_mismatches(cfg)
+        if bad:
+            sys.exit("refusing: the chain driver doesn't run this design:\n  " +
+                     "\n  ".join(bad))
+        for note in CS.notes():
+            D.status(f"chain stress: {note}")
+    _require(a, st, list(CS.PRELAUNCH_GATES) if stress else ["stub_chain5"])
+    if stress:  # each gate passed under this design and its current smoke version
+        bad = CS.gate_problems(st["gates"], CS.PRELAUNCH_GATES, W.fingerprint(cfg))
+        if not bad:  # the code and the rig's images they ran (astra r3 B1)
+            gt = sorted({t for g in CS.PRELAUNCH_GATES
+                         for t in ((st["gates"][g].get("provenance") or {}).get("images")
+                                   or {})})
+            ids = {t: d.get("id") for t, d in CS.image_digests(CS.task_infos(gt)).items()}
+            src = CS.source_fingerprint()["sha256"]
+            for g in CS.PRELAUNCH_GATES:
+                bad += CS.provenance_problems(st["gates"][g].get("provenance"),
+                                              source_sha256=src, rig_ids=ids, where=g)
+        if bad:
+            sys.exit("refusing: prelaunch gates:\n  " + "\n  ".join(bad))
+    if st.get("halted"):
+        if not a.resume_after_halt:
+            sys.exit(f"refusing: halted earlier: {st['halted']} (--resume-after-halt once "
+                     "Jacob decides)")
+        if (st.get("stop_rule") or {}).get("triggered"):
+            st["stop_rule"]["overridden"] = {"utc": D.utc()}
+        st["halted"] = None
+        D.save_state(st)
     n, mb = admitted(st, cfg)
     D.set_agent_memory(mb)
     D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
@@ -841,21 +951,288 @@ def cmd_chain_go(a) -> int:
     if caps != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
         sys.exit(f"refusing: caps file {CC.caps_file()} holds {caps}, not this design's "
                  "stage and cap (run `init --week2-config` in a new checkout or raw dir)")
+    D.apply_design(cfg)  # reasoning logging (design.log_reasoning)
     s = N.settings_from_config(cfg)
     chains = N.chains_from_config(cfg)
-    W.design_card(cfg, N.design_rows(chains, s), CC.REPO_ROOT / "results" / "sprint" / "week2" /
-                  cfg["meta"]["exp"] / "design_card.md")
-    route, spend, tasks_ = D.load_route(), D.chain_spend(), D.tasks()
+    arms = [x.strip() for x in a.arms.split(",") if x.strip()] if a.arms else None
+    if arms is not None:
+        unknown = [x for x in arms if x not in cfg["chain"]["arms"]]
+        if unknown or not arms:
+            sys.exit(f"refusing: --arms {a.arms}: unknown {unknown} (the config's arms are "
+                     f"{cfg['chain']['arms']})")
+    run = [c for c in chains if arms is None or c.arm in arms]
+    after: dict[str, list[str]] = {}
+    if stress:  # plan "Gates": within-task (and a second related repeat) only after every
+        # unrelated chain and fresh control; refused up front when those aren't in this launch
+        run, after = CS.launch_plan(run, chains)
+        ids = {c.id for c in run}
+        missing = sorted({pid for pids in after.values() for pid in pids
+                          if pid not in ids and
+                          (st.get("chains", {}).get(pid) or {}).get("state") != "done"})
+        if missing:
+            sys.exit(f"refusing: {sorted(after)} start only after every unrelated chain and "
+                     f"fresh control is done; not done and not in this launch: {missing} "
+                     "(add --arms unrelated,fresh, or launch them first)")
+    st.setdefault("arm_selections", []).append(
+        {"utc": D.utc(), "arms": arms or "all", "chains": [c.id for c in run],
+         "held_until_done": sorted(after)})
+    D.save_state(st)
+    card = CC.REPO_ROOT / "results" / "sprint" / "week2" / cfg["meta"]["exp"] / "design_card.md"
+    if stress:
+        bad = CS.token_lists_mismatches(
+            {p.task for c in run for p in c.phases},
+            recorded=st["gates"]["push_check_all"].get("token_lists") or {})
+        if bad:  # the matcher needs every task's list (push-check collects them)
+            sys.exit("refusing: token lists:\n  " + "\n  ".join(bad))
+        CS.design_card(cfg, chains, s, card)
+        tasks_ = CS.task_infos({p.task for c in run for p in c.phases})
+        D.ensure_images(sorted({t.image for t in tasks_.values()}))
+        # a cached chain resumes only under the provenance it started with (astra r3 B1)
+        try:
+            prov = CS.provenance(tasks_)
+        except ValueError as e:
+            sys.exit(f"refusing: {e}")
+        rec_prov, diff = CS.resume_provenance(st.get("chain_provenance"), prov)
+        if diff and not a.accept_new_provenance:
+            sys.exit("refusing: these chains started under other code or images:\n  " +
+                     "\n  ".join(diff) + "\n(--accept-new-provenance to resume anyway; "
+                     "recorded)")
+        if diff:
+            st.setdefault("chain_provenance_changes", []).append(
+                {"utc": D.utc(), "from": st.get("chain_provenance"), "to": prov, "diff": diff})
+        prov = rec_prov
+        st["chain_provenance"] = prov
+        D.save_state(st)
+    else:
+        W.design_card(cfg, N.design_rows(chains, s), card)
+        tasks_ = D.tasks()
+    D.status(f"chain-go: {len(run)} chains ({', '.join(arms) if arms else 'all arms'})")
+    route, spend = D.load_route(), D.chain_spend()
     with D.driver_lock():
         D.watch_stop()
         try:
-            out = N.run_chains(chains, st, route, spend, tasks_, s,
-                               concurrency=min(a.concurrency or n, n))
+            out = N.run_chains(run, st, route, spend, tasks_, s,
+                               concurrency=min(a.concurrency or n, n),
+                               fingerprint=W.fingerprint(cfg), after=after,
+                               stop_rule=N.StopRule() if stress else None)
         except D.Halt as e:
             print(f"HALT: {e}")
             return 5
     print(json.dumps(out, indent=1))
+    if N.admission_held(st):
+        D.status(f"chain-go stopped admitting: {N.admission_held(st)}; {st.get('halted')}")
+        return 5
     return 0
+
+
+def cmd_push_check(a) -> int:
+    """Experiment 4, plan "Gates": every task's remote rejects a plain push, in both setups
+    (position-1 junk and the teammate draft), nothing changes on the remote, and the container
+    is removed. $0. Gate `push_check_all`."""
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import stub_chain_stress as SCS
+    from compaction.s2.chain import week2 as W
+    cfg = W.load_config(a.week2_config)
+    try:
+        W.gate(W.resolve(cfg["meta"]["proposal"]), a.week2_config)
+    except W.PlanDrift as e:
+        sys.exit(f"refusing: plan drift\n{e}")
+    CS.register()
+    try:
+        CS.apply_host(a.host)
+    except RuntimeError as e:
+        sys.exit(f"refusing: {e}")
+    tasks = sorted(CS.texts())
+    infos = CS.task_infos(tasks)
+    D.ensure_images(sorted({t.image for t in infos.values()}))
+    digests = CS.image_digests(infos)
+    try:
+        prov = CS.provenance(infos)  # before anything runs (astra r3 B1)
+    except ValueError as e:
+        sys.exit(f"refusing: {e}")
+    root = CC.raw_dir() / "push_check"
+    from compaction.s2.chain import nchain as N
+    out = SCS.push_check(infos, root, N.settings_from_config(cfg),
+                         workers=min(max(1, a.workers), 4), host=a.host, digests=digests)
+    out["fingerprint"] = W.fingerprint(cfg)
+    D.SE.dump(root / "push_check.json", out)
+    for r in out["rows"]:
+        print(("PASS " if r["ok"] else "FAIL ") + r["task"] + ("" if r["ok"] else
+                                                             f": {r.get('why')}"))
+    st = D.load_state()
+    st["gates"]["push_check_all"] = {"pass": out["pass"], "utc": D.utc(),
+                                     "fingerprint": out["fingerprint"],
+                                     "version": CS.SMOKE_VERSIONS["push_check_all"],
+                                     "host": a.host, "image_digests": digests, "provenance": prov,
+                                     "token_lists": {t: (v or {}).get("sha256") for t, v in
+                                                     out["token_lists"].items()},
+                                     "failed": [r["task"] for r in out["rows"] if not r["ok"]]}
+    D.save_state(st)
+    D.status(f"push check: {'PASS' if out['pass'] else 'FAIL'} "
+             f"({sum(r['ok'] for r in out['rows'])}/{len(out['rows'])} tasks)")
+    return 0 if out["pass"] else 4
+
+
+def live_smoke_chain_stress(a, cfg: dict) -> int:
+    """Experiment 4's live 2-task smoke (~$4, plan "Gates"): the first two tasks of unrelated
+    chain u1 on the paid route, in their own state and directory (excluded from the analysis).
+    Passes when the infrastructure works: both phases ran (any outcome but failed/stopped), the
+    boundary compaction produced a summary and a saved state, the scorer's status is known for
+    both, the harness stayed hidden and no cue reached the agent. Whether the agent pushes is not
+    checked. Gate `live_smoke_chain_stress`."""
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import nchain as N
+    from compaction.s2.chain import stub_chain_stress as SCS
+    from compaction.s2.chain import week2 as W
+    st = D.load_state()
+    _require(a, st, ["stub_chain_stress", "push_check_all"])
+    bad = CS.code_mismatches(cfg)
+    if bad:
+        sys.exit("refusing: the chain driver doesn't run this design:\n  " + "\n  ".join(bad))
+    fp = W.fingerprint(cfg)
+    host = getattr(a, "host", "rig")
+    other = CS.gate_problems(st["gates"], ("stub_chain_stress", "push_check_all"), fp,
+                             laptop_ok=host == "laptop")
+    if other:
+        sys.exit("refusing: gates:\n  " + "\n  ".join(other))
+    src = CS.source_fingerprint()["sha256"]
+    stale = [x for g in ("stub_chain_stress", "push_check_all")
+             for x in CS.provenance_problems(st["gates"][g].get("provenance"), source_sha256=src,
+                                             where=g)]
+    if stale:
+        sys.exit("refusing: gates:\n  " + "\n  ".join(stale))
+    try:  # the rig refuses on macOS; the laptop takes the experiment lock and its admission
+        CS.apply_host(host)
+    except RuntimeError as e:
+        sys.exit(f"refusing: {e}")
+    if host != "laptop":
+        _n, mb = admitted(st, cfg)
+        D.set_agent_memory(mb)
+    D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
+    if D.read_caps() != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
+        sys.exit(f"refusing: caps file {CC.caps_file()} holds {D.read_caps()}, not this "
+                 "design's stage and cap")
+    D.apply_design(cfg)
+    s = N.settings_from_config(cfg)
+    u1 = next(c for c in N.chains_from_config(cfg) if c.id == "u1")
+    chain = N.Chain("smoke-u1", "unrelated", u1.phases[:2])
+    tasks_ = CS.task_infos([p.task for p in chain.phases])
+    D.ensure_images(sorted({t.image for t in tasks_.values()}))
+    # Provenance before anything runs (astra r3 B1): the images' Ids and the source. One
+    # directory per smoke version, design and provenance, so completed artifacts are reused
+    # only under the same images and code, and the gate keeps the original provenance.
+    try:
+        prov = CS.provenance(tasks_)
+    except ValueError as e:
+        sys.exit(f"refusing: {e}")
+    ver = CS.SMOKE_VERSIONS["live_smoke_chain_stress"]
+    pid = hashlib.sha256(json.dumps(prov, sort_keys=True).encode()).hexdigest()[:12]
+    root = CC.raw_dir() / "smoke_chain_stress" / \
+        f"v{ver}-{fp['config_sha256'][:12]}-{fp['proposal_sha256'][:12]}-{pid}"
+    mark = root / "smoke.json"
+    want = {"version": ver, "fingerprint": fp, "provenance": prov}
+    if mark.exists() and json.loads(mark.read_text()) != want:
+        sys.exit(f"refusing: {root} holds another smoke ({mark.read_text()[:300]}); move it "
+                 "aside")
+    if not mark.exists():
+        D.SE.dump(mark, want)
+    prov = json.loads(mark.read_text())["provenance"]  # the original, when reused
+    sub = D.load_state(root / "state.json")
+    route, spend = D.load_route(), D.chain_spend()
+    s0 = D.spent()["spent"]
+    out: dict = {"pass": False, "checks": []}
+    try:
+        with D.driver_lock():
+            D.watch_stop()
+            rec = N.run_chain(chain, sub, route, spend, tasks_, s, root=root,
+                              probe_visibility=True, fingerprint=W.fingerprint(cfg),
+                              grade=host != "laptop")
+            out = SCS.live_smoke_checks(chain, rec, root, s)
+    except (D.Halt, L.Stopped) as e:
+        out = {"pass": False, "reason": f"{type(e).__name__}: {e}", "checks": []}
+    except Exception as e:  # noqa: BLE001 - the cleanup and the report still run
+        import traceback
+        out = {"pass": False, "reason": f"{type(e).__name__}: {e}", "checks": [],
+               "traceback": traceback.format_exc()[-4000:]}
+    finally:
+        left = stubs.remove_kept(root)  # never forked
+    out["spent"] = round(D.spent()["spent"] - s0, 4)
+    out["fingerprint"] = W.fingerprint(cfg)
+    out["provenance"] = prov
+    out["kept_removed_unconfirmed"] = left
+    if left:  # a kept image that outlives the smoke fails it
+        out["pass"] = False
+        out["checks"].append({"name": "smoke's kept images removed", "ok": False,
+                              "detail": left})
+    D.SE.dump(root / "live_smoke.json", out)
+    for c in out.get("checks", []):
+        print(("PASS " if c["ok"] else "FAIL ") + c["name"])
+    st = D.load_state()
+    st["gates"]["live_smoke_chain_stress"] = {
+        "pass": out["pass"], "utc": D.utc(), "fingerprint": out["fingerprint"],
+        "version": ver, "dir": str(root), "host": host, "provenance": prov,
+        "image_digests": CS.image_digests(tasks_),
+        "grading": "skipped on laptop" if host == "laptop" else "on",
+        "spent": out["spent"], "failed": [c["name"] for c in out.get("checks", [])
+                                          if not c["ok"]], "reason": out.get("reason")}
+    D.save_state(st)
+    D.status(f"chain-stress live smoke: {'PASS' if out['pass'] else 'FAIL'}; ${out['spent']}")
+    return 0 if out["pass"] else 4
+
+
+def cmd_import_gates(a) -> int:
+    """Experiment 4 (run on the rig): take over the laptop's prelaunch gates (stub, push-check,
+    live smoke) after checking they passed under this design and the current smoke versions,
+    and that this host's image Ids equal the ones recorded on the laptop for every task; the
+    token lists come along, each checked against the push-check gate's sha256."""
+    import shutil
+
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import chain_stress_score as CSS
+    from compaction.s2.chain import week2 as W
+    cfg = W.load_config(a.week2_config)
+    try:
+        W.gate(W.resolve(cfg["meta"]["proposal"]), a.week2_config)
+    except W.PlanDrift as e:
+        sys.exit(f"refusing: plan drift\n{e}")
+    fp = W.fingerprint(cfg)
+    src_state = Path(a.from_) / "state.json"
+    if not src_state.is_file():
+        sys.exit(f"refusing: no state at {src_state}")
+    src = json.loads(src_state.read_text())
+    gates = src.get("gates") or {}
+    CS.register()
+    tasks = sorted({t for g in CS.PRELAUNCH_GATES
+                    for t in (((gates.get(g) or {}).get("provenance") or {}).get("images")
+                              or {})})
+    infos = CS.task_infos(tasks)
+    D.ensure_images(sorted({t.image for t in infos.values()}))
+    bad = CS.import_problems(gates, fp, CS.image_digests(infos))
+    rec = gates.get("push_check_all") or {}
+    tl_src = Path(a.token_lists)
+    for t, h in sorted((rec.get("token_lists") or {}).items()):
+        f = tl_src / f"{t}.json"
+        if not f.is_file() or CS.sha256_file(f) != h:
+            bad.append(f"token list {f}: missing or not the push-check gate's sha256")
+    if not (tl_src / "MANIFEST.json").is_file():
+        bad.append(f"no {tl_src / 'MANIFEST.json'}")
+    if bad:
+        sys.exit("refusing to import:\n  " + "\n  ".join(bad))
+    dst = Path(CSS.TOKEN_DIR)
+    dst.mkdir(parents=True, exist_ok=True)
+    for t in rec.get("token_lists") or {}:
+        shutil.copy2(tl_src / f"{t}.json", dst / f"{t}.json")
+    man = json.loads((tl_src / "MANIFEST.json").read_text())
+    CS.write_token_manifest({t: man[t] for t in rec.get("token_lists") or {}})
+    st = D.load_state()
+    for g in CS.PRELAUNCH_GATES:
+        st["gates"][g] = {**gates[g], "imported": {"from": str(Path(a.from_).resolve()),
+                                                   "utc": D.utc()}}
+    D.save_state(st)
+    D.status(f"imported {list(CS.PRELAUNCH_GATES)} from {a.from_} (host "
+             f"{[gates[g].get('host') for g in CS.PRELAUNCH_GATES]})")
+    return 0
+
 
 def cmd_status(_a) -> int:
     st = D.load_state()
@@ -929,6 +1306,8 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("live-smoke")
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--week2-config", type=Path, help="a precedent config: experiment 1's smoke")
+    p.add_argument("--host", choices=("rig", "laptop"), default="rig",
+                   help="experiment 4's smoke only")
     p = sub.add_parser("go")
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--same-project-only", action="store_true")
@@ -950,10 +1329,31 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--no-grade", action="store_true")
     p = sub.add_parser("visibility-check")
     p.add_argument("--legacy-tag", help="also fork this pre-week-2 kept ending (read only)")
+    p = sub.add_parser("stub-chain-stress")
+    p.add_argument("--no-grade", action="store_true")
+    p.add_argument("--keep-states", action="store_true",
+                   help="leave su1's after_task1 and end states for the exploitation stub")
+    p.add_argument("--remove-kept-states", action="store_true",
+                   help="remove the states kept by --keep-states, then exit")
+    p.add_argument("--host", choices=("rig", "laptop"), default="rig")
     p = sub.add_parser("chain-go")
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--week2-config", type=Path)
     p.add_argument("--concurrency", type=int, default=None)
+    p.add_argument("--arms", default=None,
+                   help="comma-separated arms to launch (e.g. fresh); default all")
+    p.add_argument("--resume-after-halt", action="store_true")
+    p.add_argument("--accept-new-provenance", action="store_true",
+                   help="resume chains under changed code or images (recorded)")
+    p = sub.add_parser("push-check")
+    p.add_argument("--week2-config", type=Path, required=True)
+    p.add_argument("--workers", type=int, default=4, help="containers at once (at most 4)")
+    p.add_argument("--host", choices=("rig", "laptop"), default="rig")
+    p = sub.add_parser("import-gates")
+    p.add_argument("--from", dest="from_", required=True, help="the laptop's raw dir")
+    p.add_argument("--token-lists", required=True,
+                   help="the laptop's token-list directory (with MANIFEST.json)")
+    p.add_argument("--week2-config", type=Path, required=True)
     for n in ("status", "stop", "rows", "judges"):
         sub.add_parser(n)
     p = sub.add_parser("analyze")
@@ -967,6 +1367,8 @@ def main(argv: list[str] | None = None) -> int:
             "live-smoke": cmd_live_smoke, "go": cmd_go, "stub-chain5": cmd_stub_chain5,
             "stub-precedent": cmd_stub_precedent,
             "visibility-check": cmd_visibility_check, "chain-go": cmd_chain_go,
+            "stub-chain-stress": cmd_stub_chain_stress, "push-check": cmd_push_check,
+            "import-gates": cmd_import_gates,
             "status": cmd_status, "stop": cmd_stop, "rows": cmd_rows, "judges": cmd_judges,
             "analyze": cmd_analyze}[a.cmd](a)
 

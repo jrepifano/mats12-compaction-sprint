@@ -599,7 +599,8 @@ class LaptopAdmission:
 
 
 def install(*, mem_mb: int, cpus: float, max_agents: int, ramp_agents: int,
-            ramp_after_s: float = 0.0, poll_s: float = 30.0, log=None) -> LaptopAdmission:
+            ramp_after_s: float = 0.0, poll_s: float = 30.0, log=None,
+            cls: type | None = None) -> LaptopAdmission:
     """Run a driver's agent containers on the laptop under this module's rule: their CPU and
     memory limits (read by env.py at call time) and LaptopAdmission as driver.ADMISSION
     (graders refused). Returns the admission object."""
@@ -607,7 +608,7 @@ def install(*, mem_mb: int, cpus: float, max_agents: int, ramp_agents: int,
     from compaction.s2.chain import driver as D
     D.set_agent_memory(mem_mb)
     CC.AGENT_CPUS = cpus
-    D.ADMISSION = LaptopAdmission(mem_mb=mem_mb, cpus=cpus, max_agents=max_agents,
-                                  ramp_agents=ramp_agents, ramp_after_s=ramp_after_s,
-                                  poll_s=poll_s, log=log or D.status)
+    D.ADMISSION = (cls or LaptopAdmission)(mem_mb=mem_mb, cpus=cpus, max_agents=max_agents,
+                                           ramp_agents=ramp_agents, ramp_after_s=ramp_after_s,
+                                           poll_s=poll_s, log=log or D.status)
     return D.ADMISSION

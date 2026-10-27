@@ -1,0 +1,184 @@
+{
+ "seed": 20261027,
+ "inputs": {
+  "trials_json": {
+   "path": "data/raw/sprint/deepswe/trials.json",
+   "sha256": "310cb428fe8914cff21b8edcb0b17256884efca55666bd6d6646d223c77d2ce6"
+  },
+  "validation_summary": {
+   "path": "results/sprint/task_validation/summary.md",
+   "sha256": "54193239550c56235df75153ccb2ae05aa60c20d694a9f434b9030ecc67b808e"
+  },
+  "task_metadata": {
+   "what": "task.toml repository_url and language of every clean, not held-out DeepSWE task (sorted JSON)",
+   "n_tasks": 34,
+   "sha256": "d3691779df74b382634e8722d149a9cae57b9787e9b6e9f200f68921885a39f0"
+  }
+ },
+ "eligible": {
+  "arcane-drift-detection-baselines": {
+   "repo": "arcane",
+   "language": "go",
+   "passes": "3/4",
+   "peak_median": 181592.5
+  },
+  "boa-hierarchical-evaluation-cancellation": {
+   "repo": "boa",
+   "language": "rust",
+   "passes": "3/4",
+   "peak_median": 242282.5
+  },
+  "cattrs-partial-structuring-recovery": {
+   "repo": "cattrs",
+   "language": "python",
+   "passes": "2/4",
+   "peak_median": 166990.5
+  },
+  "drizzle-orm-window-function-builders": {
+   "repo": "drizzle-orm",
+   "language": "typescript",
+   "passes": "3/4",
+   "peak_median": 183776.5
+  },
+  "dynamodb-toolbox-conditional-attribute-requirements": {
+   "repo": "dynamodb-toolbox",
+   "language": "typescript",
+   "passes": "3/4",
+   "peak_median": 292606.5
+  },
+  "etree-xml-diff-patch": {
+   "repo": "etree",
+   "language": "go",
+   "passes": "2/4",
+   "peak_median": 187776.5
+  },
+  "helm-array-merge-strategies": {
+   "repo": "helm",
+   "language": "go",
+   "passes": "2/4",
+   "peak_median": 222965.5
+  },
+  "kcp-go-multiplexed-kcp-streams": {
+   "repo": "kcp-go",
+   "language": "go",
+   "passes": "2/4",
+   "peak_median": 154007.0
+  },
+  "oxvg-structural-selector-preservation": {
+   "repo": "oxvg",
+   "language": "rust",
+   "passes": "2/4",
+   "peak_median": 273599.0
+  },
+  "pebble-durability-wait-apis": {
+   "repo": "pebble",
+   "language": "go",
+   "passes": "2/4",
+   "peak_median": 260113.5
+  },
+  "returns-validated-error-accumulation": {
+   "repo": "returns",
+   "language": "python",
+   "passes": "3/4",
+   "peak_median": 191312.5
+  },
+  "vitest-duration-sharding": {
+   "repo": "vitest",
+   "language": "typescript",
+   "passes": "3/4",
+   "peak_median": 210399.0
+  }
+ },
+ "pool": [
+  "kcp-go-multiplexed-kcp-streams",
+  "arcane-drift-detection-baselines",
+  "pebble-durability-wait-apis",
+  "returns-validated-error-accumulation",
+  "cattrs-partial-structuring-recovery",
+  "oxvg-structural-selector-preservation",
+  "boa-hierarchical-evaluation-cancellation",
+  "dynamodb-toolbox-conditional-attribute-requirements",
+  "vitest-duration-sharding",
+  "drizzle-orm-window-function-builders"
+ ],
+ "languages": {
+  "kcp-go-multiplexed-kcp-streams": "go",
+  "arcane-drift-detection-baselines": "go",
+  "pebble-durability-wait-apis": "go",
+  "returns-validated-error-accumulation": "python",
+  "cattrs-partial-structuring-recovery": "python",
+  "oxvg-structural-selector-preservation": "rust",
+  "boa-hierarchical-evaluation-cancellation": "rust",
+  "dynamodb-toolbox-conditional-attribute-requirements": "typescript",
+  "vitest-duration-sharding": "typescript",
+  "drizzle-orm-window-function-builders": "typescript"
+ },
+ "attempts": 1179064,
+ "positions": {
+  "drizzle-orm-window-function-builders": [
+   1,
+   2,
+   4,
+   5
+  ],
+  "oxvg-structural-selector-preservation": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "arcane-drift-detection-baselines": [
+   1,
+   2,
+   3,
+   5
+  ],
+  "cattrs-partial-structuring-recovery": [
+   1,
+   3,
+   4,
+   5
+  ],
+  "dynamodb-toolbox-conditional-attribute-requirements": [
+   1,
+   2,
+   4,
+   5
+  ],
+  "returns-validated-error-accumulation": [
+   2,
+   3,
+   4,
+   5
+  ],
+  "boa-hierarchical-evaluation-cancellation": [
+   1,
+   2,
+   3,
+   5
+  ],
+  "pebble-durability-wait-apis": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "vitest-duration-sharding": [
+   1,
+   2,
+   3,
+   4
+  ],
+  "kcp-go-multiplexed-kcp-streams": [
+   1,
+   3,
+   4,
+   5
+  ]
+ },
+ "never_first": [
+  "returns-validated-error-accumulation",
+  "oxvg-structural-selector-preservation"
+ ],
+ "rule": "Appendix A of docs/sprint/plans/week2-chain-stress.md (v0.5); scripts/week2_chain_stress_draw.py"
+}

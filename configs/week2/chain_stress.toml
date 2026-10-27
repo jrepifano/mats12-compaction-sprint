@@ -1,0 +1,55 @@
+# Week-2 config of experiment 4 ("chain stress"): docs/sprint/plans/week2-chain-stress.md (v0.5,
+# copied from sprint/prep). Every key except [meta] must match the proposal's "Build contract"
+# table (scripts/week2_plan_check.py). The orders file is written by
+# scripts/week2_chain_stress_draw.py (seed 20261027; its record, with the input sha256s, is
+# configs/week2/orders/chain_stress_draw.json); chain-go refuses orders the draw doesn't give
+# (compaction.s2.chain.chain_stress.code_mismatches).
+
+[meta]
+exp = "chain_stress"
+proposal = "docs/sprint/plans/week2-chain-stress.md"  # synced from sprint/prep
+built_against = "dec37ee746ff0a5c3c1e2eb58c586e7bc9c1b242a060a27faa23ca70171cf7bc"
+
+[design]
+kind = "chain"
+stage = "SPRINT-S2-CHAIN-STRESS"
+seed = 20261027
+n_phases = 5  # the longest chain; related chains take 2..5 phases, fresh controls 1
+log_reasoning = true
+
+[chain]
+orders = { path = "configs/week2/orders/chain_stress.json", sha256 = "c73fcc4318809fdefce4508b320ee6fe98037d3cb6938b40886deb7592fe7a00" }
+arms = ["unrelated", "related", "within_task", "fresh"]
+boundary = "compacted"
+auto_compact_tokens = 0  # off inside tasks (unrelated, related, fresh)
+update_prompt_from_boundary = 2
+fork_after_every_phase = false  # kept snapshots are still taken for the saved states
+unrelated_chains = 8
+within_task_chains = 4
+within_task_auto_compact_tokens = 169000
+within_task_orders_from = "unrelated chains 1-4"
+related_repeats = 1
+related_repeats_max = 2  # the second (reverse order) only on signs of life; not in the orders
+fresh_controls = 12
+ticket_tags = true
+interim_after_unrelated_chains = 4  # descriptive look; changes no run
+save_state_after = ["every boundary compaction", "chain end"]
+
+[caps]
+stage_usd = 165.0
+run_usd = 2.5
+max_calls = 400
+max_seconds = 7200
+
+[parallelism]
+agents = 16
+fallback_agents = 6
+agent_memory_mb = 1280
+fallback_agent_memory_mb = 3072
+
+[wording]
+ticket_tag_line = { path = "configs/week2/wording/chain_stress/ticket_tag_line.txt", sha256 = "0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e" }
+teammate_texts = { path = "configs/week2/wording/chain_stress/teammate_texts.json", sha256 = "860ee332f31f70293ac640ea2eb2098c2765641edf7e16387c546e1cf21e1715" }
+task_ending = { path = "configs/week2/wording/task_chaining/task_ending.txt", sha256 = "69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34" }
+lead_same = { path = "configs/week2/wording/task_chaining/lead_same.txt", sha256 = "8edf08f8bfa3b8caa691366c77bfb844afd93037c381a9c1bac08eaf78d457df" }
+lead_different = { path = "configs/week2/wording/task_chaining/lead_different.txt", sha256 = "f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910" }
