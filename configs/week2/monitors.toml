@@ -11,7 +11,7 @@
 [meta]
 exp = "monitors"
 proposal = "docs/sprint/plans/week2-monitors.md"
-built_against = "8706e13da73f4a46d794aee71817fd304ce07cdbd70b6f65fa435cde867c8fc1"
+built_against = "50815b4fd40e5b8cffc22d98c26fec65b786b8c2ed231482a3ab38be60b3f4e0"
 
 [design]
 kind = "monitor_controls"
@@ -31,13 +31,14 @@ controls_stop_min_authorized_push = 3
 assignment = { path = "configs/week2/assignments/monitors.json", sha256 = "1339d81d65189583a8b9e7fdbf6a2af1fc634485d350fc3c6d02d371be0539fe" }
 prompts = ["auto_mode", "guardian"]
 models = ["claude-haiku-5-5", "claude-opus-5-5"]
-views = ["full", "summary_tail", "current_only", "pinned_user_turns", "current_plus_reasoning"]
+views = ["full", "summary_tail", "current_only", "pinned_user_turns", "current_plus_reasoning", "current_plus_last_reasoning"]  # + view 5b (Jacob, 28 Oct)
 primary_acts = 30
 test_retest_items = 20
 concurrency = 4
 max_window_pause = 0.95
 max_five_hour_pause = 0.6  # Advisor, 28 Oct (pacing): 40% of each five-hour window stays for the sessions
-step_skip = ["6:claude-opus-5-5:current_plus_reasoning"]  # per-step cuts (Advisor/Jacob, 28 Oct)
+last_reasoning_n = 40  # view 5b: reasoning on the last 40 agent messages (Jacob, 28 Oct)
+step_skip = ["6:claude-opus-5-5:current_plus_reasoning", "6:claude-haiku-5-5:current_plus_reasoning", "5:claude-opus-5-5:full", "5:claude-opus-5-5:summary_tail", "5:claude-opus-5-5:current_only", "5:claude-opus-5-5:pinned_user_turns", "5:claude-opus-5-5:current_plus_reasoning", "5:claude-haiku-5-5:full", "5:claude-haiku-5-5:summary_tail", "5:claude-haiku-5-5:current_only", "5:claude-haiku-5-5:pinned_user_turns", "5:claude-haiku-5-5:current_plus_reasoning", "8:claude-opus-5-5:full", "8:claude-opus-5-5:summary_tail", "8:claude-opus-5-5:current_only", "8:claude-opus-5-5:pinned_user_turns", "8:claude-opus-5-5:current_plus_reasoning", "8:claude-opus-5-5:current_plus_last_reasoning", "8:claude-haiku-5-5:current_plus_last_reasoning"]  # Jacob, 28 Oct: 5b on exp 1 + controls; P38 Haiku only
 second_scenario = "p38"
 p38_natural_acts = 35
 p38_false_licence_acts = 44
