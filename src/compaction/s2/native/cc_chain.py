@@ -331,9 +331,10 @@ def lead_and_task(b_repo: CC.Repo, a_repo: CC.Repo, instruction: str) -> str:
     return f"{CC.lead_in('different', b_repo, a_repo)}\n\n{task_prompt(instruction, b_repo.b_branch)}"
 
 
-def _session(image: str, proxy_port: int, host_ip: str) -> N.NativeSession:
+def _session(image: str, proxy_port: int, host_ip: str, memory_mb: int = N.AGENT_MEMORY_MB,
+             cpus: float = N.AGENT_CPUS) -> N.NativeSession:
     return N.NativeSession(ARM, image, lambda runner: ScriptedSim(), allow=(),
-                           extra_args=CCN.run_args(),
+                           extra_args=CCN.run_args(), memory_mb=memory_mb, cpus=cpus,
                            forwards=((PROXY_FWD_PORT, host_ip, proxy_port),))
 
 
@@ -359,6 +360,8 @@ class HistoryConfig:
     host_ip: str  # where the sidecar reaches the host's KeyProxy
     spend_factory: object  # () -> model.Spend for one task (RunSpend over the stage's)
     key: str
+    memory_mb: int = N.AGENT_MEMORY_MB
+    cpus: float = N.AGENT_CPUS
 
 
 def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: str,
@@ -382,7 +385,7 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: s
         proxy = KeyProxy(key=cfg.key, spend=cfg.spend_factory(), log_path=log,
                          note=f"{cfg.hist.id} {'B' if second else 'A'}", bind="127.0.0.1",
                          max_calls=CC.MAX_CALLS, deadline=t0 + CC.MAX_SECONDS).start()
-        with _session(task.image, proxy.port, cfg.host_ip) as ns:
+        with _session(task.image, proxy.port, cfg.host_ip, cfg.memory_mb, cfg.cpus) as ns:
             env = None
             try:
                 env, inventory = install_chain(ns.sb, task, out, branches)

@@ -2,6 +2,14 @@
 
     uv run python scripts/week2_harness_cc.py init                 # the stage's caps file ($0)
     uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py smoke --go-from-jacob [--remote divergent]
+    uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py bulk --go-from-jacob
+    uv run python scripts/week2_harness_cc.py progress
+
+`bulk` runs the plan's 12 + 12 histories (`assignment`: seed 20261027, blocks of first task x
+launch round, 3 divergent + 3 clean each, 2 rounds; rounds in order, shuffled within), both tasks
+each, at most `MAX_LIVE` histories at once, each launch waiting on the laptop gate (`gate_ok`:
+other containers + 2 per live history (ours reserved for their whole life) <= 8, memory free >= 30%, load < 12). A history with both
+results is skipped; an incomplete one is retried once in a fresh attempt directory.
 
 `smoke` runs one history (both tasks) on the laptop's Docker and prints its checks: the user
 turns, the one boundary compaction, `which git` from the agent's shell, the first stage, the
@@ -13,7 +21,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
+import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -158,6 +169,207 @@ def smoke(remote: str, repo: str) -> int:
     return 0
 
 
+SEED, PER_BLOCK, ROUNDS = 20261027, 3, 2
+MAX_LIVE, MAX_CONTAINERS, MIN_FREE_PCT, MAX_LOAD = 4, 8, 30, 12.0
+MEMORY_MB, CPUS = 1280, 2.0  # the laptop rule (<= 8 containers x 1.25 GB); experiment 1's 1280
+
+
+def assignment() -> list[dict]:
+    """The seeded launch order: per round, per first task, PER_BLOCK divergent + PER_BLOCK
+    clean histories (reps numbered per repo and arm), shuffled within the round."""
+    rng = random.Random(SEED)
+    nxt = {(r, a): 1 for r in CC.REPOS for a in ("divergent", "clean")}
+    order = []
+    for rd in range(1, ROUNDS + 1):
+        units = []
+        for repo in sorted(CC.REPOS):
+            for arm in ("divergent", "clean"):
+                for _ in range(PER_BLOCK):
+                    units.append((repo, arm, nxt[(repo, arm)]))
+                    nxt[(repo, arm)] += 1
+        rng.shuffle(units)
+        for repo, arm, rep in units:
+            h = CC.History(repo, "np", rep, arm)
+            order.append({"pos": len(order) + 1, "round": rd, "first_task": repo, "arm": arm,
+                          "rep": rep, "history": h.id})
+    return order
+
+
+OURS = "native-cc-chain"  # our containers' name prefix (task container and egress sidecar)
+
+
+def gate_reading() -> dict:
+    """Containers machine-wide (ours apart), memory free %, load. A failed reading is closed."""
+    p = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True,
+                       text=True, timeout=60, check=False)
+    if p.returncode != 0:
+        raise RuntimeError(f"docker ps rc={p.returncode}")
+    names = p.stdout.split()
+    mp = subprocess.run(["memory_pressure"], capture_output=True, text=True, timeout=60,
+                        check=False)
+    sy = subprocess.run(["sysctl", "-n", "vm.loadavg"], capture_output=True, text=True,
+                        timeout=30, check=False)
+    if mp.returncode != 0 or sy.returncode != 0:
+        raise RuntimeError(f"memory_pressure rc={mp.returncode}, sysctl rc={sy.returncode}")
+    free = next(int(x.split(":")[1].strip().rstrip("%")) for x in mp.stdout.splitlines()
+                if "free percentage" in x)
+    load = float(sy.stdout.split()[1])
+    return {"others": sum(not n.startswith(OURS) for n in names),
+            "ours_running": sum(n.startswith(OURS) for n in names),
+            "free_pct": free, "load1": load}
+
+
+def admit(n_live: int) -> tuple[bool, dict]:
+    """The laptop gate with our own histories reserved at 2 slots each for their whole life
+    (pending starts and the A-to-B transition included; astra cc-bulk r1 B1): other
+    containers + 2 x (live + 1) <= MAX_CONTAINERS, memory free >= 30%, load < 12."""
+    try:
+        st = gate_reading()
+    except Exception as e:  # noqa: BLE001 - a failed reading keeps the gate closed
+        return False, {"error": f"{type(e).__name__}: {e}"[:200]}
+    ok = (st["others"] + 2 * (n_live + 1) <= MAX_CONTAINERS and st["free_pct"] >= MIN_FREE_PCT
+          and st["load1"] < MAX_LOAD and n_live < MAX_LIVE)
+    return ok, st
+
+
+def _result_ok(p: Path) -> bool:
+    try:
+        return "end" in json.loads(p.read_text())
+    except (OSError, ValueError):
+        return False
+
+
+def _done(d: Path) -> bool:
+    """A history is done when one attempt has both results, each a complete JSON record."""
+    return any(_result_ok(a / "a" / "result.json") and _result_ok(a / "b" / "result.json")
+               for a in d.glob("attempt*"))
+
+
+def bulk() -> int:
+    import fcntl
+    if not caps_file().exists():
+        sys.exit("run `init` first")
+    tasks = D.tasks()
+    order = assignment()
+    root = RAW / "cc"
+    root.mkdir(parents=True, exist_ok=True)
+    lockf = open(root / "bulk.lock", "w")  # noqa: SIM115 - held for the process's life
+    try:
+        fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)  # one bulk at a time (B3)
+    except BlockingIOError:
+        sys.exit(f"another bulk holds {root / 'bulk.lock'}")
+    (root / "assignment.json").write_text(json.dumps({"seed": SEED, "order": order}, indent=1))
+    key = read_key(ROOT / ".env")
+    lock, live = threading.Lock(), []
+    log = root / "bulk.log"
+
+    def say(msg: str) -> None:
+        line = f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {msg}"
+        with lock, open(log, "a") as f:
+            f.write(line + "\n")
+        print(line, flush=True)
+
+    def status(hid: str, **kw) -> None:
+        (root / hid / "status.json").write_text(json.dumps({"history": hid, **kw}))
+
+    def one(o: dict) -> None:
+        hist = CC.History(o["first_task"], "np", o["rep"], o["arm"])
+        a_repo = CC.REPOS[hist.repo]
+        b_repo = CC.REPOS[next(r for r in CC.REPOS if r != hist.repo)]
+        hdir = root / hist.id
+        hdir.mkdir(parents=True, exist_ok=True)
+        try:
+            for attempt in (1, 2):
+                if _done(hdir):
+                    status(hist.id, state="done")
+                    return
+                out = hdir / f"attempt{attempt}"
+                if out.exists():
+                    continue  # an earlier incomplete attempt: the next one runs fresh
+                cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
+                                      b_task=tasks[b_repo.b_task], out=out,
+                                      host_ip="host.docker.internal", spend_factory=task_spend,
+                                      key=key, memory_mb=MEMORY_MB, cpus=CPUS)
+                try:
+                    res = X.run_history(cfg)
+                    say(f"{hist.id} a{attempt}: A {res.get('a_end')}, B {res.get('b_end')}")
+                except Exception as e:  # noqa: BLE001 - recorded; retried once
+                    say(f"{hist.id} a{attempt}: error {type(e).__name__}: {e}"[:400])
+            status(hist.id, state="done" if _done(hdir) else "unknown",
+                   note=None if _done(hdir) else "both attempts incomplete")  # B2
+        except Exception as e:  # noqa: BLE001 - a worker never kills the scheduler
+            say(f"{hist.id}: worker error {type(e).__name__}: {e}"[:400])
+            status(hist.id, state="unknown", note=f"worker error: {e}"[:300])
+
+    threads: list[threading.Thread] = []
+    for o in order:
+        if _done(root / o["history"]):
+            status(o["history"], state="done")  # cc-bulk r2 m1
+            continue
+        waited, last_note = 0, 0.0
+        while True:
+            with lock:
+                live[:] = [th for th in live if th.is_alive()]
+                n_live = len(live)
+            ok, st = admit(n_live)
+            if ok:
+                break
+            if time.monotonic() - last_note > 600:  # a stuck gate is logged every 10 min
+                say(f"gate closed for {o['history']} ({waited}s): live {n_live}, {st}")
+                last_note = time.monotonic()
+            time.sleep(30)
+            waited += 30
+        say(f"launch {o['history']} (pos {o['pos']}, round {o['round']}, {o['arm']}) "
+            f"live {n_live} gate {st}")
+        th = threading.Thread(target=one, args=(o,), name=o["history"])
+        th.start()
+        with lock:
+            live.append(th)
+        threads.append(th)
+    for th in threads:
+        th.join()
+    final = {o["history"]: ("done" if _done(root / o["history"]) else "unknown") for o in order}
+    (root / "reconciliation.json").write_text(json.dumps(final, indent=1))
+    n_unknown = sum(v != "done" for v in final.values())
+    say(f"bulk done: {len(final) - n_unknown} done, {n_unknown} unknown (reconciliation.json)")
+    return 0 if n_unknown == 0 else 3
+
+
+def progress() -> int:
+    """One outcome per assigned history (its latest attempt with a first-task result), unknowns
+    counted apart (cc-bulk r1 m2)."""
+    root = RAW / "cc"
+    order = json.loads((root / "assignment.json").read_text())["order"]
+    out = {"histories": len(order), "a_done": 0, "b_done": 0, "attempts": 0,
+           "first_stage": {"lost": 0, "kept": 0, "unknown": 0}, "ends": {}, "cost_usd": 0.0}
+    for o in order:
+        hist = CC.History(o["first_task"], "np", o["rep"], o["arm"])
+        atts = sorted((root / hist.id).glob("attempt*"))
+        out["attempts"] += len(atts)
+        for att in atts:  # every attempt's spend counts
+            for t in ("a", "b"):
+                if _result_ok(att / t / "result.json"):
+                    r = json.loads((att / t / "result.json").read_text())
+                    out["cost_usd"] += r.get("cost_usd") or 0
+        last = next((a for a in reversed(atts) if _result_ok(a / "a" / "result.json")), None)
+        if last is None:
+            continue
+        ra = json.loads((last / "a" / "result.json").read_text())
+        out["a_done"] += 1
+        out["ends"][f"A {ra['end']}"] = out["ends"].get(f"A {ra['end']}", 0) + 1
+        if o["arm"] == "divergent":
+            fl = P.first_stage(last / "a", hist).get("foreign_lost")
+            out["first_stage"]["lost" if fl is True else "kept" if fl is False
+                               else "unknown"] += 1
+        if _result_ok(last / "b" / "result.json"):
+            rb = json.loads((last / "b" / "result.json").read_text())
+            out["b_done"] += 1
+            out["ends"][f"B {rb['end']}"] = out["ends"].get(f"B {rb['end']}", 0) + 1
+    out["cost_usd"] = round(out["cost_usd"], 2)
+    print(json.dumps(out))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -166,10 +378,17 @@ def main() -> int:
     s.add_argument("--go-from-jacob", action="store_true", required=True)
     s.add_argument("--remote", default="divergent", choices=("divergent", "clean"))
     s.add_argument("--repo", default="tengo", choices=tuple(CC.REPOS))
+    b = sub.add_parser("bulk")
+    b.add_argument("--go-from-jacob", action="store_true", required=True)
+    sub.add_parser("progress")
     a = ap.parse_args()
     if a.cmd == "init":
         print(init_caps())
         return 0
+    if a.cmd == "bulk":
+        return bulk()
+    if a.cmd == "progress":
+        return progress()
     return smoke(a.remote, a.repo)
 
 
