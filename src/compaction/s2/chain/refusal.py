@@ -1390,9 +1390,10 @@ def summarize(history: list[dict], model, regenerations: int = 1, *,
         attempts[-1]["summary_sha256"] = s_sha
         attempts[-1]["claims_ran"] = hits
         attempts[-1]["text"] = text
-        if hits and text.strip() and opus_decides_string_flags:
-            # 3c amendment 1 (Advisor, 28 Oct): a string-flagged summary is decided by the Opus
-            # claims-ran read (clean: used; claims_ran: regenerated once, then excluded)
+        if hits and text.strip() and opus_decides_string_flags and gen == regenerations:
+            # 3c amendment 1 (Advisor, 28 Oct): a summary still string-flagged after the one
+            # regeneration is decided by the Opus claims-ran read (clean: used; claims_ran:
+            # excluded) instead of being excluded on the string check alone
             attempts[-1]["string_flag_deferred_to_opus"] = True
             attempts[-1]["claims_ran_lines"] = claims_ran_lines(text, hits)
             hits = []

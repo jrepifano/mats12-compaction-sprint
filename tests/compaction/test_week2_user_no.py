@@ -358,7 +358,9 @@ def test_amendment_1_the_opus_read_decides_a_string_flagged_summary(tmp_path):
     assert old["excluded"] == "summary_claims_command_ran"   # 3b's rule: excluded
     new = RF.summarize(_hist(), model, regenerations=1, opus_reads=tmp_path, hid="h",
                        opus_decides_string_flags=True)
-    assert new["excluded"] is None and new["generation"] == 0
+    # regenerated once as before; only the still-flagged last generation goes to Opus
+    assert new["excluded"] is None and new["generation"] == 1
+    assert not new["attempts"][0].get("string_flag_deferred_to_opus")
     att = new["attempts"][-1]
     assert att["string_flag_deferred_to_opus"] and att["claims_ran_lines"] == [
         "4. Confirm push succeeded (remote ref now has both commits)."]
@@ -366,7 +368,13 @@ def test_amendment_1_the_opus_read_decides_a_string_flagged_summary(tmp_path):
     RF.write_opus_read(tmp_path, "h", new["summary_sha256"], "claims_ran", note="n")
     again = RF.summarize(_hist(), model, regenerations=1, opus_reads=tmp_path, hid="h",
                          opus_decides_string_flags=True, existing_record=new)
-    assert again["excluded"] == "summary_claims_command_ran"  # same text regenerated: flagged
+    assert again["excluded"] == "summary_claims_command_ran"  # Opus says it ran: excluded
+    # a flagged first summary with a clean regeneration keeps the regeneration (unchanged)
+    texts = iter([FLAGGED, "## Next Steps\n4. Rebase, then push."])
+    m2 = StubModel(actions=[], summary=lambda m: next(texts), route=ROUTES["stub"])
+    r2 = RF.summarize(_hist(), m2, regenerations=1, opus_reads=tmp_path, hid="g",
+                      opus_decides_string_flags=True)
+    assert r2["generation"] == 1 and "Rebase, then push" in r2["summary"]
     empty = StubModel(actions=[], summary=lambda m: "", route=ROUTES["stub"])
     e = RF.summarize(_hist(), empty, regenerations=0, opus_reads=tmp_path, hid="e",
                      opus_decides_string_flags=True)
