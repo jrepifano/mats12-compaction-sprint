@@ -266,3 +266,34 @@ def test_neutral_opening_changes_only_the_lead_line(tmp_path):
     assert nat[:-1] == neu[:-1]
     assert nat[-1]["content"] == native + neu[-1]["content"][len(lead):]
     assert nat == SE.b_context("compacted", "different", b_repo, hc, "TASK", None, lead=None)
+
+
+def test_go_accepts_an_older_smoke_only_when_named():
+    import argparse
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "week2_summary_fix_cli", F.CC.REPO_ROOT / "scripts" / "week2_summary_fix.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    from compaction.s2.chain import week2 as W
+    config = "configs/week2/summary_fix.toml"
+    fp = W.fingerprint(W.load_config(config))
+    old = {"exp": "summary_fix", "config_sha256": "ab" * 32, "proposal_sha256": "cd" * 32}
+    gates = {"stub_summary_fix": {"pass": True, "fingerprint": fp},
+             "smoke_summary_fix": {"pass": True, "fingerprint": old}}
+    need = ["stub_summary_fix", "smoke_summary_fix"]
+
+    def refusals(named, g=gates):
+        acc = []
+        a = argparse.Namespace(config=config, accept_smoke_from=named)
+        return cli._common_refusals(a, W.load_config(config), {"gates": g}, need=need,
+                                    accepted=acc), acc
+    probs, acc = refusals(None)
+    assert any("smoke_summary_fix passed under another design" in p for p in probs) and not acc
+    probs, acc = refusals("ab" * 6)
+    assert probs == [] and acc[0]["gate"] == "smoke_summary_fix" and acc[0]["from"] == old
+    assert refusals("ab" * 5)[0] and refusals("ABABABABABAB")[0] and refusals("cd" * 6)[0]
+    failed = {**gates, "smoke_summary_fix": {"pass": False, "fingerprint": old}}
+    assert refusals("ab" * 6, failed)[0]
+    stale_stub = {**gates, "stub_summary_fix": {"pass": True, "fingerprint": old}}
+    assert any("stub_summary_fix" in p for p in refusals("ab" * 6, stale_stub)[0])

@@ -15,12 +15,17 @@ SPRINT_DEEPSWE_DIR):
         (<raw>/smoke); gate `smoke_summary_fix` with each arm's summary length and finish
         reasons. Under $5.
     uv run python scripts/week2_summary_fix.py go --go-from-jacob --source-raw <dir>
-            [--now-et YYYY-MM-DDTHH:MM] [--concurrency N]
+            [--now-et YYYY-MM-DDTHH:MM] [--concurrency N] [--gate-mb MB]
+            [--accept-smoke-from <config sha256, 12+ hex>]
         The bulk on the config's host: refuses without a clean plan check and code binding,
         the stub and smoke gates, and the caps file holding the stage and the cap for the
         replicates the start time gives (3 by late_after_et ET, else replicates_late).
         Snapshots the 10 histories (checked against <dir>/rig_sha256.json when present), then
-        every slot in launch order. Resumable.
+        every slot in launch order. Resumable (a resume keeps the last go's concurrency and
+        gate). --gate-mb raises the MemAvailable our agents and graders need before they start
+        (defaults CC.AGENT_GATE_MB / CC.GRADE_GATE_MB; the admission adds its reserve,
+        CC.RESERVE_MB by default, on top), so a run beside experiment 4 leaves its graders
+        their memory (Research Advisor, 28 Oct: actual use, with a margin).
     uv run python scripts/week2_summary_fix.py status | rows | analyze
 <dir> is experiment 1's raw dir (state.json, a/<hist>/a<k>/), read only.
 """
@@ -31,6 +36,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import signal
 import sys
 from datetime import datetime
@@ -157,9 +163,16 @@ def cmd_stub(a) -> int:
     return 0 if out["pass"] else 4
 
 
-def _common_refusals(a, cfg: dict, st: dict, *, need: list[str]) -> list[str]:
+def _common_refusals(a, cfg: dict, st: dict, *, need: list[str],
+                     accepted: list | None = None) -> list[str]:
+    """Why a paid step must not start. A smoke gate passed under an older design counts only
+    when go names that design's config sha256 (12+ hex, --accept-smoke-from; Research
+    Advisor, 28 Oct); each such acceptance is appended to `accepted`."""
     pc, bad = checks(a)
     problems = []
+    old_cfg = getattr(a, "accept_smoke_from", None)
+    if old_cfg is not None and not re.fullmatch(r"[0-9a-f]{12,64}", old_cfg):
+        problems.append(f"--accept-smoke-from {old_cfg!r}: 12-64 lowercase hex")
     if not pc["ok"]:
         problems.append("plan drift:\n" + W.report(pc))
     if bad:
@@ -170,6 +183,14 @@ def _common_refusals(a, cfg: dict, st: dict, *, need: list[str]) -> list[str]:
         if not r.get("pass"):
             problems.append(f"gate {g} not passed")
         elif r.get("fingerprint") != fp:
+            was = r.get("fingerprint") or {}
+            if (g == "smoke_summary_fix" and old_cfg and len(old_cfg) >= 12
+                    and was.get("exp") == fp["exp"]
+                    and str(was.get("config_sha256", "")).startswith(old_cfg)):
+                if accepted is not None:
+                    accepted.append({"gate": g, "from": was, "to": fp, "utc": D.utc(),
+                                     "named": old_cfg})
+                continue
             problems.append(f"gate {g} passed under another design ({r.get('fingerprint')})")
     return problems
 
@@ -177,7 +198,8 @@ def _common_refusals(a, cfg: dict, st: dict, *, need: list[str]) -> list[str]:
 def _run(a, cfg: dict, runs: list, root: Path, cap: float, need: list[str],
          concurrency: int, record: dict | None = None) -> tuple[dict, dict]:
     st = D.load_state()
-    problems = _common_refusals(a, cfg, st, need=need)
+    accepted: list = []
+    problems = _common_refusals(a, cfg, st, need=need, accepted=accepted)
     D.apply_stage(cfg["design"]["stage"], cap)
     if D.read_caps() != (cfg["design"]["stage"], cap):
         problems.append(f"caps file {CC.caps_file()} holds {D.read_caps()}, not "
@@ -192,6 +214,9 @@ def _run(a, cfg: dict, runs: list, root: Path, cap: float, need: list[str],
         sys.exit(f"refusing: {e}")
     sub = D.load_state(root / "state.json")
     bind(sub, cfg, a.config)
+    for x in accepted:  # recorded only once every preflight check has passed (astra r3)
+        sub["gates"][x["gate"]].setdefault("accepted", []).append(x)
+        D.status(f"gate {x['gate']} accepted from design {x['from']} under {x['to']}")
     if record is not None and "replicates" not in sub:  # fixed only once preflight passed
         sub["replicates"] = record
     sub["sources"] = {"source_raw": str(a.source_raw), "n": len(man), "utc": D.utc()}
@@ -200,6 +225,10 @@ def _run(a, cfg: dict, runs: list, root: Path, cap: float, need: list[str],
     D.apply_design(cfg)
     F.apply_design(cfg)
     sub["focus_calls"] = F.FOCUS_CALLS
+    sub.setdefault("admission", []).append({"utc": D.utc(), "concurrency": concurrency,
+                                            "gate_mb": dict(D.GATE_MB), "host": M.HOST,
+                                            "gate_mb_flag": getattr(a, "gate_mb", None)})
+    D.save_state(sub)
     route, spend, tasks_ = D.load_route(), D.chain_spend(), D.tasks()
     D.watch_stop()
     out = F.run_all(runs, sub, route, spend, tasks_, root, concurrency=concurrency,
@@ -254,7 +283,18 @@ def cmd_go(a) -> int:
     host = f["host"]
     apply_host(cfg, host)
     root = CC.raw_dir()
-    conc = min(a.concurrency or cfg["parallelism"]["agents"], cfg["parallelism"]["agents"])
+    # a resume keeps the last go's concurrency and gate unless the flags say otherwise
+    last = (D.load_state(root / "state.json").get("admission") or [{}])[-1]
+    conc = min(a.concurrency or last.get("concurrency") or cfg["parallelism"]["agents"],
+               cfg["parallelism"]["agents"])
+    gate = a.gate_mb if a.gate_mb is not None else last.get("gate_mb_flag")
+    if gate is not None:
+        if gate < CC.GRADE_GATE_MB:
+            sys.exit(f"refusing: --gate-mb below the grader default {CC.GRADE_GATE_MB}")
+        # agents and graders alike: beside experiment 4, neither of ours starts while its
+        # graders could be short (astra r2 B1; independent checks race, so keep a margin)
+        D.GATE_MB["agent"] = D.GATE_MB["grader"] = gate
+    a.gate_mb = gate  # recorded with the admission, for the next resume
     with _lock(host):
         # the replicates rule: fixed by the first go that passes preflight (_run records it);
         # a resume keeps it
@@ -346,6 +386,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--source-raw", type=Path, required=True)
     p.add_argument("--now-et", default=None, help="override the start time (ET) for the rule")
     p.add_argument("--concurrency", type=int, default=None)
+    p.add_argument("--gate-mb", type=int, default=None,
+                   help="MemAvailable (MB) an agent or grader needs to start, before the reserve")
+    p.add_argument("--accept-smoke-from", default=None,
+                   help="config sha256 (12+ hex) of the older design whose passed smoke counts")
     for name in ("status", "rows", "analyze"):
         sub.add_parser(name)
     a = ap.parse_args(argv)
