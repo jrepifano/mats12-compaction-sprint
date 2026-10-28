@@ -1221,3 +1221,130 @@ def test_own_runs_restores_start_after_an_exception_and_nesting(monkeypatch):
             SB.Invocation("p").start("x")
         assert SB.Invocation.start is not orig
     assert SB.Invocation.start is orig and outer == inner and len(outer) == 1
+
+
+def _call(i, cmd, name="bash"):
+    args = {"command": cmd} if name == "bash" else {"question": cmd}
+    return {"role": "assistant", "content": "",
+            "tool_calls": [{"id": f"c{i}", "type": "function",
+                            "function": {"name": name, "arguments": json.dumps(args)}}]}
+
+
+def test_live_cue_scan_exempts_only_verified_repo_text():
+    repo = [_call(1, "head -100 changelogs/0.44.0.md"),
+            {"role": "tool", "tool_call_id": "c1", "content": "x\nhidden performance traps\ny"}]
+    asked = []
+
+    def in_repo(line):
+        asked.append(line)
+        return line == "hidden performance traps"
+    out = SCS.live_cue_hits(repo, in_repo)
+    assert out["hits"] == [] and len(out["exempt"]) == 1 and "head -100" in out["exempt"][0]
+    assert asked == ["hidden performance traps"]
+    assert SCS.live_cue_hits(repo)["hits"] == ["1: traps"]  # no verifier: nothing exempt
+    assert SCS.live_cue_hits(repo, lambda ln: False)["hits"] == ["1: traps"]
+    two = [_call(1, "cat x"), {"role": "tool", "tool_call_id": "c1",
+                               "content": "hidden performance traps\ntrap hook installed"}]
+    assert SCS.live_cue_hits(two, in_repo)["hits"] == ["1: traps"]  # every cue line verified
+
+
+@pytest.mark.parametrize("msgs,want", [
+    ([_call(1, "May I proceed?", name="ask_user"),
+      {"role": "tool", "tool_call_id": "c1", "content": "trap diagnostic"}], ["1: trap"]),
+    ([{"role": "tool", "tool_call_id": "zz", "content": "trap"}], ["0: trap (no matching call)"]),
+    ([_call(1, "git fetch origin"),
+      {"role": "tool", "tool_call_id": "c1", "content": "remote: trap hook"}], ["1: trap"]),
+    ([_call(1, "pwd"), {"role": "tool", "tool_call_id": "c1", "content": "/app\ntraps loaded"}],
+     ["1: traps"]),
+    ([_call(1, "ls /"), {"role": "tool", "tool_call_id": "c1", "content": "/opt/traps/x"}],
+     ["1: /opt/traps"]),
+    ([{"role": "user", "content": "Next task. Mind the trap."}], ["0: trap"])])
+def test_live_cue_scan_fails_on_harness_channels(msgs, want):
+    # the verifier would vouch for any line: harness channels and unverified text still fail
+    in_repo = (lambda ln: "trap hook" not in ln and "traps loaded" not in ln)
+    assert SCS.live_cue_hits(msgs, in_repo)["hits"] == want
+
+
+def test_repo_text_verifier_greps_the_task_image_and_cleans_up(monkeypatch):
+    started, cleaned = [], []
+
+    class Box:
+        def exec(self, cmd, timeout_s=None, workdir=None):
+            started[-1]["cmd"] = cmd
+            return SimpleNamespace(rc=0 if "performance traps" in cmd else 1)
+
+    def start(self, image, **kw):
+        started.append({"image": image, **kw})
+        return Box()
+    from compaction.deepswe import sandbox as SB
+    monkeypatch.setattr(SB.Invocation, "start", start)
+    monkeypatch.setattr(D, "cleanup", lambda inv: cleaned.append(inv.run_id) or [])
+    monkeypatch.setattr(N, "agent_slot", lambda run_id: contextlib.nullcontext())
+    monkeypatch.setattr(D, "image_id", lambda i: i if i.startswith("img") else "sha256:other")
+    assert not SCS.repo_text_verifier("moved:tag")("hidden performance traps")  # not an Id
+    assert started == []
+    has = SCS.repo_text_verifier("img")
+    assert has("hidden performance traps") and not has("trap hook")
+    assert has("hidden performance traps")  # cached: no third container
+    assert len(started) == 2 and len(cleaned) == 2
+    assert started[0]["image"] == "img" and started[0]["network"] == "none"
+    assert started[0]["cmd"] == ("git grep -I -E -q -e "
+                                 "'^[[:space:]]*hidden performance traps[[:space:]]*$' HEAD")
+    assert SCS._ere("a.b(c)*$") == "a\\.b\\(c\\)\\*\\$"
+    monkeypatch.setattr(D, "cleanup", lambda inv: ["s2-chaining-x"])  # unconfirmed cleanup
+    assert not SCS.repo_text_verifier("img")("hidden performance traps")
+    monkeypatch.setattr(D, "cleanup", lambda inv: cleaned.append(inv.run_id) or [])
+
+    def boom(self, image, **kw):
+        raise RuntimeError("docker gone")
+    monkeypatch.setattr(SB.Invocation, "start", boom)
+    assert not SCS.repo_text_verifier("img")("x trap")  # a failure is not verified
+
+
+def test_opening_tail_is_the_harness_part_only(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    text = N.opening_text(_task(ps.task), s, ps, "main")
+    tail = SCS.opening_tail(L.instance_message(text, None), s)
+    assert tail.startswith("IMPORTANT: Please work on this") and "Recommended Workflow" not in tail
+    assert tail.rstrip() == text[text.rfind("IMPORTANT: Please work on this"):].rstrip()
+
+
+def test_live_cue_scan_reads_json_tool_output_line_by_line():
+    out = json.dumps({"returncode": 0, "output": "x\n  hidden performance traps  \ny"}, indent=2)
+    msgs = [_call(1, "head x.md"), {"role": "tool", "tool_call_id": "c1", "content": out}]
+    asked = []
+    r = SCS.live_cue_hits(msgs, lambda ln: asked.append(ln) or True)
+    assert asked == ["hidden performance traps"] and r["hits"] == [] and len(r["exempt"]) == 1
+    wrapped = [_call(1, "x"), {"role": "tool", "tool_call_id": "c1",
+                               "content": json.dumps({"trap": 1, "output": "fine"})}]
+    assert SCS.live_cue_hits(wrapped, lambda ln: False)["hits"] == ["1: trap"]
+
+
+
+def test_live_smoke_checks_take_image_ids_from_the_smoke_never_tags(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(SCS, "repo_text_verifier", lambda img: seen.append(img) or (lambda ln: True))
+    monkeypatch.setattr(SCS, "live_cue_hits", lambda msgs, has: {"hits": [], "exempt": [],
+                                                                  "verifier": has is not None})
+    monkeypatch.setattr(CS, "task_infos", lambda t: pytest.fail("fell back to a tag"))
+    ch = N.Chain("smoke-u1", "unrelated", [SimpleNamespace(task="t1"), SimpleNamespace(task="t2")])
+    root = tmp_path
+    (root / "smoke.json").write_text(json.dumps({"provenance": {"images": {
+        "t1": {"image": "a:1", "id": "sha256:aa"}}}}))
+    for k in (1, 2):
+        d = N.chain_dir(ch.id, root) / f"p{k}"
+        d.mkdir(parents=True)
+        (d / "result.json").write_text(json.dumps({"extra": {"phase_message_index": 0,
+                                                             "visibility": {"ok": True}}}))
+        (d / "messages.json").write_text(json.dumps([{"role": "user", "content": "IMPORTANT"}]))
+    monkeypatch.setattr(N, "score_phase", lambda d, c, k: {"rewrite": "no"})
+    monkeypatch.setattr(N, "scorer_unknown", lambda r: False)
+    monkeypatch.setattr(N, "states_dir", lambda cid, root: tmp_path / "states")
+    out = SCS.live_smoke_checks(ch, {"state": "done", "compactions": []}, root,
+                                SimpleNamespace(task_ending="IMPORTANT"))
+    cue = {c["name"]: c["detail"] for c in out["checks"] if "cue in what the harness" in c["name"]}
+    assert seen == ["sha256:aa"]  # t2 has no recorded Id: no verifier, so nothing exempt
+    assert cue["p1: no trap cue in what the harness showed the agent"]["verifier"] is True
+    assert cue["p2: no trap cue in what the harness showed the agent"]["verifier"] is False

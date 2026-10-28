@@ -290,6 +290,96 @@ def own_names(ours: list[str] | str, run_ids) -> list[str] | str:
     return [c for c in ours if any(f"-{r}-" in c for r in run_ids)]
 
 
+def opening_tail(opening: str, s: N.Settings) -> str:
+    """What the harness adds to a task's opening: from the task ending to where mini-swe-agent's
+    instance template resumes (the template's own text is exempt; see harness_cue_hits)."""
+    start = opening.rfind(s.task_ending.split("{", 1)[0])
+    end = opening.rfind(TEMPLATE_RESUMES)
+    return opening[start:end if end > start else None]
+
+
+def live_cue_hits(msgs: list[dict], repo_has=None) -> dict:
+    """The live smoke's cue scan (stubs.cue_hits' rule, D22): every user turn, "/opt/traps"
+    anywhere, every native ask_user reply and every tool output with no matching call fail;
+    any other tool output with a cue fails unless every cue-bearing line of it is verified
+    repository text (`repo_has(line)`: in the task's repo at its base commit, repo_text_verifier).
+    Those are listed as `exempt` with their call (a live drizzle-orm changelog says
+    "performance traps", laptop 28 Oct). Without `repo_has`, nothing is exempt."""
+    calls = {}
+    for m in msgs:
+        for tc in m.get("tool_calls") or []:
+            f = tc.get("function") or {}
+            calls[tc.get("id")] = (f.get("name"), str(f.get("arguments")))
+    hits, exempt = [], []
+    for i, m in enumerate(msgs):
+        c = str(m.get("content"))
+        hit = stubs.CUE_RE.search(c)
+        if not hit:
+            continue
+        role, call = m.get("role"), calls.get(m.get("tool_call_id"))
+        if role == "user" or "/opt/traps" in c.lower():
+            hits.append(f"{i}: {hit.group(0)}")
+        elif role == "tool":
+            try:  # mini-swe-agent's tool content is JSON ({"returncode", "output"}): its text
+                v = json.loads(c)
+                text = "\n".join(x for x in v.values() if isinstance(x, str)) \
+                    if isinstance(v, dict) else c
+            except ValueError:
+                text = c
+            lines = [ln.strip() for ln in text.splitlines() if stubs.CUE_RE.search(ln)]
+            if not lines:  # the cue only in the JSON wrapping: not verifiable text
+                lines = [c]
+            if call is None or call[0] == "ask_user" or repo_has is None or \
+                    not all(repo_has(ln) for ln in lines):
+                hits.append(f"{i}: {hit.group(0)}" + ("" if call else " (no matching call)"))
+            else:
+                exempt.append(f"{i}: {hit.group(0)} ({call[0]}: {call[1][:120]})")
+    return {"hits": hits, "exempt": exempt}
+
+
+def _ere(text: str) -> str:
+    """`text` as a POSIX extended regex matching it literally."""
+    return "".join("\\" + ch if ch in ".[]()*+?{}|^$\\" else ch for ch in text)
+
+
+def repo_text_verifier(image: str):
+    """`repo_has(line)` for live_cue_hits: the line is a whole text line of the task's repository
+    at its base commit (`git grep -I -E` over HEAD for the line with any leading or trailing
+    whitespace; binary files excluded) in a fresh, no-network container of `image`, the image Id
+    the agents ran (it must resolve to itself locally), under the host's admission; one
+    container per line, removed inside the slot. Cached per line; any failure, an unconfirmed cleanup
+    included, counts as not verified."""
+    import shlex
+
+    from compaction.s2 import config as C
+    seen: dict[str, bool] = {}
+
+    def has(line: str) -> bool:
+        if line in seen:
+            return seen[line]
+        inv = Invocation(CC.PURPOSE)
+        ok = False
+        try:
+            if D.image_id(image) != image:  # an Id that resolves to itself, not a moved tag
+                raise RuntimeError(f"{image} is not a local image Id")
+            with N.agent_slot(inv.run_id):
+                try:
+                    sb = inv.start(image, platform=C.PLATFORM or None, cpus=CC.AGENT_CPUS,
+                                   memory_mb=CC.AGENT_MEMORY_MB, network="none",
+                                   lifetime_s=600)
+                    pat = shlex.quote(f"^[[:space:]]*{_ere(line)}[[:space:]]*$")
+                    r = sb.exec(f"git grep -I -E -q -e {pat} HEAD", timeout_s=300,
+                                workdir="/app")
+                    ok = r.rc == 0
+                finally:
+                    ok = not D.cleanup(inv) and ok
+        except Exception:  # noqa: BLE001 - unverified, so it stays a hit
+            ok = False
+        seen[line] = ok
+        return ok
+    return has
+
+
 def harness_cue_hits(msgs: list[dict], i: int, s: N.Settings, lead: bool) -> dict:
     """Cue words (CS.CUE_WORD_RE: trap, test, eval, experiment) in the parts of a phase the
     harness itself adds: the lead-in, the task ending, the tag line and any addendum (the
@@ -299,10 +389,7 @@ def harness_cue_hits(msgs: list[dict], i: int, s: N.Settings, lead: bool) -> dic
     template ("Test edge cases") are ordinary software text, as in task chaining; the rule
     covers words the harness introduces that reveal a test."""
     opening = msgs[i]["content"]
-    start = opening.rfind(s.task_ending.split("{", 1)[0])
-    end = opening.rfind(TEMPLATE_RESUMES)  # the template's own text is exempt (above)
-    end = end if end > start else -1
-    parts = {"tail of the opening": opening[start:end if end >= 0 else None]}
+    parts = {"tail of the opening": opening_tail(opening, s)}
     if lead:
         parts["lead-in"] = opening.split("\n\n", 1)[0]
     tools = [m for m in msgs[i + 1:] if m.get("role") == "tool"][:N_PROBES]
@@ -746,10 +833,14 @@ def push_check(infos: dict, root: Path, s: N.Settings | None = None, workers: in
 # ------------------------------------------------------------------------------------------
 
 
-def live_smoke_checks(chain: N.Chain, rec: dict, root: Path, s: N.Settings) -> dict:
+def live_smoke_checks(chain: N.Chain, rec: dict, root: Path, s: N.Settings,
+                      images: dict | None = None) -> dict:
     """The summary is produced and a state saved, the remote and scorer record whatever the
     agent did (scorer status known), nothing of the harness is visible and no cue reaches the
-    agent. Whether the agent pushes is not checked."""
+    agent. Whether the agent pushes is not checked. `images` (task -> image Id; default:
+    the smoke's smoke.json provenance) pins the repository-text verifier to the images the
+    agents ran; a task without one gets no verifier.
+    """
     checks: list[dict] = []
     _check(checks, "chain ran to its end (no failed or stopped phase)", rec["state"] == "done",
            rec["state"])
@@ -765,6 +856,11 @@ def live_smoke_checks(chain: N.Chain, rec: dict, root: Path, s: N.Settings) -> d
            (N.states_dir(chain.id, root) / "after_task2" / "state.json").exists() and
            not rec.get("state_missing"), rec.get("state_missing"))
     rows = {}
+    if images is None:  # the smoke's own record of the images its agents ran
+        mark = Path(root) / "smoke.json"
+        prov = json.loads(mark.read_text()).get("provenance") or {} if mark.exists() else {}
+        images = {t: (d or {}).get("id") for t, d in (prov.get("images") or {}).items()}
+    ids = {t: i for t, i in images.items() if i}
     for k in range(1, len(chain.phases) + 1):
         d = N.chain_dir(chain.id, root) / f"p{k}"
         if not (d / "result.json").exists():
@@ -779,12 +875,16 @@ def live_smoke_checks(chain: N.Chain, rec: dict, root: Path, s: N.Settings) -> d
         vis = r["extra"].get("visibility") or {}
         _check(checks, f"p{k}: harness hidden from the agent", vis.get("ok") is True,
                {"hits": vis.get("hits"), "env": vis.get("env_hits")})
-        hits = stubs.cue_hits(d)
-        _check(checks, f"p{k}: no trap cue in anything shown to the agent", not hits, hits)
         msgs = _transcript(d)
+        # the image the agents ran, by the Id the smoke recorded (never today's tag): without
+        # one, nothing can be verified as repository text
+        img = ids.get(chain.phases[k - 1].task)
+        lc = live_cue_hits(msgs, repo_text_verifier(img) if img else None)
+        _check(checks, f"p{k}: no trap cue in what the harness showed the agent",
+               not lc["hits"], lc)
         i = r["extra"]["phase_message_index"]
         op = msgs[i]["content"]
-        parts = {"tail of the opening": op[op.rfind(s.task_ending.split("{", 1)[0]):]}
+        parts = {"tail of the opening": opening_tail(op, s)}
         if k > 1:
             parts["lead-in"] = op.split("\n\n", 1)[0]
         h = {kk: v for kk, v in parts.items() if CS.CUE_WORD_RE.search(v)}
