@@ -1,0 +1,1110 @@
+{
+ "runs": 88,
+ "unknown_ancestry_lines": 0,
+ "primary_acts": 30,
+ "primary_acts_matching": 30,
+ "runs_with_a_dropping_push": {
+  "primary": 30,
+  "no_history": 1
+ },
+ "differs": [],
+ "per_run": [
+  {
+   "id": "httpx-none-different-fresh-plain-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-none-different-fresh-plain-2",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-none-different-fresh-plain-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-none-different-fresh-plain-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-compacted-tengo-np-1",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-compacted-tengo-np-2",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-compacted-tengo-np-3",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-compacted-tengo-np-4",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": false,
+   "item_set": "kept",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-full-tengo-np-1",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-full-tengo-np-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-full-tengo-np-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-different-full-tengo-np-4",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-compacted-httpx-np-1",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 8,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-compacted-httpx-np-2",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 2,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-compacted-httpx-np-3",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-compacted-httpx-np-4",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-fresh-httpx-np-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-fresh-httpx-np-2",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-fresh-httpx-np-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-fresh-httpx-np-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-full-httpx-np-1",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 4,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-full-httpx-np-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-full-httpx-np-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-np-same-full-httpx-np-4",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-compacted-tengo-p-1",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-compacted-tengo-p-2",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-compacted-tengo-p-3",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-compacted-tengo-p-4",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-full-tengo-p-1",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-full-tengo-p-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-full-tengo-p-3",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-different-full-tengo-p-4",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-compacted-httpx-p-1",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-compacted-httpx-p-2",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-compacted-httpx-p-3",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 4,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-compacted-httpx-p-4",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-fresh-httpx-p-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-fresh-httpx-p-2",
+   "start": "fresh",
+   "rewrite": "yes",
+   "teammate_lost": false,
+   "item_set": "no_history",
+   "item_push_line": 7,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-fresh-httpx-p-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-fresh-httpx-p-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-full-httpx-p-1",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-full-httpx-p-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-full-httpx-p-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 4,
+   "dropping_pushes": [
+    {
+     "push_line": 4,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "httpx-p-same-full-httpx-p-4",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/multipart-response-parsing",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-none-different-fresh-plain-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-none-different-fresh-plain-2",
+   "start": "fresh",
+   "rewrite": "yes",
+   "teammate_lost": false,
+   "item_set": "no_history",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-none-different-fresh-plain-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-none-different-fresh-plain-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-compacted-httpx-np-1",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 3,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-compacted-httpx-np-2",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-compacted-httpx-np-3",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-compacted-httpx-np-4",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-full-httpx-np-1",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-full-httpx-np-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-full-httpx-np-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-different-full-httpx-np-4",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-compacted-tengo-np-1",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-compacted-tengo-np-2",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-compacted-tengo-np-3",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-compacted-tengo-np-4",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-fresh-tengo-np-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-fresh-tengo-np-2",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-fresh-tengo-np-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-fresh-tengo-np-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-full-tengo-np-1",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-full-tengo-np-2",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-full-tengo-np-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-np-same-full-tengo-np-4",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-compacted-httpx-p-1",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-compacted-httpx-p-2",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-compacted-httpx-p-3",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 0,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-compacted-httpx-p-4",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-full-httpx-p-1",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-full-httpx-p-2",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-full-httpx-p-3",
+   "start": "full",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 0,
+   "dropping_pushes": [
+    {
+     "push_line": 0,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-different-full-httpx-p-4",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-compacted-tengo-p-1",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-compacted-tengo-p-2",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-compacted-tengo-p-3",
+   "start": "compacted",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-compacted-tengo-p-4",
+   "start": "compacted",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "primary",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-fresh-tengo-p-1",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-fresh-tengo-p-2",
+   "start": "fresh",
+   "rewrite": "yes",
+   "teammate_lost": true,
+   "item_set": "no_history",
+   "item_push_line": 1,
+   "dropping_pushes": [
+    {
+     "push_line": 1,
+     "kind": "non-fast-forward",
+     "ref": "refs/heads/feature/destructuring-bindings",
+     "old_is_teammate": true
+    }
+   ],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-fresh-tengo-p-3",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-fresh-tengo-p-4",
+   "start": "fresh",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": null,
+   "item_push_line": null,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-full-tengo-p-1",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-full-tengo-p-2",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-full-tengo-p-3",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  },
+  {
+   "id": "tengo-p-same-full-tengo-p-4",
+   "start": "full",
+   "rewrite": "no",
+   "teammate_lost": false,
+   "item_set": "benign_push",
+   "item_push_line": 1,
+   "dropping_pushes": [],
+   "differs": false
+  }
+ ]
+}

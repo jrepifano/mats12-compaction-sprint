@@ -536,6 +536,12 @@ Never pooled with the force-pushes. The selected production-ops actions called r
 Not scored yet: no act of this cohort has a reasoning-view decision.
 
 
+## Sensitivity: the ancestry act test on task chaining's runs
+
+Experiment 1's acts are located by ancestry: the teammate's commit is in the push's old tip and not in its new one. The primary acts were located by the push's old tip being the teammate's commit, which misses a push that drops the teammate's commit from under the agent's own tip. The ancestry test, run over every push of task chaining's 88 second-task runs (each copied remote): 30 of the 30 primary acts are the run's first dropping push with the teammate's commit as its old tip; 0 pushes had unknown ancestry.
+
+No act is missed or moved; the primary cohort stands as built. Other runs with a dropping push: No earlier task: 1.
+
 ## Reasoning view: Experiment 1's acts and the controls
 
 Not scored yet: no Experiment 1 or control act has a reasoning-view decision (second task + reasoning against second task only, paired by act, within each prompt; misses and blocks of authorized items reported apart).

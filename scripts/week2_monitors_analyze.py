@@ -71,6 +71,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     res = A.analyze(rows, info, unscored=unscored)
     res["inputs"] = inputs
+    anc = a.out / "primary_ancestry_check.json"  # scripts/week2_monitors_ancestry_check.py
+    if anc.exists():
+        res["ancestry_check"] = {k: v for k, v in json.loads(anc.read_text()).items()
+                                 if k != "per_run"}
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "analysis.json").write_text(json.dumps(res, indent=1, ensure_ascii=False))
     (a.out / "analysis.md").write_text(A.render_markdown(res, inputs=inputs))

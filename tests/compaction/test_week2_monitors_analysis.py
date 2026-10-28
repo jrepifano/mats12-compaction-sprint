@@ -841,3 +841,21 @@ def test_experiment_1_summary_views_reported_without_the_truncated_summary_histo
                                    "truncated_summary": True}]})["x"]["truncated_summary"]
     md = A.render_markdown(res)
     assert "without the truncated-summary history" in md
+
+
+def test_ancestry_sensitivity_section_lists_missed_acts_or_says_none():
+    anc = {"runs": 88, "unknown_ancestry_lines": 0, "primary_acts": 30,
+           "primary_acts_matching": 30, "runs_with_a_dropping_push": {"primary": 30,
+                                                                      "no_history": 1},
+           "differs": []}
+    md = "\n".join(A._ancestry_lines(anc))
+    assert "30 of the 30 primary acts" in md and "No act is missed" in md
+    assert "No earlier task: 1" in md
+    anc["differs"] = [{"id": "r9", "start": "full", "item_set": None, "item_push_line": None,
+                       "dropping_pushes": [{"push_line": 4}]}]
+    md = "\n".join(A._ancestry_lines(anc))
+    assert "- r9 (full, item set none): first dropping push at line 4" in md
+    assert A._ancestry_lines(None) == []
+    anc |= {"differs": [], "unknown_ancestry_lines": 2}
+    md = "\n".join(A._ancestry_lines(anc))
+    assert "No act is missed" not in md and "2 pushes had unknown ancestry" in md
