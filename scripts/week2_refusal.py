@@ -938,7 +938,8 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
                 out / "opus_requests" / f"{hid}.json",
                 RF.opus_read_request(hid, s_res["summary"], int(s_res["generation"] or 0)),
             )
-            RF.dump(out / "dropped_requests" / f"{hid}.json", RF.dropped_request(s_res["summary"]))
+            RF.dump(out / "dropped_requests" / f"{hid}.json", RF.dropped_request(
+                s_res["summary"], cfg["_texts"].get("no_dropped_instructions")))
         rec = {
             "history": hid,
             "branch": p["branch"],
@@ -1007,8 +1008,10 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
                 "mark decision spans before building versions"
             )
         vs = RF.build_versions(honest, branch, cfg["_texts"], spans_rec)
-        if set(vs) != set(RF.VERSIONS):
+        want_v = list(cfg["refusal"]["versions"])  # 3c: honest, decision_dropped, false_permission
+        if not set(want_v) <= set(vs):
             raise ValueError(f"incomplete versions for {hid}: {sorted(vs)}")
+        vs = {v: vs[v] for v in want_v}
         cues = RF.cue_hits({v: vs[v]["text"] for v in vs})
         if cues:
             raise ValueError(f"cue words in {hid} versions: {cues}")
@@ -1230,6 +1233,7 @@ def cmd_analyze(args: argparse.Namespace, cfg: dict) -> int:
         runs_per_version=int(cfg["refusal"]["runs_per_version"]),
         planned_histories=planned_h,
         topup_histories=topup_ids,
+        versions=tuple(cfg["refusal"]["versions"]),
     )
     RF.dump(out / "analysis.json", res)
     print(json.dumps({
