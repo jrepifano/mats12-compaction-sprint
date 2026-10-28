@@ -239,13 +239,16 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
             instruction_text: str | None, max_output_cap: int | None = None,
             previous_summary: str | None = None,
             previous_summary_index: int | None = None,
-            custom_instructions: str | None = None) -> Compaction:
+            custom_instructions: str | None = None,
+            custom_calls: str = "history") -> Compaction:
     """Summarize `messages` (the full pre-boundary history, messages[0] = system) with the
     policy's replayed request(s) on `model`, and build the post-compaction context.
 
     `custom_instructions` (pi only) is pi's `/compact <instructions>`: appended to the history
     summary's prompt as "\n\nAdditional focus: <instructions>", as pi-mono b06c1f2's
     generateSummaryWithUsage does; the turn-prefix call doesn't get it (week 2, experiment 5).
+    `custom_calls="both"` also appends it to the turn-prefix call's prompt (not pi's behaviour:
+    experiment 5's variant, so the focus reaches a split turn's last turn).
 
     `previous_summary` (pi only) makes it a repeated compaction with pi's update prompt; the
     message at `previous_summary_index` (the one carrying that summary) is left out of the
@@ -256,6 +259,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         raise ValueError("previous_summary and previous_summary_index go together")
     if previous_summary is not None and policy != "pi":
         raise ValueError(f"no update prompt for policy {policy!r} (pi only)")
+    if custom_calls not in ("history", "both"):
+        raise ValueError(f"custom_calls {custom_calls!r}: history or both")
     if custom_instructions and policy != "pi":
         raise ValueError(f"no custom instructions for policy {policy!r} (pi only)")
     rmsgs = to_record_messages(messages)
@@ -273,7 +278,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
     usage: list[dict] = []
     requests = []
     for c in req.calls:
-        if custom_instructions and c.label == "history":  # pi-mono: a truthiness check
+        if custom_instructions and (c.label == "history" or custom_calls == "both"):
+            # pi-mono: a truthiness check; "both" adds the turn-prefix call (above)
             c = replace(c, user=f"{c.user}\n\nAdditional focus: {custom_instructions}")
         mt = min(c.max_output_tokens, max_output_cap or c.max_output_tokens)
         requests.append({"label": c.label, "system": c.system, "user": c.user,
@@ -328,7 +334,8 @@ def compact(policy: str, messages: list[dict], model: ChatModel, *, run_id: str,
         "previous_summary_sha256": RP._sha(previous_summary) if previous_summary is not None
         else None,
         "previous_summary_index": previous_summary_index,
-        "instruction_text": instruction_text, "custom_instructions": custom_instructions}
+        "instruction_text": instruction_text, "custom_instructions": custom_instructions,
+        "custom_calls": custom_calls if custom_instructions else None}
     return Compaction(policy, requests, texts, summary, kept_idx, post, sidx, usage, info)
 
 

@@ -50,6 +50,10 @@ PROJECT, START, HIST = "different", "compacted", "divergent"
 FOCUS = {"ledger": "configs/week2/wording/summary_fix/ledger_focus.txt",
          "placebo": "configs/week2/wording/summary_fix/placebo_focus.txt"}
 LINE = "configs/week2/wording/summary_fix/line.txt"
+# which of pi's calls get the focus: "history" (pi's own /compact) or "both" (also the
+# turn-prefix call, so the focus reaches a split turn's last turn); set by apply_design from
+# summary_fix.focus_calls (Research Advisor, 28 Oct: prepared, used only on his word)
+FOCUS_CALLS = "history"
 ASSUMED_RUN_USD = 1.705  # experiment 1's mean compacted second task (plan, "Cost")
 
 
@@ -115,7 +119,14 @@ class CompactionFailed(RuntimeError):
 
 def comp_path(root: Path, b: FixRun) -> Path:
     arm = "native" if b.arm == "line" else b.arm
-    return Path(root) / "compactions" / f"{b.unit}-{arm}.json"
+    tag = "" if FOCUS_CALLS == "history" or arm not in FOCUS else "-both"
+    return Path(root) / "compactions" / f"{b.unit}-{arm}{tag}.json"
+
+
+def apply_design(cfg: dict) -> None:
+    """The config's focus_calls (default "history")."""
+    global FOCUS_CALLS
+    FOCUS_CALLS = cfg["summary_fix"].get("focus_calls", "history")
 
 
 def failed_path(p: Path) -> Path:
@@ -140,6 +151,7 @@ def compaction_summary(rec: dict) -> dict:
             "summary_chars": len(rec.get("summary") or ""),
             "truncated": info.get("truncated"), "empty_resends": info.get("empty_resends"),
             "custom_sha256": hashlib.sha256(ci.encode()).hexdigest() if ci else None,
+            "custom_calls": info.get("custom_calls"),
             "pre_tokens_est": rec.get("pre_tokens_est"),
             "post_tokens_est": rec.get("post_tokens_est")}
 
@@ -164,7 +176,8 @@ def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> d
             model = m[0] if isinstance(m, tuple) else m  # paid_model returns (model, spend)
             try:
                 comp = K.compact("pi", msgs, model, run_id=f"{b.unit}-{arm}",
-                                 instruction_text=None, custom_instructions=focus)
+                                 instruction_text=None, custom_instructions=focus,
+                                 custom_calls=FOCUS_CALLS)
             except StageCapReached:
                 raise
             except ModelError as e:  # pi's empty summary, or a call that failed after its
@@ -398,6 +411,8 @@ def code_mismatches(cfg: dict) -> list[str]:
         return [f"design.kind is {cfg['design']['kind']!r}, not 'summary_fix'"]
     f, caps, d = cfg["summary_fix"], cfg["caps"], cfg["design"]
     out: list[str] = []
+    if f.get("focus_calls", "history") not in ("history", "both"):
+        out.append(f"summary_fix.focus_calls {f.get('focus_calls')!r}: history or both")
     for key, v, code in (("summary_fix.histories", list(f["histories"]), list(HISTORIES)),
                          ("summary_fix.arms", list(f["arms"]), list(ARMS)),
                          ("summary_fix.project", f["project"], PROJECT),

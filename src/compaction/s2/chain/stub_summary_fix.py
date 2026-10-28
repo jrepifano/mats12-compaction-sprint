@@ -63,6 +63,15 @@ def run(root: Path, cfg: dict | None = None) -> dict:
         if left:
             raise RuntimeError(f"earlier smoke images not removed: {left}; manifest kept")
         shutil.rmtree(root)
+    prior = F.FOCUS_CALLS  # the stub sets the mode it checks and restores the caller's
+    try:
+        return _run(root, prior)
+    finally:
+        F.FOCUS_CALLS = prior
+
+
+def _run(root: Path, prior: str) -> dict:
+    F.FOCUS_CALLS = "history"
     tasks_ = D.tasks()
     checks: list[dict] = []
     before = D.docker_snapshot()
@@ -149,6 +158,21 @@ def run(root: Path, cfg: dict | None = None) -> dict:
     rows2 = [json.loads(x) for x in F.write_rows(st2, runs2, root).read_text().splitlines()]
     _check(checks, "a failed slot's row is unknown, with its failure kept",
            all(r["teammate_lost"] is None and r["compaction_failures"] for r in rows2), None)
+    # focus_calls = "both" (prepared variant): the focus on both of pi's calls in ledger and
+    # placebo, on neither in native and line (no containers: the summaries only)
+    F.FOCUS_CALLS = "both"
+    try:
+        hist = M.load_snapshot(root, HIST)
+        both = {a: F.boundary(F.fix_run(HIST, a, 3), hist, model_for, root) for a in F.ARMS}
+    finally:
+        F.FOCUS_CALLS = "history"
+    has = {a: {r["label"]: "Additional focus: " in r["user"] for r in c["requests"]}
+           for a, c in both.items()}
+    _check(checks, "focus_calls both: ledger and placebo carry the focus on both calls, native "
+           "and line on neither",
+           all(set(v) == {"history", "turn_prefix"} for v in has.values())
+           and all(all(v.values()) == (a in F.FOCUS) and any(v.values()) == (a in F.FOCUS)
+                   for a, v in has.items()), has)
     texts = {k: F.text(v) for k, v in {**F.FOCUS, "line": F.LINE}.items()}
     hits = {k: CUE_RE.findall(v) for k, v in texts.items() if CUE_RE.search(v)}
     _check(checks, "no cue word in the arms' texts", not hits, hits)

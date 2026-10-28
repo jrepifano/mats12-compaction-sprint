@@ -198,6 +198,8 @@ def _run(a, cfg: dict, runs: list, root: Path, cap: float, need: list[str],
     sub["order"] = {"ids": [b.id for b in runs], "sha256": F.order_sha256(runs)}
     D.save_state(sub)
     D.apply_design(cfg)
+    F.apply_design(cfg)
+    sub["focus_calls"] = F.FOCUS_CALLS
     route, spend, tasks_ = D.load_route(), D.chain_spend(), D.tasks()
     D.watch_stop()
     out = F.run_all(runs, sub, route, spend, tasks_, root, concurrency=concurrency,

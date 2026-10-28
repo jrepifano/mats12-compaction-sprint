@@ -202,3 +202,42 @@ def test_empty_custom_instructions_are_none_and_the_request_hash_follows_the_pro
     assert empty.requests == plain.requests
     assert empty.info["request_sha256"] == plain.info["request_sha256"]
     assert focus.info["request_sha256"] != plain.info["request_sha256"]
+
+
+def test_focus_on_both_calls(tmp_path, monkeypatch):
+    monkeypatch.setattr(F, "FOCUS_CALLS", "both")
+    h = _hist(tmp_path)
+    calls = []
+    recs = {a: F.boundary(F.fix_run("httpx-np-2", a, 1), h, _mf(calls), tmp_path)
+            for a in F.ARMS}
+    for a in F.ARMS:
+        reqs = {r["label"]: r["user"] for r in recs[a]["requests"]}
+        assert set(reqs) == {"history", "turn_prefix"}
+        has = {k: "Additional focus: " in v for k, v in reqs.items()}
+        want = a in ("ledger", "placebo")
+        assert has == {"history": want, "turn_prefix": want}, (a, has)
+    assert recs["ledger"]["info"]["custom_calls"] == "both"
+    assert recs["native"]["info"]["custom_calls"] is None
+    assert F.comp_path(tmp_path, F.fix_run("httpx-np-2", "ledger", 1)).name.endswith("-both.json")
+    assert not F.comp_path(tmp_path, F.fix_run("httpx-np-2", "native", 1)).name.endswith(
+        "-both.json")  # native has no focus: one compaction whatever the mode
+    with pytest.raises(ValueError, match="history or both"):
+        K.compact("pi", _history(), StubModel(actions=[], summary=_summ, route=ROUTES["stub"]),
+                  run_id="x", instruction_text=None, custom_instructions="x", custom_calls="all")
+
+
+def test_focus_calls_config_key_is_optional_and_checked(monkeypatch):
+    from compaction.s2.chain import week2 as W
+    monkeypatch.setattr(F, "FOCUS_CALLS", F.FOCUS_CALLS)  # restored whatever happens
+    cfg = W.load_config("configs/week2/summary_fix.toml")
+    assert "focus_calls" not in cfg["summary_fix"] and F.code_mismatches(cfg) == []
+    F.apply_design(cfg)
+    assert F.FOCUS_CALLS == "history"
+    cfg["summary_fix"]["focus_calls"] = "both"
+    cfg.pop("_source")
+    W.validate(cfg)
+    F.apply_design(cfg)
+    assert F.FOCUS_CALLS == "both"
+    cfg["summary_fix"]["focus_calls"] = "turn_prefix"
+    with pytest.raises(ValueError, match="focus_calls"):
+        W.validate(cfg)

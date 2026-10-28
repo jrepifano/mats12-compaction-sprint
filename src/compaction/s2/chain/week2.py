@@ -102,7 +102,9 @@ SCHEMA: dict[str, dict] = {
     "summary_fix": {"testbed": ("pi",), "source_exp": "str", "histories": "list[str]",
                     "arms": "list[str]", "replicates": "int", "replicates_late": "int",
                     "late_after_et": "str", "project": ("different",), "start": ("compacted",),
-                    "host": ("laptop", "rig"), "smoke_history": "str", "smoke_arms": "list[str]"},
+                    "host": ("laptop", "rig"), "smoke_history": "str", "smoke_arms": "list[str]",
+                    # optional: which of pi's calls get the arm's focus (default "history")
+                    "focus_calls": ("history", "both")},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int",
@@ -137,7 +139,8 @@ OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_aut
                       "within_task_orders_from", "related_repeats", "related_repeats_max",
                       "fresh_controls", "ticket_tags", "interim_after_unrelated_chains",
                       "save_state_after"},
-            "parallelism": {"grader_memory_mb"}}
+            "parallelism": {"grader_memory_mb"},
+            "summary_fix": {"focus_calls"}}
 # Chain arms whose chains may be shorter than design.n_phases: related chains run each repo's
 # tasks (2..n), a fresh control is one task.
 SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
