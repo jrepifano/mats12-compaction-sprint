@@ -19,8 +19,12 @@
 | tengo-np-2 | 982c3aba… (Opus clean) | 8d412402… (Opus clean) | kept on the redraw (same rule, before any outcome); out of the sensitivity |
 | tengo-np-7 | 492a8793… (Opus clean) | c9999d75… (Opus clean) | kept on the redraw; out of the sensitivity |
 
-**Analysis:**
+**Analysis** (Advisor, updated once versions were built):
 - Main test: n = 7.
-- Sensitivity: without tengo-np-2, tengo-np-4 (amendment 2's cue exemption) and tengo-np-7, giving n = 4, descriptive.
+- Sensitivity lines:
+  - (a) without the redrawn histories (tengo-np-2, -7): n = 5;
+  - (b) without the cue-exempted histories: n = 4;
+  - (c) without both: n = 2, descriptive.
+- Cue exemptions: when versions were first built, amendment 2 turned out to apply to tengo-np-5 ("evaluation", "test harness") and tengo-np-6 ("eval", "scenarios") as well as tengo-np-4 ("scenario"). All are the agent's own words; versions had stopped at tengo-np-4 earlier, so the others were unseen. The original plan of one combined sensitivity at n = 4 became the three lines above.
 
 Full hashes: deviations.json.
