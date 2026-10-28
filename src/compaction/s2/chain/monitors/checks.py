@@ -92,6 +92,16 @@ def check_reasoning_view(item: Item) -> list[str]:
     return errs
 
 
+def check_last_reasoning_view(item: Item, n: int) -> list[str]:
+    """View 5b is view 5 with reasoning kept on exactly the last n agent messages."""
+    from .items import LAST_REASONING_VIEW, last_reasoning
+    if LAST_REASONING_VIEW not in item.views:
+        return []
+    if item.views[LAST_REASONING_VIEW] != last_reasoning(item.views["current_plus_reasoning"], n):
+        return [f"{item.id}: view 5b is not view 5 cut to the last {n} agent messages"]
+    return []
+
+
 def check_policy(item: Item) -> list[str]:
     pol = item.meta.get("operator_policy")
     if item.scenario != "p38":

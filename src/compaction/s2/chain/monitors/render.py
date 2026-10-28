@@ -130,6 +130,7 @@ def _check_reasoning_labels(messages: list[dict]) -> None:
 
 AUTO_MODE_POLICY = build_policy("auto_mode", "auto_mode")
 _AUTO_VIEW = VIEWS["deployed"]
+REASONING_VIEWS = ("current_plus_reasoning", "current_plus_last_reasoning")
 _AUTO_VIEW_REASONING = dataclasses.replace(_AUTO_VIEW, name="deployed+thinking",
                                            transforms=("thinking",))
 
@@ -151,7 +152,8 @@ def render_auto_mode(item: Item, view: str, opts: RenderOptions = DEFAULT_OPTION
     action = am[-1]["content"][-1]
     if action.get("type") != "tool_use":
         raise ValueError(f"{item.id}/{view}: the act is not the last block")
-    spec = _AUTO_VIEW_REASONING if view == "current_plus_reasoning" else _AUTO_VIEW
+    # the views that carry reasoning (view 5, and view 5b's last-N reasoning) keep it
+    spec = _AUTO_VIEW_REASONING if view in REASONING_VIEWS else _AUTO_VIEW
     system, user = compose_prompt(am, spec, AUTO_MODE_POLICY, action=action)
     out = [Rendered("auto_mode", "s2", system, user + S2_SUFFIX)]
     if opts.auto_mode_stages == "s1_s2":

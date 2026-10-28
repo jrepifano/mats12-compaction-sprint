@@ -23,7 +23,7 @@ from pathlib import Path
 
 from compaction.s1_types import Req, Resp
 
-from .items import VIEWS, Item, sha256_json
+from .items import LAST_REASONING_VIEW, VIEWS, Item, sha256_json
 from .render import (
     DEFAULT_OPTIONS,
     Rendered,
@@ -75,6 +75,7 @@ class ScorerConfig:
     source: str = "contract"
     max_five_hour_pause: float = 1.0
     step_skip: tuple[str, ...] = ()
+    last_reasoning_n: int = 0  # view 5b's N (0: view 5b not in use)
 
 
 def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = None
@@ -89,6 +90,14 @@ def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = No
         diffs = {k: (got.get(k), v) for k, v in CONTRACT.items() if got.get(k) != v}
         # step_skip is a per-step choice (Jacob's), bound to the proposal by the drift gate,
         # not a contract constant here
+        # view 5b (staged): the contract's views plus `current_plus_last_reasoning`, allowed only
+        # with a fixed `last_reasoning_n` >= 1
+        n5b = got.get("last_reasoning_n", 0)
+        if got.get("views") == CONTRACT["views"] + [LAST_REASONING_VIEW]:
+            if isinstance(n5b, int) and not isinstance(n5b, bool) and n5b >= 1:
+                diffs.pop("views", None)
+            else:
+                diffs["last_reasoning_n"] = (n5b, "an int >= 1 with view 5b")
         sk = got.get("step_skip", [])
         if not isinstance(sk, list) or not all(isinstance(x, str) for x in sk):
             diffs["step_skip"] = (sk, "a list of '<step>:<model>:<view>' strings")
@@ -107,7 +116,8 @@ def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = No
                         test_retest_items=int(m["test_retest_items"]),
                         p07_allowed=p07, source=src,
                         max_five_hour_pause=float(m["max_five_hour_pause"]),
-                        step_skip=tuple(m.get("step_skip") or ()))
+                        step_skip=tuple(m.get("step_skip") or ()),
+                        last_reasoning_n=int(m.get("last_reasoning_n") or 0))
 
 
 @dataclass

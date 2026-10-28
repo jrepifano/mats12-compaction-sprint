@@ -50,7 +50,13 @@ from pathlib import Path
 from compaction.s2.chain.monitors import checks as K
 from compaction.s2.chain.monitors import runner as R
 from compaction.s2.chain.monitors.baselines import BASELINES
-from compaction.s2.chain.monitors.items import Item, sha256_json
+from compaction.s2.chain.monitors.items import (
+    LAST_REASONING_VIEW,
+    Item,
+    base_record,
+    sha256_json,
+    with_last_reasoning,
+)
 from compaction.s2.chain.monitors.natural import Run, items_from_rows
 from compaction.s2.chain.monitors.render import render
 
@@ -500,19 +506,19 @@ def preflight(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item]
     if man["rows_sha256"] != _sha_file(ROWS):
         errs.append("rows.jsonl changed since the manifest was built")
     want = {m["id"]: m["record_sha256"] for m in man["items"]}
-    got = {i.id: sha256_json(i.to_json()) for i in items}
+    got = {i.id: sha256_json(base_record(i)) for i in items}
     if want != got:
         errs.append("force-push item records differ from the manifest")
     if step in (2, 5) or any(c.item.set.startswith("control_") for c in calls):
         want_c = man.get("control_records") or {}
-        got_c = {c.item.id: sha256_json(c.item.to_json()) for c in calls
+        got_c = {c.item.id: sha256_json(base_record(c.item)) for c in calls
                  if c.item.set.startswith("control_")}
         if not want_c or got_c != want_c:  # every control, exactly as the manifest bound
             errs.append("control item records missing or differ from the manifest")
     if step == 6 or any(is_exp1(c.item) for c in calls):
         em = json.loads(EXP1_MANIFEST.read_text()) if EXP1_MANIFEST.exists() else {}
         want_e = em.get("records") or {}
-        got_e = {c.item.id: sha256_json(c.item.to_json()) for c in calls if is_exp1(c.item)}
+        got_e = {c.item.id: sha256_json(base_record(c.item)) for c in calls if is_exp1(c.item)}
         if not want_e or got_e != want_e:  # every Experiment 1 act, as its manifest bound
             errs.append("Experiment 1 item records missing or differ from exp1_manifest.json")
         if not (em.get("checks") or {}).get("pass"):
@@ -521,7 +527,7 @@ def preflight(step: int, cfg: R.ScorerConfig, items: list[Item], p38: list[Item]
             errs.append("Experiment 1 is not complete (pass --partial to score what is done)")
     if step == 8 or any(c.item.scenario == "p38" for c in calls):
         want_p = man.get("p38_records") or {}
-        got_p = {i.id: sha256_json(i.to_json()) for i in p38}
+        got_p = {i.id: sha256_json(base_record(i)) for i in p38}
         if not p38 or not want_p or want_p != got_p:
             errs.append("P38 item records missing or differ from the manifest")
         pm = json.loads(p38_p.read_text()) if p38_p.exists() else {}
@@ -689,6 +695,10 @@ def cmd_score(a) -> int:
     items, p38 = _load_items("force_push"), _load_items("p38")
     controls = _load_items("controls")
     exp1 = _load_items("exp1") or (_load_items("exp1_partial") if a.partial else [])
+    if LAST_REASONING_VIEW in cfg.views:  # view 5b, derived from each item's view 5
+        n = cfg.last_reasoning_n
+        items, p38, controls, exp1 = ([with_last_reasoning(i, n) for i in xs]
+                                      for xs in (items, p38, controls, exp1))
     calls = _step_calls(a.step, cfg, items, p38, controls, exp1)
     n_planned = len(calls)
     calls, skipped = apply_step_skip(a.step, cfg, calls)

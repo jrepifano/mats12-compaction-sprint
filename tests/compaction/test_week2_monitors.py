@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -451,12 +452,11 @@ def test_score_refuses_a_config_that_drifts_from_its_proposal(tmp_path):
     cfg = root / "configs/week2/monitors.toml"
     W.plan_gate(cfg)
     drift = tmp_path / "monitors.toml"
-    drift.write_text(cfg.read_text().replace(
-        "step_skip = []", 'step_skip = ["6:claude-opus-5-5:current_plus_reasoning"]'))
+    drift.write_text(re.sub(r"^step_skip = .*$", 'step_skip = ["5:claude-haiku-5-5:full"]',
+                            cfg.read_text(), flags=re.MULTILINE))  # a cut the proposal doesn't hold
     with pytest.raises(SystemExit) as e:
         W.plan_gate(drift)
     assert "plan drift" in str(e.value) and "step_skip" in str(e.value)
-    assert "step_skip = []" in cfg.read_text()  # the accepted config has no cut yet
     import os
     here = os.getcwd()
     try:  # a relative config resolves from the repo root, wherever score runs from
@@ -464,3 +464,72 @@ def test_score_refuses_a_config_that_drifts_from_its_proposal(tmp_path):
         W.plan_gate("configs/week2/monitors.toml")
     finally:
         os.chdir(here)
+
+
+def test_view_5b_keeps_reasoning_on_the_last_n_agent_messages_only():
+    from compaction.s2.chain.monitors.items import (
+        LAST_REASONING_VIEW,
+        base_record,
+        last_reasoning,
+        sha256_json,
+        with_last_reasoning,
+    )
+    v5 = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
+    for k in range(5):
+        v5 += [{"role": "assistant", "content": f"a{k}", "reasoning": f"{REASONING_LABEL} r{k}",
+                "tool_calls": [{"id": f"c{k}", "type": "function", "function": {
+                    "name": "bash", "arguments": "{\"command\": \"ls\"}"}}]},
+               {"role": "tool", "tool_call_id": f"c{k}", "content": "ok"}]
+    v5 = v5[:-1]  # the act's message ends the view
+    out = last_reasoning(v5, 2)
+    kept = [m.get("reasoning") for m in out if m.get("role") == "assistant"]
+    assert kept == [None, None, None, f"{REASONING_LABEL} r3", f"{REASONING_LABEL} r4"]
+    assert [{k: v for k, v in m.items() if k != "reasoning"} for m in out] == \
+        [{k: v for k, v in m.items() if k != "reasoning"} for m in v5]
+    with pytest.raises(ValueError):
+        last_reasoning(v5, 0)
+    it, *_ = item(reasoning=True)
+    it5 = with_last_reasoning(it, 3)
+    assert LAST_REASONING_VIEW in it5.views and LAST_REASONING_VIEW not in it.views
+    assert K.check_last_reasoning_view(it5, 3) == [] and K.check_last_reasoning_view(it5, 1)
+    # the bound record (built without 5b) still matches once 5b is derived
+    assert sha256_json(base_record(it5)) == sha256_json(it.to_json())
+    reqs = [r for p in ("auto_mode", "guardian") for r in render(it5, LAST_REASONING_VIEW, p)]
+    assert reqs and all(r.user for r in reqs)
+
+
+def test_config_allows_view_5b_only_with_a_fixed_n(tmp_path):
+    from pathlib import Path
+
+    from compaction.s2.chain.monitors.items import LAST_REASONING_VIEW
+    src = (Path(__file__).resolve().parents[2] / "configs/week2/monitors.toml").read_text()
+    with_5b = json.dumps(list(R.CONTRACT["views"]) + [LAST_REASONING_VIEW])
+    base = re.sub(r"^views = .*$", f"views = {with_5b}", src, flags=re.MULTILINE)
+    good = tmp_path / "good.toml"
+    good.write_text(base.replace("step_skip =", "last_reasoning_n = 20\nstep_skip ="))
+    cfg = R.load_config(good)
+    assert cfg.last_reasoning_n == 20 and LAST_REASONING_VIEW in cfg.views
+    bad = tmp_path / "bad.toml"
+    bad.write_text(base)  # 5b listed without N
+    with pytest.raises(ValueError):
+        R.load_config(bad)
+
+
+def test_view_5b_surfaces_its_reasoning_in_both_channels_and_binding_catches_a_bad_5b():
+    """astra 5b r1: auto mode's thinking transform applies to 5b too; a 5b that isn't view 5
+    cut to its recorded N is not stripped from the bound record."""
+    from compaction.s2.chain.monitors.items import (
+        LAST_REASONING_VIEW,
+        base_record,
+        sha256_json,
+        with_last_reasoning,
+    )
+    it, *_ = item(reasoning=True)
+    it5 = with_last_reasoning(it, 50)
+    for p in ("auto_mode", "guardian"):
+        u5 = "".join(r.user for r in render(it, "current_plus_reasoning", p))
+        u5b = "".join(r.user for r in render(it5, LAST_REASONING_VIEW, p))
+        assert REASONING_LABEL in u5b and u5b == u5  # N covers every message: identical
+    bad = with_last_reasoning(it, 1)
+    bad.views[LAST_REASONING_VIEW] = bad.views["current_only"]
+    assert sha256_json(base_record(bad)) != sha256_json(it.to_json())
