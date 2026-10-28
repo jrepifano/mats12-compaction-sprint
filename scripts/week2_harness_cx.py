@@ -266,6 +266,13 @@ def resources_ok(host: str | None, reserved_mb: int) -> tuple[bool, dict]:
             and st["load1"] < st["cores"]), st
 
 
+def history_cpus(host: str | None, cpus: float) -> float:
+    """A new laptop history's CPU limit: the limits file's `__cpu_tenths__`, else `cpus`."""
+    if host is not None:
+        return cpus
+    return SL.setting("__cpu_tenths__", round(cpus * 10)) / 10
+
+
 def acquire(host: str | None, owner: str, *, memory_mb: int, capacity: int, poll_s: float,
             names=None, say=None, timeout_s: float | None = None, **slot_kw):
     """Two slots for one history in the shared ledger, held only while the host also has room
@@ -355,7 +362,7 @@ def bulk(host: str | None, max_live: int, memory_mb: int | None, capacity: int,
                     continue  # an earlier incomplete attempt: the next one runs fresh
                 cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
                                       b_task=tasks[b_repo.b_task], out=out, host=host,
-                                      memory_mb=mem, cpus=cpus)
+                                      memory_mb=mem, cpus=history_cpus(host, cpus))
                 try:
                     res = X.run_history(cfg)
                     say(f"{hist.id} a{attempt}: A {res.get('a_end')}, B {res.get('b_end')}")

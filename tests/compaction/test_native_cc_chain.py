@@ -87,6 +87,42 @@ def test_cli_env_points_at_the_proxy_and_disables_auto_compaction():
     assert "egress" in env["NO_PROXY"]
 
 
+def test_the_deepseek_arm_runs_the_same_cli_with_its_model_effort_and_window():
+    """DeepSeek V4.1 Flash in Claude Code (Jacob, 28 Oct): the same command and environment as
+    the Haiku arm except the model, the effort, the window override and the model slots."""
+    class S:
+        token = "tok"
+    cmd = X.cli_command(session_id="abc", max_turns=4, arm=X.DEEPSEEK)
+    assert "--model deepseek/deepseek-v4.1-flash" in cmd and "--effort max" in cmd
+    assert "claude-haiku" not in cmd and "sk-" not in cmd
+    import shlex
+
+    def argv(c):
+        toks = shlex.split(shlex.split(c)[-1])
+        for flag in ("--model", "--effort"):
+            toks[toks.index(flag) + 1] = "X"
+        return toks
+    assert argv(cmd) == argv(X.cli_command(session_id="abc", max_turns=4))
+    env, h = X.cli_env(S(), X.DEEPSEEK), X.cli_env(S())
+    assert env["CLAUDE_CODE_MAX_CONTEXT_TOKENS"] == "1048576"
+    for k in ("ANTHROPIC_MODEL", "ANTHROPIC_SMALL_FAST_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+              "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL"):
+        assert env[k] == X.DS_MODEL  # no slot can reach a Claude model
+    assert {k: v for k, v in env.items() if k not in dict(X.DEEPSEEK.env)} == h
+    assert env["DISABLE_AUTO_COMPACT"] == "1" and env["ANTHROPIC_API_KEY"].startswith(
+        "sk-ant-placeholder")  # the key stays in the proxy
+    assert X.HAIKU.env == () and X.HAIKU.route is None  # the Haiku arm is unchanged
+
+
+def test_each_arm_builds_its_proxy_route(monkeypatch):
+    import pytest
+
+    from compaction.s2.native import key_proxy as KP
+    if not hasattr(KP, "OPENROUTER_DS"):
+        pytest.skip("key_proxy route not built yet")
+    assert getattr(KP, X.DEEPSEEK.route).model == X.DS_MODEL
+
+
 def test_prompts_carry_experiment_1s_task_text_and_submit_line():
     repo = CC.REPOS["httpx"]
     ins = f"Fix the bug.\n\n{CC.DEEPSWE_ENDING}"
@@ -162,3 +198,12 @@ def test_score_b_masks_the_primary_when_the_run_says_it_is_unknown(tmp_path, mon
     row = S.score_b(tmp_path, brun)
     assert row["teammate_lost"] is None and row["termination"] == "failed"
     assert row["primary_unknown_reason"] == "plan quota refused"
+
+
+def test_the_deepseek_arm_has_its_own_container_prefix():
+    """astra ds-build r1 B1: a running Haiku scheduler counts every native-cc-chain container as
+    its own, so DeepSeek's containers must not share that prefix."""
+    from compaction.s2.native import common as N
+    assert N.purpose(X.HAIKU.session) == "native-cc-chain"
+    assert N.purpose(X.DEEPSEEK.session) == "native-ds-chain"
+    assert not N.purpose(X.DEEPSEEK.session).startswith(N.purpose(X.HAIKU.session))

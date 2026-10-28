@@ -1,7 +1,8 @@
 # Design card: Codex (harness replication)
 
-Generated 2026-10-28T18:42:16Z at 8046f0b1 by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
-Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cx.py bulk --go-from-jacob --max-live 2 --memory-mb 1280 --cpus 1.5 --capacity 8`
+Generated 2026-10-28T19:20:16Z at 738bc17e by `scripts/week2_harness_card.py` from the code and launch arguments, not typed.
+Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cx.py bulk --go-from-jacob --max-live 4 --memory-mb 1280 --cpus 1 --capacity 16`
+Laptop settings at card time (`native.slots` limits file, changeable on the fly; launch values apply where unset): `{'__capacity__': 16, '__cpu_tenths__': 10, 'native-cx-chain': 8, 'native-agy-chain': 6}`
 
 | Parameter | Value |
 |---|---|
@@ -20,11 +21,12 @@ Launch: `uv run --with fastmcp==4.1.3 python scripts/week2_harness_cx.py bulk --
 | usd_per_task | plan quota |
 | stage_cap_usd | plan quota |
 | host | laptop |
-| max_live | 2 |
+| max_live | 4 |
 | memory_mb_per_container | 1280 |
-| cpus_per_history | 2 |
-| container_capacity | 8 |
+| cpus_per_history | 1.5 |
+| container_capacity | 16 |
 | launch_code_verified | yes |
+| proxy_route | n/a |
 
 ## Against the plan's Build contract
 

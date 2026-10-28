@@ -225,3 +225,215 @@ def test_unbounded_walks_every_nested_value():
         "type": "content", "content": [{"type": "image", "source": {"type": "url",
                                                                    "url": "https://x/i.png"}}]}}]}]}
     assert "url" in K.unbounded(doc)
+
+
+# --- the OpenRouter route (DeepSeek V4.1 Flash pinned to Together) ---------------------------
+
+def _sse(usage_delta: dict) -> bytes:
+    return (b'event: message_start\ndata: {"type":"message_start","message":{"id":"gen-1",'
+            b'"model":"deepseek/deepseek-v4.1-flash","usage":{"input_tokens":50,'
+            b'"output_tokens":1}}}\n\n'
+            b'data: ' + json.dumps({"type": "message_delta", "usage": usage_delta}).encode()
+            + b'\n\ndata: {"type":"message_stop"}\n\n')
+
+
+@pytest.fixture
+def scripted():
+    """A fake upstream that answers each POST with the next scripted (status, body) (the last
+    one repeats), and records what it was sent."""
+    seen, script = [], []
+
+    class U(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            body = self.rfile.read(int(self.headers["content-length"]))
+            seen.append({"path": self.path, "key": self.headers.get("x-api-key"),
+                         "auth": self.headers.get("authorization"), "body": body,
+                         "content_length": int(self.headers["content-length"])})
+            status, out = script[min(len(seen), len(script)) - 1]
+            self.send_response(status)
+            self.send_header("content-length", str(len(out)))
+            self.send_header("x-generation-id", f"gen-{len(seen)}")
+            self.end_headers()
+            self.wfile.write(out)
+
+    class S(socketserver.ThreadingMixIn, http.server.HTTPServer):
+        daemon_threads = True
+
+    srv = S(("127.0.0.1", 0), U)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    yield srv.server_address[1], seen, script
+    srv.shutdown()
+
+
+FAST_OR = __import__("dataclasses").replace(K.OPENROUTER_DS, backoff_s=(0.01,))
+DS_REQ = {"model": K.OPENROUTER_DS.model, "max_tokens": 1000, "stream": True,
+          "system": [{"type": "text", "text": "You are Claude Code. é"}],
+          "messages": [{"role": "user", "content": "hi"}], "temperature": 1.0}
+RATE = json.dumps({"error": {"code": 429, "message": "rate_limit_exceeded"}}).encode()
+
+
+def _or_proxy(tmp_path, port, sp, route=FAST_OR, **kw):
+    return K.KeyProxy(key="or-key", spend=sp, log_path=tmp_path / "calls.jsonl", route=route,
+                      upstream=("127.0.0.1", port, False), **kw).start()
+
+
+def _recs(tmp_path):
+    return [json.loads(x) for x in (tmp_path / "calls.jsonl").read_text().splitlines()]
+
+
+def test_openrouter_forwards_bearer_rewritten_path_and_pin_then_settles_at_usage_cost(
+        tmp_path, scripted):
+    port, seen, script = scripted
+    script.append((200, _sse({"output_tokens": 30, "cost": 0.0692955})))
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp)
+    assert p.model == "deepseek/deepseek-v4.1-flash"
+    try:
+        status, body = _post(p.port, "/v1/messages?beta=true", json.dumps(DS_REQ),
+                             {"x-api-key": "dummy", "anthropic-version": "2023-06-01"})
+    finally:
+        p.stop()
+    assert status == 200 and b"message_stop" in body
+    s = seen[0]
+    assert s["auth"] == "Bearer or-key" and s["key"] is None
+    assert s["path"] == "/api/v1/messages?beta=true"
+    fwd = json.loads(s["body"])
+    assert fwd == DS_REQ | {"provider": {"order": ["Together"], "allow_fallbacks": False}}
+    assert s["content_length"] == len(s["body"])
+    rec = _recs(tmp_path)[0]
+    # the bound counts the forwarded bytes (pin included) at $0.30/M in, $1.20/M out
+    assert rec["fwd_bytes"] == len(s["body"])
+    assert sp.reserved == [K.bound_usd(len(s["body"]), 1000, 0.30, 1.20)]
+    assert sp.settled == [("r1", pytest.approx(0.0692955))]
+    assert rec["cost_source"] == "usage.cost" and rec["cost_usd"] == round(0.0692955, 6)
+    assert rec["generation_id"] == "gen-1" and "retries" not in rec
+    assert rec["provider_pin"] == {"order": ["Together"], "allow_fallbacks": False}
+    assert p.system is not None and p.system["chars"] > 0
+
+
+def test_openrouter_reply_without_cost_settles_at_the_bound(tmp_path, scripted):
+    port, _, script = scripted
+    script.append((200, _sse({"output_tokens": 30})))
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp)
+    try:
+        status, _ = _post(p.port, "/v1/messages", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert status == 200 and sp.settled == [("r1", sp.reserved[0])]
+    assert _recs(tmp_path)[0]["cost_source"] == "bound"
+
+
+def test_openrouter_cost_reads_usage_cost_and_byok_upstream():
+    assert K.openrouter_cost({"cost": 0.01}) == 0.01
+    assert K.openrouter_cost({"input_tokens": 3}) is None
+    assert K.openrouter_cost({"cost": True}) is None
+    assert K.openrouter_cost({"cost": 0.001, "is_byok": True,
+                              "cost_details": {"upstream_inference_cost": 0.02}}) == 0.021
+    # not BYOK: `cost` is the whole charge
+    assert K.openrouter_cost({"cost": 0.02, "cost_details": {
+        "upstream_inference_cost": 0.02}}) == 0.02
+
+
+def test_openrouter_refuses_claude_models_and_count_tokens(tmp_path, scripted):
+    port, seen, script = scripted
+    script.append((200, _sse({"cost": 0.0})))
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp)
+    try:
+        s1, _ = _post(p.port, "/v1/messages", json.dumps(DS_REQ | {"model": K.MODEL}))
+        s2, _ = _post(p.port, "/v1/messages", json.dumps(DS_REQ | {"model": "claude-opus-5-5"}))
+        s3, _ = _post(p.port, "/v1/messages/count_tokens", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert (s1, s2, s3) == (403, 403, 403) and seen == [] and sp.reserved == []
+
+
+def test_openrouter_retries_a_429_then_settles_once(tmp_path, scripted):
+    port, seen, script = scripted
+    script += [(429, RATE), (200, _sse({"output_tokens": 30, "cost": 0.002}))]
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp)
+    try:
+        status, _ = _post(p.port, "/v1/messages", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert status == 200 and len(seen) == 2
+    assert len(sp.reserved) == 1 and sp.settled == [("r1", pytest.approx(0.002))]
+    rec = _recs(tmp_path)[0]
+    assert rec["retries"] == [429] and rec["generation_id"] == "gen-2"
+    assert rec["cost_source"] == "usage.cost"
+
+
+def test_openrouter_gives_up_after_three_retries_and_settles_at_the_bound(tmp_path, scripted):
+    """No completed reply: the last 429 goes to the client as it came, settled at the bound
+    (today's rule for any failure)."""
+    port, seen, script = scripted
+    script += [(429, RATE), (529, RATE), (503, RATE), (429, RATE), (200, _sse({"cost": 0.1}))]
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp)
+    try:
+        status, body = _post(p.port, "/v1/messages", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert status == 429 and body == RATE and len(seen) == 4
+    assert len(sp.reserved) == 1 and sp.settled == [("r1", sp.reserved[0])]
+    rec = _recs(tmp_path)[0]
+    assert rec["retries"] == [429, 529, 503] and rec["status"] == 429
+    assert rec["cost_source"] == "bound"
+
+
+def test_openrouter_retries_stop_at_the_deadline(tmp_path, scripted):
+    import time
+    port, seen, script = scripted
+    script += [(429, RATE), (200, _sse({"cost": 0.1}))]
+    sp = FakeSpend()
+    # the real backoff (10 s) would end past the deadline: no retry, the 429 is returned
+    p = _or_proxy(tmp_path, port, sp, route=K.OPENROUTER_DS, deadline=time.monotonic() + 5)
+    t0 = time.monotonic()
+    try:
+        status, _ = _post(p.port, "/v1/messages", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert status == 429 and len(seen) == 1 and time.monotonic() - t0 < 5
+    rec = _recs(tmp_path)[0]
+    assert rec["retry_stopped"] == "deadline" and "retries" not in rec
+    assert sp.settled == [("r1", sp.reserved[0])]
+
+
+def test_anthropic_route_never_retries(tmp_path, scripted):
+    port, seen, script = scripted
+    script += [(429, RATE), (200, b"{}")]
+    sp = FakeSpend()
+    p = K.KeyProxy(key="k", spend=sp, log_path=tmp_path / "calls.jsonl",
+                   upstream=("127.0.0.1", port, False)).start()
+    try:
+        status, _ = _post(p.port, "/v1/messages", json.dumps({"model": K.MODEL,
+                                                             "max_tokens": 10}))
+    finally:
+        p.stop()
+    assert status == 429 and len(seen) == 1 and seen[0]["path"] == "/v1/messages"
+    assert seen[0]["key"] == "k" and "provider_pin" not in _recs(tmp_path)[0]
+
+
+def test_a_backoff_that_crosses_the_deadline_sends_nothing_more(tmp_path, scripted, monkeypatch):
+    """astra ds-build r1 m5: the deadline is checked again after the backoff (time the retry
+    decision couldn't see, e.g. a slow upstream): the CLI gets the time-cap refusal, no second
+    request is sent, and the one reservation settles at its bound."""
+    import time
+    port, seen, script = scripted
+    script += [(429, RATE), (200, _sse({"cost": 0.1}))]
+    sp = FakeSpend()
+    p = _or_proxy(tmp_path, port, sp, deadline=time.monotonic() + 3600)
+    monkeypatch.setattr(K.time, "sleep", lambda s: setattr(p, "deadline", time.monotonic() - 1))
+    try:
+        status, body = _post(p.port, "/v1/messages", json.dumps(DS_REQ))
+    finally:
+        p.stop()
+    assert status == 400 and b"emx time cap reached" in body and len(seen) == 1
+    rec = _recs(tmp_path)[0]
+    assert rec["retries"] == [429] and rec["retry_stopped"] == "deadline"
+    assert "error" not in rec and sp.settled == [("r1", sp.reserved[0])]

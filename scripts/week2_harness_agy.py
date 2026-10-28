@@ -246,6 +246,51 @@ def host_names(host: str | None) -> list[str]:
     return p.stdout.split()
 
 
+def resources_ok(host: str | None, lim: dict, reading=None) -> tuple[bool, dict]:
+    """The host's memory and load right now (`admit` without the counts): on the laptop >= 30%
+    free, elsewhere >= min_free_gb available; load < max_load. A failed reading is closed."""
+    try:
+        st = (reading or gate_reading)(host)
+    except Exception as e:  # noqa: BLE001
+        return False, {"error": f"{type(e).__name__}: {e}"[:200]}
+    mem_ok = (st.get("free_pct") is not None and st["free_pct"] >= CCH.MIN_FREE_PCT
+              if host is None else st["free_gb"] is not None
+              and st["free_gb"] >= lim["min_free_gb"])
+    return mem_ok and st["load1"] < lim["max_load"], st
+
+
+@contextlib.contextmanager
+def held_slots(host: str | None, owner: str, lim: dict, memory_mb: int, say=None,
+               poll_s: float = 30.0, reading=None):
+    """The history's slots, held only once the host's resources are still fine after the
+    (possibly long) wait for them; otherwise released and waited for again (astra ds-build r3
+    B1, as the Codex scheduler's `acquire`)."""
+    last = 0.0
+    while True:
+        cm = reserve_slots(host, owner, capacity=lim["max_containers"], memory_mb=memory_mb)
+        cm.__enter__()
+        ok, st = resources_ok(host, lim, reading)
+        if ok:
+            break
+        cm.__exit__(None, None, None)
+        if say is not None and time.monotonic() - last > 600:
+            say(f"{owner}: slots held but resources not ok, waiting: {st}")
+            last = time.monotonic()
+        time.sleep(poll_s)
+    try:
+        yield
+    finally:
+        cm.__exit__(None, None, None)
+
+
+def history_cpus(host: str | None, cpus: float) -> float:
+    """A new laptop history's CPU limit: the limits file's `__cpu_tenths__`, else `cpus`."""
+    if host is not None:
+        return cpus
+    from compaction.s2.native import slots as SL
+    return SL.setting("__cpu_tenths__", round(cpus * 10)) / 10
+
+
 def reserve_slots(host: str | None, owner: str, capacity: int | None = None,
                   memory_mb: int = 0):
     """The shared host-wide slot ledger (`native.slots`, the same file and host keys as the
@@ -283,7 +328,9 @@ def gate_reading(host: str | None) -> dict:
         free_gb, load = None, lap["load1"]
     return {"others": sum(not n.startswith(X.OURS) for n in names),
             "ours_running": sum(n.startswith(X.OURS) for n in names),
-            "free_gb": free_gb, "load1": load}
+            "free_gb": free_gb, "load1": load,
+            # the laptop's free-memory share (the laptop rule's >= 30%; astra ds-build r2 B3)
+            "free_pct": None if tgt else lap["free_pct"]}
 
 
 def admit(n_live: int, host: str | None, lim: dict, reading=gate_reading) -> tuple[bool, dict]:
@@ -294,7 +341,17 @@ def admit(n_live: int, host: str | None, lim: dict, reading=gate_reading) -> tup
         st = reading(host)
     except Exception as e:  # noqa: BLE001 - a failed reading keeps the gate closed
         return False, {"error": f"{type(e).__name__}: {e}"[:200]}
-    ok = (st["others"] + 2 * (n_live + 1) <= lim["max_containers"]
+    cap = lim["max_containers"]
+    if host is None:  # the laptop's capacity is changeable on the fly (native.slots)
+        from compaction.s2.native import slots as SL
+        try:
+            cap = SL.setting("__capacity__", cap)
+        except Exception as e:  # noqa: BLE001 - a malformed limits file keeps the gate closed
+            return False, {**st, "error": f"limits: {e}"[:200]}
+        st["capacity"] = cap
+    ok = (st["others"] + 2 * (n_live + 1) <= cap
+          and (host is not None or (st.get("free_pct") is not None
+                                    and st["free_pct"] >= CCH.MIN_FREE_PCT))
           and (st["free_gb"] is None or st["free_gb"] >= lim["min_free_gb"])
           and st["load1"] < lim["max_load"] and n_live < lim["max_live"])
     return ok, st
@@ -437,12 +494,13 @@ def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = CPUS) -> int
                     note_history(hdir, event=f"{out.name} not launched",
                                  reason="quota stop (shared flag)")
                     break
-                cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
-                                      b_task=tasks[b_repo.b_task], out=out, host=host,
-                                      memory_mb=memory_mb, cpus=cpus, quota_stop=quota)
                 try:
-                    with reserve_slots(host, f"agy:{hist.id}:{out.name}",
-                                       capacity=lim["max_containers"], memory_mb=memory_mb):
+                    with held_slots(host, f"agy:{hist.id}:{out.name}", lim, memory_mb, say):
+                        # CPUs read once the slots are held (astra ds-build r2 m4)
+                        cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
+                                              b_task=tasks[b_repo.b_task], out=out, host=host,
+                                              memory_mb=memory_mb,
+                                              cpus=history_cpus(host, cpus), quota_stop=quota)
                         res = X.run_history(cfg)
                     say(f"{hist.id} {out.name}: A {res.get('a_end')}, B {res.get('b_end')}")
                 except Exception as e:  # noqa: BLE001 - recorded; retried once

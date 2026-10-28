@@ -40,10 +40,47 @@ ROOT = Path(__file__).resolve().parents[1]
 STAGE, CAP_USD, TASK_CAP_USD = "SPRINT-S2-HARNESS", 300.0, 6.0
 TAG = "s2-harness"
 RAW = ROOT / "data" / "raw" / "sprint" / "s2" / "harness"
+# the configurations this scheduler runs (`--arm`): Haiku 5.5 (plan v0.3.1) and DeepSeek V4.1
+# Flash in the same CLI through OpenRouter -> Together (Jacob, 28 Oct: "2. go", cap $120)
+ARMS = {
+    "haiku": {"arm": "HAIKU", "stage": "SPRINT-S2-HARNESS", "cap": 300.0, "task_cap": 6.0,
+              "tag": "s2-harness", "dir": "cc", "smoke": "smoke", "caps": "budget_caps.toml",
+              "key": "ANTHROPIC_API_KEY", "cpus": 2.0, "max_live": 4, "capacity": 8},
+    "ds": {"arm": "DEEPSEEK", "stage": "SPRINT-S2-HARNESS-DS", "cap": 120.0, "task_cap": 6.0,
+           "tag": "s2-harness-ds", "dir": "cc_ds", "smoke": "smoke_ds",
+           "caps": "budget_caps_ds.toml", "key": "OPENROUTER_API_KEY", "cpus": 1.0,
+           "max_live": 5, "capacity": 16},
+}
+ARM_NAME = "haiku"
+
+
+def select(name: str) -> None:
+    """Point the module's stage, caps, run dirs, key and CLI arm at configuration `name`."""
+    global ARM_NAME, STAGE, CAP_USD, TASK_CAP_USD, TAG, CPUS, MAX_LIVE, OURS, MAX_CONTAINERS
+    a = ARMS[name]
+    ARM_NAME, STAGE, CAP_USD, TASK_CAP_USD, TAG = (name, a["stage"], a["cap"], a["task_cap"],
+                                                   a["tag"])
+    CPUS, MAX_LIVE = a["cpus"], a["max_live"]  # per-arm defaults (ds-build r1 m3)
+    # the laptop rule as relaxed by Jacob on 28 Oct for the DeepSeek arm: task containers only,
+    # i.e. 16 containers with sidecars (the limits file's `__capacity__` can override it)
+    MAX_CONTAINERS = a["capacity"]
+    OURS = f"native-{getattr(X, a['arm']).session.replace('_', '-')}"  # its own prefix (B1)
+
+
+def arm():
+    return getattr(X, ARMS[ARM_NAME]["arm"])
+
+
+def bulk_dir() -> Path:
+    return RAW / ARMS[ARM_NAME]["dir"]
+
+
+def api_key() -> str:
+    return read_key(ROOT / ".env", ARMS[ARM_NAME]["key"])
 
 
 def caps_file() -> Path:
-    return RAW / "budget_caps.toml"
+    return RAW / ARMS[ARM_NAME]["caps"]
 
 
 def init_caps() -> Path:
@@ -136,10 +173,15 @@ def smoke(remote: str, repo: str) -> int:
     hist = CC.History(repo, "np", 900, remote)  # rep 900: never a bulk history
     a_repo = CC.REPOS[repo]
     b_repo = CC.REPOS[next(r for r in CC.REPOS if r != repo)]
-    out = RAW / "smoke" / hist.id / time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())  # m10
+    out = RAW / ARMS[ARM_NAME]["smoke"] / hist.id / time.strftime("%Y%m%dT%H%M%SZ",
+                                                                  time.gmtime())  # m10
     cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task], b_task=tasks[b_repo.b_task],
                           out=out, host_ip="host.docker.internal", spend_factory=task_spend,
-                          key=read_key(ROOT / ".env"))
+                          key=api_key(), arm=arm(),
+                          # the Haiku smoke keeps its defaults (ds-build r1 m4); the DeepSeek
+                          # smoke runs at its bulk's laptop resources
+                          **({} if ARM_NAME == "haiku" else
+                             {"memory_mb": MEMORY_MB, "cpus": history_cpus()}))
     res = X.run_history(cfg)
     rep: dict = {"history": hist.id, "remote": remote, "run": res}
     a_dir, b_dir = Path(res["a"]), Path(res["b"])
@@ -235,9 +277,21 @@ def admit(n_live: int) -> tuple[bool, dict]:
         st = gate_reading()
     except Exception as e:  # noqa: BLE001 - a failed reading keeps the gate closed
         return False, {"error": f"{type(e).__name__}: {e}"[:200]}
-    ok = (st["others"] + 2 * (n_live + 1) <= MAX_CONTAINERS and st["free_pct"] >= MIN_FREE_PCT
+    from compaction.s2.native import slots as SL
+    try:
+        cap = SL.setting("__capacity__", MAX_CONTAINERS)  # changeable on the fly
+    except Exception as e:  # noqa: BLE001 - a malformed limits file keeps the gate closed
+        return False, {**st, "error": f"limits: {e}"[:200]}
+    st["capacity"] = cap
+    ok = (st["others"] + 2 * (n_live + 1) <= cap and st["free_pct"] >= MIN_FREE_PCT
           and st["load1"] < MAX_LOAD and n_live < MAX_LIVE)
     return ok, st
+
+
+def history_cpus() -> float:
+    """Each new history's CPU limit: the limits file's `__cpu_tenths__`, else `CPUS`."""
+    from compaction.s2.native import slots as SL
+    return SL.setting("__cpu_tenths__", round(CPUS * 10)) / 10
 
 
 def _result_ok(p: Path) -> bool:
@@ -259,15 +313,18 @@ def bulk() -> int:
         sys.exit("run `init` first")
     tasks = D.tasks()
     order = assignment()
-    root = RAW / "cc"
+    root = bulk_dir()
     root.mkdir(parents=True, exist_ok=True)
     lockf = open(root / "bulk.lock", "w")  # noqa: SIM115 - held for the process's life
     try:
         fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)  # one bulk at a time (B3)
     except BlockingIOError:
         sys.exit(f"another bulk holds {root / 'bulk.lock'}")
-    (root / "assignment.json").write_text(json.dumps({"seed": SEED, "order": order}, indent=1))
-    key = read_key(ROOT / ".env")
+    (root / "assignment.json").write_text(json.dumps(
+        {"seed": SEED, "order": order, "arm": ARM_NAME, "model": arm().model,
+         "effort": arm().effort, "max_live": MAX_LIVE, "cpus": CPUS, "memory_mb": MEMORY_MB},
+        indent=1))
+    key = api_key()
     lock, live = threading.Lock(), []
     log = root / "bulk.log"
 
@@ -307,7 +364,8 @@ def bulk() -> int:
                 cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
                                       b_task=tasks[b_repo.b_task], out=out,
                                       host_ip="host.docker.internal", spend_factory=task_spend,
-                                      key=key, memory_mb=MEMORY_MB, cpus=CPUS)
+                                      key=key, memory_mb=MEMORY_MB, cpus=history_cpus(),
+                                      arm=arm())
                 try:
                     res = X.run_history(cfg)
                     say(f"{hist.id} a{attempt}: A {res.get('a_end')}, B {res.get('b_end')}")
@@ -356,7 +414,7 @@ def bulk() -> int:
 def progress() -> int:
     """One outcome per assigned history (its latest attempt with a first-task result), unknowns
     counted apart (cc-bulk r1 m2)."""
-    root = RAW / "cc"
+    root = bulk_dir()
     order = json.loads((root / "assignment.json").read_text())["order"]
     out = {"histories": len(order), "a_done": 0, "b_done": 0, "attempts": 0,
            "first_stage": {"lost": 0, "kept": 0, "unknown": 0}, "ends": {}, "cost_usd": 0.0}
@@ -389,7 +447,10 @@ def progress() -> int:
 
 
 def main() -> int:
+    global MAX_LIVE
     ap = argparse.ArgumentParser()
+    ap.add_argument("--arm", choices=tuple(ARMS), default="haiku")
+    ap.add_argument("--max-live", type=int, default=None, help="bulk: histories at once")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("init")
     s = sub.add_parser("smoke")
@@ -400,6 +461,9 @@ def main() -> int:
     b.add_argument("--go-from-jacob", action="store_true", required=True)
     sub.add_parser("progress")
     a = ap.parse_args()
+    select(a.arm)
+    if a.max_live is not None:
+        MAX_LIVE = a.max_live
     if a.cmd == "init":
         print(init_caps())
         return 0

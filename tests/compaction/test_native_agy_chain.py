@@ -1034,6 +1034,24 @@ def test_host_gate(script):
     assert not ok and "ssh down" in st["error"]
 
 
+def test_the_laptop_gate_keeps_the_free_memory_rule(script, monkeypatch, tmp_path):
+    """astra ds-build r2 B3: on the laptop, >= 30% memory free is required (it was ignored);
+    the capacity comes from the limits file when set."""
+    from compaction.s2.native import slots as SL
+    monkeypatch.setattr(SL, "LIMITS", tmp_path / "lim.json")
+    lim = {"max_live": 4, "max_containers": 16, "min_free_gb": 8.0, "max_load": 12.0}
+
+    def lap(free_pct, others=0):
+        return lambda host: {"others": others, "ours_running": 0, "free_gb": None,
+                             "load1": 2.0, "free_pct": free_pct}
+    assert script.admit(0, None, lim, lap(60))[0]
+    assert not script.admit(0, None, lim, lap(1))[0]
+    assert not script.admit(0, None, lim, lap(None))[0]  # unread: closed
+    SL.set_limits(["__capacity__=8"], path=tmp_path / "lim.json", lock=tmp_path / "l.lock")
+    ok, st = script.admit(0, None, lim, lap(60, others=8))
+    assert not ok and st["capacity"] == 8  # the file's 8 binds, not the launch's 16
+
+
 def test_bulk_requires_explicit_capacity(script, monkeypatch):
     monkeypatch.setattr(sys, "argv", ["x", "bulk", "--go-from-jacob", "--max-live", "2"])
     with pytest.raises(SystemExit) as e:
@@ -1390,3 +1408,27 @@ def test_the_names_screen_fails_closed_when_a_pattern_write_fails(monkeypatch):
     assert X.commit_names_screen(FakeSB(), "simtok") == {
         "ok": False, "why": "names screen failed rc=5"}
     assert "\"$EMX_SIM_TOKEN\" >> \"$P\" || {" in seen["cmd"]  # the append is checked
+
+
+def test_slots_are_kept_only_if_resources_are_still_fine(script, monkeypatch):
+    """astra ds-build r3 B1: a history waits for its slots, then rechecks memory and load; if
+    they got worse meanwhile it releases the slots and waits again."""
+    entered, exited = [], []
+
+    class CM:
+        def __enter__(self):
+            entered.append(1)
+
+        def __exit__(self, *a):
+            exited.append(1)
+    monkeypatch.setattr(script, "reserve_slots", lambda *a, **k: CM())
+    readings = iter([{"free_pct": 10, "load1": 2.0, "free_gb": None},
+                     {"free_pct": 60, "load1": 20.0, "free_gb": None},
+                     {"free_pct": 60, "load1": 2.0, "free_gb": None}])
+    lim = {"max_containers": 16, "min_free_gb": 8.0, "max_load": 12.0}
+    with script.held_slots(None, "o", lim, 1280, poll_s=0, reading=lambda h: next(readings)):
+        assert len(entered) == 3 and len(exited) == 2  # two releases, then held
+    assert len(exited) == 3
+    ok, _st = script.resources_ok(None, lim, lambda h: {"free_pct": None, "load1": 1.0,
+                                                        "free_gb": None})
+    assert not ok  # an unread share is closed

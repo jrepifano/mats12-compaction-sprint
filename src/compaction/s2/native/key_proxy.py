@@ -25,9 +25,27 @@ loopback and alone holds the real key, so neither the agent nor its container ev
   request id, refusals); the first priced request's system prompt is fingerprinted
   (`system_sha256`, its length and head) so the run records which prompt the CLI sent.
 
+**Routes** (`Route`; `KeyProxy.route`, default `ANTHROPIC`). Everything upstream-specific is
+read from the route: the one allowed model, host and messages path, the free paths, the auth
+header, extra body fields, the bound's prices, how a complete reply is priced, and 429 retries.
+- `ANTHROPIC`: the behaviour above, unchanged. Original body bytes are forwarded as they came.
+- `OPENROUTER_DS` (Jacob, 28 Oct: "DeepSeek inside Claude Code"): DeepSeek V4.1 Flash through
+  OpenRouter's Anthropic-format endpoint (`/api/v1/messages`, `Authorization: Bearer`), pinned
+  to Together (`provider: {order: [Together], allow_fallbacks: false}` merged into the body,
+  which is then re-serialised; the bound counts the forwarded bytes). No free paths: a
+  count_tokens call is refused like any other. A complete reply settles at OpenRouter's own
+  `usage.cost` (plus the upstream charge on a BYOK request); without it, at the bound. An
+  upstream 429/503/529 before any byte reached the client is retried up to 3 times (backoff
+  10, 20, 40 s, never past `deadline`; Together 429s under bursts, 28 Oct), on the one
+  reservation; the statuses retried are logged (`retries`). When retries run out the last
+  upstream reply goes to the client as it came, and is settled at the bound (no completed
+  reply, as for any failure). The upstream `X-Generation-Id` (`generation_id`) and the pin
+  (`provider_pin`) are logged so the serving provider can be checked afterwards.
+
 Prices: Claude Haiku 5.5, Anthropic pricing page read 28 Oct 2026. A request whose prompt
 (input + cache writes + cache reads) is over 100,000 tokens is priced at the higher rates in
-full.
+full. DeepSeek V4.1 Flash on Together: $0.30/M input, $1.20/M output, $0.006/M cache read
+(compaction.s2.config's "deepseek" table, the same rates).
 """
 
 from __future__ import annotations
@@ -41,6 +59,7 @@ import math
 import socketserver
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -68,13 +87,67 @@ def haiku_cost(usage: dict) -> float:
     return (inp * pin + cw_5m * p5 + cw_1h * p1h + cr * pread + out * pout) / 1e6
 
 
-def bound_usd(nbytes: int, max_tokens: int) -> float:
+def bound_usd(nbytes: int, max_tokens: int, in_per_mtok: float | None = None,
+              out_per_mtok: float | None = None) -> float:
     """An upper bound on one request's cost: every body byte as a prompt token (a token is never
     less than a byte of the request) at the dearest input price, plus every allowed output
-    token; rounded up to $0.0001."""
+    token; rounded up to $0.0001. Prices default to Haiku's dearest ($/MTok)."""
     _, _, p1h, _, pout = PRICES["long"]
-    usd = (nbytes * p1h + max(0, max_tokens) * pout) / 1e6
+    pin = p1h if in_per_mtok is None else in_per_mtok
+    pout = pout if out_per_mtok is None else out_per_mtok
+    usd = (nbytes * pin + max(0, max_tokens) * pout) / 1e6
     return math.ceil(usd * 1e4) / 1e4
+
+
+def openrouter_cost(usage: dict) -> float | None:
+    """USD of one reply from OpenRouter's own `usage.cost` (None when it is missing), plus the
+    upstream charge of a BYOK request (`cost_details.upstream_inference_cost`)."""
+    c = usage.get("cost")
+    if isinstance(c, bool) or not isinstance(c, (int, float)):
+        return None
+    up = (usage.get("cost_details") or {}).get("upstream_inference_cost")
+    if usage.get("is_byok") and isinstance(up, (int, float)) and not isinstance(up, bool):
+        return float(c) + float(up)
+    return float(c)
+
+
+RETRY_STATUS = (429, 503, 529)
+
+
+@dataclass(frozen=True)
+class Route:
+    """One upstream: what is allowed through, where it goes, and how it is priced."""
+
+    name: str
+    model: str  # the only request model allowed
+    host: str
+    port: int
+    tls: bool
+    path: str  # the upstream messages path
+    in_per_mtok: float  # the bound's (dearest) input price, $/MTok
+    out_per_mtok: float  # the bound's output price, $/MTok
+    cost: Callable[[dict], float | None]  # a complete reply's USD from its usage (None: unknown)
+    cost_source: str  # logged when `cost` priced the reply
+    resource: str  # ledger resource prefix (":<model>" is appended)
+    free: tuple[str, ...] = ()  # forwarded unpriced, as they came
+    auth: str = "x-api-key"  # or "bearer"
+    body_extra: dict = field(default_factory=dict)  # merged into every priced request's body
+    retry_429: int = 0  # retries of an upstream 429/503/529 before any byte reached the client
+    backoff_s: tuple[float, ...] = ()  # wait before retry n (the last repeats)
+
+    def bound(self, nbytes: int, max_tokens: int) -> float:
+        return bound_usd(nbytes, max_tokens, self.in_per_mtok, self.out_per_mtok)
+
+
+ANTHROPIC = Route(name="anthropic", model=MODEL, host="api.anthropic.com", port=443, tls=True,
+                  path=PRICED, in_per_mtok=PRICES["long"][2], out_per_mtok=PRICES["long"][4],
+                  cost=haiku_cost, cost_source="usage", resource="anthropic-api", free=FREE)
+OPENROUTER_DS = Route(name="openrouter-ds", model="deepseek/deepseek-v4.1-flash",
+                      host="openrouter.ai", port=443, tls=True, path="/api/v1/messages",
+                      in_per_mtok=0.30, out_per_mtok=1.20, cost=openrouter_cost,
+                      cost_source="usage.cost", resource="openrouter", auth="bearer",
+                      body_extra={"provider": {"order": ["Together"], "allow_fallbacks": False}},
+                      retry_429=3, backoff_s=(10.0, 20.0, 40.0))
 
 
 SERVER_TOOL = ("web_search", "web_fetch", "code_execution", "computer", "bash_", "text_editor",
@@ -156,6 +229,10 @@ def _refusal(msg: str) -> bytes:
                                                   "message": msg}}).encode()
 
 
+class _DeadlineStop(Exception):
+    """A retry's backoff reached the deadline: the time-cap refusal has been sent."""
+
+
 @dataclass
 class KeyProxy:
     key: str
@@ -164,9 +241,10 @@ class KeyProxy:
     note: str = "native claude"
     bind: str = "127.0.0.1"
     port: int = 0
-    upstream: tuple[str, int, bool] = ("api.anthropic.com", 443, True)  # host, port, https
+    route: Route = ANTHROPIC
+    upstream: tuple[str, int, bool] | None = None  # host, port, https (default: the route's)
     timeout_s: float = 900.0
-    model: str = MODEL
+    model: str | None = None  # default: the route's
     max_calls: int | None = None
     deadline: float | None = None  # time.monotonic() value
     calls: int = 0
@@ -176,6 +254,12 @@ class KeyProxy:
     _lock: threading.Lock = field(default_factory=threading.Lock)
     _active: int = 0
     _idle: threading.Condition = field(default_factory=threading.Condition)
+
+    def __post_init__(self) -> None:
+        if self.upstream is None:
+            self.upstream = (self.route.host, self.route.port, self.route.tls)
+        if self.model is None:
+            self.model = self.route.model
 
     def _log(self, rec: dict) -> None:
         rec["utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
@@ -196,6 +280,18 @@ class KeyProxy:
                 return "emx call cap reached"
             self.calls += 1
             return None
+
+    def _retry_wait(self, status: int, n: int, rec: dict) -> float | None:
+        """Seconds to wait before retrying an upstream reply of `status` after `n` retries (None:
+        pass it to the client). Never waits past the deadline."""
+        if status not in RETRY_STATUS or n >= self.route.retry_429:
+            return None
+        b = self.route.backoff_s
+        wait = b[min(n, len(b) - 1)] if b else 0.0
+        if self.deadline is not None and time.monotonic() + wait >= self.deadline:
+            rec["retry_stopped"] = "deadline"
+            return None
+        return wait
 
     def _fingerprint(self, req: dict) -> None:
         if self.system is not None:
@@ -247,8 +343,9 @@ class KeyProxy:
                     req = json.loads(body)
                 except ValueError:
                     req = None
+                route = proxy.route
                 why = None
-                if not isinstance(req, dict) or (path != PRICED and path not in FREE):
+                if not isinstance(req, dict) or (path != PRICED and path not in route.free):
                     why = "endpoint"
                 elif path == PRICED and req.get("model") != proxy.model:
                     why = f"model {req.get('model')}"
@@ -259,11 +356,18 @@ class KeyProxy:
                     proxy._log(rec)
                     self._reply(403, _refusal("emx proxy: endpoint or model not allowed"))
                     return
-                rid = None
+                rid, fwd, upath = None, body, self.path
                 if path == PRICED:
+                    upath = route.path + self.path[len(path):]  # the query string kept
+                    if route.body_extra:
+                        fwd = json.dumps(req | route.body_extra).encode()
+                        rec["fwd_bytes"] = len(fwd)
+                        if "provider" in route.body_extra:
+                            rec["provider_pin"] = route.body_extra["provider"]
                     proxy._fingerprint(req)
                     rec["model"] = req.get("model")
-                    rec["bound_usd"] = bound_usd(len(body), int(req.get("max_tokens") or 0))
+                    # every forwarded byte is bounded, the merged fields included
+                    rec["bound_usd"] = route.bound(len(fwd), int(req.get("max_tokens") or 0))
                     cap = proxy._admit()
                     if cap is None:
                         try:
@@ -277,14 +381,37 @@ class KeyProxy:
                         self._reply(400, _refusal(cap))
                         return
                 hdr = {k: v for k, v in self.headers.items() if k.lower() not in DROP}
-                hdr |= {"x-api-key": proxy.key, "Content-Length": str(len(body))}
+                hdr |= ({"Authorization": f"Bearer {proxy.key}"} if route.auth == "bearer"
+                        else {"x-api-key": proxy.key})
+                hdr["Content-Length"] = str(len(fwd))
                 buf, sent, c = b"", False, None
                 try:
-                    c = proxy._conn()
-                    c.request("POST", self.path, body=body, headers=hdr)
-                    r = c.getresponse()
+                    retries: list[int] = []
+                    while True:
+                        c = proxy._conn()
+                        c.request("POST", upath, body=fwd, headers=hdr)
+                        r = c.getresponse()
+                        wait = proxy._retry_wait(r.status, len(retries), rec)
+                        if wait is None:
+                            break
+                        # nothing sent to the client yet; the one reservation is kept. The
+                        # discarded body isn't drained (a slow body could outlast the deadline),
+                        # and the deadline is checked again after the backoff (ds-build r1 m5)
+                        c.close()
+                        c = None
+                        retries.append(r.status)
+                        rec["retries"] = retries
+                        time.sleep(wait)
+                        if proxy.deadline is not None and time.monotonic() >= proxy.deadline:
+                            rec |= {"status": 400, "refused": "emx time cap reached",
+                                    "retry_stopped": "deadline"}
+                            self._reply(400, _refusal("emx time cap reached"))
+                            sent = True
+                            raise _DeadlineStop
                     rec["status"] = r.status
                     rec["request_id"] = r.getheader("request-id")
+                    if gid := r.getheader("x-generation-id"):
+                        rec["generation_id"] = gid
                     self.send_response(r.status)
                     for k, v in r.getheaders():
                         if k.lower() not in ("transfer-encoding", "content-length", "connection",
@@ -302,6 +429,8 @@ class KeyProxy:
                         self.wfile.write(b"%x\r\n%s\r\n" % (len(chunk), chunk))
                         self.wfile.flush()
                     self.wfile.write(b"0\r\n\r\n")
+                except _DeadlineStop:  # the refusal is sent; settled at the bound below
+                    pass
                 except Exception as e:  # noqa: BLE001 - recorded; the reservation is settled below
                     rec["error"] = f"{type(e).__name__}: {e}"[:300]
                     if not sent:
@@ -317,11 +446,12 @@ class KeyProxy:
                         usage, mid, model, complete = usage_of(buf) if buf else (None,) * 3 + (
                             False,)
                         ok = complete and rec.get("status") == 200 and "error" not in rec
-                        cost = haiku_cost(usage) if ok else rec["bound_usd"]
+                        cost = route.cost(usage) if ok else None
+                        source = route.cost_source if cost is not None else "bound"
+                        cost = rec["bound_usd"] if cost is None else cost
                         rec |= {"usage": usage, "id": mid, "served_model": model,
-                                "cost_usd": round(cost, 6),
-                                "cost_source": "usage" if ok else "bound"}
-                        proxy.spend.settle(rid, cost, resource=f"anthropic-api:{proxy.model}",
+                                "cost_usd": round(cost, 6), "cost_source": source}
+                        proxy.spend.settle(rid, cost, resource=f"{route.resource}:{proxy.model}",
                                            units=1, note=proxy.note)
                     proxy._log(rec)
 

@@ -59,6 +59,34 @@ from compaction.s2.native import turns as T
 ARM = "cc_chain"
 MODEL = "claude-haiku-5-5[1m]"
 EFFORT = "high"  # the pilot's
+
+
+@dataclass(frozen=True)
+class Arm:
+    """One model configuration of the same CLI: the `--model` and `--effort` it runs, extra
+    CLI environment, and the key proxy's upstream route (a `key_proxy` constant's name; None
+    is the proxy's default, Anthropic's API)."""
+    name: str
+    model: str
+    effort: str
+    env: tuple[tuple[str, str], ...] = ()
+    route: str | None = None
+    session: str = ARM  # the containers' purpose: their name prefix is N.purpose(session)
+
+
+HAIKU = Arm("haiku", MODEL, EFFORT)
+DS_MODEL = "deepseek/deepseek-v4.1-flash"
+# DeepSeek V4.1 Flash in Claude Code (Jacob, 28 Oct: "2. go"), through OpenRouter -> Together:
+# the CLI doesn't know the model, so it would enforce a default window locally ("Prompt is too
+# long" at ~231k, no API call; scoping 28 Oct): CLAUDE_CODE_MAX_CONTEXT_TOKENS gives Together's
+# listed window. Every model slot the CLI may use maps to DeepSeek, and the proxy refuses any
+# other model, so no call reaches a Claude model. `--effort max` is the CLI's setting, which may
+# not equal DeepSeek's own reasoning_effort=max (experiment 1's); reasoning passes through.
+DEEPSEEK = Arm("deepseek", DS_MODEL, "max", env=(
+    ("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "1048576"), ("ANTHROPIC_MODEL", DS_MODEL),
+    ("ANTHROPIC_SMALL_FAST_MODEL", DS_MODEL), ("ANTHROPIC_DEFAULT_HAIKU_MODEL", DS_MODEL),
+    ("ANTHROPIC_DEFAULT_SONNET_MODEL", DS_MODEL), ("ANTHROPIC_DEFAULT_OPUS_MODEL", DS_MODEL)),
+    route="OPENROUTER_DS", session="ds_chain")  # its own prefix (astra ds-build r1 B1)
 PROXY_FWD_PORT = 8001  # the sidecar's raw forward to the host's KeyProxy
 CHECKIN_CHUNKS = (4, 10, 10, 10, 10, 10)  # turns before each check-in (experiment 1: 4, 14, ...)
 # Experiment 1's instance template, step 6, verbatim (mini-swe-agent; astra cc-build r1 m13)
@@ -111,8 +139,8 @@ def install_chain(sb: SB.Sandbox, task, out_dir: Path,
     return env, inventory
 
 
-def cli_env(server: N.SimServer) -> dict[str, str]:
-    return {"CLAUDE_CONFIG_DIR": CCN.CONFIG_DIR, "IS_SANDBOX": "1",
+def cli_env(server: N.SimServer, arm: Arm = HAIKU) -> dict[str, str]:
+    return dict(arm.env) | {"CLAUDE_CONFIG_DIR": CCN.CONFIG_DIR, "IS_SANDBOX": "1",
             "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "DISABLE_AUTOUPDATER": "1",
             "DISABLE_AUTO_COMPACT": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
             "MCP_TOOL_TIMEOUT": str(3600 * 1000), "MCP_TIMEOUT": "60000",
@@ -124,9 +152,9 @@ def cli_env(server: N.SimServer) -> dict[str, str]:
 
 
 def cli_command(*, session_id: str | None = None, resume: str | None = None,
-                max_turns: int | None = None) -> str:
-    parts = [CCN.CLI, "-p", "--verbose", "--output-format", "stream-json", "--model", MODEL,
-             "--effort", EFFORT, "--permission-mode", "bypassPermissions", "--disallowedTools",
+                max_turns: int | None = None, arm: Arm = HAIKU) -> str:
+    parts = [CCN.CLI, "-p", "--verbose", "--output-format", "stream-json", "--model", arm.model,
+             "--effort", arm.effort, "--permission-mode", "bypassPermissions", "--disallowedTools",
              CCN.DISALLOWED]
     if session_id:
         parts += ["--session-id", session_id]
@@ -182,6 +210,7 @@ class TaskRun:
     ns: N.NativeSession
     out: Path
     proxy: object  # key_proxy.KeyProxy (calls, deadline)
+    arm: Arm = HAIKU
     turns: list[dict] = field(default_factory=list)
     state: T.State = field(default_factory=T.State)
 
@@ -197,7 +226,7 @@ class TaskRun:
                                                         "cap": END_TIME, "overflow": False}
         p = self.out / f"turn_{k:03d}.jsonl"
         r = N.detached_exec(self.ns.sb, cmd, name=f"turn-{k}-{uuid.uuid4().hex[:6]}",
-                            timeout_s=left, log_path=p, env=cli_env(self.ns.server),
+                            timeout_s=left, log_path=p, env=cli_env(self.ns.server, self.arm),
                             stdin=stdin.encode())
         lines = p.read_text().splitlines() if p.exists() else []
         stop, info = parse_stop(lines, infra=r.killed in ("container_gone", "output_lost"))
@@ -215,7 +244,7 @@ class TaskRun:
             mt = chunks[self.state.checkins_used] if self.state.checkins_used < len(chunks) \
                 else None
             cmd = cli_command(session_id=sid if use_new else None,
-                              resume=None if use_new else sid, max_turns=mt)
+                              resume=None if use_new else sid, max_turns=mt, arm=self.arm)
             stop, info = self.call(cmd, prompt, k)
             use_new = False
             d = T.decide(stop, self.state)
@@ -258,7 +287,7 @@ def boundary_compact(run: TaskRun, sid: str) -> dict:
     out["before"] = before
     for attempt in (1, 2):
         try:
-            _stop, info = run.call(cli_command(resume=sid), "/compact", 900 + attempt,
+            _stop, info = run.call(cli_command(resume=sid, arm=run.arm), "/compact", 900 + attempt,
                                    extra_s=900)
             after = len(CCN.compact_rows(read_session(run.ns.sb, sid)))
         except Exception as e:  # noqa: BLE001 - a failed attempt is retried, then reported
@@ -332,8 +361,8 @@ def lead_and_task(b_repo: CC.Repo, a_repo: CC.Repo, instruction: str) -> str:
 
 
 def _session(image: str, proxy_port: int, host_ip: str, memory_mb: int = N.AGENT_MEMORY_MB,
-             cpus: float = N.AGENT_CPUS) -> N.NativeSession:
-    return N.NativeSession(ARM, image, lambda runner: ScriptedSim(), allow=(),
+             cpus: float = N.AGENT_CPUS, arm: Arm = HAIKU) -> N.NativeSession:
+    return N.NativeSession(arm.session, image, lambda runner: ScriptedSim(), allow=(),
                            extra_args=CCN.run_args(), memory_mb=memory_mb, cpus=cpus,
                            forwards=((PROXY_FWD_PORT, host_ip, proxy_port),))
 
@@ -362,6 +391,7 @@ class HistoryConfig:
     key: str
     memory_mb: int = N.AGENT_MEMORY_MB
     cpus: float = N.AGENT_CPUS
+    arm: Arm = HAIKU
 
 
 def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: str,
@@ -371,6 +401,7 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: s
     are separate steps: a failed boundary still exports the session (task 2 then runs
     uncompacted, a recorded deviation). Returns {"end", "session": (bytes, manifest) | None,
     "boundary", "checks"}."""
+    from compaction.s2.native import key_proxy as KP
     from compaction.s2.native.key_proxy import KeyProxy
     t0 = time.monotonic()
     log = out / "calls.jsonl"
@@ -382,10 +413,13 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: s
         err = ((err + " | ") if err else "") + f"{what}: {type(e).__name__}: {e}"[:500]
 
     try:
+        route = {} if cfg.arm.route is None else {"route": getattr(KP, cfg.arm.route)}
         proxy = KeyProxy(key=cfg.key, spend=cfg.spend_factory(), log_path=log,
                          note=f"{cfg.hist.id} {'B' if second else 'A'}", bind="127.0.0.1",
-                         max_calls=CC.MAX_CALLS, deadline=t0 + CC.MAX_SECONDS).start()
-        with _session(task.image, proxy.port, cfg.host_ip, cfg.memory_mb, cfg.cpus) as ns:
+                         max_calls=CC.MAX_CALLS, deadline=t0 + CC.MAX_SECONDS,
+                         **route).start()
+        with _session(task.image, proxy.port, cfg.host_ip, cfg.memory_mb, cfg.cpus,
+                      cfg.arm) as ns:
             env = None
             try:
                 env, inventory = install_chain(ns.sb, task, out, branches)
@@ -404,7 +438,7 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, sid: s
                         except Exception:
                             if attempt == 2:
                                 raise
-                run = TaskRun(ns, out, proxy)
+                run = TaskRun(ns, out, proxy, cfg.arm)
                 end = run.drive(sid, prompt, new_session=not second,
                                 chunks=() if second else CHECKIN_CHUNKS)
             except Exception as e:  # noqa: BLE001 - recorded; evidence still collected

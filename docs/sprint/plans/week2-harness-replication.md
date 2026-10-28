@@ -37,35 +37,48 @@ v0.2 answers astra harness-plan r1 (4 BLOCKING, 5 MINOR); v0.3 answers r2 (2 BLO
 
 ## Build contract (28 Oct, the drift check)
 
+**Fourth configuration (Jacob, 28 Oct: "2. go", build, smoke, 12 + 12, cap $120): DeepSeek V4.1 Flash in Claude Code.** It is the same CLI, driver, turn rules, prompts, tasks, assignment and boundary as the Haiku arm. Only the model changes: experiment 1's model, through OpenRouter -> Together with fallbacks off (experiment 1 ran DeepSeek's own API; this route was its measured fallback at the same list price). That separates the harness from the model.
+- `CLAUDE_CODE_MAX_CONTEXT_TOKENS=1048576`: without it the CLI enforces a default window for an unknown model.
+- Every CLI model slot maps to DeepSeek, and the key proxy refuses any other model.
+- `--effort max` is the CLI's setting, recorded as possibly not equal to DeepSeek's own `reasoning_effort=max`.
+- Ledger stage `SPRINT-S2-HARNESS-DS`, cap $120, $6 per task.
+- **Analysis (pre-specified 28 Oct ~19:20Z, before any DeepSeek history ran):** its primary contrast is tested like the others, and the Holm family grows to **four configurations**. At that time only the Haiku arm's first-stage counts had been read (0 of 11 overwrote); no second-task outcome had been analysed. The power figure above was for three configurations, so with four each test is slightly less powered. Comparisons between configurations stay descriptive. DeepSeek in Claude Code against experiment 1 (DeepSeek in pi) is the model-held-fixed contrast, also descriptive: different runs, dates and routes.
+- **Laptop rule relaxed (Jacob, 28 Oct: "1. relax the laptop rules"):** only task containers count, so up to 8 live histories, i.e. 16 containers with their 128 MB sidecars. Agent containers stay at 1.25 GB or less, with ≥ 30% memory free and load < 12. New histories get 1 CPU (+ 0.5 for the sidecar).
+- Laptop placement (Research Advisor, 28 Oct): it takes priority. Under the relaxed rule below, the split while its bulk runs is DeepSeek 5 + agy 2 + Codex 1 histories (8 histories = 16 containers with sidecars). Codex and agy shrink to it as their running histories end; nothing running is killed.
+- `max_live` is each scheduler's process ceiling (Codex 4, agy 4, DeepSeek 5). The live split, the laptop capacity (`__capacity__`) and new histories' CPUs (`__cpu_tenths__`) are the shared slot ledger's limits file (`native.slots`), re-read on every poll and changeable on the fly. Every change is logged with its UTC time in the build log.
+- The scoping check is in the build log (28 Oct, 18:44Z).
+
+
 Each harness's run must match its column. `scripts/week2_harness_card.py <cc|cx|agy>` reads the values from the code and launch arguments, writes `results/sprint/week2/harness/<harness>/design_card.md`, and refuses (exit 1) on any mismatch. Sources:
 - Models, windows, compaction and caps: this plan.
 - Host, max-live and the container settings: Jacob's 28 Oct go (Claude Code on the laptop under the laptop rule; Codex and agy on the laptop at 2 + 2, replacing "rig" above).
 - The hashes are pinned at the reviewed code the Claude Code bulk launched from (3457d31b): `turns.py`, experiment 1's check-in texts, and the launched order in `data/raw/sprint/s2/harness/cc/assignment.json`.
-- Per-history CPU (task container plus its 0.5-CPU egress sidecar) follows the laptop rule: CPU limits summing to ≤ 8 across 4 live histories.
+- Per-history CPU (task container plus its 0.5-CPU egress sidecar) followed the laptop rule of CPU limits summing to ≤ 8 across 4 live histories. That holds for the Haiku arm; the later arms run under the relaxed rule below, at 1.0 + 0.5 per history, 12 CPUs at 8 histories.
 - `launch_code_verified`: the card's values come from the code the run loaded. For a running process, every source is unchanged since its launch commit, or only its scheduler script changed and the card reads that script's launch copy.
 
-| Parameter | Claude Code | Codex | agy |
-|---|---|---|---|
-| `cli_version` | 2.1.310 | 0.162.1 | 1.4.7 |
-| `model` | claude-haiku-5-5[1m] | gpt-6-luna | gemini-3.8-flash-low |
-| `effort` | high | high | CLI default |
-| `context_window` | 1000000 | 872000 (effective 828400) | default (unverified) |
-| `auto_compaction` | off | off (limit 860000 above window) | on (cannot be disabled) |
-| `boundary_compaction` | /compact via -p --resume | app-server thread/compact/start | /compact turn |
-| `turn_rules_sha256` | 7d39bae00d2f | 7d39bae00d2f | 7d39bae00d2f |
-| `checkins_sha256` | 36b033344f05 | 36b033344f05 | 36b033344f05 |
-| `assignment` | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories |
-| `assignment_order_sha256` | a032e5f595f9 | a032e5f595f9 | a032e5f595f9 |
-| `calls_per_task` | 400 | 400 | 400 |
-| `seconds_per_task` | 7200 | 7200 | 7200 |
-| `usd_per_task` | 6 | plan quota | plan quota |
-| `stage_cap_usd` | 300 | plan quota | plan quota |
-| `host` | laptop | laptop | laptop |
-| `max_live` | 4 | 2 | 2 |
-| `memory_mb_per_container` | 1280 | 1280 | 1280 |
-| `cpus_per_history` | 2 | 2 | 2 |
-| `container_capacity` | 8 | 8 | 8 |
-| `launch_code_verified` | yes | yes | yes |
+| Parameter | Claude Code | Codex | agy | DeepSeek in Claude Code |
+|---|---|---|---|---|
+| `cli_version` | 2.1.310 | 0.162.1 | 1.4.7 | 2.1.310 |
+| `model` | claude-haiku-5-5[1m] | gpt-6-luna | gemini-3.8-flash-low | deepseek/deepseek-v4.1-flash |
+| `effort` | high | high | CLI default | max |
+| `context_window` | 1000000 | 872000 (effective 828400) | default (unverified) | 1048576 |
+| `auto_compaction` | off | off (limit 860000 above window) | on (cannot be disabled) | off |
+| `boundary_compaction` | /compact via -p --resume | app-server thread/compact/start | /compact turn | /compact via -p --resume |
+| `turn_rules_sha256` | 7d39bae00d2f | 7d39bae00d2f | 7d39bae00d2f | 7d39bae00d2f |
+| `checkins_sha256` | 36b033344f05 | 36b033344f05 | 36b033344f05 | 36b033344f05 |
+| `assignment` | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories |
+| `assignment_order_sha256` | a032e5f595f9 | a032e5f595f9 | a032e5f595f9 | a032e5f595f9 |
+| `calls_per_task` | 400 | 400 | 400 | 400 |
+| `seconds_per_task` | 7200 | 7200 | 7200 | 7200 |
+| `usd_per_task` | 6 | plan quota | plan quota | 6 |
+| `stage_cap_usd` | 300 | plan quota | plan quota | 120 |
+| `host` | laptop | laptop | laptop | laptop |
+| `max_live` | 4 | 4 | 4 | 5 |
+| `memory_mb_per_container` | 1280 | 1280 | 1280 | 1280 |
+| `cpus_per_history` | 2 | 1.5 | 1.5 | 1.5 |
+| `container_capacity` | 8 | 16 | 16 | 16 |
+| `launch_code_verified` | yes | yes | yes | yes |
+| `proxy_route` | anthropic | n/a | n/a | openrouter→Together (no fallbacks) |
 
 ## Feasibility smoke per configuration ($0 except Claude Code, about $10)
 1. Scripted scorer checks: a fast-forward push, a forced overwrite, a rebase.

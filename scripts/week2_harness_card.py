@@ -33,8 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 PLAN = ROOT / "docs" / "sprint" / "plans" / "week2-harness-replication.md"
 OUT = ROOT / "results" / "sprint" / "week2" / "harness"
-COLUMN = {"cc": "Claude Code", "cx": "Codex", "agy": "agy"}
-SCRIPT = {"cc": "week2_harness_cc", "cx": "week2_harness_cx", "agy": "week2_harness_agy"}
+COLUMN = {"cc": "Claude Code", "cx": "Codex", "agy": "agy", "ds": "DeepSeek in Claude Code"}
+SCRIPT = {"cc": "week2_harness_cc", "cx": "week2_harness_cx", "agy": "week2_harness_agy",
+          "ds": "week2_harness_cc"}
 EGRESS_CPUS = 0.5  # every history's egress sidecar (native.common.Egress: --cpus 0.5)
 
 
@@ -152,7 +153,54 @@ def card_cc(running: bool, launch_rev: str) -> dict:
         "cpus_per_history": f"{m.CPUS + EGRESS_CPUS:g}",
         "container_capacity": str(m.MAX_CONTAINERS),
         "launch_code_verified": verified.split(" (")[0],
+        "proxy_route": "anthropic",
         "_launch": (args or "(defaults)") + (f"  [launch code: {verified}]" if running else ""),
+    }
+
+
+def _route(name: str | None) -> str:
+    """The key proxy's upstream for an arm, as the contract writes it."""
+    if name is None:
+        return "anthropic"
+    from compaction.s2.native import key_proxy as KP
+    r = getattr(KP, name, None)
+    pin = ((getattr(r, "body_extra", None) or {}).get("provider") or {}) if r else {}
+    if not pin.get("order"):
+        return f"{name} (no provider pin)"
+    fb = "no fallbacks" if pin.get("allow_fallbacks") is False else "fallbacks allowed"
+    return f"openrouter→{','.join(pin['order'])} ({fb})"
+
+
+def card_ds(max_live: int) -> dict:
+    """DeepSeek V4.1 Flash in the same Claude Code driver (`--arm ds`)."""
+    m = _script("ds")
+    m.select("ds")
+    X, a = m.X, m.arm()
+    from compaction.s2.native import claude_code as CCN
+    env = X.cli_env(SimpleNamespace(token="t"), a)
+    cmd = X.cli_command(arm=a)
+    src = inspect.getsource(X.boundary_compact)
+    launch = (f"uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py --arm ds "
+              f"--max-live {max_live} bulk --go-from-jacob")
+    return {
+        "cli_version": CCN.CLI_VERSION,
+        "model": _flag(cmd, "--model"),
+        "effort": _flag(cmd, "--effort"),
+        "context_window": env.get("CLAUDE_CODE_MAX_CONTEXT_TOKENS", "200000"),
+        "auto_compaction": "off" if env.get("DISABLE_AUTO_COMPACT") == "1" else "on",
+        "boundary_compaction": ("/compact via -p --resume" if '"/compact"' in src
+                                and "resume" in src and "arm=run.arm" in src else "UNKNOWN"),
+        **_shared(m, m.assignment()),
+        "usd_per_task": f"{m.TASK_CAP_USD:g}",
+        "stage_cap_usd": f"{m.CAP_USD:g}",
+        "host": "laptop",
+        "max_live": str(max_live),
+        "memory_mb_per_container": str(m.MEMORY_MB),
+        "cpus_per_history": f"{m.CPUS + EGRESS_CPUS:g}",
+        "container_capacity": str(m.MAX_CONTAINERS),
+        "launch_code_verified": "yes",  # launched from this code
+        "proxy_route": _route(a.route),
+        "_launch": launch,
     }
 
 
@@ -189,6 +237,7 @@ def card_cx(max_live: int, memory_mb: int | None, host: str | None, cpus: float,
         "cpus_per_history": f"{cpus + EGRESS_CPUS:g}",
         "container_capacity": str(capacity),
         "launch_code_verified": "yes",  # launched from this code
+        "proxy_route": "n/a",
         "_launch": launch,
     }
 
@@ -218,6 +267,7 @@ def card_agy(max_live: int, memory_mb: int, host: str | None, cpus: float,
         "cpus_per_history": f"{cpus + EGRESS_CPUS:g}",
         "container_capacity": str(capacity),  # passed explicitly (astra harness-card r1 B1)
         "launch_code_verified": "yes",  # launched from this code
+        "proxy_route": "n/a",
         "_launch": launch,
     }
 
@@ -253,7 +303,10 @@ def write_card(h: str, card: dict, bad: list) -> Path:
     lines = [f"# Design card: {COLUMN[h]} (harness replication)", "",
              (f"Generated {datetime.now(UTC):%Y-%m-%dT%H:%M:%SZ} at {rev} by "
               "`scripts/week2_harness_card.py` from the code and launch arguments, not typed."),
-             f"Launch: `{card['_launch']}`", "", "| Parameter | Value |", "|---|---|"]
+             f"Launch: `{card['_launch']}`",
+             (f"Laptop settings at card time (`native.slots` limits file, changeable on the "
+              f"fly; launch values apply where unset): `{card.get('_settings')}`"),
+             "", "| Parameter | Value |", "|---|---|"]
     lines += [f"| {k} | {v} |" for k, v in card.items() if not k.startswith("_")]
     lines += ["", "## Against the plan's Build contract", ""]
     lines += (["All rows match."] if not bad else
@@ -275,7 +328,9 @@ def main() -> int:
     ap.add_argument("--launch-rev", default="3457d31b", help="cc --running: the launch commit")
     a = ap.parse_args()
     host = None if a.host in (None, "", "local") else a.host
-    if a.harness == "cc":
+    if a.harness == "ds":
+        card = card_ds(a.max_live)
+    elif a.harness == "cc":
         card = card_cc(a.running, a.launch_rev)
     elif a.harness == "cx":
         card = card_cx(a.max_live, a.memory_mb, host, a.cpus, a.capacity)
@@ -283,7 +338,24 @@ def main() -> int:
         if a.memory_mb is None:
             ap.error("agy needs --memory-mb")
         card = card_agy(a.max_live, a.memory_mb, host, a.cpus, a.capacity)
+    from compaction.s2.native import slots as SL
+    try:  # the effective settings next to the launch values (astra ds-build r2 m5)
+        card["_settings"] = SL._limits(SL.LIMITS) or "none (launch values)"
+    except Exception as e:  # noqa: BLE001
+        card["_settings"] = f"unreadable: {e}"
     bad = diff(card, contract(a.harness))
+    if a.harness != "cc":  # laptop runs: the effective settings must match too (r3 m2)
+        st = card["_settings"]
+        if isinstance(st, str) and st.startswith("unreadable"):
+            bad.append(("laptop_settings", "readable", st))
+        elif isinstance(st, dict):
+            if "__capacity__" in st and str(st["__capacity__"]) != card["container_capacity"]:
+                bad.append(("effective container_capacity", card["container_capacity"],
+                            str(st["__capacity__"])))
+            if "__cpu_tenths__" in st and f"{st['__cpu_tenths__'] / 10 + EGRESS_CPUS:g}" \
+                    != card["cpus_per_history"]:
+                bad.append(("effective cpus_per_history", card["cpus_per_history"],
+                            f"{st['__cpu_tenths__'] / 10 + EGRESS_CPUS:g}"))
     path = write_card(a.harness, card, bad)
     print(f"{path.relative_to(ROOT)}: {'MATCH' if not bad else f'{len(bad)} MISMATCH'}")
     for k, w, c in bad:

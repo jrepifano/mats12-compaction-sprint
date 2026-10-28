@@ -123,3 +123,98 @@ def test_a_malformed_entry_is_corruption_not_an_empty_ledger(tmp_path, bad):
                      state=state, lock=lock, poll_s=0, timeout_s=0)):
         pass
     assert state.read_text() == bad
+
+
+def test_a_prefix_limit_holds_new_reservations_and_is_reread(tmp_path):
+    state, lock, lim = tmp_path / "s.json", tmp_path / "s.lock", tmp_path / "lim.json"
+    kw = {"state": state, "lock": lock, "limits": lim, "poll_s": 0, "names": list}
+    SL.set_limits(["cx-=2", "agy-=4"], path=lim, lock=lock)
+    with SL.reserve("h", "a", n=2, prefix="cx-", capacity=8, **kw):
+        with (pytest.raises(TimeoutError),  # 2 held + 2 > the limit of 2, capacity has room
+              SL.reserve("h", "b", n=2, prefix="cx-", capacity=8, timeout_s=0, **kw)):
+            pass
+        with SL.reserve("h", "c", n=2, prefix="agy-", capacity=8, **kw):  # other prefixes
+            pass
+        SL.set_limits(["cx-=-"], path=lim, lock=lock)  # removed: re-read on the next poll
+        with SL.reserve("h", "d", n=2, prefix="cx-", capacity=8, **kw):
+            pass
+    assert SL._limits(lim) == {"agy-": 4}
+
+
+def test_a_malformed_limits_file_holds_everything(tmp_path):
+    state, lock, lim = tmp_path / "s.json", tmp_path / "s.lock", tmp_path / "lim.json"
+    lim.write_text('{"cx-": -1}')
+    with (pytest.raises(TimeoutError),
+          SL.reserve("h", "a", n=1, prefix="other-", capacity=8, names=list, state=state,
+                     lock=lock, limits=lim, poll_s=0, timeout_s=0)):
+        pass
+    with pytest.raises(ValueError):
+        SL.set_limits(["cx-=two"], path=tmp_path / "x.json", lock=lock)
+
+
+def test_the_real_limits_file_applies_only_to_the_default_ledger(tmp_path, monkeypatch):
+    lim = tmp_path / "lim.json"
+    lim.write_text('{"p-": 0}')
+    monkeypatch.setattr(SL, "LIMITS", lim)
+    with SL.reserve("h", "a", n=1, prefix="p-", capacity=8, names=list, poll_s=0,
+                    state=tmp_path / "s.json", lock=tmp_path / "s.lock"):
+        pass  # a caller's own ledger (tests) ignores the machine's limits
+
+
+def test_laptop_capacity_and_cpus_are_settings_read_on_the_fly(tmp_path, monkeypatch):
+    state, lock, lim = tmp_path / "s.json", tmp_path / "s.lock", tmp_path / "lim.json"
+    kw = {"state": state, "lock": lock, "limits": lim, "poll_s": 0, "timeout_s": 0}
+    SL.set_limits(["__capacity__=2"], path=lim, lock=lock)
+    with (pytest.raises(TimeoutError),  # the file's 2 binds the laptop, not the call's 8
+          SL.reserve("laptop", "a", n=4, prefix="p-", capacity=8, names=list, **kw)):
+        pass
+    with SL.reserve("ssh://rig", "b", n=4, prefix="p-", capacity=8, names=list, **kw):
+        pass  # other hosts never read the laptop's settings
+    SL.set_limits(["__capacity__=16"], path=lim, lock=lock)  # raised on the fly
+    with SL.reserve("laptop", "c", n=10, prefix="p-", capacity=8, names=list, **kw):
+        pass
+    monkeypatch.setattr(SL, "LIMITS", lim)
+    assert SL.setting("__capacity__", 8) == 16 and SL.setting("__cpu_tenths__", 15) == 15
+    SL.set_limits(["__cpu_tenths__=10"], path=lim, lock=lock)
+    assert SL.setting("__cpu_tenths__", 15) == 10
+    lim.write_text("not json")
+    with pytest.raises(SL.LedgerCorrupt):
+        SL.setting("__capacity__", 8)
+
+
+def test_settings_outside_their_approved_range_close_admission(tmp_path):
+    state, lock, lim = tmp_path / "s.json", tmp_path / "s.lock", tmp_path / "lim.json"
+    for bad in ('{"__capacity__": 100}', '{"__cpu_tenths__": 0}', '{"__cpu_tenths__": 40}'):
+        lim.write_text(bad)
+        with pytest.raises(SL.LedgerCorrupt):
+            SL.setting("__capacity__", 8, path=lim)
+        with (pytest.raises(TimeoutError),
+              SL.reserve("laptop", "a", n=1, prefix="p-", capacity=8, names=list, state=state,
+                         lock=lock, limits=lim, poll_s=0, timeout_s=0)):
+            pass
+    lim.unlink()
+    with pytest.raises(SL.LedgerCorrupt):  # never written either
+        SL.set_limits(["__capacity__=17"], path=lim, lock=lock)
+    assert not lim.exists()
+
+
+def test_a_hold_counts_for_a_running_process_and_ends_with_it(tmp_path, monkeypatch):
+    """astra ds-build r2 B1: the legacy Haiku bulk holds 8 slots until it exits."""
+    import os
+    state, lock = tmp_path / "s.json", tmp_path / "s.lock"
+    SL.hold("laptop", "legacy-haiku", n=8, prefix="native-cc-chain", pid=os.getpid(),
+            state=state, lock=lock)
+    kw = {"state": state, "lock": lock, "limits": None, "poll_s": 0, "timeout_s": 0}
+    names = ["native-cc-chain-a", "native-cc-chain-egress-a"]  # covered by the hold
+    with (SL.reserve("laptop", "b", n=8, prefix="native-ds-chain", capacity=16,
+                     names=lambda: names, **kw),
+          pytest.raises(TimeoutError),  # 8 held + 8 reserved = 16: full
+          SL.reserve("laptop", "c", n=2, prefix="native-cx-chain", capacity=16,
+                     names=lambda: names, **kw)):
+        pass
+    monkeypatch.setattr(SL, "_alive", lambda pid: pid != os.getpid())  # the process ended
+    with SL.reserve("laptop", "d", n=16, prefix="native-ds-chain", capacity=16,
+                    names=list, **kw):
+        pass
+    with pytest.raises(ValueError):
+        SL.hold("laptop", "x", n=2, prefix="p", pid=os.getpid(), state=state, lock=lock)
