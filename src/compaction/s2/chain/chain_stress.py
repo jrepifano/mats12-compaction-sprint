@@ -78,8 +78,10 @@ PRELAUNCH_GATES = ("stub_chain_stress", "push_check_all", "live_smoke_chain_stre
 # M6). 2 = after astra r1/r2: the 5-task stub with scorers, placebo and installed-file scan;
 # push-check with token lists; the live smoke with state checks. Bump on any change to what a
 # smoke checks.
-SMOKE_VERSIONS = {"stub_chain_stress": 2, "push_check_all": 2, "live_smoke_chain_stress": 3}
+SMOKE_VERSIONS = {"stub_chain_stress": 3, "push_check_all": 2, "live_smoke_chain_stress": 3}
 # 3 (live smoke, astra r3): scorer completeness via nchain.scorer_unknown, provenance bound.
+# 3 (stub, laptop 27 Oct): the opening's cue scan stops where the instance template resumes;
+# leftover containers are the smoke's own run ids only.
 
 
 def gate_problems(gates: dict, names, fingerprint: dict, *,

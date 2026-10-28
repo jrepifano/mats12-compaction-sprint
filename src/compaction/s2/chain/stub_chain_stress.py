@@ -26,13 +26,16 @@ orders goes to results/sprint/week2/chain_stress/design_card.md.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from compaction.deepswe import sandbox as SB
 from compaction.deepswe.sandbox import Invocation
+from compaction.s2 import mini_prompts as MP
 from compaction.s2.chain import chain_stress as CS
 from compaction.s2.chain import config as CC
 from compaction.s2.chain import driver as D
@@ -250,6 +253,43 @@ def installed_check(checks: list, name: str, res: dict, repo: str) -> None:
             "unread": [p for p, f in files.items() if f["rc"] != 0 or not f["bytes"]]})
 
 
+# where mini-swe-agent's instance template resumes after the task text
+TEMPLATE_RESUMES = MP.INSTANCE_TEMPLATE.split("{{task}}", 1)[1].split("\n\n## ", 1)[0]
+
+
+@contextlib.contextmanager
+def own_runs():
+    """The run ids (emx.run labels) of every container this process starts while the block
+    runs: the smoke's own, so a container another driver starts on the same host meanwhile
+    isn't counted as the smoke's leftover (laptop stub, 27 Oct: experiment 2's rerun)."""
+    seen: set[str] = set()
+    orig = SB.Invocation.start
+
+    def start(self, image, **kw):
+        seen.add(self.run_id)
+        return orig(self, image, **kw)
+    SB.Invocation.start = start
+    try:
+        yield seen
+    finally:
+        SB.Invocation.start = orig
+
+
+def own_left(ps_out: str, mine: set[str]) -> list[str]:
+    """The container ids in `docker ps --format '{{.ID}}\t{{.Label "emx.run"}}'` output whose
+    emx.run label is one of `mine`."""
+    rows = [x.split("\t") for x in ps_out.splitlines() if x.strip()]
+    return [r[0] for r in rows if len(r) > 1 and r[1] in mine]
+
+
+def own_names(ours: list[str] | str, run_ids) -> list[str] | str:
+    """docker_snapshot()["ours"] (container names `<purpose>-<run_id>-<suffix>`, or an error
+    string, kept as the failure) narrowed to the containers of `run_ids`."""
+    if isinstance(ours, str):
+        return ours
+    return [c for c in ours if any(f"-{r}-" in c for r in run_ids)]
+
+
 def harness_cue_hits(msgs: list[dict], i: int, s: N.Settings, lead: bool) -> dict:
     """Cue words (CS.CUE_WORD_RE: trap, test, eval, experiment) in the parts of a phase the
     harness itself adds: the lead-in, the task ending, the tag line and any addendum (the
@@ -259,7 +299,10 @@ def harness_cue_hits(msgs: list[dict], i: int, s: N.Settings, lead: bool) -> dic
     template ("Test edge cases") are ordinary software text, as in task chaining; the rule
     covers words the harness introduces that reveal a test."""
     opening = msgs[i]["content"]
-    parts = {"tail of the opening": opening[opening.rfind(s.task_ending.split("{", 1)[0]):]}
+    start = opening.rfind(s.task_ending.split("{", 1)[0])
+    end = opening.rfind(TEMPLATE_RESUMES)  # the template's own text is exempt (above)
+    end = end if end > start else -1
+    parts = {"tail of the opening": opening[start:end if end >= 0 else None]}
     if lead:
         parts["lead-in"] = opening.split("\n\n", 1)[0]
     tools = [m for m in msgs[i + 1:] if m.get("role") == "tool"][:N_PROBES]
@@ -411,8 +454,13 @@ def run(root: Path, grade: bool = True, config: Path = CONFIG,
         keep_states: bool = False) -> dict:
     """The smoke; with `keep_states`, su1's after_task1 and chain-end states (state.json, index,
     scorer homes, kept images) stay for the exploitation stub, listed in kept_for_fork.json and
-    the output. A later run refuses while that list exists (--remove-kept-states first)."""
-    root = Path(root)
+    the output. A later run refuses while that list exists (--remove-kept-states first). The
+    output's `run_ids` are its containers' emx.run labels (own_runs)."""
+    with own_runs() as mine:
+        return _run(Path(root), grade, config, keep_states, mine)
+
+
+def _run(root: Path, grade: bool, config: Path, keep_states: bool, mine: set[str]) -> dict:
     if kept_for_fork(root):
         raise RuntimeError(f"{root / KEPT_FOR_FORK} lists states kept for the exploitation stub "
                            f"({[x['keep_tag'] for x in kept_for_fork(root)]}); remove them with "
@@ -428,7 +476,6 @@ def run(root: Path, grade: bool = True, config: Path = CONFIG,
                         capture_output=True, text=True, timeout=60, check=False)
     if q0.returncode != 0:
         raise RuntimeError(f"docker ps failed before the smoke: rc={q0.returncode}")
-    before_ids = {c[:12] for c in q0.stdout.split()}
     checks: list[dict] = []
     bad = CS.code_mismatches(cfg)
     _check(checks, "config is what the code runs (code_mismatches)", not bad,
@@ -589,11 +636,12 @@ def run(root: Path, grade: bool = True, config: Path = CONFIG,
            not left and sorted(set(remaining)) == sorted(held) and all(held) and
            all(Path(x["traps_home"] or "").is_dir() for x in fork),
            {"not_removed": left, "remaining": sorted(set(remaining)), "kept_for_fork": fork})
-    q = subprocess.run(["docker", "ps", "-q", "--filter", f"label=emx.sandbox={CC.PURPOSE}"],
+    q = subprocess.run(["docker", "ps", "-a", "--filter", f"label=emx.sandbox={CC.PURPOSE}",
+                        "--format", "{{.ID}}\t{{.Label \"emx.run\"}}"],
                        capture_output=True, text=True, timeout=60, check=False)
-    # containers of ours that were already running before the smoke (another driver's on the
-    # same host) are not the smoke's
-    left_c = [c for c in q.stdout.split() if c[:12] not in before_ids]
+    # only the smoke's own containers (own_runs): another driver's on the same host, running
+    # before the smoke or started during it, are not the smoke's
+    left_c = own_left(q.stdout, mine)
     _check(checks, "no containers left", q.returncode == 0 and not left_c,
            left_c if q.returncode == 0 else f"docker ps rc={q.returncode}")
     out = {"pass": all(c["ok"] for c in checks), "checks": checks,
@@ -601,7 +649,8 @@ def run(root: Path, grade: bool = True, config: Path = CONFIG,
                                                 "rewrite", "teammate_lost", "pass_tip",
                                                 "auto_compactions")}
                     for k, r in {**rows, "su1-from1": xrow}.items()},
-           "states": idx, "fingerprint": fp, "scoring": scoring, "kept_for_fork": fork}
+           "states": idx, "fingerprint": fp, "scoring": scoring, "kept_for_fork": fork,
+           "run_ids": sorted(mine)}
     D.SE.dump(root / "stub_chain_stress.json", out)
     return out
 

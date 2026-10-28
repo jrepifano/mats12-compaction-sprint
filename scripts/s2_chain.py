@@ -864,16 +864,14 @@ def cmd_stub_chain_stress(a) -> int:
     except ValueError as e:
         sys.exit(f"refusing: {e}")
     grade = not a.no_grade and a.host != "laptop"  # no graders on the laptop (8 GB each)
-    before = D.docker_snapshot()
     try:
         out = SCS.run(root, grade=grade, keep_states=a.keep_states)
     finally:
         left = SCS.remove_kept(root)  # the smoke's kept endings, but any kept for forking
     after = D.docker_snapshot()
-    # another driver's containers running since before the smoke are not the smoke's
-    ours = after["ours"] if isinstance(after["ours"], str) else \
-        [c for c in after["ours"] if c not in (before["ours"] if isinstance(before["ours"], list)
-                                              else [])]
+    # only the smoke's own containers (their names carry its run ids): another driver's,
+    # running before the smoke or started during it, are not the smoke's
+    ours = SCS.own_names(after["ours"], out.get("run_ids") or [])
     if left or ours:
         out["pass"] = False
         out["checks"].append({"name": "smoke images and containers removed", "ok": False,

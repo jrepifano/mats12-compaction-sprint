@@ -1157,3 +1157,67 @@ def test_r3_chain_resume_provenance():
     rec, diff = CS.resume_provenance(a, {"source_sha256": "s1",
                                          "images": {"t1": {"image": "i1", "id": "y1"}}})
     assert diff and "y1 here" in diff[0]
+
+
+def test_harness_cue_scan_stops_where_the_instance_template_resumes(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    opening = L.instance_message(N.opening_text(_task(ps.task), s, ps, "main"), None)
+    assert "Test edge cases" in opening  # the template's own words, after the harness's tail
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": opening}]
+    assert SCS.harness_cue_hits(msgs, 1, s, lead=False) == {}
+    i = opening.find(SCS.TEMPLATE_RESUMES)
+    assert i > 0
+    bad = [msgs[0], {"role": "user", "content": opening[:i] + " Part of an experiment."
+                     + opening[i:]}]
+    assert SCS.harness_cue_hits(bad, 1, s, lead=False) == {"tail of the opening": ["experiment"]}
+
+
+def test_own_runs_records_only_this_blocks_invocations(monkeypatch):
+    from compaction.deepswe import sandbox as SB
+    calls = []
+    monkeypatch.setattr(SB.Invocation, "start", lambda self, image, **kw: calls.append(image))
+    outside = SB.Invocation("p")
+    outside.start("before")
+    with SCS.own_runs() as mine:
+        a, b = SB.Invocation("p"), SB.Invocation("p")
+        a.start("x")
+        a.start("y")
+        b.start("z")
+        SB.Invocation("p")  # never starts a container
+    outside.start("after")
+    assert mine == {a.run_id, b.run_id} and calls == ["before", "x", "y", "z", "after"]
+
+
+def test_marker_inside_harness_text_doesnt_hide_a_later_cue(cfg):
+    from compaction.s2 import loop as L
+    s = N.settings_from_config(cfg)
+    ps = N.push_setup("kcp-go-multiplexed-kcp-streams")
+    text = N.opening_text(_task(ps.task), s, ps, "main") + SCS.TEMPLATE_RESUMES + " An eval."
+    msgs = [{"role": "system", "content": "s"},
+            {"role": "user", "content": L.instance_message(text, None)}]
+    assert SCS.harness_cue_hits(msgs, 1, s, lead=False) == {"tail of the opening": ["eval"]}
+
+
+def test_leftover_filters_keep_only_the_smokes_containers():
+    ps_out = "aaa\tr1\nbbb\tforeign\nccc\t\nddd\tr2\n"  # ccc: no label (not ours)
+    assert SCS.own_left(ps_out, {"r1", "r2"}) == ["aaa", "ddd"]
+    assert SCS.own_left("", {"r1"}) == []
+    names = ["s2-chaining-r1-1a2b", "s2-chaining-foreign-3c4d", "s2-chaining-r10-5e6f"]
+    assert SCS.own_names(names, ["r1"]) == ["s2-chaining-r1-1a2b"]
+    assert SCS.own_names("docker ps failed", ["r1"]) == "docker ps failed"  # stays a failure
+
+
+def test_own_runs_restores_start_after_an_exception_and_nesting(monkeypatch):
+    from compaction.deepswe import sandbox as SB
+    monkeypatch.setattr(SB.Invocation, "start", lambda self, image, **kw: None)
+    orig = SB.Invocation.start
+    with pytest.raises(RuntimeError), SCS.own_runs():
+        raise RuntimeError("boom")
+    assert SB.Invocation.start is orig
+    with SCS.own_runs() as outer:
+        with SCS.own_runs() as inner:
+            SB.Invocation("p").start("x")
+        assert SB.Invocation.start is not orig
+    assert SB.Invocation.start is orig and outer == inner and len(outer) == 1
