@@ -911,6 +911,41 @@ def cmd_stub_chain_stress(a) -> int:
     return 0 if out["pass"] else 4
 
 
+def prelaunch_problems(st: dict, cfg: dict, *, accept_new_provenance: bool = False,
+                       image_ids=None, source=None) -> list[str]:
+    """Experiment 4's prelaunch gates for chain-go: each passed under this design and its current
+    smoke version, with the images (astra r3 B1) and the source they ran. Resuming under changed
+    code (`accept_new_provenance`) still requires the images; the gates' other source is then
+    recorded in the state as accepted (`gate_source_accepted`), not refused."""
+    from compaction.s2.chain import chain_stress as CS
+    from compaction.s2.chain import week2 as W
+    bad = CS.gate_problems(st["gates"], CS.PRELAUNCH_GATES, W.fingerprint(cfg))
+    if not bad:
+        gt = sorted({t for g in CS.PRELAUNCH_GATES
+                     for t in ((st["gates"][g].get("provenance") or {}).get("images") or {})})
+        ids = image_ids if image_ids is not None else {
+            t: d.get("id") for t, d in CS.image_digests(CS.task_infos(gt)).items()}
+        src = source or CS.source_fingerprint()["sha256"]
+        moved = {g: (st["gates"][g].get("provenance") or {}).get("source_sha256")
+                 for g in CS.PRELAUNCH_GATES
+                 if (st["gates"][g].get("provenance") or {}).get("source_sha256") != src}
+        for g in CS.PRELAUNCH_GATES:
+            bad += CS.provenance_problems(st["gates"][g].get("provenance"), rig_ids=ids,
+                                          where=g,
+                                          source_sha256=None if accept_new_provenance else src)
+        if accept_new_provenance:  # a source can only be accepted as changed if it was recorded
+            bad += [f"{g}: no recorded source fingerprint" for g, h in moved.items() if not h]
+        if moved and accept_new_provenance and not bad:
+            st.setdefault("gate_source_accepted", []).append(
+                {"utc": D.utc(), "now": src, "gates": moved})
+            D.save_state(st)
+            D.status(f"chain-go: gates ran under source {sorted(map(str, set(moved.values())))}, now "
+                     f"{src[:12]}: accepted (--accept-new-provenance, recorded)")
+    if cfg["parallelism"].get("grader_memory_mb"):  # a reduced grader: the rig's check
+        bad += CS.grader_gate_problems(st["gates"], W.fingerprint(cfg))
+    return bad
+
+
 def cmd_chain_go(a) -> int:
     """The chains of a chain config, after its plan check. For experiment 4 (chain stress) also
     its stub gate and `chain_stress.code_mismatches`; `--arms` launches only those arms'
@@ -938,18 +973,7 @@ def cmd_chain_go(a) -> int:
             D.status(f"chain stress: {note}")
     _require(a, st, list(CS.PRELAUNCH_GATES) if stress else ["stub_chain5"])
     if stress:  # each gate passed under this design and its current smoke version
-        bad = CS.gate_problems(st["gates"], CS.PRELAUNCH_GATES, W.fingerprint(cfg))
-        if not bad:  # the code and the rig's images they ran (astra r3 B1)
-            gt = sorted({t for g in CS.PRELAUNCH_GATES
-                         for t in ((st["gates"][g].get("provenance") or {}).get("images")
-                                   or {})})
-            ids = {t: d.get("id") for t, d in CS.image_digests(CS.task_infos(gt)).items()}
-            src = CS.source_fingerprint()["sha256"]
-            for g in CS.PRELAUNCH_GATES:
-                bad += CS.provenance_problems(st["gates"][g].get("provenance"),
-                                              source_sha256=src, rig_ids=ids, where=g)
-        if cfg["parallelism"].get("grader_memory_mb"):  # a reduced grader: the rig's check
-            bad += CS.grader_gate_problems(st["gates"], W.fingerprint(cfg))
+        bad = prelaunch_problems(st, cfg, accept_new_provenance=a.accept_new_provenance)
         if bad:
             sys.exit("refusing: prelaunch gates:\n  " + "\n  ".join(bad))
     if st.get("halted"):
@@ -984,8 +1008,8 @@ def cmd_chain_go(a) -> int:
         run, after = CS.launch_plan(run, chains)
         ids = {c.id for c in run}
         missing = sorted({pid for pids in after.values() for pid in pids
-                          if pid not in ids and
-                          (st.get("chains", {}).get(pid) or {}).get("state") != "done"})
+                          if pid not in ids and not N.chain_settled(
+                              (st.get("chains", {}).get(pid) or {}).get("state"))})
         if missing:
             sys.exit(f"refusing: {sorted(after)} start only after every unrelated chain and "
                      f"fresh control is done; not done and not in this launch: {missing} "

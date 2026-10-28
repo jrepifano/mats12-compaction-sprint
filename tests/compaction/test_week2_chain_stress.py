@@ -1348,3 +1348,110 @@ def test_live_smoke_checks_take_image_ids_from_the_smoke_never_tags(tmp_path, mo
     assert seen == ["sha256:aa"]  # t2 has no recorded Id: no verifier, so nothing exempt
     assert cue["p1: no trap cue in what the harness showed the agent"]["verifier"] is True
     assert cue["p2: no trap cue in what the harness showed the agent"]["verifier"] is False
+
+
+def test_a_failed_compaction_ends_the_chain_and_is_recorded(fake, cfg, tmp_path, driver_offline,
+                                                            monkeypatch):
+    s = N.settings_from_config(cfg)
+    tasks_ = {t: _task(t) for t in U1}
+    ch = N.Chain("u4", "unrelated", tuple(N.Phase(t, "switch") for t in U1[:3]))
+    calls = []
+
+    def empty(msgs, model, run_id, prev):
+        calls.append(run_id)
+        raise RuntimeError("empty summary from pi (empty: ['history']; finish: ['length'])")
+    monkeypatch.setattr(N, "compact_messages", empty)
+    st = {"chains": {}}
+    rec = N.run_chain(ch, st, None, None, tasks_, s, _model_for, False, tmp_path)
+    assert rec["state"] == "halted b1: compaction failed" and N.chain_settled(rec["state"])
+    (f,) = rec["compaction_failures"]
+    assert f["boundary"] == 1 and f["kind"] == "boundary" and "finish: ['length']" in f["error"]
+    assert not (tmp_path / "chains" / "u4" / "p2").exists()  # task 2 never ran
+    # ended: a later chain-go neither retries the compaction nor runs task 2
+    assert N.run_chain(ch, st, None, None, tasks_, s, _model_for, False, tmp_path) is rec
+    assert calls == ["u4:b1"] and len(rec["compaction_failures"]) == 1
+
+
+def test_held_arm_starts_after_chains_ended_by_failed_compactions(monkeypatch):
+    monkeypatch.setattr(D, "status", lambda line: None)
+    assert N.chain_settled("done") and N.chain_settled("halted b5: compaction failed")
+    for st_ in ("halted p2: failed", "running p3", "halted b4: compaction failed later", None,
+                "halted b4: compaction failed\n", "halted b\u0664: compaction failed"):
+        assert not N.chain_settled(st_)
+    started = []
+    ends = {"u4": "halted b4: compaction failed", "u7": "halted b5: compaction failed",
+            "u2": "halted p2: failed"}
+
+    def fake_run_chain(c, st, *a, **k):
+        started.append(c.id)
+        st["chains"][c.id] = {"state": ends.get(c.id, "done")}
+        return st["chains"][c.id]
+    monkeypatch.setattr(N, "run_chain", fake_run_chain)
+    mk = [N.Chain(i, "unrelated" if i.startswith("u") else "within_task", ())
+          for i in ("u1", "u4", "u7", "w1")]
+    out = N.run_chains(mk, {"chains": {}}, None, None, {}, None, concurrency=2,
+                       after={"w1": ["u1", "u4", "u7"]})
+    assert started[-1] == "w1" and out["w1"] == "done"
+    started.clear()
+    mk2 = mk[:1] + [N.Chain("u2", "unrelated", ())] + mk[3:]
+    out = N.run_chains(mk2, {"chains": {}}, None, None, {}, None, concurrency=2,
+                       after={"w1": ["u1", "u2"]})
+    assert "w1" not in started and out["w1"].startswith("held")  # other halts still hold
+
+
+def test_prelaunch_gates_accept_a_source_change_only_when_asked(cfg, tmp_path, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_chain_cli", CC.REPO_ROOT / "scripts" /
+                                                  "s2_chain.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(D, "save_state", lambda st: None)
+    monkeypatch.setattr(D, "status", lambda line: None)
+    fp = W.fingerprint(cfg)
+    prov = {"source_sha256": "old", "images": {"t1": {"image": "i:1", "id": "sha256:1"}}}
+    st = {"gates": {g: {"pass": True, "fingerprint": fp, "version": CS.SMOKE_VERSIONS[g],
+                        "host": "laptop", "imported": {"utc": "x"}, "provenance": prov}
+                    for g in CS.PRELAUNCH_GATES}}
+    same = {"t1": "sha256:1"}
+    assert cli.prelaunch_problems(st, cfg, image_ids=same, source="old") == []
+    bad = cli.prelaunch_problems(st, cfg, image_ids=same, source="new")
+    assert len(bad) == 3 and all("ran source old" in b for b in bad)
+    assert cli.prelaunch_problems(st, cfg, accept_new_provenance=True, image_ids=same,
+                                  source="new") == []
+    (acc,) = st["gate_source_accepted"]
+    assert acc["now"] == "new" and set(acc["gates"].values()) == {"old"}
+    # images still have to match, even when the source change is accepted
+    moved = cli.prelaunch_problems(st, cfg, accept_new_provenance=True,
+                                   image_ids={"t1": "sha256:2"}, source="new")
+    assert len(moved) == 3 and all("sha256:2" in b for b in moved)
+
+
+
+def test_a_chain_halted_before_failures_were_recorded_gets_a_backfill(fake, cfg, tmp_path,
+                                                                     driver_offline):
+    s = N.settings_from_config(cfg)
+    ch = N.Chain("u7", "unrelated", tuple(N.Phase(t, "switch") for t in U1[:3]))
+    st = {"chains": {"u7": {"state": "halted b5: compaction failed", "phase_runs": {}}}}
+    rec = N.run_chain(ch, st, None, None, {}, s, _model_for, False, tmp_path)
+    (f,) = rec["compaction_failures"]
+    assert f["boundary"] == 5 and f["utc"] is None and f["backfilled_utc"]
+    N.run_chain(ch, st, None, None, {}, s, _model_for, False, tmp_path)
+    assert len(rec["compaction_failures"]) == 1  # backfilled once
+
+
+def test_accepting_a_new_source_needs_a_recorded_one(cfg, monkeypatch):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("s2_chain_cli2", CC.REPO_ROOT / "scripts" /
+                                                  "s2_chain.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(D, "save_state", lambda st: None)
+    monkeypatch.setattr(D, "status", lambda line: None)
+    fp = W.fingerprint(cfg)
+    gates = {g: {"pass": True, "fingerprint": fp, "version": CS.SMOKE_VERSIONS[g],
+                 "host": "rig", "provenance": {"images": {"t1": {"image": "i", "id": "sha256:1"}},
+                                                **({"source_sha256": "old"} if i else {})}}
+             for i, g in enumerate(CS.PRELAUNCH_GATES)}
+    bad = cli.prelaunch_problems({"gates": gates}, cfg, accept_new_provenance=True,
+                                 image_ids={"t1": "sha256:1"}, source="new")
+    assert bad == [f"{CS.PRELAUNCH_GATES[0]}: no recorded source fingerprint"]

@@ -51,6 +51,7 @@ Design parameters come from the experiment's config (`week2.load_config`, kind "
 from __future__ import annotations
 
 import json
+import re
 import time
 import traceback
 from collections.abc import Callable
@@ -600,6 +601,18 @@ def run_phase_under_stage(chain: Chain, k: int, task: TaskInfo, setup: PushSetup
     return r.to_dict()
 
 
+# A chain whose boundary compaction failed (pi's summary came back empty) has ended: the failure
+# is a chain outcome, not a pending chain. It isn't retried again, and an arm held until the
+# first arms are done may start (Research Advisor, 28 Oct, launch mechanics under Jacob's
+# delegation, after u4 and u7 halted at boundaries 4 and 5).
+COMPACTION_FAILED = re.compile(r"halted b([0-9]+): compaction failed")  # fullmatch only
+
+
+def chain_settled(state) -> bool:
+    """Done, or ended by a failed compaction (COMPACTION_FAILED)."""
+    return state == "done" or bool(COMPACTION_FAILED.fullmatch(str(state or "")))
+
+
 def run_chain(chain: Chain, st: dict, route: C.Route | None, spend, tasks_: dict, s: Settings,
               model_for: Callable | None = None, grade: bool = True, root: Path | None = None,
               probe_visibility: bool = False, fingerprint: dict | None = None,
@@ -614,6 +627,13 @@ def run_chain(chain: Chain, st: dict, route: C.Route | None, spend, tasks_: dict
             repair_states(rec, chain, s, root, fingerprint)
             D.save_state(st)
         return rec
+    if (m := COMPACTION_FAILED.fullmatch(str(rec["state"]))):
+        if not rec.get("compaction_failures"):  # halted before failures were recorded
+            rec["compaction_failures"] = [{
+                "boundary": int(m.group(1)), "utc": None, "backfilled_utc": D.utc(),
+                "error": "recorded before compaction_failures existed: see the status log"}]
+            D.save_state(st)
+        return rec  # ended by its failed compaction (above)
     prefix: list[dict] | None = None
     prev: dict | None = None
     summary: Summary | None = None
@@ -710,6 +730,8 @@ def run_chain(chain: Chain, st: dict, route: C.Route | None, spend, tasks_: dict
                 D.halt(st, "chains", f"stage cap refused boundary {k} of {chain.id}")
             except Exception as e:  # noqa: BLE001
                 rec["state"] = f"halted b{k}: compaction failed"
+                rec.setdefault("compaction_failures", []).append(
+                    {"boundary": k, "kind": kind, "utc": D.utc(), "error": str(e)[:1000]})
                 D.save_state(st)
                 D.status(f"chain {chain.id} boundary {k}: compaction failed: {str(e)[:200]}")
                 return rec
@@ -990,8 +1012,8 @@ def run_chains(chains: list[Chain], st: dict, route, spend, tasks_: dict, s: Set
                         futs[pid].result()
                     except BaseException as e:  # noqa: BLE001 - raised below
                         errors.append(e)
-            not_done = [pid for pid in after[c.id]
-                        if ((st.get("chains") or {}).get(pid) or {}).get("state") != "done"]
+            not_done = [pid for pid in after[c.id] if not chain_settled(
+                ((st.get("chains") or {}).get(pid) or {}).get("state"))]
             if not_done:
                 out[c.id] = f"held: waits for {not_done}"
                 D.status(f"chain {c.id} held: its arm starts only after {not_done} are done")
