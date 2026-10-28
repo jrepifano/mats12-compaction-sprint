@@ -203,8 +203,12 @@ class KeyProxy:
         s = req.get("system")
         text = "\n".join(b.get("text", "") for b in s if isinstance(b, dict)) \
             if isinstance(s, list) else (s or "")
-        self.system = {"sha256": hashlib.sha256(text.encode()).hexdigest(), "chars": len(text),
-                       "head": text[:200]}
+        # the CLI's per-session billing header line (its cc_version suffix varies) is left out
+        # of the fingerprint, so equal prompts hash equal across sessions (smoke, 28 Oct)
+        body = "\n".join(x for x in text.split("\n")
+                         if not x.startswith("x-anthropic-billing-header:"))
+        self.system = {"sha256": hashlib.sha256(body.encode()).hexdigest(), "chars": len(text),
+                       "head": body[:200]}
 
     def handler(self):
         proxy = self

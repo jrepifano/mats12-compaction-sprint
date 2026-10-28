@@ -1,7 +1,7 @@
 """Week-2 harness replication, Claude Code (plan docs/sprint/plans/week2-harness-replication.md).
 
     uv run python scripts/week2_harness_cc.py init                 # the stage's caps file ($0)
-    uv run python scripts/week2_harness_cc.py smoke --go-from-jacob [--remote divergent]
+    uv run --with fastmcp==4.1.3 python scripts/week2_harness_cc.py smoke --go-from-jacob [--remote divergent]
 
 `smoke` runs one history (both tasks) on the laptop's Docker and prints its checks: the user
 turns, the one boundary compaction, `which git` from the agent's shell, the first stage, the
