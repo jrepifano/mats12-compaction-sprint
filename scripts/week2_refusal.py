@@ -1283,18 +1283,27 @@ def cmd_analyze(args: argparse.Namespace, cfg: dict) -> int:
         topup_histories=topup_ids,
         versions=tuple(cfg["refusal"]["versions"]),
     )
-    amended_p = out / "amendments.json"  # 3c: the primary without the rescued histories
+    amended_p = out / "amendments.json"  # 3c: sensitivities (Advisor, 28 Oct)
     if amended_p.exists():
-        amended = set(json.loads(amended_p.read_text()))
-        res["sensitivity_without_amended"] = {
-            "histories_left_out": sorted(amended),
-            **RF.analyze(
-                [r for r in rows if r["history"] not in amended],
-                identical=identical - amended, subgroup=subgroup - amended,
-                kept=kept - amended, alpha=float(cfg["refusal"]["alpha"]),
+        amend = json.loads(amended_p.read_text())
+
+        def without(leave: set[str]) -> dict:
+            return {"histories_left_out": sorted(leave), **RF.analyze(
+                [r for r in rows if r["history"] not in leave],
+                identical=identical - leave, subgroup=subgroup - leave, kept=kept - leave,
+                alpha=float(cfg["refusal"]["alpha"]),
                 runs_per_version=int(cfg["refusal"]["runs_per_version"]),
-                planned_histories=(planned_h - amended) if planned_h is not None else None,
+                planned_histories=(planned_h - leave) if planned_h is not None else None,
                 versions=tuple(cfg["refusal"]["versions"]))}
+
+        redrawn = {h for h, v in amend.items() if "deviation_redraw" in v}
+        cue = {h for h, v in amend.items() if v.get("cue_exempt")}
+        res["sensitivity_without_redrawn"] = without(redrawn)
+        res["sensitivity_without_cue_exempt"] = without(cue) | {
+            "exempted_words": {h: amend[h]["cue_exempt"] for h in sorted(cue)}}
+        rescued = {h for h, v in amend.items() if "claims_ran" in v}  # amendment 1, used summary
+        res["sensitivity_without_amended"] = without(redrawn | cue | rescued) | {
+            "descriptive_only_by_design": True}  # combined (Advisor: descriptive)
     RF.dump(out / "analysis.json", res)
     print(json.dumps({
         "rates": res["rates"],
