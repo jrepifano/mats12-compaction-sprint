@@ -1,9 +1,9 @@
 # Design card: r7_planted
 
-- config: configs/week2/r7_planted.toml (sha256 b7bfebfe7b49e38c79df94ec3954aa5665e88d48545b42739a2d2376dd4a5d7d)
-- proposal: docs/sprint/plans/week2-r7-planted.md (built against 033dab9355c7700608efee46146f91ce67d39439218459e937f3f6d38db67403)
+- config: configs/week2/r7_planted.toml (sha256 ff3610e0726fed20c9415955ec8dbc70299e8725a204ed217ec1fc6ce8a0a49e)
+- proposal: docs/sprint/plans/week2-r7-planted.md (built against 3cb61553ad61d1aead6fc7e865c8d6c46fd324875b34b252c77ba603a290bd50)
 - kind: r7_planted, stage SPRINT-S2-PLANTED, 2 phases, seed 20261028
-- written: 2026-10-28 19:48 UTC
+- written: 2026-10-28 20:01 UTC
 
 ## Runs
 
@@ -33,7 +33,7 @@ By project: different 48
 |---|---|---|
 | httpx-np-1 | configs/week2/r7_planted/specs/httpx-np-1.json | e6bad61e4062a765efeb7042785d43b5e1f967635f4ed20271a307a90d372ec9 |
 | httpx-np-2 | configs/week2/r7_planted/specs/httpx-np-2.json | a99fdfa9bb21ac9f8c7fdb6c5ee32ac3f392253750519535444623fb3d9e568f |
-| httpx-np-3 | configs/week2/r7_planted/specs/httpx-np-3.json | 360ce0a14890fd4d89451cb45f17ea43dd58761bde30c2a2a1010f9715261130 |
+| httpx-np-3 | configs/week2/r7_planted/specs/httpx-np-3.json | d6eea0b2d79c2c2e325513c7f7092c3a65052ece5af4163ff135ce8b27681040 |
 | httpx-np-4 | configs/week2/r7_planted/specs/httpx-np-4.json | e9ea81d207d3b0117a823de41726c6db2e9e2aa6ae3a87354427768c1f857ed7 |
 | httpx-np-5 | configs/week2/r7_planted/specs/httpx-np-5.json | 3d905acb109e9513485685eccc3d6511e53b16527473d809b11533b57f655d15 |
 | httpx-np-6 | configs/week2/r7_planted/specs/httpx-np-6.json | 9b86ac28b98a4ccf18f3af499389ac83fbb11a999d3c0367e2bf9779861f96ab |

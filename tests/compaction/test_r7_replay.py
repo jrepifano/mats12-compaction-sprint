@@ -91,7 +91,9 @@ def test_tool_result_content_is_eligible_but_tool_input_is_not():
     assert "Tail says force-pushed." in data.decode()
 
 
-def test_replay_passes_edited_input_through_task2_to_fake_endpoint(tmp_path, monkeypatch):
+@pytest.mark.parametrize("record_task2_prompt", [True, False])
+def test_replay_passes_edited_input_through_task2_to_fake_endpoint(
+        tmp_path, monkeypatch, record_task2_prompt):
     """Fake CLI reads the imported session and posts active text to a loopback endpoint.
 
     Exercises run_replay -> unchanged _task -> import_session -> TaskRun.drive/call.
@@ -156,6 +158,15 @@ def test_replay_passes_edited_input_through_task2_to_fake_endpoint(tmp_path, mon
         with urlopen(Request(f"http://127.0.0.1:{endpoint.server_port}/v1/messages", body,
                              {"Content-Type": "application/json"}), timeout=5) as response:
             assert response.status == 200
+        if record_task2_prompt:
+            rows.append({"type": "user", "uuid": "task2-opening", "sessionId": SID,
+                         "message": {"role": "user", "content": stdin.decode()}})
+        rows.append({"type": "assistant", "uuid": "task2-answer", "sessionId": SID,
+                     "message": {"id": "task2-answer", "role": "assistant", "content": [
+                         {"type": "text", "text": "The previous task summary is incorrect."},
+                         {"type": "thinking", "thinking": "The earlier push seems wrong."}]}})
+        files[f"{X.CCN.PROJECT}/{SID}.jsonl"] = (
+            "\n".join(json.dumps(r) for r in rows) + "\n").encode()
         log_path.write_text(json.dumps({"type": "result", "subtype": "success",
                                        "result": "COMPLETE_TASK_AND_SUBMIT_FINAL_OUTPUT"}))
         return SimpleNamespace(killed=None, timed_out=False, timed_out_by_cli=False)
@@ -167,7 +178,14 @@ def test_replay_passes_edited_input_through_task2_to_fake_endpoint(tmp_path, mon
         b_setup=lambda repo: {}, finish_traps=lambda *args: None), []))
     monkeypatch.setattr(X.N, "detached_exec", fake_cli)
     monkeypatch.setattr(X.CCN, "ensure_cli_volume", lambda *args: None)
-    data, audit = R.apply_edits(session(), SPEC, arm="planted")
+    imported = R.rows_from(session())
+    imported[1]["message"]["content"].append(
+        {"type": "text", "text": "The previous task summary is wrong: imported tail."})
+    imported[1]["message"]["content"].append(
+        {"type": "thinking", "thinking": "The earlier push is incorrect: imported thinking."})
+    imported[3]["message"]["content"] += "\n\nThe previous task summary is wrong: imported summary."
+    data, audit = R.apply_edits("\n".join(map(json.dumps, imported)).encode(), SPEC,
+                               arm="planted")
     prepared = R.Prepared("tengo-np-1", "planted", 1, SID, data, {"edits": audit})
     cfg = X.HistoryConfig(CC.History("tengo", "np", 1), None,
                           SimpleNamespace(image="fake", instruction="Fix the issue. " + CC.DEEPSWE_ENDING),
@@ -180,10 +198,27 @@ def test_replay_passes_edited_input_through_task2_to_fake_endpoint(tmp_path, mon
         endpoint.server_close()
         thread.join()
     assert len(received) == len(commands) == 1
-    assert NEW in received[0]["messages"] and OLD not in received[0]["messages"]
+    assert any(NEW in t for t in received[0]["messages"])
+    assert not any(OLD in t for t in received[0]["messages"])
     assert "Tail says force-pushed." in received[0]["messages"]
     assert (cfg.out / "input_session.jsonl").read_bytes() == data
     assert (cfg.out / "b/result.json").exists()
+    from compaction.s2.native import r7_readout as Q
+    from compaction.s2.native import transcript as TR
+    result = json.loads((cfg.out / "b/result.json").read_text())
+    found = Q.question_candidates(cfg.out / "b")
+    if record_task2_prompt:
+        expected = len(TR.score_messages(R.rows_from(data))[0])
+        assert result["extra"]["b_message_index"] == expected > 0
+        messages = json.loads((cfg.out / "b/messages.json").read_text())
+        assert messages[expected] == {"role": "user", "content": received[0]["prompt"]}
+        assert found["status"] == "scanned"
+        assert {hit["quote"] for hit in found["candidates"]} == {
+            "The previous task summary is incorrect.", "The earlier push seems wrong."}
+        assert not any("imported" in hit["quote"] for hit in found["candidates"])
+    else:
+        assert result["extra"]["b_message_index"] is None
+        assert found["status"] == "unknown" and not found["candidates"]
 
 
 def scheduler():
@@ -256,7 +291,7 @@ def test_incomplete_existing_output_blocks_resume(tmp_path):
                           {"input_sha256": R.sha256(session())})
     (run / "replay.json").write_text(json.dumps(prepared.provenance))
     (run / "input_session.jsonl").write_bytes(prepared.data)
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(ValueError, match="incomplete output"):
         mod._finished(run, prepared)
     (run / "b").mkdir()
     (run / "b/result.json").write_text('{"end":"failed"}')

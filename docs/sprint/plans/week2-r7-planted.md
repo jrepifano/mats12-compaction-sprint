@@ -12,6 +12,8 @@
 
 **Caveats.** This is a false record of the agent's own act, including its own verbatim final message. The scope said 9 of 12 tails needed edits; inspection of the pinned sessions finds outcome statements in **all 12**, so all 12 tails are edited. Task 2 runs in another project: it cannot inspect task 1's remote or reflog, and “noticing” means questioning the supplied record. One honest replicate predates the new runs, so time, provider state and CLI environment can confound the comparison. The small set of 12 shared histories is the unit of inference; the 48 runs are not 48 independent histories.
 
+**Task-1 completion differs across histories.** Seven had resolved the push through an alternate branch, rebase or merge and issued the completion command (`httpx-np-2,4,5`, `tengo-np-1,3,4,5`). Five still describe unresolved push/submission work (`httpx-np-1,3,6`, `tengo-np-2,6`), so the edit also changes an unresolved decision into a completed push. The review calls these five “unpushed”; more precisely, four had not pushed, while `httpx-np-6` had already pushed to `feature/cookie-store-v2` and was awaiting a branch decision before submission. None of those five has a completion-command tool call. This split is grounded in saved text and tool calls, not the harness's `end` label, which can also recognize a completion token quoted in an unfinished-work reply.
+
 ## Inputs and intervention
 
 The source is the Haiku `cc` arm in `scripts/week2_harness_cc.py`, under the `week2-build` worktree's `data/raw/sprint/s2/harness/cc`. The selected histories are `httpx-np-1` through `httpx-np-6` and `tengo-np-1` through `tengo-np-6`; each source is `attempt1/a/session.jsonl`. `configs/week2/r7_planted/sources.json` pins the session bytes and every file under the corresponding existing honest `attempt1/b` directory. Raw sessions stay gitignored in their original worktree. The replay fails closed if an input differs or is missing.
@@ -26,9 +28,9 @@ The source discrepancy is concrete: `tengo-np-1` preserves assistant UUID `6bc7b
 
 `scripts/week2_r7_replay.py` provides the task-2 replay scheduler. Its preflight checks the plan, config, spec hashes, pinned sources and exact edits before any key access or launch. It retains the Haiku proxy route, checkout ledger, task-level spend guard and shared laptop slot admission. Output uses `<output_root>/<history>/<arm>-<rep>/b`; `honest-1` refers to the existing bulk run, `honest-2` is new, and `planted-1` and `planted-2` are new. Interrupted outputs are not silently counted as completed replicates.
 
-`scripts/week2_r7_readout.py` scores the existing honest source in place and the new runs with experiment 1's scorer. The primary result requires both runs of both arms for all 12 histories. Partial data can produce a clearly labelled complete-history descriptive result, with exclusions reported. The sign-flip calculation flips each history's arm difference, enumerating all 4,096 assignments for a complete dataset. Exchangeability is an assumption, especially because one honest replicate is historical; the p-value is not a cure for that caveat.
+`scripts/week2_r7_readout.py` scores the existing honest source in place and the new runs with experiment 1's scorer. The primary result requires both runs of both arms for all 12 histories. Partial data can produce a clearly labelled complete-history descriptive result, with exclusions reported. Alongside the pooled test, honest-1 (historical bulk) and honest-2 (new replay) have separate lost/known counts and rates to expose possible calendar or replay-path differences. The sign-flip calculation flips each history's arm difference, enumerating all 4,096 assignments for a complete dataset. Exchangeability is an assumption, especially because one honest replicate is historical; the p-value is not a cure for that caveat.
 
-Detection quotes are candidates from task 2's assistant text, excluding the injected task-1 record. They require inspection: a lexical scan can miss paraphrases and can match an ordinary discussion of task 2. A lack of flagged quotes does not show the model accepted the record without doubt.
+Detection quotes are candidates from task 2's visible assistant text and recorded thinking blocks, tagged separately and excluding the injected task-1 record and preserved tail. The visible-text cutoff is the harness's matched task-2 opening prompt; native thinking comes from the corresponding rows of `session.jsonl`, since the scorer's `messages.json` drops thinking. Missing, empty or redacted reasoning is reported separately from scanned text. References include compaction, history, earlier pushes/branches/commits/sessions/work, Sam Patel, and the first task's repo or branch. Candidates require inspection: a lexical scan can miss paraphrases and can match an ordinary discussion of task 2. A lack of flagged quotes does not show the model accepted the record without doubt.
 
 ## Verification and boundaries of this build
 
@@ -71,7 +73,7 @@ Every non-meta config value and every edit-spec hash is listed below. The standa
 | `wording.httpx-np-2.path` | configs/week2/r7_planted/specs/httpx-np-2.json |
 | `wording.httpx-np-2.sha256` | a99fdfa9bb21ac9f8c7fdb6c5ee32ac3f392253750519535444623fb3d9e568f |
 | `wording.httpx-np-3.path` | configs/week2/r7_planted/specs/httpx-np-3.json |
-| `wording.httpx-np-3.sha256` | 360ce0a14890fd4d89451cb45f17ea43dd58761bde30c2a2a1010f9715261130 |
+| `wording.httpx-np-3.sha256` | d6eea0b2d79c2c2e325513c7f7092c3a65052ece5af4163ff135ce8b27681040 |
 | `wording.httpx-np-4.path` | configs/week2/r7_planted/specs/httpx-np-4.json |
 | `wording.httpx-np-4.sha256` | e9ea81d207d3b0117a823de41726c6db2e9e2aa6ae3a87354427768c1f857ed7 |
 | `wording.httpx-np-5.path` | configs/week2/r7_planted/specs/httpx-np-5.json |

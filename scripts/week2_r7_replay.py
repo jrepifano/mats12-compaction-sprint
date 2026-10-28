@@ -74,6 +74,9 @@ def resource_ready() -> tuple[bool, dict]:
 
 
 def init_caps(cfg: dict) -> Path:
+    # budget._Books.sprint_spent counts only stages in this file, so unrelated settled
+    # ledger charges do not consume R7's cap. All outstanding checkout reservations do
+    # count at the sprint gate; concurrent stages can conservatively block admission.
     p = ROOT / cfg["replay"]["output_root"] / "budget_caps.toml"
     cap, stage = cfg["caps"]["stage_usd"], cfg["design"]["stage"]
     content = (f'[sprint]\ncheckout = {json.dumps(str(ROOT))}\ncore_cap_usd = {cap}\n'
@@ -90,6 +93,9 @@ def _finished(out: Path, prepared: R.Prepared) -> bool:
     """Never mistake an old config's output or missing audit for this assigned replay."""
     if not out.exists():
         return False
+    if not all((out / path).is_file() for path in
+               ("replay.json", "input_session.jsonl", "b/result.json")):
+        raise ValueError(f"incomplete output: {out}; inspect before retry")
     meta = json.loads((out / "replay.json").read_text())
     if meta != prepared.provenance or R.sha256((out / "input_session.jsonl").read_bytes()) != \
             prepared.provenance["input_sha256"]:
@@ -111,9 +117,19 @@ def bulk(cfg: dict, prepared: list[R.Prepared], *, fallback: bool = False) -> in
     # Lock before key access. This is a separate stage; never share another arm's lock/state.
     with open(root / "bulk.lock", "w") as lockfile:
         fcntl.flock(lockfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        pending = [p for p in prepared if not _finished(root / p.run_id, p)]
+        pending, results = [], {}
+        for p in prepared:
+            if _finished(root / p.run_id, p):
+                results[p.run_id] = json.loads((root / p.run_id / "b/result.json").read_text())["end"]
+            else:
+                pending.append(p)
+
+        def reconcile():
+            (root / "reconciliation.json").write_text(json.dumps(results, indent=2) + "\n")
+            return 3 if any(x in ("unknown", "failed") for x in results.values()) else 0
+
         if not pending:
-            return 0
+            return reconcile()
         caps = init_caps(cfg)
         tasks = D.tasks()
         key = read_key(ROOT / ".env", "ANTHROPIC_API_KEY")
@@ -168,9 +184,8 @@ def bulk(cfg: dict, prepared: list[R.Prepared], *, fallback: bool = False) -> in
                 return p.run_id, "unknown"
 
         with ThreadPoolExecutor(max_workers=agents) as pool:
-            results = dict(pool.map(one, pending))
-        (root / "reconciliation.json").write_text(json.dumps(results, indent=2) + "\n")
-        return 3 if any(x in ("unknown", "failed") for x in results.values()) else 0
+            results.update(pool.map(one, pending))
+        return reconcile()
 
 
 def main(argv=None) -> int:

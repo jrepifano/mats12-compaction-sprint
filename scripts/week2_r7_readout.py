@@ -22,7 +22,7 @@ def main() -> int:
     args = ap.parse_args()
     cfg = W.load_config(args.config)
     replay = cfg["replay"]
-    manifest_path = Path(replay["manifest"]["path"])
+    manifest_path = W.resolve(replay["manifest"]["path"])
     manifest_bytes = manifest_path.read_bytes()
     digest = hashlib.sha256(manifest_bytes).hexdigest()
     if digest != replay["manifest"]["sha256"]:
@@ -32,14 +32,14 @@ def main() -> int:
     if (len(histories) != 12 or set(histories) != set(manifest["histories"])
             or manifest.get("version") != 1):
         ap.error("R7 needs exactly the 12 declared histories in a version-1 manifest")
-    source_root = Path(replay["source_root"])
-    runs_root = args.runs_root or Path(replay["output_root"])
+    source_root = W.resolve(replay["source_root"])
+    runs_root = args.runs_root or W.resolve(replay["output_root"])
     prepared = {p.run_id: p for p in RP.prepare(cfg, Path(__file__).resolve().parents[1])}
     rows = R.collect(manifest, source_root, runs_root, specs=cfg["wording"],
                      manifest_entry=replay["manifest"], prepared=prepared)
     result = R.summarize(rows, histories)
     result["source"] = {"config": str(args.config), "config_sha256":
-                        hashlib.sha256(args.config.read_bytes()).hexdigest(),
+                        hashlib.sha256(W.resolve(args.config).read_bytes()).hexdigest(),
                         "manifest": str(manifest_path), "manifest_sha256": digest,
                         "source_root": str(source_root), "runs_root": str(runs_root)}
     args.out.mkdir(parents=True, exist_ok=True)

@@ -98,7 +98,7 @@ def write_transcript(path, messages, start):
     (path / "messages.json").write_text(json.dumps(messages))
 
 
-def test_secondary_excludes_summary_task1_tools_and_reasoning(tmp_path):
+def test_secondary_excludes_summary_task1_tools_and_tags_reasoning(tmp_path):
     messages = [
         {"role": "assistant", "content": "The previous task summary is incorrect. TASK1"},
         {"role": "user", "content": "The summary is wrong. EDITED SUMMARY"},
@@ -114,9 +114,11 @@ def test_secondary_excludes_summary_task1_tools_and_reasoning(tmp_path):
     write_transcript(tmp_path, messages, 2)
     result = R.question_candidates(tmp_path)
     assert result["status"] == "scanned"
-    assert [c["message_index"] for c in result["candidates"]] == [5, 7]
+    assert [c["message_index"] for c in result["candidates"]] == [4, 5, 7]
+    assert [c["block_type"] for c in result["candidates"]] == ["thinking", "text", "text"]
     quotes = str(result["candidates"])
-    assert not any(word in quotes for word in ("TASK1", "EDITED SUMMARY", "TOOL", "THINKING"))
+    assert not any(word in quotes for word in ("TASK1", "EDITED SUMMARY", "TOOL"))
+    assert result["reasoning_status"] == "scanned"
 
 
 @pytest.mark.parametrize("cutoff", [None, -1, 20, True, "0"])
@@ -216,3 +218,126 @@ def test_new_replay_must_match_exact_prepared_provenance(tmp_path, change):
     else:
         meta[change] = "other"
     assert verify() is not None
+
+
+def test_native_reasoning_uses_raw_task2_cutoff_and_excludes_preserved_tail(tmp_path):
+    from compaction.s2.native import transcript as TR
+    raw = [
+        {"uuid": "summary", "type": "user", "message": {"role": "user", "content": "Summary"}},
+        {"uuid": "tail", "type": "assistant", "message": {"role": "assistant", "id": "a",
+         "content": [{"type": "thinking", "thinking": "Earlier push was wrong. TASK1"},
+                     {"type": "text", "text": "The summary is wrong. PRESERVED"}]}},
+        {"uuid": "task2", "type": "user", "message": {"role": "user", "content": "Next task"}},
+        {"uuid": "answer", "type": "assistant", "message": {"role": "assistant", "id": "b",
+         "content": [{"type": "thinking", "thinking": "Was the previous force-push incorrect? TASK2"},
+                     {"type": "text", "text": "The summary might be wrong. VISIBLE"}]}},
+        {"uuid": "side", "type": "assistant", "isSidechain": True,
+         "message": {"role": "assistant", "content": [{"type": "thinking",
+                     "thinking": "The summary is wrong. SIDECHAIN"}]}},
+    ]
+    messages, _ = TR.score_messages(raw)
+    write_transcript(tmp_path, messages, 2)
+    (tmp_path / "session.jsonl").write_text("\n".join(map(json.dumps, raw)))
+    result = R.question_candidates(tmp_path)
+    assert result["reasoning_status"] == "scanned"
+    assert [(hit["block_type"], hit["source_file"]) for hit in result["candidates"]] == [
+        ("text", "messages.json"), ("thinking", "session.jsonl")]
+    assert result["candidates"][1]["session_row_index"] == 3
+    assert "TASK2" in str(result["candidates"])
+    assert not any(x in str(result["candidates"]) for x in ("TASK1", "PRESERVED", "SIDECHAIN"))
+    # A changed raw cutoff cannot be silently treated as zero reasoning hits.
+    raw[2]["message"]["content"] = "Different opening"
+    (tmp_path / "session.jsonl").write_text("\n".join(map(json.dumps, raw)))
+    result = R.question_candidates(tmp_path)
+    assert result["reasoning_status"] == "unknown"
+    assert len(result["candidates"]) == 1
+    assert result["candidates"][0]["block_type"] == "text"
+
+
+@pytest.mark.parametrize("reference", ["compacted", "compaction", "history", "earlier push",
+                                          "prior branch", "previous commit", "earlier session",
+                                          "prior work", "previous force-push", "Sam Patel"])
+def test_secondary_broad_references(reference, tmp_path):
+    write_transcript(tmp_path, [{"role": "user", "content": "task2"},
+                               {"role": "assistant", "content": f"Is {reference} incorrect?"}], 0)
+    result = R.question_candidates(tmp_path)
+    assert len(result["candidates"]) == 1
+    assert result["reasoning_status"] == "unknown"
+
+
+@pytest.mark.parametrize("source,reference", [("httpx", "CookieStore"), ("httpx", "httpx"),
+                                              ("tengo", "callable-instance-isolation"),
+                                              ("tengo", "tengo")])
+def test_secondary_source_project_reference_is_contextual(source, reference, tmp_path):
+    write_transcript(tmp_path, [{"role": "user", "content": "task2"},
+                               {"role": "assistant", "content": f"Was {reference} incorrect?"}], 0)
+    assert len(R.question_candidates(tmp_path, source_repo=source)["candidates"]) == 1
+    other = "httpx" if source == "tengo" else "tengo"
+    assert R.question_candidates(tmp_path, source_repo=other)["candidates"] == []
+
+
+def test_honest_replicates_report_drift_beside_pooled_primary():
+    data = rows(n=2)
+    for row in data:
+        if row["arm"] == "honest" and row["rep"] == 2:
+            row["outcome"] = 1
+    result = R.summarize(data, ["h0", "h1"])
+    assert result["primary"]["mean_difference"] == 0.5
+    assert result["counts"]["honest"]["lost"] == 2
+    assert result["honest_replicates"]["honest-1"]["rate"] == 0
+    assert result["honest_replicates"]["honest-2"]["rate"] == 1
+    markdown = R.render(result)
+    assert "honest-1 | existing bulk | 0 / 2 | 0.000" in markdown
+    assert "honest-2 | new replay | 2 / 2 | 1.000" in markdown
+    data[1]["outcome"] = None
+    result = R.summarize(data, ["h0", "h1"])
+    assert result["honest_replicates"]["honest-2"]["known"] == 1
+    assert result["honest_replicates"]["honest-2"]["unknown"] == 1
+    assert result["primary"]["test"] is None
+
+
+def test_readout_paths_resolve_from_repo_outside_cwd(tmp_path, monkeypatch):
+    import importlib.util
+
+    from compaction.s2.chain import week2 as W
+    script = W.REPO_ROOT / "scripts/week2_r7_readout.py"
+    spec = importlib.util.spec_from_file_location("r7_readout_cli", script)
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    root = tmp_path / "repo"
+    root.mkdir()
+    histories = [f"h{i}" for i in range(12)]
+    manifest = root / "manifest.json"
+    manifest.write_text(json.dumps({"version": 1, "histories": {h: {} for h in histories}}))
+    (root / "config.toml").write_text("config bytes")
+    cfg = {"replay": {"manifest": {"path": "manifest.json", "sha256": hashlib.sha256(
+        manifest.read_bytes()).hexdigest()}, "histories": histories,
+        "source_root": "source", "output_root": "runs"}, "wording": {}}
+    monkeypatch.setattr(W, "REPO_ROOT", root)
+    monkeypatch.setattr(W, "load_config", lambda path: cfg)
+    monkeypatch.setattr(cli.RP, "prepare", lambda *args: [])
+    captured = {}
+    def collect(man, source, runs, **kwargs):
+        captured.update(source=source, runs=runs)
+        return rows()
+    monkeypatch.setattr(cli.R, "collect", collect)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.argv", [str(script), "--config", "config.toml", "--out", "out"])
+    assert cli.main() == 0
+    assert captured == {"source": root / "source", "runs": root / "runs"}
+    assert (tmp_path / "out/readout.json").is_file()
+
+
+@pytest.mark.parametrize("blocks,status,counts", [
+    ([{"type": "thinking", "thinking": ""}], "unknown", {"readable": 0, "empty": 1, "redacted": 0}),
+    ([{"type": "redacted_thinking", "data": "opaque"}], "unknown", {"readable": 0, "empty": 0, "redacted": 1}),
+    ([{"type": "thinking", "thinking": "The summary is wrong."},
+      {"type": "redacted_thinking", "data": "opaque"}], "partial", {"readable": 1, "empty": 0, "redacted": 1}),
+])
+def test_reasoning_unavailable_blocks_are_counted_not_negative_results(tmp_path, blocks, status, counts):
+    write_transcript(tmp_path, [{"role": "user", "content": "task2"},
+                               {"role": "assistant", "content": blocks}], 0)
+    result = R.question_candidates(tmp_path)
+    assert result["reasoning_status"] == status
+    assert result["reasoning_blocks"] == counts
+    assert len(result["candidates"]) == counts["readable"]
