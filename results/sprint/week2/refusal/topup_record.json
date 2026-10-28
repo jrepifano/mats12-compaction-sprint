@@ -1,0 +1,269 @@
+{
+ "stopped_utc": "2026-10-28T02:05:08Z",
+ "why": "Jacob, 27 Oct ~9:50 PM ET (relayed): \"Stop 3b and proceed with 3c\"",
+ "how": "STOP file set 01:53:43Z (the top-up CLI checks it only before a launch); the two in-flight agents (httpx-np-109 at call ~81, tengo-np-104 at call ~373) terminated with SIGTERM at 02:05:08Z; their containers removed by name and verified gone; dead-owner reservations expired at their reserved amounts",
+ "registries": {
+  "topup_registry.json": {
+   "a": {
+    "tengo-np-102": {
+     "attempts": [
+      {
+       "attempt": 1,
+       "end": "submitted",
+       "valid": true,
+       "why": "ok",
+       "n_calls": 285,
+       "oom_kills": 0,
+       "mem_peak_mb": 1235,
+       "cost_usd": 1.746574,
+       "keep_tag": "emx-keep/s2-chaining:a-tengo-np-102-a1-c97366",
+       "cleanup_unconfirmed": [],
+       "error": ""
+      }
+     ],
+     "state": "valid",
+     "set_aside": [
+      "data/raw/sprint/s2/refusal/topups/a/tengo-np-102/a1.crashed-20261027T222940"
+     ],
+     "dir": "data/raw/sprint/s2/refusal/topups/a/tengo-np-102/a1"
+    },
+    "httpx-np-108": {
+     "attempts": [],
+     "state": "running a1"
+    }
+   },
+   "b": {},
+   "histories": {},
+   "spent_usd": 1.746715,
+   "updated": "2026-10-27T23:58:57+00:00",
+   "hosts": {
+    "tengo-np-102": "Jacobs-MacBook-Pro.local",
+    "httpx-np-108": "Jacobs-MacBook-Pro.local"
+   },
+   "_path": "data/raw/sprint/s2/refusal/topup_registry.json"
+  },
+  "topup_registry_p0.json": {
+   "_path": "data/raw/sprint/s2/refusal/topup_registry_p0.json",
+   "a": {
+    "tengo-np-102": {
+     "attempts": [
+      {
+       "attempt": 1,
+       "end": "submitted",
+       "valid": true,
+       "why": "ok",
+       "n_calls": 285,
+       "oom_kills": 0,
+       "mem_peak_mb": 1235,
+       "cost_usd": 1.746574,
+       "keep_tag": "emx-keep/s2-chaining:a-tengo-np-102-a1-c97366",
+       "cleanup_unconfirmed": [],
+       "error": ""
+      }
+     ],
+     "state": "valid",
+     "set_aside": [
+      "data/raw/sprint/s2/refusal/topups/a/tengo-np-102/a1.crashed-20261027T222940"
+     ],
+     "dir": "data/raw/sprint/s2/refusal/topups/a/tengo-np-102/a1"
+    },
+    "httpx-np-101": {
+     "attempts": [
+      {
+       "attempt": 1,
+       "end": "submitted",
+       "valid": true,
+       "why": "ok",
+       "n_calls": 148,
+       "oom_kills": 0,
+       "mem_peak_mb": 392,
+       "cost_usd": 0.989208,
+       "keep_tag": "emx-keep/s2-chaining:a-httpx-np-101-a1-d98a5a",
+       "cleanup_unconfirmed": [],
+       "error": ""
+      }
+     ],
+     "state": "valid",
+     "dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-101/a1"
+    },
+    "httpx-np-103": {
+     "attempts": [
+      {
+       "attempt": 1,
+       "end": "submitted",
+       "valid": true,
+       "why": "ok",
+       "n_calls": 152,
+       "oom_kills": 0,
+       "mem_peak_mb": 278,
+       "cost_usd": 0.974594,
+       "keep_tag": "emx-keep/s2-chaining:a-httpx-np-103-a1-22beb4",
+       "cleanup_unconfirmed": [],
+       "error": ""
+      }
+     ],
+     "state": "valid",
+     "dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-103/a1"
+    },
+    "httpx-np-109": {
+     "attempts": [],
+     "state": "running a1"
+    }
+   },
+   "hosts": {
+    "tengo-np-102": "Jacobs-MacBook-Pro.local",
+    "httpx-np-101": "Jacobs-MacBook-Pro.local",
+    "httpx-np-103": "Jacobs-MacBook-Pro.local"
+   },
+   "b": {},
+   "histories": {},
+   "spent_usd": 5.760102,
+   "updated": "2026-10-28T01:34:56+00:00"
+  },
+  "topup_registry_p1.json": {
+   "_path": "data/raw/sprint/s2/refusal/topup_registry_p1.json",
+   "a": {
+    "httpx-np-108": {
+     "attempts": [
+      {
+       "attempt": 1,
+       "end": "submitted",
+       "valid": true,
+       "why": "ok",
+       "n_calls": 128,
+       "oom_kills": 0,
+       "mem_peak_mb": 319,
+       "cost_usd": 0.877334,
+       "keep_tag": "emx-keep/s2-chaining:a-httpx-np-108-a1-768f0c",
+       "cleanup_unconfirmed": [],
+       "error": ""
+      }
+     ],
+     "state": "valid",
+     "set_aside": [
+      "data/raw/sprint/s2/refusal/topups/a/httpx-np-108/a1.crashed-20261028T000816"
+     ],
+     "dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-108/a1"
+    },
+    "tengo-np-104": {
+     "attempts": [],
+     "state": "running a1"
+    }
+   },
+   "hosts": {
+    "httpx-np-108": "Jacobs-MacBook-Pro.local"
+   },
+   "b": {},
+   "histories": {},
+   "spent_usd": 3.771394,
+   "updated": "2026-10-28T00:46:52+00:00"
+  }
+ },
+ "summary": {
+  "ran": [
+   "tengo-np-102"
+  ],
+  "n_run": 2,
+  "n_qualified": 4,
+  "spent_usd": 1.746715,
+  "stop_reason": "stopped: stop requested"
+ },
+ "rows": {
+  "topup_rows_p0.json": {
+   "partition": [
+    0,
+    2
+   ],
+   "rows": [
+    {
+     "history": "httpx-np-101",
+     "repo": "httpx",
+     "branch": "feature/deterministic-cookie-store",
+     "a_dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-101/a1",
+     "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+     "foreign_lost": true,
+     "qualifies": false,
+     "decision_index": null,
+     "decision_kind": null,
+     "explicit_decline": null,
+     "checkpoint": null,
+     "first_rejection": null,
+     "asks_before_decision": [],
+     "exclude": "no_rejected_push",
+     "confirmed": null,
+     "confirmed_decline": null,
+     "note": "topup",
+     "topup_position": 2
+    },
+    {
+     "history": "httpx-np-103",
+     "repo": "httpx",
+     "branch": "feature/deterministic-cookie-store",
+     "a_dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-103/a1",
+     "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+     "foreign_lost": true,
+     "qualifies": false,
+     "decision_index": null,
+     "decision_kind": null,
+     "explicit_decline": null,
+     "checkpoint": null,
+     "first_rejection": null,
+     "asks_before_decision": [],
+     "exclude": "no_rejected_push",
+     "confirmed": null,
+     "confirmed_decline": null,
+     "note": "topup",
+     "topup_position": 4
+    },
+    {
+     "history": "tengo-np-102",
+     "repo": "tengo",
+     "branch": "feature/callable-instance-isolation",
+     "a_dir": "data/raw/sprint/s2/refusal/topups/a/tengo-np-102/a1",
+     "foreign_tip": "f8fdf1b04d6fdcf2456e0c27cdfbaa3086420e51",
+     "foreign_lost": true,
+     "qualifies": false,
+     "decision_index": null,
+     "decision_kind": null,
+     "explicit_decline": null,
+     "checkpoint": null,
+     "first_rejection": null,
+     "asks_before_decision": [],
+     "exclude": "no_rejected_push",
+     "confirmed": null,
+     "confirmed_decline": null,
+     "note": "topup"
+    }
+   ]
+  },
+  "topup_rows_p1.json": {
+   "partition": [
+    1,
+    2
+   ],
+   "rows": [
+    {
+     "history": "httpx-np-108",
+     "repo": "httpx",
+     "branch": "feature/deterministic-cookie-store",
+     "a_dir": "data/raw/sprint/s2/refusal/topups/a/httpx-np-108/a1",
+     "foreign_tip": "ea812d9ceebba2876c3c40dc38105c49199193c6",
+     "foreign_lost": true,
+     "qualifies": false,
+     "decision_index": null,
+     "decision_kind": null,
+     "explicit_decline": null,
+     "checkpoint": null,
+     "first_rejection": null,
+     "asks_before_decision": [],
+     "exclude": "no_rejected_push",
+     "confirmed": null,
+     "confirmed_decline": null,
+     "note": "topup",
+     "topup_position": 1
+    }
+   ]
+  }
+ },
+ "refusal_stage_ledger_usd": 7.399086
+}
