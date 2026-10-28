@@ -3,13 +3,17 @@
 
 Experiment 1's 10 divergent histories whose first task overwrote the foreign commits, each
 resumed into its second task (the other project, the compacted start, experiment 1's frozen
-task-2 wording and scorer) under four boundary arms, `replicates` times:
+task-2 wording and scorer) under five boundary arms, `replicates` times:
 - native: a fresh pi compaction of the saved first-task messages;
 - ledger: pi's `/compact <instructions>` with the authorization focus (compact.compact's
   `custom_instructions`; only the summarizer sees it);
 - line: native's own compaction with Claude Code's line appended after the summary, inside
   pi's wrapper message (the line arm shares native's summary);
-- placebo: `/compact` with a neutral focus of matched length.
+- placebo: `/compact` with a neutral focus of matched length;
+- neutral_opening: native's own compaction, with the second task's lead line starting "Next
+  task:" instead of experiment 1's "Thanks, that's done." (Jacob, 28 Oct, relayed by the
+  Research Advisor: the thanks may read as approval of the force-push); everything else is
+  native's, byte for byte.
 pi's summarizer settings (output cap, reasoning effort) are the same in every arm; every
 summary's attempts, finish reasons and tokens are recorded. A compaction that stays empty after
 pi's tries ends that slot as `compaction failed` (unknown in the primary; reported by arm).
@@ -45,11 +49,13 @@ from compaction.s2.model import ModelError, StageCapReached
 # (results/sprint/week2/precedent/a_gate.json, foreign_lost true; sprint/week2-build).
 HISTORIES = ("httpx-np-2", "httpx-np-3", "httpx-np-4", "httpx-np-5", "tengo-np-1", "tengo-np-2",
              "tengo-np-3", "tengo-np-6", "tengo-np-7", "tengo-np-8")
-ARMS = ("native", "ledger", "line", "placebo")
+ARMS = ("native", "ledger", "line", "placebo", "neutral_opening")
+SHARES_NATIVE = ("line", "neutral_opening")  # arms that reuse native's compaction
 PROJECT, START, HIST = "different", "compacted", "divergent"
 FOCUS = {"ledger": "configs/week2/wording/summary_fix/ledger_focus.txt",
          "placebo": "configs/week2/wording/summary_fix/placebo_focus.txt"}
 LINE = "configs/week2/wording/summary_fix/line.txt"
+NEUTRAL_LEAD = "configs/week2/wording/summary_fix/neutral_lead.txt"
 # which of pi's calls get the focus: "history" (pi's own /compact) or "both" (also the
 # turn-prefix call, so the focus reaches a split turn's last turn); set by apply_design from
 # summary_fix.focus_calls (Research Advisor, 28 Oct: prepared, used only on his word)
@@ -105,7 +111,7 @@ def order_sha256(runs: list[FixRun]) -> str:
 
 
 # ------------------------------------------------------------------------------------------
-# The boundary: one compaction per unit and arm (line reuses native's)
+# The boundary: one compaction per unit and arm (line and neutral_opening reuse native's)
 # ------------------------------------------------------------------------------------------
 
 
@@ -114,11 +120,12 @@ _COMP_LOCKS: defaultdict[str, threading.Lock] = defaultdict(threading.Lock)  # p
 
 class CompactionFailed(RuntimeError):
     """pi's summary stayed empty after its tries: recorded once (`<compaction>.failed.json`)
-    and final for every slot that needs that compaction (line shares native's)."""
+    and final for every slot that needs that compaction (line and neutral_opening share
+    native's)."""
 
 
 def comp_path(root: Path, b: FixRun) -> Path:
-    arm = "native" if b.arm == "line" else b.arm
+    arm = "native" if b.arm in SHARES_NATIVE else b.arm
     tag = "" if FOCUS_CALLS == "history" or arm not in FOCUS else "-both"
     return Path(root) / "compactions" / f"{b.unit}-{arm}{tag}.json"
 
@@ -159,17 +166,18 @@ def compaction_summary(rec: dict) -> dict:
 def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> dict:
     """The arm's compaction record (written once, reused on resume). native, ledger and
     placebo: a fresh pi compaction of the saved messages (ledger and placebo with their focus);
-    line: native's, with the line appended after the summary in pi's wrapper message.
+    line: native's, with the line appended after the summary in pi's wrapper message;
+    neutral_opening: native's, unchanged (its difference is the lead line, `lead_for`).
     Raises CompactionFailed when pi's summary stayed empty (now or recorded before: a failed
     compaction is final, never retried); StageCapReached passes through."""
     p = comp_path(root, b)
-    with _COMP_LOCKS[str(p)]:  # native and line share one compaction: computed once
+    with _COMP_LOCKS[str(p)]:  # native, line, neutral_opening share one: computed once
         if failed_path(p).exists():
             raise CompactionFailed(json.loads(failed_path(p).read_text())["error"])
         if p.exists():
             rec = json.loads(p.read_text())
         else:
-            arm = "native" if b.arm == "line" else b.arm
+            arm = "native" if b.arm in SHARES_NATIVE else b.arm
             focus = text(FOCUS[arm]) if arm in FOCUS else None
             msgs = hist.messages
             m = model_for("compaction", p.parent / f"{b.unit}-{arm}-spend")
@@ -199,6 +207,8 @@ def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> d
                                     "n_pre_messages": len(msgs), "arm": arm}
             p.parent.mkdir(parents=True, exist_ok=True)
             SE.dump(p, rec)
+    if b.arm == "neutral_opening":
+        return {**rec, "arm": "neutral_opening"}
     if b.arm != "line":
         return rec
     line = text(LINE)
@@ -207,6 +217,15 @@ def boundary(b: FixRun, hist: SE.AHistory, model_for: Callable, root: Path) -> d
     post[i]["content"] = f"{post[i]['content']}\n\n{line}"
     return {**rec, "post_messages": post, "arm": "line", "line": line,
             "line_on": str(p), "line_on_sha256": hashlib.sha256(p.read_bytes()).hexdigest()}
+
+
+def lead_for(b: FixRun, hist: SE.AHistory) -> str | None:
+    """The second task's lead line: neutral_opening's "Next task:" line (the same repository
+    names as experiment 1's lead_different), else None (session's own line)."""
+    if b.arm != "neutral_opening":
+        return None
+    return text(NEUTRAL_LEAD).format(repo=CC.REPO_OF_TASK[b.cell.b_task].name,
+                                     prev=CC.REPOS[hist.repo].name)
 
 
 # ------------------------------------------------------------------------------------------
@@ -288,7 +307,8 @@ def run_one(b: FixRun, st: dict, route, spend, tasks_: dict, root: Path,
                 model, _ = mf("B", out)
                 try:
                     r = SE.run_b(b, task, hist, model, inv, out, stop=L.STOP,
-                                 on_keep=D.keep_hook("B", b.id, root), **caps)
+                                 on_keep=D.keep_hook("B", b.id, root), lead=lead_for(b, hist),
+                                 **caps)
                 finally:
                     rec["cleanup_unconfirmed"] = D.cleanup(inv)
             res = r.to_dict()
@@ -401,7 +421,7 @@ def write_rows(st: dict, runs: list[FixRun], root: Path) -> Path:
 # ------------------------------------------------------------------------------------------
 
 ARM_WORDING = {"ledger_focus": FOCUS["ledger"], "placebo_focus": FOCUS["placebo"],
-               "line": LINE}
+               "line": LINE, "neutral_lead": NEUTRAL_LEAD}
 
 
 def code_mismatches(cfg: dict) -> list[str]:

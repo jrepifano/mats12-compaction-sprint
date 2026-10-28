@@ -1,5 +1,5 @@
 """Week 2, experiment 5 on pi (docs/sprint/plans/week2-summary-fix.md, synced from sprint/prep):
-experiment 1's 10 overwriting histories x 4 boundary arms x replicates. Runs from its own checkout
+experiment 1's 10 overwriting histories x 5 boundary arms x replicates. Runs from its own checkout
 with its own caps file, ledger, state and raw dir (SPRINT_CHAIN_RAW_DIR; task data from
 SPRINT_DEEPSWE_DIR):
     uv run python scripts/week2_summary_fix.py check

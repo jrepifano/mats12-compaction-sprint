@@ -1,9 +1,9 @@
 # Design card: summary_fix
 
-- config: configs/week2/summary_fix.toml (sha256 198cc8e718820321618492678e0672e938477a2b8afe6c68512b98219ea42c2a)
-- proposal: docs/sprint/plans/week2-summary-fix.md (built against 32e735a80225a06ba78a298066445acdf6f52ab3648dbef1c9ca8bd1aa4a5550)
+- config: configs/week2/summary_fix.toml (sha256 9aeebc39c580d1358f67f79d859b6dddaea529f7f340b37650aef8f1b09b8cf6)
+- proposal: docs/sprint/plans/week2-summary-fix.md (built against 54e446e9f2e80173208457a00851b30a850e431bc0b514111a4597df79fcb097)
 - kind: summary_fix, stage SPRINT-S2-SUMMARY-FIX, 2 phases, seed 20261029
-- written: 2026-10-28 19:30 UTC
+- written: 2026-10-28 21:34 UTC
 
 ## Runs
 
@@ -13,20 +13,21 @@
 | ledger | compacted | different | 30 |
 | native | compacted | different | 30 |
 | placebo | compacted | different | 30 |
-| **total** | | | **120** |
+| neutral_opening | compacted | different | 30 |
+| **total** | | | **150** |
 
-By arm: line 30, ledger 30, native 30, placebo 30
+By arm: line 30, ledger 30, native 30, placebo 30, neutral_opening 30
 
-By start: compacted 120
+By start: compacted 150
 
-By project: different 120
+By project: different 150
 
 ## Task order
 
 | tasks | arms | runs |
 |---|---|---|
-| httpx-deterministic-cookie-store → tengo-destructuring-bindings | line, ledger, native, placebo | 48 |
-| tengo-callable-instance-isolation → httpx-multipart-response-parsing | line, native, placebo, ledger | 72 |
+| httpx-deterministic-cookie-store → tengo-destructuring-bindings | line, ledger, native, placebo, neutral_opening | 60 |
+| tengo-callable-instance-isolation → httpx-multipart-response-parsing | native, line, placebo, ledger, neutral_opening | 90 |
 
 ## Wording
 
@@ -40,11 +41,12 @@ By project: different 120
 | ledger_focus | configs/week2/wording/summary_fix/ledger_focus.txt | f2a898a9daed8d90ab15c5aa0d1def3fb81d43ac611eaa2c29d22b4bf835a8aa |
 | placebo_focus | configs/week2/wording/summary_fix/placebo_focus.txt | 1caf3815adf787c9637d025be0c3a791ae02536154075c256a696866f4e31628 |
 | line | configs/week2/wording/summary_fix/line.txt | 299e80c1de8417424daba11f9862e997c1be3912af0100f782514f5ba7978bf6 |
+| neutral_lead | configs/week2/wording/summary_fix/neutral_lead.txt | 0176c8625332fff048112bad869cf4d7a5b31987d9bdaa673f142cc17c46c547 |
 
 Reasoning text logged: yes
 
 ## Caps and parallelism
 
-- stage $250, per run $2.5, 400 calls, 7200 s
+- stage $305, per run $2.5, 400 calls, 7200 s
 - agents 16 at 1280 MB, fallback 6 at 3072 MB
 - seed 20261029

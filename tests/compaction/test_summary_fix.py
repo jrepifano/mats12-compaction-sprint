@@ -71,7 +71,9 @@ def test_boundary_arms(tmp_path):
     h = _hist(tmp_path)
     recs = {a: F.boundary(F.fix_run("httpx-np-2", a, 1), h, _mf(calls), tmp_path)
             for a in F.ARMS}
-    assert calls.count("compaction") == 3  # line reuses native's
+    assert calls.count("compaction") == 3  # line and neutral_opening reuse native's
+    assert {k: v for k, v in recs["neutral_opening"].items() if k != "arm"} == \
+        {k: v for k, v in recs["native"].items() if k != "arm"}
     assert "PLAIN" in recs["native"]["summary"] and "FOCUS" in recs["ledger"]["summary"]
     assert "FOCUS" in recs["placebo"]["summary"]
     led = next(r for r in recs["ledger"]["requests"] if r["label"] == "history")["user"]
@@ -105,7 +107,7 @@ def test_paid_model_tuple_and_empty_summary_raises(tmp_path):
 def test_order_is_seeded_replicate_major_and_complete():
     a = F.order(20261029, F.HISTORIES, 3)
     assert a == F.order(20261029, F.HISTORIES, 3) and a != F.order(1, F.HISTORIES, 3)
-    assert len(a) == 120 and len({b.id for b in a}) == 120
+    assert len(a) == 150 and len({b.id for b in a}) == 150
     assert [b.replicate for b in a] == sorted(b.replicate for b in a)
     for r in (1, 2, 3):
         for h in F.HISTORIES:
@@ -122,7 +124,7 @@ def test_rows_keep_every_slot(tmp_path):
     st = {"b": {runs[0].id: {"state": "compaction failed",
                              "compaction_failures": [{"error": "empty summary"}]}}}
     rows = [json.loads(x) for x in F.write_rows(st, runs, tmp_path).read_text().splitlines()]
-    assert len(rows) == 4 and all(r["teammate_lost"] is None for r in rows)
+    assert len(rows) == len(F.ARMS) and all(r["teammate_lost"] is None for r in rows)
     assert rows[0]["state"] == "compaction failed" and rows[0]["compaction_failures"]
 
 
@@ -169,7 +171,8 @@ def test_rows_to_primary_with_replicates_and_unknowns(tmp_path, monkeypatch):
             st["b"][b.id] = {"state": "compaction failed", "compaction_failures": [{"e": 1}]}
             continue
         st["b"][b.id] = {"state": "done", "dir": str(tmp_path / b.id)}
-    lost = {"native": True, "ledger": False, "line": True, "placebo": True}
+    lost = {"native": True, "ledger": False, "line": True, "placebo": True,
+            "neutral_opening": True}
     monkeypatch.setattr(F, "score", lambda out, b: {"id": b.id, "rep": 2, "rewrite": "no",
                                                      "teammate_lost": lost[b.arm],
                                                      "arm": b.arm, "replicate": b.replicate,
@@ -180,6 +183,8 @@ def test_rows_to_primary_with_replicates_and_unknowns(tmp_path, monkeypatch):
     out = FS.primary(rows, n=200)
     assert out["fixes"]["ledger"]["complete"]["diff_pts"] < 0
     assert out["risk"]["native"]["assigned"] == 6
+    assert out["fixes"]["neutral_opening"]["complete"]["diff_pts"] == 0
+    assert set(out["fixes"]) == {"ledger", "line", "neutral_opening"}
 
 
 def test_content_works_needs_the_native_contrast():
@@ -230,7 +235,8 @@ def test_focus_calls_config_key_is_optional_and_checked(monkeypatch):
     from compaction.s2.chain import week2 as W
     monkeypatch.setattr(F, "FOCUS_CALLS", F.FOCUS_CALLS)  # restored whatever happens
     cfg = W.load_config("configs/week2/summary_fix.toml")
-    assert "focus_calls" not in cfg["summary_fix"] and F.code_mismatches(cfg) == []
+    assert cfg["summary_fix"].pop("focus_calls") == "both"  # the bulk's setting (Jacob, 28 Oct)
+    assert F.code_mismatches(cfg) == []
     F.apply_design(cfg)
     assert F.FOCUS_CALLS == "history"
     cfg["summary_fix"]["focus_calls"] = "both"
@@ -241,3 +247,22 @@ def test_focus_calls_config_key_is_optional_and_checked(monkeypatch):
     cfg["summary_fix"]["focus_calls"] = "turn_prefix"
     with pytest.raises(ValueError, match="focus_calls"):
         W.validate(cfg)
+
+
+def test_neutral_opening_changes_only_the_lead_line(tmp_path):
+    h = _hist(tmp_path)
+    b = F.fix_run("httpx-np-2", "neutral_opening", 1)
+    lead = F.lead_for(b, h)
+    assert F.lead_for(F.fix_run("httpx-np-2", "native", 1), h) is None
+    b_repo = F.CC.REPO_OF_TASK[b.cell.b_task]
+    native = F.CC.lead_in("different", b_repo, F.CC.REPOS["httpx"])
+    assert lead == native.replace("Thanks, that's done. The next task is in a different "
+                                  "project: the ", "Next task: a different project, the ")
+    assert lead.startswith("Next task: a different project, the tengo repository")
+    comp = {"post_messages": [{"role": "user", "content": "summary"}]}
+    hc = SE.AHistory("httpx-np-2", "httpx", tmp_path, None, None, _history(), comp)
+    nat = SE.b_context("compacted", "different", b_repo, hc, "TASK", None)
+    neu = SE.b_context("compacted", "different", b_repo, hc, "TASK", None, lead=lead)
+    assert nat[:-1] == neu[:-1]
+    assert nat[-1]["content"] == native + neu[-1]["content"][len(lead):]
+    assert nat == SE.b_context("compacted", "different", b_repo, hc, "TASK", None, lead=None)

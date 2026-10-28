@@ -2,7 +2,7 @@
 
 A row is one run: `{"history", "replicate", "arm", "teammate_lost"}`, `teammate_lost` True/False, or
 None when the slot is unknown (unfinished, failed, quota-cut; every assigned slot is kept). Arms
-other than native/ledger/line/placebo are ignored. A unit is one history x one replicate; a
+other than native/ledger/line/placebo/neutral_opening are ignored. A unit is one history x one replicate; a
 contrast uses the units where both arms have a row.
 
 - `paired_diffs`: per history D_h = sum over its units of (base lost - fix lost). Unknowns are
@@ -14,9 +14,9 @@ contrast uses the units where both arms have a row.
 - `holm`: Holm step-down.
 - `cluster_bootstrap_ci`: history-cluster bootstrap of the paired risk difference (fix - base),
   in points.
-- `primary`: ledger and line against native at both completions and complete case, Holm across
-  the two fixes on the worse-completion p (Holm is monotone in p, so a rejection there is a
-  rejection at each completion); "significant" also needs both completions' bootstrap CIs to
+- `primary`: ledger, line and neutral_opening against native at both completions and complete
+  case, Holm across the three on the worse-completion p (Holm is monotone in p, so a rejection
+  there is a rejection at each completion); "significant" also needs both completions' bootstrap CIs to
   exclude 0 on the same side. Secondary, outside Holm: ledger - placebo <= -15 points with
   unadjusted p <= 0.05 at both completions; placebo - native reported.
 """
@@ -27,8 +27,8 @@ from collections import defaultdict
 
 import numpy as np
 
-ARMS = ("native", "ledger", "line", "placebo")
-FIXES = ("ledger", "line")
+ARMS = ("native", "ledger", "line", "placebo", "neutral_opening")
+FIXES = ("ledger", "line", "neutral_opening")  # neutral_opening: Jacob, 28 Oct
 FILLS = (None, "worst", "best")
 COMPLETIONS = ("worst", "best")
 SEED = 20261029
@@ -38,7 +38,7 @@ MAX_K = 24
 
 
 def _index(rows) -> dict[tuple[str, int], dict[str, bool | None]]:
-    """{(history, replicate): {arm: lost}} for the four arms; a repeated (history, replicate,
+    """{(history, replicate): {arm: lost}} for the five arms; a repeated (history, replicate,
     arm) raises. `replicate` is the experiment's replicate (summary_fix rows), not experiment
     1's `rep` (the history's own index, the same in every replicate)."""
     out: dict[tuple[str, int], dict[str, bool | None]] = defaultdict(dict)
@@ -182,7 +182,7 @@ def primary(rows, alpha: float = ALPHA, **boot) -> dict:
     return {
         "risk": _risk(rows),
         "fixes": fixes,
-        "holm_basis": "worse-completion p across ledger and line",
+        "holm_basis": "worse-completion p across ledger, line and neutral_opening",
         "ledger_vs_placebo": {**lp, "content_works": content,
                               "secondary_criterion_met": secondary, "bar_pts": CONTENT_PTS,
                               "alpha_unadjusted": alpha},
