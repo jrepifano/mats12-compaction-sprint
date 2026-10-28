@@ -274,3 +274,52 @@ antigravity.google/docs (hooks, rules locations; no compaction setting). Fetch-t
 
 #### P44 note
 `probes/P44-handoff-methods-alignment/note.md` (main): a single permission or decision line in a handoff changed how GLM and DeepSeek cheated.
+
+## Build contract
+
+Every row is a key of `configs/week2/summary_fix.toml`; `scripts/week2_plan_check.py` checks the config against this table and the proposal's sha256.
+
+| Parameter | Value |
+|---|---|
+| `design.kind` | summary_fix |
+| `design.stage` | SPRINT-S2-SUMMARY-FIX |
+| `design.seed` | 20261029 |
+| `design.n_phases` | 2 |
+| `design.log_reasoning` | true |
+| `summary_fix.testbed` | pi |
+| `summary_fix.source_exp` | precedent |
+| `summary_fix.histories` | httpx-np-2, httpx-np-3, httpx-np-4, httpx-np-5, tengo-np-1, tengo-np-2, tengo-np-3, tengo-np-6, tengo-np-7, tengo-np-8 |
+| `summary_fix.arms` | native, ledger, line, placebo |
+| `summary_fix.replicates` | 3 |
+| `summary_fix.replicates_late` | 2 |
+| `summary_fix.late_after_et` | 2026-10-29T07:00 |
+| `summary_fix.project` | different |
+| `summary_fix.start` | compacted |
+| `summary_fix.host` | rig |
+| `summary_fix.smoke_history` | httpx-np-3 |
+| `summary_fix.smoke_arms` | native, ledger |
+| `caps.stage_usd` | 250 |
+| `caps.stage_usd_late` | 166 |
+| `caps.run_usd` | 2.5 |
+| `caps.max_calls` | 400 |
+| `caps.max_seconds` | 7200 |
+| `parallelism.agents` | 16 |
+| `parallelism.fallback_agents` | 6 |
+| `parallelism.agent_memory_mb` | 1280 |
+| `parallelism.fallback_agent_memory_mb` | 3072 |
+| `wording.task_ending.path` | configs/week2/wording/task_chaining/task_ending.txt |
+| `wording.task_ending.sha256` | 69a5e1ae691059f82d63fc68dfadf50236deefd3dd4138f2fcec1244253b6b34 |
+| `wording.lead_different.path` | configs/week2/wording/task_chaining/lead_different.txt |
+| `wording.lead_different.sha256` | f3e771faca721f959383d3d26eb1138375f6b9c49b550db7468219078dd7c910 |
+| `wording.teammate_message.path` | configs/week2/wording/task_chaining/teammate_message.txt |
+| `wording.teammate_message.sha256` | 2604c0a2d6931031436781926f0485e874659a879ab50a6567433d745eebce34 |
+| `wording.teammate_text_httpx.path` | configs/week2/wording/task_chaining/teammate_text_httpx.txt |
+| `wording.teammate_text_httpx.sha256` | 9eb455ea6f5e54fffd8931f3511b25ab4ba4252fb6d288a8a13f6de0d53c1e1a |
+| `wording.teammate_text_tengo.path` | configs/week2/wording/task_chaining/teammate_text_tengo.txt |
+| `wording.teammate_text_tengo.sha256` | c2843cfac4759ec358f9f56b4921ba1858dd5ca651eb833e397afea5de97b202 |
+| `wording.ledger_focus.path` | configs/week2/wording/summary_fix/ledger_focus.txt |
+| `wording.ledger_focus.sha256` | f2a898a9daed8d90ab15c5aa0d1def3fb81d43ac611eaa2c29d22b4bf835a8aa |
+| `wording.placebo_focus.path` | configs/week2/wording/summary_fix/placebo_focus.txt |
+| `wording.placebo_focus.sha256` | 1caf3815adf787c9637d025be0c3a791ae02536154075c256a696866f4e31628 |
+| `wording.line.path` | configs/week2/wording/summary_fix/line.txt |
+| `wording.line.sha256` | 299e80c1de8417424daba11f9862e997c1be3912af0100f782514f5ba7978bf6 |
