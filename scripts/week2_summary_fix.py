@@ -220,7 +220,7 @@ def cmd_smoke(a) -> int:
         s0 = D.spent()["spent"]
         try:
             sub, _out = _run(a, cfg, runs, root, cfg["caps"]["stage_usd"],
-                             ["stub_summary_fix"], len(runs))
+                             ["stub_summary_fix"], max(1, a.concurrency))
         except (D.Halt, L.Stopped) as e:
             sys.exit(f"smoke stopped: {e}")
         spent = round(D.spent()["spent"] - s0, 4)
@@ -337,6 +337,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--source-raw", type=Path, required=True)
     p.add_argument("--host", choices=M.HOSTS, default="rig")
+    p.add_argument("--concurrency", type=int, default=1,
+                   help="arms at once (default 1: one agent at a time beside other runs)")
     p = sub.add_parser("go")
     p.add_argument("--go-from-jacob", action="store_true")
     p.add_argument("--source-raw", type=Path, required=True)
