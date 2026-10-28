@@ -30,6 +30,9 @@ from compaction.s2.chain import refusal as RF
 
 MODEL = "claude-opus-5-5"
 EFFORT = "medium"
+# claude -p refuses an empty system prompt (Claude Code's default would apply); the task's
+# instructions are all in the user turn, built by refusal.py
+SYSTEM = "You are a careful reader of coding-session summaries. Answer with JSON only."
 FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 
 
@@ -56,7 +59,7 @@ def backend(out: Path):
 
 
 def _req(key: str, user: str, hid: str) -> Req:
-    return Req(key=key, system="", user=user, schema=None, max_output_tokens=4000, rid=hid,
+    return Req(key=key, system=SYSTEM, user=user, schema=None, max_output_tokens=4000, rid=hid,
                source="week2-refusal", private=False)
 
 

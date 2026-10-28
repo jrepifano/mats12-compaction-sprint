@@ -333,3 +333,9 @@ def test_paid_gate_reads_the_configs_stage_from_a_two_stage_caps_file(tmp_path):
     assert W.check_paid_gate(cfg, go=True, card=card, caps_path=caps, stage="reply") == []
     caps.write_text('[stages.SPRINT-S2-USERNO]\ncap_usd = 30.0\n')
     assert W.check_paid_gate(cfg, go=True, card=card, caps_path=caps, stage="reply")
+
+
+def test_max_requests_carry_a_system_prompt():
+    """claude -p refuses an empty system prompt (smoke, 28 Oct)."""
+    r = MX._req("k", "user text", "h")
+    assert r.system.strip() and r.user == "user text"
