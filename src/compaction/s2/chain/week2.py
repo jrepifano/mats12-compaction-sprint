@@ -73,6 +73,7 @@ SCHEMA: dict[str, dict] = {
                  "prompts": "list[str]",
                  "models": "list[str]", "views": "list[str]", "primary_acts": "int",
                  "test_retest_items": "int", "concurrency": "int", "max_window_pause": "float",
+                 "max_five_hour_pause": "float", "step_skip": "list[str]",
                  "second_scenario": "str", "p38_natural_acts": "int",
                  "p38_false_licence_acts": "int", "p38_authorized_items": "int",
                  "p38_policy_in_every_view": "bool", "third_scenario": "str"},

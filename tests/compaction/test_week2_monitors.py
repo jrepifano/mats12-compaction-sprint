@@ -367,3 +367,74 @@ def test_control_items_from_the_launch_run_data():
     reqs = [r.system + r.user for v in it.views for p in ("auto_mode", "guardian")
             for r in render(it, v, p)]
     assert K.check_metadata_absent(it, reqs) == []
+
+
+def test_runner_pauses_on_the_five_hour_window_with_its_reset_time():
+    """Advisor, 28 Oct: stop launching at max_five_hour_pause (0.6), record why and when the
+    window resets; the seven-day bar, when also crossed, is the reason (the chain stops)."""
+    it, *_ = item()
+    cfg = R.load_config(None)
+    assert cfg.max_five_hour_pause == 0.6 and cfg.step_skip == ()
+    calls = R.plan_calls([it], cfg, views=["full", "current_only"], prompts=["auto_mode"],
+                         models=cfg.models)
+    res = R.score(calls, cfg, lambda m: R.StubBackend(m, five_hour=0.61,
+                                                      five_hour_resets_at=1793192400),
+                  purpose="t", chunk=1)
+    assert res.paused and res.pause_reason == "five_hour" and len(res.unscored) == 7
+    assert res.five_hour_resets_at == 1793192400 and res.max_five_hour == 0.61
+    ok = R.score(calls, cfg, lambda m: R.StubBackend(m, five_hour=0.59), purpose="t")
+    assert not ok.paused and ok.pause_reason is None and not ok.unscored
+    both = R.score(calls, cfg, lambda m: R.StubBackend(m, util_start=0.96, five_hour=0.7),
+                   purpose="t", chunk=1)
+    assert both.pause_reason == "seven_day"
+
+
+def test_step_skip_cuts_only_the_named_step_model_and_view():
+    import dataclasses
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    import week2_monitors as W
+    it, *_ = item()
+    cfg = dataclasses.replace(R.load_config(None),
+                              step_skip=("6:claude-opus-5-5:current_only",
+                                         "5:claude-haiku-5-5:full"))
+    calls = R.plan_calls([it], cfg, views=["full", "current_only"], prompts=["auto_mode"],
+                         models=cfg.models)
+    kept, cut = W.apply_step_skip(6, cfg, calls)
+    assert cut == ["claude-opus-5-5:current_only"]
+    assert not any(c.model == "claude-opus-5-5" and c.view == "current_only" for c in kept)
+    assert len(kept) == len(calls) - 2  # both auto-mode stages of that cell
+    assert W.apply_step_skip(1, cfg, calls) == (calls, [])
+    for bad in ("6:claude-opus-5-5:nope", "x:claude-opus-5-5:full", "6:opus:full", "6:full"):
+        with pytest.raises(SystemExit):
+            W.apply_step_skip(6, dataclasses.replace(cfg, step_skip=(bad,)), calls)
+
+
+def test_a_rerun_carries_over_finished_rows_and_resends_the_rest(tmp_path):
+    """astra pace r1: the cache keeps successful answers only, so a rerun after a five-hour
+    pause must not resend finished refusals; unfinished calls are sent again."""
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    import week2_monitors as W
+    it, *_ = item()
+    cfg = R.load_config(None)
+    calls = R.plan_calls([it], cfg, views=["full"], prompts=["auto_mode"], models=cfg.models)
+    def row(c, valid, attempt):
+        return {"item": c.item.id, "view": c.view, "prompt": c.prompt, "stage": c.stage,
+                "model": c.model, "rep": c.rep, "attempt": attempt,
+                "request_sha256": c.request_sha(), "verdict": {"valid": valid}}
+    a, b, c, d = calls  # 2 models x 2 stages
+    prev = [row(a, True, 0),                      # finished
+            row(b, False, 0), row(b, False, 1),   # refused twice: final, not resent
+            row(c, False, 0)]                     # unfinished (no retry yet): resent
+    p = tmp_path / "scores.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in prev + [dict(row(d, True, 0),
+                                                                   view="cut-later")]))
+    todo, kept = W.carry_over(p, calls)
+    assert [x.key for x in todo] == [c.key, d.key]
+    assert {(r["stage"], r["model"], r["view"], r["attempt"]) for r in kept} == {
+        (a.stage, a.model, "full", 0), (b.stage, b.model, "full", 0),
+        (b.stage, b.model, "full", 1), (d.stage, d.model, "cut-later", 0)}
+    assert W.carry_over(tmp_path / "none.jsonl", calls) == (calls, [])

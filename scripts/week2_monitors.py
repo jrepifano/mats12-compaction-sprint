@@ -619,6 +619,52 @@ def cmd_items_exp1(a) -> int:
     return 0 if not errs else 1
 
 
+STEPS = (0, 1, 2, 3, 4, 5, 6, 7, 8)  # the workload's steps (`_step_calls`)
+
+
+def carry_over(path: Path, calls: list[R.Call]) -> tuple[list[R.Call], list[dict]]:
+    """On a rerun of a step (after a five-hour pause), the step's own finished rows are kept
+    and their calls not sent again: a call is finished when its final row (the retry if there was
+    one) is valid or is the retry, for the same request (request_sha256). The Max cache keeps
+    successful answers only, so without this a rerun would resend finished refusals."""
+    if not path.exists():
+        return calls, []
+    prev = [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
+    fin = {(r["item"], r["view"], r["prompt"], r["stage"], r["model"], r["rep"]): r
+           for r in R.final_rows(prev)}
+    keep_keys, todo = set(), []
+    for c in calls:
+        k = (c.item.id, c.view, c.prompt, c.stage, c.model, c.rep)
+        r = fin.get(k)
+        if r is not None and r.get("request_sha256") == c.request_sha() and (
+                (r.get("verdict") or {}).get("valid") or r.get("attempt", 0) >= 1):
+            keep_keys.add(k)
+        else:
+            todo.append(c)
+    # every earlier row not about to be re-sent stays (a cell cut by a later step_skip too);
+    # rows of re-sent calls are replaced by the new attempts
+    resend = {(c.item.id, c.view, c.prompt, c.stage, c.model, c.rep) for c in todo}
+    kept = [r for r in prev
+            if (r["item"], r["view"], r["prompt"], r["stage"], r["model"], r["rep"]) not in resend]
+    return todo, kept
+
+
+def apply_step_skip(step: int, cfg: R.ScorerConfig, calls: list[R.Call]
+                    ) -> tuple[list[R.Call], list[str]]:
+    """The step's calls without the config's `step_skip` cuts ("<step>:<model>:<view>", both
+    prompts). An entry naming an unknown model or view, or a malformed one, refuses."""
+    cuts = set()
+    for e in cfg.step_skip:
+        parts = e.split(":")
+        if len(parts) != 3 or not parts[0].isdigit() or int(parts[0]) not in STEPS \
+                or parts[1] not in cfg.models or parts[2] not in cfg.views:
+            raise SystemExit(f"step_skip entry {e!r}: want <step>:<model>:<view> from the config")
+        if int(parts[0]) == step:
+            cuts.add((parts[1], parts[2]))
+    kept = [c for c in calls if (c.model, c.view) not in cuts]
+    return kept, sorted(f"{m}:{v}" for m, v in cuts)
+
+
 def cmd_score(a) -> int:
     if not a.go:
         raise SystemExit("scoring runs on the Max plan: needs --go (Jacob's go, relayed)")
@@ -627,15 +673,25 @@ def cmd_score(a) -> int:
     controls = _load_items("controls")
     exp1 = _load_items("exp1") or (_load_items("exp1_partial") if a.partial else [])
     calls = _step_calls(a.step, cfg, items, p38, controls, exp1)
+    n_planned = len(calls)
+    calls, skipped = apply_step_skip(a.step, cfg, calls)
     errs = preflight(a.step, cfg, items, p38, calls, exp1_partial=a.partial)
     if errs:
         raise SystemExit("preflight failed:\n- " + "\n- ".join(errs))
     fac = R.max_factory(cache_dir=RAW / "cache", usage_path=RAW / "max_usage.jsonl",
                         concurrency=cfg.concurrency)
-    res = R.score(calls, cfg, fac, purpose=R.SCORE_PURPOSE)
-    R.write_jsonl(RAW / f"scores_step{a.step}.jsonl", res.rows)
-    summ = {"step": a.step, "calls": len(calls), "rows": len(res.rows),
-            "unscored": res.unscored, "paused": res.paused, "max_seven_day": res.max_util}
+    todo, kept = carry_over(RAW / f"scores_step{a.step}.jsonl", calls)
+    # check the pause after every wave of `concurrency` calls, so at most one wave launches
+    # past a bar (astra pace r1)
+    res = R.score(todo, cfg, fac, purpose=R.SCORE_PURPOSE, chunk=cfg.concurrency)
+    R.write_jsonl(RAW / f"scores_step{a.step}.jsonl", kept + res.rows)
+    summ = {"step": a.step, "calls": len(calls), "calls_planned": n_planned,
+            "step_skip": skipped, "calls_carried_over": len(calls) - len(todo),
+            "calls_sent_or_cached": len(todo) - len(res.unscored),
+            "rows": len(kept) + len(res.rows),
+            "unscored": res.unscored, "paused": res.paused, "pause_reason": res.pause_reason,
+            "max_seven_day": res.max_util, "max_five_hour": res.max_five_hour,
+            "five_hour_resets_at": res.five_hour_resets_at}
     (OUT / f"score_step{a.step}.json").write_text(json.dumps(summ, indent=1))
     print(json.dumps(summ, indent=1))
     return 0

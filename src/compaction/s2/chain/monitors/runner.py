@@ -44,6 +44,9 @@ CONTRACT = {
     "test_retest_items": 20,
     "concurrency": 4,
     "max_window_pause": 0.95,  # Jacob, 27 Oct: pause at 95%, then he resets
+    # Advisor, 28 Oct (pacing): stop launching at 60% of the five-hour window, so 40% stays for
+    # the interactive sessions; the resume script waits for the window's reset and reruns the step
+    "max_five_hour_pause": 0.6,
     "second_scenario": "p38",
     "p38_natural_acts": 35,
     "p38_false_licence_acts": 44,
@@ -70,6 +73,8 @@ class ScorerConfig:
     test_retest_items: int
     p07_allowed: bool = False
     source: str = "contract"
+    max_five_hour_pause: float = 1.0
+    step_skip: tuple[str, ...] = ()
 
 
 def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = None
@@ -82,6 +87,11 @@ def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = No
         cfg = tomllib.loads(Path(path).read_text())
         got = cfg.get("monitors") or {}
         diffs = {k: (got.get(k), v) for k, v in CONTRACT.items() if got.get(k) != v}
+        # step_skip is a per-step choice (Jacob's), bound to the proposal by the drift gate,
+        # not a contract constant here
+        sk = got.get("step_skip", [])
+        if not isinstance(sk, list) or not all(isinstance(x, str) for x in sk):
+            diffs["step_skip"] = (sk, "a list of '<step>:<model>:<view>' strings")
         if diffs:
             raise ValueError(f"{path}: [monitors] differs from the contract: {diffs}")
         m, src = got, str(path)
@@ -95,7 +105,9 @@ def load_config(path: str | Path | None, *, p07_coverage: str | Path | None = No
                         max_window_pause=float(m["max_window_pause"]),
                         primary_acts=int(m["primary_acts"]),
                         test_retest_items=int(m["test_retest_items"]),
-                        p07_allowed=p07, source=src)
+                        p07_allowed=p07, source=src,
+                        max_five_hour_pause=float(m["max_five_hour_pause"]),
+                        step_skip=tuple(m.get("step_skip") or ()))
 
 
 @dataclass
@@ -161,12 +173,26 @@ def seven_day_util(resp: Resp) -> float | None:
     return best
 
 
+def five_hour(resp: Resp) -> tuple[float | None, int | None]:
+    """(utilization, resetsAt epoch) of the five-hour window in an answer's rate-limit
+    snapshot; (None, None) when the snapshot has none."""
+    rl = (resp.meta or {}).get("rate_limit") or {}
+    w = (rl.get("unifiedWindows") or {}).get("five_hour")
+    if not isinstance(w, dict) or w.get("utilization") is None:
+        return None, None
+    r = w.get("resetsAt")
+    return float(w["utilization"]), (int(r) if isinstance(r, int | float) else None)
+
+
 @dataclass
 class BatchResult:
     rows: list[dict] = field(default_factory=list)
     unscored: list[str] = field(default_factory=list)
     paused: bool = False
     max_util: float | None = None
+    pause_reason: str | None = None  # "seven_day" (stop) | "five_hour" (wait for the reset)
+    max_five_hour: float | None = None
+    five_hour_resets_at: int | None = None
 
 
 def _backend_for(model: str, factory: Callable[[str], object]) -> object:
@@ -253,6 +279,15 @@ def _track(res: BatchResult, resp: Resp, cfg: ScorerConfig) -> None:
         res.max_util = max(res.max_util or 0.0, u)
         if u >= cfg.max_window_pause:
             res.paused = True
+            res.pause_reason = "seven_day"  # the weekly bar wins: the chain stops
+    u5, reset = five_hour(resp)
+    if u5 is not None:
+        res.max_five_hour = max(res.max_five_hour or 0.0, u5)
+        if reset is not None:
+            res.five_hour_resets_at = max(res.five_hour_resets_at or 0, reset)
+        if u5 >= cfg.max_five_hour_pause:
+            res.paused = True
+            res.pause_reason = res.pause_reason or "five_hour"
 
 
 def _row(c: Call, resp: Resp, v: dict, *, attempt: int) -> dict:
@@ -304,10 +339,14 @@ class StubBackend:
     """$0 stand-in for `MaxBackend`: answers by rule, reports a rising seven-day window."""
 
     def __init__(self, model: str, *, util_start: float = 0.10, util_step: float = 0.0,
-                 malformed_keys: Iterable[str] = ()):
+                 malformed_keys: Iterable[str] = (), five_hour: float | None = None,
+                 five_hour_step: float = 0.0, five_hour_resets_at: int = 1793192400):
         self.model = model
         self.util = util_start
         self.step = util_step
+        self.five = five_hour
+        self.five_step = five_hour_step
+        self.five_reset = five_hour_resets_at
         self.malformed = set(malformed_keys)
         self.requests: list[Req] = []
 
@@ -316,6 +355,8 @@ class StubBackend:
         for r in reqs:
             self.requests.append(r)
             self.util += self.step
+            if self.five is not None:
+                self.five += self.five_step
             if r.key in self.malformed:
                 text = "I think this is fine."
             elif "APPROVAL REQUEST START" in r.user:
@@ -324,10 +365,13 @@ class StubBackend:
             else:
                 text = ("<thinking>stub</thinking><block>yes</block><category>Git Destructive"
                         "</category><reason>[Git Destructive] stub</reason>")
+            windows = {"seven_day": {"utilization": round(self.util, 4)}}
+            if self.five is not None:
+                windows["five_hour"] = {"utilization": round(self.five, 4),
+                                        "resetsAt": self.five_reset}
             out[r.key] = Resp(key=r.key, data=None, text=text, error=None,
                               input_tokens=len(r.system + r.user) // 3, output_tokens=40,
-                              meta={"rate_limit": {"unifiedWindows": {
-                                  "seven_day": {"utilization": round(self.util, 4)}}}})
+                              meta={"rate_limit": {"unifiedWindows": windows}})
         return out
 
 
