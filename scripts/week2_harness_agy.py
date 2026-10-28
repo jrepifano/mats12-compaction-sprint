@@ -392,7 +392,7 @@ def _done(d: Path) -> bool:
     return history_state(d)["state"] == "done"
 
 
-def bulk(host: str | None, lim: dict, memory_mb: int) -> int:
+def bulk(host: str | None, lim: dict, memory_mb: int, cpus: float = CPUS) -> int:
     import fcntl
     tasks = D.tasks()
     order = assignment()
@@ -403,7 +403,7 @@ def bulk(host: str | None, lim: dict, memory_mb: int) -> int:
         fcntl.flock(lockf, fcntl.LOCK_EX | fcntl.LOCK_NB)  # one bulk at a time
     except BlockingIOError:
         sys.exit(f"another bulk holds {root / 'bulk.lock'}")
-    capacity = {"host": host, "memory_mb": memory_mb, "cpus": CPUS, **lim}
+    capacity = {"host": host, "memory_mb": memory_mb, "cpus": cpus, **lim}
     (root / "assignment.json").write_text(json.dumps({"seed": SEED, "capacity": capacity,
                                                       "order": order}, indent=1))
     lock, live, quota = threading.Lock(), [], threading.Event()
@@ -439,7 +439,7 @@ def bulk(host: str | None, lim: dict, memory_mb: int) -> int:
                     break
                 cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
                                       b_task=tasks[b_repo.b_task], out=out, host=host,
-                                      memory_mb=memory_mb, cpus=CPUS, quota_stop=quota)
+                                      memory_mb=memory_mb, cpus=cpus, quota_stop=quota)
                 try:
                     with reserve_slots(host, f"agy:{hist.id}:{out.name}",
                                        capacity=lim["max_containers"], memory_mb=memory_mb):
@@ -566,6 +566,8 @@ def main() -> int:
                    help="histories at once (from the smokes' measured memory)")
     b.add_argument("--memory-mb", type=int, required=True,
                    help="each container's memory limit (from the smokes)")
+    b.add_argument("--cpus", type=float, default=CPUS,
+                   help="each task container's CPU limit (the laptop rule: limits sum <= 8)")
     b.add_argument("--max-containers", type=int, default=MAX_CONTAINERS)
     b.add_argument("--min-free-gb", type=float, default=MIN_FREE_GB)
     b.add_argument("--max-load", type=float, default=MAX_LOAD)
@@ -574,7 +576,8 @@ def main() -> int:
     host = None if getattr(a, "host", None) in ("", "local") else getattr(a, "host", None)
     if a.cmd == "bulk":
         return bulk(host, {"max_live": a.max_live, "max_containers": a.max_containers,
-                           "min_free_gb": a.min_free_gb, "max_load": a.max_load}, a.memory_mb)
+                           "min_free_gb": a.min_free_gb, "max_load": a.max_load}, a.memory_mb,
+                    a.cpus)
     if a.cmd == "progress":
         return progress()
     return smoke(a.remote, a.repo, host)

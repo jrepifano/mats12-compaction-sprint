@@ -71,10 +71,13 @@ our own synthetic setup; never point this driver at a private repo.
 from __future__ import annotations
 
 import contextlib
+import copy
 import hashlib
 import json
+import os
 import shlex
 import shutil
+import subprocess
 import tempfile
 import threading
 import time
@@ -86,6 +89,7 @@ from compaction import agy as AG
 from compaction.deepswe import sandbox as SB
 from compaction.s2 import interact as I
 from compaction.s2.chain import config as CC
+from compaction.s2.chain import env as E
 from compaction.s2.native import agy as A
 from compaction.s2.native import agy_transcript as AT
 from compaction.s2.native import cc_chain as X
@@ -330,7 +334,8 @@ def container_log_bytes(sb: SB.Sandbox) -> bytes:
     return p.stdout + b"\n" + p.stderr
 
 
-def prescreen_evidence(sb: SB.Sandbox, bare: str, sim_token: str, tries: int = 2) -> dict:
+def prescreen_evidence(sb: SB.Sandbox, bare: str, sim_token: str, tries: int = 2,
+                       run_env=None) -> dict:
     """Before `ChainEnv.finish_traps` writes anything on the host (astra agy-build r2 #1):
     every source of the exported evidence, screened in the container. The remote (`bare`) and
     the workspace's git dir (hooks, config, refs, every object decoded: the snapshot's
@@ -353,8 +358,8 @@ def prescreen_evidence(sb: SB.Sandbox, bare: str, sim_token: str, tries: int = 2
                 raise SB.SandboxError(f"staging the path list rc={r.rc}")
             sb.put_file(container_log_bytes(sb), f"{STAGE_DIR}/container.log")
             roots = [STAGE_DIR, bare] + ([gitdir] if gitdir else [])
-            res = N.exec_env(sb, I.NOSHIM + evidence_screen_script(roots),
-                             {"EMX_SIM_TOKEN": sim_token}, timeout_s=1200)
+            res = (run_env or N.exec_env)(sb, I.NOSHIM + evidence_screen_script(roots),
+                          {"EMX_SIM_TOKEN": sim_token}, timeout_s=1200)
             ok, why = _verdict(res)
         except Exception as e:  # noqa: BLE001 - no verdict: tried again, then omitted
             ok, why = None, f"screen error: {type(e).__name__}"
@@ -814,6 +819,220 @@ def _session(image: str, cfg: HistoryConfig) -> N.NativeSession:
                            min_free_gb=cfg.min_free_gb)
 
 
+PRECOMPACT_REPO = f"emx-keep/{OURS}"  # kept images: outside every run's sweep
+
+
+def _exec_np(sb: SB.Sandbox, cmd: str, env: dict[str, str] | None = None, *,
+             timeout_s: int = 300, workdir: str = "/") -> SB.ExecResult:
+    """`docker exec` with a profile-free shell (`bash --noprofile --norc`: no login profile the
+    agent may have edited runs; astra agy-precompact r2 B3), values of `env` only in the
+    client's environment, and a client timeout that raises without removing the container."""
+    env = env or {}
+    argv = SB.docker_argv(["exec", *[a for k in env for a in ("-e", k)], "-w", workdir, sb.name,
+                           "timeout", "-k", "5", str(int(timeout_s)), "bash", "--noprofile",
+                           "--norc", "-c", cmd], sb.host)
+    t0 = time.monotonic()
+    try:
+        p = subprocess.run(argv, capture_output=True, timeout=timeout_s + SB.CLIENT_GRACE_S,
+                           env={**os.environ, **env}, check=False)
+    except subprocess.TimeoutExpired:
+        raise SB.SandboxError(f"client timeout on {sb.name} (container kept)") from None
+    return SB.ExecResult(p.returncode, p.stdout.decode(errors="replace"),
+                         p.stderr.decode(errors="replace"), time.monotonic() - t0)
+
+
+def commit_names_screen(sb: SB.Sandbox, sim_token: str) -> dict:
+    """Every path a commit would keep (`find -xdev`, changed since the session started: the
+    same set as `N.secret_scan`, which reads contents only) and every such symlink's target,
+    grepped for the token store's strings and the SimServer token (astra agy-precompact r1
+    B3). The patterns go to /dev/shm (never committed). {"ok", "why"}: ok only on a clean,
+    complete verdict."""
+    m = shlex.quote(N.START_MARKER)
+    script = (
+        "set -o pipefail; umask 077; P=$(mktemp /dev/shm/names.XXXXXX) || exit 3; "
+        "{ " + A.TOKEN_PATTERNS + "; } > \"$P\" || { rm -f \"$P\"; exit 5; }; "
+        "printf '%s\\n' \"$EMX_SIM_TOKEN\" >> \"$P\" || { rm -f \"$P\"; exit 5; }; "
+        "grep -qx '' \"$P\" && { rm -f \"$P\"; exit 5; }; "
+        f"[ -f {m} ] || {{ rm -f \"$P\"; exit 4; }}; "
+        f"s=$(find / -xdev \\( -newer {m} -o -cnewer {m} \\) -print \\( -type l -exec readlink {{}} + \\) "
+        "| grep -cF -f \"$P\"; echo \"${PIPESTATUS[0]} ${PIPESTATUS[1]}\"); rm -f \"$P\"; "
+        "set -- $s; [ \"$2\" = 0 ] || exit 6; [ \"$3\" -gt 1 ] && exit 4; "
+        "if [ \"$1\" -gt 0 ]; then echo NAMES_HIT; exit 0; fi; echo NAMES_CLEAN; exit 1")
+    try:
+        r = _exec_np(sb, script, {"EMX_SIM_TOKEN": sim_token}, timeout_s=900)
+    except Exception as e:  # noqa: BLE001 - no verdict: never clean
+        return {"ok": False, "why": f"names screen error: {type(e).__name__}"}
+    lines = r.stdout.split()
+    if r.rc == 1 and "NAMES_CLEAN" in lines:
+        return {"ok": True, "why": None}
+    return {"ok": False, "why": "a secret in a path name or link target" if r.rc == 0
+            and "NAMES_HIT" in lines else f"names screen failed rc={r.rc}"}
+
+
+def _non_destructive(sb: SB.Sandbox) -> SB.Sandbox:
+    """A view of `sb` for the optional save: its client timeouts raise without removing the
+    container (the sandbox's `_guarded` closes it; astra agy-precompact r1 B2), and its `exec`
+    runs a profile-free shell (`_exec_np`; r2 B3), so every process listing and command of the
+    save (`quiesce`, `ChainEnv.checkpoint`'s own listing included) runs no agent-edited
+    profile."""
+    view = copy.copy(sb)  # shallow: the same log list and unresolved commits
+    view.close = lambda *a, **k: None
+    view.exec = lambda cmd, timeout_s=600, workdir="/app": _exec_np(
+        sb, cmd, timeout_s=timeout_s, workdir=workdir)
+    view.put_file = lambda data, path, timeout_s=120: _put_np(sb, data, path, timeout_s)
+    return view
+
+
+def _put_np(sb: SB.Sandbox, data: bytes, path: str, timeout_s: int = 120) -> None:
+    """`Sandbox.put_file` through a profile-free shell, keeping the container on a timeout."""
+    d, q = shlex.quote(str(Path(path).parent)), shlex.quote(path)
+    argv = SB.docker_argv(["exec", "-i", "-w", "/", sb.name, "timeout", "-k", "5",
+                           str(int(timeout_s)), "bash", "--noprofile", "--norc", "-c",
+                           f"mkdir -p {d} && cat > {q}"], sb.host)
+    try:
+        p = subprocess.run(argv, input=data, capture_output=True,
+                           timeout=timeout_s + SB.CLIENT_GRACE_S, check=False)
+    except subprocess.TimeoutExpired:
+        raise SB.SandboxError(f"client timeout on {sb.name} (container kept)") from None
+    if p.returncode != 0:
+        raise SB.SandboxError(f"put_file {path} rc={p.returncode}")
+
+
+def _state(sb: SB.Sandbox) -> str | None:
+    """"running", "paused" or another state; None when it can't be read."""
+    try:
+        p = subprocess.run(SB.docker_argv(["inspect", "-f",
+                                           "{{.State.Running}} {{.State.Paused}}", sb.name],
+                                          sb.host), capture_output=True, text=True,
+                           timeout=60, check=False)
+    except subprocess.TimeoutExpired:
+        return None
+    if p.returncode != 0:
+        return None
+    running, paused = (p.stdout.split() + ["", ""])[:2]
+    return "paused" if paused == "true" else "running" if running == "true" else "stopped"
+
+
+def _unpaused(sb: SB.Sandbox, tries: int = 3) -> bool:
+    """The container is running and not paused (a failed `docker unpause` in the checkpoint
+    leaves it paused). Each try reads the state and, unless running, unpauses; a transport
+    failure is one failed try, never the end of recovery (astra agy-precompact r2 B2). The
+    state is read again after the last unpause."""
+    for _ in range(tries):
+        if _state(sb) == "running":
+            return True
+        with contextlib.suppress(Exception):
+            subprocess.run(SB.docker_argv(["unpause", sb.name], sb.host), capture_output=True,
+                           timeout=60, check=False)
+    return _state(sb) == "running"
+
+
+def pre_compact_checkpoint(sb: SB.Sandbox, env, run: TaskRun, hist_id: str, out: Path,
+                           tok: str) -> dict:
+    """Experiment 5's restore point: task 1's full state just before the boundary /compact,
+    saved without any agent turn. Every container operation goes through a view that never
+    removes the container on a timeout (`_non_destructive`), and the time it takes is given
+    back to the task's deadline, so the boundary's own budget is unchanged (astra
+    agy-precompact r1 B1–B2). In order:
+    - verified quiescence (`quiesce`, recorded here, not in the task's quiescence log);
+    - the steps that still run login shells: the conversation DB exported, screened
+      (`export_session`; a state listing that failed its screen refuses the save), and a
+      refreshed token store moved back to its volume (`keep_token_linked`, as `agy.capture`);
+    - then only profile-free commands (the view's exec and put, `_exec_np`; r2 B3): quiescence
+      again, the docker log stream read, the evidence's sources screened in the container
+      (`prescreen_evidence`, its staging dir confirmed gone), contents (`N.scan_script`) and
+      path names and link targets (`commit_names_screen`) of everything a commit keeps;
+    - experiment 1's `ChainEnv.checkpoint`: under one `docker pause`, the container committed to
+      a kept image (the workspace, agy's state dir and conversation DB; the auth volume is never
+      in a commit), the remote copied out, the scorer's state in `out/pre_compact/traps_home`;
+      the docker logs must be unchanged since they were read, so what was screened is what was
+      exported (r3 B1), else the save is removed; then the container is confirmed unpaused;
+    - the DB and its manifest in `out/pre_compact/session/`.
+    Restoring needs a native wrapper (the auth and CLI volumes, the tmpfs config, the
+    simulator and egress), not `start_from` alone. Never fatal and never an agent turn: a
+    failure or refusal is recorded and the history goes on unchanged. {"ok", "tag", ...}."""
+    t0 = time.monotonic()
+    rec: dict = {"ok": False, "tag": None}  # filled as it goes: a failure keeps what was done
+    res = rec
+    try:
+        env_sb = getattr(env, "sb", None)
+        try:
+            res = _save(rec, sb, env, run, hist_id, out, tok)
+        except Exception as e:  # noqa: BLE001 - an extra save: recorded, the history goes on
+            res = rec | {"error": f"{type(e).__name__}"}
+        with contextlib.suppress(Exception):
+            env.sb = env_sb
+        try:
+            res["unpaused"] = _unpaused(sb)
+        except Exception as e:  # noqa: BLE001
+            res["unpaused"] = f"unchecked: {type(e).__name__}"
+    finally:  # the boundary keeps its own budget: every second here, recovery included (B1)
+        run.deadline += time.monotonic() - t0
+    return res
+
+
+def _save(rec: dict, sb: SB.Sandbox, env, run: TaskRun, hist_id: str, out: Path,
+          tok: str) -> dict:
+    """`pre_compact_checkpoint`'s steps, recorded in `rec`; refusals add "skipped"."""
+    nd = _non_destructive(sb)
+    q = quiesce(nd, run.services)
+    rec["quiescence"] = {k: q[k] for k in ("confirmed", "stopped", "survivors")}
+    if not q["confirmed"]:
+        return rec | {"skipped": "not quiescent"}
+    # the steps that still run login shells (A.screen inside them) come first
+    steps = task_steps(nd, run.cid, tok)
+    blobs, man = export_session(nd, run.cid, tok, steps)
+    if man.get("left_behind") == OMITTED:
+        return rec | {"skipped": "state listing failed its screen"}
+    rec["token_link"] = A.keep_token_linked(nd)
+    # from here to the commit only profile-free commands run (r2 B3): quiescence again, the
+    # docker log stream fixed (r3 B1: what is screened is what is exported), then the screens
+    q = quiesce(nd, run.services)
+    rec["final_quiescence"] = {k: q[k] for k in ("confirmed", "stopped", "survivors")}
+    if not q["confirmed"] or q["stopped"]:
+        return rec | {"skipped": "a process ran during the save's screens"}
+    logs = container_log_bytes(sb)
+    pre = prescreen_evidence(nd, env.bare, tok, run_env=_exec_np)
+    rec["evidence_screen"] = pre
+    if not pre["ok"]:
+        return rec | {"skipped": "evidence screen not clean"}
+    if nd.exec(f"test ! -e {STAGE_DIR}", timeout_s=30, workdir="/").rc != 0:
+        return rec | {"skipped": "evidence staging dir left in the container"}
+    sc = _exec_np(nd, N.scan_script(["EMX_SIM_TOKEN"], pattern_cmd=A.TOKEN_PATTERNS),
+                  {"EMX_SIM_TOKEN": tok}, timeout_s=900)
+    ok, n_scanned, hits = N.parse_scan(sc.stdout)
+    if sc.rc != 0 or not ok:
+        return rec | {"skipped": f"content scan failed rc={sc.rc}"}
+    rec["secret_scan"] = {"scanned": n_scanned, "seconds": round(sc.seconds, 1)}
+    if hits:
+        return rec | {"skipped": "a secret is in the container's files"}
+    names = commit_names_screen(nd, tok)
+    rec["names_screen"] = names
+    if not names["ok"]:
+        return rec | {"skipped": "path names or link targets not clean"}
+    dest = out / "pre_compact"
+    tag = f"{PRECOMPACT_REPO}:pre-{hist_id}-{uuid.uuid4().hex[:6]}"
+    rec["tag"] = tag
+    env.sb = nd
+    cp = env.checkpoint(tag, dest, {"emx.chain": "pre_compact", "emx.chain.id": hist_id,
+                                    "emx.conversation": run.cid})
+    if container_log_bytes(sb) != logs:  # append-only: unchanged after = unchanged in between
+        shutil.rmtree(dest, ignore_errors=True)
+        with contextlib.suppress(Exception):
+            subprocess.run(SB.docker_argv(["rmi", tag], sb.host), capture_output=True,
+                           timeout=120, check=False)
+        return rec | {"skipped": "the container's logs changed after their screen"}
+    sdir = dest / "session"
+    for rel, data in blobs.items():
+        (sdir / rel).parent.mkdir(parents=True, exist_ok=True)
+        (sdir / rel).write_bytes(data)
+    (sdir / "manifest.json").write_text(json.dumps(man, indent=1))
+    keep = ("tag", "commit_s", "seconds", "traps_home")  # not the unscreened process list
+    return rec | {k: cp[k] for k in keep if k in cp} | {
+        "ok": True, "conversation_id": run.cid, "session": man.get("files"),
+        "last_step_index": man["last_step_index"]}
+
+
 @dataclass
 class HistoryConfig:
     hist: CC.History
@@ -826,6 +1045,8 @@ class HistoryConfig:
     min_free_gb: float | None = N.AGENT_MIN_FREE_GB
     # set at the first quota refusal; shared by every history of one bulk
     quota_stop: threading.Event = field(default_factory=threading.Event)
+    # experiment 5's restore point: an extra save before the boundary /compact (no agent turn)
+    pre_compact_checkpoint: bool = True
 
 
 def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt: str,
@@ -898,6 +1119,9 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt
                 if end == END_QUOTA or cfg.quota_stop.is_set():
                     rec["boundary"] = {"ok": False, "quota": True, "skipped": "quota stop"}
                 else:
+                    if cfg.pre_compact_checkpoint and env is not None:
+                        extra["pre_compact"] = pre_compact_checkpoint(
+                            sb, env, run, cfg.hist.id, out, tok)
                     try:
                         rec["boundary"] = boundary_compact(run)
                     except Exception as e:  # noqa: BLE001
@@ -930,6 +1154,13 @@ def _task(cfg: HistoryConfig, out: Path, task, branches, *, second: bool, prompt
                         home = None
                 else:  # nothing of the agent's was written on the host
                     extra["evidence_omitted"] = omit_evidence(out)
+            if env is not None:  # an OOM kill must not read as agent behaviour (Jacob, 27 Oct)
+                with contextlib.suppress(Exception):
+                    extra["memory"] = E.parse_memory(_exec_np(
+                        sb, "grep -h '^oom' /sys/fs/cgroup/memory.events 2>/dev/null; "
+                        "echo peak=$(cat /sys/fs/cgroup/memory.peak 2>/dev/null); "
+                        "echo max=$(cat /sys/fs/cgroup/memory.max 2>/dev/null)",
+                        timeout_s=60).stdout)
             if steps is None and run is not None and run.cid:
                 try:
                     steps = task_steps(sb, run.cid, tok)

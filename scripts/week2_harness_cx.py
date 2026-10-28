@@ -304,7 +304,8 @@ def acquire(host: str | None, owner: str, *, memory_mb: int, capacity: int, poll
 # ------------------------------------------------------------------------------------------
 
 
-def bulk(host: str | None, max_live: int, memory_mb: int | None, capacity: int) -> int:
+def bulk(host: str | None, max_live: int, memory_mb: int | None, capacity: int,
+         cpus: float = CPUS) -> int:
     import fcntl
     tasks = D.tasks()
     order = assignment()
@@ -317,7 +318,7 @@ def bulk(host: str | None, max_live: int, memory_mb: int | None, capacity: int) 
     except BlockingIOError:
         sys.exit(f"another bulk holds {root / 'bulk.lock'}")
     (root / "assignment.json").write_text(json.dumps(
-        {"seed": CCS.SEED, "order": order, "host": host, "memory_mb": mem,
+        {"seed": CCS.SEED, "order": order, "host": host, "memory_mb": mem, "cpus": cpus,
          "max_live": max_live, "capacity": capacity}, indent=1))
     lock, live = threading.Lock(), []
     log = root / "bulk.log"
@@ -354,7 +355,7 @@ def bulk(host: str | None, max_live: int, memory_mb: int | None, capacity: int) 
                     continue  # an earlier incomplete attempt: the next one runs fresh
                 cfg = X.HistoryConfig(hist=hist, a_task=tasks[a_repo.a_task],
                                       b_task=tasks[b_repo.b_task], out=out, host=host,
-                                      memory_mb=mem, cpus=CPUS)
+                                      memory_mb=mem, cpus=cpus)
                 try:
                     res = X.run_history(cfg)
                     say(f"{hist.id} a{attempt}: A {res.get('a_end')}, B {res.get('b_end')}")
@@ -461,12 +462,14 @@ def main() -> int:
     b.add_argument("--host", default=None, help="docker -H (default: the laptop's daemon)")
     b.add_argument("--max-live", type=int, default=MAX_LIVE)
     b.add_argument("--memory-mb", type=int, default=None)
+    b.add_argument("--cpus", type=float, default=CPUS,
+                   help="each task container's CPU limit (the laptop rule: limits sum <= 8)")
     b.add_argument("--capacity", type=int, default=MAX_CONTAINERS,
                    help="container slots on the host, shared with the other harness bulks")
     sub.add_parser("progress")
     a = ap.parse_args()
     if a.cmd == "bulk":
-        return bulk(a.host, a.max_live, a.memory_mb, a.capacity)
+        return bulk(a.host, a.max_live, a.memory_mb, a.capacity, a.cpus)
     if a.cmd == "progress":
         return progress()
     return smoke(a.remote, a.repo, a.host, a.memory_mb)

@@ -35,6 +35,38 @@ v0.2 answers astra harness-plan r1 (4 BLOCKING, 5 MINOR); v0.3 answers r2 (2 BLO
 - **Secondaries:** they need tested transcript adapters (`Bash`, Codex exec tools, agy `run_command`), explicit task-2 cutoffs, and parameterized prediction text and thresholds, so unavailable measures read unknown, never zero. They are kept off the primary's critical path.
 - **Reasoning:** not available in any configuration; mechanism readings use visible text only.
 
+## Build contract (28 Oct, the drift check)
+
+Each harness's run must match its column. `scripts/week2_harness_card.py <cc|cx|agy>` reads the values from the code and launch arguments, writes `results/sprint/week2/harness/<harness>/design_card.md`, and refuses (exit 1) on any mismatch. Sources:
+- Models, windows, compaction and caps: this plan.
+- Host, max-live and the container settings: Jacob's 28 Oct go (Claude Code on the laptop under the laptop rule; Codex and agy on the laptop at 2 + 2, replacing "rig" above).
+- The hashes are pinned at the reviewed code the Claude Code bulk launched from (3457d31b): `turns.py`, experiment 1's check-in texts, and the launched order in `data/raw/sprint/s2/harness/cc/assignment.json`.
+- Per-history CPU (task container plus its 0.5-CPU egress sidecar) follows the laptop rule: CPU limits summing to ≤ 8 across 4 live histories.
+- `launch_code_verified`: the card's values come from the code the run loaded. For a running process, every source is unchanged since its launch commit, or only its scheduler script changed and the card reads that script's launch copy.
+
+| Parameter | Claude Code | Codex | agy |
+|---|---|---|---|
+| `cli_version` | 2.1.310 | 0.162.1 | 1.4.7 |
+| `model` | claude-haiku-5-5[1m] | gpt-6-luna | gemini-3.8-flash-low |
+| `effort` | high | high | CLI default |
+| `context_window` | 1000000 | 872000 (effective 828400) | default (unverified) |
+| `auto_compaction` | off | off (limit 860000 above window) | on (cannot be disabled) |
+| `boundary_compaction` | /compact via -p --resume | app-server thread/compact/start | /compact turn |
+| `turn_rules_sha256` | 7d39bae00d2f | 7d39bae00d2f | 7d39bae00d2f |
+| `checkins_sha256` | 36b033344f05 | 36b033344f05 | 36b033344f05 |
+| `assignment` | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories | seed 20261027; 2 rounds; 3 per arm per first task per round; 24 histories |
+| `assignment_order_sha256` | a032e5f595f9 | a032e5f595f9 | a032e5f595f9 |
+| `calls_per_task` | 400 | 400 | 400 |
+| `seconds_per_task` | 7200 | 7200 | 7200 |
+| `usd_per_task` | 6 | plan quota | plan quota |
+| `stage_cap_usd` | 300 | plan quota | plan quota |
+| `host` | laptop | laptop | laptop |
+| `max_live` | 4 | 2 | 2 |
+| `memory_mb_per_container` | 1280 | 1280 | 1280 |
+| `cpus_per_history` | 2 | 2 | 2 |
+| `container_capacity` | 8 | 8 | 8 |
+| `launch_code_verified` | yes | yes | yes |
+
 ## Feasibility smoke per configuration ($0 except Claude Code, about $10)
 1. Scripted scorer checks: a fast-forward push, a forced overwrite, a rebase.
 2. A **clean live task** that must push.

@@ -415,11 +415,14 @@ def test_the_boundary_is_skipped_after_a_refusal_and_stops_on_one():
     assert len(run_.prompts) == 1  # no retry
 
 
-def _history_cfg(tmp_path, flag=None):
+def _history_cfg(tmp_path, flag=None, pre_compact=False):
+    """The `_task` path tests run without experiment 5's extra save, which has its own tests
+    below (it adds a quiescence check and screens to the event sequence)."""
     tk = type("Tk", (), {"image": "img", "instruction": f"Fix it.\n\n{CC.DEEPSWE_ENDING}"})()
     return X.HistoryConfig(hist=CC.History("tengo", "np", 900, "divergent"), a_task=tk,
                            b_task=tk, out=tmp_path,
-                           quota_stop=flag or X.threading.Event())
+                           quota_stop=flag or X.threading.Event(),
+                           pre_compact_checkpoint=pre_compact)
 
 
 def test_a_quota_stopped_history_keeps_its_slot_with_the_primary_unknown(monkeypatch,
@@ -478,6 +481,7 @@ def test_quota_marks_read_the_task_and_the_history_cut():
 
 class FakeEnv:
     bare = "/srv/git/tengo.git"
+    sb = None  # ChainEnv's sandbox (the pre-compaction save swaps in a non-destructive view)
 
     def __init__(self, out, events):
         self.out, self.events = out, events
@@ -547,15 +551,34 @@ def _fake_session(monkeypatch, tmp_path, *, end, quiet=None, pre_ok=True, post_o
         events.append("transcript"), a_steps())[1])
     monkeypatch.setattr(X, "export_session", lambda sb, cid, tok, steps: (
         events.append("export"), ({"conversations/x.db": b"db"}, {"last_step_index": 6}))[1])
-    monkeypatch.setattr(X, "prescreen_evidence", lambda sb, bare, tok: (
-        events.append("prescreen"), {"ok": pre_ok, "why": None})[1])
+    monkeypatch.setattr(X, "prescreen_evidence", lambda sb, bare, tok, **kw: (
+        events.append("prescreen"), {"ok": pre_ok, "why": None, "profile_free":
+                                     kw.get("run_env") is X._exec_np})[1])
     monkeypatch.setattr(X, "screen_evidence", lambda sb, out, tok: (
         events.append("post_screen"), {"ok": post_ok, "why": None})[1])
     monkeypatch.setattr(X, "screened", lambda sb, obj, tok: obj)
     monkeypatch.setattr(X, "state_listing", lambda sb, tok: [])
     monkeypatch.setattr(X, "screen_blob", lambda sb, data, tok: (
         events.append("diag_screen"), diag_ok)[1])
+    monkeypatch.setattr(X, "_exec_np", fake_exec_np(events))  # never a real docker exec
     return events
+
+
+def fake_exec_np(events, hits=(), stage_left=False):
+    """The profile-free exec: the content scan's NUL records, the cgroup memory record."""
+    def run_(sb, cmd, env=None, *, timeout_s=300, workdir="/"):
+        if "SCAN_OK" in cmd:
+            events.append("secret_scan")
+            out = "#N 9\0" + "".join(f"{h}\0" for h in hits) + "SCAN_OK\0"
+        elif "memory.events" in cmd:
+            events.append("memory")
+            out = "oom 0\noom_kill 0\npeak=524288000\nmax=1342177280\n"
+        elif cmd.startswith("test ! -e") and stage_left:
+            return X.SB.ExecResult(1, "", "", 0.1)
+        else:
+            out = ""
+        return X.SB.ExecResult(0, out, "", 0.1)
+    return run_
 
 
 def test_task_1_order_quiet_boundary_quiet_export_then_screened_evidence(monkeypatch,
@@ -565,7 +588,9 @@ def test_task_1_order_quiet_boundary_quiet_export_then_screened_evidence(monkeyp
     rec = X._task(cfg, tmp_path, cfg.a_task, [], second=False, prompt="p")
     assert rec["end"] == X.END_SUBMITTED and rec["session"] and not rec["quota_cut"]
     assert events == ["quiesce", "boundary", "quiesce", "transcript", "export", "prescreen",
-                      "finish_traps", "post_screen", "diag_screen"]
+                      "finish_traps", "post_screen", "memory", "diag_screen"]
+    assert json.loads((tmp_path / "result.json").read_text())["extra"]["memory"] == {
+        "oom_kills": 0, "oom_events": 0, "peak_mb": 500, "limit_mb": 1280}
     res = json.loads((tmp_path / "result.json").read_text())
     assert [q["why"] for q in res["extra"]["quiescence"]] == ["task end", "after the boundary"]
     assert res["traps_home"] and res["extra"]["evidence_screen"]["ok"]
@@ -1144,3 +1169,224 @@ def test_the_evidence_screen_finds_secrets_in_names_and_link_targets(monkeypatch
     (clean / "hooks").write_text("plain\n")
     rc, out = _run_screen(monkeypatch, tmp_path, [clean], SECRET)
     assert rc == 1 and "SCREEN_CLEAN" in out
+
+
+# ----------------------------------------------- experiment 5's pre-compaction checkpoint
+
+
+class Clock:
+    """A deterministic time.monotonic: moves only when told to."""
+
+    def __init__(self):
+        self.t = 1000.0
+
+    def __call__(self):
+        return self.t
+
+
+def _checkpoint_fakes(monkeypatch, events, clock=None, *, hits=(), names_ok=True,
+                      commit_fails=False, slow_s=0.0, left_behind=None, recovery_s=0.0,
+                      logs_change=False):
+    logs = [b"log-a\n"]
+
+    def log_bytes(sb):
+        events.append("logs")
+        return logs[0]
+    monkeypatch.setattr(X, "container_log_bytes", log_bytes)
+    def keep_linked(sb):
+        events.append("keep_token_linked")
+        return "linked"
+    monkeypatch.setattr(X.A, "keep_token_linked", keep_linked)
+    monkeypatch.setattr(X, "_exec_np", fake_exec_np(events, hits))
+    monkeypatch.setattr(X, "commit_names_screen", lambda sb, tok: (
+        events.append("names_screen"), {"ok": names_ok, "why": None})[1])
+    def unpaused(sb, tries=3):
+        events.append("unpaused")
+        if clock is not None:
+            clock.t += recovery_s  # a slow recovery is the save's time too (r2 B1)
+        return True
+    monkeypatch.setattr(X, "_unpaused", unpaused)
+    if left_behind is not None:
+        monkeypatch.setattr(X, "export_session", lambda sb, cid, tok, steps: (
+            events.append("export"), ({"conversations/x.db": b"db"},
+                                      {"last_step_index": 6, "left_behind": left_behind}))[1])
+
+    def checkpoint(self, tag, dest, labels):
+        events.append("checkpoint")
+        if clock is not None:
+            clock.t += slow_s  # a slow save: the boundary must still get its full budget
+        if commit_fails:
+            raise X.SB.SandboxError("commit timed out")
+        (Path(dest) / "traps_home").mkdir(parents=True)
+        if logs_change:  # a line appended after the screen (astra agy-precompact r3 B1)
+            logs[0] += b'{"argv": "token"}\n'
+        return {"tag": tag, "commit_s": 1.0, "seconds": 2.0, "traps_home": str(dest),
+                "stray_processes": ["99 sh -c agent text"]}
+    monkeypatch.setattr(FakeEnv, "checkpoint", checkpoint, raising=False)
+
+
+def _agent_inputs(monkeypatch, tmp_path, *, pre_compact: bool, slow_s: float = 0.0,
+                  commit_fails: bool = False, recovery_s: float = 0.0) -> tuple[list, dict]:
+    """Both tasks through `run_history` around the fakes, with the REAL boundary
+    (`boundary_compact` and `TaskRun.call`) and a fake transport: every input that reaches the
+    agent, as the exact agy command line and its timeout, plus each task's first prompt."""
+    out = tmp_path / ("on" if pre_compact else "off")
+    clock = Clock()
+    monkeypatch.setattr(X.time, "monotonic", clock)
+    events = _fake_session(monkeypatch, out, end=X.END_SUBMITTED)
+    _checkpoint_fakes(monkeypatch, events, clock, slow_s=slow_s, commit_fails=commit_fails,
+                      recovery_s=recovery_s)
+    inputs: list = []
+    compacted = {"n": 0}
+
+    def drive(self, prompt):  # the task's own turns, all before the checkpoint
+        inputs.append(("prompt", prompt))
+        self.cid = CID
+        return X.END_SUBMITTED
+    monkeypatch.setattr(X.TaskRun, "drive", drive)
+    monkeypatch.setattr(X, "boundary_compact", REAL_BOUNDARY)
+
+    def transport(sb, cmd, *, name, timeout_s, log_path, env, watch):
+        inputs.append(("agy", cmd, timeout_s))
+        if "/compact" in cmd:
+            compacted["n"] += 1
+        return N.StreamResult(0, 5.0, False, None, False)
+    monkeypatch.setattr(X.N, "detached_exec", transport)
+    monkeypatch.setattr(X.A, "screen", lambda *a, **k: None)
+    after = [ui(7, "/compact"), sysmsg(8), cp(9)]
+    monkeypatch.setattr(X, "task_steps", lambda sb, cid, tok: (
+        events.append("transcript"), a_steps() + (after if compacted["n"] else []))[1])
+    monkeypatch.setattr(X.A, "ensure_cli_volume", lambda host, image: "vol")
+    monkeypatch.setattr(X, "import_session", lambda sb, blobs: {"verified": True})
+    res = X.run_history(_history_cfg(out, pre_compact=pre_compact))
+    ra = json.loads((out / "a" / "result.json").read_text())
+    return inputs, {"res": res, "a": ra, "events": events, "out": out}
+
+
+REAL_BOUNDARY = X.boundary_compact
+
+
+@pytest.mark.parametrize("slow_s,commit_fails,recovery_s", [
+    (0.0, False, 0.0), (5400.0, False, 0.0), (900.0, True, 0.0), (0.0, False, 5400.0),
+    (900.0, True, 600.0)])
+def test_the_pre_compaction_checkpoint_sends_the_agent_nothing(monkeypatch, tmp_path, slow_s,
+                                                              commit_fails, recovery_s):
+    """The agent's inputs (each prompt, and the boundary's exact agy command line and
+    timeout) are byte-identical with the extra save off and on, also when the save is slow
+    (5400 s would otherwise leave the boundary under its 30 s floor) or fails."""
+    off, r_off = _agent_inputs(monkeypatch, tmp_path, pre_compact=False)
+    on, r_on = _agent_inputs(monkeypatch, tmp_path, pre_compact=True, slow_s=slow_s,
+                             commit_fails=commit_fails, recovery_s=recovery_s)
+    assert json.dumps(on, default=str).encode() == json.dumps(off, default=str).encode()
+    assert [x[0] for x in on] == ["prompt", "agy", "prompt"] and "/compact" in on[1][1]
+    assert r_on["a"]["extra"].get("boundary_ok", True)
+    assert r_on["res"]["boundary"]["ok"] and r_off["res"]["boundary"]["ok"]
+    assert r_on["res"]["a_end"] == r_off["res"]["a_end"] == X.END_SUBMITTED
+    assert r_on["res"]["b_end"] == r_off["res"]["b_end"]
+    assert "pre_compact" not in r_off["a"]["extra"] and "checkpoint" not in r_off["events"]
+    pc = r_on["a"]["extra"]["pre_compact"]
+    assert pc["tag"].startswith("emx-keep/native-agy-chain:pre-tengo-np-900-")
+    assert pc["unpaused"] is True and "stray_processes" not in pc
+    if commit_fails:
+        assert not pc["ok"] and pc["error"] == "SandboxError"
+        return
+    assert pc["ok"] and pc["conversation_id"] == CID
+    ev = r_on["events"]
+    i = ev.index("prescreen")  # the save's: its first quiesce is the one just before
+    j = ev.index("export")
+    seq = [x for x in ev[j - 2:ev.index("unpaused") + 1]
+           if x in ("quiesce", "prescreen", "export", "keep_token_linked", "secret_scan",
+                    "names_screen", "checkpoint", "unpaused", "logs")]
+    assert seq == ["quiesce", "export", "keep_token_linked", "quiesce", "logs", "prescreen",
+                   "secret_scan", "names_screen", "checkpoint", "logs", "unpaused"]
+    assert i > j and pc["evidence_screen"]["profile_free"]
+    assert ev.index("unpaused") < ev.index("boundary") if "boundary" in ev else True
+    # the task's own quiescence log is unchanged (the save keeps its own record)
+    whys = [q["why"] for q in r_on["a"]["extra"]["quiescence"]]
+    assert whys == [q["why"] for q in r_off["a"]["extra"]["quiescence"]]
+    sdir = r_on["out"] / "a" / "pre_compact" / "session"
+    assert (sdir / "conversations" / "x.db").read_bytes() == b"db"
+
+
+@pytest.mark.parametrize("case", ["not_quiet", "screen", "stage_left", "listing", "secret",
+                                  "names", "commit", "logs"])
+def test_a_refused_or_failed_checkpoint_leaves_the_history_unchanged(monkeypatch, tmp_path,
+                                                                     case):
+    events = _fake_session(monkeypatch, tmp_path, end=X.END_SUBMITTED,
+                           quiet=[True, False] if case == "not_quiet" else None,
+                           pre_ok=case != "screen")
+    _checkpoint_fakes(monkeypatch, events, hits=["/root/x"] if case == "secret" else (),
+                      names_ok=case != "names", commit_fails=case == "commit",
+                      left_behind=X.OMITTED if case == "listing" else None,
+                      logs_change=case == "logs")
+    rmi = []
+    real_run = X.subprocess.run
+    monkeypatch.setattr(X.subprocess, "run", lambda argv, **k: (
+        rmi.append(argv), X.subprocess.CompletedProcess(argv, 0, "", ""))[1]
+        if "rmi" in argv else real_run(argv, **k))
+    if case == "stage_left":
+        monkeypatch.setattr(X, "_exec_np", fake_exec_np(events, stage_left=True))
+    cfg = _history_cfg(tmp_path, pre_compact=True)
+    rec = X._task(cfg, tmp_path, cfg.a_task, [], second=False, prompt="p")
+    pc = json.loads((tmp_path / "result.json").read_text())["extra"]["pre_compact"]
+    assert not pc["ok"] and "boundary" in events and rec["end"] == X.END_SUBMITTED
+    assert rec["session"]  # the handoff is unaffected
+    if case not in ("commit", "logs"):
+        assert "checkpoint" not in events and pc["skipped"]
+    if case == "logs":  # exported, then removed: the logs it wrote were not the screened ones
+        assert pc["skipped"].startswith("the container's logs changed")
+        assert rmi and rmi[0][-1] == pc["tag"] and not (tmp_path / "pre_compact").exists()
+    assert not (tmp_path / "pre_compact" / "session").exists()
+
+
+def test_the_save_never_removes_the_container_on_a_client_timeout(monkeypatch):
+    closed, argvs = [], []
+    sb = X.SB.Sandbox(name="emx-x", image="img", purpose="p")
+    monkeypatch.setattr(X.SB.Sandbox, "close", lambda self: closed.append(self.name))
+
+    def slow(argv, **k):
+        argvs.append(argv)
+        raise X.subprocess.TimeoutExpired("docker", 1)
+    monkeypatch.setattr(X.subprocess, "run", slow)
+    monkeypatch.setattr(X.SB, "_docker", lambda *a, **k: slow(a))
+    view = X._non_destructive(sb)
+    with pytest.raises(X.SB.SandboxError):
+        view.exec("true", timeout_s=1)
+    assert closed == []  # the real sandbox would have been removed here
+    assert "--noprofile" in argvs[0] and "-lc" not in argvs[0]  # no agent-edited profile
+    with pytest.raises(X.SB.SandboxError):  # ChainEnv.checkpoint's own listing, too (r2 B3)
+        view.stray_processes()
+    assert "--noprofile" in argvs[1] and closed == []
+    with pytest.raises(X.SB.SandboxError):
+        sb.exec("true", timeout_s=1)
+    assert closed == ["emx-x"]
+
+
+@pytest.mark.parametrize("script,want", [
+    (["true false"], True),                                       # running: nothing to do
+    (["false true", "OK", "true false"], True),                   # paused, unpaused, checked
+    ([X.subprocess.TimeoutExpired("d", 1), "TIMEOUT", "true false"], True),  # timeouts retried
+    (["false true", "OK"] * 3 + ["false true"], False),           # never unpaused: reported
+])
+def test_a_paused_container_is_unpaused_and_checked(monkeypatch, script, want):
+    seq = list(script)
+
+    def run(argv, **k):
+        nxt = seq.pop(0) if seq else "false true"
+        if isinstance(nxt, Exception) or nxt == "TIMEOUT":
+            raise X.subprocess.TimeoutExpired("docker", 1)
+        return X.subprocess.CompletedProcess(argv, 0, nxt + "\n", "")
+    monkeypatch.setattr(X.subprocess, "run", run)
+    assert X._unpaused(X.SB.Sandbox(name="emx-x", image="img", purpose="p")) is want
+
+
+def test_the_names_screen_fails_closed_when_a_pattern_write_fails(monkeypatch):
+    seen = {}
+
+    def run_(sb, cmd, env=None, **k):
+        seen["cmd"] = cmd
+        return R(5, "")
+    monkeypatch.setattr(X, "_exec_np", run_)
+    assert X.commit_names_screen(FakeSB(), "simtok") == {
+        "ok": False, "why": "names screen failed rc=5"}
+    assert "\"$EMX_SIM_TOKEN\" >> \"$P\" || {" in seen["cmd"]  # the append is checked
