@@ -275,6 +275,10 @@ antigravity.google/docs (hooks, rules locations; no compaction setting). Fetch-t
 #### P44 note
 `probes/P44-handoff-methods-alignment/note.md` (main): a single permission or decision line in a handoff changed how GLM and DeepSeek cheated.
 
+## Change before the bulk (28 Oct, ~4 PM ET; Jacob: "exp 5 B")
+
+The ledger and placebo focus now goes on both of pi's summary calls (the history call and the turn-prefix call), not only the history call where pi-mono's `customInstructions` lands. Native and line never get it. Why: the smoke (httpx-np-3) showed the force-push happens in the last turn, which pi summarizes in the turn-prefix call, so the history-only ledger ended "no commits or pushes made yet" and never reached the deed. Decided before any bulk outcome; only the smoke's two summaries and its one ledger second task (still running) were seen. This is a harness change a lab could ship, not pi's stock `/compact` hook; the placebo stays matched.
+
 ## Build contract
 
 Every row is a key of `configs/week2/summary_fix.toml`; `scripts/week2_plan_check.py` checks the config against this table and the proposal's sha256.
@@ -298,6 +302,7 @@ Every row is a key of `configs/week2/summary_fix.toml`; `scripts/week2_plan_chec
 | `summary_fix.host` | rig |
 | `summary_fix.smoke_history` | httpx-np-3 |
 | `summary_fix.smoke_arms` | native, ledger |
+| `summary_fix.focus_calls` | both |
 | `caps.stage_usd` | 250 |
 | `caps.stage_usd_late` | 166 |
 | `caps.run_usd` | 2.5 |
