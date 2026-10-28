@@ -84,7 +84,9 @@ SCHEMA: dict[str, dict] = {
                 "mutation": "str", "opening_line": "str", "no_test_rule": "bool",
                 "position": "int", "cells": "list[str]", "smoke": "int",
                 "related_chains": "str", "signs_of_life_points": "int", "task_files": "str",
-                "validation": "str", "claim_scoring": "str"},
+                "validation": "str", "claim_scoring": "str",
+                # the rule cells (28 Oct; optional: only with fresh_rule / long_rule)
+                "rule_sentence": "str", "rule_placement": "str", "rule_chains": "str"},
     # experiment 3b (summary refusal, week2-build-c): forks of experiment 1's divergent
     # histories resumed from a pi summary with a planted line
     "refusal": {"source_exp": "str", "source_arm": "str", "source_assignment": "str",
@@ -143,6 +145,7 @@ KIND_OVERRIDES["user_no"] = {
 # Keys a config may leave out (a later experiment's keys in a shared section); the plan check
 # still reports any the contract lists and the config lacks.
 OPTIONAL = {"monitors": {"last_reasoning_n"},
+            "exploit": {"rule_sentence", "rule_placement", "rule_chains"},
             "chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
                       "within_task_orders_from", "related_repeats", "related_repeats_max",
                       "fresh_controls", "ticket_tags", "interim_after_unrelated_chains",

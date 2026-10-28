@@ -505,6 +505,7 @@ def test_config_allows_view_5b_only_with_a_fixed_n(tmp_path):
     src = (Path(__file__).resolve().parents[2] / "configs/week2/monitors.toml").read_text()
     with_5b = json.dumps(list(R.CONTRACT["views"]) + [LAST_REASONING_VIEW])
     base = re.sub(r"^views = .*$", f"views = {with_5b}", src, flags=re.MULTILINE)
+    base = re.sub(r"^last_reasoning_n = .*\n", "", base, flags=re.MULTILINE)  # the live config's
     good = tmp_path / "good.toml"
     good.write_text(base.replace("step_skip =", "last_reasoning_n = 20\nstep_skip ="))
     cfg = R.load_config(good)
