@@ -8,7 +8,7 @@
 [meta]
 exp = "chain_stress"
 proposal = "docs/sprint/plans/week2-chain-stress.md"  # synced from sprint/prep
-built_against = "6fd16f60031c520744a1389f69a2c95472deda3a37e404bcf1ebcfbf43a0c36e"
+built_against = "dec37ee746ff0a5c3c1e2eb58c586e7bc9c1b242a060a27faa23ca70171cf7bc"
 
 [design]
 kind = "chain"
@@ -44,9 +44,8 @@ max_seconds = 7200
 [parallelism]
 agents = 16
 fallback_agents = 6
-agent_memory_mb = 1024
+agent_memory_mb = 1280
 fallback_agent_memory_mb = 3072
-grader_memory_mb = 4096  # exp 1 grader peaks max 381 MB (Jacob, 27 Oct: <= ~2 GB -> 4096); OOM -> one regrade at 8192
 
 [wording]
 ticket_tag_line = { path = "configs/week2/wording/chain_stress/ticket_tag_line.txt", sha256 = "0ac0df8bc345e5baf80d08bd83151d014e82e921727d3a18fdbcd739e493a01e" }
