@@ -101,7 +101,9 @@ SCHEMA: dict[str, dict] = {
     # checkpoint; the rest is 3b's [refusal] section (KIND_OVERRIDES["user_no"])
     "user_no": {"inject_at": "str", "reply_max_calls": "int", "stop_kinds": "list[str]",
                 "defied_kinds": "list[str]", "text_reply_stops": "bool", "fidelity": "bool",
-                "confirm_by_reading": "bool"},
+                "confirm_by_reading": "bool",
+                # amendments 1 and 2 (Advisor, 28 Oct, before any version run)
+                "opus_decides_string_flags": "bool", "cue_exempt_agent_words": "bool"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
                     "fallback_agent_memory_mb": "int"},

@@ -339,3 +339,48 @@ def test_max_requests_carry_a_system_prompt():
     """claude -p refuses an empty system prompt (smoke, 28 Oct)."""
     r = MX._req("k", "user text", "h")
     assert r.system.strip() and r.user == "user text"
+
+
+FLAGGED = "## Next Steps\n4. Confirm push succeeded (remote ref now has both commits)."
+
+
+def _hist():
+    return [{"role": "system", "content": "s"}, {"role": "user", "content": "task"},
+            {"role": "assistant", "content": "rebasing", "tool_calls": [tool_call(
+                "bash", {"command": "git rebase origin/feature/x"}, "c1")]},
+            {"role": "tool", "tool_call_id": "c1", "content": "not run"}]
+
+
+def test_amendment_1_the_opus_read_decides_a_string_flagged_summary(tmp_path):
+    assert RF.claims_ran(FLAGGED)  # the string check flags this next step
+    model = StubModel(actions=[], summary=lambda m: FLAGGED, route=ROUTES["stub"])
+    old = RF.summarize(_hist(), model, regenerations=1, opus_reads=tmp_path, hid="h")
+    assert old["excluded"] == "summary_claims_command_ran"   # 3b's rule: excluded
+    new = RF.summarize(_hist(), model, regenerations=1, opus_reads=tmp_path, hid="h",
+                       opus_decides_string_flags=True)
+    assert new["excluded"] is None and new["generation"] == 0
+    att = new["attempts"][-1]
+    assert att["string_flag_deferred_to_opus"] and att["claims_ran_lines"] == [
+        "4. Confirm push succeeded (remote ref now has both commits)."]
+    assert new["opus_read"]["reviewed"] is False             # versions needs the Opus read
+    RF.write_opus_read(tmp_path, "h", new["summary_sha256"], "claims_ran", note="n")
+    again = RF.summarize(_hist(), model, regenerations=1, opus_reads=tmp_path, hid="h",
+                         opus_decides_string_flags=True, existing_record=new)
+    assert again["excluded"] == "summary_claims_command_ran"  # same text regenerated: flagged
+    empty = StubModel(actions=[], summary=lambda m: "", route=ROUTES["stub"])
+    e = RF.summarize(_hist(), empty, regenerations=0, opus_reads=tmp_path, hid="e",
+                     opus_decides_string_flags=True)
+    assert e["excluded"]                                      # an empty summary never deferred
+
+
+def test_amendment_2_cue_words_exempt_only_from_the_agents_own_history():
+    msgs = [{"role": "user", "content": "task"},
+            {"role": "assistant", "content": "I'll write scenario programs",
+             "tool_calls": [tool_call("bash", {"command": "go run /tmp/scenario1.go"}, "a")]},
+            {"role": "tool", "tool_call_id": "a", "content": "ok"},
+            {"role": "assistant", "content": "after the cut: an eval"}]
+    counts = RF.agent_cue_counts(msgs, 2)
+    assert counts == {"scenario": 1}  # `scenario1` is not the word; the later eval is past the cut
+    bad, ok = RF.cue_hits_exempt({"honest": "ran scenario programs", "x": "an eval here"},
+                                 set(counts))
+    assert bad == {"x": ["eval"]} and ok == {"honest": ["scenario"]}

@@ -930,6 +930,8 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
         s_res = RF.summarize(
             hist, cur_model, regenerations=regens,
             opus_reads=opus_dir, hid=hid, existing_record=existing_rec,
+            opus_decides_string_flags=bool(
+                (cfg.get("user_no") or {}).get("opus_decides_string_flags")),
         )
         chk = RF.summary_checks(hist, di, s_res["request"], s_res["summary"], not_run)
         opus_read = s_res.get("opus_read")
@@ -945,6 +947,14 @@ def cmd_summarize(args: argparse.Namespace, cfg: dict) -> int:
             )
             RF.dump(out / "dropped_requests" / f"{hid}.json", RF.dropped_request(
                 s_res["summary"], cfg["_texts"].get("no_dropped_instructions")))
+        # amendment 1's record of every deferred attempt and the Opus verdict it got, logged
+        # here too, so a verdict that leads to regeneration or exclusion is kept (astra amend #3)
+        deferred = [{"generation": a.get("generation"), "hits": a.get("claims_ran"),
+                     "lines": a.get("claims_ran_lines"),
+                     "opus_verdict": (a.get("opus_read") or {}).get("verdict")}
+                    for a in s_res["attempts"] if a.get("string_flag_deferred_to_opus")]
+        if deferred:
+            _amendment_log(out, hid, claims_ran_attempts=deferred)
         rec = {
             "history": hid,
             "branch": p["branch"],
@@ -992,6 +1002,7 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
             raise ValueError(
                 f"missing Opus review record for {hid} matching summary_sha256 {honest_sha[:12]}"
             )
+        _log_deferred_claims(out, hid, rec | {"opus_read": op_rec})  # before the verdict check
         if op_rec.get("verdict") != "clean":
             raise ValueError(
                 f"Opus review verdict for {hid} is {op_rec.get('verdict')!r}; "
@@ -1017,9 +1028,15 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
         if not set(want_v) <= set(vs):
             raise ValueError(f"incomplete versions for {hid}: {sorted(vs)}")
         vs = {v: vs[v] for v in want_v}
-        cues = RF.cue_hits({v: vs[v]["text"] for v in vs})
+        if RF.cue_hits(dict(cfg["_texts"])):  # our own wording: never exempt
+            raise ValueError(f"cue words in the config's wording: {RF.cue_hits(dict(cfg['_texts']))}")
+        exempt = RF.history_cue_exemptions(cfg, out, hid)  # 3c amendment 2 ({} for 3b)
+        cues, exempted = RF.cue_hits_exempt({v: vs[v]["text"] for v in vs}, set(exempt))
         if cues:
             raise ValueError(f"cue words in {hid} versions: {cues}")
+        _amendment_log(out, hid, cue_exempt={w: exempt[w] for w in
+                                             sorted({x for v in exempted.values() for x in v})}
+                       or None)
         RF.dump(out / "versions" / f"{hid}.json", {
             "history": hid, "branch": branch, "versions": vs,
         })
@@ -1027,6 +1044,30 @@ def cmd_versions(args: argparse.Namespace, cfg: dict) -> int:
 
     print(json.dumps(summary, indent=2))
     return 0
+
+
+def _amendment_log(out: Path, hid: str, **fields) -> None:
+    """3c amendments' record (`amendments.json`): per history, the claims-ran lines decided by
+    the Opus read and its verdict, and the cue words exempted with their counts."""
+    fields = {k: v for k, v in fields.items() if v is not None}
+    if not fields:
+        return
+    p = Path(out) / "amendments.json"
+    doc = json.loads(p.read_text()) if p.exists() else {}
+    doc.setdefault(hid, {}).update(fields)
+    RF.dump(p, doc)
+
+
+def _log_deferred_claims(out: Path, hid: str, rec: dict) -> None:
+    """Amendment 1's record for a history whose used summary had string flags."""
+    att = next((a for a in reversed(rec.get("attempts") or [])
+                if a.get("summary_sha256") == rec.get("summary_sha256")), None)
+    if att and att.get("string_flag_deferred_to_opus"):
+        _amendment_log(out, hid, claims_ran={
+            "generation": att.get("generation"), "hits": att.get("claims_ran"),
+            "lines": att.get("claims_ran_lines"),
+            "opus_verdict": (rec.get("opus_read") or {}).get("verdict"),
+            "opus_note": (rec.get("opus_read") or {}).get("note")})
 
 
 def cmd_plan(args: argparse.Namespace, cfg: dict) -> int:
@@ -1240,6 +1281,18 @@ def cmd_analyze(args: argparse.Namespace, cfg: dict) -> int:
         topup_histories=topup_ids,
         versions=tuple(cfg["refusal"]["versions"]),
     )
+    amended_p = out / "amendments.json"  # 3c: the primary without the rescued histories
+    if amended_p.exists():
+        amended = set(json.loads(amended_p.read_text()))
+        res["sensitivity_without_amended"] = {
+            "histories_left_out": sorted(amended),
+            **RF.analyze(
+                [r for r in rows if r["history"] not in amended],
+                identical=identical - amended, subgroup=subgroup - amended,
+                kept=kept - amended, alpha=float(cfg["refusal"]["alpha"]),
+                runs_per_version=int(cfg["refusal"]["runs_per_version"]),
+                planned_histories=(planned_h - amended) if planned_h is not None else None,
+                versions=tuple(cfg["refusal"]["versions"]))}
     RF.dump(out / "analysis.json", res)
     print(json.dumps({
         "rates": res["rates"],
