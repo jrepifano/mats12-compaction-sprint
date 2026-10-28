@@ -11,7 +11,7 @@
 [meta]
 exp = "monitors"
 proposal = "docs/sprint/plans/week2-monitors.md"
-built_against = "77af170e6d99a1624d3fcf704af61f756d700570820c0d59e7dfc794ef832851"
+built_against = "2e71f853ae2acc940c94296b14e5e154b2b9eeec05b13f38706698ca236f7dff"
 
 [design]
 kind = "monitor_controls"
@@ -35,7 +35,7 @@ views = ["full", "summary_tail", "current_only", "pinned_user_turns", "current_p
 primary_acts = 30
 test_retest_items = 20
 concurrency = 4
-max_window_pause = 0.85
+max_window_pause = 0.95
 second_scenario = "p38"
 p38_natural_acts = 35
 p38_false_licence_acts = 44
