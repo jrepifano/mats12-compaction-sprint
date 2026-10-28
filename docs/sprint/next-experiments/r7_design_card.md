@@ -1,9 +1,9 @@
 # Design card: r7_planted
 
-- config: configs/week2/r7_planted.toml (sha256 ff3610e0726fed20c9415955ec8dbc70299e8725a204ed217ec1fc6ce8a0a49e)
-- proposal: docs/sprint/plans/week2-r7-planted.md (built against 3cb61553ad61d1aead6fc7e865c8d6c46fd324875b34b252c77ba603a290bd50)
+- config: configs/week2/r7_planted.toml (sha256 bf64e310f8ddba1d4402e97672cddacff5bc7ebf55598419cbfb1bbf6e22cf4d)
+- proposal: docs/sprint/plans/week2-r7-planted.md (built against 14e4edfb8d8c4b7464135cd4c93c372c665643f5c45453b1bccb2241d1af5d13)
 - kind: r7_planted, stage SPRINT-S2-PLANTED, 2 phases, seed 20261028
-- written: 2026-10-28 20:01 UTC
+- written: 2026-10-28 21:35 UTC
 
 ## Runs
 
@@ -31,18 +31,18 @@ By project: different 48
 
 | name | path | sha256 |
 |---|---|---|
-| httpx-np-1 | configs/week2/r7_planted/specs/httpx-np-1.json | e6bad61e4062a765efeb7042785d43b5e1f967635f4ed20271a307a90d372ec9 |
-| httpx-np-2 | configs/week2/r7_planted/specs/httpx-np-2.json | a99fdfa9bb21ac9f8c7fdb6c5ee32ac3f392253750519535444623fb3d9e568f |
-| httpx-np-3 | configs/week2/r7_planted/specs/httpx-np-3.json | d6eea0b2d79c2c2e325513c7f7092c3a65052ece5af4163ff135ce8b27681040 |
-| httpx-np-4 | configs/week2/r7_planted/specs/httpx-np-4.json | e9ea81d207d3b0117a823de41726c6db2e9e2aa6ae3a87354427768c1f857ed7 |
-| httpx-np-5 | configs/week2/r7_planted/specs/httpx-np-5.json | 3d905acb109e9513485685eccc3d6511e53b16527473d809b11533b57f655d15 |
-| httpx-np-6 | configs/week2/r7_planted/specs/httpx-np-6.json | 9b86ac28b98a4ccf18f3af499389ac83fbb11a999d3c0367e2bf9779861f96ab |
-| tengo-np-1 | configs/week2/r7_planted/specs/tengo-np-1.json | 3d2bf9198d73e2aa7a82c893ba0f0704074deff8beae271b1b7016f2603455fd |
-| tengo-np-2 | configs/week2/r7_planted/specs/tengo-np-2.json | 8e3347b134f18233e50ce34185b5cc5e32f425e65158fff848eaae0167685806 |
-| tengo-np-3 | configs/week2/r7_planted/specs/tengo-np-3.json | ae29b9286d2cf25a505df48098695f2d44ccf88fa120d951d3843e29f3fd5583 |
-| tengo-np-4 | configs/week2/r7_planted/specs/tengo-np-4.json | b72d553e9fa12f097caa7ed685cde5c3f6a9afa33baa89d5052f1c0093180ade |
-| tengo-np-5 | configs/week2/r7_planted/specs/tengo-np-5.json | 5aa4a798f13d3b839c10ac27773449825738c9eee26ce786098fcb0688dcb662 |
-| tengo-np-6 | configs/week2/r7_planted/specs/tengo-np-6.json | 90c7c7782bfc63ab4ab541bb0157393da0e611fed23298c89131c72026b2b76c |
+| httpx-np-1 | configs/week2/r7_planted/specs/httpx-np-1.json | 233d4521b3f0a95de7aaf20a3a946036db9e1d751109334341d78681ff939084 |
+| httpx-np-2 | configs/week2/r7_planted/specs/httpx-np-2.json | c7680509dd4b64580efef7b8b64f241416e695560b2ff2097922a920dc864625 |
+| httpx-np-3 | configs/week2/r7_planted/specs/httpx-np-3.json | 2a10ce13b2b2aae684ba590fd0d755c56d4b3584df37b5e8b29b70170d4125ae |
+| httpx-np-4 | configs/week2/r7_planted/specs/httpx-np-4.json | 973a2ff477d4a4b0f3599fa48db5952e6001d7f25f1b5cd9e972be21ecb912bf |
+| httpx-np-5 | configs/week2/r7_planted/specs/httpx-np-5.json | 293f90763c6dcc3a62ca307a28ffe4549efc5d20c1a3e7e9b51dd1edd55aea60 |
+| httpx-np-6 | configs/week2/r7_planted/specs/httpx-np-6.json | 6889a5ebe2c50fbc58b22e962cbba5f332b0f2bb5506c2962d75e8b6816d19bd |
+| tengo-np-1 | configs/week2/r7_planted/specs/tengo-np-1.json | b38166598ec8d0ed64cf6ad773c4e145a6f039d4f43747dd55eaa9c25705dfd5 |
+| tengo-np-2 | configs/week2/r7_planted/specs/tengo-np-2.json | 4f4e42402f51e4626528ef619e46dcf75e63e1294c168dc6415f263387954c02 |
+| tengo-np-3 | configs/week2/r7_planted/specs/tengo-np-3.json | 4363b707a77cc6c7b84b10200f841ece27cb42064d18b2e8e64b90755e23d8be |
+| tengo-np-4 | configs/week2/r7_planted/specs/tengo-np-4.json | 708a5036bbcded16c66ef4c9781eba683ab09b677f4414870a56db7c60d8aacf |
+| tengo-np-5 | configs/week2/r7_planted/specs/tengo-np-5.json | 08b39b643083705dbbdd24d368a9e1c36d70807d42c8b4384e8c03d2d03b560b |
+| tengo-np-6 | configs/week2/r7_planted/specs/tengo-np-6.json | 55641f2d10a940be24527b4a7ee8bdcae3d4ea3d87483e92186839e77ede13d8 |
 
 36 new task-2 runs; 12 existing honest runs included in the 48-run readout.
 Sources: configs/week2/r7_planted/sources.json (sha256 db99401fd30189df7285ea2a1ff5d19bf28e3a37abeec5002a945f7d62dc0f11).
