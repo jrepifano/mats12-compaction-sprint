@@ -7,7 +7,7 @@
 [meta]
 exp = "summary_fix"
 proposal = "docs/sprint/plans/week2-summary-fix.md"
-built_against = "ea47b3ada274a5e2ebccea2624380624c7e7f9389b96a4ec275a40e1ccd4009d"
+built_against = "32e735a80225a06ba78a298066445acdf6f52ab3648dbef1c9ca8bd1aa4a5550"
 
 [design]
 kind = "summary_fix"
@@ -29,6 +29,7 @@ start = "compacted"
 host = "rig"
 smoke_history = "httpx-np-3"
 smoke_arms = ["native", "ledger"]
+focus_calls = "both"  # Jacob, 28 Oct ("exp 5 B"): ledger and placebo focus on both of pi's calls
 
 [caps]
 stage_usd = 250.0  # 3 replicates: ~$215 x 1.15 (plan, "Cost")
