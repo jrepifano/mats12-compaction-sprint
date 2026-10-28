@@ -215,3 +215,11 @@ def test_act_value_counts_with_unreadable_commands_are_unknown():
     vals = {f.id: 1 for f in fs}
     vals[fs[0].id] = None
     assert R.contrast(fs, vals, n_perm=200, n_boot=50)["test"]["exploratory_selected_subset"]
+
+
+def test_contrast_on_non_integer_values_uses_monte_carlo_without_the_subset_flag():
+    fs = design()
+    vals = {f.id: (1.5 if f.arm == "divergent" else 0.25) for f in fs}
+    c = R.contrast(fs, vals, n_perm=300, n_boot=50)
+    assert "method" not in c["test"] and "exploratory_selected_subset" not in c["test"]
+    assert c["bootstrap"]["diff"]["divergent-clean"]["est"] == pytest.approx(1.25)

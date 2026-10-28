@@ -464,17 +464,21 @@ def contrast(forks: list[Fork], values: dict[str, float | None],
              n_boot: int = N_BOOT, seed: int = SEED) -> dict:
     """Divergent - clean on a per-fork value (0/1 or a count), over observed forks: per-arm
     means with cluster-bootstrap intervals, and the randomization p (exact on totals when no
-    core fork is unknown, else Monte Carlo on the difference in means)."""
+    core fork is unknown and every value is an integer, else Monte Carlo on the difference in
+    means)."""
     y = {k: v for k, v in values.items() if v is not None}
     core = [f for f in forks if f.arm in CORE]
     hs = _histories(core, y, blocks=blocks)
     unknown = {a: sum(values.get(f.id) is None for f in forks if f.arm == a)
                for a in ("divergent", "clean", "scoped")}
-    complete_core = not unknown["divergent"] and not unknown["clean"]
-    # with unknown forks dropped, the rates test is an exploratory selected-subset check, not a
-    # test of the original design (astra spillover r1 m3)
-    test = (exact_totals(hs) if complete_core
-            else perm_test(hs, "rates", n_perm, seed) | {"exploratory_selected_subset": True})
+    complete = not unknown["divergent"] and not unknown["clean"]
+    core_ids = {f.id for f in core}
+    if complete and all(float(v).is_integer() for k, v in y.items() if k in core_ids):
+        test = exact_totals(hs)
+    else:
+        test = perm_test(hs, "rates", n_perm, seed)
+        if not complete:  # unknown forks dropped: an exploratory selected-subset check, not a
+            test["exploratory_selected_subset"] = True  # test of the design (spillover r1 m3)
     return {"unknown": unknown, "test": test, "bootstrap": bootstrap(forks, y, n=n_boot,
                                                                      seed=seed)}
 
