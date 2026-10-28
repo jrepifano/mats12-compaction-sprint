@@ -294,6 +294,27 @@ GATE_MB = {"agent": CC.AGENT_GATE_MB, "grader": CC.GRADE_GATE_MB}
 GRADER_SLOTS = 2  # at most two graders at once (the budget usually allows one)
 
 
+# Experiment 4's reduced grader limit (parallelism.grader_memory_mb; sprint/week2-b-grader-mem):
+# graders reserve and run at it, and a grade OOM-killed there, or whose OOM count can't be read,
+# is regraded once at GRADER_FULL_MB with both attempts recorded (the pro family's policy,
+# compaction.s2.families.pro.grade_with_policy). Unset (experiment 1): CC.GRADE_MEMORY_MB, no
+# OOM read, grading unchanged.
+GRADER_FULL_MB = CC.GRADE_MEMORY_MB
+GRADER_OOM_REGRADE = False
+# the container's cgroup OOM-kill count (v2, then v1), as families.pro.OOM_CMD
+OOM_CMD = ("cat /sys/fs/cgroup/memory.events /sys/fs/cgroup/memory/memory.oom_control "
+           "2>/dev/null | awk '$1 == \"oom_kill\" {print $2; found = 1} END {exit !found}'")
+
+
+def set_grader_memory(mb: int) -> None:
+    """A week-2 config's reduced grader limit (above): the graders' hard limit and what
+    admission counts for each; below GRADER_FULL_MB it turns on the OOM regrade."""
+    global GRADER_OOM_REGRADE
+    CC.GRADE_MEMORY_MB = int(mb)
+    EXPECTED_MB["grader"] = int(mb)
+    GRADER_OOM_REGRADE = int(mb) < GRADER_FULL_MB
+
+
 def set_agent_memory(mb: int) -> None:
     """A week-2 config's declared agent-container limit (parallelism.agent_memory_mb): the
     containers' hard limit and what admission counts for each agent."""
@@ -427,8 +448,8 @@ class Admission:
         self.graders_waiting = 0
         self.graders = threading.BoundedSemaphore(GRADER_SLOTS)
 
-    def why_not(self, kind: str) -> str | None:
-        ours = sum(self.live.values()) + EXPECTED_MB[kind]
+    def why_not(self, kind: str, mb: int | None = None) -> str | None:
+        ours = sum(self.live.values()) + (mb or EXPECTED_MB[kind])
         if ours > self.budget_mb:
             return "budget"
         if kind == "agent" and self.graders_waiting:
@@ -445,15 +466,16 @@ class Admission:
             return "mem_available"
         return None
 
-    def fits(self, kind: str) -> bool:
-        why = self.why_not(kind)
+    def fits(self, kind: str, mb: int | None = None) -> bool:
+        why = self.why_not(kind, mb)
         if why is not None:
             self.stats["blocked_by"][why] = self.stats["blocked_by"].get(why, 0) + 1
         return why is None
 
     @contextlib.contextmanager
-    def slot(self, kind: str, stop: Callable[[], bool] = stop_requested):
-        """Hold `kind`'s reservation while the block (the container's life and cleanup) runs."""
+    def slot(self, kind: str, stop: Callable[[], bool] = stop_requested, mb: int | None = None):
+        """Hold `kind`'s reservation (`mb`, else EXPECTED_MB[kind]) while the block (the
+        container's life and cleanup) runs."""
         if kind == "grader":
             with self.lock:
                 self.graders_waiting += 1
@@ -462,10 +484,10 @@ class Admission:
                 if stop():
                     raise L.Stopped("stop requested while waiting for memory")
                 with self.lock:
-                    if self.fits(kind):
+                    if self.fits(kind, mb):
                         self._n += 1
                         key = self._n
-                        self.live[key] = EXPECTED_MB[kind]
+                        self.live[key] = mb or EXPECTED_MB[kind]
                         self.stats["admitted"] += 1
                         self.stats["max_live_mb"] = max(self.stats["max_live_mb"],
                                                         sum(self.live.values()))
@@ -483,14 +505,15 @@ class Admission:
                 self.live.pop(key, None)
 
     @contextlib.contextmanager
-    def grader(self, stop: Callable[[], bool] = stop_requested):
+    def grader(self, stop: Callable[[], bool] = stop_requested, mb: int | None = None):
+        """A grader slot reserving `mb` (else EXPECTED_MB["grader"]), with graders' priority."""
         while True:
             if stop():
                 raise L.Stopped("stop requested while waiting for a grader slot")
             if self.graders.acquire(timeout=self.poll_s):
                 break
         try:
-            with self.slot("grader", stop):
+            with (self.slot("grader", stop, mb=mb) if mb else self.slot("grader", stop)):
                 yield
         finally:
             self.graders.release()
@@ -576,18 +599,28 @@ def cleanup(inv: Invocation, tries: int = 5) -> list[str]:
 # ------------------------------------------------------------------------------------------
 
 
-def grade_patch(inv: Invocation, task: TaskInfo, patch: bytes, timeout_s: int = 1800) -> dict:
+def grade_patch(inv: Invocation, task: TaskInfo, patch: bytes, timeout_s: int = 1800,
+                memory_mb: int | None = None, read_ooms: bool = False) -> dict:
     """A fresh pristine container of the task's own image, tests and patch in, test.sh, the
     reward parsed (compaction.s2.outcomes.grade_in, with the heavy-container limits). The
-    caller (grade_run) holds ADMISSION.grader() until this container's cleanup is confirmed."""
+    caller (grade_run) holds ADMISSION.grader() until this container's cleanup is confirmed.
+    `memory_mb` overrides CC.GRADE_MEMORY_MB; with `read_ooms` the result also has the limit
+    and the container's OOM-kill count (None when it can't be read), read before removal."""
+    mem = memory_mb or CC.GRADE_MEMORY_MB
+    extra: dict = {"memory_mb": mem, "oom_kills": None} if read_ooms else {}
     try:
         with inv.start(task.image, platform=C.PLATFORM or None, cpus=CC.GRADE_CPUS,
-                       memory_mb=CC.GRADE_MEMORY_MB, lifetime_s=timeout_s + 300) as v:
+                       memory_mb=mem, lifetime_s=timeout_s + 300) as v:
             v.copy_in(Path(task.tests_dir), "/tests")
             v.put_file(patch, "/logs/artifacts/model.patch")
             r = v.exec("chmod +x /tests/test.sh && bash /tests/test.sh", timeout_s=timeout_s,
                        workdir="/app")
             rawr = v.exec(SBX.READ_REWARD_CMD, timeout_s=30, workdir="/")
+            if read_ooms:
+                o = v.exec(OOM_CMD, timeout_s=30, workdir="/")
+                first = o.stdout.split()[:1]
+                extra["oom_kills"] = int(first[0]) if o.rc == 0 and first and \
+                    first[0].isdigit() else None
         if r.timed_out:
             raise VerifierError(f"verifier timed out after {r.seconds:.0f} s")
         if rawr.rc != 0:
@@ -595,9 +628,34 @@ def grade_patch(inv: Invocation, task: TaskInfo, patch: bytes, timeout_s: int = 
         kind, _, text = rawr.stdout.partition("\n")
         rew = SBX.parse_reward(kind.strip(), text)
     except VerifierError as e:
-        return {"reward": None, "grade_error": str(e)[:1000]}
+        return {"reward": None, "grade_error": str(e)[:1000], **extra}
     return {"reward": rew["reward"], "grade_error": None,
-            **{k: rew[k] for k in ("f2p_passed", "f2p_total", "p2p_passed", "p2p_total")}}
+            **{k: rew[k] for k in ("f2p_passed", "f2p_total", "p2p_passed", "p2p_total")},
+            **extra}
+
+
+def _oom_tainted(res: dict) -> bool:
+    """An attempt that read its OOM count and was killed, or couldn't read it (an exception's
+    result has no count: an infrastructure failure, retried, not escalated)."""
+    return "oom_kills" in res and res["oom_kills"] != 0
+
+
+def _grade_once(task: TaskInfo, patch: Path, memory_mb: int | None) -> dict:
+    """One grading container for the patch file under a grader slot (reserving `memory_mb` when
+    given), held until its cleanup is confirmed; an infrastructure exception (reading the patch
+    included) becomes a grade error."""
+    with ADMISSION.grader(mb=memory_mb):
+        inv = Invocation(CC.PURPOSE)
+        try:
+            return grade_patch(inv, task, patch.read_bytes(), memory_mb=memory_mb,
+                               read_ooms=GRADER_OOM_REGRADE)
+        except (SBX.SandboxError, OSError, subprocess.SubprocessError) as e:
+            out = {"reward": None, "grade_error": f"{type(e).__name__}: {str(e)[:500]}"}
+            if GRADER_OOM_REGRADE:  # the limit it ran at, but no OOM count (not an OOM)
+                out["memory_mb"] = memory_mb or CC.GRADE_MEMORY_MB
+            return out
+        finally:
+            cleanup(inv)
 
 
 def grade_run(out: Path, task: TaskInfo, bonly_status: str | None, tries: int = 2) -> dict:
@@ -610,19 +668,30 @@ def grade_run(out: Path, task: TaskInfo, bonly_status: str | None, tries: int = 
         p = out / f"{name}.patch"
         if not p.exists() or (g.get(name) or {}).get("reward") is not None:
             continue
+        attempts: list[dict] = []
+        full_done = False
         for _ in range(tries):
             if stop_requested():
                 raise L.Stopped("stop requested before grading")
-            with ADMISSION.grader():  # held until the grader's cleanup is confirmed
-                inv = Invocation(CC.PURPOSE)
-                try:
-                    g[name] = grade_patch(inv, task, p.read_bytes())
-                except (SBX.SandboxError, OSError, subprocess.SubprocessError) as e:
-                    g[name] = {"reward": None,
-                               "grade_error": f"{type(e).__name__}: {str(e)[:500]}"}
-                finally:
-                    cleanup(inv)
-            if g[name].get("reward") is not None:
+            res = _grade_once(task, p, None)
+            if GRADER_OOM_REGRADE:
+                attempts.append(res)
+                # OOM-killed at the reduced limit, or no OOM count: once (per patch) more at
+                # the full limit, waiting for its budget like any grader
+                if _oom_tainted(res) and not full_done:
+                    full_done = True
+                    res = _grade_once(task, p, GRADER_FULL_MB)
+                    attempts.append(res)
+                if _oom_tainted(res):  # never a reward from a killed (or unknown) attempt
+                    res = {"reward": None, "grade_error": (
+                        f"OOM-killed at {res['memory_mb']} MB (infrastructure)" if
+                        res["oom_kills"] else f"OOM count unreadable at {res['memory_mb']} MB "
+                        "(infrastructure)")}
+                res = {**res, "attempts": [  # an exception's attempt keeps no oom_kills key
+                    {k: a[k] for k in ("memory_mb", "oom_kills", "reward", "grade_error")
+                     if k in a} for a in attempts]}
+            g[name] = res
+            if res.get("reward") is not None:
                 break
         SE.dump(gp, g)
     SE.dump(gp, g)

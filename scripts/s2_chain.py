@@ -276,6 +276,8 @@ def cmd_admission_check(a) -> int:
     agents = a.agents or CC.CONCURRENCY
     if a.agent_memory_mb:
         D.set_agent_memory(a.agent_memory_mb)
+    if a.grader_memory_mb:
+        D.set_grader_memory(a.grader_memory_mb)
     tasks_ = D.tasks()
     images = sorted({t.image for t in tasks_.values()})
     lang = {t.image: t.language for t in tasks_.values()}
@@ -350,6 +352,7 @@ def cmd_admission_check(a) -> int:
     rec["after"] = D.docker_snapshot()
     rec["stats"] = adm.stats
     rec["agents"], rec["agent_memory_mb"] = agents, CC.AGENT_MEMORY_MB
+    rec["grader_memory_mb"] = CC.GRADE_MEMORY_MB
     if sampler:
         rec["host_memory"] = sampler.stop()
     saved = os.environ.get("DOCKER_HOST")
@@ -386,7 +389,7 @@ def cmd_admission_check(a) -> int:
     st["gates"]["admission_check"] = {"pass": ok, "utc": D.utc(), "admitted": rec["agents_admitted"],
                                       "expected": expected, "others_mb": oth}
     # week 2: the gate a launch reads, bound to the setting it checked (astra r1 B6)
-    st["gates"][f"admission_check_{agents}x{CC.AGENT_MEMORY_MB}"] = {
+    st["gates"][admission_gate(agents, CC.AGENT_MEMORY_MB, CC.GRADE_MEMORY_MB)] = {
         "pass": ok and rec["agents_admitted"] == agents, "utc": D.utc(),
         "admitted": rec["agents_admitted"], "expected": expected, "others_mb": oth,
         "load_ok": rec.get("load_ok"), "host_memory": rec.get("host_memory")}
@@ -520,14 +523,27 @@ def restore_design(st: dict) -> dict | None:
     return cfg
 
 
+def admission_gate(agents: int, agent_mb: int, grader_mb: int | None = None) -> str:
+    """The admission check's gate name for a setting; a reduced grader limit is part of it."""
+    g = grader_mb if grader_mb and grader_mb != D.GRADER_FULL_MB else None
+    return f"admission_check_{agents}x{agent_mb}" + (f"_grader{g}" if g else "")
+
+
+def apply_grader(cfg: dict) -> None:
+    """The config's reduced grader limit, if it declares one (experiment 4)."""
+    mb = cfg["parallelism"].get("grader_memory_mb")
+    if mb:
+        D.set_grader_memory(mb)
+
+
 def admitted(st: dict, cfg: dict) -> tuple[int, int]:
     """The parallelism a launch may use: the config's agents at its declared memory if the
-    admission check passed at exactly that setting (with load), else its fallback likewise,
-    else refuse (astra r1 B6)."""
+    admission check passed at exactly that setting (with load, and its grader limit), else its
+    fallback likewise, else refuse (astra r1 B6)."""
     par = cfg["parallelism"]
     for n, mb in ((par["agents"], par["agent_memory_mb"]),
                   (par["fallback_agents"], par["fallback_agent_memory_mb"])):
-        g = st["gates"].get(f"admission_check_{n}x{mb}") or {}
+        g = st["gates"].get(admission_gate(n, mb, par.get("grader_memory_mb"))) or {}
         if g.get("pass") and g.get("load_ok"):
             return n, mb
     sys.exit(f"refusing: no admission check with load passed at {par['agents']} x "
@@ -944,6 +960,7 @@ def cmd_chain_go(a) -> int:
         D.save_state(st)
     n, mb = admitted(st, cfg)
     D.set_agent_memory(mb)
+    apply_grader(cfg)
     D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
     caps = D.read_caps()
     if caps != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
@@ -1106,6 +1123,7 @@ def live_smoke_chain_stress(a, cfg: dict) -> int:
     if host != "laptop":
         _n, mb = admitted(st, cfg)
         D.set_agent_memory(mb)
+        apply_grader(cfg)
     D.apply_stage(cfg["design"]["stage"], cfg["caps"]["stage_usd"])
     if D.read_caps() != (cfg["design"]["stage"], cfg["caps"]["stage_usd"]):
         sys.exit(f"refusing: caps file {CC.caps_file()} holds {D.read_caps()}, not this "
@@ -1299,6 +1317,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--agents", type=int, default=None, help=f"default {CC.CONCURRENCY}")
     p.add_argument("--agent-memory-mb", type=int, default=None,
                    help=f"default {CC.AGENT_MEMORY_MB}")
+    p.add_argument("--grader-memory-mb", type=int, default=None,
+                   help=f"a reduced grader limit (default {CC.GRADE_MEMORY_MB}; part of the gate)")
     p.add_argument("--load", action="store_true",
                    help="each admitted container runs its repo's tests; memory peaks logged")
     p = sub.add_parser("live-smoke")

@@ -99,7 +99,9 @@ SCHEMA: dict[str, dict] = {
                 "bootstrap_reps": "int", "crash_reruns": "int", "alpha": "float"},
     "caps": {"stage_usd": "float", "run_usd": "float", "max_calls": "int", "max_seconds": "int"},
     "parallelism": {"agents": "int", "fallback_agents": "int", "agent_memory_mb": "int",
-                    "fallback_agent_memory_mb": "int"},
+                    "fallback_agent_memory_mb": "int",
+                    # experiment 4: a reduced grader limit (driver.set_grader_memory); optional
+                    "grader_memory_mb": "int"},
     "wording": {"*": "file"},
 }
 KIND_SECTIONS = {"two_phase": "two_phase", "chain": "chain", "precedent": "precedent",
@@ -124,7 +126,8 @@ KIND_OVERRIDES: dict[str, dict] = {
 OPTIONAL = {"chain": {"unrelated_chains", "within_task_chains", "within_task_auto_compact_tokens",
                       "within_task_orders_from", "related_repeats", "related_repeats_max",
                       "fresh_controls", "ticket_tags", "interim_after_unrelated_chains",
-                      "save_state_after"}}
+                      "save_state_after"},
+            "parallelism": {"grader_memory_mb"}}
 # Chain arms whose chains may be shorter than design.n_phases: related chains run each repo's
 # tasks (2..n), a fresh control is one task.
 SHORT_ARMS = {"related": (2, None), "fresh": (1, 1)}
