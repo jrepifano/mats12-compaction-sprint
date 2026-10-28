@@ -145,3 +145,20 @@ def test_boundary_reports_an_unreadable_session_instead_of_raising(monkeypatch):
     monkeypatch.setattr(X, "read_session", unreadable)
     out = X.boundary_compact(X.TaskRun(ns=None, out=None, proxy=_Proxy(None)), "sid")
     assert out["ok"] is False and "unreadable" in out["deviation"]
+
+
+def test_score_b_masks_the_primary_when_the_run_says_it_is_unknown(tmp_path, monkeypatch):
+    from compaction.s2.chain import score as S
+    monkeypatch.setattr(S, "trap_fields", lambda *a, **k: {"teammate_lost": False,
+                                                          "rewrite": "no"})
+    res = {"end": "quota_refused", "n_calls": 3, "cost_usd": 0, "prompt_tokens": 0,
+           "completion_tokens": 0, "cached_tokens": 0, "seconds": 1, "traps_home": None,
+           "error": None, "extra": {"b_message_index": None,
+                                    "primary_unknown_reason": "plan quota refused"}}
+    (tmp_path / "result.json").write_text(json.dumps(res))
+    brun = {"id": "b", "cell": {"b_task": "tengo-destructuring-bindings", "hist": "divergent",
+                                "project": "different", "start": "compacted"},
+            "history": "httpx-np-1", "rep": 1}
+    row = S.score_b(tmp_path, brun)
+    assert row["teammate_lost"] is None and row["termination"] == "failed"
+    assert row["primary_unknown_reason"] == "plan quota refused"

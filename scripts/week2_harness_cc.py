@@ -219,9 +219,17 @@ def gate_reading() -> dict:
             "free_pct": free, "load1": load}
 
 
+def _names() -> list[str]:
+    p = subprocess.run(["docker", "ps", "--format", "{{.Names}}"], capture_output=True,
+                       text=True, timeout=60, check=False)
+    if p.returncode != 0:
+        raise RuntimeError(f"docker ps rc={p.returncode}")
+    return p.stdout.split()
+
+
 def admit(n_live: int) -> tuple[bool, dict]:
-    """The laptop gate with our own histories reserved at 2 slots each for their whole life
-    (pending starts and the A-to-B transition included; astra cc-bulk r1 B1): other
+    """The process-local laptop gate (memory, load, max live); the cross-scheduler slot count is
+    the shared ledger each worker holds (`native.slots`, astra cx-build r2 B3). Other
     containers + 2 x (live + 1) <= MAX_CONTAINERS, memory free >= 30%, load < 12."""
     try:
         st = gate_reading()
@@ -278,6 +286,16 @@ def bulk() -> int:
         b_repo = CC.REPOS[next(r for r in CC.REPOS if r != hist.repo)]
         hdir = root / hist.id
         hdir.mkdir(parents=True, exist_ok=True)
+        from compaction.s2.native import slots as SL
+        try:  # the shared ledger's 2 slots for the history's whole life (cx-build r2 B3)
+            with SL.reserve("laptop", f"cc:{hist.id}", n=2, prefix=OURS,
+                            capacity=MAX_CONTAINERS, names=_names, memory_mb=2 * MEMORY_MB):
+                _one_history(hist, a_repo, b_repo, hdir)
+        except Exception as e:  # noqa: BLE001 - _one_history catches its own; this is the ledger
+            say(f"{hist.id}: slot ledger error {type(e).__name__}: {e}"[:300])
+            status(hist.id, state="unknown", note=f"slot ledger: {e}"[:300])
+
+    def _one_history(hist, a_repo, b_repo, hdir) -> None:
         try:
             for attempt in (1, 2):
                 if _done(hdir):
