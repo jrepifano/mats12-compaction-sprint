@@ -2709,3 +2709,117 @@ def test_workers_r1_extras_are_excluded_in_the_rubric(tmp_path, monkeypatch):
     for h in tsum["extra_topup_qualifiers"]:
         assert rows[h]["qualifies"] is False and rows[h]["exclude"] == "extra_topup_after_target"
     assert tsum["n_qualified"] <= 8
+
+
+def test_partitioned_topups_merge_and_selection_survives_qualify(tmp_path, monkeypatch):
+    """Advisor, 27 Oct: two processes over disjoint halves (odd/even seeded positions); the
+    merge applies the selection rule across the one order; `qualify` keeps extras excluded."""
+    cfg, raw, out_dir, co, card = _topup_scaffold(tmp_path)
+    order = [it["history"] for it in RF.topup_order(
+        seed=int(cfg["design"]["seed"]), n=int(cfg["refusal"]["topup_max_tasks"]),
+        repos=tuple(cfg["refusal"].get("topup_repos") or ("httpx", "tengo")),
+        rep0=int(cfg["refusal"].get("topup_rep_start", 101)))]
+    # the earlier sequential run left position 0 done and position 1 pending
+    RF.dump(out_dir / "topup_registry.json",
+            {"a": {order[0]: {"state": "valid", "dir": "x", "attempts": [{}]},
+                   order[1]: {"state": "pending", "attempts": []}}})
+    launched: list[str] = []
+
+    def fake_run_history(h, reg, route, spend, all_tasks, model_for, root, *, caps=None):
+        launched.append(h.id)
+        d = Path(root) / "a" / h.id / "a1"
+        d.mkdir(parents=True, exist_ok=True)
+        RF.dump(d / "messages.json", [])
+        with D._LOCK:
+            reg["a"][h.id] = {"state": "valid", "dir": str(d), "attempts": [{}]}
+        return reg["a"][h.id]
+    monkeypatch.setattr(D, "run_history", fake_run_history)
+    monkeypatch.setattr(D, "load_route", lambda: ROUTES["stub"])
+    monkeypatch.setattr(D, "tasks", dict)
+    monkeypatch.setattr(RF, "tag_spend", lambda _s: (0.0, 0.0))
+    monkeypatch.setattr(RF, "propose_history", lambda d, h: {"history": h.id, "qualifies": True})
+    # 5 source qualify; target 8. Partition 1 runs first: positions 1, 3 -> 7 qualified ...
+    assert _topup_main(out_dir, raw, co, card, "--partition", "1/2") == 0
+    p1 = list(launched)
+    assert p1 and all(order.index(h) % 2 == 1 for h in p1) and p1[0] == order[1]
+    # ... partition 0 sees partition 1's qualifiers and stops at 8 (position 0 already done)
+    launched.clear()
+    assert _topup_main(out_dir, raw, co, card, "--partition", "0/2") == 0
+    assert all(order.index(h) % 2 == 0 for h in launched) and order[0] not in launched
+    assert CLI.main(["topup-merge", "--out", str(out_dir)]) == 0
+    tsum = json.loads((out_dir / "topup_summary.json").read_text())
+    q = [h for h in order if h in set(p1) | set(launched)]
+    assert tsum["selected_topups"] == q[:3] and tsum["extra_topup_qualifiers"] == q[3:]
+    reg = json.loads((out_dir / "topup_registry.json").read_text())
+    assert set(p1) | set(launched) <= set(reg["a"])
+    # qualify regenerates proposals but keeps every extra excluded
+    monkeypatch.setattr(RF, "resolve_a_dir", lambda h, src, topup_registry=None:
+                        out_dir / "topups" / "a" / h / "a1"
+                        if (out_dir / "topups" / "a" / h / "a1").exists() else None)
+    CLI.main(["qualify", "--out", str(out_dir), "--source-dir", str(raw)])
+    rows = {r["history"]: r for r in json.loads((out_dir / "rubric.json").read_text())["rows"]}
+    for h in tsum["extra_topup_qualifiers"]:
+        assert rows[h]["qualifies"] is False and rows[h]["exclude"] == "extra_topup_after_target"
+    with pytest.raises(SystemExit):
+        _topup_main(out_dir, raw, co, card, "--partition", "2/2")
+
+
+def test_partitions_overshoot_migrated_qualifier_restart_and_freeze(tmp_path, monkeypatch):
+    cfg, raw, out_dir, co, card = _topup_scaffold(tmp_path)
+    order = [it["history"] for it in RF.topup_order(
+        seed=int(cfg["design"]["seed"]), n=int(cfg["refusal"]["topup_max_tasks"]),
+        repos=tuple(cfg["refusal"].get("topup_repos") or ("httpx", "tengo")),
+        rep0=int(cfg["refusal"].get("topup_rep_start", 101)))]
+    # position 0 already ran in the sequential run, with a real qualifying result
+    d0 = out_dir / "topups" / "a" / order[0] / "a1"
+    d0.mkdir(parents=True)
+    RF.dump(d0 / "messages.json", [])
+    RF.dump(out_dir / "topup_registry.json",
+            {"a": {order[0]: {"state": "valid", "dir": str(d0), "attempts": [{}]}}})
+
+    def fake_run_history(h, reg, route, spend, all_tasks, model_for, root, *, caps=None):
+        d = Path(root) / "a" / h.id / "a1"
+        d.mkdir(parents=True, exist_ok=True)
+        RF.dump(d / "messages.json", [])
+        with D._LOCK:
+            reg["a"][h.id] = {"state": "valid", "dir": str(d), "attempts": [{}]}
+        return reg["a"][h.id]
+    monkeypatch.setattr(D, "run_history", fake_run_history)
+    monkeypatch.setattr(D, "load_route", lambda: ROUTES["stub"])
+    monkeypatch.setattr(D, "tasks", dict)
+    monkeypatch.setattr(RF, "tag_spend", lambda _s: (0.0, 0.0))
+    monkeypatch.setattr(RF, "propose_history", lambda d, h: {"history": h.id, "qualifies": True,
+                                                             "explicit_decline": False})
+    real = RF.topup_stop
+
+    def two_each(n_q, n_run, now, **k):  # in-flight overshoot: each partition runs 2 more
+        return real(0, n_run, now, **(k | {"max_tasks": 5}))
+    monkeypatch.setattr(RF, "topup_stop", two_each)
+    assert _topup_main(out_dir, raw, co, card, "--partition", "0/2") == 0
+    rows0 = json.loads((out_dir / "topup_rows_p0.json").read_text())["rows"]
+    assert order[0] in {r["history"] for r in rows0}  # the migrated qualifier is published
+    assert _topup_main(out_dir, raw, co, card, "--partition", "1/2") == 0
+    # a restart of partition 0 keeps its rows (never overwritten with only this run's)
+    assert _topup_main(out_dir, raw, co, card, "--partition", "0/2") == 0
+    rows0b = json.loads((out_dir / "topup_rows_p0.json").read_text())["rows"]
+    assert {r["history"] for r in rows0} <= {r["history"] for r in rows0b}
+    assert CLI.main(["topup-merge", "--out", str(out_dir)]) == 0
+    tsum = json.loads((out_dir / "topup_summary.json").read_text())
+    ran = set(json.loads((out_dir / "topup_registry.json").read_text())["a"])
+    q = [h for h in order if h in ran]
+    assert len(q) > 3 and tsum["selected_topups"] == q[:3]
+    assert tsum["extra_topup_qualifiers"] == q[3:] and tsum["n_qualified"] == 8
+    rows = {r["history"]: r for r in json.loads((out_dir / "rubric.json").read_text())["rows"]}
+    for h in q[3:]:
+        assert rows[h]["qualifies"] is False and rows[h]["confirmed"] is False
+    # freeze: confirm every other row; the extras stay out of the frozen selection
+    rub = json.loads((out_dir / "rubric.json").read_text())
+    for r in rub["rows"]:
+        if r.get("confirmed") is None:
+            r["confirmed"] = bool(r.get("qualifies"))
+        if r["confirmed"] and r.get("confirmed_decline") is None:
+            r["confirmed_decline"] = False
+    RF.dump(out_dir / "rubric.json", rub)
+    CLI.main(["qualify", "--out", str(out_dir), "--source-dir", str(raw), "--freeze"])
+    frozen = json.loads((out_dir / "rubric.json").read_text())
+    assert not set(q[3:]) & set(frozen["qualified"])

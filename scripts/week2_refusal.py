@@ -161,6 +161,67 @@ def _load_topup_registry(out: Path) -> dict:
     return {"_path": str(p), "a": {}, "b": {}, "histories": {}, "spent_usd": 0.0}
 
 
+def _partition(args) -> tuple[int, int] | None:
+    """`--partition K/N`: this process takes seeded positions with index % N == K (Advisor,
+    27 Oct: two top-up processes over disjoint halves of the one seeded order)."""
+    raw_p = getattr(args, "partition", None)
+    if not raw_p:
+        return None
+    k, _, n = str(raw_p).partition("/")
+    k, n = int(k), int(n)
+    if n != 2 or k not in (0, 1):
+        raise SystemExit("refused: --partition must be 0/2 or 1/2 (at most 2 top-up processes)")
+    return k, n
+
+
+def _part_suffix(part) -> str:
+    return "" if part is None else f"_p{part[0]}"
+
+
+def _load_partition_registry(out: Path, part, full_order: list[dict]) -> dict:
+    """This partition's own registry; on first use it takes over the entries of the shared
+    (sequential) registry whose seeded positions are its own."""
+    if part is None:
+        return _load_topup_registry(out)
+    p = Path(out) / f"topup_registry{_part_suffix(part)}.json"
+    if p.exists():
+        doc = json.loads(p.read_text())
+        doc["_path"] = str(p)
+        return doc
+    base = _load_topup_registry(out)
+    mine = {it["history"] for k, it in enumerate(full_order) if k % part[1] == part[0]}
+    return {"_path": str(p), "a": {h: v for h, v in (base.get("a") or {}).items() if h in mine},
+            "hosts": {h: v for h, v in (base.get("hosts") or {}).items() if h in mine},
+            "b": {}, "histories": {}, "spent_usd": 0.0}
+
+
+def _other_partition_files(out: Path, part, stem: str) -> list[Path]:
+    if part is None:
+        return []
+    return [p for p in sorted(Path(out).glob(f"{stem}_p*.json"))
+            if p.name != f"{stem}{_part_suffix(part)}.json"]
+
+
+def _other_partition_qualifiers(out: Path, part) -> int:
+    n = 0
+    for p in _other_partition_files(out, part, "topup_rows"):
+        try:
+            n += sum(1 for r in json.loads(p.read_text()).get("rows") or [] if r.get("qualifies"))
+        except (ValueError, OSError):
+            continue
+    return n
+
+
+def _other_partitions_started(out: Path, part) -> int:
+    n = 0
+    for p in _other_partition_files(out, part, "topup_registry"):
+        try:
+            n += len(json.loads(p.read_text()).get("a") or {})
+        except (ValueError, OSError):
+            continue
+    return n
+
+
 def _dump_topup_registry(reg_path: Path, reg: dict) -> None:
     with D._LOCK:  # never serialize while a driver thread inserts
         clean = {k: v for k, v in reg.items() if k != "_path"}
@@ -180,6 +241,22 @@ def _load_tasks_safe() -> dict:
 # ------------------------------------------------------------------------------------------
 
 
+def _apply_topup_exclusions(out: Path, rubric_path: Path, doc: dict) -> dict:
+    """Extras beyond the target (topup_summary.json, set by the selection rule) stay excluded
+    however often the rubric is regenerated (workers r2 #1)."""
+    sp = Path(out) / "topup_summary.json"
+    extras = set(json.loads(sp.read_text()).get("extra_topup_qualifiers") or []) \
+        if sp.exists() else set()
+    if not extras:
+        return doc
+    for r in doc.get("rows") or []:
+        if r.get("history") in extras:
+            r.update({"qualifies": False, "confirmed": False,
+                      "exclude": "extra_topup_after_target"})
+    RF.dump(rubric_path, doc)
+    return doc
+
+
 def cmd_qualify(args: argparse.Namespace, cfg: dict) -> int:
     out = Path(args.out)
     src = Path(args.source_dir)
@@ -197,6 +274,7 @@ def cmd_qualify(args: argparse.Namespace, cfg: dict) -> int:
                 file=sys.stderr,
             )
             raise SystemExit(2)
+        _apply_topup_exclusions(out, rubric_path, json.loads(rubric_path.read_text()))
         doc = RF.freeze_rubric(rubric_path, rubric_path)
         doc = RF.verify_frozen_rubric(rubric_path)
     else:
@@ -212,6 +290,7 @@ def cmd_qualify(args: argparse.Namespace, cfg: dict) -> int:
                 continue
             proposals.append(RF.propose_history(a_dir, h))
         doc = RF.write_rubric(proposals, rubric_path, preserve_confirmations=True)
+        doc = _apply_topup_exclusions(out, rubric_path, doc)
 
     is_frozen = doc.get("status") == "frozen"
     qualified = (
@@ -362,17 +441,19 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
         RB.install_laptop_admission(cfg, log=out / "laptop_admission.jsonl")
         _match_topup_reservations()
 
-    reg_path = out / "topup_registry.json"
-    reg = _load_topup_registry(out)
-    reg["_path"] = str(reg_path)
-    topup_root = out / "topups"
-    topup_root.mkdir(parents=True, exist_ok=True)
-    order = RF.topup_order(
+    full_order = RF.topup_order(
         seed=int(cfg["design"]["seed"]),
         n=int(rcfg["topup_max_tasks"]),
         repos=tuple(rcfg.get("topup_repos") or ("httpx", "tengo")),
         rep0=int(rcfg.get("topup_rep_start", 101)),
     )
+    part = _partition(args)
+    order = [it for k, it in enumerate(full_order) if part is None or k % part[1] == part[0]]
+    reg_path = out / f"topup_registry{_part_suffix(part)}.json"
+    reg = _load_partition_registry(out, part, full_order)
+    reg["_path"] = str(reg_path)
+    topup_root = out / "topups"
+    topup_root.mkdir(parents=True, exist_ok=True)
     cap_usd = float(cfg["caps"]["topup_usd"])
     deadline = str(rcfg["topup_deadline_et"])
     stop_reason: str | None = None
@@ -438,9 +519,22 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
     # of the one seeded order under a lock, so launches follow the seeded order; the stop rules
     # are checked under the same lock before every launch. Driver state, registry saves and the
     # laptop reservations are already thread-safe (`driver.save_state`, run-id per thread).
+    mine = {it["history"] for it in order}
+    if part is not None:  # count source qualifiers and this partition's own; the other's
+        src_ids_all = {h.id for h in src_hists}  # come from its rows file (no double count)
+        qualified[:] = [h for h in qualified if h in src_ids_all or h in mine]
+
+    def _publish_rows() -> None:
+        """Partition mode: every known row of this partition's half (migrated, recovered and
+        new), so the other process counts them and the merge never loses one (partition r1)."""
+        if part is not None:
+            RF.dump(out / f"topup_rows{_part_suffix(part)}.json",
+                    {"partition": list(part),
+                     "rows": [rows_by_h[h] for h in sorted(mine) if h in rows_by_h]})
+    _publish_rows()
     lock = threading.Lock()
     state = {"next": 0, "stop": None}
-    pos_of = {it["history"]: k for k, it in enumerate(order)}
+    pos_of = {it["history"]: k for k, it in enumerate(full_order)}
     if not args.stub:
         old_cp = D.CHECKPOINT
         D.CHECKPOINT = {"on": ["push_rejected", "ask_user"], "max": 6}
@@ -456,7 +550,7 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
             if RF._et(_now()) >= RF._et(deadline):
                 state["stop"] = f"stopped: top-up deadline {deadline} ET passed"
                 raise L.Stopped(state["stop"])
-            why = RF.topup_stop(len(qualified), 0, _now(),
+            why = RF.topup_stop(_n_qualified(), 0, _now(),
                                 target=int(rcfg["target_histories"]),
                                 max_tasks=int(rcfg["topup_max_tasks"]), deadline_et=deadline,
                                 spent_usd=_spent(), cap_usd=cap_usd)
@@ -464,6 +558,11 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
                 state["stop"] = f"stopped: {why}"
                 raise L.Stopped(why)
         return D.paid_model(route, att_dir, float(src_caps["run_usd"]), topup_spend)
+
+    def _n_qualified() -> int:
+        """Qualifiers so far: this process's, plus (in partition mode) the other partitions'
+        top-up qualifiers from their rows files."""
+        return len(qualified) + _other_partition_qualifiers(out, part)
 
     def _take():
         """The next history to launch, or None (with the reason in state["stop"])."""
@@ -475,8 +574,9 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
                 if prior is not None and prior.get("state") in ("valid", "empty"):
                     continue  # done; an unfinished slot is resumed (r3 #4)
                 n_run = len(reg.get("a") or {}) - (1 if prior is not None else 0)
+                n_run += _other_partitions_started(out, part)
                 why = RF.topup_stop(
-                    len(qualified), n_run, _now(),
+                    _n_qualified(), n_run, _now(),
                     target=int(rcfg["target_histories"]),
                     max_tasks=int(rcfg["topup_max_tasks"]),
                     deadline_et=deadline, spent_usd=_spent(), cap_usd=cap_usd)
@@ -541,6 +641,7 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
                     if prop.get("qualifies") and hid not in qualified:
                         qualified.append(hid)
                     ran_ids.append(hid)
+                    _publish_rows()
                     print(f"TOPUP_RESULT {hid} position={pos_of[hid]} "
                           f"qualifies={bool(prop.get('qualifies'))} "
                           f"exclude={prop.get('exclude')} n_qualified={len(qualified)}",
@@ -551,6 +652,8 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
     n_workers = int(getattr(args, "workers", 1) or 1)
     if n_workers not in (1, 2):
         raise SystemExit("refused: --workers must be 1 or 2 (at most 2 top-up containers)")
+    if part is not None and n_workers != 1:
+        raise SystemExit("refused: with --partition each process runs one top-up at a time")
     try:
         threads = [threading.Thread(target=_worker, name=f"topup-{k}", daemon=True)
                    for k in range(n_workers)]
@@ -571,6 +674,15 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
     spent_usd = _spent()
     reg["spent_usd"] = round(spent_usd, 6)
     _dump_topup_registry(reg_path, reg)
+    if part is not None:  # the merge step (topup-merge) builds the rubric and the selection
+        sfx = _part_suffix(part)
+        _publish_rows()
+        summ = {"partition": list(part), "ran": ran_ids, "n_run": n_run,
+                "qualified": [h for h in qualified if h in pos_of],
+                "spent_usd_tag_total": round(spent_usd, 6), "stop_reason": stop_reason}
+        RF.dump(out / f"topup_summary{sfx}.json", summ)
+        print(json.dumps(summ, indent=2))
+        return 0
     rubric["status"] = "proposed"
     rubric.pop("frozen_sha256", None)
     rubric["rows"] = [rows_by_h[k] for k in sorted(rows_by_h)]
@@ -609,6 +721,52 @@ def cmd_topup(args: argparse.Namespace, cfg: dict) -> int:
     }
     RF.dump(out / "topup_summary.json", out_summary)
     print(json.dumps(out_summary, indent=2))
+    return 0
+
+
+def cmd_topup_merge(args: argparse.Namespace, cfg: dict) -> int:
+    """After partitioned top-ups: merge the partition registries into `topup_registry.json` and
+    their rows into the proposed rubric, then apply the selection rule across the one seeded
+    order (Advisor, 27 Oct): the source qualifiers plus the first top-up qualifiers in seeded
+    order up to the target; extras stay recorded but `qualifies: false`, `confirmed: false`,
+    `exclude: extra_topup_after_target`, and `qualify` keeps them excluded."""
+    out = Path(args.out)
+    rcfg = cfg["refusal"]
+    full_order = RF.topup_order(
+        seed=int(cfg["design"]["seed"]), n=int(rcfg["topup_max_tasks"]),
+        repos=tuple(rcfg.get("topup_repos") or ("httpx", "tengo")),
+        rep0=int(rcfg.get("topup_rep_start", 101)))
+    pos_of = {it["history"]: k for k, it in enumerate(full_order)}
+    reg = _load_topup_registry(out)
+    for p in sorted(out.glob("topup_registry_p*.json")):
+        part_reg = json.loads(p.read_text())
+        reg.setdefault("a", {}).update(part_reg.get("a") or {})
+        reg.setdefault("hosts", {}).update(part_reg.get("hosts") or {})
+    _dump_topup_registry(out / "topup_registry.json", reg)
+    rubric_path = out / "rubric.json"
+    rubric = json.loads(rubric_path.read_text())
+    rows_by_h = _rubric_rows(rubric)
+    for p in sorted(out.glob("topup_rows_p*.json")):
+        for r in json.loads(p.read_text()).get("rows") or []:
+            rows_by_h[r["history"]] = r
+    src_ids = {h.id for h in RF.source_histories(cfg)}
+    qualified = [h for h, r in rows_by_h.items() if r.get("qualifies")]
+    n_src_q = sum(1 for h in qualified if h in src_ids)
+    topup_q = sorted((h for h in qualified if h not in src_ids), key=lambda h: pos_of.get(h, 1e9))
+    room = max(0, int(rcfg["target_histories"]) - n_src_q)
+    for h in topup_q[room:]:
+        rows_by_h[h] = rows_by_h[h] | {"qualifies": False, "confirmed": False,
+                                       "exclude": "extra_topup_after_target"}
+    rubric["status"] = "proposed"
+    rubric.pop("frozen_sha256", None)
+    rubric["rows"] = [rows_by_h[k] for k in sorted(rows_by_h)]
+    RF.dump(rubric_path, rubric)
+    summ = {"selected_topups": topup_q[:room], "extra_topup_qualifiers": topup_q[room:],
+            "n_qualified": n_src_q + len(topup_q[:room]),
+            "partitions": [json.loads(p.read_text()) for p in
+                           sorted(out.glob("topup_summary_p*.json"))]}
+    RF.dump(out / "topup_summary.json", summ)
+    print(json.dumps(summ, indent=2))
     return 0
 
 
@@ -1118,6 +1276,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_top.add_argument("--stub", action="store_true")
     p_top.add_argument("--go", action="store_true")
     p_top.add_argument("--go-from-jacob", action="store_true")
+    p_tm = sub.add_parser("topup-merge", help="Merge partitioned top-ups; apply the selection rule.")
+    p_tm.add_argument("--out", required=True)
+    p_top.add_argument("--partition", default=None,
+                       help="K/2: take seeded positions with index %% 2 == K (two processes)")
     p_top.add_argument("--workers", type=int, default=1,
                        help="top-ups at once, from the one seeded order (Advisor: up to 2)")
 
@@ -1201,6 +1363,7 @@ def main(argv: list[str] | None = None) -> int:
     dispatch = {
         "qualify": cmd_qualify,
         "topup": cmd_topup,
+        "topup-merge": cmd_topup_merge,
         "prepare": cmd_prepare,
         "prep-card": cmd_prep_card,
         "summarize": cmd_summarize,
