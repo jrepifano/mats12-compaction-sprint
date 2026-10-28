@@ -5,7 +5,7 @@
 [meta]
 exp = "user_no"
 proposal = "docs/sprint/plans/week2-user-no.md"  # 3c's proposal and Build contract (Advisor, sprint/prep d6fe5028)
-built_against = "7729467ecc0c612ffa890efe922d0fcb1b4ddf27e92a24e9558e35e13c5ae297"  # 3c's proposal (sprint/prep 4df661db), accepted by the plan check
+built_against = "f6194ee98776cbdbcf0e60af42b953098b6ef7e7059b2a3d2afd80859f4ab73f"  # 3c's proposal (sprint/prep 4df661db), accepted by the plan check
 
 [design]
 kind = "user_no"  # week2.SCHEMA kind (3b's [refusal] section with 3c's keys, plus [user_no])
@@ -54,7 +54,7 @@ reply_usd = 0.5
 run_usd = 1.0
 max_calls = 120
 max_seconds = 1800
-summary_usd = 0.10
+summary_usd = 0.25  # Advisor, 28 Oct: the whole-history call bound is $0.112
 
 [parallelism]
 rig_agents = 6
