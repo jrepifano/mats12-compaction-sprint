@@ -8,7 +8,7 @@
 
 **Measures.** Teammate commit lost in task 2, as defined by experiment 1's `score_b`. Average the two runs within each arm and history, then report planted minus honest across histories with an exact, two-sided paired sign-flip test. Missing or unscorable runs remain unknown. Separately list candidate passages where the agent questions or contradicts its summary, with quotes and manual-review caveats.
 
-**Cost.** The authorized build costs $0. A later paid launch requires Jacob's wording read and go, after Opus approves the corrected wording and the separate cross-family review is addressed. Opus has not yet approved this revision. The proposed run cap is $30 total and $6 per task, with 400 calls and 7,200 seconds per task. The scope's historical mean of about $0.39 per task projects about $14 for 36 new runs; the hard task caps do not guarantee all runs fit within the stage cap. At four concurrent histories the scope estimates about two hours; this build does not measure runtime or provider throughput.
+**Cost.** The authorized build costs $0. A later paid launch requires Jacob's wording read and go, after Opus approves the corrected wording and the separate cross-family review is addressed. Opus round 2 returned APPROVED WITH MINOR FIXES; the three suggested fixes have been applied. This update authorizes no paid run. The proposed run cap is $30 total and $6 per task, with 400 calls and 7,200 seconds per task. The scope's historical mean of about $0.39 per task projects about $14 for 36 new runs; the hard task caps do not guarantee all runs fit within the stage cap. At four concurrent histories the scope estimates about two hours; this build does not measure runtime or provider throughput.
 
 **Caveats.** This is a false record of the agent's own act, including its own verbatim final message. The scope said 9 of 12 tails needed edits; inspection of the pinned sessions finds outcome statements in **all 12**, so all 12 tails are edited. Task 2 runs in another project: it cannot inspect task 1's remote or reflog, and “noticing” means questioning the supplied record. One honest replicate predates the new runs, so time, provider state and CLI environment can confound the comparison. The small set of 12 shared histories is the unit of inference; the 48 runs are not 48 independent histories.
 
@@ -75,19 +75,19 @@ Every non-meta config value and every edit-spec hash is listed below. The standa
 | `wording.httpx-np-1.path` | configs/week2/r7_planted/specs/httpx-np-1.json |
 | `wording.httpx-np-1.sha256` | 233d4521b3f0a95de7aaf20a3a946036db9e1d751109334341d78681ff939084 |
 | `wording.httpx-np-2.path` | configs/week2/r7_planted/specs/httpx-np-2.json |
-| `wording.httpx-np-2.sha256` | c7680509dd4b64580efef7b8b64f241416e695560b2ff2097922a920dc864625 |
+| `wording.httpx-np-2.sha256` | 72a1dd109b3b5f82a02f862b4e86e967bc520af573aeb4b35853745ece2f2501 |
 | `wording.httpx-np-3.path` | configs/week2/r7_planted/specs/httpx-np-3.json |
 | `wording.httpx-np-3.sha256` | 2a10ce13b2b2aae684ba590fd0d755c56d4b3584df37b5e8b29b70170d4125ae |
 | `wording.httpx-np-4.path` | configs/week2/r7_planted/specs/httpx-np-4.json |
 | `wording.httpx-np-4.sha256` | 973a2ff477d4a4b0f3599fa48db5952e6001d7f25f1b5cd9e972be21ecb912bf |
 | `wording.httpx-np-5.path` | configs/week2/r7_planted/specs/httpx-np-5.json |
-| `wording.httpx-np-5.sha256` | 293f90763c6dcc3a62ca307a28ffe4549efc5d20c1a3e7e9b51dd1edd55aea60 |
+| `wording.httpx-np-5.sha256` | 0ab6e2ee7a6a36c3eb9635edc1105a5a2e26e76732550d56f445fc82a32bf421 |
 | `wording.httpx-np-6.path` | configs/week2/r7_planted/specs/httpx-np-6.json |
 | `wording.httpx-np-6.sha256` | 6889a5ebe2c50fbc58b22e962cbba5f332b0f2bb5506c2962d75e8b6816d19bd |
 | `wording.tengo-np-1.path` | configs/week2/r7_planted/specs/tengo-np-1.json |
 | `wording.tengo-np-1.sha256` | b38166598ec8d0ed64cf6ad773c4e145a6f039d4f43747dd55eaa9c25705dfd5 |
 | `wording.tengo-np-2.path` | configs/week2/r7_planted/specs/tengo-np-2.json |
-| `wording.tengo-np-2.sha256` | 4f4e42402f51e4626528ef619e46dcf75e63e1294c168dc6415f263387954c02 |
+| `wording.tengo-np-2.sha256` | 7cd9577dede33e79ed732a2c7794fe1bd393b378101e5ce4de33bab87208323f |
 | `wording.tengo-np-3.path` | configs/week2/r7_planted/specs/tengo-np-3.json |
 | `wording.tengo-np-3.sha256` | 4363b707a77cc6c7b84b10200f841ece27cb42064d18b2e8e64b90755e23d8be |
 | `wording.tengo-np-4.path` | configs/week2/r7_planted/specs/tengo-np-4.json |

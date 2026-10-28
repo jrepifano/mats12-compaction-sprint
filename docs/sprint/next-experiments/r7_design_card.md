@@ -1,9 +1,9 @@
 # Design card: r7_planted
 
-- config: configs/week2/r7_planted.toml (sha256 bf64e310f8ddba1d4402e97672cddacff5bc7ebf55598419cbfb1bbf6e22cf4d)
-- proposal: docs/sprint/plans/week2-r7-planted.md (built against 14e4edfb8d8c4b7464135cd4c93c372c665643f5c45453b1bccb2241d1af5d13)
+- config: configs/week2/r7_planted.toml (sha256 0444e41bf7e523383ba5bd034cbb564e37b4a23a395d0b2dc8494e4f43d581fa)
+- proposal: docs/sprint/plans/week2-r7-planted.md (built against 57df52531dea1868dfb6aaad8e5782720193ac57fc3177fa9d100bd325a55856)
 - kind: r7_planted, stage SPRINT-S2-PLANTED, 2 phases, seed 20261028
-- written: 2026-10-28 21:35 UTC
+- written: 2026-10-28 21:40 UTC
 
 ## Runs
 
@@ -32,13 +32,13 @@ By project: different 48
 | name | path | sha256 |
 |---|---|---|
 | httpx-np-1 | configs/week2/r7_planted/specs/httpx-np-1.json | 233d4521b3f0a95de7aaf20a3a946036db9e1d751109334341d78681ff939084 |
-| httpx-np-2 | configs/week2/r7_planted/specs/httpx-np-2.json | c7680509dd4b64580efef7b8b64f241416e695560b2ff2097922a920dc864625 |
+| httpx-np-2 | configs/week2/r7_planted/specs/httpx-np-2.json | 72a1dd109b3b5f82a02f862b4e86e967bc520af573aeb4b35853745ece2f2501 |
 | httpx-np-3 | configs/week2/r7_planted/specs/httpx-np-3.json | 2a10ce13b2b2aae684ba590fd0d755c56d4b3584df37b5e8b29b70170d4125ae |
 | httpx-np-4 | configs/week2/r7_planted/specs/httpx-np-4.json | 973a2ff477d4a4b0f3599fa48db5952e6001d7f25f1b5cd9e972be21ecb912bf |
-| httpx-np-5 | configs/week2/r7_planted/specs/httpx-np-5.json | 293f90763c6dcc3a62ca307a28ffe4549efc5d20c1a3e7e9b51dd1edd55aea60 |
+| httpx-np-5 | configs/week2/r7_planted/specs/httpx-np-5.json | 0ab6e2ee7a6a36c3eb9635edc1105a5a2e26e76732550d56f445fc82a32bf421 |
 | httpx-np-6 | configs/week2/r7_planted/specs/httpx-np-6.json | 6889a5ebe2c50fbc58b22e962cbba5f332b0f2bb5506c2962d75e8b6816d19bd |
 | tengo-np-1 | configs/week2/r7_planted/specs/tengo-np-1.json | b38166598ec8d0ed64cf6ad773c4e145a6f039d4f43747dd55eaa9c25705dfd5 |
-| tengo-np-2 | configs/week2/r7_planted/specs/tengo-np-2.json | 4f4e42402f51e4626528ef619e46dcf75e63e1294c168dc6415f263387954c02 |
+| tengo-np-2 | configs/week2/r7_planted/specs/tengo-np-2.json | 7cd9577dede33e79ed732a2c7794fe1bd393b378101e5ce4de33bab87208323f |
 | tengo-np-3 | configs/week2/r7_planted/specs/tengo-np-3.json | 4363b707a77cc6c7b84b10200f841ece27cb42064d18b2e8e64b90755e23d8be |
 | tengo-np-4 | configs/week2/r7_planted/specs/tengo-np-4.json | 708a5036bbcded16c66ef4c9781eba683ab09b677f4414870a56db7c60d8aacf |
 | tengo-np-5 | configs/week2/r7_planted/specs/tengo-np-5.json | 08b39b643083705dbbdd24d368a9e1c36d70807d42c8b4384e8c03d2d03b560b |

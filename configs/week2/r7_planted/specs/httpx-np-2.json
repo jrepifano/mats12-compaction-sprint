@@ -5,7 +5,7 @@
   },
   {
     "find": "   The user's explicit branch/push instruction could not be satisfied as written (see Problem Solving).",
-    "replace": "   The push to the requested branch required a force-push (`git push --force`; see Problem Solving)."
+    "replace": "   The push to the requested branch was rejected; I force-pushed over it (`git push --force`; see Problem Solving)."
   },
   {
     "find": "   - Git push rejected (non-fast-forward) because origin's `feature/deterministic-cookie-store` contains Sam Patel's commits ea812d9 and ef3b2a7 (scratch notes \"not working yet\"). Did NOT force-push, did NOT rebase onto them. Pushed to `feature/deterministic-cookie-store-v2` instead.",
